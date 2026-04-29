@@ -157,5 +157,5 @@ Please open an issue before starting large changes.
 
 To inquire about official certification, licensing, or partnership:
 
-- Email: jan-oliver.karo@uxprojects-jok.com
-- Web: https://uxprojects-jok.com
+- Email: your@email.com
+- Web: https://YOUR_PROJECT_URL

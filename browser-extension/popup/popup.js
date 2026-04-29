@@ -1,7 +1,7 @@
 // popup.js – SaveYourSoul Companion Extension
 'use strict'
 
-const API_BASE = 'https://sys.uxprojects-jok.com'
+const API_BASE = 'https://YOUR_DOMAIN'
 
 let soulCert    = null
 let soulContent = null
@@ -306,17 +306,17 @@ async function connectFromSysTab() {
   const statusEl = document.getElementById('connect-status')
   statusEl.textContent = 'Suche SYS-Tab…'
 
-  let tabs = await chrome.tabs.query({ url: 'https://sys.uxprojects-jok.com/*' })
+  let tabs = await chrome.tabs.query({ url: 'https://YOUR_DOMAIN/*' })
 
   // Fallback: alle Tabs manuell filtern (Chrome-Permission-Edge-Case)
   if (!tabs.length) {
     const allTabs = await chrome.tabs.query({})
-    tabs = allTabs.filter(t => t.url && t.url.startsWith('https://sys.uxprojects-jok.com'))
+    tabs = allTabs.filter(t => t.url && t.url.startsWith('https://YOUR_DOMAIN'))
   }
 
   if (!tabs.length) {
-    statusEl.textContent = '⚠ SYS-Tab nicht gefunden – bitte sys.uxprojects-jok.com öffnen'
-    chrome.tabs.create({ url: 'https://sys.uxprojects-jok.com/session' })
+    statusEl.textContent = '⚠ SYS-Tab nicht gefunden – bitte YOUR_DOMAIN öffnen'
+    chrome.tabs.create({ url: 'https://YOUR_DOMAIN/session' })
     return
   }
 
@@ -352,8 +352,8 @@ async function connectFromSysTab() {
   }
 
   if (!found) {
-    statusEl.textContent = '⚠ Keine Soul-Session gefunden – bitte auf sys.uxprojects-jok.com/session einloggen'
-    chrome.tabs.create({ url: 'https://sys.uxprojects-jok.com/session' })
+    statusEl.textContent = '⚠ Keine Soul-Session gefunden – bitte auf YOUR_DOMAIN/session einloggen'
+    chrome.tabs.create({ url: 'https://YOUR_DOMAIN/session' })
     return
   }
 

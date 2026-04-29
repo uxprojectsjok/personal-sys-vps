@@ -157,7 +157,7 @@
 
             <div class="doc-warning-box my-6">
               <p class="text-xs font-semibold text-[var(--sys-amber)] mb-1">Geschlossene Testphase</p>
-              <p class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">SaveYourSoul ist eine geschlossene Anwendung von UX-Projects Jan-Oliver Karo. Die Erstellung neuer Souls ist auf interne Nutzerinnen und Nutzer beschränkt. Kein öffentlicher Betrieb.</p>
+              <p class="text-xs text-[var(--sys-fg-dim)] leading-relaxed"></p>
             </div>
 
             <DocHeading level="2">Soul-Datei verstehen</DocHeading>

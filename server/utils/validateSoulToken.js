@@ -6,7 +6,7 @@
 //
 // ⚠  Owner's implementation — not included in this distribution.
 //    Production: handled by server/openresty/soul_auth.lua
-//    Contact: jan-oliver.karo@uxprojects-jok.com
+//    Contact: your@email.com
 
 export function validateSoulToken(_authHeader) {
   // Dev bypass — Kopie-Instanz läuft nur lokal, kein Auth-Check nötig.

@@ -128,7 +128,7 @@
           <DocHeading level="1" badge="Getting Started">Quickstart</DocHeading>
           <div class="doc-warning-box mb-6">
             <p class="text-xs font-semibold text-[var(--sys-amber)] mb-1">Closed beta — internal access only.</p>
-            <p class="text-xs text-[var(--sys-fg-dim)]">The reference implementation runs as a closed application by UX-Projects Jan-Oliver Karo. This guide assumes access to a running SYS instance. For self-hosting see <code class="doc-code">docs/PRODUCTION_SETUP.md</code>.</p>
+            <p class="text-xs text-[var(--sys-fg-dim)]">Self-hosted instance. See docs/self-hosting.md to get started.
           </div>
 
           <DocHeading level="2">1. Minimum valid sys.md</DocHeading>

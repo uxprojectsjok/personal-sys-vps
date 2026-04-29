@@ -207,11 +207,11 @@ soul_cert is a Bearer token — TLS is the transport security.
 {
   "synced_files": {
     "profiles": ["expertise"],
-    "audio": ["voice_2c81aa74_2026-04-08.webm"],
+    "audio": ["voice_[soul_id]_[date].webm"],
     "context": ["soul_hash.txt"]
   },
   "active_files": {
-    "audio": "voice_2c81aa74_2026-04-08.webm",
+    "audio": "voice_[soul_id]_[date].webm",
     "context": "soul_hash.txt"
   },
   "cipher_mode": "ciphered",
@@ -345,5 +345,5 @@ The sys.md format, API conventions, and MCP tool schema are intended as an open 
 
 ---
 
-_Reference implementation: invite-only · Operator: UX-Projects – Jan-Oliver Karo, Marburg, Germany_
+_Reference implementation: invite-only · Operator: [Node Operator]_
 _This is experimental software. No warranty. Invite-only access._

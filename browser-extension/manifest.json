@@ -6,7 +6,7 @@
   "description": "Soul als Identitätsmotor – Chat, Voice & Soul-Login im Browser",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
-    "https://sys.uxprojects-jok.com/*",
+    "https://YOUR_DOMAIN/*",
     "https://claude.ai/*"
   ],
   "background": {

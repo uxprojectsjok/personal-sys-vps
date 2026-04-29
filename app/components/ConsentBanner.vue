@@ -124,8 +124,8 @@ function loadPlausible() {
   // async (NICHT defer): async-Scripts blockieren DOMContentLoaded nicht.
   // defer-Scripts würden Vue-Hydration bei Timeout bis zu 90s einfrieren.
   script.async = true;
-  script.setAttribute("data-domain", "uxprojects-jok.com");
-  script.src = "https://analytics.uxprojects-jok.com/js/script.js";
+  script.setAttribute("data-domain", "YOUR_DOMAIN");
+  script.src = "https://analytics.YOUR_DOMAIN/js/script.js";
   script.id = "plausible-script";
   script.onerror = () => { script.remove(); };
   document.head.appendChild(script);
