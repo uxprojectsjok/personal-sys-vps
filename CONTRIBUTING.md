@@ -99,19 +99,6 @@ openresty -s reload
 
 #### WhatsApp
 ```bash
-cd soul-whatsapp
-cp .env.example .env   # fill in Twilio credentials
-npm install
-twilio serverless:deploy --override-existing-project
-```
-
-#### Voice clone (ElevenLabs)
-```bash
-cd soul-voice-clone
-cp .env.example .env   # fill in ElevenLabs + Twilio credentials
-npm install
-node clone-voice.mjs        # create voice + agent
-node whatsapp-connect.mjs   # link to WhatsApp Business
 ```
 
 ---
