@@ -1,0 +1,64 @@
+SaveYourSoul (SYS)
+Copyright 2026 Jan-Oliver Karo — UX-Projects, Marburg, Germany
+https://uxprojects-jok.com
+
+Licensed under the Apache License, Version 2.0 (the "License").
+You may obtain a copy of the License at:
+    http://www.apache.org/licenses/LICENSE-2.0
+
+────────────────────────────────────────────────────────────────
+TRADEMARK & BRAND
+────────────────────────────────────────────────────────────────
+"SaveYourSoul", "SYS", and the SYS logo are trademarks of
+Jan-Oliver Karo — UX-Projects. As stated in Apache License
+Section 6, this License does NOT grant permission to use these
+trade names, trademarks, or service marks.
+
+If you operate a derivative or compatible implementation, you
+MUST NOT use the name "SaveYourSoul" or the SYS brand without
+explicit written permission from the copyright holder.
+
+────────────────────────────────────────────────────────────────
+ATTRIBUTION REQUIREMENT
+────────────────────────────────────────────────────────────────
+Any public deployment or distribution of this software, or
+works derived from it, must include the following attribution
+in a location clearly visible to end users (e.g. about page,
+footer, or documentation):
+
+    "Built on SaveYourSoul — © 2026 Jan-Oliver Karo, UX-Projects"
+
+────────────────────────────────────────────────────────────────
+SOUL CERTIFICATION & OFFICIAL NETWORK
+────────────────────────────────────────────────────────────────
+The SaveYourSoul protocol uses HMAC-SHA256 soul certificates
+derived from a SOUL_MASTER_KEY. Only the original author controls
+the SOUL_MASTER_KEY for the canonical SYS network at:
+
+    https://sys.uxprojects-jok.com
+
+Self-hosted implementations generate their own independent
+SOUL_MASTER_KEY and operate as isolated instances — they are
+not part of the official SYS network and cannot issue
+certificates valid on the canonical network.
+
+Official certification of third-party implementations as
+"SaveYourSoul Compatible" is at the sole discretion of
+Jan-Oliver Karo — UX-Projects.
+
+────────────────────────────────────────────────────────────────
+SOUL REGISTRY (BLOCKCHAIN)
+────────────────────────────────────────────────────────────────
+The SoulRegistry smart contract (contracts/SoulRegistry.sol),
+when deployed by the copyright holder on Polygon mainnet,
+creates an immutable on-chain record of authorship and the
+canonical soul registration. Third-party deployments of this
+contract create independent registries and are not affiliated
+with or endorsed by the canonical SaveYourSoul registry.
+
+────────────────────────────────────────────────────────────────
+CONTACT
+────────────────────────────────────────────────────────────────
+For licensing inquiries, partnership, or official certification:
+    jan-oliver.karo@uxprojects-jok.com
+    https://uxprojects-jok.com

@@ -1,0 +1,22 @@
+[Unit]
+Description=SaveYourSoul MCP Server
+Documentation=https://YOUR_DOMAIN/mcp
+After=network.target openresty.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/SaveYourSoul/soul-mcp
+ExecStart=/usr/bin/node server.mjs
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=soul-mcp
+
+# Umgebungsvariablen aus .env Datei
+EnvironmentFile=/var/www/SaveYourSoul/soul-mcp/.env
+
+[Install]
+WantedBy=multi-user.target

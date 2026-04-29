@@ -1,0 +1,17 @@
+{
+  "name": "soul-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SaveYourSoul MCP Server – Connect your soul to Claude",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.1",
+    "dotenv": "^17.4.0",
+    "ethers": "^6.13.4",
+    "express": "^4.21.2",
+    "zod": "^3.24.2"
+  }
+}

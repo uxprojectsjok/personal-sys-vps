@@ -1,0 +1,30 @@
+{
+  "name": "saveyoursoul",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@reown/appkit": "^1.8.19",
+    "@reown/appkit-adapter-ethers": "^1.8.19",
+    "ethers": "^6.16.0",
+    "lucide-vue-next": "^0.577.0",
+    "nuxt": "^4.3.0",
+    "vue": "^3.5.22",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@fontsource/noto-serif": "^5.2.9",
+    "@fontsource/oxanium": "^5.2.8",
+    "@tailwindcss/vite": "^4.1.14",
+    "remixicon": "^4.9.1",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.14"
+  }
+}

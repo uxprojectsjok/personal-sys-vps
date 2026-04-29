@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /session
+Disallow: /api/
+Sitemap: https://YOUR_DOMAIN/sitemap.xml

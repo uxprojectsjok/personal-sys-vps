@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "extension-popup",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3099", "."],
+      "port": 3099
+    }
+  ]
+}
