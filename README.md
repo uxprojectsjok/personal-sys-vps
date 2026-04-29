@@ -36,8 +36,6 @@ The sys.md belongs to the user. The operator has no access to encrypted content.
 ├── shared/
 │   └── utils/               soulParser.js, soulMaturity.js — core protocol logic
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
-├── soul-whatsapp/           WhatsApp integration (Twilio Serverless)
-├── soul-voice-clone/        ElevenLabs voice clone + conversational agent
 ├── browser-extension/       Chrome MV3 extension
 ├── docs/
 │   ├── overview.md          Protocol overview & design principles

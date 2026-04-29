@@ -38,7 +38,6 @@ Die Erweiterung erscheint in der Toolbar.
 }
 ```
 
-Agent ID aus `soul-voice-clone/agent_id.json` entnehmen.
 
 Nach jeder Änderung an dieser Datei: Chrome Extensions → Erweiterung neu laden (⟳).
 

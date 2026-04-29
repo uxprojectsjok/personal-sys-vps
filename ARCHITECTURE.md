@@ -309,8 +309,6 @@ SaveYourSoul/
 │   ├── tools/              ← MCP tool implementations
 │   ├── server.mjs          ← Entry point
 │   └── oauth.mjs           ← OAuth 2.0 + PKCE
-├── soul-whatsapp/          ← Twilio Serverless WhatsApp integration
-├── soul-voice-clone/       ← ElevenLabs voice clone + agent
 ├── browser-extension/      ← Chrome MV3 extension
 ├── docs/                   ← Protocol documentation
 ├── test/                   ← sys.md test fixtures
