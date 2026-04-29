@@ -16,3 +16,5 @@ server/openresty/old_vps_*
 server/openresty/*.nginx
 server/openresty/INDEX.md
 *.local.json
+soul-voice-clone/
+soul-whatsapp/
