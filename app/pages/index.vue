@@ -129,8 +129,6 @@
             <NuxtLink to="/datenschutz">Datenschutz</NuxtLink>
             <NuxtLink to="/impressum">Impressum</NuxtLink>
             <NuxtLink to="/lizenz">Lizenz</NuxtLink>
-            <NuxtLink to="/dev-docs">Dev-Docs</NuxtLink>
-            <NuxtLink to="/api-docs">API-Docs</NuxtLink>
           </nav>
         </footer>
       </div>
@@ -314,7 +312,7 @@
             </div>
             <p>SaveYourSoul ist ein Privacy-first-Tool für digitale Identität. Servergespeicherte Inhalte werden standardmäßig verschlüsselt. Kein Tracking, keine Werbenetzwerke, keine zentralen Nutzerprofile.</p>
           </div>
-          <div><h5>Protokoll</h5><ul><li><NuxtLink to="/api-docs">API Docs</NuxtLink></li><li><NuxtLink to="/dev-docs">Dev Docs</NuxtLink></li><li><a href="https://github.com/uxprojectsjok/SaveYourSoul_SYS" target="_blank" rel="noopener">GitHub</a></li></ul></div>
+
           <div><h5>Rechtliches</h5><ul><li><NuxtLink to="/datenschutz">Datenschutz</NuxtLink></li><li><NuxtLink to="/impressum">Impressum</NuxtLink></li><li><NuxtLink to="/lizenz">Lizenz</NuxtLink></li></ul></div>
         </footer>
         <div class="foot-rule">

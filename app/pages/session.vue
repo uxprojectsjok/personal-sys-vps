@@ -100,8 +100,6 @@
           <NuxtLink to="/datenschutz">Datenschutz</NuxtLink>
           <NuxtLink to="/impressum">Impressum</NuxtLink>
           <NuxtLink to="/lizenz">Lizenz</NuxtLink>
-          <NuxtLink to="/dev-docs">Dev-Docs</NuxtLink>
-          <NuxtLink to="/api-docs">API-Docs</NuxtLink>
         </nav>
       </footer>
 
