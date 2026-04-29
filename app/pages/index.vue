@@ -140,7 +140,7 @@
         <div class="landing-center">
           <span class="mark">SYS<span class="dot">.</span></span>
           <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="soul-link">
-            SaveYourSoul <span class="arr">→</span>
+            Personal SYS VPS <span class="arr">→</span>
           </a>
           <button class="btn-login" @click="loginOpen = true">Login with Soul</button>
         </div>

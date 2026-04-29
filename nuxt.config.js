@@ -56,7 +56,7 @@ export default defineNuxtConfig({
     buildAssetsDir: "/_nuxt/",
     head: {
       htmlAttrs: { lang: "de" },
-      title: "SaveYourSoul",
+      title: "Personal SYS VPS",
       script: [
         {
           // Force viewport zoom reset on Android Chrome before first paint.
