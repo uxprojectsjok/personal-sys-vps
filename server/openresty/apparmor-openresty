@@ -1,0 +1,70 @@
+# AppArmor-Profil für OpenResty (SaveYourSoul VPS)
+# Deploy: cp apparmor-openresty /etc/apparmor.d/usr.sbin.openresty
+#         apparmor_parser -r /etc/apparmor.d/usr.sbin.openresty
+
+#include <tunables/global>
+
+/usr/sbin/openresty {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # OpenResty Binary + Lua
+  /usr/sbin/openresty                  mr,
+  /usr/local/openresty/**              mr,
+  /etc/openresty/**                    r,
+  /etc/openresty/lua/**                r,
+
+  # Lua-Bibliotheken
+  /usr/lib/x86_64-linux-gnu/lua/**     mr,
+  /usr/share/lua/**                    r,
+
+  # Soul-Daten lesen/schreiben
+  /var/lib/sys/souls/                  rw,
+  /var/lib/sys/souls/**                rw,
+
+  # Temporäre Dateien (ffmpeg)
+  /tmp/                                rw,
+  /tmp/sys_*                           rw,
+
+  # Audit-Log
+  /var/log/sys/                        rw,
+  /var/log/sys/security.log            rw,
+
+  # OpenResty Logs + PID
+  /var/log/openresty/**                rw,
+  /var/run/openresty/**                rw,
+  /var/run/openresty.pid               rw,
+
+  # ClamAV Socket
+  /var/run/clamav/clamd.ctl            rw,
+
+  # ffmpeg ausführen (für Medien-Konvertierung)
+  /usr/bin/ffmpeg                      Cx -> ffmpeg_child,
+
+  # Netzwerk
+  network inet  stream,
+  network inet6 stream,
+  network unix  stream,
+
+  # Kein exec von hochgeladenen Dateien
+  deny /var/lib/sys/souls/** x,
+
+  # ffmpeg Child-Profil
+  profile ffmpeg_child /usr/bin/ffmpeg {
+    #include <abstractions/base>
+
+    /usr/bin/ffmpeg                    mr,
+    /usr/lib/**                        mr,
+    /lib/**                            mr,
+
+    # Input: nur aus tmp lesen
+    /tmp/sys_*                         rw,
+
+    # Output: nur in Soul-Vault schreiben
+    /var/lib/sys/souls/**              rw,
+
+    # Kein Netzwerk, kein exec
+    deny network,
+    deny /** x,
+  }
+}

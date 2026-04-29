@@ -1,0 +1,8 @@
+.env
+*.key
+*.pem
+master.json
+node_modules/
+.output/
+.nuxt/
+dist/

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>SaveYourSoul</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header>
+      <div class="soul-info">
+        <img src="logo.png" class="soul-logo" alt="SaveYourSoul">
+        <div>
+          <div id="soul-name" class="soul-name">Nicht verbunden</div>
+          <div id="soul-status" class="soul-status">In ⚙️ mit SYS verbinden</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="detach-btn" class="icon-btn" title="Als Fenster öffnen">⤢</button>
+        <div id="conn-dot" class="conn-dot disconnected"></div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="chat" title="Chat">💬</button>
+      <button class="tab" data-tab="voice" title="Voice Chat">🎙️</button>
+      <button class="tab" data-tab="page" title="Aktuelle Seite">🌐</button>
+      <button class="tab" data-tab="settings" title="Einstellungen">⚙️</button>
+    </nav>
+
+    <!-- Chat -->
+    <div id="tab-chat" class="tab-content active">
+      <div id="messages" class="messages"></div>
+      <div class="chat-toolbar">
+        <label class="toggle-label">
+          <input type="checkbox" id="use-page-ctx">
+          Seite einbeziehen
+        </label>
+        <button id="attach-btn" class="icon-btn attach-btn" title="Lokale Datei anhängen">📎</button>
+        <input type="file" id="file-input" style="display:none" multiple accept=".txt,.md,.pdf,.json,.csv,.js,.py,.html,.xml">
+      </div>
+      <div id="file-chips" class="file-chips"></div>
+      <div class="input-row">
+        <textarea id="chat-input" placeholder="Nachricht…" rows="1"></textarea>
+        <button id="send-btn" title="Senden">↑</button>
+      </div>
+    </div>
+
+    <!-- Voice -->
+    <div id="tab-voice" class="tab-content">
+      <div id="voice-container" class="voice-container">
+        <div class="empty-state">ElevenLabs Agent-URL in ⚙️ eintragen</div>
+      </div>
+    </div>
+
+    <!-- Page -->
+    <div id="tab-page" class="tab-content">
+      <div id="page-info" class="page-info">
+        <div class="empty-state">Wird geladen…</div>
+      </div>
+      <div class="page-actions">
+        <button id="soul-login-btn" class="btn-primary">⬡ Als Soul anmelden</button>
+        <div class="hint">Injiziert Soul-Login in Login-Formulare</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="tab-settings" class="tab-content">
+
+      <div class="settings-section">
+        <label class="settings-label">Verbindung</label>
+        <p class="settings-hint">SYS im Browser öffnen und eingeloggt sein, dann verbinden.</p>
+        <div class="btn-row">
+          <button id="connect-btn" class="btn-primary">⬡ Mit SYS verbinden</button>
+          <button id="disconnect-btn" class="btn-secondary">Trennen</button>
+        </div>
+        <div id="connect-status" class="connect-status"></div>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label">Endpoint</label>
+        <div class="mono-text">sys.uxprojects-jok.com</div>
+      </div>
+
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "soul-whatsapp",
+  "version": "1.0.0",
+  "description": "WhatsApp Soul Agent via Twilio Functions",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}

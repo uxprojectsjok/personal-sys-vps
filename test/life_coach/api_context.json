@@ -1,0 +1,8 @@
+{
+  "permissions": { "soul": true, "context_files": true, "audio": false, "images": false, "video": false, "calendar": false },
+  "enabled": true,
+  "cipher_mode": "open",
+  "synced_files": { "context": ["positives_leben.md", "fitness.md", "motivation_positive_vibes.md"], "audio": [], "images": [], "video": [] },
+  "active_files": { "context": "positives_leben.md" },
+  "updated_at": 1745193600
+}
