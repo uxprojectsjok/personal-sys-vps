@@ -56,7 +56,7 @@ if sf then
   end
 end
 
-local base_url = "https://sys.uxprojects-jok.com"
+local base_url = "https://YOUR_DOMAIN"
 local amort = ctx.amortization
 
 local preview = {

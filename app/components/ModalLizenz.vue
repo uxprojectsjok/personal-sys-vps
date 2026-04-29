@@ -91,7 +91,7 @@
                 class="p-3 rounded-lg border border-[var(--sys-border)] bg-[var(--sys-bg-overlay)]"
               >
                 <p class="text-[var(--sys-fg)]">
-                  © 2025–2026 Jan-Oliver Karo · UX-Projects
+                  © [Jahr] · [Ihr Name]
                 </p>
                 <p class="mt-1 text-xs">
                   Design, Konzept, Code und alle eigenen Texte sind
@@ -248,7 +248,7 @@
 
             <section>
               <h3 class="text-xs uppercase tracking-[0.12em] text-[var(--sys-fg-dim)] mb-3">Hosting</h3>
-              <p>IONOS SE, Elgendorfer Str. 57, 56410 Montabaur, Deutschland.</p>
+              <p>[Ihr VPS-Anbieter]</p>
             </section>
 
             <p class="text-xs text-[var(--sys-fg-dim)] pt-2 border-t border-[var(--sys-border)]">

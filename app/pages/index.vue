@@ -124,7 +124,7 @@
           </section>
         </div>
         <footer class="dash-foot">
-          <span class="dash-copy">© 2026 · UX-Projects Jan-Oliver Karo</span>
+          <span class="dash-copy">© [Jahr] · [Ihr Name]</span>
           <nav class="dash-links">
             <NuxtLink to="/datenschutz">Datenschutz</NuxtLink>
             <NuxtLink to="/impressum">Impressum</NuxtLink>
@@ -145,7 +145,7 @@
             <span class="mark">SYS<span class="dot">.</span></span>
             <span class="tag">Save Your Soul · v1.0β</span>
           </div>
-          <div class="center"><span class="notice-text">Geschlossene Anwendung von UX-Projects Jan-Oliver Karo. Kein öffentlicher Betrieb. Testphase unter Realbedingungen für eingeladene oder interne Nutzerinnen oder Nutzer.</span></div>
+          <div class="center"><span class="notice-text"></span></div>
           <div class="actions">
             <button v-if="config.public.allowCreateSoul" class="btn ghost" @click="createSoulOpen = true">Create Soul</button>
             <button class="btn primary" @click="loginOpen = true">Login <span class="arr">→</span></button>
@@ -318,7 +318,7 @@
           <div><h5>Rechtliches</h5><ul><li><NuxtLink to="/datenschutz">Datenschutz</NuxtLink></li><li><NuxtLink to="/impressum">Impressum</NuxtLink></li><li><NuxtLink to="/lizenz">Lizenz</NuxtLink></li></ul></div>
         </footer>
         <div class="foot-rule">
-          <span>© 2026 · UX-Projects Jan-Oliver Karo</span>
+          <span>© [Jahr] · [Ihr Name]</span>
           <span>WCAG 2.1 AA</span>
         </div>
       </div>

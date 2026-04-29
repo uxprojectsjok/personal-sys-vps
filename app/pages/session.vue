@@ -95,7 +95,7 @@
 
       <!-- Legal footer (§5 DDG) -->
       <footer class="sess-foot">
-        <span class="sf-copy">© {{ new Date().getFullYear() }} · UX-Projects Jan-Oliver Karo</span>
+        <span class="sf-copy">© {{ new Date().getFullYear() }} · [Ihr Name]</span>
         <nav class="sf-links">
           <NuxtLink to="/datenschutz">Datenschutz</NuxtLink>
           <NuxtLink to="/impressum">Impressum</NuxtLink>

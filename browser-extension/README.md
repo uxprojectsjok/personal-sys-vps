@@ -15,7 +15,7 @@ Chat mit der Soul, Voice Agent starten, aktuelle Seite als Kontext übergeben.
 ## Voraussetzungen
 
 - Google Chrome (oder Chromium-basierter Browser)
-- SYS App unter `https://sys.uxprojects-jok.com` im selben Browser geöffnet
+- SYS App unter `https://YOUR_DOMAIN` im selben Browser geöffnet
 
 ## Deploy / Installation
 
@@ -50,7 +50,7 @@ Nach Code-Änderungen:
 
 ## Verbindung herstellen
 
-1. SYS App öffnen und einloggen (`https://sys.uxprojects-jok.com`)
+1. SYS App öffnen und einloggen (`https://YOUR_DOMAIN`)
 2. Erweiterungs-Icon klicken → Tab **⚙**
 3. **Mit SYS verbinden** klicken
 4. Soul-Cert wird automatisch aus dem SYS-Tab gelesen
@@ -87,4 +87,4 @@ browser-extension/
 | `activeTab` | Aktiven Tab-Inhalt lesen |
 | `scripting` | Soul-Cert aus SYS-Tab auslesen |
 | `tabs` | Tab-URL für Seiten-Kontext |
-| `host_permissions: sys.uxprojects-jok.com` | API-Zugriff |
+| `host_permissions: YOUR_DOMAIN` | API-Zugriff |

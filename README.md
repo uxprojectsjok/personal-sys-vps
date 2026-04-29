@@ -158,4 +158,4 @@ The authors and operators are not liable for any damages, data loss, downtime, s
 
 Apache License 2.0 — see [LICENSE](LICENSE)
 
-Copyright 2026 Jan-Oliver Karo — UX-Projects, Marburg, Germany
+Copyright [Jahr] [Ihr Name]

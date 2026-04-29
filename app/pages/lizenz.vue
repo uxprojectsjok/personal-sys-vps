@@ -27,7 +27,7 @@
         <h2>1. Open-Source-Lizenz (Apache 2.0)</h2>
         <p>Das <strong>sys.md-Format</strong> sowie ausgewählte offene Komponenten von SaveYourSoul werden unter der <strong>Apache License 2.0</strong> veröffentlicht.</p>
         <div class="code-block">
-          <p>Copyright 2026 Jan-Oliver Karo, UX-Projects</p>
+          <p>Copyright [Jahr] [Ihr Name]</p>
           <br />
           <p>Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at:</p>
           <br />
@@ -35,7 +35,7 @@
           <br /><br />
           <p>Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</p>
         </div>
-        <p>Alle anderen Teile des Projekts (Design, Konzept, proprietäre Komponenten, Server-Logik) sind urheberrechtlich geschützt. Alle Rechte vorbehalten. © 2025–2026 Jan-Oliver Karo · UX-Projects</p>
+        <p>Alle anderen Teile des Projekts (Design, Konzept, proprietäre Komponenten, Server-Logik) sind urheberrechtlich geschützt. Alle Rechte vorbehalten. © [Jahr] · [Ihr Name]</p>
       </section>
 
       <section>
@@ -115,7 +115,7 @@
     </main>
 
     <div class="foot-rule">
-      <span>© 2026 · UX-Projects Jan-Oliver Karo</span>
+      <span>© [Jahr] · [Ihr Name]</span>
       <span>WCAG 2.1 AA</span>
     </div>
 

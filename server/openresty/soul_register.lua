@@ -97,7 +97,7 @@ if sf then
   end
 end
 
-local base_url = "https://sys.uxprojects-jok.com"
+local base_url = "https://YOUR_DOMAIN"
 local meta = {
   soul_id        = soul_id,
   name           = name_override or name or "Unknown",

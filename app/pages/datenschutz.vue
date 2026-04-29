@@ -16,7 +16,7 @@
     </main>
 
     <div class="foot-rule">
-      <span>© 2026 · UX-Projects Jan-Oliver Karo</span>
+      <span>© [Jahr] · [Ihr Name]</span>
       <span>WCAG 2.1 AA</span>
     </div>
 
