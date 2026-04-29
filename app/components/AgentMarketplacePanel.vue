@@ -320,8 +320,7 @@
           </div>
 
           <p class="amm-foot-help">
-            Vollständige Anleitung →
-            <NuxtLink to="/api-docs" class="link" @click="$emit('close')">API-Docs</NuxtLink>
+            Vollständige Anleitung → <code>docs/self-hosting.md</code>
           </p>
         </footer>
       </div>
