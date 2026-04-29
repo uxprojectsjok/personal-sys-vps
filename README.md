@@ -1,4 +1,4 @@
-# SaveYourSoul (SYS)
+# Personal SYS VPS
 
 **Protocol, not a product.**
 
