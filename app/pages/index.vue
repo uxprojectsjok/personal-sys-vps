@@ -137,13 +137,41 @@
     <!-- ─────────────── NO SOUL ─ Landing ─────────────── -->
     <template v-else>
       <div class="sys-page landing">
-        <div class="landing-center">
-          <span class="mark">SYS<span class="dot">.</span></span>
-          <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="soul-link">
-            Personal SYS VPS <span class="arr">→</span>
-          </a>
-          <button v-if="config.public.allowCreateSoul" class="btn-create" @click="createSoulOpen = true">Soul erstellen</button>
-          <button class="btn-login" @click="loginOpen = true">Login with Soul</button>
+        <div class="l-bg" aria-hidden="true"></div>
+
+        <div class="l-wrap">
+          <header class="l-head">
+            <div class="l-lockup">
+              <img src="~/assets/logo.png" alt="SYS" class="l-logo" />
+              <span class="l-mark">SYS<span class="l-dot">.</span></span>
+            </div>
+            <span class="l-badge">Private Node</span>
+          </header>
+
+          <main class="l-main">
+            <p class="l-kicker">Soul-Node · Persönliche Instanz</p>
+            <h1 class="l-name">{{ config.public.nodeName }}<em>.</em></h1>
+            <p v-if="config.public.nodeTagline" class="l-tagline">{{ config.public.nodeTagline }}</p>
+
+            <div class="l-rule"></div>
+
+            <div class="l-actions">
+              <button v-if="config.public.allowCreateSoul" class="l-btn-primary" @click="createSoulOpen = true">
+                Soul erstellen <span class="l-arr">→</span>
+              </button>
+              <button class="l-btn-ghost" @click="loginOpen = true">
+                Login with Soul
+              </button>
+            </div>
+          </main>
+
+          <footer class="l-foot">
+            <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="l-foot-link">
+              <span class="l-foot-mark">SYS<span class="l-dot">.</span></span>
+              <span>sys.uxprojects-jok.com</span>
+              <span class="l-arr">↗</span>
+            </a>
+          </footer>
         </div>
       </div>
     </template>
@@ -527,21 +555,58 @@ const journal = computed(() => {
 .maturity .val { font-family: var(--serif); font-size: clamp(48px,7vw,64px); line-height: 0.9; letter-spacing: -0.03em; color: var(--fg); }
 .maturity .val span { font-size: 22px; color: var(--fg-3); font-family: var(--mono); letter-spacing: 0.05em; margin-left: 4px; }
 
-/* ────── LANDING (minimal) ────── */
-.landing { background: var(--paper); }
-.landing-center {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 28px; min-height: 100vh; min-height: 100dvh;
+/* ────── LANDING (private node) ────── */
+.landing { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; align-items: stretch; }
+
+.l-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 70% 40%, rgba(139,92,246,0.13) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(139,92,246,0.07) 0%, transparent 50%),
+    var(--paper);
+  pointer-events: none;
 }
-.landing-center .mark { font-family: var(--serif); font-weight: 700; font-size: 28px; letter-spacing: -0.02em; color: var(--fg); }
-.landing-center .mark .dot { color: var(--accent); }
-.soul-link { font-family: var(--serif); font-size: clamp(22px,4vw,32px); color: var(--fg); text-decoration: none; letter-spacing: -0.01em; transition: color 0.15s; display: inline-flex; align-items: center; gap: 10px; }
-.soul-link:hover { color: var(--accent); }
-.soul-link .arr { font-style: italic; }
-.btn-create { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--on-accent); background: var(--accent); border: 1px solid var(--accent); padding: 12px 28px; cursor: pointer; min-height: 44px; transition: all 0.15s; }
-.btn-create:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
-.btn-login { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); background: transparent; border: 1px solid var(--rule-2); padding: 12px 28px; cursor: pointer; min-height: 44px; transition: all 0.15s; }
-.btn-login:hover { color: var(--accent); border-color: var(--accent); }
+.l-bg::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: url('~/assets/background-dark.webp') no-repeat center right / cover;
+  opacity: 0.06;
+}
+
+.l-wrap {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 560px;
+  margin: 0 auto;
+  padding: clamp(32px,6vw,64px) clamp(24px,5vw,48px);
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: 100dvh;
+}
+
+.l-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: clamp(48px,10vh,96px); }
+.l-lockup { display: flex; align-items: center; gap: 12px; }
+.l-logo { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(139,92,246,0.4)); }
+.l-mark { font-family: var(--serif); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--fg); }
+.l-dot { color: var(--accent); }
+.l-badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(139,92,246,0.35); padding: 5px 12px; background: rgba(139,92,246,0.06); }
+
+.l-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: clamp(32px,6vh,64px); }
+.l-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--fg-3); margin: 0 0 18px; }
+.l-name { font-family: var(--serif); font-weight: 400; font-size: clamp(40px,8vw,72px); line-height: 0.95; letter-spacing: -0.03em; margin: 0 0 16px; color: var(--fg); }
+.l-name em { color: var(--accent); font-style: italic; }
+.l-tagline { font-family: var(--serif); font-size: 17px; line-height: 1.55; color: var(--fg-2); margin: 0; max-width: 38ch; }
+.l-rule { width: 48px; height: 2px; background: var(--accent); margin: 32px 0; opacity: 0.7; }
+
+.l-actions { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+.l-btn-primary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; background: var(--accent); color: var(--on-accent); border: 0; cursor: pointer; font-family: var(--serif); font-size: 18px; letter-spacing: -0.01em; min-height: 56px; transition: all 0.15s; text-align: left; }
+.l-btn-primary:hover { background: var(--accent-bright); box-shadow: 0 12px 32px rgba(139,92,246,0.3); }
+.l-btn-ghost { display: flex; align-items: center; justify-content: center; padding: 14px 24px; background: transparent; border: 1px solid var(--rule-2); color: var(--fg-3); cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; min-height: 48px; transition: all 0.15s; }
+.l-btn-ghost:hover { color: var(--accent); border-color: var(--accent); background: rgba(139,92,246,0.04); }
+.l-arr { font-family: var(--serif); font-style: italic; }
+
+.l-foot { border-top: 1px solid var(--rule); padding-top: 20px; margin-top: auto; }
+.l-foot-link { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-4); text-decoration: none; transition: color 0.15s; }
+.l-foot-link:hover { color: var(--accent); }
+.l-foot-mark { font-family: var(--serif); font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--fg-3); }
 
 /* ────── LOGIN BOTTOMSHEET ────── */
 .login-sheet {

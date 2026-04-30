@@ -16,9 +16,9 @@ export default defineNuxtConfig({
       // Feature-Flag: Closed Beta – Soul-Erstellung deaktiviert
       // Zum Reaktivieren: true setzen oder process.env.ALLOW_CREATE_SOUL !== "false"
       allowCreateSoul: false,
-      // Feature-Flag: Login-Button auf der Landingpage anzeigen
-      // false = kein Login (für Nodes die nur über private VPS zugänglich sind)
-      allowLogin: true,
+      // Node-Identität — wird auf der Landingpage angezeigt
+      nodeName: process.env.NODE_NAME || "Mein Soul-Node",
+      nodeTagline: process.env.NODE_TAGLINE || "",
       // Docs öffentlich zugänglich? false = nur eingeloggte User
       docsPublic: process.env.DOCS_PUBLIC === "true",
       walletConnectProjectId:
