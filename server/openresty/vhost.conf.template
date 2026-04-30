@@ -1,4 +1,4 @@
-# /etc/openresty/sites-available/sys.uxprojects-jok.com
+# /etc/openresty/sites-available/{{DOMAIN}}
 
 # Dedizierte Rate-Limit-Zone für /api/chat (SSE Streaming)
 # Getrennt von zone=chat damit fetchNetworkContext() die Chat-Requests nicht blockiert
@@ -10,7 +10,7 @@ limit_req_zone $binary_remote_addr zone=vault_upload:10m rate=5r/s;
 ############################
 server {
   listen 80;
-  server_name sys.uxprojects-jok.com www.sys.uxprojects-jok.com;
+  server_name {{DOMAIN}} www.{{DOMAIN}};
   return 301 https://$host$request_uri;
 }
 
@@ -20,13 +20,13 @@ server {
 server {
   listen 443 ssl;
   http2 on;
-  server_name sys.uxprojects-jok.com www.sys.uxprojects-jok.com;
+  server_name {{DOMAIN}} www.{{DOMAIN}};
 
   ################################
   # TLS
   ################################
-  ssl_certificate     /etc/openresty/ssl/uxprojects-jok.com/uxprojects-jok-fullchain.pem;
-  ssl_certificate_key /etc/openresty/ssl/uxprojects-jok.com/uxprojects-jok-key.pem;
+  ssl_certificate     /etc/letsencrypt/live/{{DOMAIN}}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{DOMAIN}}/privkey.pem;
   ssl_protocols       TLSv1.2 TLSv1.3;
   ssl_prefer_server_ciphers on;
   ssl_session_cache   shared:SSL:10m;
@@ -63,7 +63,7 @@ server {
   error_page 504 =504 /504.html;
 
   location ~ ^/(400|401|403|404|500|502|504)\.html$ {
-    root /var/www/sys.uxprojects-jok.com;
+    root /var/www/{{DOMAIN}};
     internal;
   }
 
@@ -85,7 +85,7 @@ server {
   # Static Assets – Long Cache
   ################################
   location ~* \.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
-    root /var/www/sys.uxprojects-jok.com;
+    root /var/www/{{DOMAIN}};
     try_files $uri =404;
     access_log off;
     add_header Cache-Control "public, max-age=31536000, immutable" always;
@@ -104,13 +104,13 @@ server {
   # Nuxt Payload
   ################################
   location = /_payload.json {
-    root /var/www/sys.uxprojects-jok.com;
+    root /var/www/{{DOMAIN}};
     default_type application/json;
     try_files /_payload.json =404;
     add_header Cache-Control "no-store" always;
   }
   location ^~ /_payload/ {
-    root /var/www/sys.uxprojects-jok.com;
+    root /var/www/{{DOMAIN}};
     default_type application/json;
     try_files $uri =404;
     add_header Cache-Control "no-store" always;
@@ -443,7 +443,7 @@ server {
   ################################
   location = /favicon.ico {
     log_not_found off;
-    alias /var/www/sys.uxprojects-jok.com/logo/logo.ico;
+    alias /var/www/{{DOMAIN}}/logo/logo.ico;
     default_type image/x-icon;
   }
 
@@ -454,13 +454,13 @@ server {
   location = /datenschutz/ { return 301 /datenschutz; }
 
   location = /impressum {
-    alias /var/www/sys.uxprojects-jok.com/impressum/index.html;
+    alias /var/www/{{DOMAIN}}/impressum/index.html;
     default_type text/html;
     add_header Content-Type  "text/html; charset=utf-8" always;
     add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
     add_header Pragma        "no-cache" always;
     add_header Expires       "0" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' https://analytics.uxprojects-jok.com wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
     body_filter_by_lua_block {
       local chunk, eof = ngx.arg[1], ngx.arg[2]
       if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
@@ -483,13 +483,13 @@ server {
   }
 
   location = /datenschutz {
-    alias /var/www/sys.uxprojects-jok.com/datenschutz/index.html;
+    alias /var/www/{{DOMAIN}}/datenschutz/index.html;
     default_type text/html;
     add_header Content-Type  "text/html; charset=utf-8" always;
     add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
     add_header Pragma        "no-cache" always;
     add_header Expires       "0" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' https://analytics.uxprojects-jok.com wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
     body_filter_by_lua_block {
       local chunk, eof = ngx.arg[1], ngx.arg[2]
       if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
@@ -568,7 +568,7 @@ server {
   # SPA Root (Nuxt static)
   ################################
   location / {
-    root /var/www/sys.uxprojects-jok.com;
+    root /var/www/{{DOMAIN}};
     index index.html;
     try_files $uri $uri.html /index.html;
 
@@ -576,7 +576,7 @@ server {
     add_header Pragma        "no-cache" always;
     add_header Expires       "0" always;
     add_header Vary          "Accept-Encoding" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' https://analytics.uxprojects-jok.com 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' https://analytics.uxprojects-jok.com wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
 
     body_filter_by_lua_block {
       local chunk, eof = ngx.arg[1], ngx.arg[2]

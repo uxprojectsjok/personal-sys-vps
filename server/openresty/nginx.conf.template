@@ -1,0 +1,106 @@
+# /etc/openresty/nginx.conf
+# Personal SYS VPS — OpenResty Main Config
+# Placeholder: {{DOMAIN}} is replaced by init.sh with the actual domain.
+
+user www-data;
+worker_processes auto;
+pid /usr/local/openresty/nginx/logs/nginx.pid;
+error_log /var/log/nginx/error.log;
+
+# Environment variables for Lua scripts
+env ANTHROPIC_API_KEY;
+env SOUL_MASTER_KEY;
+env API_SIGNING_KEY;
+env WAVESPEED_KEY;
+env ELEVENLABS_API_KEY;
+
+events {
+  worker_connections 768;
+}
+
+http {
+  init_by_lua_block {
+    math.randomseed(ngx.now() * 1000 + ngx.worker.pid())
+  }
+
+  lua_package_path "/etc/openresty/lua/?.lua;;";
+  lua_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+  lua_ssl_verify_depth 3;
+  lua_shared_dict vault_sessions  10m;
+  lua_shared_dict verify_cache     5m;
+  lua_shared_dict pol_tx_used     10m;
+  lua_shared_dict pol_access      10m;
+  client_max_body_size 150M;
+
+  # Real IP — only needed if running behind a reverse proxy.
+  # Uncomment and adjust if applicable.
+  # set_real_ip_from 127.0.0.1;
+  # real_ip_header X-Forwarded-For;
+  # real_ip_recursive on;
+
+  # CORS — only the node's own domain is allowed.
+  map $http_origin $cors_origin_valid {
+    default 0;
+    "https://{{DOMAIN}}" 1;
+  }
+
+  map $http_origin $cors_allow_origin {
+    default "";
+    "https://{{DOMAIN}}" "https://{{DOMAIN}}";
+  }
+
+  # IP anonymization (GDPR)
+  map $remote_addr $anonymized_ip {
+    ~(?P<ip>\d+\.\d+\.\d+)\.\d+ "$ip.0";
+    ~(?P<ip6>[a-fA-F0-9:]+:[a-fA-F0-9:]+):.+ "$ip6::";
+    default "-";
+  }
+
+  log_format anonymized '$anonymized_ip - $remote_user [$time_local] '
+                        '"$request" $status $body_bytes_sent '
+                        '"$http_referer" "$http_user_agent"';
+
+  # Bot blocking
+  map $http_user_agent $blockagent {
+    default 0;
+    "~*zgrab" 1;
+    "~*(curl|wget|python|scrapy|bot|spider)" 1;
+  }
+
+  access_log /var/log/nginx/access.log anonymized;
+
+  autoindex off;
+  server_tokens off;
+
+  # Rate limit zones
+  limit_req_zone $binary_remote_addr zone=main:10m    rate=10r/s;
+  limit_req_zone $binary_remote_addr zone=api:10m     rate=30r/s;
+  limit_req_zone $binary_remote_addr zone=system:10m  rate=2r/s;
+  limit_req_zone $binary_remote_addr zone=health:10m  rate=30r/s;
+  limit_req_zone $binary_remote_addr zone=auth:10m    rate=5r/s;
+  limit_req_zone $binary_remote_addr zone=chat:10m    rate=1r/s;
+  limit_req_zone $binary_remote_addr zone=mcp:10m     rate=5r/s;
+  limit_req_zone $binary_remote_addr zone=oauth:10m   rate=3r/s;
+
+  sendfile on;
+  tcp_nopush on;
+  types_hash_max_size 2048;
+
+  include /etc/openresty/mime.types;
+  default_type application/octet-stream;
+
+  # TLS global defaults
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_prefer_server_ciphers on;
+  ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';
+  ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
+
+  gzip on;
+
+  map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+  }
+
+  include /etc/openresty/sites-enabled/*;
+}
