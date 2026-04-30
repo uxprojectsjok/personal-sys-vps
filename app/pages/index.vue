@@ -142,7 +142,8 @@
           <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="soul-link">
             Personal SYS VPS <span class="arr">→</span>
           </a>
-          <button v-if="config.public.allowLogin" class="btn-login" @click="loginOpen = true">Login with Soul</button>
+          <button v-if="config.public.allowCreateSoul" class="btn-create" @click="createSoulOpen = true">Soul erstellen</button>
+          <button class="btn-login" @click="loginOpen = true">Login with Soul</button>
         </div>
       </div>
     </template>
@@ -537,6 +538,8 @@ const journal = computed(() => {
 .soul-link { font-family: var(--serif); font-size: clamp(22px,4vw,32px); color: var(--fg); text-decoration: none; letter-spacing: -0.01em; transition: color 0.15s; display: inline-flex; align-items: center; gap: 10px; }
 .soul-link:hover { color: var(--accent); }
 .soul-link .arr { font-style: italic; }
+.btn-create { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--on-accent); background: var(--accent); border: 1px solid var(--accent); padding: 12px 28px; cursor: pointer; min-height: 44px; transition: all 0.15s; }
+.btn-create:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
 .btn-login { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); background: transparent; border: 1px solid var(--rule-2); padding: 12px 28px; cursor: pointer; min-height: 44px; transition: all 0.15s; }
 .btn-login:hover { color: var(--accent); border-color: var(--accent); }
 
