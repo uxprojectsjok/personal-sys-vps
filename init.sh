@@ -1,5 +1,5 @@
 #!/bin/bash
-# SaveYourSoul Node — Init Script
+# Personal SYS VPS — Init Script
 # Runs on a fresh Ubuntu 24.04 VPS.
 # Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/SaveYourSoul_init/main/init.sh | bash
 # Or:    bash init.sh
@@ -19,7 +19,7 @@ echo "  ███████╗██║   ██║██║   ██║██
 echo "  ╚════██║██║   ██║██║   ██║██║     "
 echo "  ███████║╚██████╔╝╚██████╔╝███████╗"
 echo "  ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝"
-echo "  SaveYourSoul Node Setup"
+echo "  Personal SYS VPS Setup"
 echo ""
 
 read -p "Your domain (e.g. soul.yourdomain.com): " DOMAIN
@@ -62,16 +62,21 @@ EOF
 chmod 600 /var/lib/sys/config/master.json
 chown www-data:www-data /var/lib/sys/config/master.json
 
-# ── 6. nginx vhost ────────────────────────────────────────────────────────────
+# ── 6. nginx config ───────────────────────────────────────────────────────────
 info "Configuring nginx for $DOMAIN..."
-sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
-  "$SCRIPT_DIR/nginx/soul-node.conf.template" \
-  > /etc/openresty/sites-enabled/"$DOMAIN"
 
-# nginx.conf include check
-if ! grep -q "sites-enabled" /etc/openresty/nginx.conf 2>/dev/null; then
-  echo "include /etc/openresty/sites-enabled/*;" >> /etc/openresty/nginx.conf
+# nginx.conf — nur schreiben wenn noch nicht vorhanden
+if [ ! -f /etc/openresty/nginx.conf ] || ! grep -q "sites-enabled" /etc/openresty/nginx.conf 2>/dev/null; then
+  sed "s/{{DOMAIN}}/$DOMAIN/g" \
+    "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
+    > /etc/openresty/nginx.conf
 fi
+
+# vhost
+mkdir -p /etc/openresty/sites-enabled
+sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
+  "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
+  > /etc/openresty/sites-enabled/"$DOMAIN"
 
 # ── 7. SSL ────────────────────────────────────────────────────────────────────
 info "Requesting SSL certificate for $DOMAIN..."
