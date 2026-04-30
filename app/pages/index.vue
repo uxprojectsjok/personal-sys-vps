@@ -142,7 +142,7 @@
           <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="soul-link">
             Personal SYS VPS <span class="arr">→</span>
           </a>
-          <button class="btn-login" @click="loginOpen = true">Login with Soul</button>
+          <button v-if="config.public.allowLogin" class="btn-login" @click="loginOpen = true">Login with Soul</button>
         </div>
       </div>
     </template>
@@ -287,6 +287,7 @@ import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import VaultExplorer from '~/components/VaultExplorer.vue'
 
+const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
 const { hasSoul, soulContent, soulToken, soulMeta, importFromText, clear: _clear } = useSoul()
 const { isConnected: vaultConnected } = useVault()
