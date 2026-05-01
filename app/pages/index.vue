@@ -156,7 +156,7 @@
             <div class="l-rule"></div>
 
             <div class="l-actions">
-              <button v-if="config.public.allowCreateSoul" class="l-btn-primary" @click="createSoulOpen = true">
+              <button v-if="allowCreateSoul" class="l-btn-primary" @click="createSoulOpen = true">
                 Soul erstellen <span class="l-arr">→</span>
               </button>
               <button class="l-btn-ghost" @click="loginOpen = true">
@@ -299,7 +299,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
@@ -321,6 +321,10 @@ const { ask: confirmAsk } = useConfirm()
 const { hasSoul, soulContent, soulToken, soulMeta, importFromText, clear: _clear } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
+const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
+
+// Node-Status beim Start laden
+onMounted(() => fetchNodeStatus())
 
 // ── Modal-State ───────────────────────────────────────────────────────────
 const createSoulOpen    = ref(false)
@@ -384,11 +388,13 @@ async function confirmReset() {
 function handleSoulCreate(soulText) {
   if (soulText) importFromText(soulText)
   createSoulOpen.value = false
+  fetchNodeStatus()
 }
 
 function handleLoginUpload(text) {
   importFromText(text)
   loginOpen.value = false
+  fetchNodeStatus()
 }
 
 function openDecryptFromLogin() {
