@@ -29,7 +29,11 @@ read -p "Your email (for SSL certificate): " EMAIL
 # ── 2. System packages ────────────────────────────────────────────────────────
 info "Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq openresty certbot python3-certbot-nginx unzip curl
+apt-get install -y -qq openresty certbot python3-certbot-nginx unzip curl git
+
+# Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y -qq nodejs
 
 # ── 3. Directory structure ────────────────────────────────────────────────────
 info "Creating directory structure..."
@@ -42,12 +46,22 @@ mkdir -p /etc/openresty/sites-enabled
 chown -R www-data:www-data /var/lib/sys
 chmod 750 /var/lib/sys/config
 
-# ── 4. Lua scripts ────────────────────────────────────────────────────────────
-info "Installing Lua scripts..."
+# ── 4. Frontend bauen ─────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+info "Building frontend (npm install + generate)..."
+cd "$SCRIPT_DIR"
+npm install --silent
+npm run generate
+
+info "Deploying frontend to /var/www/$DOMAIN..."
+cp -r "$SCRIPT_DIR/.output/public/." /var/www/"$DOMAIN"/
+chown -R www-data:www-data /var/www/"$DOMAIN"
+
+# ── 5. Lua scripts ────────────────────────────────────────────────────────────
+info "Installing Lua scripts..."
 cp "$SCRIPT_DIR"/lua/*.lua /etc/openresty/lua/
 
-# ── 5. Master Key generieren ──────────────────────────────────────────────────
+# ── 6. Master Key generieren ──────────────────────────────────────────────────
 info "Generating Soul Master Key..."
 RAW_KEY=$(openssl rand -hex 32)
 MASTER_KEY="sys_${RAW_KEY}"
@@ -62,7 +76,7 @@ EOF
 chmod 600 /var/lib/sys/config/master.json
 chown www-data:www-data /var/lib/sys/config/master.json
 
-# ── 6. nginx config — Phase 1: HTTP-only ─────────────────────────────────────
+# ── 7. nginx config — Phase 1: HTTP-only ─────────────────────────────────────
 info "Configuring nginx (HTTP-only, Phase 1)..."
 
 # nginx.conf — nur schreiben wenn noch nicht vorhanden
@@ -81,7 +95,7 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
 
 openresty -t && openresty -s reload
 
-# ── 7. SSL ────────────────────────────────────────────────────────────────────
+# ── 8. SSL ────────────────────────────────────────────────────────────────────
 info "Requesting SSL certificate for $DOMAIN..."
 certbot certonly --webroot \
   -w /var/www/"$DOMAIN" \
@@ -90,13 +104,13 @@ certbot certonly --webroot \
   --agree-tos \
   --non-interactive
 
-# ── 8. nginx config — Phase 2: HTTPS aktivieren ───────────────────────────────
+# ── 9. nginx config — Phase 2: HTTPS aktivieren ───────────────────────────────
 info "Activating HTTPS vhost (Phase 2)..."
 sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
   "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
 
-# ── 9. OpenResty neu starten ──────────────────────────────────────────────────
+# ── 10. OpenResty neu starten ─────────────────────────────────────────────────
 info "Starting OpenResty..."
 systemctl enable openresty
 systemctl restart openresty
