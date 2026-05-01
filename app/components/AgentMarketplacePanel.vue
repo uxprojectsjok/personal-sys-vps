@@ -152,6 +152,18 @@
                       <span class="chip-check">{{ amort.free_tools.includes(tool) ? '✓' : '+' }}</span>
                       {{ tool }}
                     </button>
+                    <button
+                      v-for="tool in BETA_TOOLS"
+                      :key="tool"
+                      type="button"
+                      class="tool-chip tool-chip--beta"
+                      disabled
+                      :title="`${tool} — Beta · Selbst integrieren`"
+                    >
+                      <span class="chip-check" style="opacity:0.4">·</span>
+                      {{ tool }}
+                      <span class="chip-beta">β</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -442,12 +454,15 @@ const showToolPicker = ref(false)
 
 const AVAILABLE_TOOLS = [
   'audio_get', 'audio_list', 'beme_chat', 'calendar_read',
-  'context_get', 'context_list', 'elevenlabs_agent_update',
+  'context_get', 'context_list',
   'image_get', 'image_list', 'network_list', 'network_peer_get',
   'profile_get', 'profile_save', 'soul_cloud_push', 'soul_discover',
   'soul_earnings', 'soul_maturity', 'soul_read', 'soul_skills',
   'soul_write', 'vault_manifest', 'verify_human', 'video_get', 'video_list',
 ]
+
+// Beta tools — sichtbar aber nicht interaktiv (developer opt-in)
+const BETA_TOOLS = ['elevenlabs_agent_update']
 
 function toggleTool(name) {
   const idx = amort.free_tools.indexOf(name)
@@ -759,6 +774,9 @@ async function register() {
 .tool-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--rule-2); background: var(--paper-3); color: var(--fg-3); font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
 .tool-chip:hover { color: var(--fg); border-color: var(--rule-2); background: var(--paper); }
 .tool-chip.active { color: var(--ok); border-color: rgba(184,220,196,0.35); background: rgba(184,220,196,0.06); }
+.tool-chip--beta { opacity: 0.35; cursor: not-allowed; }
+.tool-chip--beta:hover { color: var(--fg-3); border-color: var(--rule-2); background: var(--paper-3); }
+.chip-beta { font-size: 9px; color: var(--accent); opacity: 0.7; margin-left: 2px; }
 .chip-check { font-family: var(--serif); font-size: 12px; width: 12px; text-align: center; }
 
 .flow, .readonly { border: 1px solid var(--rule); background: var(--paper-2); margin-top: 16px; }

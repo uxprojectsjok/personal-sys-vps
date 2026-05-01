@@ -73,9 +73,10 @@
         <!-- Tab bar -->
         <nav class="lp-tabs">
           <button
-            class="lp-tab"
+            class="lp-tab lp-tab--beta"
             :class="{ active: activeTab === 'stimme' }"
             @click="setCarousel(0)"
+            title="Stimm-Klon · Beta"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
@@ -114,11 +115,18 @@
             class="lp-carousel-track"
             :style="{ transform: `translateX(-${carouselIndex * 100}%)` }"
           >
-            <div class="lp-slide">
+            <div class="lp-slide lp-slide--beta">
               <VoiceRecorder
                 :soul-meta="soulMeta" :embedded="true"
                 @saved="$emit('voice-saved', $event)" @close="$emit('close')"
               />
+              <div class="lp-beta-overlay" aria-hidden="true">
+                <div class="lp-beta-box">
+                  <span class="lp-beta-tag">Beta</span>
+                  <p class="lp-beta-title">Stimm-Klon · ElevenLabs / XTTS</p>
+                  <p class="lp-beta-desc">Für Developer — eigenen Dienst integrieren.</p>
+                </div>
+              </div>
             </div>
             <div class="lp-slide">
               <MotionRecorder
@@ -322,6 +330,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 .lp-tab svg { width: 16px; height: 16px; flex: none; }
 .lp-tab:hover:not(.active) { color: var(--fg); background: rgba(255,255,255,0.025); }
 .lp-tab.active { color: var(--accent); }
+.lp-tab--beta { opacity: 0.45; }
 .lp-tab.active::after {
   content: ""; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
   background: var(--accent);
@@ -339,6 +348,28 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 }
 .lp-slide {
   flex: none; width: 100%; height: 100%; overflow-y: auto;
+}
+.lp-slide--beta { position: relative; }
+.lp-beta-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.lp-beta-box {
+  text-align: center; padding: 28px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.lp-beta-tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid rgba(139,92,246,0.4); padding: 3px 10px;
+}
+.lp-beta-title {
+  font-family: var(--sans); font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6);
+  margin: 0;
+}
+.lp-beta-desc {
+  font-family: var(--sans); font-size: 11px; color: rgba(255,255,255,0.3);
+  margin: 0; line-height: 1.5;
 }
 
 /* ── Dots ──────────────────────────────────────────────── */
