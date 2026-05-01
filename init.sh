@@ -80,8 +80,16 @@ sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
 
 # ── 7. SSL ────────────────────────────────────────────────────────────────────
 info "Requesting SSL certificate for $DOMAIN..."
+# certonly --webroot: Certbot legt Validierungsdateien unter webroot ab,
+# OpenResty (kein nginx-Plugin) serviert sie über /.well-known/acme-challenge/.
+# Der vhost muss dafür bereits laufen (openresty -s reload davor).
 openresty -t && openresty -s reload
-certbot --nginx -d "$DOMAIN" --email "$EMAIL" --agree-tos --non-interactive --redirect
+certbot certonly --webroot \
+  -w /var/www/"$DOMAIN" \
+  -d "$DOMAIN" \
+  --email "$EMAIL" \
+  --agree-tos \
+  --non-interactive
 
 # ── 8. OpenResty neu starten ──────────────────────────────────────────────────
 info "Starting OpenResty..."
