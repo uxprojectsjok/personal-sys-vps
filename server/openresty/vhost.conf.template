@@ -143,6 +143,14 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_sign_session.lua;
   }
 
+  # ── Node-Status (kein Auth — öffentlich) ─────────────────────────────────────
+  location = /api/node-status {
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/node_status.lua;
+  }
+
   # ── Soul-Cert generieren (kein Auth – HMAC ist die Absicherung) ──────────────
   location = /api/soul-cert {
     limit_req zone=chat burst=10 nodelay;
