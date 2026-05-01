@@ -1,0 +1,23 @@
+# /etc/openresty/sites-available/{{DOMAIN}}
+# Phase 1: HTTP-only — used during SSL certificate provisioning.
+# Replaced by vhost.conf.template (full HTTPS) after certbot completes.
+
+server {
+  listen 80;
+  server_name {{DOMAIN}} www.{{DOMAIN}};
+
+  root /var/www/{{DOMAIN}};
+  index index.html;
+
+  # Certbot webroot validation
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/{{DOMAIN}};
+    default_type text/plain;
+    try_files $uri =404;
+  }
+
+  # Serve the app over HTTP while cert is being issued
+  location / {
+    try_files $uri $uri.html /index.html;
+  }
+}
