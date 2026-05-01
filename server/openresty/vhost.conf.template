@@ -11,7 +11,17 @@ limit_req_zone $binary_remote_addr zone=vault_upload:10m rate=5r/s;
 server {
   listen 80;
   server_name {{DOMAIN}} www.{{DOMAIN}};
-  return 301 https://$host$request_uri;
+
+  # Certbot webroot validation — served before HTTPS redirect
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/{{DOMAIN}};
+    default_type text/plain;
+    try_files $uri =404;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
 }
 
 ############################
