@@ -62,8 +62,8 @@ EOF
 chmod 600 /var/lib/sys/config/master.json
 chown www-data:www-data /var/lib/sys/config/master.json
 
-# ── 6. nginx config ───────────────────────────────────────────────────────────
-info "Configuring nginx for $DOMAIN..."
+# ── 6. nginx config — Phase 1: HTTP-only ─────────────────────────────────────
+info "Configuring nginx (HTTP-only, Phase 1)..."
 
 # nginx.conf — nur schreiben wenn noch nicht vorhanden
 if [ ! -f /etc/openresty/nginx.conf ] || ! grep -q "sites-enabled" /etc/openresty/nginx.conf 2>/dev/null; then
@@ -72,18 +72,17 @@ if [ ! -f /etc/openresty/nginx.conf ] || ! grep -q "sites-enabled" /etc/openrest
     > /etc/openresty/nginx.conf
 fi
 
-# vhost
 mkdir -p /etc/openresty/sites-enabled
-sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
-  "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
+
+# HTTP-only vhost deployen — kein SSL, Certbot kann validieren
+sed "s/{{DOMAIN}}/$DOMAIN/g" \
+  "$SCRIPT_DIR/server/openresty/vhost-http.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
+
+openresty -t && openresty -s reload
 
 # ── 7. SSL ────────────────────────────────────────────────────────────────────
 info "Requesting SSL certificate for $DOMAIN..."
-# certonly --webroot: Certbot legt Validierungsdateien unter webroot ab,
-# OpenResty (kein nginx-Plugin) serviert sie über /.well-known/acme-challenge/.
-# Der vhost muss dafür bereits laufen (openresty -s reload davor).
-openresty -t && openresty -s reload
 certbot certonly --webroot \
   -w /var/www/"$DOMAIN" \
   -d "$DOMAIN" \
@@ -91,7 +90,13 @@ certbot certonly --webroot \
   --agree-tos \
   --non-interactive
 
-# ── 8. OpenResty neu starten ──────────────────────────────────────────────────
+# ── 8. nginx config — Phase 2: HTTPS aktivieren ───────────────────────────────
+info "Activating HTTPS vhost (Phase 2)..."
+sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
+  "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
+  > /etc/openresty/sites-enabled/"$DOMAIN"
+
+# ── 9. OpenResty neu starten ──────────────────────────────────────────────────
 info "Starting OpenResty..."
 systemctl enable openresty
 systemctl restart openresty
