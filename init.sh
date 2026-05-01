@@ -29,15 +29,21 @@ read -p "Your email (for SSL certificate): " EMAIL
 # ── 2. System packages ────────────────────────────────────────────────────────
 info "Installing system packages..."
 
-# nginx belegt Port 80 sobald es installiert wird — vor OpenResty stoppen
-systemctl stop nginx 2>/dev/null || true
-systemctl disable nginx 2>/dev/null || true
+# Prevent any service from auto-starting during install (nginx würde Port 80 blockieren)
+echo '#!/bin/sh
+exit 101' > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
 
 apt-get update -qq
 apt-get install -y -qq openresty certbot python3-certbot-nginx unzip curl git
 
-# nginx kann als Dependency erneut gestartet werden — nochmal stoppen
+# Re-enable auto-start
+rm /usr/sbin/policy-rc.d
+
+# nginx stoppen/deaktivieren, OpenResty explizit starten
 systemctl stop nginx 2>/dev/null || true
+systemctl disable nginx 2>/dev/null || true
+systemctl start openresty
 
 # Node.js 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
