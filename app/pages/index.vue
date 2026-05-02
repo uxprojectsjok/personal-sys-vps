@@ -143,7 +143,6 @@
           <header class="l-head">
             <div class="l-lockup">
               <img src="~/assets/logo.png" alt="SYS" class="l-logo" />
-              <span class="l-mark">SYS<span class="l-dot">.</span></span>
             </div>
             <span class="l-badge">Private Node</span>
           </header>
