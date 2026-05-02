@@ -99,6 +99,7 @@ chown www-data:www-data /var/lib/sys/config/master.json
 
 # ── 9. nginx config — Phase 1: HTTP-only ──────────────────────────────────────
 info "Configuring OpenResty (HTTP-only, Phase 1)..."
+mkdir -p /usr/local/openresty/nginx/logs
 sed "s/{{DOMAIN}}/$DOMAIN/g" \
   "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
   > /etc/openresty/nginx.conf
