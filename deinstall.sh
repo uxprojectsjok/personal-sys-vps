@@ -90,6 +90,7 @@ info "Removing data directories..."
 rm -rf /var/lib/sys
 rm -rf /var/www/"$DOMAIN"
 rm -rf /etc/openresty
+rm -rf /opt/sys
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
