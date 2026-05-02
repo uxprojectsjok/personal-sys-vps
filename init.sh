@@ -1,17 +1,15 @@
 #!/bin/bash
 # Personal SYS VPS — Init Script
 # Runs on a fresh Ubuntu 24.04 VPS.
-# Usage: curl -fsSL https://raw.githubusercontent.com/YOUR_ORG/SaveYourSoul_init/main/init.sh | bash
-# Or:    bash init.sh
+# Usage: bash init.sh
 
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
-info()    { echo -e "${GREEN}[soul]${NC} $1"; }
-warn()    { echo -e "${YELLOW}[warn]${NC} $1"; }
-error()   { echo -e "${RED}[error]${NC} $1"; exit 1; }
+info()  { echo -e "${GREEN}[soul]${NC} $1"; }
+warn()  { echo -e "${YELLOW}[warn]${NC} $1"; }
+error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
-# ── 1. Input ──────────────────────────────────────────────────────────────────
 echo ""
 echo "  ███████╗ ██████╗ ██╗   ██╗██╗     "
 echo "  ██╔════╝██╔═══██╗██║   ██║██║     "
@@ -22,34 +20,52 @@ echo "  ╚══════╝ ╚═════╝  ╚═════╝ �
 echo "  Personal SYS VPS Setup"
 echo ""
 
+# ── 1. Input ──────────────────────────────────────────────────────────────────
 read -p "Your domain (e.g. soul.yourdomain.com): " DOMAIN
-read -p "Your email (for SSL certificate): " EMAIL
+read -p "Your email (for SSL certificate): "        EMAIL
 [[ -z "$DOMAIN" || -z "$EMAIL" ]] && error "Domain and email are required."
 
-# ── 2. System packages ────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── 2. OpenResty repository ───────────────────────────────────────────────────
+info "Adding OpenResty repository..."
+curl -fsSL https://openresty.org/package/pubkey.gpg | apt-key add -
+echo "deb http://openresty.org/package/ubuntu $(lsb_release -cs) main" \
+  > /etc/apt/sources.list.d/openresty.list
+apt-get update -qq
+
+# ── 3. System packages ────────────────────────────────────────────────────────
 info "Installing system packages..."
 
-# Prevent any service from auto-starting during install (nginx würde Port 80 blockieren)
+# Prevent services from auto-starting during apt (nginx would block port 80)
 echo '#!/bin/sh
 exit 101' > /usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
 
-apt-get update -qq
-apt-get install -y -qq openresty certbot python3-certbot-nginx unzip curl git
+apt-get install -y -qq openresty certbot unzip curl git
 
-# Re-enable auto-start
 rm /usr/sbin/policy-rc.d
 
-# nginx stoppen/deaktivieren, OpenResty explizit starten
-systemctl stop nginx 2>/dev/null || true
+systemctl stop nginx    2>/dev/null || true
 systemctl disable nginx 2>/dev/null || true
 systemctl start openresty
 
-# Node.js 20
+# ── 4. Node.js 20 ─────────────────────────────────────────────────────────────
+info "Installing Node.js 20..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y -qq nodejs
 
-# ── 3. Directory structure ────────────────────────────────────────────────────
+# ── 5. Swap (2 GB) ────────────────────────────────────────────────────────────
+# Nuxt build exceeds 2 GB RAM without swap on small VPS instances
+info "Setting up swap (2 GB)..."
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap  /swapfile
+  swapon  /swapfile
+fi
+
+# ── 6. Directory structure ────────────────────────────────────────────────────
 info "Creating directory structure..."
 mkdir -p /var/lib/sys/config
 mkdir -p /var/lib/sys/souls
@@ -59,23 +75,14 @@ mkdir -p /etc/openresty/sites-enabled
 
 chown -R www-data:www-data /var/lib/sys
 chmod 750 /var/lib/sys/config
-
-# ── 4. Frontend bauen ─────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-info "Building frontend (npm install + generate)..."
-cd "$SCRIPT_DIR"
-npm install --silent
-npm run generate
-
-info "Deploying frontend to /var/www/$DOMAIN..."
-cp -r "$SCRIPT_DIR/.output/public/." /var/www/"$DOMAIN"/
 chown -R www-data:www-data /var/www/"$DOMAIN"
+chmod -R 755 /var/www/"$DOMAIN"
 
-# ── 5. Lua scripts ────────────────────────────────────────────────────────────
+# ── 7. Lua scripts ────────────────────────────────────────────────────────────
 info "Installing Lua scripts..."
 cp "$SCRIPT_DIR"/lua/*.lua /etc/openresty/lua/
 
-# ── 6. Master Key generieren ──────────────────────────────────────────────────
+# ── 8. Master Key ─────────────────────────────────────────────────────────────
 info "Generating Soul Master Key..."
 RAW_KEY=$(openssl rand -hex 32)
 MASTER_KEY="sys_${RAW_KEY}"
@@ -90,26 +97,19 @@ EOF
 chmod 600 /var/lib/sys/config/master.json
 chown www-data:www-data /var/lib/sys/config/master.json
 
-# ── 7. nginx config — Phase 1: HTTP-only ─────────────────────────────────────
-info "Configuring nginx (HTTP-only, Phase 1)..."
+# ── 9. nginx config — Phase 1: HTTP-only ──────────────────────────────────────
+info "Configuring OpenResty (HTTP-only, Phase 1)..."
+sed "s/{{DOMAIN}}/$DOMAIN/g" \
+  "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
+  > /etc/openresty/nginx.conf
 
-# nginx.conf — nur schreiben wenn noch nicht vorhanden
-if [ ! -f /etc/openresty/nginx.conf ] || ! grep -q "sites-enabled" /etc/openresty/nginx.conf 2>/dev/null; then
-  sed "s/{{DOMAIN}}/$DOMAIN/g" \
-    "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
-    > /etc/openresty/nginx.conf
-fi
-
-mkdir -p /etc/openresty/sites-enabled
-
-# HTTP-only vhost deployen — kein SSL, Certbot kann validieren
 sed "s/{{DOMAIN}}/$DOMAIN/g" \
   "$SCRIPT_DIR/server/openresty/vhost-http.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
 
-openresty -t && openresty -s reload
+openresty -t && systemctl restart openresty
 
-# ── 8. SSL ────────────────────────────────────────────────────────────────────
+# ── 10. SSL certificate ───────────────────────────────────────────────────────
 info "Requesting SSL certificate for $DOMAIN..."
 certbot certonly --webroot \
   -w /var/www/"$DOMAIN" \
@@ -118,14 +118,28 @@ certbot certonly --webroot \
   --agree-tos \
   --non-interactive
 
-# ── 9. nginx config — Phase 2: HTTPS aktivieren ───────────────────────────────
+# ── 11. nginx config — Phase 2: HTTPS ─────────────────────────────────────────
 info "Activating HTTPS vhost (Phase 2)..."
-sed "s/{{DOMAIN}}/$DOMAIN/g; s/{{EMAIL}}/$EMAIL/g" \
+sed "s/{{DOMAIN}}/$DOMAIN/g" \
   "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
 
-# ── 10. OpenResty neu starten ─────────────────────────────────────────────────
-info "Starting OpenResty..."
+# ── 12. Frontend build ────────────────────────────────────────────────────────
+info "Building frontend (npm install + generate)..."
+cd "$SCRIPT_DIR"
+npm install --silent
+NODE_OPTIONS="--max-old-space-size=2048" npm run generate
+
+info "Stripping CSP meta tags..."
+cd "$SCRIPT_DIR/utils" && node killMetas.mjs
+cd "$SCRIPT_DIR"
+
+info "Deploying frontend to /var/www/$DOMAIN..."
+cp -r "$SCRIPT_DIR/.output/public/." /var/www/"$DOMAIN"/
+chown -R www-data:www-data /var/www/"$DOMAIN"
+
+# ── 13. OpenResty final restart ───────────────────────────────────────────────
+info "Restarting OpenResty..."
 systemctl enable openresty
 systemctl restart openresty
 
@@ -138,7 +152,7 @@ echo "  Data:   /var/lib/sys/souls/"
 echo "  Config: /var/lib/sys/config/master.json"
 echo ""
 echo "  Open https://$DOMAIN in your browser to create your Soul."
-echo "  This node accepts exactly one Soul — the first one to register is the owner."
+echo "  This node accepts exactly one Soul — the first to register is the owner."
 echo ""
 warn "Change your root password now: passwd"
 echo ""

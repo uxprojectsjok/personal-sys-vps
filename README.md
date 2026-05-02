@@ -132,7 +132,7 @@ Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_l
 
 The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production. See [docs/architecture/openresty.md](docs/architecture/openresty.md) for the full component breakdown and [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) for implementation notes.
 
-There is no install script. The specification is complete; the engineering is up to the implementer.
+Run `bash init.sh` on a fresh Ubuntu 24.04 VPS to set up a private node in one step. See [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) for the full component breakdown.
 
 ---
 
@@ -156,4 +156,6 @@ The authors and operators are not liable for any damages, data loss, downtime, s
 
 Apache License 2.0 — see [LICENSE](LICENSE)
 
-Copyright [Jahr] [Ihr Name]
+Copyright © 2026 Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com), Marburg, Germany
+
+"SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo. See [NOTICE](NOTICE) for trademark and attribution requirements.
