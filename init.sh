@@ -135,36 +135,14 @@ cd "$SCRIPT_DIR"
 [ ! -f .env ] && cp .env.example .env
 
 echo ""
-echo "  ── API-Keys eingeben ──────────────────────────────────────────"
-echo ""
+read -p "  Dein Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
+[[ -z "$ANTHROPIC_KEY" ]] && error "ANTHROPIC_API_KEY ist Pflicht."
 
-# Anthropic API Key (Pflicht)
-read -p "  Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
-while [[ -z "$ANTHROPIC_KEY" ]]; do
-  warn "Anthropic API Key ist erforderlich."
-  read -p "  Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
-done
-sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|" .env
+sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|"    .env
+sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$MASTER_KEY|"           .env
+sed -i "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$(openssl rand -hex 32)|" .env
 
-# Optionale Keys — Enter überspringt
-echo ""
-echo -e "  ${YELLOW}Optionale Dienste — einfach Enter drücken zum Überspringen${NC}"
-echo ""
-read -p "  WalletConnect Project ID  (Enter = überspringen): " WC_KEY
-[ -n "$WC_KEY" ] && sed -i "s|^WALLETCONNECT_PROJECT_ID=.*|WALLETCONNECT_PROJECT_ID=$WC_KEY|" .env
-
-read -p "  Spotify Client ID         (Enter = überspringen): " SP_KEY
-[ -n "$SP_KEY" ] && sed -i "s|^SPOTIFY_CLIENT_ID=.*|SPOTIFY_CLIENT_ID=$SP_KEY|" .env
-
-read -p "  YouTube Client ID         (Enter = überspringen): " YT_KEY
-[ -n "$YT_KEY" ] && sed -i "s|^YOUTUBE_CLIENT_ID=.*|YOUTUBE_CLIENT_ID=$YT_KEY|" .env
-
-# SOUL_MASTER_KEY auto-inject aus master.json (bereits generiert in Schritt 8)
-GENERATED_KEY=$(python3 -c "import json; d=json.load(open('/var/lib/sys/config/master.json')); print(d.get('soul_master_key',''))" 2>/dev/null || echo "")
-if [ -n "$GENERATED_KEY" ]; then
-  sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$GENERATED_KEY|" .env
-  info "SOUL_MASTER_KEY automatisch eingetragen"
-fi
+info "ANTHROPIC_API_KEY, SOUL_MASTER_KEY und API_SIGNING_KEY eingetragen"
 echo ""
 
 # ── 13. Frontend build ────────────────────────────────────────────────────────
