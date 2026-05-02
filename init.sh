@@ -125,7 +125,41 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
   "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
 
-# ── 12. Frontend build ────────────────────────────────────────────────────────
+# ── 12. .env setup ────────────────────────────────────────────────────────────
+info "Setting up .env..."
+cd "$SCRIPT_DIR"
+if [ ! -f .env ]; then
+  cp .env.example .env
+  info ".env angelegt aus .env.example"
+else
+  info ".env bereits vorhanden — wird nicht überschrieben"
+fi
+
+echo ""
+echo "  ┌─────────────────────────────────────────────────────────────┐"
+echo "  │  .env — Pflichtfelder vor dem Build                         │"
+echo "  │                                                             │"
+echo "  │  ANTHROPIC_API_KEY   → dein Anthropic API-Key               │"
+echo "  │  SOUL_MASTER_KEY     → wird automatisch generiert (s.u.)    │"
+echo "  │                                                             │"
+echo "  │  Optional (nur wenn du diese Dienste nutzen willst):        │"
+echo "  │  WALLETCONNECT_PROJECT_ID   SPOTIFY_CLIENT_ID               │"
+echo "  │  YOUTUBE_CLIENT_ID                                          │"
+echo "  │                                                             │"
+echo "  │  Jetzt .env bearbeiten:  nano $SCRIPT_DIR/.env              │"
+echo "  └─────────────────────────────────────────────────────────────┘"
+echo ""
+read -p "  .env bearbeitet und gespeichert? (yes um fortzufahren): " ENV_CONFIRM
+[[ "$ENV_CONFIRM" != "yes" ]] && error "Abgebrochen. Bitte .env ausfüllen und init.sh erneut starten."
+
+# SOUL_MASTER_KEY aus master.json in .env eintragen (wurde bereits generiert)
+GENERATED_KEY=$(python3 -c "import json; d=json.load(open('/var/lib/sys/config/master.json')); print(d.get('soul_master_key',''))" 2>/dev/null || echo "")
+if [ -n "$GENERATED_KEY" ]; then
+  sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$GENERATED_KEY|" .env
+  info "SOUL_MASTER_KEY automatisch in .env eingetragen"
+fi
+
+# ── 13. Frontend build ────────────────────────────────────────────────────────
 info "Building frontend (npm install + generate)..."
 cd "$SCRIPT_DIR"
 npm install --silent
@@ -139,21 +173,30 @@ info "Deploying frontend to /var/www/$DOMAIN..."
 cp -r "$SCRIPT_DIR/.output/public/." /var/www/"$DOMAIN"/
 chown -R www-data:www-data /var/www/"$DOMAIN"
 
-# ── 13. OpenResty final restart ───────────────────────────────────────────────
+# ── 14. OpenResty final restart ───────────────────────────────────────────────
 info "Restarting OpenResty..."
 systemctl enable openresty
 systemctl restart openresty
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
-echo -e "${GREEN}✓ Your Soul Node is ready.${NC}"
+echo -e "${GREEN}✓ Dein Soul Node ist ready.${NC}"
 echo ""
 echo "  URL:    https://$DOMAIN"
 echo "  Data:   /var/lib/sys/souls/"
 echo "  Config: /var/lib/sys/config/master.json"
 echo ""
-echo "  Open https://$DOMAIN in your browser to create your Soul."
-echo "  This node accepts exactly one Soul — the first to register is the owner."
+echo "  Öffne https://$DOMAIN im Browser um deine Soul zu erstellen."
+echo "  Dieser Node akzeptiert genau eine Soul — wer sich zuerst registriert, ist Eigentümer."
 echo ""
-warn "Change your root password now: passwd"
+echo -e "${RED}┌──────────────────────────────────────────────────────────────────┐${NC}"
+echo -e "${RED}│  ⚠️  Wichtig: Ändere jetzt dein Server-Passwort!                 │${NC}"
+echo -e "${RED}│                                                                  │${NC}"
+echo -e "${RED}│  Tippe im schwarzen Fenster:                                     │${NC}"
+echo -e "${RED}│                                                                  │${NC}"
+echo -e "${RED}│      passwd                                                      │${NC}"
+echo -e "${RED}│                                                                  │${NC}"
+echo -e "${RED}│  Vergib ein neues sicheres Passwort — das ist dein Schutz        │${NC}"
+echo -e "${RED}│  gegen unbefugten Zugriff auf diesen Server.                     │${NC}"
+echo -e "${RED}└──────────────────────────────────────────────────────────────────┘${NC}"
 echo ""
