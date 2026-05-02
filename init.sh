@@ -19,11 +19,15 @@ echo "  ███████║╚██████╔╝╚██████
 echo "  ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝"
 echo "  Personal SYS VPS Setup"
 echo ""
+echo -e "${YELLOW}  Hinweis: Du brauchst eine Domain (z.B. soul.deinname.de) die per${NC}"
+echo -e "${YELLOW}  A-Eintrag auf die IP dieses Servers zeigt. Ohne DNS-Eintrag${NC}"
+echo -e "${YELLOW}  schlägt die SSL-Zertifizierung fehl. (Keine Pflicht — nur Info.)${NC}"
+echo ""
 
 # ── 1. Input ──────────────────────────────────────────────────────────────────
-read -p "Your domain (e.g. soul.yourdomain.com): " DOMAIN
-read -p "Your email (for SSL certificate): "        EMAIL
-[[ -z "$DOMAIN" || -z "$EMAIL" ]] && error "Domain and email are required."
+read -p "  Deine Domain (z.B. soul.deinname.de): " DOMAIN
+read -p "  Deine E-Mail (für SSL-Zertifikat):     " EMAIL
+[[ -z "$DOMAIN" || -z "$EMAIL" ]] && error "Domain und E-Mail sind erforderlich."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -128,36 +132,40 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
 # ── 12. .env setup ────────────────────────────────────────────────────────────
 info "Setting up .env..."
 cd "$SCRIPT_DIR"
-if [ ! -f .env ]; then
-  cp .env.example .env
-  info ".env angelegt aus .env.example"
-else
-  info ".env bereits vorhanden — wird nicht überschrieben"
-fi
+[ ! -f .env ] && cp .env.example .env
 
 echo ""
-echo "  ┌─────────────────────────────────────────────────────────────┐"
-echo "  │  .env — Pflichtfelder vor dem Build                         │"
-echo "  │                                                             │"
-echo "  │  ANTHROPIC_API_KEY   → dein Anthropic API-Key               │"
-echo "  │  SOUL_MASTER_KEY     → wird automatisch generiert (s.u.)    │"
-echo "  │                                                             │"
-echo "  │  Optional (nur wenn du diese Dienste nutzen willst):        │"
-echo "  │  WALLETCONNECT_PROJECT_ID   SPOTIFY_CLIENT_ID               │"
-echo "  │  YOUTUBE_CLIENT_ID                                          │"
-echo "  │                                                             │"
-echo "  │  Jetzt .env bearbeiten:  nano $SCRIPT_DIR/.env              │"
-echo "  └─────────────────────────────────────────────────────────────┘"
+echo "  ── API-Keys eingeben ──────────────────────────────────────────"
 echo ""
-read -p "  .env bearbeitet und gespeichert? (yes um fortzufahren): " ENV_CONFIRM
-[[ "$ENV_CONFIRM" != "yes" ]] && error "Abgebrochen. Bitte .env ausfüllen und init.sh erneut starten."
 
-# SOUL_MASTER_KEY aus master.json in .env eintragen (wurde bereits generiert)
+# Anthropic API Key (Pflicht)
+read -p "  Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
+while [[ -z "$ANTHROPIC_KEY" ]]; do
+  warn "Anthropic API Key ist erforderlich."
+  read -p "  Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
+done
+sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|" .env
+
+# Optionale Keys — Enter überspringt
+echo ""
+echo -e "  ${YELLOW}Optionale Dienste — einfach Enter drücken zum Überspringen${NC}"
+echo ""
+read -p "  WalletConnect Project ID  (Enter = überspringen): " WC_KEY
+[ -n "$WC_KEY" ] && sed -i "s|^WALLETCONNECT_PROJECT_ID=.*|WALLETCONNECT_PROJECT_ID=$WC_KEY|" .env
+
+read -p "  Spotify Client ID         (Enter = überspringen): " SP_KEY
+[ -n "$SP_KEY" ] && sed -i "s|^SPOTIFY_CLIENT_ID=.*|SPOTIFY_CLIENT_ID=$SP_KEY|" .env
+
+read -p "  YouTube Client ID         (Enter = überspringen): " YT_KEY
+[ -n "$YT_KEY" ] && sed -i "s|^YOUTUBE_CLIENT_ID=.*|YOUTUBE_CLIENT_ID=$YT_KEY|" .env
+
+# SOUL_MASTER_KEY auto-inject aus master.json (bereits generiert in Schritt 8)
 GENERATED_KEY=$(python3 -c "import json; d=json.load(open('/var/lib/sys/config/master.json')); print(d.get('soul_master_key',''))" 2>/dev/null || echo "")
 if [ -n "$GENERATED_KEY" ]; then
   sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$GENERATED_KEY|" .env
-  info "SOUL_MASTER_KEY automatisch in .env eingetragen"
+  info "SOUL_MASTER_KEY automatisch eingetragen"
 fi
+echo ""
 
 # ── 13. Frontend build ────────────────────────────────────────────────────────
 info "Building frontend (npm install + generate)..."
