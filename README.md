@@ -130,9 +130,42 @@ Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_l
 
 ## Self-Hosting
 
-The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production. See [docs/architecture/openresty.md](docs/architecture/openresty.md) for the full component breakdown and [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) for implementation notes.
+The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production. See [docs/architecture/openresty.md](docs/architecture/openresty.md) for the full component breakdown.
 
-Run `bash init.sh` on a fresh Ubuntu 24.04 VPS to set up a private node in one step. See [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) for the full component breakdown.
+### Voraussetzungen
+
+> **Hinweis:** Du brauchst eine Domain (z.B. `soul.deinname.de`) mit einem A-Eintrag der auf die IP deines Servers zeigt. Ohne diesen DNS-Eintrag schlägt die automatische SSL-Zertifizierung fehl. Die Domain ist keine Pflicht — der Node lässt sich auch ohne SSL betreiben — aber für den produktiven Einsatz empfohlen.
+
+- Frischer Ubuntu 24.04 VPS (min. 2 vCores, 2 GB RAM, 10 GB Disk)
+- Root-Zugang per SSH
+- Domain mit A-Eintrag auf die Server-IP
+- Anthropic API Key
+
+### Installation
+
+```bash
+git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
+cd /opt/sys
+bash init.sh
+```
+
+Das Script erledigt alles automatisch:
+1. OpenResty, Certbot, Node.js installieren
+2. SSL-Zertifikat via Let's Encrypt anfordern
+3. API-Keys abfragen (interaktiv, kein nano nötig)
+4. Nuxt-Frontend bauen und deployen
+5. Lua-Scripts und nginx-Config einrichten
+
+Am Ende: **Root-Passwort mit `passwd` ändern** — das Script erinnert dich daran.
+
+### Soul verwalten
+
+| Script | Was es tut |
+|--------|-----------|
+| `bash reset.sh` | **Soul entfernen** — löscht alle Soul-Daten und gibt den Node frei für eine neue Soul. OpenResty, SSL und alle anderen Systemdaten bleiben unberührt. |
+| `bash deinstall.sh` | **Komplett deinstallieren** — entfernt alles was `init.sh` installiert hat. OpenResty, Node.js, Certbot, SSL-Zertifikat, Swap und alle Daten werden gelöscht. Der Ubuntu-Server bleibt als saubere Basis zurück. |
+
+> `reset.sh` ≠ `deinstall.sh`: Reset entfernt nur die Soul (Mieter zieht aus). Deinstall entfernt die gesamte SYS-Installation (Haus wird abgerissen).
 
 ---
 
