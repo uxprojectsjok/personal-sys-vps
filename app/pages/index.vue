@@ -314,7 +314,7 @@ import VaultExplorer from '~/components/VaultExplorer.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, clear: _clear } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, pushToServer, exportAsBlob, clear: _clear } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
@@ -388,6 +388,8 @@ async function confirmReset() {
 
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
+  await pushToServer()
+  await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
 }
