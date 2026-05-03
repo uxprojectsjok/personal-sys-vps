@@ -824,7 +824,7 @@ const authH  = computed(() => ({ Authorization: `Bearer ${props.soulCert}` }));
 
 // ── Cert-Rotation ───────────────────────────────────────────────────────────
 
-const { rotateCert, soulContent: composableSoulContent, pendingSoulFileWrite } = useSoul();
+const { rotateCert, soulContent: composableSoulContent, pendingSoulFileWrite, clear: clearSoul } = useSoul();
 const rotateBusy = ref(false);
 
 async function handleRotateCert() {
@@ -1319,10 +1319,10 @@ async function handleDeleteVault() {
     });
     if (!res.ok) throw new Error(await res.text());
     confirmDeleteOpen.value = false;
-    // Vault inkl. api_context.json gelöscht → Session ist ungültig.
-    // sessionExpired auslösen → index.vue zeigt Logout-Modal.
+    // Vault + Node-Lock gelöscht → Soul lokal leeren und zur Startseite
     resetContext();
-    sessionExpired.value = true;
+    clearSoul();
+    await navigateTo("/");
   } catch (e) {
     showError("Fehler beim Löschen: " + e.message);
   } finally {
