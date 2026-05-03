@@ -1,347 +1,279 @@
-# SaveYourSoul — Architecture & Protocol Specification
+# Personal SYS VPS — Architecture
 
-> **Protocol, not a product.**
-> This document describes the SYS protocol specification and its reference implementation. The reference implementation is invite-only and serves as a living proof-of-concept. It is not a deployable product. Anyone building a compatible implementation does so independently.
->
-> **Note:** This file is superseded by the structured documentation in [docs/](docs/). It is retained for context.
+Dieses Dokument beschreibt die technische Architektur des Personal SYS VPS.  
+Für Setup und Betrieb: [ONBOARDING.md](ONBOARDING.md)
 
 ---
 
-## Overview
-
-SYS defines a portable, user-controlled identity layer for AI systems. The core unit is the **sys.md** — a Markdown file with YAML frontmatter that encodes a personal identity profile and grows with each interaction. The sys.md never leaves the user's device unless the user explicitly initiates a transfer.
+## Überblick
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Browser (SPA)                     │
-│  sys.md → sessionStorage  (cleared on tab close)   │
-│  Vault → local filesystem  (File System Access API) │
-└────────────────────┬────────────────────────────────┘
-                     │ HTTPS / TLS
-                     ▼
-┌─────────────────────────────────────────────────────┐
-│              OpenResty (nginx + Lua)                │
-│                                                     │
-│  /               → Static SPA  (.output/public/)    │
-│  /api/soul-cert  → soul_cert.lua   (unauthenticated)│
-│  /api/chat       → soul_auth.lua  → Anthropic API   │
-│  /api/soul       → vault_auth.lua → sys.md serve   │
-│  /api/context    → vault_auth.lua → api_context.lua │
-│  /api/vault/*    → vault_auth.lua → vault_sync.lua  │
-│  /api/webhook    → vault_auth.lua → webhook.lua     │
-│  /mcp            → soul-mcp (Node.js :3098)         │
-│  /oauth/         → soul-mcp (Node.js :3098)         │
-└────────────────────┬────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────┐
-│       /var/lib/sys/souls/{soul_id}/                 │
-│                                                     │
-│  sys.md              identity file (enc. or plain) │
-│  api_context.json     permissions + vault index     │
-│  soul_connections.json  network connections         │
-│  vault/audio/           audio files                 │
-│  vault/images/          image files                 │
-│  vault/video/           video files                 │
-│  vault/context/         context/text files          │
-└─────────────────────────────────────────────────────┘
-```
+┌──────────────────────────────────────────────────────────┐
+│                    Browser (SPA)                         │
+│  sys.md       → sessionStorage  (cleared on tab close)  │
+│  Vault        → File System Access API (lokal)          │
+│  Verschlüssel → WebCrypto API  (Schlüssel verlässt      │
+│                                 den Browser nie)         │
+└───────────────────────────┬──────────────────────────────┘
+                            │ HTTPS / TLS
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│               OpenResty (nginx + LuaJIT)                 │
+│                                                          │
+│  /                   → Static SPA (.output/public/)      │
+│  /gate               → gate_auth.lua  (Passwortschutz)  │
+│  /api/soul-cert      → soul_cert.lua  (unauthenticated) │
+│  /api/chat           → soul_auth.lua → Anthropic API    │
+│  /api/soul           → vault_auth.lua → api_serve.lua   │
+│  /api/vault/*        → vault_auth.lua → vault_sync.lua  │
+│  /api/node-status    → node_status.lua                  │
+│  /api/peer/verify    → peer_verify.lua                  │
+│  /api/peer/connect   → peer_connect.lua                 │
+│  /mcp                → soul-mcp (Node.js :3098)         │
+└───────────────────────────┬──────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│          /var/lib/sys/souls/{soul_id}/                   │
+│                                                          │
+│  sys.md                  Identitätsdatei (enc. od. plain)│
+│  api_context.json        Berechtigungen + Vault-Index    │
+│  soul_connections.json   Peer-Verbindungen               │
+│  vault/audio/                                            │
+│  vault/images/                                           │
+│  vault/video/                                            │
+│  vault/context/                                          │
+│  vault/profiles/                                         │
+└──────────────────────────────────────────────────────────┘
 
----
-
-## Two-Environment Design
-
-**Development:** `npm run dev` starts Nuxt 4 with the Nitro server. API routes live in `server/api/*.js`. No OpenResty needed.
-
-**Production:** `npm run generate` produces a pure static SPA in `.output/public/`. No Node.js process runs in production. All API logic is handled by OpenResty Lua scripts. The Nitro routes exist only to mirror the Lua backend for local development.
-
-```
-Dev:   Browser → Nuxt/Nitro (localhost:3007) → API handlers in server/api/
-Prod:  Browser → OpenResty → Lua scripts in /etc/openresty/lua/
+Config: /var/lib/sys/config/{domain}/master.json
 ```
 
 ---
 
-## sys.md — Protocol Specification
+## Zwei-Umgebungen-Design
 
-The sys.md is a standard Markdown file. The YAML frontmatter is machine-readable; the body is structured by `## Section` headings.
+**Development:** `npm run dev` startet Nuxt 4 + Nitro. API-Routes in `server/api/*.js`.
+
+**Production:** `npm run generate` erzeugt eine statische SPA in `.output/public/`. Kein Node.js-Prozess läuft in Production. Alle API-Logik übernimmt OpenResty via Lua-Scripts in `/etc/openresty/lua/`.
+
+```
+Dev:   Browser → Nuxt/Nitro (localhost:3007) → server/api/*.js
+Prod:  Browser → OpenResty  → /etc/openresty/lua/*.lua
+```
+
+Nitro-Routes sind nur ein Dev-Mirror der Lua-Scripts — Änderungen an API-Logik müssen in beiden Dateien synchron gehalten werden.
+
+---
+
+## sys.md Format
 
 ```markdown
 ---
-soul_id: 00000000-0000-0000-0000-0000000000000
+soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
 version: 1
-soul_cert: [automatically generated]
+cert_version: 0
+maturity: 0
+soul_cert: [wird automatisch generiert]
 vault_hash: ""
 soul_growth_chain: []
 soul_chain_anchor: null
 storage_tx: ""
 ---
 
-## Core Identity
+## Kern-Identität
+## Werte & Überzeugungen
+## Ästhetik & Resonanz
+## Sprachmuster & Ausdruck
+## Wiederkehrende Themen & Obsessionen
+## Emotionale Signatur
+## Weltbild
+## Offene Fragen dieser Person
+## Session-Log (komprimiert)
+## Kalender
 
-_Who is this person in one sentence?_
+<!-- AGENT:START -->
+<!-- AGENT:END -->
+```
 
-## Values ​​& Beliefs
+**Frontmatter-Felder:**
 
-_What motivates them? What do they believe in?_
+| Feld                | Typ      | Beschreibung                                                      |
+|---------------------|----------|-------------------------------------------------------------------|
+| `soul_id`           | UUID v4  | Globaler Primärschlüssel. Basis aller Cert-Berechnungen.          |
+| `soul_name`         | string   | Anzeigename (vom Nutzer gewählt).                                 |
+| `created`           | ISO 8601 | Erstellungsdatum.                                                 |
+| `last_session`      | ISO 8601 | Letzte Session.                                                   |
+| `version`           | integer  | sys.md Schema-Version.                                            |
+| `cert_version`      | integer  | Cert-Rotationsstand. Wird bei `soul_rotate_cert` inkrementiert.  |
+| `maturity`          | 0–100    | Reifegradpunktzahl. Berechnet von `shared/utils/soulMaturity.js`. |
+| `soul_cert`         | hex(32)  | HMAC-SHA256-Cert. Vom Server ausgestellt, im Browser gespeichert. |
+| `vault_hash`        | string   | SHA-256 des letzten Vault-Snapshots.                              |
+| `soul_growth_chain` | array    | Wachstums-Milestones (maturity-basiert).                          |
+| `soul_chain_anchor` | object   | Blockchain-Anker (Polygon tx + IPFS CID).                        |
+| `storage_tx`        | string   | IPFS/Arweave-Referenz letzter Cloud-Push.                         |
 
-## Aesthetics & Resonance
-
-_Music, atmospheres, visual stimuli that attract this person._
-
-## Speech Patterns & Expression
-
-_How do they speak? How does she write?_
-
-## Recurring Themes & Obsessions
-
-_What keeps coming back to her?_
-
-## Emotional Signature
-
-_What is it like to talk to her?_
-
-## Worldview
-
-_How does she see the world? What is her view of humanity?_
-
-## Unanswered Questions from this Person
-
-_What is she still looking for?_
-
-## Session Log (compressed)
-
-...
-
-## Calendar
-
-...
-
-**Frontmatter fields:**
-
-| Field        | Type     | Description                                                        |
-| ------------ | -------- | ------------------------------------------------------------------ |
-| `soul_id`    | UUID v4  | Globally unique identifier. Primary key for all server operations. |
-| `name`       | string   | Display name (chosen by user).                                     |
-| `version`    | string   | sys.md schema version.                                            |
-| `created_at` | ISO 8601 | Creation timestamp.                                                |
-| `updated_at` | ISO 8601 | Last modification timestamp.                                       |
-| `maturity`   | 0–100    | Computed completeness score. See `shared/utils/soulMaturity.js`.   |
-
-**Section names** are freeform `## Headings`. The MCP `soul_write` tool targets sections by name. Parsers must handle missing sections gracefully (treat as empty, not as error).
+**Agent-Sandbox (`<!-- AGENT:START -->` / `<!-- AGENT:END -->`):**  
+Nur der Inhalt dieses Blocks wird über `/api/soul/paid-read` an externe Agenten (MCP, WhatsApp-Bot, etc.) ausgeliefert. Der Rest der sys.md verlässt den Server nie in Richtung Dritter. Der Block ist leer bis der Nutzer ihn selbst befüllt.
 
 ---
 
-## Authentication Model
+## Authentifizierungsmodell
 
-All protected API endpoints validate an **HMAC-SHA256 soul_cert** token.
-```
-
-cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id).hex()[:32]
-bearer = soul_id + "." + soul_cert
+**HMAC-SHA256 Soul-Cert:**
 
 ```
+cert     = HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version).hex()[:32]
+bearer   = soul_id + "." + cert
+```
 
-The server recomputes the expected cert and compares with constant-time equality. No database lookup. No session state. The cert is stateless — it is always the same for a given `soul_id` + `SOUL_MASTER_KEY` pair.
+Der Server berechnet den erwarteten Cert neu und vergleicht mit Constant-Time-Gleichheit. Kein Datenbank-Lookup, kein Session-State.
 
-**Cert rotation:** Changing `SOUL_MASTER_KEY` invalidates all existing certs simultaneously. There is no per-user cert rotation without key rotation.
+**Cert-Rotation:** `cert_version` kann inkrementiert werden (`soul_rotate_cert.lua`) ohne den `SOUL_MASTER_KEY` zu ändern. Alte Certs (niedrigere `cert_version`) werden damit ungültig.
 
-**Three auth paths:**
+**Gate-Schutz:** Vor dem Soul-Cert sitzt ein Gate (`gate_auth.lua`). Das Gate-Passwort ist als `HMAC-SHA256(raw_master_key, "gate_pw:" + passwort)` in `/var/lib/sys/config/{domain}/master.json` gespeichert. Sessions leben in einem OpenResty Shared Dict.
 
-| Path           | Token format          | Used for                                     |
-| -------------- | --------------------- | -------------------------------------------- |
-| Soul-Cert      | `{uuid}.{32hexchars}` | Owner operations (upload, update, delete)    |
-| Service-Token  | `{64hexchars}`        | External services with granular permissions  |
-| BIP39-Mnemonic | 12 words in POST body | Direct cipher-mode auth without stored token |
+**Drei Auth-Pfade:**
+
+| Pfad           | Token-Format            | Verwendung                                     |
+|----------------|-------------------------|------------------------------------------------|
+| Soul-Cert      | `{uuid}.{32 Hex}`       | Owner-Operationen (Upload, Update, Delete)     |
+| Service-Token  | `{64 Hex}`              | Externe Dienste mit granularen Berechtigungen  |
+| BIP39-Mnemonic | 12 Wörter im POST-Body  | Cipher-Mode-Auth ohne gespeichertes Token      |
 
 ---
 
-## Encryption Layers
+## Verschlüsselung
 
+**Server-side (Standard):**
+```
+sys.md + Vault-Dateien → AES-256-CBC → gespeichert auf VPS
+Magic-Prefix: SYSCRYPT01  (Bytes: 53 59 53 01)
+Format: [4 Magic][16 IV][Ciphertext]
+Schlüssel: vault_key_hex in api_context.json (server-side)
 ```
 
-Local (browser only):
-sys.md + vault files → AES-256-GCM → .soul bundle
-Key: derived from Passkey (WebAuthn) or BIP39 mnemonic
-Server never sees this key.
-
-VPS upload (default):
-sys.md + vault files → AES-256-CBC → stored on VPS
-Magic prefix: SYSCRYPT01 (bytes: 53 59 53 01)
-Format: [4 magic bytes][16 IV bytes][ciphertext]
-Key: vault_key_hex stored in api_context.json
-Server can decrypt for authorized service-token requests.
-
-Transit:
-All API traffic over TLS 1.2+.
-soul_cert is a Bearer token — TLS is the transport security.
-
+**Lokal (Browser-Bundle, optional):**
+```
+sys.md + Vault → AES-256-GCM → .soul Bundle
+Schlüssel: PBKDF2-SHA256, 100 000 Iter., 32 Byte, Salt prepended
+Schlüssel verlässt den Browser nie.
 ```
 
-**Key derivation (AES-256-GCM bundle):** PBKDF2-SHA256, 100 000 iterations, 32-byte output, random 16-byte salt prepended to bundle.
+**Transit:** TLS 1.2+. Soul-Cert ist Bearer-Token — TLS ist die Transportsicherheit.
 
 ---
 
-## VPS Data Layout
+## Gate & Multi-Domain
 
-```
-
-/var/lib/sys/souls/{soul_id}/
-├── sys.md ← SYSCRYPT01 prefix if encrypted
-├── api_context.json ← permissions, vault_key_hex, synced_files index
-├── soul_connections.json ← peer connections (soul_id, alias, grant level)
-└── vault/
-├── audio/
-├── images/
-├── video/
-└── context/
-
-````
-
-**api_context.json structure:**
+`/var/lib/sys/config/{domain}/master.json` — pro Domain isoliert:
 
 ```json
 {
-  "synced_files": {
-    "profiles": ["expertise"],
-    "audio": ["voice_[soul_id]_[date].webm"],
-    "context": ["soul_hash.txt"]
-  },
-  "active_files": {
-    "audio": "voice_[soul_id]_[date].webm",
-    "context": "soul_hash.txt"
-  },
-  "cipher_mode": "ciphered",
-  "enabled": true,
-  "vault_key_hex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "permissions": {
-    "soul": true,
-    "calendar": true,
-    "audio": true,
-    "video": true,
-    "images": true,
-    "context_files": true
-  },
-  "updated_at": 1775729499.837,
-  "webhook_token": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  "soul_master_key": "sys_<64hex>",
+  "soul_master_key_prev": "",
+  "prev_valid_until_ts": 0,
+  "access_password_hash": "<hmac-sha256>"
 }
-````
+```
+
+`config_reader.lua` liest via `M.get_master_path()` zuerst den Domain-spezifischen Pfad — mehrere isolierte Domains auf einem OpenResty ohne Konflikte.
 
 ---
 
-## MCP Server
+## Peer-to-Peer Soul-Verbindungen
 
-The `soul-mcp/` directory contains a Node.js MCP server implementing the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE authorization.
-
-**Runtime:** Node.js 20+, port 3098, proxied by OpenResty at `/mcp`.
-
-**OAuth flow:**
+Zwei Nodes können sich gegenseitig verifizieren und verbinden:
 
 ```
-1. GET  /oauth/authorize         → Consent page (HTML, shows soul_id + permissions)
-2. POST /oauth/authorize         → Validate soul_cert → issue auth code (in-memory, 5 min TTL)
-3. POST /oauth/token             → code + PKCE verifier → access token (= service-token)
-4. All MCP tool calls            → Bearer {service-token} → soul API
+Node A → GET /api/peer/verify?soul_id=... @ Node B   (CORS, öffentlich)
+Node B → antwortet mit node_status + soul_id Signatur
+Node A → POST /api/peer/connect @ Node B             (authenticated)
+       → speichert Verbindung in soul_connections.json
 ```
 
-**Available MCP tools:**
+Verbindungen werden in `soul_connections.json` gespeichert und über `SoulNetworkPanel.vue` verwaltet.
 
-| Tool                                | Description                                               |
-| ----------------------------------- | --------------------------------------------------------- |
-| `soul_read`                         | Read the full sys.md content                             |
-| `soul_write`                        | Update a `## Section` in sys.md (replace/append/prepend) |
-| `soul_maturity`                     | Compute and update the maturity score                     |
-| `soul_skills`                       | List and invoke soul skills                               |
-| `profile_get` / `profile_save`      | reads and writes profiles to the Vault                    |
-| `audio_list` / `audio_get`          | List and retrieve audio vault files                       |
-| `image_list` / `image_get`          | List and retrieve image vault files                       |
-| `context_get` / `context_list`      | Context file access                                       |
-| `vault_manifest`                    | Full vault index                                          |
-| `network_list` / `network_peer_get` | Soul Network connections                                  |
-| `soul_cloud_push`                   | Push encrypted bundle to external storage                 |
-| `verify_human`                      | Human-in-the-loop confirmation step                       |
+---
+
+## On-Chain Anchoring
+
+```
+Soul-Hash → anchor() → Polygon Mainnet
+                     → IPFS (Inhalt)
+                     → soul_chain_anchor in sys.md
+```
+
+Smart Contract: `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)  
+Optional: erfordert eigene `WALLETCONNECT_PROJECT_ID` (kostenlos: cloud.walletconnect.com).
 
 ---
 
 ## Rate Limiting
 
-OpenResty enforces per-IP rate limits:
+Rate-Limit-Zonen sind global in `/etc/openresty/nginx.conf` definiert:
 
-| Zone     | Rate   | Burst | Applied to                                        |
-| -------- | ------ | ----- | ------------------------------------------------- |
-| `chat`   | 1 r/s  | 5–30  | `/api/chat`, `/api/soul-update`, vision endpoints |
-| `api`    | 30 r/s | 10–30 | General API endpoints                             |
-| `auth`   | 5 r/s  | 2–5   | `/api/soul-cert`, `/api/validate`                 |
-| `mcp`    | 5 r/s  | 10    | `/mcp` (MCP Streamable HTTP)                      |
-| `oauth`  | 3 r/s  | 5     | `/oauth/` (token endpoint)                        |
-| `system` | 2 r/s  | —     | Health and system endpoints                       |
+| Zone           | Rate    | Angewendet auf                          |
+|----------------|---------|-----------------------------------------|
+| `chat_api`     | 2 r/s   | `/api/chat`, Vision-Endpunkte           |
+| `vault_upload` | 5 r/s   | `/api/vault/*`                          |
+| `gate`         | 5 r/min | `/gate`, Gate-Auth-Endpunkte            |
 
 ---
 
-## Frontend Architecture
+## MCP Server
 
-- **Framework:** Nuxt 4, `ssr: false` (pure client-side rendering)
-- **State:** No Pinia/Vuex. Module-level singleton refs in composables.
-- **Key composables:** `useSoul`, `useVault`, `useApiContext`, `useClaude`
-- **Fonts:** Served locally — Noto Serif (headings), Oxanium (UI), Remix Icons
-- **CSS:** Tailwind + custom CSS properties. Dark-only, no light mode.
-- **Build output:** Static SPA, deployed via rsync to webroot.
+`soul-mcp/` — Node.js MCP Server mit OAuth 2.0 + PKCE, Port 3098, via OpenResty bei `/mcp` erreichbar.
+
+**Verfügbare Tools:** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `profile_get`, `audio_list`, `audio_get`, `image_list`, `image_get`, `context_get`, `context_list`, `vault_manifest`, `network_list`, `network_peer_get`, `calendar_read`, `verify_human`
 
 ---
 
-## Repository Structure
+## Frontend
 
-```
-SaveYourSoul/
-├── app/                    ← Nuxt 4 frontend
-│   ├── pages/              ← Routes (session.vue, index.vue, api-docs.vue, …)
-│   ├── components/         ← UI components
-│   └── composables/        ← Shared state (useSoul, useVault, …)
-├── server/
-│   ├── api/                ← Nitro API routes (dev only, mirror of Lua scripts)
-│   └── openresty/          ← Source for /etc/openresty/lua/ (prod)
-├── shared/
-│   └── utils/              ← soulParser.js, soulMaturity.js (shared dev+browser)
-├── soul-mcp/               ← MCP server (Node.js)
-│   ├── tools/              ← MCP tool implementations
-│   ├── server.mjs          ← Entry point
-│   └── oauth.mjs           ← OAuth 2.0 + PKCE
-├── browser-extension/      ← Chrome MV3 extension
-├── docs/                   ← Protocol documentation
-├── test/                   ← sys.md test fixtures
-└── utils/                  ← Build utilities (killMetas.mjs, …)
-```
+- **Framework:** Nuxt 4, `ssr: false` — pure client-side rendering
+- **State:** Kein Pinia/Vuex. Module-level Singleton-Refs in Composables
+- **Fonts:** Lokal serviert — Noto Serif (Headings), Oxanium (UI), Remix Icons
+- **CSS:** Tailwind + CSS Custom Properties. Dark-Only, kein Light-Mode
+- **Build:** Statische SPA, deployed via `rsync` in den Webroot
+
+**Wichtige Composables:**
+
+| Composable         | Verantwortlichkeit                                       |
+|--------------------|----------------------------------------------------------|
+| `useSoul`          | sys.md Inhalt, soul_cert, Maturity                       |
+| `useVault`         | File System Access API, Bild-Preprocessing               |
+| `useApiContext`    | API-Berechtigungen, AES-256-CBC Vault-Verschlüsselung    |
+| `useChainAnchor`   | Polygon + IPFS Blockchain-Anchoring                      |
+| `useClaude`        | Claude API SSE-Streaming                                 |
+| `useVaultConnections` | Peer-to-Peer Soul-Verbindungen                        |
 
 ---
 
-## Environment Variables
+## Umgebungsvariablen
 
-Three secrets are required on the server. They are injected via systemd service override — not stored in `.env` or baked into the build.
+Server-Secrets (via systemd-Override, nicht im Build):
 
-| Variable            | Purpose                                                          |
-| ------------------- | ---------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API (chat + vision)                             |
-| `SOUL_MASTER_KEY`   | 32-byte hex. HMAC root key for soul_cert derivation.             |
-| `API_SIGNING_KEY`   | 32-byte hex. Secondary signing key for service-token operations. |
+| Variable            | Zweck                                                       |
+|---------------------|-------------------------------------------------------------|
+| `ANTHROPIC_API_KEY` | Anthropic Claude API (Chat + Vision)                        |
+| `SOUL_MASTER_KEY`   | HMAC-Root-Key für soul_cert. Nie exponieren.                |
+| `API_SIGNING_KEY`   | Sekundärer Signing-Key für Service-Token.                   |
 
-One variable is baked into the client bundle at build time:
+Im Build eingebakken (aus `.env` zur Build-Zeit gelesen):
 
-| Variable                   | Purpose                                                   |
-| -------------------------- | --------------------------------------------------------- |
-| `WALLETCONNECT_PROJECT_ID` | WalletConnect v2 project ID (optional blockchain feature) |
-
----
-
-## License
-
-Apache License 2.0. See [LICENSE](LICENSE).
-
-The sys.md format, API conventions, and MCP tool schema are intended as an open protocol. Compatible implementations are encouraged — independent of this reference implementation.
+| Variable                   | Zweck                                                   |
+|----------------------------|---------------------------------------------------------|
+| `WALLETCONNECT_PROJECT_ID` | WalletConnect v2 Project ID (optional, Anchoring-Feature)|
+| `NODE_NAME`                | Anzeigename des Nodes auf der Landingpage               |
+| `NODE_TAGLINE`             | Untertitel des Nodes (optional)                         |
 
 ---
 
-_Reference implementation: invite-only · Operator: [Node Operator]_
-_This is experimental software. No warranty. Invite-only access._
+## Lizenz
+
+Apache License 2.0 — siehe [LICENSE](LICENSE).  
+Copyright © 2026 Jan-Oliver Karo — UX-Projects, Marburg, Germany
