@@ -7,8 +7,15 @@ local uri = ngx.var.uri
 -- Gate-Seite selbst ist immer zugänglich (inkl. /gate?next=...)
 -- ngx.var.uri enthält nie den Query-String, daher reicht == "/gate"
 if uri == "/gate" or uri:sub(1, 6) == "/gate/" then
+  ngx.ctx.gate_done = true
   return
 end
+
+-- try_files interne Weiterleitung zu /index.html würde diesen Handler ein zweites
+-- Mal auslösen (uri wäre dann "/index.html"). ngx.ctx bleibt im selben Request
+-- erhalten → einmal geprüft reicht.
+if ngx.ctx.gate_done then return end
+ngx.ctx.gate_done = true
 
 -- sys_gate Cookie lesen (via nginx $cookie_* Variable)
 local gate_token = ngx.var.cookie_sys_gate or ""
