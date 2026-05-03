@@ -64,4 +64,4 @@ node utils/project-hash.mjs
 
 Open an issue before starting large changes. By submitting a PR, you agree your contribution is licensed under Apache 2.0 and attributed as per the NOTICE file.
 
-**Contact:** janoliverkaro@gmail.com — [uxprojects-jok.com](https://uxprojects-jok.com)
+**Contact:** info@uxprojects-jok.com — [uxprojects-jok.com](https://uxprojects-jok.com)
