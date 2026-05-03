@@ -213,12 +213,41 @@ if [[ -n "$SSL_CERT" || -n "$SSL_KEY" ]]; then
   info "Zertifikat validiert — Cert, Key und Domain passen zusammen."
 else
   info "Requesting SSL certificate for $DOMAIN..."
-  certbot certonly --webroot \
+  CERTBOT_OUT=$(certbot certonly --webroot \
     -w /var/www/"$DOMAIN" \
     -d "$DOMAIN" \
     --email "$EMAIL" \
     --agree-tos \
-    --non-interactive
+    --non-interactive 2>&1) || true
+
+  if echo "$CERTBOT_OUT" | grep -q "too many certificates"; then
+    RETRY=$(echo "$CERTBOT_OUT" | grep -oP 'retry after \K[^\:]+:[^\s]+' || true)
+    echo ""
+    echo -e "${RED}┌──────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${RED}│  Let's Encrypt Rate-Limit erreicht                               │${NC}"
+    echo -e "${RED}│                                                                  │${NC}"
+    echo -e "${RED}│  Zu viele Zertifikate für $DOMAIN in den letzten 7 Tagen.        │${NC}"
+    [ -n "$RETRY" ] && \
+    echo -e "${RED}│  Retry ab: $RETRY                          │${NC}"
+    echo -e "${RED}│                                                                  │${NC}"
+    echo -e "${RED}│  Danach manuell nachholen:                                       │${NC}"
+    echo -e "${RED}│                                                                  │${NC}"
+    echo -e "${RED}│    certbot certonly --webroot \\                                  │${NC}"
+    echo -e "${RED}│      -w /var/www/$DOMAIN \\                                       │${NC}"
+    echo -e "${RED}│      -d $DOMAIN --email $EMAIL \\                                 │${NC}"
+    echo -e "${RED}│      --agree-tos --non-interactive                               │${NC}"
+    echo -e "${RED}│                                                                  │${NC}"
+    echo -e "${RED}│  Dann HTTPS-vhost aktivieren:                                    │${NC}"
+    echo -e "${RED}│    bash /opt/sys/scripts/activate-https.sh                       │${NC}"
+    echo -e "${RED}└──────────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    echo "$CERTBOT_OUT"
+    exit 1
+  elif ! echo "$CERTBOT_OUT" | grep -q "Successfully received certificate"; then
+    echo "$CERTBOT_OUT"
+    error "certbot fehlgeschlagen — siehe Ausgabe oben."
+  fi
+
   SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
   SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
 fi
