@@ -4,6 +4,8 @@ soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
 version: 1
+cert_version: 0
+maturity: 0
 soul_cert: [wird automatisch generiert]
 vault_hash: ""
 soul_growth_chain: []
@@ -36,3 +38,6 @@ storage_tx: ""
 *Was sucht sie noch?*
 
 ## Session-Log (komprimiert)
+
+<!-- AGENT:START -->
+<!-- AGENT:END -->
