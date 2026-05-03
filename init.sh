@@ -266,9 +266,11 @@ info "Setting up .env..."
 cd "$SCRIPT_DIR"
 [ ! -f .env ] && cp .env.example .env
 
-sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|"    .env
-sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$MASTER_KEY|"           .env
-sed -i "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$(openssl rand -hex 32)|" .env
+API_SIGNING_KEY=$(openssl rand -hex 32)
+
+sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|"       .env
+sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$MASTER_KEY|"              .env
+sed -i "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$API_SIGNING_KEY|"         .env
 [ -n "$WC_PROJECT_ID" ] && \
   sed -i "s|^WALLETCONNECT_PROJECT_ID=.*|WALLETCONNECT_PROJECT_ID=$WC_PROJECT_ID|" .env
 
@@ -276,6 +278,20 @@ info "ANTHROPIC_API_KEY, SOUL_MASTER_KEY und API_SIGNING_KEY eingetragen"
 [ -n "$WC_PROJECT_ID" ] && info "WALLETCONNECT_PROJECT_ID eingetragen" || \
   warn "Kein WalletConnect Project ID — Blockchain-Anchoring deaktiviert."
 echo ""
+
+# ── 12b. systemd override — Umgebungsvariablen für OpenResty ─────────────────
+# nginx.conf deklariert env-Variablen (env SOUL_MASTER_KEY;), aber die Werte
+# müssen beim Start von OpenResty im Prozess-Environment vorhanden sein.
+# Ohne diesen Override sind alle Lua-Variablen leer → soul_auth schlägt fehl.
+info "Creating systemd environment override for OpenResty..."
+mkdir -p /etc/systemd/system/openresty.service.d
+cat > /etc/systemd/system/openresty.service.d/env.conf <<EOF
+[Service]
+Environment="ANTHROPIC_API_KEY=${ANTHROPIC_KEY}"
+Environment="SOUL_MASTER_KEY=${MASTER_KEY}"
+Environment="API_SIGNING_KEY=${API_SIGNING_KEY}"
+EOF
+systemctl daemon-reload
 
 # ── 13. Frontend build ────────────────────────────────────────────────────────
 info "Building frontend (npm install + generate)..."
