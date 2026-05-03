@@ -168,9 +168,24 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
 openresty -t && systemctl restart openresty
 
 # ── 10. SSL certificate ───────────────────────────────────────────────────────
+LE_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+LE_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+
 echo ""
+# Hinweis: vorhandene (bewahrte) Let's Encrypt Zertifikate anzeigen
+if [ -f "$LE_CERT" ] && openssl x509 -checkend 0 -noout -in "$LE_CERT" 2>/dev/null; then
+  LE_EXPIRY=$(openssl x509 -noout -enddate -in "$LE_CERT" 2>/dev/null | cut -d= -f2)
+  echo -e "${GREEN}  ✓ Vorhandenes Let's Encrypt Zertifikat für $DOMAIN gefunden.${NC}"
+  echo -e "    Gültig bis: $LE_EXPIRY"
+  echo -e "${YELLOW}  → Einfach leer lassen — wird automatisch wiederverwendet.${NC}"
+  echo ""
+fi
+
 echo -e "${YELLOW}  SSL-Zertifikat — leer lassen für Let's Encrypt (automatisch).${NC}"
-echo -e "${YELLOW}  Oder Pfade zu vorhandenem Zertifikat eintragen (z.B. Wildcard).${NC}"
+echo -e "${YELLOW}  Oder Pfade zu einem vorhandenen Zertifikat eintragen (z.B. Wildcard).${NC}"
+echo -e "${YELLOW}  Bewahrte Let's Encrypt Pfade falls vorhanden:${NC}"
+echo -e "${YELLOW}    fullchain.pem: /etc/letsencrypt/live/$DOMAIN/fullchain.pem${NC}"
+echo -e "${YELLOW}    privkey.pem:   /etc/letsencrypt/live/$DOMAIN/privkey.pem${NC}"
 read -p "  fullchain.pem (leer = Let's Encrypt): " SSL_CERT
 read -p "  privkey.pem   (leer = Let's Encrypt): " SSL_KEY
 
@@ -212,7 +227,13 @@ if [[ -n "$SSL_CERT" || -n "$SSL_KEY" ]]; then
 
   info "Zertifikat validiert — Cert, Key und Domain passen zusammen."
 else
-  info "Requesting SSL certificate for $DOMAIN..."
+  # Vorhandenes Let's Encrypt Zertifikat wiederverwenden wenn gültig
+  if [ -f "$LE_CERT" ] && openssl x509 -checkend 0 -noout -in "$LE_CERT" 2>/dev/null; then
+    info "Vorhandenes Let's Encrypt Zertifikat wird wiederverwendet."
+    SSL_CERT="$LE_CERT"
+    SSL_KEY="$LE_KEY"
+  else
+    info "Requesting SSL certificate for $DOMAIN..."
   CERTBOT_OUT=$(certbot certonly --webroot \
     -w /var/www/"$DOMAIN" \
     -d "$DOMAIN" \
@@ -248,8 +269,9 @@ else
     error "certbot fehlgeschlagen — siehe Ausgabe oben."
   fi
 
-  SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-  SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+    SSL_CERT="$LE_CERT"
+    SSL_KEY="$LE_KEY"
+  fi
 fi
 
 # ── 11. nginx config — Phase 2: HTTPS ─────────────────────────────────────────
