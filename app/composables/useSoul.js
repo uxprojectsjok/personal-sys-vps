@@ -7,6 +7,7 @@ const SOUL_KEY = "sys.soul";
 const CERT_KEY = "sys.soul_cert";
 
 // Singleton-State (Modul-Scope, nicht Component-Scope)
+const firstSetupToken      = ref(null);
 const soulContent          = ref("");
 const soulCert             = ref("");
 const isLoaded             = ref(false);
@@ -142,6 +143,11 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (res.ok) {
         const data = await res.json();
         cert = data.cert;
+        // First-Setup: frische Instanz — admin_token einmalig im Response
+        if (data.first_setup && data.admin_token) {
+          firstSetupToken.value = data.admin_token;
+          localStorage.setItem("sys_admin_token", data.admin_token);
+        }
       }
     } catch {
       // Fallback: lokale Generierung (offline / kein Server)
@@ -620,6 +626,7 @@ Mögliche section-Werte (exakt so schreiben):
 
   return {
     // State
+    firstSetupToken,
     soulContent,
     soulCert,
     soulToken,
