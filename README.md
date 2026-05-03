@@ -99,58 +99,35 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 
 ```markdown
 ---
-soul_id: 00000000-0000-0000-0000-0000000000000
+soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
 version: 1
-soul_cert: [automatically generated]
+cert_version: 0
+maturity: 0
+soul_cert: [wird automatisch generiert]
 vault_hash: ""
 soul_growth_chain: []
 soul_chain_anchor: null
 storage_tx: ""
 ---
 
-## Core Identity
+## Kern-Identität
+## Werte & Überzeugungen
+## Ästhetik & Resonanz
+## Sprachmuster & Ausdruck
+## Wiederkehrende Themen & Obsessionen
+## Emotionale Signatur
+## Weltbild
+## Offene Fragen dieser Person
+## Session-Log (komprimiert)
 
-_Who is this person in one sentence?_
-
-## Values & Beliefs
-
-_What motivates them? What do they believe in?_
-
-## Aesthetics & Resonance
-
-_Music, atmospheres, visual stimuli that attract this person._
-
-## Speech Patterns & Expression
-
-_How do they speak? How do they write?_
-
-## Recurring Themes & Obsessions
-
-_What keeps coming back?_
-
-## Emotional Signature
-
-_What is it like to talk to this person?_
-
-## Worldview
-
-_How do they see the world?_
-
-## Unanswered Questions
-
-_What are they still looking for?_
-
-## Session Log (compressed)
-
-...
-
-## Calendar
-
-...
+<!-- AGENT:START -->
+<!-- AGENT:END -->
 ```
+
+Der `<!-- AGENT:START -->` / `<!-- AGENT:END -->` Block ist die **Agent-Sandbox**: nur dieser Bereich wird über `/api/soul/paid-read` an externe Agenten (MCP, WhatsApp-Bot, etc.) ausgeliefert. Der Rest der sys.md verlässt den Server nie in Richtung Dritter.
 
 Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
