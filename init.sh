@@ -146,6 +146,12 @@ if [ ! -f /etc/openresty/nginx.conf ]; then
   info "nginx.conf erstellt."
 else
   info "nginx.conf bereits vorhanden — überspringe Überschreibung."
+  # sites-enabled include: fehlt in der Default-OpenResty-Config → idempotent eintragen
+  if ! grep -q "sites-enabled" /etc/openresty/nginx.conf; then
+    # Vor der letzten Zeile einfügen (schließt den http-Block)
+    sed -i '$i\  include /etc/openresty/sites-enabled/*;' /etc/openresty/nginx.conf
+    info "sites-enabled include zu nginx.conf hinzugefügt."
+  fi
   # Fehlende Zonen idempotent eintragen
   for ZONE_LINE in \
     "limit_req_zone \$binary_remote_addr zone=chat_api:10m rate=2r/s;" \
