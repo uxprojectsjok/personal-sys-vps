@@ -1,27 +1,56 @@
 # Personal SYS VPS
 
-**Protocol, not a product.**
+**Dein Knoten im Internet. Als Mensch.**
 
-SYS defines a portable, user-controlled identity layer for AI systems. The core unit is the **sys.md** — a Markdown file with YAML frontmatter that encodes a personal identity profile. It lives in the user's browser, grows with each session, and serves as authentic context for AI systems.
+Dieses Repository enthält alles, um einen eigenen, privaten SYS-Node auf einem VPS zu betreiben. Ein SYS-Node ist kein Dienst, den jemand für dich betreibt — er läuft auf deinem Server, unter deiner Domain, mit deinen Daten. Du bist Eigentümer, Betreiber und einziger Nutzer.
 
-> **sys.md is a file about the user — not about the AI.** It encodes who you are (values, expertise, relationships, session history) so that AI systems can represent you authentically. This is the inverse of AI agent personality files: instead of defining how an agent speaks, sys.md defines what the agent knows about *you*.
+Der Node ist der Ort, an dem deine **sys.md** lebt: eine persönliche Identitätsdatei, die du in KI-Systeme einspeisen kannst. Sie wächst mit jeder Session, gehört ausschließlich dir und verlässt deinen Server nur, wenn du es aktiv entscheidest.
 
-This repository contains the protocol specification and a reference implementation. The reference implementation is invite-only and serves as an example implementation only. It is not intended as a deployable product. Any compatible implementation can be built independently.
-
-> Think of it like email: the protocol is open, the reference implementation is one example of many possible servers.
+> **Dezentral, selbstgehostet, passwortgeschützt.**
+> Kein Anbieter hat Zugriff. Keine Cloud-Abhängigkeit. Keine Nutzungsbedingungen, die sich ändern können.
 
 ---
 
-## Core Concept
+## Was ist ein SYS-Node?
+
+Ein SYS-Node ist dein persönlicher Knoten im Internet — ähnlich wie eine E-Mail-Adresse, aber für deine Identität als Mensch in einer Welt mit KI.
 
 ```
-sys.md  →  sessionStorage (browser)  →  never leaves without user action
-         →  VPS (encrypted, AES-256-CBC, user-initiated)
-         →  AI context (Anthropic Claude API, transient, user-initiated)
-         →  MCP tools (soul_read / soul_write, authorized per token)
+Du  →  sys.md (deine Identitätsdatei)
+     →  SYS-Node (dein VPS, deine Domain)
+     →  KI-Systeme (Claude, MCP-Tools, WhatsApp-Bot, ...)
+     →  andere SYS-Nodes (Peer-to-Peer, verschlüsselt)
 ```
 
-The sys.md belongs to the user. The operator has no access to encrypted content. Encryption is the default, plaintext is an explicit opt-in.
+Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigentümer — für immer, bis zum bewussten Reset.
+
+### Was der Node macht
+
+- **Speichert** deine sys.md verschlüsselt (AES-256-CBC, Schlüssel nur im Browser)
+- **Authentifiziert** dich via HMAC-SHA256 soul_cert — ohne Cookies, ohne OAuth
+- **Leitet** deine KI-Anfragen weiter (Anthropic Claude, SSE-Streaming)
+- **Verwaltet** deinen Vault — Bilder, Audio, Video, Kontext-Dateien
+- **Vernetzt** dich mit anderen SYS-Nodes (Peer-to-Peer Soul-Verbindungen)
+- **Schützt** den gesamten Zugang mit einem Gate-Passwort
+
+### Was der Node nicht macht
+
+- Kein Multi-User, keine Tenants, keine Rollen
+- Keine Nutzungsanalyse, kein Tracking, kein Analytics
+- Kein eigener Datenbankserver (Flat-File, kein PostgreSQL/Redis)
+- Kein öffentlicher Zugang — der Gate schützt alles hinter einem Passwort
+
+---
+
+## Technischer Stack
+
+**Frontend:** Nuxt 4, statisch gebaut (SSG), läuft vollständig im Browser — kein Node.js-Prozess auf dem Server.
+
+**Backend:** OpenResty (nginx + LuaJIT) als API-Layer. Alle Endpunkte sind Lua-Skripte. Kein Webframework, keine Runtime-Dependencies außer OpenResty.
+
+**Daten:** Flat-Files unter `/var/lib/sys/souls/{soul_id}/` — portierbar, inspizierbar, keine Migration nötig.
+
+**Verschlüsselung:** AES-256-CBC im Browser (WebCrypto API). Der Server sieht nur verschlüsselte Bytes mit Magic-Header `SYSCRYPT01`. Der Schlüssel verlässt den Browser nie.
 
 ---
 
@@ -151,26 +180,98 @@ Das Script fragt interaktiv nach Domain, E-Mail und Anthropic API Key — alles 
 
 | Script | Was es tut |
 |--------|-----------|
+| `bash /opt/sys/recover-password.sh` | **Passwort vergessen** — setzt ein neues Gate-Passwort. Soul-Daten bleiben vollständig erhalten. Benötigt SSH-Zugang zum Server. |
 | `bash /opt/sys/reset.sh` | **Soul entfernen** — löscht alle Soul-Daten, gibt den Node frei für eine neue Registrierung. OpenResty, SSL und alle Konfigurationen bleiben erhalten. |
 | `bash /opt/sys/deinstall.sh` | **Komplett deinstallieren** — entfernt alles was `init.sh` installiert hat. Ubuntu bleibt unberührt. DNS-Eintrag danach manuell beim Provider löschen. |
 
-> `reset.sh` ≠ `deinstall.sh` — Reset: Mieter zieht aus. Deinstall: Haus wird abgerissen.
+> `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
+> Passwort vergessen: Soul bleibt. Reset: Mieter zieht aus. Deinstall: Haus wird abgerissen.
+
+---
+
+## Integrity
+
+Verify your clone matches the official release:
+
+```bash
+node utils/project-hash.mjs
+```
+
+Current release fingerprint: `cce19155c2104bb5d0e11b946e82bc54c22addff96f95e8351a199b58993f9fe`
+
+The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files. Run it after cloning to confirm the code is unmodified.
+
+---
+
+## Protocol Network
+
+SYS ist ein offenes Protokoll. Dieser Node ist eine Implementierung — weitere können unabhängig davon entstehen.
+
+Geplante Protokoll-Knoten (offen für Beiträge):
+
+| Knotentyp | Funktion |
+|-----------|----------|
+| **soul-discover** | Zentraler Verzeichnisdienst — Nodes registrieren sich, Peers finden sich |
+| **soul-relay** | Anonymisierter Nachrichtenrelais zwischen Nodes |
+| **soul-bridge** | Protokoll-Brücke zu anderen Identitätssystemen (DID, ActivityPub) |
+| **soul-archive** | Langzeitspeicher für verschlüsselte Soul-Snapshots |
+
+Wer einen Protokoll-Knoten betreiben möchte, kann das unabhängig tun. Das SYS-Protokoll ist Apache 2.0 lizenziert. Eigene Implementierungen, Knoten und Erweiterungen sind ausdrücklich erwünscht.
+
+---
+
+## On-Chain Anchoring
+
+Alle Souls können ihren Identitäts-Hash auf der Polygon-Blockchain verankern. Dies macht die Identität unveränderlich nachweisbar und unabhängig vom Server.
+
+**Smart Contract:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
+
+```
+Soul-Identitätshash  →  anchor()  →  Polygon-Blockchain
+                                  →  IPFS (Inhalt)
+                                  →  soul_chain_anchor in sys.md (Nachweis)
+```
+
+Das Anchoring ist freiwillig und nutzer-initiiert. Jeder Anker-Vorgang zahlt eine geringe Gebühr (`anchorFee`) direkt an den Smart Contract — on-chain, transparent, unveränderlich einsehbar auf [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
+
+**Für Node-Betreiber:** Der Contract-Code ist öffentlich. Wer einen eigenen SYS-Node betreibt, nutzt automatisch diesen Contract — die Adresse ist im Protokoll fest verankert. Eine eigene Contract-Instanz ist nicht notwendig und würde die Cross-Node-Kompatibilität brechen.
+
+---
+
+## Haftung & rechtliche Einordnung
+
+**Jan-Oliver Karo ist Protokoll-Entwickler, nicht Betreiber.**
+
+Jede Person, die dieses Repository klont und `init.sh` ausführt, betreibt ihren eigenen, vollständig unabhängigen Server — unter ihrer eigenen Domain, auf ihrer eigenen Hardware, mit ihren eigenen Daten. Jan-Oliver Karo hat keinen Zugriff auf diese Server, keine Kenntnis über die gespeicherten Daten und keine Möglichkeit, darauf einzuwirken.
+
+Dies entspricht der Rolle eines Software-Autors, nicht eines Diensteanbieters:
+
+- **Kein Dienst:** Jan-Oliver Karo stellt keine Hosting-Infrastruktur, keine Konten und keine verwalteten Server bereit.
+- **Keine Datenhaltung:** Die Daten der Nutzerinnen und Nutzer liegen ausschließlich auf deren eigenen Servern. Jan-Oliver Karo hat keinen Zugriff darauf.
+- **Kein Betreiber:** Jede Node-Betreiberin und jeder Node-Betreiber ist im Sinne des TTDSG, der DSGVO und des TMG selbst Verantwortlicher für ihren respektive seinen Knoten.
+- **Autonomer Smart Contract:** Der Anchoring-Contract läuft autonom auf der Polygon-Blockchain. Jan-Oliver Karo ist der Ersteller (Deployer) des Contracts, kein laufender Betreiber. On-Chain-Transaktionen sind unwiderruflich und liegen vollständig in der Verantwortung der auslösenden Nutzerin bzw. des auslösenden Nutzers.
+
+Die Nutzung dieser Software erfolgt auf eigene Verantwortung. Die Apache 2.0 Lizenz schließt jede Haftung ausdrücklich aus.
+
+> Für eigene Implementierungen, Fork-Projekte und abgeleitete Protokoll-Knoten gilt das gleiche Prinzip: Wer betreibt, haftet. Wer nur Code schreibt und veröffentlicht, nicht.
 
 ---
 
 ## Status
 
-- **Concept project** — living proof-of-concept, not a commercial product
-- **Reference implementation** — invite-only, experimental, no warranty
-- **Protocol** — Apache 2.0, compatible implementations welcome
+- **Open protocol** — Apache 2.0, compatible implementations welcome
+- **Reference implementation** — experimental, betrieben von der Community
+- **Smart contract** — live auf Polygon Mainnet, auditierbar auf Polygonscan
 
 ---
 
 ## Disclaimer
 
-This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
 
-The authors and operators are not liable for any damages, data loss, downtime, security incidents, or other consequences arising from the use or misuse of this software. Use at your own risk.
+The author (Jan-Oliver Karo) is the developer of this protocol and software. He is not the operator of any node, server, or service built with this software. Each self-hosted node is operated independently by its respective owner. The author has no access to any data stored on self-hosted nodes.
+
+On-chain transactions via the anchoring smart contract are irreversible and executed solely by the user's own wallet. The contract operates autonomously on the Polygon blockchain. The author's role is that of the contract deployer, not an ongoing operator.
 
 ---
 
