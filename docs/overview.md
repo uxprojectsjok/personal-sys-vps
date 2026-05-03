@@ -98,19 +98,15 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 
 ---
 
-## Reference Implementation
+## Kompatible Implementierungen
 
-The reference implementation runs as a closed beta at the operator's domain.
-It is not a deployable product. It demonstrates that the protocol is viable
-at real-world scale.
+Jeder kann einen kompatiblen SYS-Server bauen. Kompatible Implementierungen:
+- MÜSSEN `Authorization: Bearer {soul_id}.{cert}` auf geschützten Endpunkten akzeptieren
+- MÜSSEN sys.md unter `{base}/{soul_id}/sys.md` speichern
+- MÜSSEN den soul_cert-Ableitungsalgorithmus implementieren (siehe `spec/auth.md`)
+- KÖNNEN MCP, Webhook, Vault oder Blockchain-Features unabhängig implementieren
 
-Anyone MAY build a compatible SYS server. Compatible implementations:
-- MUST accept `Authorization: Bearer {soul_id}.{cert}` on protected endpoints
-- MUST store sys.md at `{base}/{soul_id}/sys.md`
-- MUST implement the soul_cert derivation algorithm (see `spec/auth.md`)
-- MAY implement MCP, webhook, vault, or blockchain features independently
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for self-hosting requirements.
+Siehe [CONTRIBUTING.md](../CONTRIBUTING.md) für Details.
 
 ---
 

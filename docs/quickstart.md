@@ -1,8 +1,7 @@
 # Quickstart
 
-> **Reference implementation is invite-only.**
-> This guide assumes you have access to a running SYS instance.
-> For self-hosting, see [docs/PRODUCTION_SETUP.md](PRODUCTION_SETUP.md).
+> Diese Anleitung setzt einen laufenden SYS-Node voraus.
+> Noch keinen? → [ONBOARDING.md](../ONBOARDING.md)
 
 ---
 
