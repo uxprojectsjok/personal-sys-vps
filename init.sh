@@ -316,6 +316,19 @@ Environment="API_SIGNING_KEY=${API_SIGNING_KEY}"
 EOF
 systemctl daemon-reload
 
+# Prüfen ob der Override korrekt geschrieben wurde und die Keys enthält
+OVERRIDE_FILE="/etc/systemd/system/openresty.service.d/env.conf"
+if [ ! -f "$OVERRIDE_FILE" ]; then
+  error "systemd override nicht gefunden: $OVERRIDE_FILE — Abbruch."
+fi
+if ! grep -q "SOUL_MASTER_KEY=sys_" "$OVERRIDE_FILE"; then
+  error "SOUL_MASTER_KEY fehlt oder ungültig in $OVERRIDE_FILE — Abbruch."
+fi
+if ! grep -q "ANTHROPIC_API_KEY=sk-ant-" "$OVERRIDE_FILE"; then
+  error "ANTHROPIC_API_KEY fehlt oder ungültig in $OVERRIDE_FILE — Abbruch."
+fi
+info "systemd override verifiziert ✓"
+
 # ── 13. Frontend build ────────────────────────────────────────────────────────
 info "Building frontend (npm install + generate)..."
 cd "$SCRIPT_DIR"
