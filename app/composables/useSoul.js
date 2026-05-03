@@ -182,13 +182,15 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     if (!soulId) return;
     const certVersionMatch = soulContent.value.match(/cert_version:\s*(\d+)/);
     const certVersion      = certVersionMatch ? parseInt(certVersionMatch[1], 10) : 0;
+    const certMatch        = soulContent.value.match(/soul_cert:\s*([a-f0-9]{20,})/i);
+    const currentCert      = certMatch?.[1]?.trim() || soulCert.value;
 
     let cert;
     try {
       const res = await fetch("/api/soul-cert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ soul_id: soulId, cert_version: certVersion })
+        body: JSON.stringify({ soul_id: soulId, cert_version: certVersion, proof: currentCert })
       });
       if (res.ok) {
         const data = await res.json();
@@ -682,7 +684,7 @@ async function resetCertToV0() {
     const r0 = await fetch("/api/soul-cert", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ soul_id: soulId, cert_version: 0 }),
+      body: JSON.stringify({ soul_id: soulId, cert_version: 0, proof: currentCert }),
     });
     if (!r0.ok) return false;
     const { cert: cert0 } = await r0.json();
