@@ -96,7 +96,12 @@ info "Removing OpenResty..."
 apt-get remove --purge -y openresty 2>/dev/null || true
 
 info "Removing Certbot..."
-apt-get remove --purge -y certbot 2>/dev/null || true
+if $DELETE_CERT; then
+  apt-get remove --purge -y certbot 2>/dev/null || true
+else
+  # Cert behalten → ohne --purge, sonst fragt certbot interaktiv nach /etc/letsencrypt
+  apt-get remove -y certbot 2>/dev/null || true
+fi
 
 info "Removing Node.js..."
 apt-get remove --purge -y nodejs 2>/dev/null || true
