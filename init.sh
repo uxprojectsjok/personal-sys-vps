@@ -166,17 +166,39 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
 openresty -t && systemctl restart openresty
 
 # ── 10. SSL certificate ───────────────────────────────────────────────────────
-info "Requesting SSL certificate for $DOMAIN..."
-certbot certonly --webroot \
-  -w /var/www/"$DOMAIN" \
-  -d "$DOMAIN" \
-  --email "$EMAIL" \
-  --agree-tos \
-  --non-interactive
+echo ""
+echo -e "${YELLOW}  Liegt bereits ein SSL-Zertifikat für $DOMAIN vor?${NC}"
+echo -e "${YELLOW}  (z.B. Wildcard *.$(echo "$DOMAIN" | cut -d. -f2-) oder eigenes Zertifikat)${NC}"
+read -p "  Zertifikat bereits vorhanden? (j/n): " SSL_EXISTS
+
+if [[ "$SSL_EXISTS" =~ ^[jJ]$ ]]; then
+  echo ""
+  echo -e "${YELLOW}  Pfad zur fullchain.pem (Zertifikat + Chain):${NC}"
+  read -p "  fullchain.pem: " SSL_CERT
+  echo -e "${YELLOW}  Pfad zur privkey.pem (privater Schlüssel):${NC}"
+  read -p "  privkey.pem:   " SSL_KEY
+
+  [[ ! -f "$SSL_CERT" ]] && error "Zertifikat nicht gefunden: $SSL_CERT"
+  [[ ! -f "$SSL_KEY"  ]] && error "Schlüssel nicht gefunden: $SSL_KEY"
+  info "Vorhandenes Zertifikat wird verwendet."
+else
+  info "Requesting SSL certificate for $DOMAIN..."
+  certbot certonly --webroot \
+    -w /var/www/"$DOMAIN" \
+    -d "$DOMAIN" \
+    --email "$EMAIL" \
+    --agree-tos \
+    --non-interactive
+  SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+  SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+fi
 
 # ── 11. nginx config — Phase 2: HTTPS ─────────────────────────────────────────
 info "Activating HTTPS vhost (Phase 2)..."
-sed "s/{{DOMAIN}}/$DOMAIN/g" \
+sed \
+  -e "s|{{DOMAIN}}|$DOMAIN|g" \
+  -e "s|{{SSL_CERT}}|$SSL_CERT|g" \
+  -e "s|{{SSL_KEY}}|$SSL_KEY|g" \
   "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
   > /etc/openresty/sites-enabled/"$DOMAIN"
 
