@@ -1319,10 +1319,11 @@ async function handleDeleteVault() {
     });
     if (!res.ok) throw new Error(await res.text());
     confirmDeleteOpen.value = false;
-    // Vault + Node-Lock gelöscht → Soul lokal leeren und zur Startseite
     resetContext();
     clearSoul();
-    await navigateTo("/");
+    // Gate-Cookie löschen + harter Reload → Node ist frei, User muss neu einziehen
+    document.cookie = "sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax";
+    window.location.href = "/";
   } catch (e) {
     showError("Fehler beim Löschen: " + e.message);
   } finally {
