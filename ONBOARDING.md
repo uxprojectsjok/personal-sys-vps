@@ -62,14 +62,16 @@ Das Script fragt dich nach:
 - Deiner Domain → z.B. `soul.meinname.de`
 - Deiner E-Mail → für das SSL-Zertifikat
 - Deinem Anthropic API Key → beginnt mit `sk-ant-...`
+- Einem WalletConnect Project ID → optional, für Blockchain-Anchoring
+- Einem Gate-Passwort → schützt die gesamte Oberfläche *(Eingabe wird nicht angezeigt — das ist normal)*
 
 Alles andere erledigt das Script automatisch:
 
 - OpenResty installieren & konfigurieren
-- SSL-Zertifikat beantragen
-- Swap einrichten
+- SSL-Zertifikat beantragen (Let's Encrypt) — vorhandene Certs werden wiederverwendet
+- Swap einrichten (2 GB, nötig für den Frontend-Build)
 - Frontend bauen & deployen
-- MCP-Server einrichten
+- Umgebungsvariablen für OpenResty einrichten
 
 ---
 
@@ -90,6 +92,38 @@ Vergib ein neues, sicheres Root-Passwort.
 Öffne `https://DEINE-DOMAIN` im Browser — dein Soul Node ist bereit.
 
 > Dieser Node akzeptiert genau eine Soul. Die erste Person die sich registriert ist der Eigentümer.
+
+---
+
+## Was du mit deinem Node machen kannst
+
+**Identität**
+- sys.md anlegen und pflegen — deine persönliche KI-Identitätsdatei
+- Soul-Cert generieren für zustandslose Authentifizierung ohne Passwort-Wiederholung
+- Gate-Passwort schützt die gesamte Oberfläche vor fremdem Zugriff
+
+**KI**
+- Chat mit Claude direkt auf deinem Node (Anthropic API, dein Key, deine Kosten)
+- Claude liest deine sys.md als Kontext — Sessions bauen aufeinander auf
+- Vision: Kamerabild hochladen → Claude analysiert und beschreibt
+- Text-to-Speech via ElevenLabs (eigene Stimme optional klonbar)
+- KI-Bildgenerierung via WaveSpeed AI
+- Soul-Update: Claude schreibt strukturiert in deine sys.md-Abschnitte
+
+**Vault**
+- Lokaler Vault: Dateien bleiben auf deinem Gerät (File System Access API)
+- Server-Vault: Bilder, Audio, Video, Kontext-Dateien auf deinem VPS speichern
+- Verschlüsselung optional (AES-256-CBC, Schlüssel bleibt im Browser)
+
+**Vernetzung**
+- Soul-Verbindungen: andere SYS-Nodes als Peers verbinden
+- MCP-Server: Claude Desktop und andere KI-Clients verbinden sich per OAuth 2.0
+- WhatsApp-Bot mit deinem Soul als Kontext (Twilio Serverless, optional)
+- Browser Extension für automatische Authentifizierung (Chrome MV3)
+
+**Wachstum**
+- Growth Chain: jede Session kryptografisch signiert und verkettet
+- Blockchain-Anchoring auf Polygon (optional, nutzer-initiiert, eigenes Wallet)
 
 ---
 

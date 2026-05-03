@@ -39,6 +39,7 @@ read -p "  WalletConnect Project ID (optional):      " WC_PROJECT_ID
 echo ""
 echo -e "${YELLOW}  Zugangspasswort für den Gate-Schutz deines Nodes.${NC}"
 echo -e "${YELLOW}  Mindestens 8 Zeichen. Dieses Passwort schützt die gesamte Oberfläche.${NC}"
+echo -e "${YELLOW}  (Eingabe wird aus Sicherheitsgründen nicht angezeigt — das ist normal.)${NC}"
 while true; do
   read -s -p "  Zugangspasswort:             " ACCESS_PWD; echo ""
   read -s -p "  Zugangspasswort bestätigen: " ACCESS_PWD2; echo ""
