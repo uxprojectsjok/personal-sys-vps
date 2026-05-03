@@ -252,6 +252,14 @@ const connectingLocal = ref(false)
 
 async function connectLocalVault() {
   if (!props.soulId) return
+  const ok = await ask({
+    title:       'Lokalen Vault verbinden',
+    message:     'Der Browser erhält dauerhaften Lese- und Schreibzugriff auf den gewählten Ordner. Du kannst die Verbindung jederzeit trennen.',
+    confirmText: 'Ordner wählen',
+    cancelText:  'Abbrechen',
+    danger:      false,
+  })
+  if (!ok) return
   connectingLocal.value = true
   await connectVault(props.soulId)
   connectingLocal.value = false
