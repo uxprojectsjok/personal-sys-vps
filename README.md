@@ -38,7 +38,7 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 - Kein Multi-User, keine Tenants, keine Rollen
 - Keine Nutzungsanalyse, kein Tracking, kein Analytics
 - Kein eigener Datenbankserver (Flat-File, kein PostgreSQL/Redis)
-- Kein öffentlicher Zugang — der Gate schützt alles hinter einem Passwort
+- Kein öffentlicher Zugang — das Gate schützt alles hinter einem Passwort
 
 ---
 
@@ -54,7 +54,7 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 
 ---
 
-## Repository Structure
+## Repository-Struktur
 
 ```
 ├── init.sh                  Setup-Script — zero to running in one command
@@ -89,8 +89,7 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 ├── utils/
 │   ├── killMetas.mjs        CSP-Meta-Tags aus dem Build entfernen
 │   └── project-hash.mjs     SHA-256 Fingerprint aller Source-Dateien
-├── docs/                    Protokoll-Dokumentation, API-Referenz, Specs
-└── test/                    sys.md Test-Fixtures
+└── docs/                    Protokoll-Dokumentation, API-Referenz, Specs
 ```
 
 ---
@@ -129,36 +128,34 @@ storage_tx: ""
 
 Der `<!-- AGENT:START -->` / `<!-- AGENT:END -->` Block ist die **Agent-Sandbox**: nur dieser Bereich wird über `/api/soul/paid-read` an externe Agenten (MCP, WhatsApp-Bot, etc.) ausgeliefert. Der Rest der sys.md verlässt den Server nie in Richtung Dritter.
 
-Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
+Vollständige Spezifikation: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
 ---
 
-## Authentication
+## Authentifizierung
 
-All protected endpoints use HMAC-SHA256 soul_cert tokens — stateless, no database:
+Alle geschützten Endpunkte verwenden HMAC-SHA256 soul_cert Tokens — zustandslos, ohne Datenbank:
 
 ```
-cert   = HMAC-SHA256(SOUL_MASTER_KEY, soul_id).hex()[:32]
+cert   = HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version).hex()[:32]
 bearer = soul_id + "." + soul_cert
 ```
 
 ---
 
-## MCP Integration
+## MCP-Integration
 
-`soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. Claude, or any MCP-compatible AI client, can connect and access sys.md and vault files with granular permissions.
+`soul-mcp/` implementiert das [Model Context Protocol](https://modelcontextprotocol.io) mit OAuth 2.0 + PKCE. Claude und andere MCP-kompatible KI-Clients können sich verbinden und mit granularen Berechtigungen auf sys.md und Vault-Dateien zugreifen.
 
-Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_list`
+Wichtige Tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_list`
 
 ---
 
-## Self-Hosting
+## Installation
 
-The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
+Der Produktions-Stack verwendet OpenResty (nginx + LuaJIT) als API-Layer — kein Node.js in Production.
 
 **Vollständige Anleitung:** [ONBOARDING.md](ONBOARDING.md)
-
-### Kurzübersicht
 
 > **Hinweis:** Du brauchst eine Domain mit A-Eintrag auf die IP deines Servers — ohne DNS-Eintrag schlägt die SSL-Zertifizierung fehl.
 
@@ -184,96 +181,80 @@ Das Script fragt interaktiv nach Domain, E-Mail und Anthropic API Key — alles 
 
 ---
 
-## Integrity
+## Integrität
 
-Verify your clone matches the official release:
+Verifiziere deinen Clone gegen den offiziellen Stand:
 
 ```bash
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: `d78698f092ba3dc86fe06e6054f452a92cb3c21ab59747075d5a135af695393b`
+Aktueller Release-Fingerprint: `d78698f092ba3dc86fe06e6054f452a92cb3c21ab59747075d5a135af695393b`
 
-The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files. Run it after cloning to confirm the code is unmodified.
+Der Hash umfasst alle Source-Dateien (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — ohne `node_modules`, Build-Output, Secrets und Lock-Files.
 
 ---
 
-## Protocol Network
+## Protokoll-Netzwerk
 
-SYS ist ein offenes Protokoll. Dieser Node ist eine Implementierung — weitere können unabhängig davon entstehen.
+SYS ist ein offenes Protokoll. Dieser Node ist eine Implementierung — weitere können unabhängig entstehen.
 
 Geplante Protokoll-Knoten (offen für Beiträge):
 
 | Knotentyp | Funktion |
 |-----------|----------|
-| **soul-discover** | Zentraler Verzeichnisdienst — Nodes registrieren sich, Peers finden sich |
-| **soul-relay** | Anonymisierter Nachrichtenrelais zwischen Nodes |
-| **soul-bridge** | Protokoll-Brücke zu anderen Identitätssystemen (DID, ActivityPub) |
+| **soul-discover** | Verzeichnisdienst — Nodes registrieren sich, Peers finden sich |
+| **soul-relay** | Nachrichtenrelais zwischen Nodes |
+| **soul-bridge** | Brücke zu anderen Identitätssystemen (DID, ActivityPub) |
 | **soul-archive** | Langzeitspeicher für verschlüsselte Soul-Snapshots |
 
-Wer einen Protokoll-Knoten betreiben möchte, kann das unabhängig tun. Das SYS-Protokoll ist Apache 2.0 lizenziert. Eigene Implementierungen, Knoten und Erweiterungen sind ausdrücklich erwünscht.
+Das SYS-Protokoll ist Apache 2.0 lizenziert. Eigene Implementierungen, Knoten und Erweiterungen sind ausdrücklich erwünscht.
 
 ---
 
 ## On-Chain Anchoring
 
-Alle Souls können ihren Identitäts-Hash auf der Polygon-Blockchain verankern. Dies macht die Identität unveränderlich nachweisbar und unabhängig vom Server.
+Souls können ihren Identitäts-Hash auf der Polygon-Blockchain verankern.
 
 **Smart Contract:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
 
 ```
 Soul-Identitätshash  →  anchor()  →  Polygon-Blockchain
                                   →  IPFS (Inhalt)
-                                  →  soul_chain_anchor in sys.md (Nachweis)
+                                  →  soul_chain_anchor in sys.md
 ```
 
-Das Anchoring ist freiwillig und nutzer-initiiert. Jeder Anker-Vorgang zahlt eine geringe Gebühr (`anchorFee`) direkt an den Smart Contract — on-chain, transparent, unveränderlich einsehbar auf [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
+Das Anchoring ist freiwillig und nutzer-initiiert. Jeder Anker-Vorgang zahlt eine `anchorFee` direkt an den Smart Contract — on-chain, transparent, einsehbar auf [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
 
-**Für Node-Betreiber:** Der Contract-Code ist öffentlich. Wer einen eigenen SYS-Node betreibt, nutzt automatisch diesen Contract — die Adresse ist im Protokoll fest verankert. Eine eigene Contract-Instanz ist nicht notwendig und würde die Cross-Node-Kompatibilität brechen.
+Wer einen eigenen SYS-Node betreibt, benötigt eine eigene WalletConnect Project ID (kostenlos: cloud.walletconnect.com). Die Contract-Adresse ist im Protokoll fest verankert — eine eigene Contract-Instanz würde die Cross-Node-Kompatibilität brechen.
 
 ---
 
-## Haftung & rechtliche Einordnung
+## Rechtliches
 
-**Jan-Oliver Karo ist Protokoll-Entwickler, nicht Betreiber.**
+Ich bin der Autor dieser Software, kein Betreiber.
 
-Jede Person, die dieses Repository klont und `init.sh` ausführt, betreibt ihren eigenen, vollständig unabhängigen Server — unter ihrer eigenen Domain, auf ihrer eigenen Hardware, mit ihren eigenen Daten. Jan-Oliver Karo hat keinen Zugriff auf diese Server, keine Kenntnis über die gespeicherten Daten und keine Möglichkeit, darauf einzuwirken.
+Wer dieses Repository klont und `init.sh` ausführt, betreibt einen eigenen, vollständig unabhängigen Server — unter eigener Domain, auf eigener Hardware, mit eigenen Daten. Ich habe keinen Zugriff auf diese Server und keine Kenntnis über die dort gespeicherten Daten.
 
-Dies entspricht der Rolle eines Software-Autors, nicht eines Diensteanbieters:
+- Ich stelle keine Hosting-Infrastruktur, keine Konten und keine verwalteten Server bereit.
+- Die Daten der Nutzerinnen und Nutzer liegen ausschließlich auf deren eigenen Servern.
+- Der Anchoring-Contract läuft autonom auf der Polygon-Blockchain. On-Chain-Transaktionen liegen vollständig in der Verantwortung der auslösenden Person.
 
-- **Kein Dienst:** Jan-Oliver Karo stellt keine Hosting-Infrastruktur, keine Konten und keine verwalteten Server bereit.
-- **Keine Datenhaltung:** Die Daten der Nutzerinnen und Nutzer liegen ausschließlich auf deren eigenen Servern. Jan-Oliver Karo hat keinen Zugriff darauf.
-- **Kein Betreiber:** Jede Node-Betreiberin und jeder Node-Betreiber ist im Sinne des TTDSG, der DSGVO und des TMG selbst Verantwortlicher für ihren respektive seinen Knoten.
-- **Autonomer Smart Contract:** Der Anchoring-Contract läuft autonom auf der Polygon-Blockchain. Jan-Oliver Karo ist der Ersteller (Deployer) des Contracts, kein laufender Betreiber. On-Chain-Transaktionen sind unwiderruflich und liegen vollständig in der Verantwortung der auslösenden Nutzerin bzw. des auslösenden Nutzers.
-
-Die Nutzung dieser Software erfolgt auf eigene Verantwortung. Die Apache 2.0 Lizenz schließt jede Haftung ausdrücklich aus.
-
-> Für eigene Implementierungen, Fork-Projekte und abgeleitete Protokoll-Knoten gilt das gleiche Prinzip: Wer betreibt, haftet. Wer nur Code schreibt und veröffentlicht, nicht.
+Die Nutzung dieser Software erfolgt auf eigene Verantwortung. Die Apache 2.0 Lizenz schließt Gewährleistung und Haftung aus.
 
 ---
 
 ## Status
 
-- **Open protocol** — Apache 2.0, compatible implementations welcome
-- **Reference implementation** — experimental, betrieben von der Community
-- **Smart contract** — live auf Polygon Mainnet, auditierbar auf Polygonscan
+- **Offenes Protokoll** — Apache 2.0, kompatible Implementierungen willkommen
+- **Smart Contract** — live auf Polygon Mainnet, einsehbar auf Polygonscan
 
 ---
 
-## Disclaimer
+## Lizenz
 
-This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
-
-The author (Jan-Oliver Karo) is the developer of this protocol and software. He is not the operator of any node, server, or service built with this software. Each self-hosted node is operated independently by its respective owner. The author has no access to any data stored on self-hosted nodes.
-
-On-chain transactions via the anchoring smart contract are irreversible and executed solely by the user's own wallet. The contract operates autonomously on the Polygon blockchain. The author's role is that of the contract deployer, not an ongoing operator.
-
----
-
-## License
-
-Apache License 2.0 — see [LICENSE](LICENSE)
+Apache License 2.0 — siehe [LICENSE](LICENSE)
 
 Copyright © 2026 Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com), Marburg, Germany
 
-"SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo. See [NOTICE](NOTICE) for trademark and attribution requirements.
+„SaveYourSoul" und „SYS" sind Marken von Jan-Oliver Karo. Siehe [NOTICE](NOTICE) für Marken- und Attributionsanforderungen.
