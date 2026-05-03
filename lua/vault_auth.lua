@@ -55,6 +55,14 @@ local function check_soul_cert(token)
       ngx.log(ngx.WARN, "[vault_auth] Ungültiges Cert soul_id=", soul_id)
       return nil
     end
+
+    -- Single-Soul-Lock: nur der registrierte Node-Inhaber hat Zugriff
+    local node_soul_id = cfg.get_node_soul_id()
+    if node_soul_id and node_soul_id ~= soul_id then
+      ngx.log(ngx.WARN, "[vault_auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
+      return nil
+    end
+
     ngx.ctx.soul_id = soul_id
   end
 

@@ -91,6 +91,20 @@ if not connection then
   return
 end
 
+-- Remote-Soul: Browser soll direkt zur Peer-Domain fetchen
+if type(connection.domain) == "string" and connection.domain ~= "" then
+  local base = connection.domain .. "/api/vault/public/" .. target_id
+  local url  = req_file and (base .. "/" .. req_file) or base
+  ngx.status = 200
+  ngx.say(cjson.encode({
+    external  = true,
+    domain    = connection.domain,
+    soul_id   = target_id,
+    url       = url,
+  }))
+  return
+end
+
 -- ── Public-Vault-Config der Ziel-Soul laden ───────────────────────────────────
 
 local pub_cfg_path = SOULS_DIR .. target_id .. "/vault_public/config.json"

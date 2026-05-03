@@ -9,8 +9,9 @@
 local cjson_safe = require("cjson.safe")
 local M = {}
 
-local MASTER_PATH = "/var/lib/sys/config/master.json"
-local CACHE_TTL   = 60  -- Sekunden
+local MASTER_PATH     = "/var/lib/sys/config/master.json"
+local MASTER_DIR_BASE = "/var/lib/sys/config/"
+local CACHE_TTL       = 60  -- Sekunden
 
 -- ── Datei → Lua-Tabelle ───────────────────────────────────────────────────────
 local function read_json_file(path)
@@ -23,30 +24,61 @@ local function read_json_file(path)
   return nil
 end
 
--- ── master.json lesen (mit ngx.shared-Cache) ─────────────────────────────────
+-- ── master.json lesen (domain-aware, mit ngx.shared-Cache) ───────────────────
+-- Sucht erst /var/lib/sys/config/{host}/master.json, Fallback auf globale Datei.
+-- Ermöglicht mehrere Domains auf einer OpenResty-Instanz mit isolierten Keys.
 local function read_master()
+  local host  = (ngx.var and ngx.var.host) or ""
+  local ckey  = "cfg:master:" .. host
   local cache = ngx.shared.verify_cache
+
   if cache then
-    local raw = cache:get("cfg:master")
+    local raw = cache:get(ckey)
     if raw then
       local ok, data = pcall(cjson_safe.decode, raw)
       if ok and type(data) == "table" then return data end
     end
   end
 
-  local data = read_json_file(MASTER_PATH)
+  -- Domain-spezifischer Pfad zuerst (für parallele VPS-Domains)
+  local data
+  if host ~= "" then
+    data = read_json_file(MASTER_DIR_BASE .. host .. "/master.json")
+  end
+  -- Globaler Fallback
+  if not data then
+    data = read_json_file(MASTER_PATH)
+  end
+
   if data and cache then
-    local enc = pcall(function()
-      cache:set("cfg:master", cjson_safe.encode(data), CACHE_TTL)
-    end)
+    pcall(function() cache:set(ckey, cjson_safe.encode(data), CACHE_TTL) end)
   end
   return data
 end
 
+-- ── Korrekten master.json-Pfad zurückgeben (domain-aware) ────────────────────
+-- Lua-Skripte die master.json schreiben, verwenden diesen Pfad statt einem
+-- hardcodierten globalen Pfad. Gibt domain-spezifischen Pfad zurück wenn
+-- die Datei dort existiert, sonst globalen Fallback.
+function M.get_master_path()
+  local host = (ngx.var and ngx.var.host) or ""
+  if host ~= "" then
+    local domain_path = MASTER_DIR_BASE .. host .. "/master.json"
+    local f = io.open(domain_path, "r")
+    if f then f:close(); return domain_path end
+  end
+  return MASTER_PATH
+end
+
 -- ── Cache nach Schreibzugriff invalidieren ────────────────────────────────────
 function M.invalidate_master_cache()
+  local host  = (ngx.var and ngx.var.host) or ""
   local cache = ngx.shared.verify_cache
-  if cache then cache:delete("cfg:master") end
+  if cache then
+    cache:delete("cfg:master:" .. host)
+    cache:delete("cfg:master:")   -- globaler Fallback-Key
+    cache:delete("cfg:master")    -- Kompatibilität mit alten Keys
+  end
 end
 
 -- ── soul config.json lesen ────────────────────────────────────────────────────
@@ -139,6 +171,15 @@ function M.soul_has_own_key(soul_id)
   local sc = read_soul_config(soul_id)
   if not sc then return false end
   return type(sc.anthropic_key) == "string" and sc.anthropic_key:sub(1, 7) == "sk-ant-"
+end
+
+-- ── Registrierte Node-Soul-ID lesen ──────────────────────────────────────
+function M.get_node_soul_id()
+  local m = read_master()
+  if not m then return nil end
+  local id = m.node_soul_id
+  if type(id) == "string" and id ~= "" then return id end
+  return nil
 end
 
 return M

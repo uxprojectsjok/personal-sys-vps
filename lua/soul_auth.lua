@@ -25,22 +25,30 @@ local hmac         = require("hmac_helper")
 local cert_version = hmac.read_cert_version(soul_id)
 
 -- 1. Aktuellen Key prüfen
-if hmac.cert_for_soul(master_key, soul_id, cert_version) == cert then
-  ngx.ctx.soul_id = soul_id
-  ngx.req.clear_header("Authorization")
-  return
-end
+local matched = hmac.cert_for_soul(master_key, soul_id, cert_version) == cert
 
 -- 2. Vorherigen Key prüfen (Grace-Period nach Rotation)
-local prev_key = cfg.get_master_key_prev()
-if prev_key and prev_key ~= "" then
-  if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert then
-    ngx.log(ngx.INFO, "[sys/auth] Grace-Period Cert akzeptiert soul_id=", soul_id)
-    ngx.ctx.soul_id = soul_id
-    ngx.req.clear_header("Authorization")
-    return
+if not matched then
+  local prev_key = cfg.get_master_key_prev()
+  if prev_key and prev_key ~= "" then
+    if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert then
+      ngx.log(ngx.INFO, "[sys/auth] Grace-Period Cert akzeptiert soul_id=", soul_id)
+      matched = true
+    end
   end
 end
 
-ngx.log(ngx.WARN, "[sys/auth] Ungültiges Cert soul_id=", soul_id)
-return ngx.exit(401)
+if not matched then
+  ngx.log(ngx.WARN, "[sys/auth] Ungültiges Cert soul_id=", soul_id)
+  return ngx.exit(401)
+end
+
+-- 3. Single-Soul-Lock: nur der registrierte Node-Inhaber darf sich authentifizieren
+local node_soul_id = cfg.get_node_soul_id()
+if node_soul_id and node_soul_id ~= soul_id then
+  ngx.log(ngx.WARN, "[sys/auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
+  return ngx.exit(403)
+end
+
+ngx.ctx.soul_id = soul_id
+ngx.req.clear_header("Authorization")

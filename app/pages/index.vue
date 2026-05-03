@@ -123,14 +123,6 @@
             </div>
           </section>
         </div>
-        <footer class="dash-foot">
-          <span class="dash-copy">© [Jahr] · [Ihr Name]</span>
-          <nav class="dash-links">
-            <NuxtLink to="/datenschutz">Datenschutz</NuxtLink>
-            <NuxtLink to="/impressum">Impressum</NuxtLink>
-            <NuxtLink to="/lizenz">Lizenz</NuxtLink>
-          </nav>
-        </footer>
       </div>
     </template>
 

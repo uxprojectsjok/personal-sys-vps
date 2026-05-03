@@ -247,13 +247,6 @@
 
         </div>
 
-        <!-- Footer Links -->
-        <div class="border-t border-[var(--sys-border)] px-5 py-3 flex flex-wrap justify-center gap-x-4 gap-y-1">
-          <NuxtLink to="/impressum" @click="$emit('close')" class="sys-link text-xs text-white/35 hover:text-white/60 transition-colors tracking-[0.08em]">Impressum</NuxtLink>
-          <NuxtLink to="/datenschutz" @click="$emit('close')" class="sys-link text-xs text-white/35 hover:text-white/60 transition-colors tracking-[0.08em]">Datenschutz</NuxtLink>
-          <NuxtLink to="/lizenz" @click="$emit('close')" class="sys-link text-xs text-white/35 hover:text-white/60 transition-colors tracking-[0.08em]">Lizenz</NuxtLink>
-          <button @click="$emit('close'); $emit('openFaq')" class="sys-link text-xs text-white/35 hover:text-white/60 transition-colors tracking-[0.08em]">FAQ</button>
-        </div>
       </div>
     </Transition>
   </Teleport>

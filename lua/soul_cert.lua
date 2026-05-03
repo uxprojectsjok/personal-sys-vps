@@ -10,10 +10,8 @@ local cjson      = require("cjson.safe")
 local cfg        = require("config_reader")
 local master_key = cfg.get_master_key()
 
-local MASTER_PATH = "/var/lib/sys/config/master.json"
-
 local function read_master()
-  local f = io.open(MASTER_PATH, "r")
+  local f = io.open(cfg.get_master_path(), "r")
   if not f then return nil end
   local raw = f:read("*a"); f:close()
   local ok, data = pcall(cjson.decode, raw or "")
@@ -122,11 +120,11 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
   if not node_soul_id or node_soul_id == "" then
     master_data.node_soul_id = soul_id
     os.execute("mkdir -p /var/lib/sys/config")
-    local lf = io.open(MASTER_PATH, "w")
+    local lf = io.open(cfg.get_master_path(), "w")
     if lf then
       lf:write(cjson.encode(master_data)); lf:close()
-      os.execute("chmod 600 " .. MASTER_PATH)
-      os.execute("chown www-data:www-data " .. MASTER_PATH .. " 2>/dev/null || true")
+      os.execute("chmod 600 " .. cfg.get_master_path())
+      os.execute("chown www-data:www-data " .. cfg.get_master_path() .. " 2>/dev/null || true")
       cfg.invalidate_master_cache()
     end
   end
@@ -146,11 +144,11 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
         local existing = master or {}
         existing.admin_token = first_setup_token
         os.execute("mkdir -p /var/lib/sys/config")
-        local wf = io.open(MASTER_PATH, "w")
+        local wf = io.open(cfg.get_master_path(), "w")
         if wf then
           wf:write(cjson.encode(existing)); wf:close()
-          os.execute("chmod 600 " .. MASTER_PATH)
-          os.execute("chown www-data:www-data " .. MASTER_PATH .. " 2>/dev/null || true")
+          os.execute("chmod 600 " .. cfg.get_master_path())
+          os.execute("chown www-data:www-data " .. cfg.get_master_path() .. " 2>/dev/null || true")
           cfg.invalidate_master_cache()
         end
       end

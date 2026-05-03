@@ -1,9 +1,5 @@
 # /etc/openresty/sites-available/{{DOMAIN}}
-
-# Dedizierte Rate-Limit-Zone für /api/chat (SSE Streaming)
-# Getrennt von zone=chat damit fetchNetworkContext() die Chat-Requests nicht blockiert
-limit_req_zone $binary_remote_addr zone=chat_api:10m rate=2r/s;
-limit_req_zone $binary_remote_addr zone=vault_upload:10m rate=5r/s;
+# Rate-Limit-Zonen werden global in nginx.conf definiert (init.sh stellt das sicher).
 
 ############################
 # HTTP → HTTPS
@@ -143,12 +139,73 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_sign_session.lua;
   }
 
-  # ── Node-Status (kein Auth — öffentlich) ─────────────────────────────────────
+  # ── Node-Status (kein Auth — öffentlich, CORS für Cross-Domain-Peer-Test) ─────
   location = /api/node-status {
     limit_req zone=api burst=20 nodelay;
     default_type application/json;
     add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    if ($request_method = 'OPTIONS') { return 204; }
     content_by_lua_file /etc/openresty/lua/node_status.lua;
+  }
+
+  # ── Gate-Status (öffentlich – gibt nur soul_registered zurück) ───────────────
+  location = /api/gate-status {
+    limit_req zone=api burst=20 nodelay;
+    limit_except GET { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_status.lua;
+  }
+
+  # ── Gate-Auth (öffentlich – validiert Passwort + Cert, setzt sys_gate Cookie) ─
+  location = /api/gate-auth {
+    limit_req zone=gate burst=3 nodelay;
+    limit_except POST { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_auth.lua;
+  }
+
+  # ── Gate-Passwort ändern (soul_cert erforderlich) ─────────────────────────────
+  location = /api/gate-password {
+    limit_req zone=auth burst=3 nodelay;
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_set_password.lua;
+  }
+
+  # ── Peer-Verify: öffentlich + CORS — validiert soul_id+cert für Handshake ────
+  location = /api/peer/verify {
+    limit_req zone=api burst=20 nodelay;
+    limit_except GET OPTIONS { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    if ($request_method = 'OPTIONS') { return 204; }
+    content_by_lua_file /etc/openresty/lua/peer_verify.lua;
+  }
+
+  # ── Peer-Connect: öffentlich + CORS — bidirektionaler Handshake (POST) ───────
+  location = /api/peer/connect {
+    limit_req zone=gate burst=5 nodelay;
+    limit_except POST OPTIONS { deny all; }
+    client_max_body_size 4K;
+    client_body_buffer_size 4K;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    if ($request_method = 'OPTIONS') { return 204; }
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    content_by_lua_file /etc/openresty/lua/peer_connect.lua;
   }
 
   # ── Soul-Cert generieren (kein Auth – HMAC ist die Absicherung) ──────────────
@@ -465,71 +522,6 @@ server {
     default_type image/x-icon;
   }
 
-  ################################
-  # Legal Pages
-  ################################
-  location = /impressum/   { return 301 /impressum; }
-  location = /datenschutz/ { return 301 /datenschutz; }
-
-  location = /impressum {
-    alias /var/www/{{DOMAIN}}/impressum/index.html;
-    default_type text/html;
-    add_header Content-Type  "text/html; charset=utf-8" always;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    add_header Pragma        "no-cache" always;
-    add_header Expires       "0" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
-    body_filter_by_lua_block {
-      local chunk, eof = ngx.arg[1], ngx.arg[2]
-      if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
-      if chunk ~= "" then
-        table.insert(ngx.ctx.buffer, chunk)
-        ngx.arg[1] = nil
-      end
-      if eof then
-        local ct = ngx.header["Content-Type"] or ""
-        if ct:find("text/html", 1, true) then
-          local data = table.concat(ngx.ctx.buffer)
-          data = data:gsub("<script(.-)>", "<script%1 nonce=\"" .. ngx.var.nonce .. "\">")
-          data = data:gsub("<style(.-)>",  "<style%1 nonce=\""  .. ngx.var.nonce .. "\">")
-          ngx.arg[1] = data
-        else
-          ngx.arg[1] = table.concat(ngx.ctx.buffer)
-        end
-      end
-    }
-  }
-
-  location = /datenschutz {
-    alias /var/www/{{DOMAIN}}/datenschutz/index.html;
-    default_type text/html;
-    add_header Content-Type  "text/html; charset=utf-8" always;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    add_header Pragma        "no-cache" always;
-    add_header Expires       "0" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
-    body_filter_by_lua_block {
-      local chunk, eof = ngx.arg[1], ngx.arg[2]
-      if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
-      if chunk ~= "" then
-        table.insert(ngx.ctx.buffer, chunk)
-        ngx.arg[1] = nil
-      end
-      if eof then
-        local ct = ngx.header["Content-Type"] or ""
-        if ct:find("text/html", 1, true) then
-          local data = table.concat(ngx.ctx.buffer)
-          data = data:gsub("<script(.-)>", "<script%1 nonce=\"" .. ngx.var.nonce .. "\">")
-          data = data:gsub("<style(.-)>",  "<style%1 nonce=\""  .. ngx.var.nonce .. "\">")
-          ngx.arg[1] = data
-        else
-          ngx.arg[1] = table.concat(ngx.ctx.buffer)
-        end
-      end
-    }
-  }
-
-
   # ── Vision-Analyse (POST) – Kamerabild → Claude Haiku → Modell-Entscheidung ──
   location = /api/vision-analyze {
     limit_except POST { deny all; }
@@ -588,6 +580,8 @@ server {
   location / {
     root /var/www/{{DOMAIN}};
     index index.html;
+    # Gate-Check: prüft sys_gate Cookie, leitet zu /gate weiter wenn ungültig
+    access_by_lua_file /etc/openresty/lua/gate_check.lua;
     try_files $uri $uri.html /index.html;
 
     add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;

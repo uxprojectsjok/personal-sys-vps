@@ -30,6 +30,7 @@ http {
   lua_shared_dict verify_cache     5m;
   lua_shared_dict pol_tx_used     10m;
   lua_shared_dict pol_access      10m;
+  lua_shared_dict gate_sessions    2m;
   client_max_body_size 150M;
 
   # Real IP — only needed if running behind a reverse proxy.
@@ -73,14 +74,17 @@ http {
   server_tokens off;
 
   # Rate limit zones
-  limit_req_zone $binary_remote_addr zone=main:10m    rate=10r/s;
-  limit_req_zone $binary_remote_addr zone=api:10m     rate=30r/s;
-  limit_req_zone $binary_remote_addr zone=system:10m  rate=2r/s;
-  limit_req_zone $binary_remote_addr zone=health:10m  rate=30r/s;
-  limit_req_zone $binary_remote_addr zone=auth:10m    rate=5r/s;
-  limit_req_zone $binary_remote_addr zone=chat:10m    rate=1r/s;
-  limit_req_zone $binary_remote_addr zone=mcp:10m     rate=5r/s;
-  limit_req_zone $binary_remote_addr zone=oauth:10m   rate=3r/s;
+  limit_req_zone $binary_remote_addr zone=main:10m         rate=10r/s;
+  limit_req_zone $binary_remote_addr zone=api:10m          rate=30r/s;
+  limit_req_zone $binary_remote_addr zone=system:10m       rate=2r/s;
+  limit_req_zone $binary_remote_addr zone=health:10m       rate=30r/s;
+  limit_req_zone $binary_remote_addr zone=auth:10m         rate=5r/s;
+  limit_req_zone $binary_remote_addr zone=chat:10m         rate=1r/s;
+  limit_req_zone $binary_remote_addr zone=chat_api:10m     rate=2r/s;
+  limit_req_zone $binary_remote_addr zone=vault_upload:10m rate=5r/s;
+  limit_req_zone $binary_remote_addr zone=gate:10m         rate=5r/m;
+  limit_req_zone $binary_remote_addr zone=mcp:10m          rate=5r/s;
+  limit_req_zone $binary_remote_addr zone=oauth:10m        rate=3r/s;
 
   sendfile on;
   tcp_nopush on;

@@ -19,6 +19,11 @@
           v-if="removedByPeer.length"
           class="text-xs font-mono px-2 py-0.5 rounded-full bg-[rgba(239,68,68,0.12)] text-red-400 border border-[rgba(239,68,68,0.2)]"
         >!</span>
+        <!-- Incoming request badge -->
+        <span
+          v-if="incomingRequests.length"
+          class="text-xs font-mono px-2 py-0.5 rounded-full bg-[rgba(139,92,246,0.15)] text-violet-400 border border-[rgba(139,92,246,0.25)]"
+        >{{ incomingRequests.length }}</span>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -98,6 +103,42 @@
           </div>
         </div>
 
+        <!-- Eingehende Verbindungsanfragen (Cross-Domain Handshake) -->
+        <div v-if="incomingRequests.length" class="px-5 pb-3 space-y-2">
+          <p class="text-xs font-medium text-violet-400 pt-3 pb-1">Eingehende Anfragen</p>
+          <div
+            v-for="req in incomingRequests"
+            :key="req.soul_id"
+            class="rounded-none bg-[rgba(139,92,246,0.06)] border border-[rgba(139,92,246,0.2)] px-4 py-3"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-[var(--sys-fg)] font-medium truncate">{{ req.alias || req.soul_id.substring(0, 16) }}</p>
+                <p class="text-xs font-mono text-[var(--sys-fg-dim)] mt-0.5 truncate">{{ req.soul_id }}</p>
+                <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5 truncate opacity-70">{{ req.domain }}</p>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <span
+                    v-for="p in req.permissions"
+                    :key="p"
+                    class="text-xs px-1.5 py-0.5 bg-white/5 text-white/45 border border-white/8"
+                  >{{ p }}</span>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-none">
+                <button
+                  class="text-xs px-2 py-1 border border-[rgba(139,92,246,0.3)] text-violet-400 hover:bg-[rgba(139,92,246,0.1)] transition-colors min-h-[28px] disabled:opacity-40"
+                  :disabled="acceptingId === req.soul_id"
+                  @click="handleAccept(req)"
+                >{{ acceptingId === req.soul_id ? '…' : 'Annehmen' }}</button>
+                <button
+                  class="text-xs px-2 py-1 border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
+                  @click="dismissIncomingRequest(req.soul_id)"
+                >Ablehnen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Verbindungsliste -->
         <div v-if="connections.length" class="divide-y divide-[var(--sys-border)]">
           <div
@@ -156,6 +197,7 @@
                 </span>
               </div>
               <p class="text-xs font-mono text-[var(--sys-fg-dim)] mt-0.5 truncate">{{ conn.soul_id }}</p>
+              <p v-if="conn.domain" class="text-xs text-[var(--sys-fg-dim)] mt-0.5 truncate opacity-60">{{ conn.domain }}</p>
               <p v-if="conn.encrypted && !conn.available" class="text-xs text-[var(--sys-fg-dim)] opacity-60 mt-0.5 leading-relaxed">
                 Vault verschlüsselt · verfügbar wenn Owner entsperrt
               </p>
@@ -229,12 +271,24 @@
           </div>
 
           <div class="px-5 pb-5 space-y-3">
-            <!-- Soul-ID Input (wie Token-Anzeige) -->
+            <!-- Soul-ID Input -->
             <div class="rounded-none bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-4 py-3">
               <input
                 v-model="newSoulId"
                 type="text"
                 placeholder="Soul-ID der anderen Person"
+                class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <!-- Domain (optional, für Cross-Domain P2P) -->
+            <div class="rounded-none bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-4 py-3">
+              <input
+                v-model="newDomain"
+                type="url"
+                placeholder="Domain (z.B. https://soul.name.de) — leer lassen wenn selber VPS"
                 class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none"
                 autocomplete="off"
                 spellcheck="false"
@@ -322,17 +376,19 @@ const { ask } = useConfirm();
 const props = defineProps({ headless: Boolean })
 
 const {
-  connections, removedByPeer, loading, error, profileUrls,
+  connections, removedByPeer, incomingRequests, loading, error, profileUrls,
   getSoulId, fetchConnections, addConnection,
-  removeConnection, acknowledgeRemoval, testConnection
+  removeConnection, acknowledgeRemoval, testConnection,
+  dismissIncomingRequest, acceptIncomingRequest,
 } = useVaultConnections()
 
 onMounted(() => { if (props.headless) fetchConnections() })
 
 const open          = ref(false)
 const connectModal  = ref(false)
-const newSoulId     = ref('')
-const newAlias      = ref('')
+const newSoulId      = ref('')
+const newDomain      = ref('')
+const newAlias       = ref('')
 const newPermissions = ref(['soul'])
 const addLoading    = ref(false)
 const copiedId      = ref(false)
@@ -340,6 +396,7 @@ const testLoading   = ref(false)
 const testResult    = ref(null)   // null | 'ok' | 'not_found' | 'no_connection' | string
 const testMutual    = ref(false)
 const modalError    = ref(null)
+const acceptingId   = ref(null)
 
 const ownSoulId = computed(() => getSoulId())
 
@@ -358,13 +415,14 @@ function togglePermission(p) {
 }
 
 function closeModal() {
-  connectModal.value  = false
-  newSoulId.value     = ''
-  newAlias.value      = ''
+  connectModal.value   = false
+  newSoulId.value      = ''
+  newDomain.value      = ''
+  newAlias.value       = ''
   newPermissions.value = ['soul']
-  testResult.value    = null
-  testMutual.value    = false
-  modalError.value    = null
+  testResult.value     = null
+  testMutual.value     = false
+  modalError.value     = null
 }
 
 async function handleOpen() {
@@ -377,7 +435,7 @@ async function handleTest() {
   testLoading.value = true
   testResult.value  = null
   testMutual.value  = false
-  const res = await testConnection(newSoulId.value.trim())
+  const res = await testConnection(newSoulId.value.trim(), newDomain.value.trim())
   testLoading.value = false
   if (res.ok) {
     testResult.value = 'ok'
@@ -394,7 +452,8 @@ async function handleAdd() {
   const ok = await addConnection(
     newSoulId.value.trim(),
     newAlias.value.trim(),
-    [...newPermissions.value]
+    [...newPermissions.value],
+    newDomain.value.trim()
   )
   addLoading.value = false
   if (ok) {
@@ -402,6 +461,12 @@ async function handleAdd() {
   } else {
     modalError.value = error.value || 'Verbindung fehlgeschlagen'
   }
+}
+
+async function handleAccept(req) {
+  acceptingId.value = req.soul_id
+  await acceptIncomingRequest(req)
+  acceptingId.value = null
 }
 
 async function handleRemove(soulId, alias) {

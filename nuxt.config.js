@@ -13,9 +13,8 @@ export default defineNuxtConfig({
       spotifyClientId: process.env.SPOTIFY_CLIENT_ID || "",
       // Google OAuth 2.0 Web Client ID (console.cloud.google.com → APIs & Dienste → Anmeldedaten)
       youtubeClientId: process.env.YOUTUBE_CLIENT_ID || "",
-      // Feature-Flag: Closed Beta – Soul-Erstellung deaktiviert
-      // Zum Reaktivieren: true setzen oder process.env.ALLOW_CREATE_SOUL !== "false"
-      allowCreateSoul: false,
+      // Personal Node: Soul-Erstellung immer erlaubt (Single-Soul, erster Nutzer wird Owner)
+      allowCreateSoul: true,
       // Node-Identität — wird auf der Landingpage angezeigt
       nodeName: process.env.NODE_NAME || "Mein Soul-Node",
       nodeTagline: process.env.NODE_TAGLINE || "",
