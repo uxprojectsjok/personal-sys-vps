@@ -167,17 +167,12 @@ openresty -t && systemctl restart openresty
 
 # ── 10. SSL certificate ───────────────────────────────────────────────────────
 echo ""
-echo -e "${YELLOW}  Liegt bereits ein SSL-Zertifikat für $DOMAIN vor?${NC}"
-echo -e "${YELLOW}  (z.B. Wildcard *.$(echo "$DOMAIN" | cut -d. -f2-) oder eigenes Zertifikat)${NC}"
-read -p "  Zertifikat bereits vorhanden? (j/n): " SSL_EXISTS
+echo -e "${YELLOW}  SSL-Zertifikat — leer lassen für Let's Encrypt (automatisch).${NC}"
+echo -e "${YELLOW}  Oder Pfade zu vorhandenem Zertifikat eintragen (z.B. Wildcard).${NC}"
+read -p "  fullchain.pem (leer = Let's Encrypt): " SSL_CERT
+read -p "  privkey.pem   (leer = Let's Encrypt): " SSL_KEY
 
-if [[ "$SSL_EXISTS" =~ ^[jJ]$ ]]; then
-  echo ""
-  echo -e "${YELLOW}  Pfad zur fullchain.pem (Zertifikat + Chain):${NC}"
-  read -p "  fullchain.pem: " SSL_CERT
-  echo -e "${YELLOW}  Pfad zur privkey.pem (privater Schlüssel):${NC}"
-  read -p "  privkey.pem:   " SSL_KEY
-
+if [[ -n "$SSL_CERT" || -n "$SSL_KEY" ]]; then
   [[ ! -f "$SSL_CERT" ]] && error "Zertifikat nicht gefunden: $SSL_CERT"
   [[ ! -f "$SSL_KEY"  ]] && error "Schlüssel nicht gefunden: $SSL_KEY"
   info "Vorhandenes Zertifikat wird verwendet."
