@@ -90,7 +90,7 @@ if sf then
     local front = raw:match("^%-%-%-\n(.-)%-%-%-")
     if front then
       name       = front:match("soul_name:%s*(.-)%s*\n")
-      created_at = front:match("created_at:%s*(.-)%s*\n")
+      created_at = front:match("created:%s*(.-)%s*\n") or front:match("created_at:%s*(.-)%s*\n")
       version    = front:match("version:%s*(.-)%s*\n")
       maturity   = tonumber(front:match("maturity:%s*(.-)%s*\n"))
     end
@@ -127,7 +127,7 @@ local meta = {
   pay_endpoint   = base_url .. "/api/soul/pay",
   earnings_endpoint = base_url .. "/api/soul/earnings",
 }
-if created_at   then meta.created_at   = created_at   end
+if created_at   then meta.created      = created_at   end
 if version      then meta.version      = version      end
 if maturity     then meta.maturity     = maturity     end
 if description  then meta.description  = description  end
