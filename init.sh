@@ -173,9 +173,42 @@ read -p "  fullchain.pem (leer = Let's Encrypt): " SSL_CERT
 read -p "  privkey.pem   (leer = Let's Encrypt): " SSL_KEY
 
 if [[ -n "$SSL_CERT" || -n "$SSL_KEY" ]]; then
+  # Dateien vorhanden?
   [[ ! -f "$SSL_CERT" ]] && error "Zertifikat nicht gefunden: $SSL_CERT"
   [[ ! -f "$SSL_KEY"  ]] && error "Schlüssel nicht gefunden: $SSL_KEY"
-  info "Vorhandenes Zertifikat wird verwendet."
+
+  # Gültiges X.509-Zertifikat?
+  openssl x509 -in "$SSL_CERT" -noout 2>/dev/null \
+    || error "Ungültiges Zertifikat (kein X.509): $SSL_CERT"
+
+  # Gültiger privater Schlüssel?
+  openssl pkey -in "$SSL_KEY" -check -noout 2>/dev/null \
+    || error "Ungültiger privater Schlüssel: $SSL_KEY"
+
+  # Cert und Key zusammengehörig? (Modulus-Vergleich)
+  CERT_MOD=$(openssl x509 -noout -modulus -in "$SSL_CERT" 2>/dev/null | openssl md5)
+  KEY_MOD=$(openssl pkey -noout -modulus -in "$SSL_KEY"   2>/dev/null | openssl md5)
+  [[ "$CERT_MOD" != "$KEY_MOD" ]] \
+    && error "Zertifikat und Schlüssel passen nicht zusammen."
+
+  # Deckt das Zertifikat die Domain ab? (CN oder SAN)
+  CERT_DOMAINS=$(openssl x509 -noout -text -in "$SSL_CERT" 2>/dev/null \
+    | grep -oP '(?<=DNS:)[^,\s]+')
+  DOMAIN_MATCH=false
+  for cd in $CERT_DOMAINS; do
+    # Exakter Treffer oder Wildcard (*.example.com deckt sub.example.com)
+    if [[ "$cd" == "$DOMAIN" ]] || \
+       [[ "$cd" == "*."* && "$DOMAIN" == *".${cd#\*.}" ]]; then
+      DOMAIN_MATCH=true; break
+    fi
+  done
+  $DOMAIN_MATCH || warn "Zertifikat deckt '$DOMAIN' möglicherweise nicht ab. Gefundene SANs: $CERT_DOMAINS"
+
+  # Zertifikat abgelaufen?
+  openssl x509 -checkend 0 -noout -in "$SSL_CERT" 2>/dev/null \
+    || error "Zertifikat ist abgelaufen."
+
+  info "Zertifikat validiert — Cert, Key und Domain passen zusammen."
 else
   info "Requesting SSL certificate for $DOMAIN..."
   certbot certonly --webroot \
