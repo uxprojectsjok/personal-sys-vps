@@ -318,14 +318,47 @@ systemctl daemon-reload
 
 # Prüfen ob der Override korrekt geschrieben wurde und die Keys enthält
 OVERRIDE_FILE="/etc/systemd/system/openresty.service.d/env.conf"
+
+_override_error() {
+  echo ""
+  echo -e "${RED}┌──────────────────────────────────────────────────────────────────┐${NC}"
+  echo -e "${RED}│  ⚠️  systemd Override konnte nicht verifiziert werden            │${NC}"
+  echo -e "${RED}│                                                                  │${NC}"
+  echo -e "${RED}│  $1"
+  echo -e "${RED}│                                                                  │${NC}"
+  echo -e "${RED}│  Was tun:                                                        │${NC}"
+  echo -e "${RED}│  1. Prüfe ob die Datei existiert:                                │${NC}"
+  echo -e "${RED}│     cat $OVERRIDE_FILE   │${NC}"
+  echo -e "${RED}│                                                                  │${NC}"
+  echo -e "${RED}│  2. Falls leer oder falsch, manuell neu schreiben:               │${NC}"
+  echo -e "${RED}│     source /opt/sys/.env                                         │${NC}"
+  echo -e "${RED}│     mkdir -p /etc/systemd/system/openresty.service.d             │${NC}"
+  echo -e "${RED}│     cat > $OVERRIDE_FILE << 'ENVEOF'  │${NC}"
+  echo -e "${RED}│     [Service]                                                    │${NC}"
+  echo -e "${RED}│     Environment=\"SOUL_MASTER_KEY=\${SOUL_MASTER_KEY}\"             │${NC}"
+  echo -e "${RED}│     Environment=\"ANTHROPIC_API_KEY=\${ANTHROPIC_API_KEY}\"         │${NC}"
+  echo -e "${RED}│     Environment=\"API_SIGNING_KEY=\${API_SIGNING_KEY}\"             │${NC}"
+  echo -e "${RED}│     ENVEOF                                                       │${NC}"
+  echo -e "${RED}│     systemctl daemon-reload && systemctl restart openresty       │${NC}"
+  echo -e "${RED}│                                                                  │${NC}"
+  echo -e "${RED}│  3. Oder frag eine KI um Hilfe — Prompt-Vorschlag:              │${NC}"
+  echo -e "${RED}│     \"Mein init.sh für einen SYS-Node unter Ubuntu 24.04          │${NC}"
+  echo -e "${RED}│     konnte den systemd override für OpenResty nicht schreiben.   │${NC}"
+  echo -e "${RED}│     Die Datei $OVERRIDE_FILE │${NC}"
+  echo -e "${RED}│     fehlt oder ist leer. Wie behebe ich das manuell?\"            │${NC}"
+  echo -e "${RED}└──────────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
+  exit 1
+}
+
 if [ ! -f "$OVERRIDE_FILE" ]; then
-  error "systemd override nicht gefunden: $OVERRIDE_FILE — Abbruch."
+  _override_error "Datei nicht gefunden: $OVERRIDE_FILE"
 fi
 if ! grep -q "SOUL_MASTER_KEY=sys_" "$OVERRIDE_FILE"; then
-  error "SOUL_MASTER_KEY fehlt oder ungültig in $OVERRIDE_FILE — Abbruch."
+  _override_error "SOUL_MASTER_KEY fehlt oder hat kein 'sys_'-Präfix"
 fi
 if ! grep -q "ANTHROPIC_API_KEY=sk-ant-" "$OVERRIDE_FILE"; then
-  error "ANTHROPIC_API_KEY fehlt oder ungültig in $OVERRIDE_FILE — Abbruch."
+  _override_error "ANTHROPIC_API_KEY fehlt oder beginnt nicht mit 'sk-ant-'"
 fi
 info "systemd override verifiziert ✓"
 
