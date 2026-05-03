@@ -139,21 +139,11 @@ chown www-data:www-data /var/lib/sys/config/"$DOMAIN"/master.json
 info "Configuring OpenResty (HTTP-only, Phase 1)..."
 mkdir -p /usr/local/openresty/nginx/logs
 
-if [ ! -f /etc/openresty/nginx.conf ]; then
-  sed "s/{{DOMAIN}}/$DOMAIN/g" \
-    "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
-    > /etc/openresty/nginx.conf
-  info "nginx.conf erstellt."
-else
-  info "nginx.conf bereits vorhanden — überspringe Überschreibung."
-  # sites-enabled include: fehlt in der Default-OpenResty-Config → idempotent eintragen
-  if ! grep -q "sites-enabled" /etc/openresty/nginx.conf; then
-    # Vor der letzten Zeile einfügen (schließt den http-Block)
-    sed -i '$i\  include /etc/openresty/sites-enabled/*;' /etc/openresty/nginx.conf
-    info "sites-enabled include zu nginx.conf hinzugefügt."
-  fi
-  # Fehlende Zonen idempotent eintragen
+if grep -q "lua_package_path" /etc/openresty/nginx.conf 2>/dev/null; then
+  # Unsere Config ist bereits aktiv — nur fehlende Zonen idempotent eintragen
+  info "nginx.conf (SYS) bereits vorhanden — überspringe Überschreibung."
   for ZONE_LINE in \
+    "limit_req_zone \$binary_remote_addr zone=chat:10m rate=1r/s;" \
     "limit_req_zone \$binary_remote_addr zone=chat_api:10m rate=2r/s;" \
     "limit_req_zone \$binary_remote_addr zone=vault_upload:10m rate=5r/s;" \
     "limit_req_zone \$binary_remote_addr zone=gate:10m rate=5r/m;"; do
@@ -163,6 +153,12 @@ else
       info "Zone ${ZONE_NAME} zu nginx.conf hinzugefügt."
     fi
   done
+else
+  # Keine oder Standard-OpenResty-Config → durch unser Template ersetzen
+  sed "s/{{DOMAIN}}/$DOMAIN/g" \
+    "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
+    > /etc/openresty/nginx.conf
+  info "nginx.conf erstellt."
 fi
 
 sed "s/{{DOMAIN}}/$DOMAIN/g" \
