@@ -468,16 +468,20 @@ export function useChainAnchor() {
     ]);
   }
 
-  // Schnellster Read-Provider: race über alle RPCs, erster der antwortet gewinnt
+  // Schnellster Read-Provider: Wallet-Provider bevorzugt, öffentlicher RPC nur wenn Wallet verbunden
+  // Lazy-Init: kein JsonRpcProvider ohne aktive Wallet-Session (verhindert CSP-Retries on load)
   async function getFastReadProvider() {
+    const walletProvider = readProvider();
+    if (walletProvider) return new BrowserProvider(walletProvider);
+    if (!isConnected.value) throw new Error("Kein Wallet verbunden.");
     if (READ_RPCS.length === 1) return new JsonRpcProvider(READ_RPCS[0]);
     return Promise.any(
       READ_RPCS.map(async (url) => {
         const p = new JsonRpcProvider(url);
-        await p.getBlockNumber(); // Liveness-Check
+        await p.getBlockNumber();
         return p;
       })
-    ).catch(() => new JsonRpcProvider(POLYGON_RPC)); // Fallback
+    ).catch(() => new JsonRpcProvider(POLYGON_RPC));
   }
 
   // Polling-Fallback für tx.wait() – Mobile-sicher via öffentlichem RPC
@@ -994,14 +998,15 @@ export function useChainAnchor() {
       return Number(await c.nextAnchorAllowed(idBytes32));
     };
 
-    // Wallet-Provider zuerst – wenn verbunden und auf Polygon, zuverlässigster Weg
     const raw = readProvider();
     if (raw) {
       try { return await call(new BrowserProvider(raw)); } catch { /* falscher Chain → weiter */ }
+      // Fallback auf public RPC nur wenn Wallet verbunden war (Chain-Mismatch-Fall)
+      try { return await call(new JsonRpcProvider(POLYGON_RPC)); } catch { /* ignore */ }
     }
 
-    // Fallback: publicnode (CORS ✓, kein API-Key nötig)
-    try { return await call(new JsonRpcProvider(POLYGON_RPC)); } catch { return 0; }
+    // Kein Wallet → kein RPC-Call (lazy init)
+    return 0;
   }
 
   // ── On-chain Sync ─────────────────────────────────────────────────────────
