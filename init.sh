@@ -11,12 +11,12 @@ warn()  { echo -e "${YELLOW}[warn]${NC} $1"; }
 error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
 echo ""
-echo "  ███████╗ ██████╗ ██╗   ██╗██╗     "
-echo "  ██╔════╝██╔═══██╗██║   ██║██║     "
-echo "  ███████╗██║   ██║██║   ██║██║     "
-echo "  ╚════██║██║   ██║██║   ██║██║     "
-echo "  ███████║╚██████╔╝╚██████╔╝███████╗"
-echo "  ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝"
+echo "  ███████╗██╗   ██╗███████╗    ██╗███╗   ██╗██╗████████╗"
+echo "  ██╔════╝╚██╗ ██╔╝██╔════╝    ██║████╗  ██║██║╚══██╔══╝"
+echo "  ███████╗ ╚████╔╝ ███████╗    ██║██╔██╗ ██║██║   ██║   "
+echo "  ╚════██║  ╚██╔╝  ╚════██║    ██║██║╚██╗██║██║   ██║   "
+echo "  ███████║   ██║   ███████║    ██║██║ ╚████║██║   ██║   "
+echo "  ╚══════╝   ╚═╝   ╚══════╝    ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝   "
 echo "  Personal SYS VPS Setup"
 echo ""
 echo -e "${YELLOW}  Hinweis: Du brauchst eine Domain (z.B. soul.deinname.de) die per${NC}"
@@ -25,9 +25,25 @@ echo -e "${YELLOW}  schlägt die SSL-Zertifizierung fehl. (Keine Pflicht — nur
 echo ""
 
 # ── 1. Input ──────────────────────────────────────────────────────────────────
-read -p "  Deine Domain (z.B. soul.deinname.de): " DOMAIN
-read -p "  Deine E-Mail (für SSL-Zertifikat):     " EMAIL
-[[ -z "$DOMAIN" || -z "$EMAIL" ]] && error "Domain und E-Mail sind erforderlich."
+read -p "  Deine Domain (z.B. soul.deinname.de):      " DOMAIN
+read -p "  Deine E-Mail (für SSL-Zertifikat):         " EMAIL
+read -p "  Anthropic API Key (sk-ant-...):            " ANTHROPIC_KEY
+[[ -z "$DOMAIN" || -z "$EMAIL" || -z "$ANTHROPIC_KEY" ]] && error "Domain, E-Mail und API Key sind erforderlich."
+
+echo ""
+echo -e "${YELLOW}  Zugangspasswort für den Gate-Schutz deines Nodes.${NC}"
+echo -e "${YELLOW}  Mindestens 8 Zeichen. Dieses Passwort schützt die gesamte Oberfläche.${NC}"
+while true; do
+  read -s -p "  Zugangspasswort:             " ACCESS_PWD; echo ""
+  read -s -p "  Zugangspasswort bestätigen: " ACCESS_PWD2; echo ""
+  [[ "${#ACCESS_PWD}" -ge 8 ]] && [[ "$ACCESS_PWD" == "$ACCESS_PWD2" ]] && break
+  if [[ "${#ACCESS_PWD}" -lt 8 ]]; then
+    warn "Mindestens 8 Zeichen erforderlich."
+  else
+    warn "Passwörter stimmen nicht überein."
+  fi
+done
+echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -53,6 +69,10 @@ rm /usr/sbin/policy-rc.d
 systemctl stop nginx    2>/dev/null || true
 systemctl disable nginx 2>/dev/null || true
 systemctl start openresty
+
+# lua-resty-http für server-seitige HTTP-Callbacks (Cross-Domain Peer-Handshake)
+info "Installing lua-resty-http..."
+/usr/local/openresty/bin/opm install ledgetech/lua-resty-http
 
 # ── 4. Node.js 20 ─────────────────────────────────────────────────────────────
 info "Installing Node.js 20..."
@@ -86,27 +106,52 @@ chmod -R 755 /var/www/"$DOMAIN"
 info "Installing Lua scripts..."
 cp "$SCRIPT_DIR"/lua/*.lua /etc/openresty/lua/
 
-# ── 8. Master Key ─────────────────────────────────────────────────────────────
+# ── 8. Master Key + Gate-Passwort-Hash ───────────────────────────────────────
 info "Generating Soul Master Key..."
 RAW_KEY=$(openssl rand -hex 32)
 MASTER_KEY="sys_${RAW_KEY}"
 
-cat > /var/lib/sys/config/master.json <<EOF
+# Gate-Passwort-Hash: HMAC-SHA256(master_key_raw, "gate_pw:" + password)
+# master_key ohne sys_-Prefix als ASCII-String (64 Hex-Zeichen) → passt zu hmac_helper.lua
+GATE_HASH=$(printf '%s' "gate_pw:${ACCESS_PWD}" \
+  | openssl dgst -sha256 -mac HMAC -macopt "key:${RAW_KEY}" \
+  | awk '{print $2}')
+
+mkdir -p /var/lib/sys/config/"$DOMAIN"
+cat > /var/lib/sys/config/"$DOMAIN"/master.json <<EOF
 {
   "soul_master_key": "${MASTER_KEY}",
   "soul_master_key_prev": "",
-  "prev_valid_until_ts": 0
+  "prev_valid_until_ts": 0,
+  "access_password_hash": "${GATE_HASH}"
 }
 EOF
-chmod 600 /var/lib/sys/config/master.json
-chown www-data:www-data /var/lib/sys/config/master.json
+chmod 600 /var/lib/sys/config/"$DOMAIN"/master.json
+chown www-data:www-data /var/lib/sys/config/"$DOMAIN"/master.json
 
 # ── 9. nginx config — Phase 1: HTTP-only ──────────────────────────────────────
 info "Configuring OpenResty (HTTP-only, Phase 1)..."
 mkdir -p /usr/local/openresty/nginx/logs
-sed "s/{{DOMAIN}}/$DOMAIN/g" \
-  "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
-  > /etc/openresty/nginx.conf
+
+if [ ! -f /etc/openresty/nginx.conf ]; then
+  sed "s/{{DOMAIN}}/$DOMAIN/g" \
+    "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
+    > /etc/openresty/nginx.conf
+  info "nginx.conf erstellt."
+else
+  info "nginx.conf bereits vorhanden — überspringe Überschreibung."
+  # Fehlende Zonen idempotent eintragen
+  for ZONE_LINE in \
+    "limit_req_zone \$binary_remote_addr zone=chat_api:10m rate=2r/s;" \
+    "limit_req_zone \$binary_remote_addr zone=vault_upload:10m rate=5r/s;" \
+    "limit_req_zone \$binary_remote_addr zone=gate:10m rate=5r/m;"; do
+    ZONE_NAME=$(echo "$ZONE_LINE" | grep -oP 'zone=\K[^:]+')
+    if ! grep -q "zone=${ZONE_NAME}" /etc/openresty/nginx.conf; then
+      sed -i "/# Rate limit zones/a\\  ${ZONE_LINE}" /etc/openresty/nginx.conf
+      info "Zone ${ZONE_NAME} zu nginx.conf hinzugefügt."
+    fi
+  done
+fi
 
 sed "s/{{DOMAIN}}/$DOMAIN/g" \
   "$SCRIPT_DIR/server/openresty/vhost-http.conf.template" \
@@ -133,10 +178,6 @@ sed "s/{{DOMAIN}}/$DOMAIN/g" \
 info "Setting up .env..."
 cd "$SCRIPT_DIR"
 [ ! -f .env ] && cp .env.example .env
-
-echo ""
-read -p "  Dein Anthropic API Key (sk-ant-...): " ANTHROPIC_KEY
-[[ -z "$ANTHROPIC_KEY" ]] && error "ANTHROPIC_API_KEY ist Pflicht."
 
 sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|"    .env
 sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$MASTER_KEY|"           .env
@@ -170,7 +211,7 @@ echo -e "${GREEN}✓ Dein Soul Node ist ready.${NC}"
 echo ""
 echo "  URL:    https://$DOMAIN"
 echo "  Data:   /var/lib/sys/souls/"
-echo "  Config: /var/lib/sys/config/master.json"
+echo "  Config: /var/lib/sys/config/$DOMAIN/master.json"
 echo ""
 echo "  Öffne https://$DOMAIN im Browser um deine Soul zu erstellen."
 echo "  Dieser Node akzeptiert genau eine Soul — wer sich zuerst registriert, ist Eigentümer."

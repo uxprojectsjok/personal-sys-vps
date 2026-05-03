@@ -8,11 +8,12 @@ export function useVaultConnections() {
   if (_instance) return _instance
 
   const { soulToken } = useSoul()
-  const connections    = ref([])
-  const removedByPeer  = ref([])
-  const loading        = ref(false)
-  const error          = ref(null)
-  const profileUrls    = ref({}) // soul_id → blob URL
+  const connections       = ref([])
+  const removedByPeer     = ref([])
+  const incomingRequests  = ref([])
+  const loading           = ref(false)
+  const error             = ref(null)
+  const profileUrls       = ref({}) // soul_id → blob URL
 
   function getSoulId() {
     return soulToken.value ? soulToken.value.split('.')[0] : null
@@ -24,15 +25,28 @@ export function useVaultConnections() {
     const newId = newToken?.split('.')?.[0]
     const oldId = oldToken?.split('.')?.[0]
     if (newId && newId !== oldId) {
-      connections.value   = []
-      removedByPeer.value = []
-      profileUrls.value   = {}
-      error.value         = null
+      connections.value      = []
+      removedByPeer.value    = []
+      incomingRequests.value = []
+      profileUrls.value      = {}
+      error.value            = null
     }
   })
 
-  // Lädt Availability-Status aus /network und mergt in connections:
-  // conn.available (bool), conn.encrypted (bool)
+  // Prüft ob eine Remote-Soul erreichbar ist via CORS-Fetch zur Peer-Domain
+  async function checkRemoteAvailability(conn) {
+    if (!conn.domain) return null
+    try {
+      const res = await fetch(`${conn.domain}/api/vault/public/${conn.soul_id}`, {
+        signal: AbortSignal.timeout(5000),
+      })
+      return res.ok
+    } catch {
+      return false
+    }
+  }
+
+  // Lädt Availability-Status: lokal via /network, remote via CORS-Fetch
   async function fetchAvailability() {
     if (!soulToken.value || !connections.value.length) return
     try {
@@ -42,16 +56,30 @@ export function useVaultConnections() {
       if (!res.ok) return
       const data = await res.json()
       if (!data.ok || !Array.isArray(data.connections)) return
-      // Availability-Map aufbauen: soul_id → { available, reason }
       const avMap = {}
       for (const c of data.connections) avMap[c.soul_id] = c
-      // In connections mergen
-      connections.value = connections.value.map(conn => ({
-        ...conn,
-        available: avMap[conn.soul_id]?.available ?? null,
-        // encrypted kommt jetzt als explizites Feld (Lua v2) oder als reason-Fallback
-        encrypted: avMap[conn.soul_id]?.encrypted === true || avMap[conn.soul_id]?.reason === 'encrypted',
-      }))
+
+      // Remote-Souls parallel testen
+      const remoteChecks = connections.value
+        .filter(c => c.domain)
+        .map(async c => {
+          const available = await checkRemoteAvailability(c)
+          return { soul_id: c.soul_id, available }
+        })
+      const remoteResults = await Promise.all(remoteChecks)
+      const remoteMap = {}
+      for (const r of remoteResults) remoteMap[r.soul_id] = r.available
+
+      connections.value = connections.value.map(conn => {
+        if (conn.domain) {
+          return { ...conn, available: remoteMap[conn.soul_id] ?? null, external: true }
+        }
+        return {
+          ...conn,
+          available: avMap[conn.soul_id]?.available ?? null,
+          encrypted: avMap[conn.soul_id]?.encrypted === true || avMap[conn.soul_id]?.reason === 'encrypted',
+        }
+      })
     } catch { /* Availability-Fehler nicht kritisch */ }
   }
 
@@ -59,21 +87,28 @@ export function useVaultConnections() {
     if (!soulToken.value || !connections.value.length) return
     const ownId = getSoulId()
     for (const conn of connections.value) {
-      if (conn.soul_id === ownId) continue           // eigene Soul nie fetchen
-      if (conn.soul_id in profileUrls.value) continue // bereits versucht (Erfolg oder Fehler cachen)
-      // Failure sofort markieren, damit kein Re-Fetch passiert
+      if (conn.soul_id === ownId) continue
+      if (conn.soul_id in profileUrls.value) continue
       profileUrls.value = { ...profileUrls.value, [conn.soul_id]: '' }
+
+      // Basis-URL: remote Domain oder lokaler Endpunkt
+      const base = conn.domain
+        ? `${conn.domain}/api/vault/public/${conn.soul_id}`
+        : `/api/vault/public/${conn.soul_id}`
+
       try {
-        const mRes = await fetch(`/api/vault/public/${conn.soul_id}`)
+        const mRes = await fetch(base)
         if (!mRes.ok) continue
         const manifest = await mRes.json()
         const profileFile = Array.isArray(manifest.files)
           ? manifest.files.find(f => f.type === 'images' && /^profile\.(png|jpe?g|webp)$/i.test(f.name))
           : null
         if (!profileFile) continue
-        const fRes = await fetch(`/api/vault/public/${conn.soul_id}/${profileFile.name}`, {
-          headers: { Authorization: `Bearer ${soulToken.value}` }
-        })
+
+        // Datei-URL: remote ohne Auth (public), lokal mit soul_cert
+        const fileUrl = `${base}/${profileFile.name}`
+        const headers = conn.domain ? {} : { Authorization: `Bearer ${soulToken.value}` }
+        const fRes = await fetch(fileUrl, { headers })
         if (!fRes.ok) continue
         const blob = await fRes.blob()
         profileUrls.value = { ...profileUrls.value, [conn.soul_id]: URL.createObjectURL(blob) }
@@ -91,10 +126,11 @@ export function useVaultConnections() {
       })
       const data = await res.json()
       if (res.ok) {
-        const ownId         = getSoulId()
-        const all           = Array.isArray(data.connections) ? data.connections : []
-        connections.value   = ownId ? all.filter(c => c.soul_id !== ownId) : all
-        removedByPeer.value = Array.isArray(data.removed_by_peer) ? data.removed_by_peer : []
+        const ownId            = getSoulId()
+        const all              = Array.isArray(data.connections) ? data.connections : []
+        connections.value      = ownId ? all.filter(c => c.soul_id !== ownId) : all
+        removedByPeer.value    = Array.isArray(data.removed_by_peer)   ? data.removed_by_peer   : []
+        incomingRequests.value = Array.isArray(data.incoming_requests) ? data.incoming_requests : []
         // Availability + Profile-Bilder nachziehen (nicht blockierend)
         fetchAvailability()
         fetchPublicProfiles()
@@ -108,16 +144,18 @@ export function useVaultConnections() {
     }
   }
 
-  async function addConnection(targetSoulId, alias, permissions) {
+  async function addConnection(targetSoulId, alias, permissions, domain = '') {
     error.value = null
     try {
+      const body = { soul_id: targetSoulId, alias, permissions }
+      if (domain) body.domain = domain.replace(/\/$/, '') // kein trailing slash
       const res  = await fetch('/api/vault/connections', {
         method: 'POST',
         headers: {
           Authorization:  `Bearer ${soulToken.value}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ soul_id: targetSoulId, alias, permissions })
+        body: JSON.stringify(body)
       })
       const data = await res.json()
       if (!res.ok) { error.value = data.error || 'Fehler'; return false }
@@ -156,8 +194,22 @@ export function useVaultConnections() {
     } catch {}
   }
 
-  async function testConnection(targetSoulId) {
+  async function testConnection(targetSoulId, domain = '') {
     try {
+      if (domain) {
+        // Cross-Domain: direkt per CORS zur Peer-Domain fetchen
+        const cleanDomain = domain.replace(/\/$/, '')
+        const manifestUrl = `${cleanDomain}/api/vault/public/${targetSoulId}`
+        try {
+          const res = await fetch(manifestUrl, { signal: AbortSignal.timeout(6000) })
+          if (res.ok) return { ok: true, external: true, mutual: false }
+          if (res.status === 404) return { ok: false, reason: 'not_found' }
+          return { ok: false, reason: 'node_error' }
+        } catch {
+          return { ok: false, reason: 'not_found' }
+        }
+      }
+      // Lokale Soul: Server-seitiger Test
       const res  = await fetch(`/api/vault/connections/test/${encodeURIComponent(targetSoulId)}`, {
         headers: { Authorization: `Bearer ${soulToken.value}` }
       })
@@ -170,12 +222,33 @@ export function useVaultConnections() {
     }
   }
 
+  // Eingehende Verbindungsanfrage ablehnen (löscht incoming_request lokal)
+  async function dismissIncomingRequest(remoteSoulId) {
+    try {
+      await fetch(`/api/vault/connections/incoming/${encodeURIComponent(remoteSoulId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      incomingRequests.value = incomingRequests.value.filter(r => r.soul_id !== remoteSoulId)
+    } catch {}
+  }
+
+  // Eingehende Anfrage akzeptieren: lokale Connection anlegen + incoming_request entfernen
+  async function acceptIncomingRequest(req) {
+    const ok = await addConnection(req.soul_id, req.alias || req.soul_id.substring(0, 12), req.permissions || ['soul'], req.domain || '')
+    if (ok) {
+      incomingRequests.value = incomingRequests.value.filter(r => r.soul_id !== req.soul_id)
+    }
+    return ok
+  }
+
   const mutualCount = computed(() => connections.value.filter(c => c.mutual).length)
 
   _instance = {
-    connections, removedByPeer, loading, error, mutualCount, profileUrls,
+    connections, removedByPeer, incomingRequests, loading, error, mutualCount, profileUrls,
     getSoulId, fetchConnections, addConnection,
-    removeConnection, acknowledgeRemoval, testConnection
+    removeConnection, acknowledgeRemoval, testConnection,
+    dismissIncomingRequest, acceptIncomingRequest,
   }
   return _instance
 }

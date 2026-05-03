@@ -10,8 +10,18 @@ info()  { echo -e "${GREEN}[soul]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[warn]${NC} $1"; }
 error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
-MASTER_PATH="/var/lib/sys/config/master.json"
 SOULS_DIR="/var/lib/sys/souls"
+
+# Domain-spezifischen master.json-Pfad ermitteln (domain-aware wie config_reader.lua)
+# Sucht zuerst in /var/lib/sys/config/<domain>/master.json (Ergebnis von init.sh),
+# fällt auf globalen Pfad zurück für ältere Installs.
+DOMAIN=$(ls /etc/openresty/sites-enabled/ 2>/dev/null \
+  | grep -v '^00-default' | head -1)
+if [ -n "$DOMAIN" ] && [ -f "/var/lib/sys/config/$DOMAIN/master.json" ]; then
+  MASTER_PATH="/var/lib/sys/config/$DOMAIN/master.json"
+else
+  MASTER_PATH="/var/lib/sys/config/master.json"
+fi
 
 echo ""
 echo "  ██████╗ ███████╗███████╗███████╗████████╗"
@@ -66,9 +76,9 @@ with open("$MASTER_PATH", "w") as f:
 print("  master.json aktualisiert")
 PYEOF
 
-# ── OpenResty reload ──────────────────────────────────────────────────────────
-info "OpenResty reload..."
-openresty -s reload 2>/dev/null || systemctl reload openresty 2>/dev/null || true
+# ── OpenResty restart — löscht gate_sessions + verify_cache (shared dicts) ───
+info "OpenResty restart (löscht Session-Cache)..."
+systemctl restart openresty 2>/dev/null || openresty -s stop && openresty 2>/dev/null || true
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
