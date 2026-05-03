@@ -48,15 +48,48 @@ systemctl disable openresty 2>/dev/null || true
 systemctl stop    nginx     2>/dev/null || true
 systemctl disable nginx     2>/dev/null || true
 
-# ── 2. SSL-Zertifikat entfernen ───────────────────────────────────────────────
-info "Removing SSL certificate for $DOMAIN..."
-if command -v certbot &>/dev/null; then
-  certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || \
-    warn "  certbot delete fehlgeschlagen — Zertifikat eventuell bereits entfernt."
+# ── 2. SSL-Zertifikat ────────────────────────────────────────────────────────
+CERT_PATH="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+DELETE_CERT=true
+
+if [ -f "$CERT_PATH" ]; then
+  # Prüfen ob Zertifikat noch gültig ist (nicht abgelaufen)
+  if openssl x509 -checkend 0 -noout -in "$CERT_PATH" 2>/dev/null; then
+    CERT_EXPIRY=$(openssl x509 -noout -enddate -in "$CERT_PATH" 2>/dev/null \
+      | cut -d= -f2)
+    echo ""
+    echo -e "${GREEN}  ✓ Gültiges Let's Encrypt Zertifikat gefunden.${NC}"
+    echo -e "    Läuft ab: $CERT_EXPIRY"
+    echo ""
+    echo -e "${YELLOW}  Empfehlung: Zertifikat behalten.${NC}"
+    echo -e "${YELLOW}  Let's Encrypt erlaubt nur 5 Zertifikate pro Domain in 7 Tagen.${NC}"
+    echo -e "${YELLOW}  Wenn du denselben Node neu installierst, kannst du das vorhandene${NC}"
+    echo -e "${YELLOW}  Zertifikat beim init.sh wiederverwenden (Pfad eintragen).${NC}"
+    echo ""
+    read -p "  Zertifikat trotzdem löschen? (yes/no) [no]: " DEL_CONFIRM
+    [[ "$DEL_CONFIRM" == "yes" ]] && DELETE_CERT=true || DELETE_CERT=false
+  else
+    echo ""
+    warn "Zertifikat abgelaufen — wird gelöscht."
+  fi
 fi
-rm -rf /etc/letsencrypt/live/"$DOMAIN"    2>/dev/null || true
-rm -rf /etc/letsencrypt/archive/"$DOMAIN" 2>/dev/null || true
-rm -f  /etc/letsencrypt/renewal/"$DOMAIN".conf 2>/dev/null || true
+
+if $DELETE_CERT; then
+  info "Removing SSL certificate for $DOMAIN..."
+  if command -v certbot &>/dev/null; then
+    certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || \
+      warn "  certbot delete fehlgeschlagen — Zertifikat eventuell bereits entfernt."
+  fi
+  rm -rf /etc/letsencrypt/live/"$DOMAIN"    2>/dev/null || true
+  rm -rf /etc/letsencrypt/archive/"$DOMAIN" 2>/dev/null || true
+  rm -f  /etc/letsencrypt/renewal/"$DOMAIN".conf 2>/dev/null || true
+else
+  info "SSL-Zertifikat behalten: $CERT_PATH"
+  echo -e "  → Beim nächsten init.sh diesen Pfad eintragen:"
+  echo -e "    fullchain.pem: /etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+  echo -e "    privkey.pem:   /etc/letsencrypt/live/$DOMAIN/privkey.pem"
+  echo ""
+fi
 
 # ── 3. Pakete deinstallieren ──────────────────────────────────────────────────
 info "Removing OpenResty..."
