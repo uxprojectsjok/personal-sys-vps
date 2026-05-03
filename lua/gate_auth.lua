@@ -8,8 +8,17 @@ local cjson = require("cjson.safe")
 local cfg   = require("config_reader")
 local hmac  = require("hmac_helper")
 
+local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
+
 local function read_master_fresh()
-  local f = io.open(cfg.get_master_path(), "r")
+  -- cfg.get_master_path() ist nur in neueren Versionen vorhanden → Fallback auf global
+  local path = (type(cfg.get_master_path) == "function") and cfg.get_master_path()
+               or MASTER_PATH_GLOBAL
+  local f = io.open(path, "r")
+  -- Falls domain-spezifisch nicht gefunden → globalen Pfad versuchen
+  if not f and path ~= MASTER_PATH_GLOBAL then
+    f = io.open(MASTER_PATH_GLOBAL, "r")
+  end
   if not f then return nil end
   local raw = f:read("*a"); f:close()
   local ok, data = pcall(cjson.decode, raw or "")

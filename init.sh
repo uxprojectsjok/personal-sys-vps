@@ -124,8 +124,7 @@ GATE_HASH=$(printf '%s' "gate_pw:${ACCESS_PWD}" \
   | openssl dgst -sha256 -mac HMAC -macopt "key:${RAW_KEY}" \
   | awk '{print $2}')
 
-mkdir -p /var/lib/sys/config/"$DOMAIN"
-cat > /var/lib/sys/config/"$DOMAIN"/master.json <<EOF
+MASTER_JSON=$(cat <<EOF
 {
   "soul_master_key": "${MASTER_KEY}",
   "soul_master_key_prev": "",
@@ -133,8 +132,18 @@ cat > /var/lib/sys/config/"$DOMAIN"/master.json <<EOF
   "access_password_hash": "${GATE_HASH}"
 }
 EOF
+)
+
+# Domain-spezifisch (für neue Lua-Skripte, Multi-Domain-Unterstützung)
+mkdir -p /var/lib/sys/config/"$DOMAIN"
+echo "$MASTER_JSON" > /var/lib/sys/config/"$DOMAIN"/master.json
 chmod 600 /var/lib/sys/config/"$DOMAIN"/master.json
 chown www-data:www-data /var/lib/sys/config/"$DOMAIN"/master.json
+
+# Global-Fallback (für ältere Lua-Skripte aus git-Clone die MASTER_PATH hardcoded haben)
+echo "$MASTER_JSON" > /var/lib/sys/config/master.json
+chmod 600 /var/lib/sys/config/master.json
+chown www-data:www-data /var/lib/sys/config/master.json
 
 # ── 9. nginx config — Phase 1: HTTP-only ──────────────────────────────────────
 info "Configuring OpenResty (HTTP-only, Phase 1)..."

@@ -16,21 +16,29 @@ echo "  ────────────────────────
 echo ""
 
 # ── Domain detection ──────────────────────────────────────────────────────────
-DOMAIN=$(ls /etc/openresty/sites-enabled/ 2>/dev/null \
-  | grep -v '^00-default' | head -1)
+DOMAIN=""
+for SITES_DIR in \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  if [ -d "$SITES_DIR" ]; then
+    DOMAIN=$(ls "$SITES_DIR" 2>/dev/null | grep -v '^00-default' | head -1)
+    [ -n "$DOMAIN" ] && break
+  fi
+done
 
-if [ -z "$DOMAIN" ]; then
-  error "Keine Domain in /etc/openresty/sites-enabled/ gefunden."
-fi
-
-if [ -f "/var/lib/sys/config/$DOMAIN/master.json" ]; then
+# master.json: domain-spezifisch → global → alle Unterverzeichnisse
+MASTER_PATH=""
+if [ -n "$DOMAIN" ] && [ -f "/var/lib/sys/config/$DOMAIN/master.json" ]; then
   MASTER_PATH="/var/lib/sys/config/$DOMAIN/master.json"
-else
+elif [ -f "/var/lib/sys/config/master.json" ]; then
   MASTER_PATH="/var/lib/sys/config/master.json"
-  [ -f "$MASTER_PATH" ] || error "master.json nicht gefunden."
+else
+  MASTER_PATH=$(find /var/lib/sys/config -name "master.json" 2>/dev/null | head -1)
 fi
 
-info "Domain: $DOMAIN"
+[ -n "$MASTER_PATH" ] || error "master.json nicht gefunden. init.sh erneut ausführen."
+
+[ -n "$DOMAIN" ] && info "Domain: $DOMAIN" || info "Domain: (nicht erkannt)"
 info "Config: $MASTER_PATH"
 echo ""
 
@@ -77,6 +85,20 @@ d['access_password_hash'] = '$NEW_HASH'
 with open('$MASTER_PATH', 'w') as f:
     json.dump(d, f, indent=2)
 "
+
+# Global-Fallback ebenfalls aktualisieren (Abwärtskompatibilität)
+GLOBAL_MASTER="/var/lib/sys/config/master.json"
+if [ -f "$GLOBAL_MASTER" ] && [ "$MASTER_PATH" != "$GLOBAL_MASTER" ]; then
+  python3 -c "
+import json
+with open('$GLOBAL_MASTER') as f:
+    d = json.load(f)
+d['access_password_hash'] = '$NEW_HASH'
+with open('$GLOBAL_MASTER', 'w') as f:
+    json.dump(d, f, indent=2)
+"
+  info "Global-Fallback master.json ebenfalls aktualisiert."
+fi
 
 info "access_password_hash aktualisiert."
 
