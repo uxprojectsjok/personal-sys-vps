@@ -191,6 +191,7 @@ let _appKit = null;
 function getOrInitAppKit(projectId) {
   if (_appKit) return _appKit;
   if (typeof window === "undefined") return null;
+  if (!projectId) return null;
   _appKit = createAppKit({
     adapters: [new EthersAdapter()],
     networks: [ACTIVE_NETWORK.appKitNetwork],
@@ -350,7 +351,12 @@ export function useChainAnchor() {
     if (isConnected.value) return;
     anchorError.value = "";
     const config = useRuntimeConfig();
-    const kit = getOrInitAppKit(config.public.walletConnectProjectId);
+    const projectId = config.public.walletConnectProjectId;
+    if (!projectId) {
+      anchorError.value = "Kein WalletConnect Project ID konfiguriert. Bitte WALLETCONNECT_PROJECT_ID in .env eintragen (kostenlos: cloud.walletconnect.com).";
+      return;
+    }
+    const kit = getOrInitAppKit(projectId);
     if (!kit) {
       anchorError.value = "AppKit konnte nicht initialisiert werden.";
       return;
