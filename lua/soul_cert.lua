@@ -10,8 +10,19 @@ local cjson      = require("cjson.safe")
 local cfg        = require("config_reader")
 local master_key = cfg.get_master_key()
 
+local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
+
+local function get_master_path()
+  if type(cfg.get_master_path) == "function" then return cfg.get_master_path() end
+  return MASTER_PATH_GLOBAL
+end
+
 local function read_master()
-  local f = io.open(cfg.get_master_path(), "r")
+  local path = get_master_path()
+  local f = io.open(path, "r")
+  if not f and path ~= MASTER_PATH_GLOBAL then
+    f = io.open(MASTER_PATH_GLOBAL, "r")
+  end
   if not f then return nil end
   local raw = f:read("*a"); f:close()
   local ok, data = pcall(cjson.decode, raw or "")
@@ -119,13 +130,23 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
   -- Node-Owner sperren: soul_id dauerhaft in master.json verankern
   if not node_soul_id or node_soul_id == "" then
     master_data.node_soul_id = soul_id
+    local mpath = get_master_path()
     os.execute("mkdir -p /var/lib/sys/config")
-    local lf = io.open(cfg.get_master_path(), "w")
+    local lf = io.open(mpath, "w")
     if lf then
       lf:write(cjson.encode(master_data)); lf:close()
-      os.execute("chmod 600 " .. cfg.get_master_path())
-      os.execute("chown www-data:www-data " .. cfg.get_master_path() .. " 2>/dev/null || true")
+      os.execute("chmod 600 " .. mpath)
+      os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
       cfg.invalidate_master_cache()
+    end
+    -- Global-Fallback sync (Abwärtskompatibilität mit älteren Lua-Skripten)
+    if mpath ~= MASTER_PATH_GLOBAL then
+      local gf = io.open(MASTER_PATH_GLOBAL, "w")
+      if gf then
+        gf:write(cjson.encode(master_data)); gf:close()
+        os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+        os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+      end
     end
   end
 
@@ -140,16 +161,26 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
         for i = 1, 32 do hex = hex .. string.format("%02x", bytes:byte(i)) end
         first_setup_token = "adm_" .. hex
 
-        -- In master.json persistieren
+        -- In master.json persistieren (domain-spezifisch + global)
         local existing = master or {}
         existing.admin_token = first_setup_token
+        local mpath = get_master_path()
         os.execute("mkdir -p /var/lib/sys/config")
-        local wf = io.open(cfg.get_master_path(), "w")
+        local wf = io.open(mpath, "w")
         if wf then
           wf:write(cjson.encode(existing)); wf:close()
-          os.execute("chmod 600 " .. cfg.get_master_path())
-          os.execute("chown www-data:www-data " .. cfg.get_master_path() .. " 2>/dev/null || true")
+          os.execute("chmod 600 " .. mpath)
+          os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
           cfg.invalidate_master_cache()
+        end
+        -- Global-Fallback sync
+        if mpath ~= MASTER_PATH_GLOBAL then
+          local gf = io.open(MASTER_PATH_GLOBAL, "w")
+          if gf then
+            gf:write(cjson.encode(existing)); gf:close()
+            os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+            os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+          end
         end
       end
     end

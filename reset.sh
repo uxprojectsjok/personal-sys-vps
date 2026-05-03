@@ -12,15 +12,27 @@ error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
 SOULS_DIR="/var/lib/sys/souls"
 
-# Domain-spezifischen master.json-Pfad ermitteln (domain-aware wie config_reader.lua)
-# Sucht zuerst in /var/lib/sys/config/<domain>/master.json (Ergebnis von init.sh),
-# fällt auf globalen Pfad zurück für ältere Installs.
-DOMAIN=$(ls /etc/openresty/sites-enabled/ 2>/dev/null \
-  | grep -v '^00-default' | head -1)
+# Domain-spezifischen master.json-Pfad ermitteln
+# Prüft beide möglichen sites-enabled-Pfade (je nach OpenResty-Installation)
+DOMAIN=""
+for SITES_DIR in \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  if [ -d "$SITES_DIR" ]; then
+    DOMAIN=$(ls "$SITES_DIR" 2>/dev/null | grep -v '^00-default' | head -1)
+    [ -n "$DOMAIN" ] && break
+  fi
+done
+
+# master.json: domain-spezifisch → global → alle Unterverzeichnisse
+MASTER_PATH=""
 if [ -n "$DOMAIN" ] && [ -f "/var/lib/sys/config/$DOMAIN/master.json" ]; then
   MASTER_PATH="/var/lib/sys/config/$DOMAIN/master.json"
-else
+elif [ -f "/var/lib/sys/config/master.json" ]; then
   MASTER_PATH="/var/lib/sys/config/master.json"
+else
+  # Letzter Ausweg: erstes master.json in einem Unterverzeichnis
+  MASTER_PATH=$(find /var/lib/sys/config -name "master.json" 2>/dev/null | head -1)
 fi
 
 echo ""
@@ -63,17 +75,22 @@ fi
 # ── node_soul_id aus master.json entfernen ────────────────────────────────────
 info "Setze Node-Lock zurück..."
 python3 - <<PYEOF
-import json
+import json, os
 
-with open("$MASTER_PATH", "r") as f:
-    data = json.load(f)
+paths = ["$MASTER_PATH"]
+# Global-Fallback ebenfalls aktualisieren wenn vorhanden
+global_path = "/var/lib/sys/config/master.json"
+if global_path not in paths and os.path.exists(global_path):
+    paths.append(global_path)
 
-data.pop("node_soul_id", None)
-
-with open("$MASTER_PATH", "w") as f:
-    json.dump(data, f, indent=2)
-
-print("  master.json aktualisiert")
+for path in paths:
+    with open(path, "r") as f:
+        data = json.load(f)
+    data.pop("node_soul_id", None)
+    data.pop("admin_token", None)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"  master.json aktualisiert: {path}")
 PYEOF
 
 # ── OpenResty restart — löscht gate_sessions + verify_cache (shared dicts) ───
