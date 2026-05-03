@@ -56,8 +56,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── 2. OpenResty repository ───────────────────────────────────────────────────
 info "Adding OpenResty repository..."
-curl -fsSL https://openresty.org/package/pubkey.gpg | apt-key add -
-echo "deb http://openresty.org/package/ubuntu $(lsb_release -cs) main" \
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://openresty.org/package/pubkey.gpg \
+  | gpg --dearmor -o /etc/apt/keyrings/openresty.gpg
+chmod a+r /etc/apt/keyrings/openresty.gpg
+echo "deb [signed-by=/etc/apt/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -cs) main" \
   > /etc/apt/sources.list.d/openresty.list
 apt-get update -qq
 
