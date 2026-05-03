@@ -1,148 +1,67 @@
-# Self-Hosting & Contributing to SaveYourSoul
+# Contributing to Personal SYS VPS
 
-## Overview
+SYS is an open protocol. Contributions are welcome — bug fixes, new integrations, documentation improvements, and protocol extensions.
 
-SaveYourSoul (SYS) is an open-source protocol for persistent AI soul identities.
-The code is published under the Apache 2.0 License. You can self-host a fully
-functional instance on your own infrastructure.
-
-**Before you begin, read the [NOTICE](./NOTICE) file** — it covers trademark
-restrictions and the authorship model explained below.
+Before contributing, read the [NOTICE](./NOTICE) file for trademark and attribution requirements.
 
 ---
 
-## What you can do freely
+## What you can do freely (Apache 2.0)
 
-- Run your own private SYS instance with your own `SOUL_MASTER_KEY`
-- Build applications on top of the SYS protocol
-- Fork and modify the codebase (Apache 2.0, attribution required)
-- Deploy the `soul-mcp` MCP server to expose souls to AI assistants
-- Use the WhatsApp and voice-clone integrations for your own souls
+- Self-host your own private SYS node with your own `SOUL_MASTER_KEY`
+- Build applications and integrations on top of the SYS protocol
+- Fork and modify the codebase (attribution required, see NOTICE)
+- Add new Lua endpoints, composables, or integrations
+- Deploy the `soul-mcp` MCP server for your own souls
 
-## What requires permission
+## What requires written permission
 
 - Using the name **"SaveYourSoul"** or **"SYS"** for a public service or product
-- Claiming your implementation is **"officially certified"** by the author
-- Connecting to or impersonating the **canonical SYS network**
+- Claiming your implementation is **"officially certified"**
 
 ---
 
-## Self-Hosting Guide
+## Self-Hosting
 
-### Prerequisites
-
-| Component | Requirement |
-|-----------|-------------|
-| Server OS | Ubuntu 22.04+ or Debian 12+ |
-| Web server | OpenResty (Nginx + LuaJIT) |
-| Node.js | 20+ (dev server only) |
-| SSL | Let's Encrypt or own certificate |
-
-### 1. Clone and configure
+The fastest way to run your own node:
 
 ```bash
-git clone https://github.com/YOUR_FORK/SaveYourSoul.git
-cd SaveYourSoul
-cp .env.example .env
-# Fill in all values in .env
+git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
+cd /opt/sys && bash init.sh
+```
+
+The script handles everything: OpenResty, SSL, Node.js, frontend build, Lua scripts, config. Full guide: [ONBOARDING.md](./ONBOARDING.md)
+
+---
+
+## Development Setup
+
+```bash
+git clone https://github.com/uxprojectsjok/personal-sys-vps.git
+cd personal-sys-vps
+cp .env.example .env   # fill in ANTHROPIC_API_KEY, SOUL_MASTER_KEY, API_SIGNING_KEY
 npm install
+npm run dev            # Nuxt dev server + Nitro API on https://localhost:3007
 ```
 
-### 2. Generate your master key
+Production uses OpenResty (Lua) instead of Nitro. When changing API logic, keep both in sync:
+- `server/api/*.js` — Nitro (dev)
+- `lua/*.lua` → `/etc/openresty/lua/` — OpenResty (prod)
+
+---
+
+## Project Fingerprint
+
+Verify your clone matches the official release:
 
 ```bash
-openssl rand -hex 32   # → SOUL_MASTER_KEY
-openssl rand -hex 32   # → API_SIGNING_KEY
-```
-
-Your `SOUL_MASTER_KEY` is the root of your instance's chain of trust.
-**Keep it secret. Back it up offline. Never share it.**
-All soul certificates issued by your instance are derived from this key.
-
-### 3. Configure OpenResty
-
-```bash
-# Copy Lua scripts
-cp server/openresty/*.lua /etc/openresty/lua/
-
-# Create vhost from template
-cp server/openresty/vhost.conf.template /etc/openresty/sites-available/YOUR_DOMAIN
-# Replace all occurrences of YOUR_DOMAIN in the file with your actual domain
-
-# Enable site
-ln -s /etc/openresty/sites-available/YOUR_DOMAIN /etc/openresty/sites-enabled/
-
-# Set environment variables via systemd override
-systemctl edit openresty
-# Add:
-# [Service]
-# Environment="ANTHROPIC_API_KEY=..."
-# Environment="SOUL_MASTER_KEY=..."
-# Environment="API_SIGNING_KEY=..."
-# Environment="WAVESPEED_KEY=..."    # optional
-
-openresty -s reload
-```
-
-Full setup instructions: [docs/PRODUCTION_SETUP.md](./docs/PRODUCTION_SETUP.md)
-
-### 4. Build and deploy the frontend
-
-```bash
-npm run generate
-cd utils && node killMetas.mjs && cd ..
-rsync -a --delete .output/public/ /var/www/YOUR_DOMAIN/
-openresty -s reload
-```
-
-### 5. Optional integrations
-
-#### WhatsApp
-```bash
+node utils/project-hash.mjs
 ```
 
 ---
 
-## The Authorship Model
+## Pull Requests
 
-The SYS architecture has a built-in chain of trust that makes the original
-author the canonical root:
+Open an issue before starting large changes. By submitting a PR, you agree your contribution is licensed under Apache 2.0 and attributed as per the NOTICE file.
 
-```
-SOUL_MASTER_KEY (secret, on-server)
-    └── soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id)[0:32]
-            └── All API access validated against this cert
-```
-
-- **Your instance** = your own `SOUL_MASTER_KEY` = your own isolated network
-- **Canonical SYS network** = original `SOUL_MASTER_KEY` at the reference implementation
-- Souls from one instance cannot authenticate against another instance
-
-Additionally, the `SoulRegistry.sol` smart contract, when deployed by the author
-on Polygon mainnet, creates an immutable on-chain record of authorship that no
-fork can replicate or invalidate.
-
----
-
-## Contributing Code
-
-Pull requests are welcome for:
-- Bug fixes
-- New integrations (new platforms, new vault backends)
-- Documentation improvements
-- Protocol extensions (must be backwards-compatible)
-
-By submitting a PR, you agree that your contribution will be licensed under the
-same Apache 2.0 License and attributed to the original copyright holder as per
-the NOTICE file.
-
-Please open an issue before starting large changes.
-
----
-
-## Contact & Certification
-
-To inquire about official certification, licensing, or partnership:
-
-- Email: your@email.com
-- Web: https://YOUR_PROJECT_URL
+**Contact:** janoliverkaro@gmail.com — [uxprojects-jok.com](https://uxprojects-jok.com)
