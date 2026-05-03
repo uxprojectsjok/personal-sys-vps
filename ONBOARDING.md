@@ -93,6 +93,20 @@ Vergib ein neues, sicheres Root-Passwort.
 
 ---
 
+## Passwort vergessen
+
+Wenn du dein Gate-Passwort vergessen hast, kannst du es per SSH zurücksetzen — ohne die Soul zu verlieren:
+
+```bash
+bash /opt/sys/recover-password.sh
+```
+
+Das Script erkennt die Domain automatisch, liest den Master Key aus der Konfiguration und setzt einen neuen Passwort-Hash. Soul, Vault und SSL bleiben vollständig erhalten. Anschließend wird OpenResty neu gestartet, damit der alte Session-Cache geleert wird.
+
+> Voraussetzung: SSH-Zugang zum Server als root. Wer keinen SSH-Zugang mehr hat, muss über die VPS-Konsole des Providers (z.B. Ionos KVM-Konsole) einsteigen.
+
+---
+
 ## Soul zurücksetzen
 
 Um die Soul-Daten zu löschen ohne den Server zu deinstallieren:
