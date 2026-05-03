@@ -380,6 +380,7 @@ async function triggerEnrichment() {
         message: n > 0 ? `${n} Sektion${n > 1 ? "en" : ""} aktualisiert` : "Session-Log eingetragen",
       };
       appendGrowthEntry();
+      await pushToServer();
       if (vaultConnected.value) {
         await writeSoulMd(soulContent.value, "sys").catch(() => {});
       }

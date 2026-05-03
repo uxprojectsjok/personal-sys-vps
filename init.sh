@@ -309,6 +309,11 @@ sed -i "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$API_SIGNING_KEY|"         .env
 [ -n "$WC_PROJECT_ID" ] && \
   sed -i "s|^WALLETCONNECT_PROJECT_ID=.*|WALLETCONNECT_PROJECT_ID=$WC_PROJECT_ID|" .env
 
+# WalletConnect direkt in nuxt.config.js eintragen (statischer Build liest .env nicht immer)
+if [ -n "$WC_PROJECT_ID" ]; then
+  sed -i "s|walletConnectProjectId:.*process\.env\.WALLETCONNECT_PROJECT_ID.*|walletConnectProjectId: \"$WC_PROJECT_ID\",|" nuxt.config.js
+fi
+
 info "ANTHROPIC_API_KEY, SOUL_MASTER_KEY und API_SIGNING_KEY eingetragen"
 [ -n "$WC_PROJECT_ID" ] && info "WALLETCONNECT_PROJECT_ID eingetragen" || \
   warn "Kein WalletConnect Project ID — Blockchain-Anchoring deaktiviert."
