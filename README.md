@@ -26,12 +26,35 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 
 ### Was der Node macht
 
-- **Speichert** deine sys.md verschlüsselt (AES-256-CBC, Schlüssel nur im Browser)
-- **Authentifiziert** dich via HMAC-SHA256 soul_cert — ohne Cookies, ohne OAuth
-- **Leitet** deine KI-Anfragen weiter (Anthropic Claude, SSE-Streaming)
-- **Verwaltet** deinen Vault — Bilder, Audio, Video, Kontext-Dateien
-- **Vernetzt** dich mit anderen SYS-Nodes (Peer-to-Peer Soul-Verbindungen)
-- **Schützt** den gesamten Zugang mit einem Gate-Passwort
+**Identität & Authentifizierung**
+- sys.md verschlüsselt gespeichert (AES-256-CBC, Schlüssel bleibt im Browser)
+- HMAC-SHA256 soul_cert — zustandslos, ohne Cookies, ohne OAuth
+- Gate-Passwort schützt die gesamte Oberfläche
+
+**KI-Funktionen**
+- Chat mit Claude (Anthropic API, SSE-Streaming, Kontextsteuerung)
+- Vision-Analyse: Kamerabild → Claude → Bildbeschreibung oder Bildgenerierung
+- Text-to-Speech via ElevenLabs (eigene Stimme klonen möglich)
+- KI-Bildgenerierung via WaveSpeed AI
+- Soul-Update: Claude schreibt strukturiert in sys.md-Abschnitte
+
+**Vault**
+- Lokaler Vault (File System Access API, kein Upload nötig)
+- Server-Vault: Bilder, Audio, Video, Kontext-Dateien verschlüsselt hochladbar
+- Vault-Verschlüsselung optional (AES-256-CBC, Magic-Header `SYSCRYPT01`)
+- Datei-Viewer, Audio-Player, Video-Player integriert
+
+**Vernetzung**
+- Peer-to-Peer Soul-Verbindungen zwischen SYS-Nodes
+- Öffentliches Profil (opt-in) mit Vault-Freigabe für Peers
+- MCP-Server (OAuth 2.0 + PKCE) — Claude und andere KI-Clients verbinden sich
+- WhatsApp-Integration via Twilio (eigener Bot mit Soul-Kontext)
+- Browser Extension (Chrome MV3) für automatische soul_cert-Injektion
+
+**Wachstum & Verankerung**
+- Soul Growth Chain: jede Session wird kryptografisch signiert
+- Blockchain-Anchoring auf Polygon (optional, nutzer-initiiert)
+- Maturity Score 0–100 basierend auf sys.md-Füllstand
 
 ### Was der Node nicht macht
 
@@ -189,7 +212,7 @@ Verifiziere deinen Clone gegen den offiziellen Stand:
 node utils/project-hash.mjs
 ```
 
-Aktueller Release-Fingerprint: `58e9044ef4521447af871201bf291452355c3d8e0245ac084080802d5fadabb9`
+Aktueller Release-Fingerprint: `b50fcdf415fef2d311d28cdc36ed4820b5b8380c02e2d46f667f4e7ecd641fd7`
 
 Der Hash umfasst alle Source-Dateien (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — ohne `node_modules`, Build-Output, Secrets und Lock-Files.
 
