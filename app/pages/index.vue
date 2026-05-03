@@ -140,8 +140,14 @@
           <header class="l-head">
             <div class="l-lockup">
               <img src="~/assets/logo.png" alt="SYS" class="l-logo" />
+              <span class="l-mark">SYS<span class="l-dot">.</span></span>
             </div>
-            <span class="l-badge">Private Node</span>
+            <div class="l-head-right">
+              <span class="l-badge">Private Node</span>
+              <button class="l-gate-lock" @click="lockGate" aria-label="Node sperren" title="Gate sperren">
+                <i class="ri-lock-line"></i>
+              </button>
+            </div>
           </header>
 
           <main class="l-main">
@@ -161,13 +167,7 @@
             </div>
           </main>
 
-          <footer class="l-foot">
-            <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="l-foot-link">
-              <span class="l-foot-mark">SYS<span class="l-dot">.</span></span>
-              <span>sys.uxprojects-jok.com</span>
-              <span class="l-arr">↗</span>
-            </a>
-          </footer>
+          <footer class="l-foot"></footer>
         </div>
       </div>
     </template>
@@ -314,7 +314,7 @@ import VaultExplorer from '~/components/VaultExplorer.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, clear: _clear } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, clear: _clear } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
@@ -386,8 +386,8 @@ async function confirmReset() {
   if (ok) _clear?.()
 }
 
-function handleSoulCreate(soulText) {
-  if (soulText) importFromText(soulText)
+async function handleSoulCreate({ name, idea }) {
+  await createNew(name, idea)
   createSoulOpen.value = false
   fetchNodeStatus()
 }
@@ -594,7 +594,12 @@ const journal = computed(() => {
 
 .l-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: clamp(48px,10vh,96px); }
 .l-lockup { display: flex; align-items: center; gap: 12px; }
-.l-logo { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(139,92,246,0.4)); }
+.l-logo { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(139,92,246,0.4)); }
+.l-mark { font-family: var(--serif); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--fg-1); }
+.l-mark .l-dot { color: var(--accent); }
+.l-head-right { display: flex; align-items: center; gap: 12px; }
+.l-gate-lock { background: transparent; border: 0; padding: 8px; cursor: pointer; color: var(--fg-3); font-size: 16px; line-height: 1; display: flex; align-items: center; }
+.l-gate-lock:hover { color: var(--accent); }
 .l-mark { font-family: var(--serif); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--fg); }
 .l-dot { color: var(--accent); }
 .l-badge { font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(139,92,246,0.35); padding: 5px 12px; background: rgba(139,92,246,0.06); }
