@@ -57,22 +57,40 @@ Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigent
 ## Repository Structure
 
 ```
-├── ARCHITECTURE.md          Protocol specification & reference implementation docs
-├── app/                     Nuxt 4 frontend (SSG, pure client-side)
+├── init.sh                  Setup-Script — zero to running in one command
+├── reset.sh                 Soul löschen, Node freigeben (Daten weg, Config bleibt)
+├── recover-password.sh      Gate-Passwort zurücksetzen ohne Soul-Verlust
+├── deinstall.sh             Alles entfernen was init.sh installiert hat
+│
+├── app/                     Nuxt 4 Frontend (SSG, läuft vollständig im Browser)
+│   ├── pages/               Routen: index, session, gate, api-docs, ...
+│   ├── components/          UI-Komponenten (SoulNetworkPanel, Vault, Chat, ...)
+│   └── composables/         Shared State: useSoul, useVault, useChainAnchor, ...
+│
+├── lua/                     OpenResty Lua-Scripts (Production API Layer)
+│   ├── soul_cert.lua        Soul-Cert Ausstellung (HMAC-SHA256)
+│   ├── soul_auth.lua        Request-Authentifizierung
+│   ├── gate_auth.lua        Gate-Passwort Schutz
+│   ├── peer_connect.lua     Cross-Domain Soul-Verbindungen
+│   ├── vault_sync.lua       Vault-Dateien hochladen/synchronisieren
+│   └── ...                  (40+ weitere Lua-Endpunkte)
+│
 ├── server/
-│   ├── api/                 Nitro API routes (development only)
-│   └── openresty/           Lua scripts for OpenResty (production API layer)
+│   ├── api/                 Nitro API-Routes (Development-Server only)
+│   └── openresty/           nginx.conf.template, vhost.conf.template
+│
 ├── shared/
-│   └── utils/               soulParser.js, soulMaturity.js — core protocol logic
-├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
-├── browser-extension/       Chrome MV3 extension
-├── docs/
-│   ├── overview.md          Protocol overview & design principles
-│   ├── quickstart.md        Getting started guide
-│   ├── spec/                Protocol specifications (soul-md, auth, mcp-tools)
-│   ├── api/                 API reference & examples
-│   └── architecture/        OpenResty, vault, encryption internals
-└── test/                    sys.md test fixtures
+│   └── utils/               soulParser.js, soulMaturity.js — browserübergreifende Logik
+│
+├── soul-mcp/                MCP-Server (Node.js, OAuth 2.0 + PKCE)
+│   └── tools/               soul_read, soul_write, vault_manifest, ...
+│
+├── browser-extension/       Chrome MV3 Extension
+├── utils/
+│   ├── killMetas.mjs        CSP-Meta-Tags aus dem Build entfernen
+│   └── project-hash.mjs     SHA-256 Fingerprint aller Source-Dateien
+├── docs/                    Protokoll-Dokumentation, API-Referenz, Specs
+└── test/                    sys.md Test-Fixtures
 ```
 
 ---
