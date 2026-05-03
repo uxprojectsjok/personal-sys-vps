@@ -172,8 +172,6 @@
       </div>
     </template>
 
-    <ConfirmModal />
-
     <!-- ─── Modals ─────────────────────────────────────────────────── -->
     <ModalCreateSoul
       :is-open="createSoulOpen"
