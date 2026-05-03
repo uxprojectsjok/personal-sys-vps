@@ -31,6 +31,12 @@ read -p "  Anthropic API Key (sk-ant-...):            " ANTHROPIC_KEY
 [[ -z "$DOMAIN" || -z "$EMAIL" || -z "$ANTHROPIC_KEY" ]] && error "Domain, E-Mail und API Key sind erforderlich."
 
 echo ""
+echo -e "${YELLOW}  Optional: WalletConnect Project ID (für Blockchain-Anchoring).${NC}"
+echo -e "${YELLOW}  Kostenlos erstellen: cloud.walletconnect.com → New Project${NC}"
+echo -e "${YELLOW}  Leer lassen → Anchoring-Feature deaktiviert.${NC}"
+read -p "  WalletConnect Project ID (optional):      " WC_PROJECT_ID
+
+echo ""
 echo -e "${YELLOW}  Zugangspasswort für den Gate-Schutz deines Nodes.${NC}"
 echo -e "${YELLOW}  Mindestens 8 Zeichen. Dieses Passwort schützt die gesamte Oberfläche.${NC}"
 while true; do
@@ -182,8 +188,12 @@ cd "$SCRIPT_DIR"
 sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_KEY|"    .env
 sed -i "s|^SOUL_MASTER_KEY=.*|SOUL_MASTER_KEY=$MASTER_KEY|"           .env
 sed -i "s|^API_SIGNING_KEY=.*|API_SIGNING_KEY=$(openssl rand -hex 32)|" .env
+[ -n "$WC_PROJECT_ID" ] && \
+  sed -i "s|^WALLETCONNECT_PROJECT_ID=.*|WALLETCONNECT_PROJECT_ID=$WC_PROJECT_ID|" .env
 
 info "ANTHROPIC_API_KEY, SOUL_MASTER_KEY und API_SIGNING_KEY eingetragen"
+[ -n "$WC_PROJECT_ID" ] && info "WALLETCONNECT_PROJECT_ID eingetragen" || \
+  warn "Kein WalletConnect Project ID — Blockchain-Anchoring deaktiviert."
 echo ""
 
 # ── 13. Frontend build ────────────────────────────────────────────────────────
