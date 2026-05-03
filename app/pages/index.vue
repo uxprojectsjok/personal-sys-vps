@@ -16,9 +16,14 @@
             <span class="live"></span>
             #{{ soulMeta?.name || '------' }} · Soul aktiv · {{ shortId }}
           </div>
-          <button class="logout" @click="confirmReset" aria-label="Ausloggen">
-            Ausloggen <span class="arr">↗</span>
-          </button>
+          <div class="head-actions">
+            <button class="logout" @click="confirmReset" aria-label="Ausloggen">
+              Ausloggen <span class="arr">↗</span>
+            </button>
+            <button class="gate-lock" @click="lockGate" aria-label="Node sperren" title="Gate schließen — Passwort wird beim nächsten Besuch erneut abgefragt">
+              <i class="ri-lock-line"></i>
+            </button>
+          </div>
         </header>
 
         <div class="sys-dash-body">
@@ -365,6 +370,11 @@ function fmtDate(d) {
   try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' }) }
   catch { return String(d) }
 }
+function lockGate() {
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
+  window.location.href = '/gate'
+}
+
 async function confirmReset() {
   const ok = await confirmAsk({
     title: 'Ausloggen',
@@ -465,8 +475,11 @@ const journal = computed(() => {
 /* ────── DASHBOARD ────── */
 .sys-dash-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 16px clamp(16px,3vw,32px); border-bottom: 1px solid var(--rule); background: var(--paper-3); }
 .sys-dash-head .id { justify-self: center; display: inline-flex; align-items: center; gap: 12px; padding: 8px 20px; border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2); font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-3); }
+.sys-dash-head .head-actions { display: flex; align-items: center; gap: 4px; }
 .sys-dash-head .logout { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-3); background: transparent; border: 0; padding: 10px 14px; cursor: pointer; }
 .sys-dash-head .logout:hover { color: var(--accent); }
+.sys-dash-head .gate-lock { background: transparent; border: 0; padding: 10px 10px; cursor: pointer; color: var(--fg-3); font-size: 16px; line-height: 1; display: flex; align-items: center; border-left: 1px solid var(--rule-2); }
+.sys-dash-head .gate-lock:hover { color: var(--accent); }
 @media (max-width: 800px) {
   .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; }
   .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 10px; }

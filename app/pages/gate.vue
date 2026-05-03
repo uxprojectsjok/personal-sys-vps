@@ -165,8 +165,8 @@ async function submit() {
 }
 
 .gate-logo-img {
-  width: 56px;
-  height: 56px;
+  width: 88px;
+  height: 88px;
   object-fit: contain;
 }
 
