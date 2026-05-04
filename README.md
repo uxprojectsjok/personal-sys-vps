@@ -223,7 +223,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: ed1f40b1ced5bb20f6389dd006217cb8d81529608a34d03e74bf2d9005c221d0
+Current release fingerprint: f23536b983741382d7348eda894f4542a61b43e63d292199171a48317cb3063b
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -273,6 +273,8 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 - I do not provide hosting infrastructure, accounts, or managed servers.
 - User data resides exclusively on users' own servers.
 - The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
+
+**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Twilio, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 
