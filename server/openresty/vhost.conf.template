@@ -546,6 +546,68 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_register.lua;
   }
 
+  # ── Soul Earnings (soul_cert) ─────────────────────────────────────────────────
+  location = /api/soul/earnings {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_earnings.lua;
+  }
+
+  # ── Amortisierung: Zahlung (öffentlich, pol_access_token) ────────────────────
+  location = /api/soul/pay {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_pay.lua;
+  }
+
+  # ── Paid-Access für externe Agenten (pol_access_token) ───────────────────────
+  location = /api/soul/paid-read {
+    limit_req zone=chat burst=10 nodelay;
+    default_type text/plain;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_read.lua;
+  }
+
+  location = /api/soul/paid-beme {
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_beme.lua;
+  }
+
+  location = /api/soul/paid-context {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_context.lua;
+  }
+
+  location ^~ /api/soul/paid-profile/ {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_profile.lua;
+  }
+
+  location = /api/soul/paid-write {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_write.lua;
+  }
+
+  # ── POL-Token Validierung (intern, nur 127.0.0.1) ────────────────────────────
+  location = /internal/validate-pol-token {
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_pol_validate.lua;
+  }
+
   # ── Soul-Inhalt servieren (GET) – soul-cert ODER webhook-token ───────────────
   location = /api/soul {
     limit_req zone=chat burst=30 nodelay;
