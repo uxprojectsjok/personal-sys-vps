@@ -24,14 +24,33 @@ if soul_id == "" or cert == "" then return ngx.exit(401) end
 local hmac         = require("hmac_helper")
 local cert_version = hmac.read_cert_version(soul_id)
 
--- 1. Aktuellen Key prüfen
+-- Prüft alle cert_versions 0..20 gegen einen Key.
+-- Fallback für fehlendes api_context.json (z.B. nach Vault-Deletion):
+-- read_cert_version gibt 0 zurück, aber Soul hat höhere Version.
+local function try_versions(key)
+  for v = 0, 20 do
+    if hmac.cert_for_soul(key, soul_id, v) == cert then
+      return true
+    end
+  end
+  return false
+end
+
+-- 1. Aktuellen Key prüfen (gespeicherte Version zuerst, dann 0..20 als Fallback)
 local matched = hmac.cert_for_soul(master_key, soul_id, cert_version) == cert
+if not matched then
+  if try_versions(master_key) then
+    ngx.log(ngx.INFO, "[sys/auth] Fallback cert_version match soul_id=", soul_id)
+    matched = true
+  end
+end
 
 -- 2. Vorherigen Key prüfen (Grace-Period nach Rotation)
 if not matched then
   local prev_key = cfg.get_master_key_prev()
   if prev_key and prev_key ~= "" then
-    if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert then
+    if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert
+       or try_versions(prev_key) then
       ngx.log(ngx.INFO, "[sys/auth] Grace-Period Cert akzeptiert soul_id=", soul_id)
       matched = true
     end

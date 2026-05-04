@@ -218,7 +218,7 @@
                   v-else
                   @click="connectLocalVault"
                   :disabled="localVaultStatus === 'connecting'"
-                  class="w-full h-10 rounded-lg border border-[var(--sys-border)] text-xs font-semibold text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] hover:border-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                  class="w-full h-10 sys-btn-filled text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <svg v-if="localVaultStatus === 'connecting'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
