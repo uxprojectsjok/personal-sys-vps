@@ -23,8 +23,6 @@
           <button class="tool" v-if="hasSoul" @click="handleCheckServer" :disabled="serverChecking">
             {{ serverChecking ? '…' : 'Abgleich' }}
           </button>
-          <button class="tool" @click="anchorModalOpen = true">Polygon</button>
-          <button class="tool" @click="settingsOpen = true" aria-label="Einstellungen">Setup</button>
           <button class="tool" :class="{ active: aiRole === 'soul' }" @click="aiRole = aiRole === 'soul' ? 'session' : 'soul'">
             Modus · {{ aiRole === 'soul' ? 'Soul' : 'Entwicklung' }}
           </button>
