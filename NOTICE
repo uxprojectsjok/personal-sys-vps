@@ -50,6 +50,31 @@ on-chain transactions are irreversible and solely the
 responsibility of the initiating user.
 
 ────────────────────────────────────────────────────────────────
+THIRD-PARTY SERVICES — NO AFFILIATION
+────────────────────────────────────────────────────────────────
+This software includes example integrations with independent
+third-party services, including but not limited to:
+
+    Anthropic (Claude API) · ElevenLabs (text-to-speech)
+    WaveSpeed AI (image/video generation) · Twilio (WhatsApp)
+    WalletConnect · Pinata (IPFS) · Polygon (blockchain)
+
+The author is NOT affiliated with, endorsed by, sponsored by,
+or in any partnership with any of these providers. Their use
+in this codebase represents the author's personal technical
+choices at the time of writing and does not constitute a
+recommendation or endorsement.
+
+Each person who deploys this software is solely responsible for:
+  · evaluating and selecting the third-party services they use
+  · reading and complying with each provider's terms of service
+  · obtaining their own API keys and managing associated costs
+  · any legal or regulatory obligations arising from that use
+
+The author accepts no liability for any issues, costs, or
+consequences resulting from the use of these services.
+
+────────────────────────────────────────────────────────────────
 CONTACT
 ────────────────────────────────────────────────────────────────
 Licensing, partnership, or certification inquiries:
