@@ -35,5 +35,11 @@ if not data then
   return
 end
 
+-- Multi-Hoster: Registrierung immer offen, kein Soul-Lock
+if data.multi_hoster then
+  ngx.say(cjson.encode({ locked = false, multi_hoster = true }))
+  return
+end
+
 local soul_id = (type(data.node_soul_id) == "string") and data.node_soul_id or ""
 ngx.say(cjson.encode({ locked = soul_id ~= "" }))
