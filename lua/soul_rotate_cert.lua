@@ -5,11 +5,12 @@
 -- Inkrementiert cert_version in sys.md und gibt den neuen Cert zurück.
 -- Alter Cert wird damit sofort ungültig.
 
-local master_key = os.getenv("SOUL_MASTER_KEY")
-if not master_key or master_key == "" then
+local cfg        = require("config_reader")
+local master_key = cfg.get_master_key()
+if master_key == "" then
   ngx.status = 500
   ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"SOUL_MASTER_KEY nicht gesetzt"}')
+  ngx.say('{"error":"SOUL_MASTER_KEY nicht konfiguriert"}')
   return
 end
 
