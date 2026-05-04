@@ -70,7 +70,7 @@
             </button>
           </div>
           <p class="amm-prose mt-1.5">
-            Teile diese ID nur mit Menschen, denen du vertraust. Wer sie hat, kann deinen Soul lesen.
+            Teile diese ID mit Menschen, mit denen du dich verbinden willst. Die ID alleine gibt keinen Zugriff — du musst eingehende Anfragen erst annehmen und Berechtigungen explizit freigeben.
           </p>
         </div>
 
