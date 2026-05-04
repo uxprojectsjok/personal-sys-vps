@@ -131,6 +131,68 @@
                 </select>
               </div>
 
+              <!-- WaveSpeed Key -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
+                  WaveSpeed API-Key
+                  <span v-if="wavespeedKeySet" class="ml-1 normal-case font-mono text-emerald-400">{{ wavespeedPreview }}</span>
+                </label>
+                <div class="relative">
+                  <input
+                    v-model="wavespeedKey"
+                    :type="showWavespeedKey ? 'text' : 'password'"
+                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="wavespeedDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                  <button
+                    @click="showWavespeedKey = !showWavespeedKey"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    :aria-label="showWavespeedKey ? 'Key verbergen' : 'Key anzeigen'"
+                  >
+                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                  </button>
+                </div>
+                <p class="text-[10px] text-[var(--sys-fg-dim)]">
+                  Für KI-Bildgenerierung. Deinen Key bekommst du unter
+                  <a href="https://wavespeed.ai" target="_blank" rel="noopener" class="text-[var(--sys-violet)] hover:underline">wavespeed.ai</a>.
+                </p>
+              </div>
+
+              <!-- ElevenLabs Key -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
+                  ElevenLabs API-Key
+                  <span v-if="elevenlabsKeySet" class="ml-1 normal-case font-mono text-emerald-400">{{ elevenlabsPreview }}</span>
+                </label>
+                <div class="relative">
+                  <input
+                    v-model="elevenlabsKey"
+                    :type="showElevenlabsKey ? 'text' : 'password'"
+                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="elevenlabsDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                  <button
+                    @click="showElevenlabsKey = !showElevenlabsKey"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    :aria-label="showElevenlabsKey ? 'Key verbergen' : 'Key anzeigen'"
+                  >
+                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                  </button>
+                </div>
+                <p class="text-[10px] text-[var(--sys-fg-dim)]">
+                  Für Text-to-Speech. Deinen Key bekommst du unter
+                  <a href="https://elevenlabs.io" target="_blank" rel="noopener" class="text-[var(--sys-violet)] hover:underline">elevenlabs.io</a>.
+                </p>
+              </div>
+
               <!-- Aktionen -->
               <div class="flex gap-2 pt-1">
                 <button
@@ -366,6 +428,18 @@ const feedback  = ref(null)
 const keySource  = ref('none')   // 'soul' | 'master' | 'env' | 'none'
 const keyPreview = ref('')
 
+const wavespeedKey      = ref('')
+const showWavespeedKey  = ref(false)
+const wavespeedKeySet   = ref(false)
+const wavespeedPreview  = ref('')
+const wavespeedDirty    = ref(false)
+
+const elevenlabsKey     = ref('')
+const showElevenlabsKey = ref(false)
+const elevenlabsKeySet  = ref(false)
+const elevenlabsPreview = ref('')
+const elevenlabsDirty   = ref(false)
+
 const keySourceLabel = computed(() => ({
   soul:   'Eigener Key aktiv',
   master: 'Server-Key aktiv',
@@ -380,8 +454,12 @@ async function loadStatus() {
     })
     if (!res.ok) return
     const d = await res.json()
-    keySource.value  = d.key_source || 'none'
-    keyPreview.value = d.key_preview || ''
+    keySource.value       = d.key_source || 'none'
+    keyPreview.value      = d.key_preview || ''
+    wavespeedKeySet.value  = !!d.wavespeed_key_set
+    wavespeedPreview.value = d.wavespeed_preview || ''
+    elevenlabsKeySet.value  = !!d.elevenlabs_key_set
+    elevenlabsPreview.value = d.elevenlabs_preview || ''
     if (d.model) model.value = d.model
   } catch {}
 }
@@ -417,6 +495,8 @@ async function saveConfig() {
   try {
     const body = { anthropic_key: apiKey.value }
     if (model.value) body.model = model.value
+    if (wavespeedDirty.value) body.wavespeed_key = wavespeedKey.value
+    if (elevenlabsDirty.value) body.elevenlabs_key = elevenlabsKey.value
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: {
@@ -429,7 +509,11 @@ async function saveConfig() {
     if (res.ok) {
       feedback.value = { ok: true, message: 'Gespeichert ✓' }
       await loadStatus()
-      apiKey.value = ''  // Key aus dem Eingabefeld entfernen nach Speichern
+      apiKey.value        = ''
+      wavespeedKey.value  = ''
+      wavespeedDirty.value = false
+      elevenlabsKey.value  = ''
+      elevenlabsDirty.value = false
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }
@@ -572,7 +656,11 @@ watch(() => props.open, (val) => {
   if (val) {
     detectAdmin()
     loadStatus()
-    tab.value = 'api'
+    tab.value           = 'api'
+    wavespeedKey.value   = ''
+    wavespeedDirty.value = false
+    elevenlabsKey.value  = ''
+    elevenlabsDirty.value = false
   }
 })
 </script>

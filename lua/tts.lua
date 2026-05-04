@@ -4,8 +4,9 @@
 -- Body: { text, voiceId? }
 -- Gibt audio/mpeg Binary zurück.
 
-local cjson = require("cjson.safe")
-local http  = require("resty.http")
+local cjson   = require("cjson.safe")
+local http    = require("resty.http")
+local soul_id = ngx.ctx.soul_id
 
 if ngx.req.get_method() ~= "POST" then
   ngx.status = 405
@@ -14,11 +15,23 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
-local api_key = os.getenv("ELEVENLABS_API_KEY") or ""
+local api_key = ""
+if soul_id and soul_id ~= "" then
+  local f = io.open("/var/lib/sys/souls/" .. soul_id .. "/config.json", "r")
+  if f then
+    local raw = f:read("*a"); f:close()
+    local ok, cfg = pcall(cjson.decode, raw)
+    if ok and type(cfg) == "table" and type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
+      api_key = cfg.elevenlabs_key
+    end
+  end
+end
+if api_key == "" then api_key = os.getenv("ELEVENLABS_API_KEY") or "" end
+
 if api_key == "" then
   ngx.status = 503
   ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"service_unavailable","message":"ELEVENLABS_API_KEY nicht konfiguriert"}')
+  ngx.say('{"error":"service_unavailable","message":"ElevenLabs API key not configured"}')
   return
 end
 

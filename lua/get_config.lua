@@ -34,11 +34,24 @@ end
 local has_own_key = type(soul_cfg.anthropic_key) == "string"
                     and soul_cfg.anthropic_key:sub(1, 7) == "sk-ant-"
 
--- Maskierte Darstellung: nur erste/letzte Zeichen zeigen
 local key_preview = ""
 if has_own_key then
   local k = soul_cfg.anthropic_key
   key_preview = k:sub(1, 12) .. "…" .. k:sub(-4)
+end
+
+local has_wavespeed = type(soul_cfg.wavespeed_key) == "string" and soul_cfg.wavespeed_key ~= ""
+local wavespeed_preview = ""
+if has_wavespeed then
+  local k = soul_cfg.wavespeed_key
+  wavespeed_preview = k:sub(1, 6) .. "…" .. k:sub(-4)
+end
+
+local has_elevenlabs = type(soul_cfg.elevenlabs_key) == "string" and soul_cfg.elevenlabs_key ~= ""
+local elevenlabs_preview = ""
+if has_elevenlabs then
+  local k = soul_cfg.elevenlabs_key
+  elevenlabs_preview = k:sub(1, 6) .. "…" .. k:sub(-4)
 end
 
 -- ── Aktiver Key-Status (welche Ebene wird genutzt?) ───────────────────────────
@@ -66,8 +79,12 @@ end
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 ngx.say(cjson.encode({
-  has_own_key  = has_own_key,
-  key_preview  = key_preview,
-  key_source   = key_source,   -- "soul" | "master" | "env" | "none"
-  model        = soul_cfg.model or cjson.null,
+  has_own_key          = has_own_key,
+  key_preview          = key_preview,
+  key_source           = key_source,
+  wavespeed_key_set    = has_wavespeed,
+  wavespeed_preview    = wavespeed_preview,
+  elevenlabs_key_set   = has_elevenlabs,
+  elevenlabs_preview   = elevenlabs_preview,
+  model                = soul_cfg.model or cjson.null,
 }))
