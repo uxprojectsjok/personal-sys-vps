@@ -38,6 +38,8 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 - AI image generation via WaveSpeed AI
 - Soul update: Claude writes structured data into sys.md sections
 
+> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, Twilio, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+
 **Vault**
 - Local vault (File System Access API, no upload needed)
 - Server vault: images, audio, video, context files — encrypted upload
@@ -221,7 +223,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 098f4136328118510c0a927e3430d3e2c35dde336ff54fd400edaad8edaaae06
+Current release fingerprint: ed1f40b1ced5bb20f6389dd006217cb8d81529608a34d03e74bf2d9005c221d0
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
