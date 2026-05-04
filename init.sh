@@ -431,7 +431,7 @@ echo -e "${YELLOW}│       → ändern: Port 2222   (oder eine andere Zahl > 10
 echo -e "${YELLOW}│                                                                  │${NC}"
 echo -e "${YELLOW}│  2. Root-Login per SSH deaktivieren:                             │${NC}"
 echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│     In derselben Datei:                                          │${NC}"
+echo -e "${YELLOW}│     nano /etc/ssh/sshd_config                                   │${NC}"
 echo -e "${YELLOW}│       → Zeile:  PermitRootLogin yes                             │${NC}"
 echo -e "${YELLOW}│       → ändern: PermitRootLogin no                              │${NC}"
 echo -e "${YELLOW}│                                                                  │${NC}"
