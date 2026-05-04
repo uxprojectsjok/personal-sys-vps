@@ -304,7 +304,6 @@
                 @click="saveMaster"
                 :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)"
                 class="w-full sys-btn-filled h-10 text-sm disabled:opacity-50"
-                style="background: var(--sys-orange)"
               >
                 {{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}
               </button>

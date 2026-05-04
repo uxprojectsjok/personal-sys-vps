@@ -132,7 +132,7 @@
               v-if="!vaultConnected"
               @click="connectLocalVault"
               :disabled="connectingLocal"
-              class="w-full h-12 flex items-center gap-3 px-4 rounded-none border border-white/15 bg-[rgba(255,255,255,0.04)] text-sm text-white/80 hover:bg-[rgba(255,255,255,0.09)] hover:border-white/25 disabled:opacity-40 active:scale-[0.99] transition-all"
+              class="w-full h-12 flex items-center gap-3 px-4 rounded-none bg-[var(--sys-violet)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 active:scale-[0.99] transition-all"
             >
               <svg class="w-4 h-4 flex-none text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
@@ -258,7 +258,7 @@
                 </div>
                 <div class="min-w-0">
                   <p class="text-sm font-medium text-red-400">{{ deleteLoading ? 'Wird gelöscht…' : 'Cloud-Vault löschen' }}</p>
-                  <p class="text-xs text-white/35 mt-0.5">Entfernt alle Vault-Dateien vom Server — unwiderruflich</p>
+                  <p class="text-xs text-white/35 mt-0.5">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
                 </div>
               </button>
             </div>
@@ -430,7 +430,7 @@ async function onDownloadApiExport() {
 }
 
 async function handleDeleteVault() {
-  if (!await ask({ title: 'Cloud-Vault löschen', message: 'Alle Vault-Dateien auf dem VPS werden unwiderruflich gelöscht. Die lokale Verbindung bleibt bestehen.', confirmText: 'Löschen', danger: true })) return
+  if (!await ask({ title: 'Cloud-Vault löschen', message: 'Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden. Die lokale Vault-Verbindung wird ebenfalls getrennt.', confirmText: 'Löschen', danger: true })) return
   deleteLoading.value = true
   try {
     const res = await fetch('/api/vault', {

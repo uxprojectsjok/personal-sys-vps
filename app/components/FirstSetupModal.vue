@@ -6,11 +6,11 @@
     aria-modal="true"
     aria-labelledby="first-setup-title"
   >
-    <div class="relative w-full max-w-lg bg-[var(--sys-bg-elevated)] border border-amber-500/40 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div class="relative w-full max-w-lg bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       <!-- Header -->
       <div class="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-[var(--sys-border)]">
-        <i class="ri-shield-keyhole-line text-2xl text-amber-400"></i>
-        <h2 id="first-setup-title" class="text-lg font-bold text-amber-300">
+        <i class="ri-shield-keyhole-line text-2xl text-[var(--sys-violet)]"></i>
+        <h2 id="first-setup-title" class="text-lg font-bold text-[var(--sys-fg)]">
           Erste Instanz — Admin-Token sichern
         </h2>
       </div>
@@ -23,13 +23,13 @@
         </p>
 
         <!-- Token display -->
-        <div class="bg-[var(--sys-bg)] border border-amber-500/30 rounded-xl p-4 flex flex-col gap-3">
+        <div class="bg-[var(--sys-bg)] border border-[var(--sys-border)] rounded-xl p-4 flex flex-col gap-3">
           <label class="text-xs text-[var(--sys-fg-dim)] uppercase tracking-wider">Admin-Token</label>
           <div class="flex items-center gap-2">
-            <code class="flex-1 text-amber-300 text-sm font-mono break-all select-all">{{ token }}</code>
+            <code class="flex-1 text-[var(--sys-violet)] text-sm font-mono break-all select-all">{{ token }}</code>
             <button
               @click="copyToken"
-              :class="copied ? 'text-green-400' : 'text-[var(--sys-fg-muted)] hover:text-amber-300'"
+              :class="copied ? 'text-green-400' : 'text-[var(--sys-fg-muted)] hover:text-[var(--sys-violet)]'"
               class="shrink-0 p-2 rounded-lg transition-colors"
               aria-label="Token kopieren"
             >
@@ -45,7 +45,7 @@
 
         <!-- Confirmation -->
         <label class="flex items-center gap-3 cursor-pointer select-none">
-          <input type="checkbox" v-model="confirmed" class="w-4 h-4 accent-amber-400" />
+          <input type="checkbox" v-model="confirmed" class="w-4 h-4 accent-[var(--sys-violet)]" />
           <span class="text-sm text-[var(--sys-fg-muted)]">
             Ich habe den Token sicher gespeichert.
           </span>
