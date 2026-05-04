@@ -288,6 +288,8 @@
     </Teleport>
 
     <ConfirmModal />
+
+    <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; setupOpen = true" />
   </ClientOnly>
 </template>
 
@@ -308,10 +310,11 @@ import SoulDecryptModal from '~/components/SoulDecryptModal.vue'
 import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import VaultExplorer from '~/components/VaultExplorer.vue'
+import FirstSetupModal from '~/components/FirstSetupModal.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, pushToServer, exportAsBlob, clear: _clear } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()

@@ -33,6 +33,9 @@ read -p "  Anthropic API Key (sk-ant-...):            " ANTHROPIC_KEY
 echo ""
 echo -e "${YELLOW}  Optional: WalletConnect Project ID (für Blockchain-Anchoring).${NC}"
 echo -e "${YELLOW}  Kostenlos erstellen: cloud.walletconnect.com → New Project${NC}"
+echo -e "${YELLOW}  Wichtig: Danach unter Project → Explorer → Allowed Domains${NC}"
+echo -e "${YELLOW}  deine Domain eintragen (z.B. soul.deinname.de) — sonst wird${NC}"
+echo -e "${YELLOW}  WalletConnect auf der Live-Seite blockiert.${NC}"
 echo -e "${YELLOW}  Leer lassen → Anchoring-Feature deaktiviert.${NC}"
 read -p "  WalletConnect Project ID (optional):      " WC_PROJECT_ID
 
@@ -443,3 +446,20 @@ echo -e "${YELLOW}│  ⚠ Wichtig: Öffne eine zweite SSH-Session mit dem neuen
 echo -e "${YELLOW}│    BEVOR du die alte schließt — sonst sperrst du dich aus.      │${NC}"
 echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────┘${NC}"
 echo ""
+
+if [[ -n "$WC_PROJECT_ID" ]]; then
+echo -e "${GREEN}┌──────────────────────────────────────────────────────────────────┐${NC}"
+echo -e "${GREEN}│  WalletConnect: Domain-Freigabe erforderlich!                    │${NC}"
+echo -e "${GREEN}│                                                                  │${NC}"
+echo -e "${GREEN}│  Damit Blockchain-Anchoring auf deiner Seite funktioniert,       │${NC}"
+echo -e "${GREEN}│  musst du deine Domain im WalletConnect-Dashboard freigeben:     │${NC}"
+echo -e "${GREEN}│                                                                  │${NC}"
+echo -e "${GREEN}│  1. dashboard.reown.com → dein Projekt öffnen                   │${NC}"
+echo -e "${GREEN}│  2. Explorer → Allowed Domains → Add Domain                     │${NC}"
+echo -e "${GREEN}│  3. Deine Domain eintragen:                                      │${NC}"
+echo -e "${GREEN}│     $DOMAIN${NC}"
+echo -e "${GREEN}│                                                                  │${NC}"
+echo -e "${GREEN}│  Ohne diesen Eintrag blockiert WalletConnect alle Verbindungen. │${NC}"
+echo -e "${GREEN}└──────────────────────────────────────────────────────────────────┘${NC}"
+echo ""
+fi
