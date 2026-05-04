@@ -1,162 +1,187 @@
-# VPS Onboarding — Personal SYS Node
+# Onboarding — Personal SYS Node
 
-## Voraussetzungen
+## Requirements
 
-- VPS mit Ubuntu 24.04 — ohne Plesk oder andere vorinstallierte Panels
-- Mindestens 2 GB RAM
-- Eine eigene Domain (z.B. bei Ionos)
-- Ein Anthropic API Key ([console.anthropic.com → API Keys](https://console.anthropic.com/))
-
----
-
-## Schritt 1 — Domain vorbereiten
-
-Geh in dein DNS-Panel und lege einen A-Eintrag an:
-
-| Typ | Hostname | Zeigt auf |
-|-----|----------|-----------|
-| A   | `soul` (oder dein Wunschname) | IP deines Servers |
-
-> Der Eintrag kann 5–30 Minuten brauchen bis er aktiv ist.
+| What | Details |
+|------|---------|
+| VPS | Ubuntu 24.04 LTS, min. 2 GB RAM. No pre-installed control panels (Plesk, etc.). |
+| Domain | An A record pointing to your server's IP. |
+| Anthropic API Key | Optional — required for AI chat features. Can also be set via the Admin UI after installation. Get one at [console.anthropic.com](https://console.anthropic.com/). |
+| WalletConnect Project ID | Optional — required for Polygon blockchain anchoring. Free at [cloud.walletconnect.com](https://cloud.walletconnect.com). Must be set at install time (baked into the static build). |
 
 ---
 
-## Schritt 2 — Mit dem Server verbinden
+## Step 1 — Point your domain to the server
 
-**Windows:** Öffne `cmd` (Windows + R → `cmd`)
+In your DNS panel, create an A record:
 
-```
-ssh root@DEINE-IP
-```
+| Type | Hostname | Points to |
+|------|----------|-----------|
+| A | `soul` (or your chosen subdomain) | Your server's IP |
 
-Beim ersten Verbinden `yes` bestätigen. Passwort aus der Ionos-Bestätigungsmail eingeben.
+> DNS propagation can take 5–30 minutes.
 
 ---
 
-## Schritt 3 — OpenResty-Paketquelle einrichten
+## Step 2 — Connect to your server
 
 ```bash
-curl -fsSL https://openresty.org/package/pubkey.gpg | apt-key add -
-echo "deb http://openresty.org/package/ubuntu noble main" > /etc/apt/sources.list.d/openresty.list
-apt update
+ssh root@YOUR-SERVER-IP
 ```
 
 ---
 
-## Schritt 4 — Repository laden
+## Step 3 — Run the setup script
 
 ```bash
 git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
-```
-
----
-
-## Schritt 5 — Setup starten
-
-```bash
 cd /opt/sys && bash init.sh
 ```
 
-Das Script fragt dich nach:
+The script will ask for:
 
-- Deiner Domain → z.B. `soul.meinname.de`
-- Deiner E-Mail → für das SSL-Zertifikat
-- Deinem Anthropic API Key → beginnt mit `sk-ant-...`
-- Einem WalletConnect Project ID → optional, für Blockchain-Anchoring
-- Einem Gate-Passwort → schützt die gesamte Oberfläche *(Eingabe wird nicht angezeigt — das ist normal)*
+- **Node mode** — Personal Node (single soul) or Multi-Hoster (multiple souls)
+- **Domain** — e.g. `soul.yourname.com`
+- **Email** — for the SSL certificate (Let's Encrypt)
+- **Anthropic API Key** — optional, press Enter to skip and configure via the UI later
+- **WalletConnect Project ID** — optional, press Enter to skip; required for Polygon anchoring
+- **Gate password** — protects the entire interface *(input is hidden — this is normal)*
 
-Alles andere erledigt das Script automatisch:
+> **Why WalletConnect must be set at install time:** The Project ID is baked into the static JavaScript bundle during `npm run generate`. It cannot be changed via the Admin UI after the build — a new install or rebuild is required.
 
-- OpenResty installieren & konfigurieren
-- SSL-Zertifikat beantragen (Let's Encrypt) — vorhandene Certs werden wiederverwendet
-- Swap einrichten (2 GB, nötig für den Frontend-Build)
-- Frontend bauen & deployen
-- Umgebungsvariablen für OpenResty einrichten
+Everything else runs automatically:
+- Install and configure OpenResty
+- Request an SSL certificate (Let's Encrypt) — existing certs are reused
+- Set up swap (2 GB, needed for the frontend build)
+- Build and deploy the frontend
+- Configure environment variables for OpenResty
+- Start the MCP server as a systemd service
 
 ---
 
-## Schritt 6 — Server absichern
+## Step 4 — Secure your server
 
-Nach erfolgreicher Installation:
+After a successful installation:
 
 ```bash
 passwd
 ```
 
-Vergib ein neues, sicheres Root-Passwort.
+Set a new, strong root password.
 
 ---
 
-## Fertig
+## Done
 
-Öffne `https://DEINE-DOMAIN` im Browser — dein Soul Node ist bereit.
+Open `https://YOUR-DOMAIN` in your browser — your SYS node is ready.
 
-> Dieser Node akzeptiert genau eine Soul. Die erste Person die sich registriert ist der Eigentümer.
+> **Personal mode:** The node accepts exactly one soul. The first person to register is the permanent owner.
+>
+> **Multi-Hoster mode:** Registration stays open. Each soul is isolated — separate data, separate credentials.
 
 ---
 
-## Was du mit deinem Node machen kannst
+## Node modes
 
-**Identität**
-- sys.md anlegen und pflegen — deine persönliche KI-Identitätsdatei
-- Soul-Cert generieren für zustandslose Authentifizierung ohne Passwort-Wiederholung
-- Gate-Passwort schützt die gesamte Oberfläche vor fremdem Zugriff
+### Personal Node
 
-**KI**
-- Chat mit Claude direkt auf deinem Node (Anthropic API, dein Key, deine Kosten)
-- Claude liest deine sys.md als Kontext — Sessions bauen aufeinander auf
-- Vision: Kamerabild hochladen → Claude analysiert und beschreibt
-- Text-to-Speech via ElevenLabs (eigene Stimme optional klonbar)
-- KI-Bildgenerierung via WaveSpeed AI
-- Soul-Update: Claude schreibt strukturiert in deine sys.md-Abschnitte
+The default mode. The first soul to register locks the node — subsequent registration attempts are rejected. Suitable for private personal use.
+
+### Multi-Hoster
+
+One VPS hosts multiple souls. Registration is always open. Use cases: families, friend groups, companies, or soul hosting services.
+
+In Multi-Hoster mode, every soul still has isolated data under `/var/lib/sys/souls/{soul_id}/`. Secrets (SOUL_MASTER_KEY, API_SIGNING_KEY) are shared at the node level — each soul gets its own HMAC-derived cert from the same key.
+
+> **WalletConnect limitation in Multi-Hoster mode:** All souls on the node share the same WalletConnect Project ID. If the Project ID needs to change, the frontend must be rebuilt and redeployed.
+
+---
+
+## What you can do with your node
+
+**Identity**
+- Create and maintain your sys.md — your personal AI identity file
+- Generate a soul_cert for stateless authentication without repeated passwords
+- The gate password protects the entire interface from unauthorized access
+
+**AI**
+- Chat with Claude on your node (Anthropic API, your key, your costs)
+- Claude reads your sys.md as context — sessions build on each other
+- Vision: upload a camera image → Claude analyzes and describes it
+- Text-to-speech via ElevenLabs (voice cloning supported)
+- AI image generation via WaveSpeed AI
+- Soul update: Claude writes structured data into your sys.md sections
 
 **Vault**
-- Lokaler Vault: Dateien bleiben auf deinem Gerät (File System Access API)
-- Server-Vault: Bilder, Audio, Video, Kontext-Dateien auf deinem VPS speichern
-- Verschlüsselung optional (AES-256-CBC, Schlüssel bleibt im Browser)
+- Local vault: files stay on your device (File System Access API)
+- Server vault: images, audio, video, context files stored on your VPS
+- Encryption optional (AES-256-CBC, key stays in the browser)
 
-**Vernetzung**
-- Soul-Verbindungen: andere SYS-Nodes als Peers verbinden
-- MCP-Server: Claude Desktop und andere KI-Clients verbinden sich per OAuth 2.0
-- WhatsApp-Bot mit deinem Soul als Kontext (Twilio Serverless, optional)
-- Browser Extension für automatische Authentifizierung (Chrome MV3)
+**Networking**
+- Soul connections: connect other SYS nodes as peers
+- MCP server: Claude Desktop and other AI clients connect via OAuth 2.0
+- WhatsApp bot with your soul as context (Twilio Serverless, optional)
+- Browser extension for automatic authentication (Chrome MV3)
 
-**Wachstum**
-- Growth Chain: jede Session kryptografisch signiert und verkettet
-- Blockchain-Anchoring auf Polygon (optional, nutzer-initiiert, eigenes Wallet)
+**Growth**
+- Growth chain: every session cryptographically signed and chained
+- Blockchain anchoring on Polygon (optional, user-initiated, your own wallet)
 
 ---
 
-## Passwort vergessen
+## WalletConnect: registering your domain
 
-Wenn du dein Gate-Passwort vergessen hast, kannst du es per SSH zurücksetzen — ohne die Soul zu verlieren:
+If you set a WalletConnect Project ID, you must register your domain in the WalletConnect dashboard:
+
+1. Go to [cloud.walletconnect.com](https://cloud.walletconnect.com) → your project → **Allowed Domains**
+2. Add `https://YOUR-DOMAIN` to the allowlist
+
+Without this, WalletConnect will block connection attempts from your node.
+
+---
+
+## Forgot your password?
+
+Reset the gate password via SSH without losing your soul:
 
 ```bash
 bash /opt/sys/recover-password.sh
 ```
 
-Das Script erkennt die Domain automatisch, liest den Master Key aus der Konfiguration und setzt einen neuen Passwort-Hash. Soul, Vault und SSL bleiben vollständig erhalten. Anschließend wird OpenResty neu gestartet, damit der alte Session-Cache geleert wird.
+The script automatically reads the domain and master key from the configuration and sets a new password hash. Soul, vault, and SSL remain fully intact. OpenResty is restarted to clear the old session cache.
 
-> Voraussetzung: SSH-Zugang zum Server als root. Wer keinen SSH-Zugang mehr hat, muss über die VPS-Konsole des Providers (z.B. Ionos KVM-Konsole) einsteigen.
+> **Requirement:** SSH access to the server as root. If SSH access is lost, use your provider's VPS console (e.g., Hetzner console, Ionos KVM).
 
 ---
 
-## Soul zurücksetzen
+## Reset soul data
 
-Um die Soul-Daten zu löschen ohne den Server zu deinstallieren:
+To delete soul data without uninstalling the server:
 
 ```bash
 bash /opt/sys/reset.sh
 ```
 
-Entfernt alle Soul-Daten und setzt den Node zurück auf "bereit für erste Registrierung". OpenResty, SSL und alle Konfigurationen bleiben erhalten.
+Removes all soul data and resets the node to "ready for first registration". OpenResty, SSL, and all configuration are preserved.
 
 ---
 
-## Deinstallation
+## Uninstall
 
 ```bash
 bash /opt/sys/deinstall.sh
 ```
 
-Entfernt alle SYS-Komponenten. Ubuntu bleibt unberührt. DNS-Eintrag muss manuell beim Provider gelöscht werden.
+Removes all SYS components. Ubuntu is untouched. Delete the DNS record manually at your provider afterward.
+
+---
+
+## Cost overview
+
+| Item | Cost |
+|------|------|
+| VPS (e.g. Hetzner CX22) | ~€4–6/month |
+| Domain | ~€10/year |
+| SSL (Let's Encrypt) | Free |
+| Anthropic API | Pay-per-use (your account) |
+| Blockchain anchor | Gas in POL (one-time, optional) |

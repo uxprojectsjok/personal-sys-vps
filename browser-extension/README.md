@@ -1,89 +1,88 @@
-# browser-extension
+# Browser Extension
 
-Chrome-Erweiterung (Manifest V3) – Soul als Companion im Browser.
-Chat mit der Soul, Voice Agent starten, aktuelle Seite als Kontext übergeben.
+Chrome extension (Manifest V3) — Soul companion in the browser.
+Chat with your soul, start a voice agent, and pass the current page as context.
 
 ## Features
 
-- Chat mit der Soul via SSE-Streaming (Claude API)
-- Voice-Tab: ElevenLabs Conversational AI Agent im Browser-Tab starten
-- Seiten-Kontext: Aktueller Tab-Inhalt als Kontext für die Soul
-- Soul-Login: Soul-Cert direkt vom SYS-Tab übernehmen
-- Datei-Attach: Textdateien in den Chat anhängen
-- Detach: Popup als eigenes Fenster öffnen
+- Chat with your soul via SSE streaming (Claude API)
+- Voice tab: start an ElevenLabs Conversational AI agent in a browser tab
+- Page context: pass current tab content as context to your soul
+- Soul login: automatically pick up the soul cert from the SYS tab
+- File attach: attach text files to the chat
+- Detach: open the popup as a standalone window
 
-## Voraussetzungen
+## Requirements
 
-- Google Chrome (oder Chromium-basierter Browser)
-- SYS App unter `https://YOUR_DOMAIN` im selben Browser geöffnet
+- Google Chrome (or Chromium-based browser)
+- SYS app open at `https://YOUR_DOMAIN` in the same browser
 
-## Deploy / Installation
+## Installation
 
-### Als unpacked Extension laden (Entwicklung)
+### Load as unpacked extension (development)
 
-1. Chrome öffnen → `chrome://extensions`
-2. **Entwicklermodus** einschalten (oben rechts)
-3. **Entpackte Erweiterung laden** klicken
-4. Ordner `browser-extension/` auswählen
+1. Open Chrome → `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `browser-extension/` folder
 
-Die Erweiterung erscheint in der Toolbar.
+The extension appears in the toolbar.
 
-### ElevenLabs Agent-URL konfigurieren
+### Configure ElevenLabs agent URL
 
-`elevenlabs.config.json` bearbeiten:
+Edit `elevenlabs.config.json`:
 
 ```json
 {
-  "agent_url": "https://elevenlabs.io/app/talk-to?agent_id=<DEINE_AGENT_ID>"
+  "agent_url": "https://elevenlabs.io/app/talk-to?agent_id=YOUR_AGENT_ID"
 }
 ```
 
+After changing this file: Chrome Extensions → reload the extension (⟳).
 
-Nach jeder Änderung an dieser Datei: Chrome Extensions → Erweiterung neu laden (⟳).
+### Apply updates
 
-### Update deployen
+After code changes:
+1. Open `chrome://extensions`
+2. Click ⟳ (Reload) on the extension
 
-Nach Code-Änderungen:
-1. `chrome://extensions` öffnen
-2. Bei der Erweiterung auf ⟳ (Neu laden) klicken
+## Connecting
 
-## Verbindung herstellen
+1. Open the SYS app and log in (`https://YOUR_DOMAIN`)
+2. Click the extension icon → **⚙** tab
+3. Click **Connect to SYS**
+4. The soul cert is automatically read from the SYS tab
 
-1. SYS App öffnen und einloggen (`https://YOUR_DOMAIN`)
-2. Erweiterungs-Icon klicken → Tab **⚙**
-3. **Mit SYS verbinden** klicken
-4. Soul-Cert wird automatisch aus dem SYS-Tab gelesen
+The cert is stored in `chrome.storage.local` and persists across browser restarts.
 
-Das Cert wird in `chrome.storage.local` gespeichert und bleibt über Browser-Neustarts erhalten.
-
-## Struktur
+## Structure
 
 ```
 browser-extension/
-  manifest.json           MV3 Manifest
-  background.js           Service Worker (Soul-Cache)
-  content.js              Content Script (Seiten-Info + Soul-Login)
-  elevenlabs.config.json  Agent-URL konfigurieren
+  manifest.json           MV3 manifest
+  background.js           Service worker (soul cache)
+  content.js              Content script (page info + soul login)
+  elevenlabs.config.json  Agent URL configuration
   icons/                  icon16/48/128.png
   popup/
     popup.html            UI
     popup.css             Styles
-    popup.js              Logik (Chat, Voice, Settings)
+    popup.js              Logic (chat, voice, settings)
 ```
 
-## API-Endpunkte
+## API endpoints used
 
-| Endpunkt | Beschreibung |
+| Endpoint | Description |
 |----------|-------------|
-| `GET /api/soul` | Soul-Inhalt laden (Bearer soul_cert) |
-| `POST /api/chat` | Claude Chat mit SSE-Streaming |
+| `GET /api/soul` | Load soul content (Bearer soul_cert) |
+| `POST /api/chat` | Claude chat with SSE streaming |
 
-## Berechtigungen
+## Permissions
 
-| Permission | Grund |
-|------------|-------|
-| `storage` | Soul-Cert und Cache speichern |
-| `activeTab` | Aktiven Tab-Inhalt lesen |
-| `scripting` | Soul-Cert aus SYS-Tab auslesen |
-| `tabs` | Tab-URL für Seiten-Kontext |
-| `host_permissions: YOUR_DOMAIN` | API-Zugriff |
+| Permission | Reason |
+|------------|--------|
+| `storage` | Store soul cert and cache |
+| `activeTab` | Read active tab content |
+| `scripting` | Extract soul cert from SYS tab |
+| `tabs` | Tab URL for page context |
+| `host_permissions: YOUR_DOMAIN` | API access |

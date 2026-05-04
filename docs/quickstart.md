@@ -1,7 +1,7 @@
 # Quickstart
 
-> Diese Anleitung setzt einen laufenden SYS-Node voraus.
-> Noch keinen? → [ONBOARDING.md](../ONBOARDING.md)
+> This guide assumes a running SYS node.
+> Don't have one yet? → [ONBOARDING.md](../ONBOARDING.md)
 
 ---
 
@@ -16,6 +16,7 @@ soul_name: "Your Name"
 created: 2026-01-01
 last_session: 2026-01-01
 version: 1
+cert_version: 0
 soul_cert: ""
 vault_hash: ""
 soul_growth_chain: []
@@ -67,7 +68,7 @@ GET /api/validate
 Authorization: Bearer {soul_id}.{cert}
 ```
 
-Returns `200 OK` if the cert is valid. Returns `401` otherwise.
+Returns `200 OK` if valid, `401` otherwise.
 
 ---
 
@@ -93,7 +94,7 @@ Content-Type: application/json
 }
 ```
 
-If uploading plaintext (open mode only):
+Plaintext (open mode only):
 
 ```json
 {
@@ -111,12 +112,12 @@ GET /api/soul
 Authorization: Bearer {soul_id}.{cert}
 ```
 
-Returns the sys.md as `text/markdown`. If the file is encrypted and
-no vault session is active, returns `403 { "error": "encrypted" }`.
+Returns sys.md as `text/plain`. If encrypted and no vault session is active,
+returns `403 { "error": "encrypted" }`.
 
 ---
 
-## 6. Unlock your vault (for encrypted souls)
+## 6. Unlock vault (for encrypted souls)
 
 ```http
 POST /api/vault/unlock
@@ -139,9 +140,59 @@ MCP endpoint: `https://YOUR_DOMAIN/mcp`
 
 Authorization uses OAuth 2.0 + PKCE. The consent page is served at
 `/oauth/authorize`. After authorization, the AI client receives a
-service-token scoped to the permissions granted.
+service token scoped to the permissions granted.
 
-See [spec/mcp-tools.md](spec/mcp-tools.md) for the full tool catalog.
+Supported MCP clients: Claude Desktop, Claude.ai (remote MCP), any MCP-compatible agent.
+
+---
+
+## 8. Issue a service token
+
+```http
+POST /api/soul/v1/token
+Authorization: Bearer {soul_id}.{cert}
+```
+
+```json
+{
+  "token": "<JWT>",
+  "expires_in": 2592000,
+  "soul_id": "..."
+}
+```
+
+Service tokens are HS256 JWTs valid for 30 days, signed with `API_SIGNING_KEY`.
+
+---
+
+## API Reference
+
+| Endpoint | Method | Auth | Handler | Purpose |
+|----------|--------|------|---------|---------|
+| `/api/soul-cert` | POST | — | soul_cert.lua | Issue soul cert |
+| `/api/validate` | GET | soul_cert | — | Validate cert |
+| `/api/context` | GET/PUT | soul_cert | api_context.lua | Read/write API config |
+| `/api/soul` | GET | vault_auth | api_serve.lua | Read sys.md |
+| `/api/vault/sync` | POST | soul_cert | vault_sync.lua | Upload vault file |
+| `/api/vault/manifest` | GET | vault_auth | api_serve.lua | List vault resources |
+| `/api/vault/audio[/{f}]` | GET | vault_auth | api_serve.lua | Audio files |
+| `/api/vault/images[/{f}]` | GET | vault_auth | api_serve.lua | Image files |
+| `/api/vault/video[/{f}]` | GET | vault_auth | api_serve.lua | Video files |
+| `/api/vault/context[/{f}]` | GET | vault_auth | api_serve.lua | Context files |
+| `/api/vault/unlock` | POST | soul_cert | vault_unlock.lua | Start vault session |
+| `/api/vault/lock` | POST | soul_cert | vault_lock.lua | End vault session |
+| `/api/soul/v1/token` | POST | soul_cert | soul_token_jwt.lua | Issue service token |
+| `/api/soul/earnings` | GET | soul_cert | soul_earnings.lua | POL payment ledger |
+| `/api/soul/pay` | POST | — | soul_pay.lua | Submit POL payment (agent) |
+| `/api/soul/paid-read` | GET | pol_access_token | soul_paid_read.lua | Agent reads sys.md |
+| `/api/soul/register` | POST | soul_cert | soul_register.lua | Register in marketplace |
+| `/api/soul/amortization` | GET/PUT | soul_cert | soul_amortization.lua | Agent pricing config |
+| `/api/soul/pinata-config` | GET/PUT/DELETE | soul_cert | soul_pinata_config.lua | Pinata JWT config |
+| `/api/chat` | POST | soul_cert | Anthropic proxy (SSE) | AI chat streaming |
+| `/api/peer/verify` | GET | — | peer_verify.lua | Node identity check |
+| `/api/peer/connect` | POST | soul_cert | peer_connect.lua | Connect peer soul |
+| `/api/node-status` | GET | — | node_status.lua | Node registration status |
+| `/api/webhook` | POST | vault_auth | webhook.lua | Push to external service |
 
 ---
 
@@ -150,7 +201,7 @@ See [spec/mcp-tools.md](spec/mcp-tools.md) for the full tool catalog.
 | Goal | Read |
 |---|---|
 | Understand the sys.md format | [spec/sys_md.md](spec/sys_md.md) |
-| Set up external service access | [api/endpoints.md](api/endpoints.md) |
-| Self-host a SYS instance | [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) |
+| Technical architecture | [../ARCHITECTURE.md](../ARCHITECTURE.md) |
+| Self-host a SYS node | [../ONBOARDING.md](../ONBOARDING.md) |
 | Connect an AI agent via MCP | [spec/mcp-tools.md](spec/mcp-tools.md) |
-| Understand encryption | [architecture/encryption.md](architecture/encryption.md) |
+| Protocol overview | [overview.md](overview.md) |

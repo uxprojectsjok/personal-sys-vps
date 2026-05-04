@@ -58,9 +58,10 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 │  Cloud: encrypted .soul bundle (AES-256-GCM) │
 ├─────────────────────────────────────────────┤
 │  Access Layer                                │
-│  soul_cert     — owner full access           │
-│  service-token — scoped external access      │
-│  BIP39-auth    — ciphertext access via words │
+│  soul_cert       — owner full access         │
+│  service-token   — scoped external access    │
+│  pol_access_token — paid agent access        │
+│  BIP39-auth      — ciphertext access via words│
 ├─────────────────────────────────────────────┤
 │  AI Interface Layer                          │
 │  REST API  — direct HTTP endpoints           │
@@ -77,12 +78,14 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 |---|---|
 | **sys.md** | The identity file. Plain Markdown, YAML frontmatter, grows over time. |
 | **soul_id** | UUID v4. Primary key for all server operations. |
-| **soul_cert** | 32 hex chars. HMAC-SHA256(SOUL_MASTER_KEY, soul_id)[0:32]. Stateless auth token. |
+| **soul_cert** | 32 hex chars. HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version)[0:32]. Stateless auth token. |
 | **vault_key** | 32-byte AES key. Encrypts sys.md and vault files. Never stored by server in plaintext. |
 | **vault** | Local filesystem folder. Contains audio, images, video, context files. |
 | **service-token** | 64 hex chars. Scoped access token for external services. |
+| **pol_access_token** | 48 hex chars. Time-limited token issued after a verified Polygon payment. |
 | **soul_grant** | Permission record created when two souls connect in the network. |
-| **soul_cert bundle** | AES-256-GCM encrypted export. Key derived from Passkey or BIP39. |
+| **soul cert bundle** | AES-256-GCM encrypted export. Key derived from passkey or BIP39. |
+| **agent sandbox** | `<!-- AGENT:START -->` / `<!-- AGENT:END -->` block in sys.md — the only part exposed to paid external agents. |
 
 ---
 
@@ -95,18 +98,19 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 | DID (W3C) | soul_id is not a DID, but could be mapped to one |
 | JWT | soul_cert is simpler than JWT — stateless HMAC, no claims payload |
 | BIP39 | Used for key derivation in mnemonic auth path |
+| ERC-8004 | Soul marketplace metadata format for IPFS/Pinata registration |
 
 ---
 
-## Kompatible Implementierungen
+## Compatible Implementations
 
-Jeder kann einen kompatiblen SYS-Server bauen. Kompatible Implementierungen:
-- MÜSSEN `Authorization: Bearer {soul_id}.{cert}` auf geschützten Endpunkten akzeptieren
-- MÜSSEN sys.md unter `{base}/{soul_id}/sys.md` speichern
-- MÜSSEN den soul_cert-Ableitungsalgorithmus implementieren (siehe `spec/auth.md`)
-- KÖNNEN MCP, Webhook, Vault oder Blockchain-Features unabhängig implementieren
+Anyone can build a compatible SYS server. Compatible implementations:
+- MUST accept `Authorization: Bearer {soul_id}.{cert}` on protected endpoints
+- MUST store sys.md under `{base}/{soul_id}/sys.md`
+- MUST implement the soul_cert derivation algorithm (see `spec/auth.md`)
+- MAY implement MCP, webhook, vault, or blockchain features independently
 
-Siehe [CONTRIBUTING.md](../CONTRIBUTING.md) für Details.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 
 ---
 
