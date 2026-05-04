@@ -1,118 +1,118 @@
-# Personal SYS VPS
+# SaveYourSoul — Personal SYS Node
 
-**Dein Knoten im Internet. Als Mensch.**
+**Your node on the internet. As a human.**
 
-Dieses Repository enthält alles, um einen eigenen, privaten SYS-Node auf einem VPS zu betreiben. Ein SYS-Node ist kein Dienst, den jemand für dich betreibt — er läuft auf deinem Server, unter deiner Domain, mit deinen Daten. Du bist Eigentümer, Betreiber und einziger Nutzer.
+A SYS node is not a service someone runs for you — it runs on your server, under your domain, with your data. You are the owner, the operator, and the sole user.
 
-Der Node ist der Ort, an dem deine **sys.md** lebt: eine persönliche Identitätsdatei, die du in KI-Systeme einspeisen kannst. Sie wächst mit jeder Session, gehört ausschließlich dir und verlässt deinen Server nur, wenn du es aktiv entscheidest.
+The node is where your **sys.md** lives: a personal identity file you can feed into AI systems. It grows with every session, belongs exclusively to you, and leaves your server only when you actively decide to share it.
 
-> **Dezentral, selbstgehostet, passwortgeschützt.**
-> Kein Anbieter hat Zugriff. Keine Cloud-Abhängigkeit. Keine Nutzungsbedingungen, die sich ändern können.
+> **Decentralized, self-hosted, password-protected.**
+> No provider has access. No cloud dependency. No terms of service that can change.
 
 ---
 
-## Was ist ein SYS-Node?
+## What is a SYS node?
 
-Ein SYS-Node ist dein persönlicher Knoten im Internet — ähnlich wie eine E-Mail-Adresse, aber für deine Identität als Mensch in einer Welt mit KI.
+A SYS node is your personal endpoint on the internet — like an email address, but for your identity as a human in a world with AI.
 
 ```
-Du  →  sys.md (deine Identitätsdatei)
-     →  SYS-Node (dein VPS, deine Domain)
-     →  KI-Systeme (Claude, MCP-Tools, WhatsApp-Bot, ...)
-     →  andere SYS-Nodes (Peer-to-Peer, verschlüsselt)
+You  →  sys.md (your identity file)
+     →  SYS node (your VPS, your domain)
+     →  AI systems (Claude, MCP tools, WhatsApp bot, …)
+     →  other SYS nodes (peer-to-peer, encrypted)
 ```
 
-Der Node akzeptiert genau eine Soul. Wer sich zuerst registriert, ist der Eigentümer — für immer, bis zum bewussten Reset.
+The node accepts souls per its configured mode. In **Personal** mode, the first person to register becomes the permanent owner. In **Multi-Hoster** mode, multiple souls share one VPS (families, teams, hosting services).
 
-### Was der Node macht
+### What the node does
 
-**Identität & Authentifizierung**
-- sys.md verschlüsselt gespeichert (AES-256-CBC, Schlüssel bleibt im Browser)
-- HMAC-SHA256 soul_cert — zustandslos, ohne Cookies, ohne OAuth
-- Gate-Passwort schützt die gesamte Oberfläche
+**Identity & Authentication**
+- sys.md stored encrypted (AES-256-CBC, key stays in the browser)
+- HMAC-SHA256 soul_cert — stateless, no cookies, no OAuth
+- Gate password protects the entire interface
 
-**KI-Funktionen**
-- Chat mit Claude (Anthropic API, SSE-Streaming, Kontextsteuerung)
-- Vision-Analyse: Kamerabild → Claude → Bildbeschreibung oder Bildgenerierung
-- Text-to-Speech via ElevenLabs (eigene Stimme klonen möglich)
-- KI-Bildgenerierung via WaveSpeed AI
-- Soul-Update: Claude schreibt strukturiert in sys.md-Abschnitte
+**AI Features**
+- Chat with Claude (Anthropic API, SSE streaming, context control)
+- Vision analysis: camera image → Claude → description or image generation
+- Text-to-speech via ElevenLabs (voice cloning supported)
+- AI image generation via WaveSpeed AI
+- Soul update: Claude writes structured data into sys.md sections
 
 **Vault**
-- Lokaler Vault (File System Access API, kein Upload nötig)
-- Server-Vault: Bilder, Audio, Video, Kontext-Dateien verschlüsselt hochladbar
-- Vault-Verschlüsselung optional (AES-256-CBC, Magic-Header `SYSCRYPT01`)
-- Datei-Viewer, Audio-Player, Video-Player integriert
+- Local vault (File System Access API, no upload needed)
+- Server vault: images, audio, video, context files — encrypted upload
+- Optional vault encryption (AES-256-CBC, magic header `SYSCRYPT01`)
+- File viewer, audio player, video player built in
 
-**Vernetzung**
-- Peer-to-Peer Soul-Verbindungen zwischen SYS-Nodes
-- Öffentliches Profil (opt-in) mit Vault-Freigabe für Peers
-- MCP-Server (OAuth 2.0 + PKCE) — Claude und andere KI-Clients verbinden sich
-- WhatsApp-Integration via Twilio (eigener Bot mit Soul-Kontext)
-- Browser Extension (Chrome MV3) für automatische soul_cert-Injektion
+**Networking**
+- Peer-to-peer soul connections between SYS nodes
+- Public profile (opt-in) with vault sharing for peers
+- MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
+- WhatsApp integration via Twilio (personal bot with soul context)
+- Browser extension (Chrome MV3) for automatic soul_cert injection
 
-**Wachstum & Verankerung**
-- Soul Growth Chain: jede Session wird kryptografisch signiert
-- Blockchain-Anchoring auf Polygon (optional, nutzer-initiiert)
-- Maturity Score 0–100 basierend auf sys.md-Füllstand
+**Growth & Anchoring**
+- Soul Growth Chain: every session is cryptographically signed
+- Blockchain anchoring on Polygon (optional, user-initiated)
+- Maturity score 0–100 based on sys.md content depth
 
-### Was der Node nicht macht
+### What the node does NOT do
 
-- Kein Multi-User, keine Tenants, keine Rollen
-- Keine Nutzungsanalyse, kein Tracking, kein Analytics
-- Kein eigener Datenbankserver (Flat-File, kein PostgreSQL/Redis)
-- Kein öffentlicher Zugang — das Gate schützt alles hinter einem Passwort
-
----
-
-## Technischer Stack
-
-**Frontend:** Nuxt 4, statisch gebaut (SSG), läuft vollständig im Browser — kein Node.js-Prozess auf dem Server.
-
-**Backend:** OpenResty (nginx + LuaJIT) als API-Layer. Alle Endpunkte sind Lua-Skripte. Kein Webframework, keine Runtime-Dependencies außer OpenResty.
-
-**Daten:** Flat-Files unter `/var/lib/sys/souls/{soul_id}/` — portierbar, inspizierbar, keine Migration nötig.
-
-**Verschlüsselung:** AES-256-CBC im Browser (WebCrypto API). Der Server sieht nur verschlüsselte Bytes mit Magic-Header `SYSCRYPT01`. Der Schlüssel verlässt den Browser nie.
+- No multi-user roles or tenants (Multi-Hoster: multiple souls, each isolated)
+- No usage analytics, no tracking
+- No database server (flat files, no PostgreSQL/Redis)
+- No public access — the gate password protects everything
 
 ---
 
-## Repository-Struktur
+## Technical Stack
+
+**Frontend:** Nuxt 4, statically built (SSG), runs entirely in the browser — no Node.js process on the server.
+
+**Backend:** OpenResty (nginx + LuaJIT) as the API layer. All endpoints are Lua scripts. No web framework, no runtime dependencies beyond OpenResty.
+
+**Data:** Flat files under `/var/lib/sys/souls/{soul_id}/` — portable, inspectable, no migration needed.
+
+**Encryption:** AES-256-CBC in the browser (WebCrypto API). The server only sees encrypted bytes with the magic header `SYSCRYPT01`. The key never leaves the browser.
+
+---
+
+## Repository Structure
 
 ```
-├── init.sh                  Setup-Script — zero to running in one command
-├── reset.sh                 Soul löschen, Node freigeben (Daten weg, Config bleibt)
-├── recover-password.sh      Gate-Passwort zurücksetzen ohne Soul-Verlust
-├── deinstall.sh             Alles entfernen was init.sh installiert hat
+├── init.sh                  Setup script — zero to running in one command
+├── reset.sh                 Delete soul, release node (data gone, config preserved)
+├── recover-password.sh      Reset gate password without losing soul data
+├── deinstall.sh             Remove everything init.sh installed
 │
-├── app/                     Nuxt 4 Frontend (SSG, läuft vollständig im Browser)
-│   ├── pages/               Routen: index, session, gate, api-docs, ...
-│   ├── components/          UI-Komponenten (SoulNetworkPanel, Vault, Chat, ...)
-│   └── composables/         Shared State: useSoul, useVault, useChainAnchor, ...
+├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
+│   ├── pages/               Routes: index, session, gate, api-docs, …
+│   ├── components/          UI components (SoulNetworkPanel, Vault, Chat, …)
+│   └── composables/         Shared state: useSoul, useVault, useChainAnchor, …
 │
-├── lua/                     OpenResty Lua-Scripts (Production API Layer)
-│   ├── soul_cert.lua        Soul-Cert Ausstellung (HMAC-SHA256)
-│   ├── soul_auth.lua        Request-Authentifizierung
-│   ├── gate_auth.lua        Gate-Passwort Schutz
-│   ├── peer_connect.lua     Cross-Domain Soul-Verbindungen
-│   ├── vault_sync.lua       Vault-Dateien hochladen/synchronisieren
-│   └── ...                  (40+ weitere Lua-Endpunkte)
+├── lua/                     OpenResty Lua scripts (production API layer)
+│   ├── soul_cert.lua        Soul cert issuance (HMAC-SHA256)
+│   ├── soul_auth.lua        Request authentication
+│   ├── gate_auth.lua        Gate password protection
+│   ├── peer_connect.lua     Cross-domain soul connections
+│   ├── vault_sync.lua       Vault file upload/sync
+│   └── …                   (40+ additional Lua endpoints)
 │
 ├── server/
-│   ├── api/                 Nitro API-Routes (Development-Server only)
+│   ├── api/                 Nitro API routes (development server only)
 │   └── openresty/           nginx.conf.template, vhost.conf.template
 │
 ├── shared/
-│   └── utils/               soulParser.js, soulMaturity.js — browserübergreifende Logik
+│   └── utils/               soulParser.js, soulMaturity.js — shared browser logic
 │
-├── soul-mcp/                MCP-Server (Node.js, OAuth 2.0 + PKCE)
-│   └── tools/               soul_read, soul_write, vault_manifest, ...
+├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
+│   └── tools/               soul_read, soul_write, vault_manifest, …
 │
-├── browser-extension/       Chrome MV3 Extension
+├── browser-extension/       Chrome MV3 extension
 ├── utils/
-│   ├── killMetas.mjs        CSP-Meta-Tags aus dem Build entfernen
-│   └── project-hash.mjs     SHA-256 Fingerprint aller Source-Dateien
-└── docs/                    Protokoll-Dokumentation, API-Referenz, Specs
+│   ├── killMetas.mjs        Strip CSP meta tags from the build
+│   └── project-hash.mjs     SHA-256 fingerprint of all source files
+└── docs/                    Protocol documentation, API reference, specs
 ```
 
 ---
@@ -128,36 +128,36 @@ last_session: YYYY-MM-DD
 version: 1
 cert_version: 0
 maturity: 0
-soul_cert: [wird automatisch generiert]
+soul_cert: [generated automatically]
 vault_hash: ""
 soul_growth_chain: []
 soul_chain_anchor: null
 storage_tx: ""
 ---
 
-## Kern-Identität
-## Werte & Überzeugungen
-## Ästhetik & Resonanz
-## Sprachmuster & Ausdruck
-## Wiederkehrende Themen & Obsessionen
-## Emotionale Signatur
-## Weltbild
-## Offene Fragen dieser Person
-## Session-Log (komprimiert)
+## Core Identity
+## Values & Beliefs
+## Aesthetics & Resonance
+## Language Patterns & Expression
+## Recurring Themes & Obsessions
+## Emotional Signature
+## Worldview
+## Open Questions
+## Session Log (compressed)
 
 <!-- AGENT:START -->
 <!-- AGENT:END -->
 ```
 
-Der `<!-- AGENT:START -->` / `<!-- AGENT:END -->` Block ist die **Agent-Sandbox**: nur dieser Bereich wird über `/api/soul/paid-read` an externe Agenten (MCP, WhatsApp-Bot, etc.) ausgeliefert. Der Rest der sys.md verlässt den Server nie in Richtung Dritter.
+The `<!-- AGENT:START -->` / `<!-- AGENT:END -->` block is the **agent sandbox**: only this section is delivered via `/api/soul/paid-read` to external agents (MCP, WhatsApp bot, etc.). The rest of sys.md never leaves the server toward third parties.
 
-Vollständige Spezifikation: [docs/spec/sys_md.md](docs/spec/sys_md.md)
+Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
 ---
 
-## Authentifizierung
+## Authentication
 
-Alle geschützten Endpunkte verwenden HMAC-SHA256 soul_cert Tokens — zustandslos, ohne Datenbank:
+All protected endpoints use stateless HMAC-SHA256 soul_cert tokens — no database:
 
 ```
 cert   = HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version).hex()[:32]
@@ -166,118 +166,127 @@ bearer = soul_id + "." + soul_cert
 
 ---
 
-## MCP-Integration
+## MCP Integration
 
-`soul-mcp/` implementiert das [Model Context Protocol](https://modelcontextprotocol.io) mit OAuth 2.0 + PKCE. Claude und andere MCP-kompatible KI-Clients können sich verbinden und mit granularen Berechtigungen auf sys.md und Vault-Dateien zugreifen.
+`soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. Claude and other MCP-compatible AI clients can connect and access sys.md and vault files with granular permissions.
 
-Wichtige Tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_list`
+Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_list`
 
 ---
 
 ## Installation
 
-Der Produktions-Stack verwendet OpenResty (nginx + LuaJIT) als API-Layer — kein Node.js in Production.
+The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
 
-**Vollständige Anleitung:** [ONBOARDING.md](ONBOARDING.md)
+**Full guide:** [ONBOARDING.md](ONBOARDING.md)
 
-> **Hinweis:** Du brauchst eine Domain mit A-Eintrag auf die IP deines Servers — ohne DNS-Eintrag schlägt die SSL-Zertifizierung fehl.
+> **Note:** You need a domain with an A record pointing to your server's IP — SSL issuance fails without a valid DNS entry.
 
-**Voraussetzungen:** Ubuntu 24.04 VPS (min. 2 GB RAM), Domain, Anthropic API Key
+**Requirements:** Ubuntu 24.04 VPS (min. 2 GB RAM), a domain
 
 ```bash
 git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 cd /opt/sys && bash init.sh
 ```
 
-Das Script fragt interaktiv nach Domain, E-Mail und Anthropic API Key — alles andere läuft automatisch. Am Ende: Root-Passwort mit `passwd` ändern.
+The script prompts for domain, email, and optionally an Anthropic API key and WalletConnect Project ID — everything else runs automatically. Change the root password with `passwd` when done.
 
-### Soul verwalten
+### Node modes
 
-| Script | Was es tut |
-|--------|-----------|
-| `bash /opt/sys/recover-password.sh` | **Passwort vergessen** — setzt ein neues Gate-Passwort. Soul-Daten bleiben vollständig erhalten. Benötigt SSH-Zugang zum Server. |
-| `bash /opt/sys/reset.sh` | **Soul entfernen** — löscht alle Soul-Daten, gibt den Node frei für eine neue Registrierung. OpenResty, SSL und alle Konfigurationen bleiben erhalten. |
-| `bash /opt/sys/deinstall.sh` | **Komplett deinstallieren** — entfernt alles was `init.sh` installiert hat. Ubuntu bleibt unberührt. DNS-Eintrag danach manuell beim Provider löschen. |
+`init.sh` offers two modes at startup:
+
+| Mode | Description |
+|------|-------------|
+| **Personal Node** | Single soul. First registrant is the permanent owner. |
+| **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. |
+
+### Managing your soul
+
+| Script | What it does |
+|--------|-------------|
+| `bash /opt/sys/recover-password.sh` | **Forgot password** — sets a new gate password. Soul data is fully preserved. Requires SSH access. |
+| `bash /opt/sys/reset.sh` | **Remove soul** — deletes all soul data, releases the node for a new registration. OpenResty, SSL, and all configuration are preserved. |
+| `bash /opt/sys/deinstall.sh` | **Full uninstall** — removes everything init.sh installed. Ubuntu is untouched. Delete the DNS record manually at your provider afterward. |
 
 > `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
-> Passwort vergessen: Soul bleibt. Reset: Mieter zieht aus. Deinstall: Haus wird abgerissen.
+> Forgot password: soul stays. Reset: tenant moves out. Uninstall: house is torn down.
 
 ---
 
-## Integrität
+## Integrity
 
-Verifiziere deinen Clone gegen den offiziellen Stand:
+Verify your clone against the official release:
 
 ```bash
 node utils/project-hash.mjs
 ```
 
-Aktueller Release-Fingerprint: 202d13e81733acc7d5ab00e5b74ea79699ac9471ac6281d6a79a0f17d7a3d888
+Current release fingerprint: 7624d10db53e49e127c0f832ee2a4687b502891eb5ebdd3996067eb5f5c08fd7
 
-Der Hash umfasst alle Source-Dateien (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — ohne `node_modules`, Build-Output, Secrets und Lock-Files.
+The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
 ---
 
-## Protokoll-Netzwerk
+## Protocol Network
 
-SYS ist ein offenes Protokoll. Dieser Node ist eine Implementierung — weitere können unabhängig entstehen.
+SYS is an open protocol. This node is one implementation — others can emerge independently.
 
-Geplante Protokoll-Knoten (offen für Beiträge):
+Planned protocol nodes (open for contributions):
 
-| Knotentyp | Funktion |
+| Node type | Function |
 |-----------|----------|
-| **soul-discover** | Verzeichnisdienst — Nodes registrieren sich, Peers finden sich |
-| **soul-relay** | Nachrichtenrelais zwischen Nodes |
-| **soul-bridge** | Brücke zu anderen Identitätssystemen (DID, ActivityPub) |
-| **soul-archive** | Langzeitspeicher für verschlüsselte Soul-Snapshots |
+| **soul-discover** | Directory service — nodes register, peers find each other |
+| **soul-relay** | Message relay between nodes |
+| **soul-bridge** | Bridge to other identity systems (DID, ActivityPub) |
+| **soul-archive** | Long-term storage for encrypted soul snapshots |
 
-Das SYS-Protokoll ist Apache 2.0 lizenziert. Eigene Implementierungen, Knoten und Erweiterungen sind ausdrücklich erwünscht.
+The SYS protocol is Apache 2.0 licensed. Compatible implementations, nodes, and extensions are explicitly welcome.
 
 ---
 
 ## On-Chain Anchoring
 
-Souls können ihren Identitäts-Hash auf der Polygon-Blockchain verankern.
+Souls can anchor their identity hash on the Polygon blockchain.
 
-**Smart Contract:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
+**Smart contract:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
 
 ```
-Soul-Identitätshash  →  anchor()  →  Polygon-Blockchain
-                                  →  IPFS (Inhalt)
-                                  →  soul_chain_anchor in sys.md
+Soul identity hash  →  anchor()  →  Polygon blockchain
+                                 →  IPFS (content)
+                                 →  soul_chain_anchor in sys.md
 ```
 
-Das Anchoring ist freiwillig und nutzer-initiiert. Jeder Anker-Vorgang zahlt eine `anchorFee` direkt an den Smart Contract — on-chain, transparent, einsehbar auf [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
+Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
 
-Wer einen eigenen SYS-Node betreibt, benötigt eine eigene WalletConnect Project ID (kostenlos: cloud.walletconnect.com). Die Contract-Adresse ist im Protokoll fest verankert — eine eigene Contract-Instanz würde die Cross-Node-Kompatibilität brechen.
+Operators who want blockchain features need their own WalletConnect Project ID (free: cloud.walletconnect.com). The contract address is fixed in the protocol — a custom contract instance would break cross-node compatibility.
 
 ---
 
-## Rechtliches
+## Legal
 
-Ich bin der Autor dieser Software, kein Betreiber.
+I am the author of this software, not an operator.
 
-Wer dieses Repository klont und `init.sh` ausführt, betreibt einen eigenen, vollständig unabhängigen Server — unter eigener Domain, auf eigener Hardware, mit eigenen Daten. Ich habe keinen Zugriff auf diese Server und keine Kenntnis über die dort gespeicherten Daten.
+Anyone who clones this repository and runs `init.sh` operates their own fully independent server — under their own domain, on their own hardware, with their own data. I have no access to these servers and no knowledge of the data stored on them.
 
-- Ich stelle keine Hosting-Infrastruktur, keine Konten und keine verwalteten Server bereit.
-- Die Daten der Nutzerinnen und Nutzer liegen ausschließlich auf deren eigenen Servern.
-- Der Anchoring-Contract läuft autonom auf der Polygon-Blockchain. On-Chain-Transaktionen liegen vollständig in der Verantwortung der auslösenden Person.
+- I do not provide hosting infrastructure, accounts, or managed servers.
+- User data resides exclusively on users' own servers.
+- The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
 
-Die Nutzung dieser Software erfolgt auf eigene Verantwortung. Die Apache 2.0 Lizenz schließt Gewährleistung und Haftung aus.
+Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 
 ---
 
 ## Status
 
-- **Offenes Protokoll** — Apache 2.0, kompatible Implementierungen willkommen
-- **Smart Contract** — live auf Polygon Mainnet, einsehbar auf Polygonscan
+- **Open protocol** — Apache 2.0, compatible implementations welcome
+- **Smart contract** — live on Polygon Mainnet, verifiable on Polygonscan
 
 ---
 
-## Lizenz
+## License
 
-Apache License 2.0 — siehe [LICENSE](LICENSE)
+Apache License 2.0 — see [LICENSE](LICENSE)
 
 Copyright © 2026 Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com), Marburg, Germany
 
-„SaveYourSoul" und „SYS" sind Marken von Jan-Oliver Karo. Siehe [NOTICE](NOTICE) für Marken- und Attributionsanforderungen.
+"SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo. See [NOTICE](NOTICE) for trademark and attribution requirements.
