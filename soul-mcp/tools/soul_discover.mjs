@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const BASE = () => process.env.SYS_API_URL || '';
+const MCP_BASE = () => `http://127.0.0.1:${process.env.PORT || '3098'}`;
 
 export function register(server, token) {
   server.tool(
@@ -32,7 +32,7 @@ export function register(server, token) {
         if (amortized) params.set('amortized', 'true');
         if (limit)     params.set('limit', String(limit));
 
-        const url = `${BASE()}/internal/discover-souls?${params.toString()}`;
+        const url = `${MCP_BASE()}/internal/discover-souls?${params.toString()}`;
 
         // Direkt internen Endpoint aufrufen (läuft auf demselben Server)
         const res = await fetch(url, {
