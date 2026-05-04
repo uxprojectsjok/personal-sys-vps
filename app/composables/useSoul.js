@@ -74,7 +74,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 *Noch nicht beschrieben.*
 
 ## Ästhetik & Resonanz
-*Musik, Atmosphären, visuelle Reize die diese Person anzieht.*
+*Noch nicht beschrieben.*
 
 ## Sprachmuster & Ausdruck
 *Noch nicht beschrieben.*

@@ -311,7 +311,7 @@ function getContent(key) {
     c = [a, b].filter(Boolean).join("\n\n") || "";
   }
   if (!c) return "";
-  if (c.includes("Noch nicht beschrieben") || c.includes("Noch nicht eingetragen")) return "";
+  if (c.includes("Noch nicht beschrieben") || c.includes("Noch nicht eingetragen") || c.includes("Musik, Atmosphären")) return "";
   return c;
 }
 
