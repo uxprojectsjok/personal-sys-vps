@@ -69,17 +69,21 @@ end
 
 local hmac = require("hmac_helper")
 
--- ── Single-Soul-Lock ──────────────────────────────────────────────────────────
+-- ── Single-Soul-Lock (wird im Multi-Hoster-Modus übersprungen) ───────────────
 -- Sobald eine Soul registriert ist, wird ihr soul_id in master.json gesperrt.
 -- Jede andere soul_id wird abgewiesen — Ein Knoten, eine Soul.
+-- Im Multi-Hoster-Modus (master.json: multi_hoster=true) entfällt der Lock.
 local master_data = read_master() or {}
 local node_soul_id = master_data.node_soul_id
+local multi_hoster = master_data.multi_hoster == true
 
-if node_soul_id and node_soul_id ~= "" and node_soul_id ~= soul_id then
-  ngx.status = 403
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"node_locked","message":"Dieser Knoten gehört bereits einer Soul. Ein Knoten, eine Soul."}')
-  return
+if not multi_hoster then
+  if node_soul_id and node_soul_id ~= "" and node_soul_id ~= soul_id then
+    ngx.status = 403
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"node_locked","message":"Dieser Knoten gehört bereits einer Soul. Ein Knoten, eine Soul."}')
+    return
+  end
 end
 
 -- Prüfen ob Soul bereits auf dem Server existiert
@@ -131,8 +135,9 @@ local cert = hmac.cert_for_soul(master_key, soul_id, cert_version)
 -- Der Token wird genau einmal im Response mitgeschickt und danach nie wieder.
 local first_setup_token = nil
 if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
-  -- Node-Owner sperren: soul_id dauerhaft in master.json verankern
-  if not node_soul_id or node_soul_id == "" then
+  -- Node-Owner sperren: soul_id dauerhaft in master.json verankern.
+  -- Im Multi-Hoster-Modus wird kein Lock gesetzt — jede Soul kann sich registrieren.
+  if not multi_hoster and (not node_soul_id or node_soul_id == "") then
     master_data.node_soul_id = soul_id
     local mpath = get_master_path()
     os.execute("mkdir -p /var/lib/sys/config")
