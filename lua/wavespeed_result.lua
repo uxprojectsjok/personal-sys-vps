@@ -3,8 +3,9 @@
 -- Fragt den Status einer WaveSpeed-Task ab (einmaliger Poll).
 -- Gibt { status, url?, error? } zurück.
 
-local cjson = require("cjson.safe")
-local http  = require("resty.http")
+local cjson   = require("cjson.safe")
+local http    = require("resty.http")
+local soul_id = ngx.ctx.soul_id
 
 if ngx.req.get_method() ~= "GET" then
   ngx.status = 405
@@ -13,7 +14,19 @@ if ngx.req.get_method() ~= "GET" then
   return
 end
 
-local api_key = os.getenv("WAVESPEED_KEY") or ""
+local api_key = ""
+if soul_id and soul_id ~= "" then
+  local f = io.open("/var/lib/sys/souls/" .. soul_id .. "/config.json", "r")
+  if f then
+    local raw = f:read("*a"); f:close()
+    local ok, cfg = pcall(cjson.decode, raw)
+    if ok and type(cfg) == "table" and type(cfg.wavespeed_key) == "string" and cfg.wavespeed_key ~= "" then
+      api_key = cfg.wavespeed_key
+    end
+  end
+end
+if api_key == "" then api_key = os.getenv("WAVESPEED_KEY") or "" end
+
 if api_key == "" then
   ngx.status = 503
   ngx.header["Content-Type"] = "application/json"

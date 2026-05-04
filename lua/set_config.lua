@@ -33,8 +33,10 @@ if not ok or type(body) ~= "table" then
 end
 
 -- ── Validierung ────────────────────────────────────────────────────────────────
-local anthropic_key = body.anthropic_key
-local model         = body.model
+local anthropic_key  = body.anthropic_key
+local wavespeed_key  = body.wavespeed_key
+local elevenlabs_key = body.elevenlabs_key
+local model          = body.model
 
 if anthropic_key ~= nil then
   if type(anthropic_key) ~= "string" then
@@ -43,13 +45,27 @@ if anthropic_key ~= nil then
     ngx.say('{"error":"invalid_anthropic_key"}')
     return
   end
-  -- Leer = Entfernen erlaubt; nicht leer = muss sk-ant- beginnen
+  -- Empty = remove; non-empty = must start with sk-ant-
   if anthropic_key ~= "" and anthropic_key:sub(1, 7) ~= "sk-ant-" then
     ngx.status = 400
     ngx.header["Content-Type"] = "application/json"
-    ngx.say('{"error":"invalid_anthropic_key","message":"Key muss mit sk-ant- beginnen oder leer sein (zum Entfernen)"}')
+    ngx.say('{"error":"invalid_anthropic_key","message":"Key must start with sk-ant- or be empty to remove"}')
     return
   end
+end
+
+if wavespeed_key ~= nil and type(wavespeed_key) ~= "string" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid_wavespeed_key"}')
+  return
+end
+
+if elevenlabs_key ~= nil and type(elevenlabs_key) ~= "string" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid_elevenlabs_key"}')
+  return
 end
 
 local ALLOWED_MODELS = {
@@ -72,13 +88,15 @@ if ef then
   if eok and type(edata) == "table" then existing = edata end
 end
 
--- ── Felder aktualisieren ───────────────────────────────────────────────────────
+-- ── Update fields ─────────────────────────────────────────────────────────────
 if anthropic_key ~= nil then
-  if anthropic_key == "" then
-    existing.anthropic_key = nil  -- cjson encodiert nil als Weglassen
-  else
-    existing.anthropic_key = anthropic_key
-  end
+  existing.anthropic_key = (anthropic_key ~= "") and anthropic_key or nil
+end
+if wavespeed_key ~= nil then
+  existing.wavespeed_key = (wavespeed_key ~= "") and wavespeed_key or nil
+end
+if elevenlabs_key ~= nil then
+  existing.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil
 end
 if model ~= nil then
   existing.model = model
@@ -103,8 +121,9 @@ os.execute("chmod 600 " .. config_path)
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 ngx.say(cjson.encode({
-  ok            = true,
-  has_own_key   = (anthropic_key ~= nil and anthropic_key ~= "") or
-                  (existing.anthropic_key ~= nil and existing.anthropic_key ~= ""),
-  model         = existing.model or cjson.null,
+  ok               = true,
+  has_own_key      = type(existing.anthropic_key) == "string" and existing.anthropic_key ~= "",
+  wavespeed_key_set   = type(existing.wavespeed_key) == "string" and existing.wavespeed_key ~= "",
+  elevenlabs_key_set  = type(existing.elevenlabs_key) == "string" and existing.elevenlabs_key ~= "",
+  model            = existing.model or cjson.null,
 }))

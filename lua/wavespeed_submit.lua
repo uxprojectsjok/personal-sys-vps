@@ -7,8 +7,9 @@
 --   image-to-video → kwaivgi/kling-v3.0-pro/image-to-video
 -- Gibt { taskId, model } zurück – Client pollt /api/wavespeed-result.
 
-local cjson = require("cjson.safe")
-local http  = require("resty.http")
+local cjson   = require("cjson.safe")
+local http    = require("resty.http")
+local soul_id = ngx.ctx.soul_id
 
 if ngx.req.get_method() ~= "POST" then
   ngx.status = 405
@@ -17,11 +18,23 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
-local api_key = os.getenv("WAVESPEED_KEY") or ""
+local api_key = ""
+if soul_id and soul_id ~= "" then
+  local f = io.open("/var/lib/sys/souls/" .. soul_id .. "/config.json", "r")
+  if f then
+    local raw = f:read("*a"); f:close()
+    local ok, cfg = pcall(cjson.decode, raw)
+    if ok and type(cfg) == "table" and type(cfg.wavespeed_key) == "string" and cfg.wavespeed_key ~= "" then
+      api_key = cfg.wavespeed_key
+    end
+  end
+end
+if api_key == "" then api_key = os.getenv("WAVESPEED_KEY") or "" end
+
 if api_key == "" then
   ngx.status = 503
   ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"service_unavailable","message":"WAVESPEED_KEY nicht konfiguriert"}')
+  ngx.say('{"error":"service_unavailable","message":"WaveSpeed API key not configured"}')
   return
 end
 
