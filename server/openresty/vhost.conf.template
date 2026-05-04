@@ -178,6 +178,45 @@ server {
     content_by_lua_file /etc/openresty/lua/gate_set_password.lua;
   }
 
+  # ── Admin: Master-Key / Admin-Token / Anthropic-Key rotieren ─────────────────
+  # Auth via X-Admin-Token Header (kein soul_auth.lua — wird intern in Lua geprüft)
+  location = /api/set-master {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=2 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/set_master.lua;
+  }
+
+  # ── Config: Anthropic-Key pro Soul lesen ──────────────────────────────────────
+  location = /api/get-config {
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/get_config.lua;
+  }
+
+  # ── Config: Anthropic-Key / Modell pro Soul setzen ───────────────────────────
+  location = /api/set-config {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/set_config.lua;
+  }
+
+  # ── Config: Anthropic-Key testen ──────────────────────────────────────────────
+  location = /api/test-key {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/test_key.lua;
+  }
+
   # ── Peer-Verify: öffentlich + CORS — validiert soul_id+cert für Handshake ────
   location = /api/peer/verify {
     limit_req zone=api burst=20 nodelay;

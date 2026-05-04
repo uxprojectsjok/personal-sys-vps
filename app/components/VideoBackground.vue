@@ -22,11 +22,11 @@
   transition: opacity 0.7s ease;
 }
 .bg-solid-dark {
-  background: #12101a;
+  background: var(--sys-bg, #12101a);
   opacity: 1;
 }
 .bg-solid-light {
-  background: #12101a;
+  background: var(--sys-bg, #12101a);
   opacity: 0;
 }
 
