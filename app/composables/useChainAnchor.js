@@ -313,9 +313,22 @@ export function useChainAnchor() {
     }
     document.addEventListener("visibilitychange", onVisibility);
 
+    // AppKit-Fehler abfangen und als anchorError surfacen
+    // Betrifft: ungültige Project ID, Provider-Init-Fehler, Relay-Verbindungsfehler
+    const unsubEvents = kit.subscribeEvents((evtState) => {
+      const d = evtState.data;
+      if (d?.type === "error") {
+        anchorError.value =
+          "WalletConnect-Fehler: " +
+          (d.properties?.errorMessage || d.event) +
+          " — Bitte WalletConnect Project ID prüfen: dashboard.reown.com";
+      }
+    });
+
     onUnmounted(() => {
       unsubChain?.();
       unsubProvider?.();
+      unsubEvents?.();
       document.removeEventListener("visibilitychange", onVisibility);
     });
   });
