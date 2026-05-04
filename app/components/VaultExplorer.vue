@@ -93,6 +93,64 @@
               </button>
             </div>
           </div>
+
+          <!-- Cert-Rotation Ergebnis-Panel -->
+          <Transition name="cert-result">
+            <div v-if="certRotationResult"
+              class="mt-2 rounded border border-[#f97316]/30 bg-[#f97316]/[0.06] p-3 space-y-3"
+              role="status"
+            >
+              <!-- Header -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-xs font-medium text-[#f97316]">
+                  <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                  Cert rotiert — Version {{ certRotationResult.cert_version }}
+                </div>
+                <button
+                  @click="certRotationResult = null"
+                  class="text-white/30 hover:text-white/60 transition"
+                  aria-label="Schließen"
+                ><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
+              </div>
+
+              <!-- Neuer Cert -->
+              <div class="space-y-1">
+                <p class="text-[10px] text-white/40 uppercase tracking-wider">Neuer Soul-Cert</p>
+                <div class="flex items-center gap-2 bg-black/30 rounded px-2.5 py-2">
+                  <code class="flex-1 text-xs font-mono text-[#f97316] break-all select-all">{{ certRotationResult.cert }}</code>
+                  <button
+                    @click="copyCertResult"
+                    class="shrink-0 w-7 h-7 flex items-center justify-center rounded transition"
+                    :class="certCopied ? 'text-emerald-400' : 'text-white/40 hover:text-white/70'"
+                    aria-label="Cert kopieren"
+                  >
+                    <svg v-if="certCopied" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                    <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Checkliste -->
+              <ul class="space-y-1.5 text-xs">
+                <li class="flex items-center gap-2" :class="certRotationResult.validated ? 'text-emerald-400' : 'text-red-400'">
+                  <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path v-if="certRotationResult.validated" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                    <path v-else stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/>
+                  </svg>
+                  {{ certRotationResult.validated ? 'Cert auf Server validiert ✓' : 'Server-Validierung fehlgeschlagen — Seite neu laden' }}
+                </li>
+                <li class="flex items-center gap-2 text-emerald-400">
+                  <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                  sys.md automatisch heruntergeladen
+                </li>
+              </ul>
+
+              <!-- Hinweis -->
+              <div class="text-[11px] text-white/50 leading-relaxed border-t border-white/[0.07] pt-2.5">
+                <strong class="text-white/70">Jetzt tun:</strong> Bewahre die heruntergeladene <code class="text-white/60">{{ localSoulFileName }}</code> sicher auf — sie enthält deinen neuen Zugangsschlüssel. Ersetze ältere Versionen.
+              </div>
+            </div>
+          </Transition>
         </div>
 
         <p v-if="!hasLocalFiles" class="py-3 text-center text-sm text-white/30">Noch keine Dateien im Vault</p>
@@ -825,11 +883,23 @@ const authH  = computed(() => ({ Authorization: `Bearer ${props.soulCert}` }));
 // ── Cert-Rotation ───────────────────────────────────────────────────────────
 
 const { rotateCert, soulContent: composableSoulContent, pendingSoulFileWrite, clear: clearSoul } = useSoul();
-const rotateBusy = ref(false);
+const rotateBusy        = ref(false);
+const certRotationResult = ref(null);
+const certCopied         = ref(false);
+
+async function copyCertResult() {
+  if (!certRotationResult.value?.cert) return;
+  try {
+    await navigator.clipboard.writeText(certRotationResult.value.cert);
+    certCopied.value = true;
+    setTimeout(() => { certCopied.value = false; }, 2000);
+  } catch {}
+}
 
 async function handleRotateCert() {
   if (rotateBusy.value) return;
-  rotateBusy.value = true;
+  rotateBusy.value    = true;
+  certRotationResult.value = null;
   try {
     const result = await rotateCert();
     if (!result) {
@@ -837,15 +907,24 @@ async function handleRotateCert() {
       return;
     }
 
-    // Physische Datei im Vault-Ordner überschreiben — composableSoulContent.value
-    // statt props.soulContent nutzen: props kann durch Vue-Render-Batching noch
-    // den alten Wert haben während die Singleton-Ref bereits aktuell ist.
+    // Lokale Vault-Datei überschreiben — composableSoulContent.value statt props.soulContent:
+    // props kann durch Vue-Render-Batching noch den alten Wert haben.
     if (vaultConnected.value && composableSoulContent.value) {
-      const fileName = localSoulFileName.value;
-      await writeFile(fileName, new TextEncoder().encode(composableSoulContent.value));
+      await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value));
     }
 
-    showSuccess(`Cert rotiert ✓  (Version ${result.cert_version})`);
+    // sys.md automatisch herunterladen — User hat immer einen aktuellen Stand
+    downloadSoulLocal();
+
+    // Neuen Cert gegen Server validieren
+    let validated = false;
+    try {
+      const authHeader = `Bearer ${soulId.value}.${result.cert}`;
+      const vRes = await fetch("/api/validate", { headers: { Authorization: authHeader } });
+      validated = vRes.ok;
+    } catch {}
+
+    certRotationResult.value = { ...result, validated };
   } finally {
     rotateBusy.value = false;
   }
@@ -1371,4 +1450,6 @@ watch(loaded, (val) => {
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .vault-toast-enter-active, .vault-toast-leave-active { transition: opacity 0.25s, transform 0.25s; }
 .vault-toast-enter-from, .vault-toast-leave-to { opacity: 0; transform: translate(-50%, 12px); }
+.cert-result-enter-active, .cert-result-leave-active { transition: opacity 0.25s, transform 0.25s; }
+.cert-result-enter-from, .cert-result-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>

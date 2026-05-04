@@ -119,7 +119,11 @@ if cf then
   end
 end
 
--- Cert ausstellen (immer mit aktuellem Key)
+-- Cert ausstellen: für bestehende Souls immer die Server-cert_version verwenden,
+-- nicht die vom Client angeforderte. Verhindert Cert/Version-Drift nach Rotation.
+if cf then
+  cert_version = hmac.read_cert_version(soul_id)
+end
 local cert = hmac.cert_for_soul(master_key, soul_id, cert_version)
 
 -- ── First-Setup: neue Soul + noch kein admin_token → einmalig generieren ──────
@@ -190,7 +194,7 @@ end
 ngx.header["Content-Type"] = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 if first_setup_token then
-  ngx.say(cjson.encode({ cert = cert, first_setup = true, admin_token = first_setup_token }))
+  ngx.say(cjson.encode({ cert = cert, cert_version = cert_version, first_setup = true, admin_token = first_setup_token }))
 else
-  ngx.say('{"cert":"' .. cert .. '"}')
+  ngx.say(cjson.encode({ cert = cert, cert_version = cert_version }))
 end

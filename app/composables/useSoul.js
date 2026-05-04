@@ -192,6 +192,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     const currentCert      = certMatch?.[1]?.trim() || soulCert.value;
 
     let cert;
+    let certVersionFromServer = null;
     try {
       const res = await fetch("/api/soul-cert", {
         method: "POST",
@@ -201,6 +202,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (res.ok) {
         const data = await res.json();
         cert = data.cert;
+        certVersionFromServer = typeof data.cert_version === "number" ? data.cert_version : null;
       }
     } catch {
       return; // Server nicht erreichbar — alten Cert behalten
@@ -208,8 +210,10 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 
     if (!cert) return;
 
-    // Cert in sys.md-Inhalt ersetzen — updateFrontmatterField ist robuster als Regex
     soulContent.value = updateFrontmatterField(soulContent.value, "soul_cert", cert);
+    if (certVersionFromServer !== null) {
+      soulContent.value = updateFrontmatterField(soulContent.value, "cert_version", certVersionFromServer);
+    }
     soulCert.value = cert;
     save();
   }
