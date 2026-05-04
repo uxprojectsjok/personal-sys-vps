@@ -17,7 +17,7 @@ end
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
-local CONFIG_PATH = "/var/lib/sys/pinata_jwt"
+local CONFIG_PATH = "/var/lib/sys/souls/" .. soul_id .. "/pinata_jwt"
 local method      = ngx.req.get_method()
 
 -- ── GET ───────────────────────────────────────────────────────────────────────

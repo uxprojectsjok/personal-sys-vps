@@ -245,10 +245,19 @@ app.post('/internal/verify-tx', async (req, res) => {
   }
 });
 
-// ── Pinata JWT: .env hat Vorrang, Fallback auf /var/lib/sys/pinata_jwt ───────
-async function getPinataJwt() {
+// ── Pinata JWT: .env hat Vorrang, dann soul-spezifisch, dann global ──────────
+async function getPinataJwt(soulId) {
   const envJwt = (process.env.PINATA_JWT || '').trim();
   if (envJwt) return envJwt;
+  // Soul-spezifischer JWT (gesetzt via /api/soul/pinata-config)
+  if (soulId) {
+    try {
+      const jwt = await readFile(`/var/lib/sys/souls/${soulId}/pinata_jwt`, 'utf8');
+      const trimmed = jwt.trim();
+      if (trimmed) return trimmed;
+    } catch { /* not configured for this soul */ }
+  }
+  // Globaler Fallback (Legacy / Single-Node)
   try {
     const jwt = await readFile('/var/lib/sys/pinata_jwt', 'utf8');
     return jwt.trim();
@@ -262,7 +271,7 @@ async function getPinataJwt() {
 // Pinnt soul_meta JSON zu IPFS via Pinata API. Braucht PINATA_JWT in .env.
 app.post('/internal/pin-json', async (req, res) => {
   const { soul_id, meta } = req.body;
-  const jwt = await getPinataJwt();
+  const jwt = await getPinataJwt(soul_id);
 
   if (!jwt) {
     return res.status(503).json({
