@@ -91,7 +91,11 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 ## Offene Fragen dieser Person
 *Noch nicht beschrieben.*
 
+## Agent-Sandbox
+*Noch nicht konfiguriert.*
+
 ## Session-Log (komprimiert)
+*Noch keine Sessions.*
 `;
   }
 
