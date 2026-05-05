@@ -137,7 +137,7 @@ local ALLOWED_TOOLS = {
   soul_read=true, soul_maturity=true, soul_skills=true, soul_discover=true, soul_earnings=true,
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
-  profile_get=true, calendar_read=true, soul_write=true,
+  profile_get=true, calendar_read=true, soul_write=true, verify_human=true,
 }
 if type(incoming.free_tools) == "table" then
   local clean = {}

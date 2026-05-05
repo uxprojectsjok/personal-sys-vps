@@ -56,7 +56,8 @@ if sf then
   end
 end
 
-local base_url = "https://YOUR_DOMAIN"
+local host = ngx.var.host or "unknown"
+local base_url = "https://" .. host
 local amort = ctx.amortization
 
 -- Erlaubte Tools (muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
@@ -64,7 +65,7 @@ local ALLOWED_TOOLS = {
   soul_read=true, soul_maturity=true, soul_skills=true, soul_discover=true, soul_earnings=true,
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
-  profile_get=true, calendar_read=true, soul_write=true,
+  profile_get=true, calendar_read=true, soul_write=true, verify_human=true,
 }
 local function filter_tools(tbl)
   if type(tbl) ~= "table" then return setmetatable({}, cjson.array_mt) end

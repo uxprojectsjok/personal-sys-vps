@@ -83,6 +83,9 @@ if pf then
   end
 end
 
+local host = ngx.var.host or "unknown"
+local base_url = "https://" .. host
+
 local meta = {
   soul_id        = soul_id,
   name           = name or "Unknown",
@@ -91,8 +94,8 @@ local meta = {
   cipher_mode    = cipher_mode,
   api_enabled    = api_enabled,
   public_vault   = pub_enabled,
-  mcp_endpoint   = "https://YOUR_DOMAIN/mcp",
-  soul_endpoint  = "https://YOUR_DOMAIN/api/soul/meta?soul_id=" .. soul_id,
+  mcp_endpoint   = base_url .. "/mcp",
+  soul_endpoint  = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
 }
 
 if created_at then meta.created_at = created_at end

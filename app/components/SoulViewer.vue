@@ -199,6 +199,7 @@
           @click="triggerEnrichment"
           :disabled="isEnriching"
           class="sys-cta-primary cta-sweep w-full h-11 flex items-center justify-between px-5 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="{ 'soul-update-pending': needsUpdate && !isEnriching }"
         >
           <span class="text-sm font-bold text-white">{{ isEnriching ? 'Soul wird analysiert…' : 'Soul updaten' }}</span>
           <svg v-if="isEnriching" class="w-4 h-4 animate-spin flex-none" style="color: rgba(255,255,255,0.75)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -276,6 +277,8 @@ const saveFlash        = ref(false);
 const syncSaving       = ref(false);
 const isEnriching      = ref(false);
 const enrichStatus     = ref(null);
+const manualEdited     = ref(false);
+const needsUpdate      = computed(() => hasMessages.value || manualEdited.value);
 
 // Scroll to top when diff appears so the amber block is visible
 watch(syncStatus, (val) => {
@@ -353,6 +356,7 @@ async function saveEdit(key) {
   }
   editingSection.value = null;
   editText.value = "";
+  manualEdited.value = true;
   saveFlash.value = true;
   setTimeout(() => { saveFlash.value = false; }, 2000);
 }
@@ -371,18 +375,21 @@ async function triggerEnrichment() {
     const result = await enrichFromSession(toApiMessages(50));
     if (!result) {
       enrichStatus.value = { type: "error", message: "Verbindung fehlgeschlagen." };
-    } else if (!result.changed) {
-      enrichStatus.value = { type: "success", message: "Nichts Soul-Würdiges gefunden." };
     } else {
-      const n = result.sectionsUpdated.length;
-      enrichStatus.value = {
-        type: "success",
-        message: n > 0 ? `${n} Sektion${n > 1 ? "en" : ""} aktualisiert` : "Session-Log eingetragen",
-      };
-      appendGrowthEntry();
-      await pushToServer();
-      if (vaultConnected.value) {
-        await writeSoulMd(soulContent.value, "sys").catch(() => {});
+      manualEdited.value = false;
+      if (!result.changed) {
+        enrichStatus.value = { type: "success", message: "Nichts Soul-Würdiges gefunden." };
+      } else {
+        const n = result.sectionsUpdated.length;
+        enrichStatus.value = {
+          type: "success",
+          message: n > 0 ? `${n} Sektion${n > 1 ? "en" : ""} aktualisiert` : "Session-Log eingetragen",
+        };
+        appendGrowthEntry();
+        await pushToServer();
+        if (vaultConnected.value) {
+          await writeSoulMd(soulContent.value, "sys").catch(() => {});
+        }
       }
     }
     setTimeout(() => { enrichStatus.value = null; }, 4000);
@@ -453,6 +460,17 @@ async function handlePushLocal() {
 </script>
 
 <style scoped>
+/* ── Soul update pending ────────────────────────────────────────────── */
+.soul-update-pending {
+  background: linear-gradient(135deg, #92400e 0%, #d97706 100%) !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.45) !important;
+  animation: pulse-amber 2.4s ease-in-out infinite;
+}
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+  50%       { box-shadow: 0 0 26px rgba(245, 158, 11, 0.6); }
+}
+
 /* ── Meta bar (single compact line) ────────────────────────────────── */
 .meta-bar {
   display: flex; align-items: center; gap: 7px;
