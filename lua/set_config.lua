@@ -117,6 +117,31 @@ local encoded = cjson.encode(existing)
 wf:write(encoded); wf:close()
 os.execute("chmod 600 " .. config_path)
 
+-- ── API-Keys auch in master.json spiegeln (überleben Soul-Rotation) ────────────
+local cfg         = require("config_reader")
+local master_path = cfg.get_master_path()
+local mf          = io.open(master_path, "r")
+if mf then
+  local mr = mf:read("*a"); mf:close()
+  local mok, mdata = pcall(cjson.decode, mr)
+  if mok and type(mdata) == "table" then
+    if anthropic_key  ~= nil then mdata.anthropic_key  = (anthropic_key  ~= "") and anthropic_key  or nil end
+    if wavespeed_key  ~= nil then mdata.wavespeed_key  = (wavespeed_key  ~= "") and wavespeed_key  or nil end
+    if elevenlabs_key ~= nil then mdata.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil end
+    if model          ~= nil then mdata.model          = model end
+    local mwf = io.open(master_path, "w")
+    if mwf then
+      mwf:write(cjson.encode(mdata)); mwf:close()
+      os.execute("chmod 600 " .. master_path)
+      cfg.invalidate_master_cache()
+    else
+      ngx.log(ngx.WARN, "[set_config] master.json Schreibfehler")
+    end
+  end
+else
+  ngx.log(ngx.WARN, "[set_config] master.json nicht gefunden: ", master_path)
+end
+
 -- ── Antwort ────────────────────────────────────────────────────────────────────
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"

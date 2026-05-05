@@ -1,116 +1,114 @@
 <template>
   <Teleport to="body">
-    <Transition name="fade">
+    <Transition name="sys-modal-fade">
       <div
         v-if="syncStatus === 'differs'"
-        class="fixed inset-0 z-[80] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+        class="sys-modal-overlay"
         @click.self="dismissSync()"
         role="dialog" aria-modal="true" aria-labelledby="soul-sync-title"
       >
-        <div class="relative w-full max-w-lg bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl max-h-[90dvh] flex flex-col overflow-hidden">
+        <!-- 4-row grid: head / meta-bar / body / foot -->
+        <div class="sys-modal sys-modal--md" style="grid-template-rows:auto auto 1fr auto">
+          <div class="sys-modal-handle"></div>
 
-          <!-- Header -->
-          <div class="flex items-start justify-between px-5 pt-4 pb-3 border-b border-[var(--sys-border)] flex-none">
-            <div>
-              <p id="soul-sync-title" class="text-sm font-medium text-[var(--sys-fg)]">Soul-Abgleich</p>
-              <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5">
-                {{ changedSections.length }} Abschnitte unterscheiden sich zwischen diesem Gerät und dem Server
-              </p>
-            </div>
-            <button
-              @click="dismissSync()"
-              class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-none"
-              aria-label="Schließen"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <!-- Head -->
+          <div class="sys-modal-head">
+            <button class="sys-modal-close" @click="dismissSync()" aria-label="Schließen">×</button>
+            <span class="sys-kicker">Soul · Sync</span>
+            <h2 id="soul-sync-title" class="sys-display" style="font-size:clamp(22px,3vw,32px)">Abgleich</h2>
+            <p class="sys-lede">{{ changedSections.length }} Abschnitte unterscheiden sich zwischen diesem Gerät und dem Server.</p>
           </div>
 
-          <!-- Meta-Zeile -->
-          <div class="grid grid-cols-2 gap-px px-5 py-2.5 border-b border-[var(--sys-border)] flex-none">
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span class="text-xs font-mono font-bold text-[var(--sys-fg-dim)] w-4 flex-none">L</span>
-              <span class="text-xs text-[var(--sys-fg-dim)]">Dieses Gerät</span>
-              <span class="text-xs font-mono text-[var(--sys-fg-muted)]">{{ localLastSession || '—' }}</span>
-              <span v-if="newerSide === 'local'" class="text-xs px-1.5 py-px rounded bg-[rgba(255,255,255,0.10)] text-[var(--sys-fg-muted)] border border-[rgba(255,255,255,0.18)]">Aktueller</span>
+          <!-- Meta bar (rail slot) -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--sys-rule);background:var(--sys-paper-3)">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px;border-right:1px solid var(--sys-rule)">
+              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Dieses Gerät</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ localLastSession || '—' }}</span>
+              <span v-if="newerSide === 'local'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
             </div>
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span class="text-xs font-mono font-bold text-[var(--sys-fg-dim)] w-4 flex-none">S</span>
-              <span class="text-xs text-[var(--sys-fg-dim)]">Server</span>
-              <span class="text-xs font-mono text-[var(--sys-fg-muted)]">{{ serverLastSession || '—' }}</span>
-              <span v-if="newerSide === 'server'" class="text-xs px-1.5 py-px rounded bg-[rgba(255,255,255,0.10)] text-[var(--sys-fg-muted)] border border-[rgba(255,255,255,0.18)]">Aktueller</span>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px">
+              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Server</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ serverLastSession || '—' }}</span>
+              <span v-if="newerSide === 'server'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
             </div>
           </div>
 
-          <!-- Abschnitt-Diffs (scrollbar) -->
-          <div class="flex-1 overflow-y-auto divide-y divide-[var(--sys-border)]">
+          <!-- Section diffs -->
+          <div class="sys-modal-body" style="padding:0">
             <div
               v-for="s in changedSections"
               :key="s.name"
-              class="pl-6 pr-5 pt-3 pb-3"
+              style="padding:14px 40px;border-bottom:1px solid var(--sys-rule)"
             >
-              <!-- Sektions-Titel + Expand -->
               <button
-                class="w-full flex items-center justify-between gap-2 group"
+                style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:none;border:none;cursor:pointer;padding:0;min-height:unset;border-radius:0;text-align:left;font-family:inherit"
                 @click="openSections[s.name] = !openSections[s.name]"
               >
-                <span class="text-xs font-medium text-[var(--sys-fg-muted)] group-hover:text-[var(--sys-fg)] transition-colors text-left">{{ s.name }}</span>
-                <div class="flex items-center gap-2 flex-none">
-                  <span class="text-xs text-[var(--sys-fg-dim)]">
-                    <span class="font-mono font-bold">L</span> <span :class="s.localLen > s.serverLen ? 'text-[var(--sys-fg)]' : ''">{{ s.localLen }}</span>
-                    <span class="opacity-40 mx-1.5">/</span>
-                    <span class="font-mono font-bold">S</span> <span :class="s.serverLen > s.localLen ? 'text-[var(--sys-fg)]' : ''">{{ s.serverLen }}</span>
+                <span style="font-family:var(--sys-serif);font-size:14px;color:var(--sys-fg-muted)">{{ s.name }}</span>
+                <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                  <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim)">
+                    <b>L</b> {{ s.localLen }}
+                    <span style="opacity:.4;margin:0 4px">/</span>
+                    <b>S</b> {{ s.serverLen }}
                   </span>
                   <svg
-                    class="w-3 h-3 text-[var(--sys-fg-dim)] transition-transform duration-200 flex-none"
-                    :class="openSections[s.name] ? 'rotate-180' : ''"
+                    width="12" height="12"
+                    style="color:var(--sys-fg-dim);transition:transform .2s;flex-shrink:0"
+                    :style="openSections[s.name] ? 'transform:rotate(180deg)' : ''"
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
                   ><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/></svg>
                 </div>
               </button>
 
-              <!-- Aufgeklappter Vergleich: auf Mobile gestapelt, auf sm nebeneinander -->
-              <div v-if="openSections[s.name]" class="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div class="rounded-lg bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-2.5 py-2">
-                  <p class="text-xs font-mono font-bold text-[var(--sys-fg-dim)] mb-1">L – Dieses Gerät</p>
-                  <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.localSnippet }}</p>
-                  <p v-if="s.localLen > 200" class="text-xs text-[var(--sys-fg-dim)] opacity-40 mt-1">+{{ s.localLen - 200 }} Zeichen</p>
+              <div v-if="openSections[s.name]" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="sys-card-ed" style="margin-bottom:0">
+                  <div class="sys-card-head">
+                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L – Dieses Gerät</span>
+                  </div>
+                  <div class="sys-card-body">
+                    <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.localSnippet }}</p>
+                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.localLen - 200 }} Zeichen</p>
+                  </div>
                 </div>
-                <div class="rounded-lg bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-2.5 py-2">
-                  <p class="text-xs font-mono font-bold text-[var(--sys-fg-dim)] mb-1">S – Server</p>
-                  <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.serverSnippet }}</p>
-                  <p v-if="s.serverLen > 200" class="text-xs text-[var(--sys-fg-dim)] opacity-40 mt-1">+{{ s.serverLen - 200 }} Zeichen</p>
+                <div class="sys-card-ed" style="margin-bottom:0">
+                  <div class="sys-card-head">
+                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S – Server</span>
+                  </div>
+                  <div class="sys-card-body">
+                    <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.serverSnippet }}</p>
+                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.serverLen - 200 }} Zeichen</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Aktionen -->
-          <div class="px-5 py-4 border-t border-[var(--sys-border)] flex gap-2 flex-none">
-            <button
-              @click="handleAcceptServer"
-              :disabled="saving"
-              class="flex-1 py-2.5 rounded-xl text-xs font-medium transition-all min-h-[40px] border active:scale-[0.98] disabled:opacity-40"
-              :class="newerSide === 'server'
-                ? 'border-[rgba(255,255,255,0.25)] text-[var(--sys-fg)] bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)]'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] bg-transparent hover:bg-[rgba(255,255,255,0.04)]'"
-            >{{ newerSide === 'server' ? '✓ Server übernehmen' : 'Server übernehmen' }}</button>
-
-            <button
-              @click="handlePushLocal"
-              :disabled="saving"
-              class="flex-1 py-2.5 rounded-xl text-xs font-medium transition-all min-h-[40px] border active:scale-[0.98] disabled:opacity-40"
-              :class="newerSide === 'local'
-                ? 'border-[rgba(255,255,255,0.25)] text-[var(--sys-fg)] bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)]'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] bg-transparent hover:bg-[rgba(255,255,255,0.04)]'"
-            >
-              <span v-if="saving">Lädt…</span>
-              <span v-else>{{ newerSide === 'local' ? '✓ Auf Server hochladen' : 'Auf Server hochladen' }}</span>
-            </button>
+          <!-- Foot -->
+          <div class="sys-modal-foot">
+            <div class="sys-foot-meta">
+              <span class="sys-dot" :class="newerSide === 'server' ? 'sys-dot--live' : newerSide === 'local' ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
+              {{ newerSide === 'server' ? 'Server aktueller' : newerSide === 'local' ? 'Gerät aktueller' : 'Gleicher Stand' }}
+            </div>
+            <div class="sys-foot-actions">
+              <button
+                class="sys-btn-ed"
+                :class="newerSide === 'server' ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                @click="handleAcceptServer"
+                :disabled="saving"
+              >{{ newerSide === 'server' ? '✓ Server übernehmen' : 'Server übernehmen' }}</button>
+              <button
+                class="sys-btn-ed"
+                :class="newerSide === 'local' ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                @click="handlePushLocal"
+                :disabled="saving"
+              >
+                <span v-if="saving">Lädt…</span>
+                <span v-else>{{ newerSide === 'local' ? '✓ Auf Server hochladen' : 'Auf Server hochladen' }}</span>
+              </button>
+            </div>
           </div>
-
         </div>
       </div>
     </Transition>
@@ -183,7 +181,6 @@ const changedSections = computed(() => {
 
 async function handleAcceptServer() {
   acceptServerVersion();
-  // Vault-Datei ebenfalls aktualisieren, damit lokale Kopie nicht veraltet bleibt
   if (vaultConnected.value) {
     await writeSoulMd(soulContent.value, 'sys');
   }
@@ -195,8 +192,3 @@ async function handlePushLocal() {
   saving.value = false;
 }
 </script>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-</style>

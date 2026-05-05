@@ -1,30 +1,27 @@
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="soul-meter">
 
-    <!-- Label-Zeile -->
-    <div class="flex items-center justify-between">
+    <!-- Label row -->
+    <div class="soul-meter-header">
       <button
-        class="sys-link flex items-center gap-1.5 text-sm tracking-[0.14em] uppercase text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] transition-colors"
+        class="soul-meter-label"
         @click="open = !open"
         :title="open ? 'Breakdown schließen' : 'Breakdown anzeigen'"
       >
         <span>Soul Index</span>
         <svg
-          class="w-3 h-3 transition-transform duration-300"
-          :class="open ? 'rotate-180' : ''"
+          class="soul-meter-chevron"
+          :class="open ? 'is-open' : ''"
           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
         ><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/></svg>
       </button>
-      <span
-        class="text-sm font-bold tracking-[0.08em] uppercase transition-colors duration-700"
-        :class="[levelColor, isMature ? 'soul-mature-glow' : '']"
-      >{{ level }}</span>
+      <span class="soul-meter-level" :class="[levelColor, isMature ? 'soul-mature-glow' : '']">{{ level }}</span>
     </div>
 
-    <!-- Track + Fill -->
-    <div class="relative h-[4px] w-full rounded-full bg-white/[0.07]">
+    <!-- Track -->
+    <div class="soul-meter-track">
       <div
-        class="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+        class="soul-meter-fill"
         :class="isMature ? 'soul-pulse' : ''"
         :style="{
           width: score + '%',
@@ -34,15 +31,14 @@
           boxShadow: isMature ? '0 0 10px hsl(var(--chart-1) / 0.4)' : 'none'
         }"
       ></div>
-      <!-- Threshold-Tick bei 75% -->
-      <div class="absolute top-0 bottom-0 w-px bg-white/25" style="left:75%" title="Premium-Schwelle: 75 Punkte"></div>
+      <div class="soul-meter-tick" title="Premium-Schwelle: 75 Punkte"></div>
     </div>
 
-    <!-- Score-Zeile -->
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-mono text-[var(--sys-fg-muted)] tabular-nums">{{ score }}/100</span>
-      <span v-if="isMature" class="text-xs text-[var(--sys-fg)] font-semibold">✓ Bereit zur Verschlüsselung</span>
-      <span v-else class="text-xs text-[var(--sys-fg-dim)]">
+    <!-- Score row -->
+    <div class="soul-meter-score">
+      <span class="soul-meter-score-val">{{ score }}/100</span>
+      <span v-if="isMature" class="soul-meter-ready">✓ Bereit zur Verschlüsselung</span>
+      <span v-else class="soul-meter-hint">
         <template v-if="score >= 55">{{ Math.max(0, 75 - score) }} bis Premium</template>
         <template v-else-if="score >= 35">{{ Math.max(0, 55 - score) }} bis Etabliert</template>
         <template v-else-if="score >= 15">{{ Math.max(0, 35 - score) }} bis Reifung</template>
@@ -52,36 +48,34 @@
 
     <!-- Breakdown -->
     <Transition name="slide-up">
-      <div v-if="open && breakdown" class="space-y-2.5 pt-3 border-t border-[var(--sys-border)]">
+      <div v-if="open && breakdown" class="soul-meter-breakdown">
 
-        <!-- Säulen -->
-        <div v-for="pillar in pillars" :key="pillar.key" class="flex items-center gap-3">
-          <span class="text-xs font-medium w-20 flex-none" :class="pillar.labelColor">{{ pillar.label }}</span>
-          <div class="flex-1 h-[3px] rounded-full bg-[var(--sys-border)]">
+        <div v-for="pillar in pillars" :key="pillar.key" class="soul-meter-pillar">
+          <span class="soul-meter-pillar-label" :class="pillar.labelColor">{{ pillar.label }}</span>
+          <div class="soul-meter-pillar-track">
             <div
-              class="h-full rounded-full transition-all duration-500"
+              class="soul-meter-pillar-fill"
               :style="pillar.barStyle + '; width: ' + (breakdown[pillar.key] / pillar.max * 100) + '%'"
             ></div>
           </div>
-          <span class="text-xs font-mono w-8 text-right tabular-nums" :class="pillar.valueColor">
+          <span class="soul-meter-pillar-val" :class="pillar.valueColor">
             {{ breakdown[pillar.key] }}/{{ pillar.max }}
           </span>
         </div>
 
-        <!-- Skills Detail -->
-        <div class="pt-2 border-t border-[var(--sys-border)]">
+        <div class="soul-meter-skills">
           <template v-if="breakdown.signatureVerified">
-            <span class="text-xs text-[var(--sys-fg)] font-semibold">✓ Signatur extern verifiziert</span>
+            <span class="soul-meter-skills-ok">✓ Signatur extern verifiziert</span>
           </template>
           <template v-else-if="breakdown.signatureHints?.length">
-            <span class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
+            <span class="soul-meter-skills-hints">
               {{ breakdown.signatureHints.slice(0, 5).join(' · ') }}
               <span v-if="breakdown.signatureHints.length > 5"> +{{ breakdown.signatureHints.length - 5 }}</span>
             </span>
-            <span class="text-xs text-[var(--sys-fg-dim)] ml-1.5">erkannte Skills</span>
+            <span class="soul-meter-skills-suffix"> erkannte Skills</span>
           </template>
           <template v-else>
-            <span class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">Trag herausragende Skills in deine Soul ein — das steigert den Wert</span>
+            <span class="soul-meter-skills-empty">Trag herausragende Skills in deine Soul ein — das steigert den Wert</span>
           </template>
         </div>
 
@@ -104,42 +98,12 @@ const props = defineProps({
 const open = ref(false);
 
 const pillars = [
-  {
-    key: "herkunft",  label: "Herkunft",  max: 25,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #f59e0b",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
-  {
-    key: "tiefe",     label: "Tiefe",     max: 20,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #60a5fa",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
-  {
-    key: "biometrie", label: "Biometrie", max: 20,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #c084fc",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
-  {
-    key: "archiv",    label: "Archiv",    max: 20,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #34d399",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
-  {
-    key: "signatur",  label: "Skills",    max: 15,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #fb923c",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
-  {
-    key: "netzwerk",  label: "Net Skill", max: 10,
-    labelColor: "text-[var(--sys-fg-muted)]",
-    barStyle:   "background: #22d3ee",
-    valueColor: "text-[var(--sys-fg-dim)]",
-  },
+  { key: "herkunft",  label: "Herkunft",  max: 25, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#f59e0b", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "tiefe",     label: "Tiefe",     max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#60a5fa", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "biometrie", label: "Biometrie", max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#c084fc", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "archiv",    label: "Archiv",    max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#34d399", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "signatur",  label: "Skills",    max: 15, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#fb923c", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "netzwerk",  label: "Net Skill", max: 10, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#22d3ee", valueColor: "text-[var(--sys-fg-muted)]" },
 ];
 
 const levelColor = computed(() => {
@@ -150,3 +114,136 @@ const levelColor = computed(() => {
   return "text-[var(--sys-fg-dim)] opacity-60";
 });
 </script>
+
+<style scoped>
+.soul-meter { display: flex; flex-direction: column; gap: 10px; }
+
+.soul-meter-header { display: flex; align-items: center; justify-content: space-between; }
+
+.soul-meter-label {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sys-fg-muted);
+  background: none; border: none; cursor: pointer; padding: 0;
+  min-height: unset; border-radius: 0;
+  transition: color 0.15s;
+}
+.soul-meter-label:hover { color: var(--sys-fg); }
+
+.soul-meter-chevron {
+  width: 11px; height: 11px;
+  transition: transform 0.3s;
+}
+.soul-meter-chevron.is-open { transform: rotate(180deg); }
+
+.soul-meter-level {
+  font-family: var(--sys-serif);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition: color 0.7s;
+}
+
+.soul-meter-track {
+  position: relative;
+  height: 3px;
+  width: 100%;
+  background: rgba(255,255,255,0.07);
+}
+.soul-meter-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  transition: width 0.7s ease-out;
+}
+.soul-meter-tick {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 75%;
+  width: 1px;
+  background: rgba(255,255,255,0.22);
+}
+
+.soul-meter-score { display: flex; align-items: center; justify-content: space-between; }
+.soul-meter-score-val {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-fg-muted);
+  tabular-nums: all;
+}
+.soul-meter-ready {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-ok);
+  letter-spacing: 0.06em;
+}
+.soul-meter-hint {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-fg-muted);
+}
+
+.soul-meter-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sys-rule);
+}
+
+.soul-meter-pillar { display: flex; align-items: center; gap: 10px; }
+.soul-meter-pillar-label {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  width: 64px;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+.soul-meter-pillar-track {
+  flex: 1;
+  height: 2px;
+  background: var(--sys-rule-strong);
+}
+.soul-meter-pillar-fill {
+  height: 100%;
+  transition: width 0.5s;
+}
+.soul-meter-pillar-val {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  width: 32px;
+  text-align: right;
+  tabular-nums: all;
+}
+
+.soul-meter-skills {
+  padding-top: 8px;
+  border-top: 1px solid var(--sys-rule);
+}
+.soul-meter-skills-ok {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-ok);
+  letter-spacing: 0.06em;
+}
+.soul-meter-skills-hints {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-fg-muted);
+  line-height: 1.6;
+}
+.soul-meter-skills-suffix {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  color: var(--sys-fg-muted);
+  margin-left: 4px;
+}
+.soul-meter-skills-empty {
+  font-family: var(--sys-serif);
+  font-size: 13px;
+  color: var(--sys-fg-muted);
+  line-height: 1.5;
+}
+</style>

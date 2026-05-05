@@ -60,7 +60,7 @@
           <button
             v-for="(step, i) in steps"
             :key="i"
-            class="flex-1 flex flex-col items-center gap-2 px-2 pt-4 pb-3 transition-all duration-200 relative group"
+            class="flex-1 flex flex-col items-center gap-3 px-2 pt-5 pb-4 transition-all duration-200 relative group"
             @click="currentStep = i"
           >
             <!-- Step icon circle -->
@@ -110,19 +110,19 @@
 
             <!-- Status -->
             <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
-              <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:#a78bfa' : 'background: rgba(239,68,68,0.5)'"></span>
+              <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:#a78bfa' : 'background: rgba(255,255,255,0.15)'"></span>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-semibold text-white/75">
                   {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}
                 </p>
-                <p class="text-xs text-white/40 truncate">
+                <p class="text-xs text-white/55 truncate">
                   {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : 'Lokaler Ordner') : 'Vault über Lokal oder Cloud verbinden' }}
                 </p>
               </div>
               <button
                 v-if="vaultConnected"
                 @click="clearVault()"
-                class="text-xs text-red-400/60 hover:text-red-400 transition-colors leading-none flex-none"
+                style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--sys-fg-dim);line-height:1;flex:none;padding:0;opacity:0.6"
                 title="Vault trennen"
               >✕</button>
             </div>
@@ -139,6 +139,24 @@
               </svg>
               <span class="flex-1 text-left">{{ connectingLocal ? 'Wählen…' : 'Lokal' }}</span>
               <span class="text-xs text-white/35">FileSystem API</span>
+            </button>
+
+            <!-- Cloud-Vault löschen -->
+            <button
+              @click="handleDeleteVault"
+              :disabled="deleteLoading"
+              class="w-full flex items-center gap-3 px-4 py-3 rounded-none transition-all duration-150 text-left disabled:opacity-50"
+              style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);"
+            >
+              <div class="w-7 h-7 rounded-none flex items-center justify-center flex-none" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10)">
+                <svg class="w-3.5 h-3.5" style="color:var(--sys-fg-dim)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-medium" style="color:var(--sys-fg-muted)">{{ deleteLoading ? 'Wird gelöscht…' : 'Cloud-Vault löschen' }}</p>
+                <p class="text-xs mt-0.5" style="color:var(--sys-fg-muted)">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
+              </div>
             </button>
 
           </div>
@@ -164,105 +182,68 @@
           </div>
 
           <!-- Step 5: Einstellungen -->
-          <div v-show="currentStep === 5" class="p-5 space-y-3">
-            <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-white/75">Node-Einstellungen</p>
-                <p class="text-xs text-white/40 mt-0.5">API-Keys, Admin-Token, ElevenLabs, WhatsApp</p>
-              </div>
-              <button
-                @click="settingsLocalOpen = true"
-                class="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition min-h-[32px]"
-              >Öffnen</button>
-            </div>
-            <SettingsModal :open="settingsLocalOpen" @close="settingsLocalOpen = false" @master-rotated="settingsLocalOpen = false" />
-          </div>
+          <div v-show="currentStep === 5" style="display:flex;flex-direction:column;gap:20px;padding:20px">
 
-          <!-- Step 6: Sicherheit -->
-          <div v-show="currentStep === 6" class="p-5 space-y-4">
-            <!-- Cert Rotation -->
-            <div>
-              <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest px-1 pb-2">Soul-Cert rotieren</p>
-              <button
-                @click="handleRotateCert"
-                :disabled="certRotateBusy"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-none transition-all duration-150 text-left disabled:opacity-50"
-                style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);"
-              >
-                <div class="w-8 h-8 rounded-none flex items-center justify-center flex-none" style="background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.25)">
-                  <svg v-if="certRotateBusy" class="w-4 h-4 animate-spin text-[#f97316]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                  <svg v-else class="w-4 h-4 text-[#f97316]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
-                  </svg>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-white/80">{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</p>
-                  <p class="text-xs text-white/35 mt-0.5">Altes Cert sofort ungültig — sys.md wird automatisch heruntergeladen</p>
-                </div>
-              </button>
-              <Transition name="cert-result">
-                <div v-if="certRotationResult" class="mt-2 rounded border border-[#f97316]/30 bg-[#f97316]/[0.06] p-3 space-y-3" role="status">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 text-xs font-medium text-[#f97316]">
-                      <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
-                      Cert rotiert — Version {{ certRotationResult.cert_version }}
-                    </div>
-                    <button @click="certRotationResult = null" class="text-white/30 hover:text-white/60 transition" aria-label="Schließen">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                    </button>
-                  </div>
-                  <div class="space-y-1">
-                    <p class="text-[10px] text-white/40 uppercase tracking-wider">Neuer Soul-Cert</p>
-                    <div class="flex items-center gap-2 bg-black/30 rounded px-2.5 py-2">
-                      <code class="flex-1 text-xs font-mono text-[#f97316] break-all select-all">{{ certRotationResult.cert }}</code>
-                      <button @click="copyCertResult" class="shrink-0 w-7 h-7 flex items-center justify-center rounded transition"
-                        :class="certCopied ? 'text-emerald-400' : 'text-white/40 hover:text-white/70'" aria-label="Cert kopieren">
-                        <svg v-if="certCopied" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                        <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                  <ul class="space-y-1.5 text-xs">
-                    <li class="flex items-center gap-2" :class="certRotationResult.validated ? 'text-emerald-400' : 'text-red-400'">
-                      <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path v-if="certRotationResult.validated" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                        <path v-else stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/>
-                      </svg>
-                      {{ certRotationResult.validated ? 'Cert auf Server validiert ✓' : 'Server-Validierung fehlgeschlagen — Seite neu laden' }}
-                    </li>
-                    <li class="flex items-center gap-2 text-emerald-400">
-                      <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                      sys.md automatisch heruntergeladen
-                    </li>
-                  </ul>
-                  <div class="text-[11px] text-white/50 leading-relaxed border-t border-white/[0.07] pt-2.5">
-                    <strong class="text-white/70">Jetzt tun:</strong> Bewahre die heruntergeladene <code class="text-white/60">sys.md</code> sicher auf — sie enthält deinen neuen Zugangsschlüssel.
-                  </div>
-                </div>
-              </Transition>
+            <!-- Modell -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">Modell</label>
+              <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
+                <option value="">Server-Standard</option>
+                <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
+                <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+              </select>
             </div>
 
-            <!-- Cloud-Vault löschen -->
-            <div>
-              <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest px-1 pb-2">Node zurücksetzen</p>
-              <button
-                @click="handleDeleteVault"
-                :disabled="deleteLoading"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-none transition-all duration-150 text-left disabled:opacity-50"
-                style="background: rgba(239,68,68,0.03); border: 1px solid rgba(239,68,68,0.12);"
-              >
-                <div class="w-8 h-8 rounded-none flex items-center justify-center flex-none" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2)">
-                  <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                  </svg>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-red-400">{{ deleteLoading ? 'Wird gelöscht…' : 'Cloud-Vault löschen' }}</p>
-                  <p class="text-xs text-white/35 mt-0.5">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
-                </div>
-              </button>
+            <!-- Anthropic -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                Anthropic API-Key
+                <span v-if="cfgAnthSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
+                placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
+                :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
             </div>
+
+            <!-- WaveSpeed -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                WaveSpeed API-Key
+                <span v-if="cfgWaveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
+                :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true"
+                :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
+            </div>
+
+            <!-- ElevenLabs -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                ElevenLabs API-Key
+                <span v-if="cfgLabsSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
+                :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
+                autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true"
+                :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
+            </div>
+
+            <!-- Speichern -->
+            <button
+              @click="saveCfgStep"
+              :disabled="cfgSaving"
+              class="sys-btn-ed sys-btn-ed--primary"
+              style="width:100%;justify-content:center"
+            >{{ cfgSaving ? 'Speichert…' : 'Speichern' }}</button>
+            <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:10px;margin:0"
+              :style="cfgFeedback.ok === true ? 'color:var(--sys-ok)' : cfgFeedback.ok === false ? 'color:var(--sys-err)' : 'color:var(--sys-fg-muted)'">
+              {{ cfgFeedback.message }}
+            </p>
+
           </div>
+
         </div>
 
         <!-- ── Navigation ───────────────────────────────────────────────── -->
@@ -329,7 +310,6 @@ import VaultSessionPanel  from './VaultSessionPanel.vue'
 import ApiContextPanel    from './ApiContextPanel.vue'
 import VaultServicesPanel from './VaultServicesPanel.vue'
 import SoulNetworkPanel   from './SoulNetworkPanel.vue'
-import SettingsModal      from './SettingsModal.vue'
 
 const props = defineProps({
   soulCert:    { type: String, default: '' },
@@ -393,9 +373,6 @@ const IconSettings = defineComponent({ render: () => h('svg', { fill:'none', vie
   h('path', { 'stroke-linecap':'round', 'stroke-linejoin':'round', d:'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z' }),
 ]) })
 
-const IconSecurity = defineComponent({ render: () => h('svg', { fill:'none', viewBox:'0 0 24 24', stroke:'currentColor', 'stroke-width':'1.5' }, [
-  h('path', { 'stroke-linecap':'round', 'stroke-linejoin':'round', d:'M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z' }),
-]) })
 
 const steps = computed(() => [
   { label: 'Vault',    done: vaultConnected.value,         color: 'rgba(255,255,255,0.75)', icon: IconConnect  },
@@ -404,7 +381,6 @@ const steps = computed(() => [
   { label: 'Plugins',  done: services.value.length > 0,    color: 'rgba(255,255,255,0.75)', icon: IconServices },
   { label: 'Netzwerk', done: connections.value.length > 0, color: 'rgba(255,255,255,0.75)', icon: IconNetwork  },
   { label: 'Config',   done: false,                        color: 'rgba(255,255,255,0.75)', icon: IconSettings },
-  { label: 'Sicherheit', done: false,                      color: 'rgba(255,255,255,0.75)', icon: IconSecurity },
 ])
 
 const stepColor  = computed(() => 'rgba(255,255,255,0.75)')
@@ -449,9 +425,90 @@ async function handleDeleteVault() {
   }
 }
 
-const { rotateCert, soulContent: composableSoulContent, clear: clearSoul } = useSoul()
+const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob, soulToken } = useSoul()
 
-const settingsLocalOpen  = ref(false)
+// ── Step 5: Config ─────────────────────────────────────────────────────────────
+const cfgModel     = ref('')
+const cfgAnthKey   = ref('')
+const cfgAnthSet   = ref(false)
+const cfgWaveKey   = ref('')
+const cfgWaveSet   = ref(false)
+const cfgWaveDirty = ref(false)
+const cfgLabsKey   = ref('')
+const cfgLabsSet   = ref(false)
+const cfgLabsDirty = ref(false)
+const cfgSaving    = ref(false)
+const cfgFeedback  = ref(null)
+
+async function loadCfgStep() {
+  if (!soulToken.value) return
+  try {
+    const res = await fetch('/api/get-config', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    cfgModel.value   = data.model || ''
+    cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
+    cfgWaveSet.value = !!data.wavespeed_key_set
+    cfgLabsSet.value = !!data.elevenlabs_key_set
+  } catch {}
+}
+
+async function saveCfgStep() {
+  if (cfgSaving.value) return
+  cfgSaving.value   = true
+  cfgFeedback.value = null
+  try {
+    const body = {}
+    if (cfgModel.value)   body.model         = cfgModel.value
+    if (cfgAnthKey.value) body.anthropic_key  = cfgAnthKey.value
+    if (cfgWaveKey.value) body.wavespeed_key  = cfgWaveKey.value
+    if (cfgLabsKey.value) body.elevenlabs_key = cfgLabsKey.value
+    const res = await fetch('/api/set-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body:    JSON.stringify(body)
+    })
+    if (!res.ok) { cfgFeedback.value = { ok: false, message: 'Fehler beim Speichern' }; return }
+
+    if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
+    if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
+    if (cfgLabsKey.value) { cfgLabsSet.value = true; cfgLabsKey.value = ''; cfgLabsDirty.value = false }
+
+    // Anthropic-Verbindung testen (immer wenn Key vorhanden)
+    if (cfgAnthSet.value) {
+      cfgFeedback.value = { ok: null, message: 'Verbindung wird geprüft…' }
+      try {
+        const tr = await fetch('/api/test-key', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+          body:    JSON.stringify({ use_stored: true, key_type: 'anthropic' })
+        })
+        const td = await tr.json()
+        if (td.ok) {
+          cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindung OK ✓' }
+        } else {
+          cfgFeedback.value = { ok: false, message: `Gespeichert, aber Anthropic antwortet ${td.status || '?'} — Key prüfen` }
+        }
+      } catch {
+        cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindungstest nicht möglich' }
+      }
+    } else {
+      cfgFeedback.value = { ok: true, message: 'Konfiguration gespeichert ✓' }
+    }
+    setTimeout(() => { cfgFeedback.value = null }, 5000)
+  } catch (e) {
+    cfgFeedback.value = { ok: false, message: 'Netzwerkfehler: ' + e.message }
+  } finally {
+    cfgSaving.value = false
+  }
+}
+
+watch(currentStep, (step) => {
+  if (step === 5) loadCfgStep()
+})
+
 const certRotateBusy     = ref(false)
 const certRotationResult = ref(null)
 const certCopied         = ref(false)
@@ -487,10 +544,12 @@ async function handleRotateCert() {
   try {
     const result = await rotateCert()
     if (!result) { alert('Cert-Rotation fehlgeschlagen'); return }
+    // Vault-Datei + Server + lokaler Download — alle drei aktualisieren
     if (vaultConnected.value && composableSoulContent.value) {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
-    downloadSoulLocal()
+    await pushToServer()
+    await exportAsBlob()
     let validated = false
     try {
       const soulId = props.soulCert?.split('.')?.[0] ?? ''

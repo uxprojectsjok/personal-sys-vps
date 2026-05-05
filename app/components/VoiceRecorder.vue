@@ -80,7 +80,7 @@
         v-model="consentGiven"
         class="mt-0.5 flex-none w-3.5 h-3.5 cursor-pointer accent-[#22c55e]"
       />
-      <span class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">
+      <span class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
         Ich stimme zu, dass diese Aufnahme zur Erstellung eines KI-Stimmklons verarbeitet werden darf
         (EU AI Act Art. 50, Art. 9 DSGVO). Die Verarbeitung erfolgt ausschließlich durch mich selbst.
       </span>
@@ -89,7 +89,7 @@
     <!-- Idle-Hinweis -->
     <p
       v-if="!isRecording && !isPreview"
-      class="text-center text-xs text-[var(--sys-fg-dim)]/50 tracking-[0.06em]"
+      class="text-center text-xs text-[var(--sys-fg-muted)]/70 tracking-[0.06em]"
     >
       Mindestens 30 Sek. frei sprechen für optimale Qualität
     </p>
@@ -105,7 +105,7 @@
         v-if="!isPreview"
         @click="isRecording ? handleStop() : handleStart()"
         :disabled="!isRecording && !consentGiven"
-        class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         :class="isRecording
           ? 'border border-red-900/50 bg-[rgba(239,68,68,0.12)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]'
           : 'border border-white/20 bg-[rgba(255,255,255,0.08)] text-white/80 hover:bg-[rgba(255,255,255,0.14)]'"

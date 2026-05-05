@@ -28,7 +28,7 @@
       <span
         v-for="d in DAY_LABELS"
         :key="d"
-        class="text-center text-[10px] font-medium text-[var(--sys-fg-dim)] py-2 select-none"
+        class="text-center text-[10px] font-medium text-[var(--sys-fg-muted)] py-2 select-none"
       >{{ d }}</span>
     </div>
 
@@ -99,7 +99,7 @@
           <div class="px-5 pt-4 pb-3 flex items-start justify-between border-b border-[var(--sys-border)] flex-none">
             <div>
               <p class="text-sm font-semibold text-[var(--sys-fg)]">{{ formatDateLabel(modal.date) }}</p>
-              <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5">
+              <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
                 {{ modal.rows.length }} {{ modal.rows.length === 1 ? 'Eintrag' : 'Einträge' }}
               </p>
             </div>
@@ -114,7 +114,7 @@
 
           <!-- Eintrags-Liste (scrollbar) -->
           <div class="flex-1 overflow-y-auto min-h-0">
-            <div v-if="!modal.rows.length" class="px-5 py-8 text-center text-sm text-[var(--sys-fg-dim)]">
+            <div v-if="!modal.rows.length" class="px-5 py-8 text-center text-sm text-[var(--sys-fg-muted)]">
               Noch keine Einträge für diesen Tag.
             </div>
 
@@ -157,7 +157,7 @@
                     v-model="row.editText"
                     rows="3"
                     style="font-family: inherit"
-                    class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-xl px-3 py-2 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-dim)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition resize-none leading-relaxed"
+                    class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-xl px-3 py-2 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition resize-none leading-relaxed"
                   />
                   <div class="flex gap-2 mt-2">
                     <button
@@ -177,7 +177,7 @@
 
           <!-- Neuer Eintrag -->
           <div class="flex-none border-t border-[var(--sys-border)] px-5 py-3 space-y-2.5">
-            <p class="text-[10px] font-medium text-[var(--sys-fg-dim)] uppercase tracking-widest">Neuer Eintrag</p>
+            <p class="text-[10px] font-medium text-[var(--sys-fg-muted)] uppercase tracking-widest">Neuer Eintrag</p>
             <input
               type="date"
               v-model="modal.date"
@@ -209,7 +209,7 @@
               placeholder="Notiz, Gedanke, Ereignis…"
               rows="2"
               style="font-family: inherit"
-              class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-dim)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition resize-none leading-relaxed"
+              class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition resize-none leading-relaxed"
             />
             <Alert v-if="modal.error" variant="destructive" :message="modal.error" />
             <div class="flex gap-2 pt-0.5">
