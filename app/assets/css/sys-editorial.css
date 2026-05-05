@@ -1,0 +1,763 @@
+/* ════════════════════════════════════════════════════════════════════════
+   SYS · Editorial Add-on
+   Append-only stylesheet — sits on top of main.css.
+   Adds modal / rail / field / foot / sheet patterns used by all upgraded
+   modals. Reuses existing --sys-* tokens. Zero overrides of base classes.
+
+   Import in main.css *after* the existing utilities:
+     @import "./sys-editorial.css";
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Editorial tokens (additive, scoped to .sys-editorial scope) ────────── */
+:root {
+  --sys-rule:        rgba(226, 220, 240, 0.10);   /* same as --sys-border, semantic alias */
+  --sys-rule-strong: rgba(226, 220, 240, 0.20);
+  --sys-paper:       #12101a;                      /* mirrors --sys-bg */
+  --sys-paper-2:     #1a1726;                      /* one step elevated */
+  --sys-paper-3:     #0d0b14;                      /* one step recessed */
+  --sys-on-accent:   #0a0810;                      /* text on violet fill */
+  --sys-accent-bright:#a78bfa;
+  --sys-accent-deep: #6d28d9;
+  --sys-ok:          #b8dcc4;
+  --sys-err:         #f0a3a3;
+
+  --sys-serif: 'Noto Serif', Georgia, serif;
+  --sys-sans:  'Oxanium', 'Inter', system-ui, -apple-system, sans-serif;
+  --sys-mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   1. MODAL SHELL
+   Use as: <div class="sys-modal-overlay"><div class="sys-modal">…</div></div>
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(7, 6, 11, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  font-family: var(--sys-sans);
+  color: var(--sys-fg);
+}
+
+.sys-modal {
+  width: 100%; max-width: 720px;
+  max-height: 92dvh;
+  background: var(--sys-paper);
+  border: 1px solid var(--sys-rule-strong);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: hidden;
+  border-radius: 0;     /* editorial: square corners */
+  box-shadow:
+    0 60px 140px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(139,92,246,0.06);
+}
+
+.sys-modal--sm  { max-width: 480px; }
+.sys-modal--md  { max-width: 640px; }
+.sys-modal--lg  { max-width: 880px; }
+.sys-modal--xl  { max-width: 1080px; }
+
+/* When the modal has no rail, the grid collapses: head / body / foot. */
+.sys-modal--no-rail { grid-template-rows: auto 1fr auto; }
+.sys-modal--no-foot { grid-template-rows: auto auto 1fr; }
+.sys-modal--no-rail.sys-modal--no-foot { grid-template-rows: auto 1fr; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   2. MODAL HEAD
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-modal-head {
+  position: relative;
+  padding: 36px 40px 28px;
+  border-bottom: 1px solid var(--sys-rule);
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(139,92,246,0.08), transparent 50%),
+    var(--sys-paper-3);
+}
+
+.sys-modal-handle {
+  display: none;
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 4px;
+  background: var(--sys-rule-strong);
+  border-radius: 2px;
+}
+
+.sys-modal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  border: 1px solid var(--sys-rule-strong);
+  background: transparent;
+  color: var(--sys-fg-dim);
+  cursor: pointer;
+  font-size: 22px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+  border-radius: 0;
+  min-height: unset;
+}
+.sys-modal-close:hover {
+  color: var(--sys-fg);
+  border-color: var(--sys-violet);
+  background: var(--sys-violet-dim);
+}
+
+/* ── Head typography ─────────────────────────────────────────────────── */
+
+.sys-kicker {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--sys-violet);
+  display: block;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--sys-violet);
+  width: fit-content;
+}
+
+.sys-display {
+  font-family: var(--sys-serif);
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+  color: var(--sys-fg);
+  text-wrap: balance;
+}
+.sys-display em {
+  font-style: italic;
+  color: var(--sys-violet);
+}
+
+.sys-lede {
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--sys-fg-muted);
+  margin: 0;
+  max-width: 60ch;
+}
+.sys-lede code {
+  font-family: var(--sys-mono);
+  font-size: 12px;
+  color: var(--sys-accent-bright);
+  background: var(--sys-violet-dim);
+  padding: 2px 6px;
+  border: 1px solid rgba(139,92,246,0.2);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   3. STEP RAIL
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-rail {
+  display: grid;
+  border-bottom: 1px solid var(--sys-rule);
+  background: var(--sys-paper-3);
+}
+.sys-rail--2 { grid-template-columns: repeat(2, 1fr); }
+.sys-rail--3 { grid-template-columns: repeat(3, 1fr); }
+.sys-rail--4 { grid-template-columns: repeat(4, 1fr); }
+.sys-rail--5 { grid-template-columns: repeat(5, 1fr); }
+.sys-rail--6 { grid-template-columns: repeat(6, 1fr); }
+.sys-rail--7 { grid-template-columns: repeat(7, 1fr); }
+
+.sys-rail-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--sys-rule);
+  cursor: pointer;
+  text-align: left;
+  color: var(--sys-fg-dim);
+  transition: all 0.15s;
+  font-family: inherit;
+  min-height: unset;
+  border-radius: 0;
+}
+.sys-rail-item:last-child { border-right: 0; }
+.sys-rail-item:disabled { cursor: not-allowed; opacity: 0.4; }
+.sys-rail-item:not(:disabled):hover {
+  color: var(--sys-fg);
+  background: rgba(255,255,255,0.02);
+}
+.sys-rail-item.is-active {
+  color: var(--sys-fg);
+  background: var(--sys-paper);
+}
+.sys-rail-item.is-active .sys-rail-num {
+  background: var(--sys-violet);
+  color: var(--sys-on-accent);
+  border-color: var(--sys-violet);
+}
+.sys-rail-item.is-done .sys-rail-num {
+  color: var(--sys-ok);
+  border-color: rgba(184,220,196,0.4);
+}
+.sys-rail-item.is-done.is-active .sys-rail-num {
+  color: var(--sys-on-accent);
+  background: var(--sys-violet);
+  border-color: var(--sys-violet);
+}
+.sys-rail-num {
+  width: 32px; height: 32px;
+  border: 1px solid var(--sys-rule-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sys-mono);
+  font-size: 13px;
+  flex: none;
+  transition: all 0.15s;
+}
+.sys-rail-check {
+  font-family: var(--sys-serif);
+  font-size: 16px;
+  line-height: 1;
+}
+.sys-rail-lbl {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+}
+.sys-rail-t {
+  font-family: var(--sys-serif);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.sys-rail-sub {
+  font-family: var(--sys-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sys-fg-dim);
+}
+.sys-rail-item.is-active .sys-rail-sub { color: var(--sys-violet); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   4. MODAL BODY
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-modal-body {
+  overflow-y: auto;
+  padding: 36px 40px;
+  min-height: 0;
+  animation: sys-fade-in 0.25s ease;
+}
+
+@keyframes sys-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Step head (within body) ─────────────────────────────────────────── */
+.sys-step-head {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--sys-rule);
+  flex-wrap: wrap;
+}
+.sys-step-n {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--sys-violet);
+  text-transform: uppercase;
+}
+.sys-step-title {
+  font-family: var(--sys-serif);
+  font-weight: 400;
+  font-size: clamp(22px, 3vw, 28px);
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--sys-fg);
+  flex: 1; min-width: 0;
+}
+.sys-step-title em {
+  font-style: italic;
+  color: var(--sys-violet);
+}
+
+.sys-step-link {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sys-fg-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--sys-rule-strong);
+  transition: all 0.15s;
+  text-decoration: none;
+  border-radius: 0;
+  min-height: unset;
+}
+.sys-step-link:hover:not(:disabled) {
+  color: var(--sys-violet);
+  border-color: var(--sys-violet);
+}
+.sys-step-link .arr {
+  font-family: var(--sys-serif);
+  margin-left: 4px;
+}
+
+/* ── Prose ───────────────────────────────────────────────────────────── */
+.sys-prose {
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--sys-fg-muted);
+  margin: 0 0 24px;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+
+/* ── Numbered/bullet list (the "how" pattern) ────────────────────────── */
+.sys-how {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex; flex-direction: column;
+}
+.sys-how li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--sys-rule);
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  color: var(--sys-fg-muted);
+  align-items: baseline;
+}
+.sys-how li:last-child { border-bottom: 0; }
+.sys-how-n {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--sys-violet);
+  text-transform: uppercase;
+}
+.sys-how em {
+  color: var(--sys-fg);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   5. FIELD / INPUT
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sys-field-label {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sys-fg-dim);
+}
+.sys-field-hint {
+  color: var(--sys-fg-dim);
+  text-transform: none;
+  letter-spacing: 0.05em;
+  margin-left: 6px;
+  opacity: 0.6;
+}
+
+.sys-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--sys-paper-2);
+  border: 1px solid var(--sys-rule-strong);
+  color: var(--sys-fg);
+  font-family: var(--sys-sans);
+  font-size: 14px;
+  outline: 0;
+  transition: all 0.15s;
+  border-radius: 0;
+  min-height: unset;
+}
+.sys-input--mono {
+  font-family: var(--sys-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.sys-input:focus {
+  border-color: var(--sys-violet);
+  background: var(--sys-paper);
+  box-shadow: 0 0 0 3px var(--sys-violet-dim);
+}
+.sys-input::placeholder { color: var(--sys-fg-muted); opacity: 0.75; }
+
+.sys-field-error {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-err);
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--sys-err);
+}
+.sys-field-ok {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sys-ok);
+  margin: 0;
+}
+
+/* ── State block (a horizontal info row) ─────────────────────────────── */
+.sys-state {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  border: 1px solid var(--sys-rule-strong);
+  background: var(--sys-paper-2);
+}
+.sys-state--ok {
+  border-color: rgba(184,220,196,0.25);
+  background: rgba(184,220,196,0.04);
+}
+.sys-state--info {
+  border-color: rgba(139,92,246,0.25);
+  background: var(--sys-violet-dim);
+}
+.sys-state-mark {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sys-violet);
+  box-shadow: 0 0 12px rgba(139,92,246,0.5);
+}
+.sys-state--ok .sys-state-mark {
+  background: var(--sys-ok);
+  box-shadow: 0 0 12px rgba(184,220,196,0.6);
+}
+.sys-state-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sys-state-label {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sys-accent-bright);
+}
+.sys-state--ok .sys-state-label { color: var(--sys-ok); }
+.sys-state-value {
+  font-family: var(--sys-mono);
+  font-size: 12px;
+  color: var(--sys-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   6. FOOT
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-modal-foot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 20px 32px;
+  border-top: 1px solid var(--sys-rule);
+  background: var(--sys-paper-3);
+  align-items: center;
+}
+.sys-foot-meta {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sys-fg-dim);
+  display: flex; align-items: center; gap: 10px;
+}
+.sys-foot-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sys-foot-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sys-fg-dim);
+  border-top: 1px dashed var(--sys-rule);
+  padding-top: 14px;
+  opacity: 0.7;
+}
+
+.sys-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.sys-dot--idle { background: var(--sys-fg-dim); }
+.sys-dot--live { background: var(--sys-violet); box-shadow: 0 0 10px var(--sys-violet); }
+.sys-dot--ok   { background: var(--sys-ok);     box-shadow: 0 0 10px rgba(184,220,196,0.5); }
+.sys-dot--warn { background: var(--sys-orange); box-shadow: 0 0 10px var(--sys-orange-glow); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   7. EDITORIAL BUTTONS
+   Editorial-flat siblings of the existing .sys-btn-* family.
+   These produce the modal foot button look in Polish Preview.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-btn-ed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 20px;
+  font-family: var(--sys-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border-radius: 0;
+}
+.sys-btn-ed:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.sys-btn-ed--primary {
+  background: var(--sys-violet);
+  color: var(--sys-on-accent);
+  border-color: var(--sys-violet);
+}
+.sys-btn-ed--primary:hover:not(:disabled) {
+  background: var(--sys-accent-bright);
+  border-color: var(--sys-accent-bright);
+  box-shadow: 0 8px 24px rgba(139,92,246,0.35);
+}
+.sys-btn-ed--ghost {
+  border-color: var(--sys-rule-strong);
+  color: var(--sys-fg-muted);
+}
+.sys-btn-ed--ghost:hover:not(:disabled) {
+  color: var(--sys-fg);
+  border-color: var(--sys-violet);
+}
+.sys-btn-ed--danger {
+  background: rgba(240,163,163,0.10);
+  color: var(--sys-err);
+  border-color: rgba(240,163,163,0.35);
+}
+.sys-btn-ed--danger:hover:not(:disabled) {
+  background: rgba(240,163,163,0.18);
+  border-color: var(--sys-err);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   8. CARDS / FLOW / READONLY (for embedded info blocks)
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-card-ed {
+  border: 1px solid var(--sys-rule-strong);
+  background: var(--sys-paper-2);
+  margin-bottom: 16px;
+  border-radius: 0;
+}
+.sys-card-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--sys-rule);
+}
+.sys-card-body { padding: 20px; }
+
+/* Disclosure (<details>) – the "flow" / "readonly" pattern */
+.sys-flow {
+  border: 1px solid var(--sys-rule);
+  background: var(--sys-paper-2);
+  margin-top: 16px;
+}
+.sys-flow > summary {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sys-fg-muted);
+  list-style: none;
+  user-select: none;
+  min-height: unset;
+}
+.sys-flow > summary::-webkit-details-marker { display: none; }
+.sys-flow > summary:hover { color: var(--sys-fg); }
+.sys-flow-arrow {
+  margin-left: auto;
+  color: var(--sys-fg-dim);
+  transition: transform 0.2s;
+}
+.sys-flow[open] .sys-flow-arrow {
+  transform: rotate(180deg);
+  color: var(--sys-violet);
+}
+
+.sys-flow-list {
+  list-style: none;
+  padding: 18px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-top: 1px solid var(--sys-rule);
+}
+.sys-flow-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+}
+.sys-flow-list h4 {
+  font-family: var(--sys-serif);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: var(--sys-fg);
+}
+.sys-flow-list p {
+  font-family: var(--sys-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--sys-fg-muted);
+  margin: 0;
+}
+.sys-flow-list code {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-accent-bright);
+  background: rgba(139,92,246,0.08);
+  padding: 1px 5px;
+}
+
+.sys-code-block {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--sys-fg-muted);
+  background: var(--sys-paper-3);
+  padding: 12px 14px;
+  border: 1px solid var(--sys-rule);
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.sys-code-block em {
+  color: var(--sys-accent-bright);
+  font-style: normal;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   9. TRANSITIONS
+   ════════════════════════════════════════════════════════════════════════ */
+
+.sys-modal-fade-enter-active,
+.sys-modal-fade-leave-active { transition: opacity 0.2s; }
+.sys-modal-fade-enter-active .sys-modal,
+.sys-modal-fade-leave-active .sys-modal { transition: transform 0.25s ease, opacity 0.2s; }
+.sys-modal-fade-enter-from { opacity: 0; }
+.sys-modal-fade-enter-from .sys-modal { transform: translateY(20px) scale(0.98); opacity: 0; }
+.sys-modal-fade-leave-to { opacity: 0; }
+.sys-modal-fade-leave-to .sys-modal { transform: translateY(20px) scale(0.98); opacity: 0; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   10. RESPONSIVE — bottom-sheet on mobile
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 720px) {
+  .sys-modal-head { padding: 28px 24px 20px; }
+  .sys-rail-item { padding: 14px 16px; gap: 10px; }
+  .sys-rail-num { width: 28px; height: 28px; font-size: 12px; }
+  .sys-rail-t { font-size: 14px; }
+  .sys-modal-body { padding: 28px 24px; }
+  .sys-modal-foot { padding: 16px 24px; }
+}
+
+@media (max-width: 560px) {
+  .sys-modal-overlay { align-items: flex-end; padding: 0; }
+  .sys-modal {
+    max-width: none;
+    width: 100%;
+    max-height: 92dvh;
+    border-bottom: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .sys-modal-head { padding: 14px 20px 18px; }
+  .sys-modal-handle { display: block; }
+  .sys-modal-close {
+    top: 14px;
+    right: 12px;
+    width: 32px; height: 32px;
+    font-size: 18px;
+  }
+  .sys-display { font-size: 24px; }
+  .sys-lede { font-size: 14px; }
+  .sys-kicker { margin-bottom: 12px; }
+
+  /* Rail collapses vertically — only active + done items show */
+  .sys-rail { grid-template-columns: 1fr; }
+  .sys-rail-item {
+    border-right: 0;
+    border-bottom: 1px solid var(--sys-rule);
+    padding: 12px 20px;
+  }
+  .sys-rail-item:last-child { border-bottom: 0; }
+  .sys-rail-item:not(.is-active):not(.is-done) { display: none; }
+  .sys-rail-item.is-done {
+    padding: 8px 20px;
+  }
+  .sys-rail-item.is-done .sys-rail-lbl {
+    flex-direction: row;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .sys-rail-item.is-done .sys-rail-sub { font-size: 9px; }
+
+  .sys-modal-body { padding: 24px 20px; }
+  .sys-step-head { gap: 10px; margin-bottom: 12px; padding-bottom: 12px; }
+  .sys-step-title { font-size: 22px; }
+  .sys-prose { font-size: 14px; margin-bottom: 18px; }
+
+  .sys-modal-foot {
+    grid-template-columns: 1fr;
+    padding: 14px 20px 20px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+  .sys-foot-meta { order: -1; }
+  .sys-foot-actions { width: 100%; }
+  .sys-foot-actions .sys-btn-ed {
+    flex: 1;
+    justify-content: center;
+  }
+  .sys-foot-help { display: none; }
+}

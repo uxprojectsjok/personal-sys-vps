@@ -44,7 +44,7 @@
 
         <!-- Erklärung -->
         <div class="px-5 pt-4 pb-3">
-          <p class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">
+          <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
             Jeder Dienst erhält einen eigenen Service-Token.
             Dieser Token kommt als <code class="text-[var(--sys-accent)] text-xs">Authorization: Bearer &lt;token&gt;</code>
             in den Webhook-Header externer Dienste.
@@ -68,7 +68,7 @@
                   class="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white/45 border border-white/8"
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
-              <p class="text-xs text-[var(--sys-fg-dim)] mt-1 font-mono">
+              <p class="text-xs text-[var(--sys-fg-muted)] mt-1 font-mono">
                 Läuft ab: {{ formatExpiry(svc.expires_at) }}
               </p>
             </div>
@@ -92,18 +92,18 @@
         </div>
 
         <div v-else class="px-5 py-4">
-          <p class="text-xs text-[var(--sys-fg-dim)]">Noch keine verbundenen Dienste.</p>
+          <p class="text-xs text-[var(--sys-fg-muted)]">Noch keine verbundenen Dienste.</p>
         </div>
 
         <!-- Neuer Dienst -->
         <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)] space-y-3">
-          <p class="text-xs font-medium text-[var(--sys-fg-dim)]">Neuer Dienst</p>
+          <p class="text-xs font-medium text-[var(--sys-fg-muted)]">Neuer Dienst</p>
 
           <input
             v-model="newName"
             type="text"
             placeholder="Name (z.B. Mein KI-Dienst)"
-            class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-4 py-3 text-sm text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none focus:border-[rgba(255,255,255,0.30)] transition-colors"
+            class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-4 py-3 text-sm text-[var(--sys-fg)] placeholder-[var(--sys-fg-muted)] focus:outline-none focus:border-[rgba(255,255,255,0.30)] transition-colors"
             aria-label="Name des neuen Dienstes"
           />
 
@@ -178,7 +178,7 @@
           <div class="px-5 pt-4 pb-2 flex items-start justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-[var(--sys-fg)]">{{ tokenModal.name }}</p>
-              <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5">Service-Token</p>
+              <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">Service-Token</p>
             </div>
             <button
               class="w-8 h-8 flex items-center justify-center rounded-none text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-none"
@@ -198,7 +198,7 @@
             </div>
 
             <!-- Verwendung -->
-            <p class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">
+            <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
               Im Dienst als Authorization-Header eintragen:
               <code class="block mt-1 text-white/70 bg-[rgba(255,255,255,0.04)] rounded px-2 py-1 break-all">Authorization: Bearer {{ tokenModal.token }}</code>
             </p>

@@ -105,7 +105,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 info "Adding OpenResty repository..."
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://openresty.org/package/pubkey.gpg \
-  | gpg --dearmor -o /etc/apt/keyrings/openresty.gpg
+  | gpg --batch --yes --dearmor -o /etc/apt/keyrings/openresty.gpg
 chmod a+r /etc/apt/keyrings/openresty.gpg
 echo "deb [signed-by=/etc/apt/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -cs) main" \
   > /etc/apt/sources.list.d/openresty.list
@@ -494,26 +494,21 @@ echo -e "${RED}│  gegen unbefugten Zugriff auf diesen Server.                 
 echo -e "${RED}└──────────────────────────────────────────────────────────────────┘${NC}"
 echo ""
 echo -e "${YELLOW}┌──────────────────────────────────────────────────────────────────┐${NC}"
-echo -e "${YELLOW}│  SSH absichern — empfohlene Schritte nach dem Setup              │${NC}"
+echo -e "${YELLOW}│  SSH absichern — optionaler Schritt nach dem Setup               │${NC}"
 echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│  1. SSH-Port ändern (Standard 22 ist ständig unter Beschuss):   │${NC}"
+echo -e "${YELLOW}│  SSH-Port ändern (Standard 22 ist ständig unter Beschuss):      │${NC}"
 echo -e "${YELLOW}│                                                                  │${NC}"
 echo -e "${YELLOW}│     nano /etc/ssh/sshd_config                                   │${NC}"
 echo -e "${YELLOW}│       → Zeile:  #Port 22                                        │${NC}"
 echo -e "${YELLOW}│       → ändern: Port 2222   (oder eine andere Zahl > 1024)      │${NC}"
-echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│  2. Root-Login per SSH deaktivieren:                             │${NC}"
-echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│     nano /etc/ssh/sshd_config                                   │${NC}"
-echo -e "${YELLOW}│       → Zeile:  PermitRootLogin yes                             │${NC}"
-echo -e "${YELLOW}│       → ändern: PermitRootLogin no                              │${NC}"
-echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│  3. SSH-Dienst neu starten:                                      │${NC}"
-echo -e "${YELLOW}│                                                                  │${NC}"
 echo -e "${YELLOW}│     systemctl restart ssh                                        │${NC}"
 echo -e "${YELLOW}│                                                                  │${NC}"
-echo -e "${YELLOW}│  ⚠ Wichtig: Öffne eine zweite SSH-Session mit dem neuen Port    │${NC}"
-echo -e "${YELLOW}│    BEVOR du die alte schließt — sonst sperrst du dich aus.      │${NC}"
+echo -e "${YELLOW}│  ⚠ Öffne eine zweite SSH-Session mit dem neuen Port BEVOR       │${NC}"
+echo -e "${YELLOW}│    du die alte schließt — sonst sperrst du dich aus.            │${NC}"
+echo -e "${YELLOW}│                                                                  │${NC}"
+echo -e "${YELLOW}│  ⚠ Root-Login NICHT deaktivieren (PermitRootLogin no), solange  │${NC}"
+echo -e "${YELLOW}│    kein anderer User mit SSH-Key-Auth eingerichtet ist —        │${NC}"
+echo -e "${YELLOW}│    das sperrt dich dauerhaft aus dem Server aus.                │${NC}"
 echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────┘${NC}"
 echo ""
 

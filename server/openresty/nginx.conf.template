@@ -19,6 +19,9 @@ events {
 }
 
 http {
+  resolver 8.8.8.8 1.1.1.1 valid=300s ipv6=off;
+  resolver_timeout 5s;
+
   init_by_lua_block {
     math.randomseed(ngx.now() * 1000 + ngx.worker.pid())
   }

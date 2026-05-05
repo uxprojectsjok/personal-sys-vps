@@ -198,7 +198,10 @@
             <div class="login-kicker">Soul laden</div>
             <h2 class="login-title">Mit sys<em>.</em>md einloggen</h2>
             <p class="login-sub">Lade deine Soul-Datei — lokal gespeichert, verlässt dieses Gerät nicht.</p>
-            <SoulUpload @uploaded="handleLoginUpload" />
+            <div class="sys-field" style="margin-bottom:0">
+              <span class="sys-field-label">Soul-Datei</span>
+              <SoulUpload @uploaded="handleLoginUpload" />
+            </div>
             <div class="login-divider">
               <span>oder</span>
             </div>
@@ -516,9 +519,9 @@ const journal = computed(() => {
 .metrics .m { display: grid; grid-template-columns: 140px 1fr auto; align-items: baseline; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
 @media (max-width: 560px) { .metrics .m { grid-template-columns: 1fr auto; } .metrics dt { grid-column: 1/-1; margin-bottom: -8px; } }
 .metrics dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--fg-3); }
-.metrics dd { margin: 0; font-family: var(--serif); font-size: 18px; color: var(--fg); letter-spacing: -0.005em; overflow-wrap: anywhere; }
-.metrics dd.mono { font-family: var(--mono); letter-spacing: 0.02em; font-size: 14px; }
-.metrics dd.mono.sm { font-size: 12px; }
+.metrics dd { margin: 0; font-family: var(--serif); font-size: 15px; color: var(--fg); letter-spacing: -0.005em; overflow-wrap: anywhere; }
+.metrics dd.mono { font-family: var(--mono); letter-spacing: 0.02em; font-size: 15px; }
+.metrics dd.mono.sm { font-size: 13px; }
 .metrics dd b { font-weight: 400; color: var(--accent); }
 .status { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .status i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
@@ -639,7 +642,7 @@ const journal = computed(() => {
 .login-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: clamp(28px,4vw,36px); letter-spacing: -0.025em; margin: 0 0 10px; color: var(--fg); line-height: 1; }
 .login-title em { font-style: italic; color: var(--accent); }
-.login-sub { font-family: var(--sans); font-size: 13px; color: var(--fg-3); line-height: 1.5; margin: 0 0 20px; }
+.login-sub { font-family: var(--serif); font-size: 15px; color: var(--fg-3); line-height: 1.5; margin: 0 0 20px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
 .login-divider span { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-4); }

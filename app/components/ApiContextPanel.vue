@@ -1,25 +1,22 @@
 <template>
-  <div :class="headless ? '' : 'rounded-2xl border border-[var(--sys-border)] bg-[var(--sys-bg-surface)] overflow-hidden'">
+  <div :class="headless ? '' : 'sys-card-ed'">
 
-    <!-- Header -->
+    <!-- Header (collapsible, non-headless only) -->
     <button
       v-if="!headless"
-      class="w-full flex items-center justify-between px-5 py-4 hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+      class="api-panel-toggle"
       @click="handleToggle"
       :aria-expanded="open"
     >
-      <div class="flex items-center gap-3">
-        <span class="text-sm font-medium text-[var(--sys-fg)]">API-Kontext</span>
-        <span
-          class="text-xs font-medium px-2 py-0.5 rounded-full border"
-          :class="enabled
-            ? 'bg-[rgba(255,255,255,0.08)] text-white/75 border-white/18'
-            : 'bg-[rgba(255,255,255,0.04)] text-[var(--sys-fg-dim)] border-[var(--sys-border)]'"
-        >{{ enabled ? 'aktiv' : 'inaktiv' }}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="api-panel-title">API-Kontext</span>
+        <span class="api-panel-badge" :class="enabled ? 'is-active' : ''">
+          {{ enabled ? 'aktiv' : 'inaktiv' }}
+        </span>
       </div>
       <svg
-        class="w-4 h-4 text-[var(--sys-fg-dim)] transition-transform duration-200"
-        :class="open ? 'rotate-180' : ''"
+        class="api-panel-chevron"
+        :class="open ? 'is-open' : ''"
         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
       >
         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
@@ -28,52 +25,35 @@
 
     <!-- Body -->
     <Transition name="slide-up">
-      <div v-if="open || headless" class="px-5 pb-5 space-y-4 border-t border-[var(--sys-border)]">
+      <div v-if="open || headless" class="api-panel-body" :class="headless ? 'is-headless' : ''">
 
-        <!-- API aktivieren -->
-        <label class="flex items-center gap-3 cursor-pointer group pt-4">
-          <div
-            class="relative w-9 h-5 rounded-full transition-colors flex-none"
-            :class="enabled ? 'bg-[#22c55e]' : 'bg-[rgba(255,255,255,0.1)]'"
-          >
-            <div
-              class="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow sys-toggle-thumb"
-              :class="enabled ? 'translate-x-4' : 'translate-x-0.5'"
-            />
+        <!-- Enable toggle -->
+        <label class="api-panel-row">
+          <div class="api-toggle" :class="enabled ? 'is-on' : ''">
+            <div class="api-toggle-thumb" :class="enabled ? 'is-on' : ''"></div>
           </div>
           <input type="checkbox" v-model="enabled" class="sr-only" @change="onToggleEnabled" />
-          <span class="text-xs text-white/80 group-hover:text-white transition-colors">
-            API-Zugriff aktivieren
-          </span>
+          <span class="api-panel-row-label">API-Zugriff aktivieren</span>
         </label>
 
-        <!-- Fehler beim Toggle – immer sichtbar, auch wenn enabled=false -->
-        <p v-if="saveError && !enabled" class="text-xs text-red-400">{{ saveError }}</p>
+        <p v-if="saveError && !enabled" class="api-panel-error">{{ saveError }}</p>
 
         <template v-if="enabled">
-
-          <!-- Berechtigungen -->
-          <div>
-            <p class="sys-label mb-1">Freigaben</p>
-            <p class="amm-prose mb-2">Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.</p>
-            <div class="space-y-2">
+          <div class="sys-field" style="margin-bottom:0">
+            <span class="sys-field-label">Freigaben</span>
+            <p class="api-panel-prose">Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.</p>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
               <label
                 v-for="(perm, key) in permLabels"
                 :key="key"
-                class="flex items-center gap-3 cursor-pointer"
+                class="api-panel-perm"
               >
-                <div
-                  class="relative w-8 h-4 rounded-full transition-colors flex-none"
-                  :class="permissions[key] ? 'bg-[#22c55e]' : 'bg-[rgba(255,255,255,0.1)]'"
-                >
-                  <div
-                    class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform shadow sys-toggle-thumb"
-                    :class="permissions[key] ? 'translate-x-3.5' : 'translate-x-0.5'"
-                  />
+                <div class="api-toggle api-toggle--sm" :class="permissions[key] ? 'is-on' : ''">
+                  <div class="api-toggle-thumb api-toggle-thumb--sm" :class="permissions[key] ? 'is-on' : ''"></div>
                 </div>
                 <input type="checkbox" v-model="permissions[key]" class="sr-only" />
-                <span class="text-xs text-white/75">{{ perm.label }}</span>
-                <span class="ml-auto text-xs text-white/50">{{ perm.hint }}</span>
+                <span class="api-panel-perm-label">{{ perm.label }}</span>
+                <span class="api-panel-perm-hint">{{ perm.hint }}</span>
               </label>
             </div>
           </div>
@@ -81,12 +61,12 @@
           <button
             @click="onSave"
             :disabled="isSaving"
-            class="w-full py-2.5 rounded-none border border-[rgba(255,255,255,0.18)] text-white/75 text-xs hover:bg-[rgba(255,255,255,0.06)] hover:border-white/28 transition-all disabled:opacity-40 min-h-[40px] active:scale-[0.97]"
+            class="sys-btn-ed sys-btn-ed--ghost"
+            style="width:100%;justify-content:center;margin-top:4px"
           >{{ isSaving ? 'Speichern …' : 'Berechtigungen speichern' }}</button>
 
-          <p v-if="saveError" class="text-xs text-red-400">{{ saveError }}</p>
-          <p v-else-if="saveSuccess" class="text-xs text-white/60">Berechtigungen gespeichert ✓</p>
-
+          <p v-if="saveError" class="api-panel-error">{{ saveError }}</p>
+          <p v-else-if="saveSuccess" class="sys-field-ok">Berechtigungen gespeichert ✓</p>
         </template>
 
       </div>
@@ -145,7 +125,6 @@ async function onToggleEnabled() {
   const newVal = enabled.value;
   const ok = await saveContext(props.soulCert, { enabled: newVal });
   if (!ok) {
-    // Speichern fehlgeschlagen → UI-State zurücksetzen
     enabled.value = !newVal;
   }
 }
@@ -164,16 +143,141 @@ async function onSave() {
     setTimeout(() => { saveSuccess.value = false; }, 3000);
   }
 }
-
-
 </script>
 
 <style scoped>
-.amm-prose {
-  font-family: 'Noto Serif', Georgia, serif;
-  font-size: 14px;
-  line-height: 1.6;
-  color: rgba(236,231,245,0.55);
+.api-panel-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: unset;
+  border-radius: 0;
+  transition: background 0.15s;
+  text-align: left;
+}
+.api-panel-toggle:hover { background: rgba(255,255,255,0.02); }
+
+.api-panel-title {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sys-fg-muted);
+}
+
+.api-panel-badge {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--sys-rule-strong);
+  color: var(--sys-fg-dim);
+  transition: all 0.15s;
+}
+.api-panel-badge.is-active {
+  color: var(--sys-ok);
+  border-color: rgba(184,220,196,0.3);
+}
+
+.api-panel-chevron {
+  width: 14px; height: 14px;
+  color: var(--sys-fg-dim);
+  transition: transform 0.2s;
+}
+.api-panel-chevron.is-open { transform: rotate(180deg); }
+
+.api-panel-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--sys-rule);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.api-panel-body.is-headless {
+  border-top: none;
+  padding-top: 0;
+}
+
+.api-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding-top: 14px;
+}
+.api-panel-row-label {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--sys-fg-muted);
+  transition: color 0.15s;
+}
+.api-panel-row:hover .api-panel-row-label { color: var(--sys-fg); }
+
+.api-toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.api-toggle.is-on { background: var(--sys-ok); }
+.api-toggle--sm { width: 28px; height: 16px; border-radius: 8px; }
+
+.api-toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+}
+.api-toggle-thumb.is-on { transform: translateX(16px); }
+.api-toggle-thumb--sm { width: 12px; height: 12px; }
+.api-toggle-thumb--sm.is-on { transform: translateX(12px); }
+
+.api-panel-prose {
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--sys-fg-muted);
+  margin: 6px 0 0;
+}
+
+.api-panel-perm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.api-panel-perm-label {
+  font-family: var(--sys-mono);
+  font-size: 12px;
+  color: var(--sys-fg-muted);
+  flex: 1;
+}
+.api-panel-perm-hint {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-fg-muted);
+  letter-spacing: 0.06em;
+}
+
+.api-panel-error {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-err);
+  padding-left: 10px;
+  border-left: 2px solid var(--sys-err);
   margin: 0;
 }
 </style>

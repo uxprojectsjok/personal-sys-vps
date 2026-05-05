@@ -54,7 +54,7 @@
     <Transition name="slide-up">
       <div v-if="open || headless" class="px-5 pb-5 space-y-4 border-t border-[var(--sys-border)]">
         <p class="amm-prose pt-4">
-          Zeitfenster für externe Dienste. Nur wenn der Vault <strong style="color:rgba(236,231,245,0.95)">offen</strong> ist,
+          Zeitfenster für externe Dienste. Nur wenn der Vault <strong style="color:var(--sys-fg)">offen</strong> ist,
           können verbundene Dienste auf deine Soul-Daten zugreifen. Du bestimmst die Dauer.
         </p>
 
@@ -70,13 +70,13 @@
               <p class="text-xs font-medium text-white/75">
                 {{ locking ? 'Wird gesperrt…' : 'Vault offen' }}{{ !locking && vaultKey ? ' · verschlüsselt' : '' }}
               </p>
-              <p v-if="!locking && !isUnlimited && expiresAt" class="text-xs text-[var(--sys-fg-dim)] mt-0.5">
+              <p v-if="!locking && !isUnlimited && expiresAt" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
                 Läuft ab: {{ formatTs(expiresAt) }}
               </p>
-              <p v-else-if="!locking && isUnlimited" class="text-xs text-[var(--sys-fg-dim)] mt-0.5">Kein Ablauf</p>
+              <p v-else-if="!locking && isUnlimited" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">Kein Ablauf</p>
             </div>
             <button
-              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-none border border-[rgba(239,68,68,0.3)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[36px]"
+              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-none border border-[rgba(226,220,240,0.18)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.05)] transition-colors min-h-[36px]"
               :disabled="locking"
               @click="handleLock"
               aria-label="Vault sperren"
@@ -92,7 +92,7 @@
 
         <!-- Gesperrt → Entsperren -->
         <div v-else class="space-y-3">
-          <p class="text-xs text-[var(--sys-fg-dim)]">Zeitfenster wählen:</p>
+          <p class="text-xs text-[var(--sys-fg-muted)]">Zeitfenster wählen:</p>
           <div class="grid grid-cols-4 gap-1.5">
             <button
               v-for="opt in durationOptions"
@@ -115,7 +115,7 @@
 
           <!-- Verschlüsselung -->
           <div class="space-y-2">
-            <p class="text-xs text-[var(--sys-fg-dim)]">
+            <p class="text-xs text-[var(--sys-fg-muted)]">
               Verschlüsselung
               <span v-if="savedMethod()" class="text-white/50"> · zuletzt: {{ savedMethod() === 'mnemonic' ? '12 Wörter' : 'Passkey' }}</span>
               <span v-else class="text-white/35"> · immer dieselbe Methode wählen</span>
@@ -146,7 +146,7 @@
                 <p class="text-xs text-white/65">
                   {{ hasPasskey ? 'Biometrische Bestätigung beim Öffnen erforderlich.' : 'Neuen Passkey erstellen (einmalig).' }}
                 </p>
-                <p class="text-xs text-[var(--sys-fg-dim)]">
+                <p class="text-xs text-[var(--sys-fg-muted)]">
                   Face ID · Touch ID · Windows Hello · Smartphone-Displaysperre
                 </p>
                 <p v-if="passkeyError" class="text-xs text-red-400">{{ passkeyError }}</p>
@@ -159,7 +159,7 @@
                 <textarea
                   v-model="mnemonicInput"
                   placeholder="12 Schlüsselwörter, getrennt durch Leerzeichen"
-                  class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-3 py-2 text-xs text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-dim)] resize-none focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
+                  class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-3 py-2 text-xs text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] resize-none focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
                   rows="2"
                   autocomplete="off"
                   autocorrect="off"
@@ -313,7 +313,7 @@ async function handleLock() {
   font-family: 'Noto Serif', Georgia, serif;
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(236,231,245,0.60);
+  color: var(--sys-fg-muted);
   margin: 0;
 }
 /* Override global sys-cta-primary border-radius */
