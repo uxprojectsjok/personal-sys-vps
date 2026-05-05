@@ -1,95 +1,258 @@
+<!-- ════════════════════════════════════════════════════════════════════
+  SYS · FirstSetupModal.vue · Editorial v2
+  Erste Instanz — Admin-Token sichern.
+  Same prop (token), same emit (dismiss). New look.
+═════════════════════════════════════════════════════════════════════ -->
+
 <template>
-  <div
-    v-if="token"
-    class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="first-setup-title"
-  >
-    <div class="relative w-full max-w-lg bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-      <!-- Header -->
-      <div class="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-[var(--sys-border)]">
-        <i class="ri-shield-keyhole-line text-2xl text-[var(--sys-violet)]"></i>
-        <h2 id="first-setup-title" class="text-lg font-bold text-[var(--sys-fg)]">
-          Erste Instanz — Admin-Token sichern
-        </h2>
-      </div>
+  <Transition name="sys-modal-fade">
+    <div
+      v-if="token"
+      class="sys-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="first-setup-title"
+    >
+      <div class="sys-modal sys-modal--md sys-modal--no-rail">
+        <!-- ── HEAD ──────────────────────────────────────────────── -->
+        <header class="sys-modal-head">
+          <div class="sys-modal-handle" aria-hidden="true" />
 
-      <!-- Body -->
-      <div class="px-6 py-5 flex flex-col gap-4">
-        <p class="text-[var(--sys-fg-muted)] text-sm leading-relaxed">
-          Diese Instanz wurde gerade initialisiert. Dein Admin-Token wurde automatisch generiert.<br>
-          <strong class="text-[var(--sys-fg)]">Er wird nur dieses eine Mal angezeigt</strong> — ohne ihn kannst du keine Schlüssel rotieren oder die Instanz administrieren.
-        </p>
+          <div class="head-icon" aria-hidden="true">
+            <i class="ri-shield-keyhole-line" />
+          </div>
 
-        <!-- Token display -->
-        <div class="bg-[var(--sys-bg)] border border-[var(--sys-border)] rounded-xl p-4 flex flex-col gap-3">
-          <label class="text-xs text-[var(--sys-fg-dim)] uppercase tracking-wider">Admin-Token</label>
-          <div class="flex items-center gap-2">
-            <code class="flex-1 text-[var(--sys-violet)] text-sm font-mono break-all select-all">{{ token }}</code>
+          <span class="sys-kicker">Erste Instanz · §00</span>
+          <h1 id="first-setup-title" class="sys-display">
+            Admin-Token <em>sichern</em>.
+          </h1>
+          <p class="sys-lede">
+            Diese Instanz wurde gerade initialisiert. Dein Admin-Token wurde generiert —
+            er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+          </p>
+        </header>
+
+        <!-- ── BODY ──────────────────────────────────────────────── -->
+        <div class="sys-modal-body">
+          <!-- Token reveal -->
+          <div class="token-card">
+            <div class="token-card-head">
+              <span class="sys-kicker" style="margin: 0; padding: 0; border: 0;">
+                Admin-Token
+              </span>
+              <button
+                class="token-copy"
+                :class="{ copied }"
+                type="button"
+                aria-label="Token kopieren"
+                @click="copyToken"
+              >
+                <i :class="copied ? 'ri-check-line' : 'ri-clipboard-line'" />
+                <span>{{ copied ? 'Kopiert' : 'Kopieren' }}</span>
+              </button>
+            </div>
+            <code class="token-value">{{ token }}</code>
+          </div>
+
+          <!-- Warning -->
+          <div class="warn-row">
+            <i class="ri-error-warning-line warn-icon" aria-hidden="true" />
+            <p>
+              Speichere den Token jetzt in einem Passwort-Manager.
+              Ohne ihn kannst du keine Schlüssel rotieren oder die Instanz administrieren.
+            </p>
+          </div>
+
+          <!-- Confirmation -->
+          <label class="confirm-row">
+            <input
+              type="checkbox"
+              v-model="confirmed"
+              class="confirm-cbx"
+            />
+            <span>Ich habe den Token sicher gespeichert.</span>
+          </label>
+        </div>
+
+        <!-- ── FOOT ──────────────────────────────────────────────── -->
+        <footer class="sys-modal-foot">
+          <div class="sys-foot-meta">
+            <span
+              class="sys-dot"
+              :class="confirmed ? 'sys-dot--ok' : 'sys-dot--warn'"
+            />
+            {{ confirmed ? 'Token bestätigt' : 'Bestätigung erforderlich' }}
+          </div>
+
+          <div class="sys-foot-actions">
             <button
-              @click="copyToken"
-              :class="copied ? 'text-green-400' : 'text-[var(--sys-fg-muted)] hover:text-[var(--sys-violet)]'"
-              class="shrink-0 p-2 rounded-lg transition-colors"
-              aria-label="Token kopieren"
+              type="button"
+              class="sys-btn-ed sys-btn-ed--primary"
+              :disabled="!confirmed"
+              @click="dismiss"
             >
-              <i :class="copied ? 'ri-check-line' : 'ri-clipboard-line'" class="text-xl"></i>
+              Weiter zur Instanz →
             </button>
           </div>
-        </div>
-
-        <div class="shad-alert-destructive text-sm">
-          <i class="ri-error-warning-line mr-2"></i>
-          Speichere diesen Token jetzt in einem Passwort-Manager. Er wird nicht erneut angezeigt und ist nicht wiederherstellbar.
-        </div>
-
-        <!-- Confirmation -->
-        <label class="flex items-center gap-3 cursor-pointer select-none">
-          <input type="checkbox" v-model="confirmed" class="w-4 h-4 accent-[var(--sys-violet)]" />
-          <span class="text-sm text-[var(--sys-fg-muted)]">
-            Ich habe den Token sicher gespeichert.
-          </span>
-        </label>
-      </div>
-
-      <!-- Footer -->
-      <div class="px-6 pb-6">
-        <button
-          @click="dismiss"
-          :disabled="!confirmed"
-          class="w-full sys-btn-filled disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Weiter zur Instanz
-        </button>
+        </footer>
       </div>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref } from 'vue'
 
 const props = defineProps({
   token: { type: String, default: null },
-});
-const emit = defineEmits(["dismiss"]);
+})
+const emit = defineEmits(['dismiss'])
 
-const copied    = ref(false);
-const confirmed = ref(false);
+const copied    = ref(false)
+const confirmed = ref(false)
 
 async function copyToken() {
-  if (!props.token) return;
+  if (!props.token) return
   try {
-    await navigator.clipboard.writeText(props.token);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch {
-    // ignore
-  }
+    await navigator.clipboard.writeText(props.token)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch { /* ignore */ }
 }
 
 function dismiss() {
-  if (!confirmed.value) return;
-  emit("dismiss");
+  if (!confirmed.value) return
+  emit('dismiss')
 }
 </script>
+
+<style scoped>
+.head-icon {
+  width: 44px; height: 44px;
+  border: 1px solid var(--sys-rule-strong);
+  background: var(--sys-violet-dim);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+}
+.head-icon i {
+  font-size: 22px;
+  color: var(--sys-violet);
+}
+
+.token-card {
+  border: 1px solid rgba(139,92,246,0.30);
+  background: linear-gradient(135deg, rgba(139,92,246,0.06), transparent 60%);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.token-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.token-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--sys-rule-strong);
+  color: var(--sys-fg-muted);
+  padding: 6px 10px;
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: unset;
+  border-radius: 0;
+}
+.token-copy:hover {
+  color: var(--sys-violet);
+  border-color: var(--sys-violet);
+}
+.token-copy.copied {
+  color: var(--sys-ok);
+  border-color: rgba(184,220,196,0.4);
+}
+.token-copy i { font-size: 13px; }
+
+.token-value {
+  display: block;
+  font-family: var(--sys-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--sys-violet);
+  word-break: break-all;
+  user-select: all;
+  padding-top: 8px;
+  border-top: 1px solid var(--sys-rule);
+}
+
+.warn-row {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid rgba(240,163,163,0.25);
+  background: rgba(240,163,163,0.04);
+  margin-bottom: 18px;
+}
+.warn-icon {
+  font-size: 18px;
+  color: var(--sys-err);
+  line-height: 1.2;
+}
+.warn-row p {
+  font-family: var(--sys-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--sys-fg-muted);
+  margin: 0;
+}
+
+.confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  color: var(--sys-fg-muted);
+  min-height: unset;
+}
+.confirm-row:hover { color: var(--sys-fg); }
+
+.confirm-cbx {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border: 1px solid var(--sys-rule-strong);
+  background: var(--sys-paper-2);
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  transition: all 0.15s;
+  border-radius: 0;
+}
+.confirm-cbx:checked {
+  background: var(--sys-violet);
+  border-color: var(--sys-violet);
+}
+.confirm-cbx:checked::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sys-serif);
+  font-size: 14px;
+  color: var(--sys-on-accent, #0a0810);
+  font-weight: bold;
+}
+</style>
