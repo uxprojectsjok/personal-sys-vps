@@ -1,40 +1,26 @@
 <template>
-  <div>
+  <div class="soul-upload">
     <label
-      class="flex items-center justify-between gap-4 h-14 px-5 rounded-xl border cursor-pointer transition-all duration-200 w-full"
-      :class="dragActive
-        ? 'border-[rgba(255,255,255,0.25)] bg-[rgba(255,255,255,0.06)]'
-        : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.20)]'"
+      class="soul-upload-zone"
+      :class="dragActive ? 'is-drag' : ''"
       @dragenter.prevent="dragActive = true"
       @dragleave.prevent="dragActive = false"
       @dragover.prevent
       @drop.prevent="handleDrop"
     >
-      <span class="text-sm font-semibold transition-colors duration-200"
-        :class="dragActive ? 'text-white/90' : 'text-white/75'">
-        sys.md laden
-      </span>
-
-      <svg
-        class="w-4 h-4 flex-none transition-colors duration-200"
-        :class="dragActive ? 'text-[var(--sys-accent)]' : 'text-[var(--sys-fg-dim)]'"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-      >
+      <span class="soul-upload-label">sys.md laden</span>
+      <svg class="soul-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
       </svg>
-
       <input
         ref="fileInput"
         type="file"
         accept=".md,text/markdown,text/plain"
-        class="hidden"
+        class="soul-upload-input"
         @change="handleFileInput"
       />
     </label>
-
-    <p v-if="errorMsg" class="mt-2 text-xs tracking-[0.1em] text-red-400 uppercase px-1">
-      {{ errorMsg }}
-    </p>
+    <p v-if="errorMsg" class="soul-upload-error">{{ errorMsg }}</p>
   </div>
 </template>
 
@@ -76,7 +62,6 @@ async function readFile(file) {
 function handleFileInput(e) {
   const file = e.target.files?.[0];
   if (file) readFile(file);
-  // Input zurücksetzen damit dieselbe Datei erneut hochgeladen werden kann
   e.target.value = "";
 }
 
@@ -86,3 +71,64 @@ function handleDrop(e) {
   if (file) readFile(file);
 }
 </script>
+
+<style scoped>
+.soul-upload-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--sys-rule-strong, rgba(226,220,240,0.20));
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.soul-upload-zone:hover,
+.soul-upload-zone.is-drag {
+  background: rgba(255,255,255,0.03);
+  border-color: var(--sys-fg-dim, rgba(226,220,240,0.48));
+}
+
+.soul-upload-label {
+  font-family: var(--sys-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sys-fg-muted, rgba(226,220,240,0.72));
+  transition: color 0.15s;
+}
+
+.soul-upload-zone:hover .soul-upload-label,
+.soul-upload-zone.is-drag .soul-upload-label {
+  color: var(--sys-fg, #ece7f5);
+}
+
+.soul-upload-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--sys-fg-dim, rgba(226,220,240,0.48));
+  flex: none;
+  transition: color 0.15s;
+}
+
+.soul-upload-zone:hover .soul-upload-icon,
+.soul-upload-zone.is-drag .soul-upload-icon {
+  color: var(--sys-fg-muted, rgba(226,220,240,0.72));
+}
+
+.soul-upload-input { display: none; }
+
+.soul-upload-error {
+  font-family: var(--sys-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: var(--sys-err, #f0a3a3);
+  border-left: 2px solid var(--sys-err, #f0a3a3);
+  padding-left: 10px;
+  margin: 8px 0 0;
+}
+</style>

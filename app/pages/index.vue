@@ -198,7 +198,10 @@
             <div class="login-kicker">Soul laden</div>
             <h2 class="login-title">Mit sys<em>.</em>md einloggen</h2>
             <p class="login-sub">Lade deine Soul-Datei — lokal gespeichert, verlässt dieses Gerät nicht.</p>
-            <SoulUpload @uploaded="handleLoginUpload" />
+            <div class="sys-field" style="margin-bottom:0">
+              <span class="sys-field-label">Soul-Datei</span>
+              <SoulUpload @uploaded="handleLoginUpload" />
+            </div>
             <div class="login-divider">
               <span>oder</span>
             </div>
