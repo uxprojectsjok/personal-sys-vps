@@ -60,7 +60,7 @@
           <button
             v-for="(step, i) in steps"
             :key="i"
-            class="flex-1 flex flex-col items-center gap-2 px-2 pt-4 pb-3 transition-all duration-200 relative group"
+            class="flex-1 flex flex-col items-center gap-3 px-2 pt-5 pb-4 transition-all duration-200 relative group"
             @click="currentStep = i"
           >
             <!-- Step icon circle -->
@@ -235,7 +235,7 @@
               style="width:100%;justify-content:center"
             >{{ cfgSaving ? 'Speichert…' : 'Speichern' }}</button>
             <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:10px;margin:0"
-              :style="cfgFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+              :style="cfgFeedback.ok === true ? 'color:var(--sys-ok)' : cfgFeedback.ok === false ? 'color:var(--sys-err)' : 'color:var(--sys-fg-muted)'">
               {{ cfgFeedback.message }}
             </p>
 
@@ -458,24 +458,43 @@ async function saveCfgStep() {
   cfgFeedback.value = null
   try {
     const body = {}
-    if (cfgModel.value)   body.model          = cfgModel.value
-    if (cfgAnthKey.value) body.anthropic_key   = cfgAnthKey.value
-    if (cfgWaveKey.value) body.wavespeed_key   = cfgWaveKey.value
-    if (cfgLabsKey.value) body.elevenlabs_key  = cfgLabsKey.value
+    if (cfgModel.value)   body.model         = cfgModel.value
+    if (cfgAnthKey.value) body.anthropic_key  = cfgAnthKey.value
+    if (cfgWaveKey.value) body.wavespeed_key  = cfgWaveKey.value
+    if (cfgLabsKey.value) body.elevenlabs_key = cfgLabsKey.value
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body:    JSON.stringify(body)
     })
-    if (res.ok) {
-      if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
-      if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
-      if (cfgLabsKey.value) { cfgLabsSet.value = true; cfgLabsKey.value = ''; cfgLabsDirty.value = false }
-      cfgFeedback.value = { ok: true, message: 'Konfiguration gespeichert ✓' }
-      setTimeout(() => { cfgFeedback.value = null }, 3000)
+    if (!res.ok) { cfgFeedback.value = { ok: false, message: 'Fehler beim Speichern' }; return }
+
+    if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
+    if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
+    if (cfgLabsKey.value) { cfgLabsSet.value = true; cfgLabsKey.value = ''; cfgLabsDirty.value = false }
+
+    // Anthropic-Verbindung testen (immer wenn Key vorhanden)
+    if (cfgAnthSet.value) {
+      cfgFeedback.value = { ok: null, message: 'Verbindung wird geprüft…' }
+      try {
+        const tr = await fetch('/api/test-key', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+          body:    JSON.stringify({ use_stored: true, key_type: 'anthropic' })
+        })
+        const td = await tr.json()
+        if (td.ok) {
+          cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindung OK ✓' }
+        } else {
+          cfgFeedback.value = { ok: false, message: `Gespeichert, aber Anthropic antwortet ${td.status || '?'} — Key prüfen` }
+        }
+      } catch {
+        cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindungstest nicht möglich' }
+      }
     } else {
-      cfgFeedback.value = { ok: false, message: 'Fehler beim Speichern' }
+      cfgFeedback.value = { ok: true, message: 'Konfiguration gespeichert ✓' }
     }
+    setTimeout(() => { cfgFeedback.value = null }, 5000)
   } catch (e) {
     cfgFeedback.value = { ok: false, message: 'Netzwerkfehler: ' + e.message }
   } finally {
