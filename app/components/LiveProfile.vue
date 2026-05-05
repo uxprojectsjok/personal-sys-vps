@@ -146,15 +146,6 @@
             </div>
           </div>
 
-          <!-- Dots -->
-          <div class="lp-dots">
-            <button
-              v-for="(_, i) in 3" :key="i"
-              class="lp-dot" :class="{ active: carouselIndex === i }"
-              @click="setCarousel(i)" :aria-label="`Slide ${i + 1}`"
-            />
-          </div>
-
         </template>
 
       </div>
@@ -346,18 +337,4 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
   margin: 0; line-height: 1.5;
 }
 
-/* ── Dots ──────────────────────────────────────────────────── */
-.lp-dots {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px 0;
-  border-top: 1px solid var(--sys-rule);
-  flex-shrink: 0;
-}
-.lp-dot {
-  width: 6px; height: 6px;
-  border: 1px solid var(--sys-rule-strong); background: transparent; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  padding: 0;
-}
-.lp-dot.active { background: var(--sys-accent-bright); border-color: var(--sys-accent-bright); }
 </style>
