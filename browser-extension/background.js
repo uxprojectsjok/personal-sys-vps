@@ -1,8 +1,6 @@
 // background.js – Service Worker
 // Handles: cert storage, soul caching, content-script messaging
 
-const API_BASE = 'https://YOUR_DOMAIN'
-
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'CACHE_SOUL') {
     chrome.storage.local.set({ soul_cache: msg.soul })
