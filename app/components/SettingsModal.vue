@@ -535,17 +535,9 @@ async function testKey(type, key) {
       ok  = res.status === 200
       msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
     } else if (type === 'wavespeed') {
-      try {
-        const res = await fetch('https://api.wavespeed.ai/api/v3/me', {
-          headers: { 'Authorization': `Bearer ${key}` }
-        })
-        ok  = res.status === 200
-        msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
-      } catch {
-        // CORS blockiert — nur Format prüfen
-        ok  = key.length >= 24
-        msg = ok ? 'Format OK' : 'Key zu kurz'
-      }
+      // WaveSpeed key ist 64-stelliger Hex-String — Format reicht als Validierung
+      ok  = /^[0-9a-f]{32,}$/i.test(key)
+      msg = ok ? 'Format OK (Hex-Key erkannt)' : 'Ungültiges Format — 64-stelliger Hex erwartet'
     }
   } catch (e) {
     ok  = false
@@ -559,7 +551,8 @@ async function saveConfig() {
   saving.value  = true
   feedback.value = null
   try {
-    const body = { anthropic_key: apiKey.value }
+    const body = {}
+    if (apiKey.value) body.anthropic_key = apiKey.value
     if (model.value) body.model = model.value
     if (wavespeedDirty.value) body.wavespeed_key = wavespeedKey.value
     if (elevenlabsDirty.value) body.elevenlabs_key = elevenlabsKey.value
