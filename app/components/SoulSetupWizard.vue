@@ -446,9 +446,9 @@ async function loadCfgStep() {
     if (!res.ok) return
     const data = await res.json()
     cfgModel.value   = data.model || ''
-    cfgAnthSet.value = !!data.anthropic_key
-    cfgWaveSet.value = !!data.wavespeed_key
-    cfgLabsSet.value = !!data.elevenlabs_key
+    cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
+    cfgWaveSet.value = !!data.wavespeed_key_set
+    cfgLabsSet.value = !!data.elevenlabs_key_set
   } catch {}
 }
 
