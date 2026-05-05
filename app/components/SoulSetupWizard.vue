@@ -378,7 +378,7 @@ async function handleDeleteVault() {
   }
 }
 
-const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer } = useSoul()
+const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob } = useSoul()
 
 const settingsLocalOpen  = ref(false)
 const certRotateBusy     = ref(false)
@@ -421,7 +421,7 @@ async function handleRotateCert() {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
     await pushToServer()
-    downloadSoulLocal()
+    await exportAsBlob()
     let validated = false
     try {
       const soulId = props.soulCert?.split('.')?.[0] ?? ''

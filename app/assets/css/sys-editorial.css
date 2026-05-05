@@ -403,7 +403,7 @@
   background: var(--sys-paper);
   box-shadow: 0 0 0 3px var(--sys-violet-dim);
 }
-.sys-input::placeholder { color: var(--sys-fg-dim); opacity: 0.5; }
+.sys-input::placeholder { color: var(--sys-fg-muted); opacity: 0.75; }
 
 .sys-field-error {
   font-family: var(--sys-mono);
