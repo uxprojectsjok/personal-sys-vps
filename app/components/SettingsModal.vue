@@ -1,103 +1,85 @@
 <template>
   <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="open"
-        class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
-        @click.self="$emit('close')"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Einstellungen"
-      >
-        <div class="relative w-full max-w-md bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl max-h-[90dvh] flex flex-col overflow-hidden">
+    <Transition name="sys-modal-fade">
+      <div v-if="open" class="sys-modal-overlay" @click.self="$emit('close')" role="dialog" aria-modal="true" aria-label="Einstellungen">
+        <div class="sys-modal sys-modal--md" style="max-width:520px">
+          <div class="sys-modal-handle"></div>
 
-          <!-- Header -->
-          <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--sys-border)] flex-none">
-            <span class="text-sm font-semibold text-[var(--sys-fg)]">Einstellungen</span>
-            <button
-              @click="$emit('close')"
-              class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-white/[0.06] transition-colors"
-              aria-label="Schließen"
-            >
-              <i class="ri-close-line ri-fw text-base" />
-            </button>
+          <!-- Head -->
+          <div class="sys-modal-head" style="padding:20px 28px 16px">
+            <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
+            <span class="sys-kicker" style="margin-bottom:0;padding-bottom:0;border-bottom:none">Einstellungen</span>
           </div>
 
-          <!-- Tabs -->
-          <div class="flex border-b border-[var(--sys-border)] flex-none">
+          <!-- Rail / Tabs -->
+          <div class="sys-rail" :class="'sys-rail--2'">
             <button
               @click="tab = 'api'"
-              class="flex-1 py-3 text-xs font-medium transition-colors"
-              :class="tab === 'api'
-                ? 'text-[var(--sys-fg)] border-b-2 border-[var(--sys-violet)] -mb-px'
-                : 'text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg-muted)]'"
+              class="sys-rail-item"
+              :class="tab === 'api' ? 'is-active' : ''"
             >
-              <i class="ri-key-line ri-fw mr-1" />Mein API-Key
+              <span class="sys-rail-num">
+                <span class="sys-rail-check" v-if="keySource === 'soul'">✓</span>
+                <span v-else>K</span>
+              </span>
+              <span class="sys-rail-lbl">
+                <span class="sys-rail-t">API-Keys</span>
+                <span class="sys-rail-sub">Anthropic · WaveSpeed · ElevenLabs</span>
+              </span>
             </button>
+
             <button
               v-if="!isAdmin"
               @click="tab = 'connect'"
-              class="flex-1 py-3 text-xs font-medium transition-colors"
-              :class="tab === 'connect'
-                ? 'text-[var(--sys-fg)] border-b-2 border-[var(--sys-violet)] -mb-px'
-                : 'text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg-muted)]'"
+              class="sys-rail-item"
+              :class="tab === 'connect' ? 'is-active' : ''"
             >
-              <i class="ri-shield-keyhole-line ri-fw mr-1" />Admin
+              <span class="sys-rail-num">A</span>
+              <span class="sys-rail-lbl">
+                <span class="sys-rail-t">Admin</span>
+                <span class="sys-rail-sub">Token verbinden</span>
+              </span>
             </button>
+
             <button
               v-if="isAdmin"
               @click="tab = 'admin'"
-              class="flex-1 py-3 text-xs font-medium transition-colors"
-              :class="tab === 'admin'
-                ? 'text-[var(--sys-fg)] border-b-2 border-[var(--sys-orange)] -mb-px'
-                : 'text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg-muted)]'"
+              class="sys-rail-item"
+              :class="tab === 'admin' ? 'is-active' : ''"
+              style="--sys-rail-accent:var(--sys-orange)"
             >
-              <i class="ri-server-line ri-fw mr-1" />Server-Admin
+              <span class="sys-rail-num" style="border-color:rgba(var(--sys-orange-rgb,251,146,60),0.4)">S</span>
+              <span class="sys-rail-lbl">
+                <span class="sys-rail-t">Server-Admin</span>
+                <span class="sys-rail-sub" style="color:var(--sys-orange)">Key-Rotation</span>
+              </span>
             </button>
           </div>
 
           <!-- Body -->
-          <div class="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+          <div class="sys-modal-body">
 
             <!-- ── Tab: Mein API-Key ── -->
             <template v-if="tab === 'api'">
 
-              <!-- Key-Status -->
-              <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
-                :class="{
-                  'border-emerald-500/30 bg-emerald-500/[0.06]': keySource === 'soul',
-                  'border-[var(--sys-border)] bg-white/[0.03]':  keySource === 'master' || keySource === 'env',
-                  'border-red-500/30 bg-red-500/[0.05]':          keySource === 'none',
-                }">
-                <span class="w-2 h-2 rounded-full flex-none"
-                  :class="{
-                    'bg-emerald-400': keySource === 'soul',
-                    'bg-[var(--sys-fg-dim)]': keySource === 'master' || keySource === 'env',
-                    'bg-red-400': keySource === 'none',
-                  }"></span>
-                <div class="min-w-0">
-                  <p class="text-xs font-medium"
-                    :class="{
-                      'text-emerald-400': keySource === 'soul',
-                      'text-[var(--sys-fg-muted)]': keySource === 'master' || keySource === 'env',
-                      'text-red-400': keySource === 'none',
-                    }">
-                    {{ keySourceLabel }}
-                  </p>
-                  <p v-if="keyPreview" class="text-[10px] font-mono text-[var(--sys-fg-dim)] truncate">{{ keyPreview }}</p>
+              <!-- Key status -->
+              <div class="sys-state" :class="keySource === 'soul' ? 'sys-state--ok' : keySource === 'none' ? '' : 'sys-state--info'" style="margin-bottom:20px">
+                <div class="sys-state-mark"></div>
+                <div class="sys-state-text">
+                  <span class="sys-state-label">{{ keySourceLabel }}</span>
+                  <span v-if="keyPreview" class="sys-state-value">{{ keyPreview }}</span>
                 </div>
               </div>
 
-              <!-- Anthropic Key Input -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
-                  Anthropic API-Key
-                </label>
-                <div class="relative">
+              <!-- Anthropic Key -->
+              <div class="sys-field">
+                <label class="sys-field-label">Anthropic API-Key</label>
+                <div style="display:flex;gap:0">
                   <input
                     v-model="apiKey"
                     :type="showKey ? 'text' : 'password'"
-                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none"
                     placeholder="sk-ant-..."
                     autocomplete="off"
                     spellcheck="false"
@@ -105,25 +87,23 @@
                   />
                   <button
                     @click="showKey = !showKey"
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none"
                     :aria-label="showKey ? 'Key verbergen' : 'Key anzeigen'"
                   >
-                    <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                    <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p class="text-[10px] text-[var(--sys-fg-dim)]">
-                  Leer lassen → Server-Key (Fallback). Deinen Key bekommst du unter
-                  <a href="https://console.anthropic.com" target="_blank" rel="noopener" class="text-[var(--sys-violet)] hover:underline">console.anthropic.com</a>.
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                  Leer lassen → Server-Key (Fallback).
+                  <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">console.anthropic.com</a>
                 </p>
               </div>
 
-              <!-- Modell -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">Modell</label>
-                <select
-                  v-model="model"
-                  class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition-colors"
-                >
+              <!-- Model -->
+              <div class="sys-field">
+                <label class="sys-field-label">Modell</label>
+                <select v-model="model" class="sys-input" style="cursor:pointer">
                   <option value="">Server-Standard</option>
                   <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
                   <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
@@ -132,16 +112,17 @@
               </div>
 
               <!-- WaveSpeed Key -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
+              <div class="sys-field">
+                <label class="sys-field-label">
                   WaveSpeed API-Key
-                  <span v-if="wavespeedKeySet" class="ml-1 normal-case font-mono text-emerald-400">{{ wavespeedPreview }}</span>
+                  <span v-if="wavespeedKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ wavespeedPreview }}</span>
                 </label>
-                <div class="relative">
+                <div style="display:flex;gap:0">
                   <input
                     v-model="wavespeedKey"
                     :type="showWavespeedKey ? 'text' : 'password'"
-                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none"
                     :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
                     autocomplete="off"
                     spellcheck="false"
@@ -150,29 +131,31 @@
                   />
                   <button
                     @click="showWavespeedKey = !showWavespeedKey"
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none"
                     :aria-label="showWavespeedKey ? 'Key verbergen' : 'Key anzeigen'"
                   >
-                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p class="text-[10px] text-[var(--sys-fg-dim)]">
-                  Für KI-Bildgenerierung. Deinen Key bekommst du unter
-                  <a href="https://wavespeed.ai" target="_blank" rel="noopener" class="text-[var(--sys-violet)] hover:underline">wavespeed.ai</a>.
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                  Für KI-Bildgenerierung.
+                  <a href="https://wavespeed.ai" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">wavespeed.ai</a>
                 </p>
               </div>
 
               <!-- ElevenLabs Key -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
+              <div class="sys-field" style="margin-bottom:0">
+                <label class="sys-field-label">
                   ElevenLabs API-Key
-                  <span v-if="elevenlabsKeySet" class="ml-1 normal-case font-mono text-emerald-400">{{ elevenlabsPreview }}</span>
+                  <span v-if="elevenlabsKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ elevenlabsPreview }}</span>
                 </label>
-                <div class="relative">
+                <div style="display:flex;gap:0">
                   <input
                     v-model="elevenlabsKey"
                     :type="showElevenlabsKey ? 'text' : 'password'"
-                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none"
                     :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
                     autocomplete="off"
                     spellcheck="false"
@@ -181,66 +164,42 @@
                   />
                   <button
                     @click="showElevenlabsKey = !showElevenlabsKey"
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none"
                     :aria-label="showElevenlabsKey ? 'Key verbergen' : 'Key anzeigen'"
                   >
-                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p class="text-[10px] text-[var(--sys-fg-dim)]">
-                  Für Text-to-Speech. Deinen Key bekommst du unter
-                  <a href="https://elevenlabs.io" target="_blank" rel="noopener" class="text-[var(--sys-violet)] hover:underline">elevenlabs.io</a>.
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                  Für Text-to-Speech.
+                  <a href="https://elevenlabs.io" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">elevenlabs.io</a>
                 </p>
               </div>
 
-              <!-- Aktionen -->
-              <div class="flex gap-2 pt-1">
-                <button
-                  @click="testApiKey"
-                  :disabled="testing || !apiKey"
-                  class="sys-btn-outlined h-9 px-3 text-xs flex-1 disabled:opacity-40"
-                >
-                  <svg v-if="testing" class="w-3 h-3 animate-spin mr-1 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-                  </svg>
-                  {{ testing ? 'Teste…' : 'Key testen' }}
-                </button>
-                <button
-                  @click="saveConfig"
-                  :disabled="saving"
-                  class="sys-btn-filled h-9 px-4 text-xs flex-1 disabled:opacity-50"
-                >
-                  {{ saving ? 'Speichert…' : 'Speichern' }}
-                </button>
-              </div>
-
               <!-- Feedback -->
-              <Transition name="fade-quick">
-                <div v-if="feedback"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border"
-                  :class="feedback.ok
-                    ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400'
-                    : 'border-red-500/20 bg-red-500/[0.06] text-red-400'"
-                >
-                  <i :class="feedback.ok ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" class="ri-fw flex-none" />
-                  {{ feedback.message }}
-                </div>
+              <Transition name="sys-modal-fade">
+                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="feedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ feedback.message }}</div>
               </Transition>
 
             </template>
 
             <!-- ── Tab: Admin verbinden ── -->
             <template v-if="tab === 'connect' && !isAdmin">
-              <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
-                Gib den Admin-Token ein, den du beim Server-Setup erhalten hast. Er wird nur lokal im Browser gespeichert.
-              </p>
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">Admin-Token</label>
-                <div class="relative">
+              <p class="sys-prose">Gib den Admin-Token ein, den du beim Server-Setup erhalten hast. Er wird nur lokal im Browser gespeichert.</p>
+
+              <div class="sys-field" style="margin-bottom:0">
+                <label class="sys-field-label">Admin-Token</label>
+                <div style="display:flex;gap:0">
                   <input
                     v-model="connectToken"
                     :type="showConnectToken ? 'text' : 'password'"
-                    class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2.5 text-sm font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors pr-10"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none"
                     placeholder="adm_..."
                     autocomplete="off"
                     spellcheck="false"
@@ -248,143 +207,162 @@
                   />
                   <button
                     @click="showConnectToken = !showConnectToken"
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none"
                     :aria-label="showConnectToken ? 'Token verbergen' : 'Token anzeigen'"
                   >
-                    <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw text-sm" />
+                    <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
               </div>
-              <button
-                @click="connectAdmin"
-                :disabled="connectingAdmin || !connectToken"
-                class="w-full sys-btn-filled h-10 text-sm disabled:opacity-50"
-              >
-                {{ connectingAdmin ? 'Prüfe…' : 'Verbinden' }}
-              </button>
-              <Transition name="fade-quick">
-                <div v-if="connectFeedback"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border"
-                  :class="connectFeedback.ok
-                    ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400'
-                    : 'border-red-500/20 bg-red-500/[0.06] text-red-400'"
-                >
-                  <i :class="connectFeedback.ok ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" class="ri-fw flex-none" />
-                  {{ connectFeedback.message }}
-                </div>
+
+              <Transition name="sys-modal-fade">
+                <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="connectFeedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ connectFeedback.message }}</div>
               </Transition>
             </template>
 
             <!-- ── Tab: Server-Admin ── -->
             <template v-if="tab === 'admin' && isAdmin">
 
-              <div class="px-3 py-2 rounded-lg bg-[var(--sys-orange)]/10 border border-[var(--sys-orange)]/30 text-[10px] text-[var(--sys-orange)] leading-relaxed">
-                ⚠ Master-Key-Rotation betrifft diese Instanz. Grace-Period 15 min — danach sind alte Certs ungültig.
+              <div style="padding:10px 14px;border-left:2px solid var(--sys-orange);background:rgba(251,146,60,0.06);font-family:var(--sys-mono);font-size:10px;letter-spacing:0.1em;color:var(--sys-orange);margin-bottom:20px">
+                Master-Key-Rotation betrifft diese Instanz. Grace-Period 15 min — danach sind alte Certs ungültig.
               </div>
 
               <!-- Neuer Soul-Master-Key -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
-                  Neuer Soul-Master-Key
-                </label>
-                <div class="flex gap-2">
+              <div class="sys-field">
+                <label class="sys-field-label">Neuer Soul-Master-Key</label>
+                <div style="display:flex;gap:8px">
                   <input
                     v-model="newMasterKey"
                     type="text"
                     readonly
-                    class="flex-1 min-w-0 bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--sys-fg)] focus:outline-none"
+                    class="sys-input sys-input--mono"
+                    style="flex:1"
                     placeholder="→ Generieren klicken"
                   />
-                  <button
-                    @click="generateMasterKey"
-                    class="sys-btn-outlined h-9 px-3 text-xs whitespace-nowrap flex-none"
-                  >
-                    Generieren
-                  </button>
+                  <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--ghost" style="white-space:nowrap">Generieren</button>
                 </div>
-                <p class="text-[10px] text-[var(--sys-fg-dim)]">Format: sys_ + 256-bit zufällig. Nur im Browser generiert — verlässt dieses Gerät nie unverschlüsselt.</p>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
               </div>
 
               <!-- Master Anthropic-Key -->
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
-                  Server Anthropic-Key (Fallback für alle)
-                </label>
+              <div class="sys-field">
+                <label class="sys-field-label">Server Anthropic-Key (Fallback für alle)</label>
                 <input
                   v-model="masterAnthropicKey"
                   type="password"
-                  class="w-full bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--sys-fg)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition-colors"
+                  class="sys-input sys-input--mono"
                   placeholder="sk-ant-… (leer = unverändert)"
                   autocomplete="off"
                 />
               </div>
 
-              <!-- Grace-Period Checkliste -->
-              <Transition name="fade-quick">
-                <div v-if="graceUntil" class="space-y-2 px-3 py-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.05]">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-medium text-amber-400">Grace-Period aktiv</span>
-                    <span class="text-[10px] font-mono text-amber-400">{{ graceCountdown }}</span>
+              <!-- Grace-Period -->
+              <Transition name="sys-modal-fade">
+                <div v-if="graceUntil" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);padding:14px 16px;margin-bottom:16px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                    <span style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#f59e0b">Grace-Period aktiv</span>
+                    <span style="font-family:var(--sys-mono);font-size:10px;color:#f59e0b">{{ graceCountdown }}</span>
                   </div>
-                  <label class="flex items-center gap-2 text-xs text-[var(--sys-fg-muted)] cursor-pointer">
-                    <input type="checkbox" v-model="checkWA" class="accent-[var(--sys-violet)]" />
-                    WhatsApp-Bot soul_cert erneuern
+                  <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer">
+                    <input type="checkbox" v-model="checkWA" style="accent-color:var(--sys-violet)" />
+                    <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em">WhatsApp-Bot soul_cert erneuern</span>
                   </label>
-                  <label class="flex items-center gap-2 text-xs text-[var(--sys-fg-muted)] cursor-pointer">
-                    <input type="checkbox" v-model="checkVC" class="accent-[var(--sys-violet)]" />
-                    Voice-Clone Token erneuern
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" v-model="checkVC" style="accent-color:var(--sys-violet)" />
+                    <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em">Voice-Clone Token erneuern</span>
                   </label>
-                  <p class="text-[10px] text-[var(--sys-fg-dim)]">Bestehende Certs laufen nach Ablauf ab — User werden automatisch neu eingeloggt.</p>
                 </div>
               </Transition>
 
               <!-- Admin-Token rotieren -->
-              <div class="space-y-1.5 pt-1 border-t border-[var(--sys-border)]">
-                <label class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)]">
-                  Admin-Token rotieren
-                </label>
-                <p class="text-[10px] text-[var(--sys-fg-dim)]">Bei Leak: neuen Token generieren und speichern. Der alte Token wird sofort ungültig.</p>
-                <div class="flex gap-2">
+              <div class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
+                <label class="sys-field-label">Admin-Token rotieren</label>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.06em;margin:0 0 8px">Bei Leak: neuen Token generieren. Der alte wird sofort ungültig.</p>
+                <div style="display:flex;gap:8px">
                   <input
                     v-model="newAdminToken"
                     type="text"
                     readonly
-                    class="flex-1 min-w-0 bg-white/[0.04] border border-[var(--sys-border)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--sys-fg)] focus:outline-none"
+                    class="sys-input sys-input--mono"
+                    style="flex:1"
                     placeholder="→ Generieren klicken"
                   />
-                  <button
-                    @click="generateAdminToken"
-                    class="sys-btn-outlined h-9 px-3 text-xs whitespace-nowrap flex-none"
-                  >
-                    Generieren
-                  </button>
+                  <button @click="generateAdminToken" class="sys-btn-ed sys-btn-ed--ghost" style="white-space:nowrap">Generieren</button>
                 </div>
               </div>
 
-              <!-- Rotieren-Button -->
-              <button
-                @click="saveMaster"
-                :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)"
-                class="w-full sys-btn-filled h-10 text-sm disabled:opacity-50"
-              >
-                {{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}
-              </button>
-
               <!-- Admin-Feedback -->
-              <Transition name="fade-quick">
-                <div v-if="adminFeedback"
-                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border"
-                  :class="adminFeedback.ok
-                    ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400'
-                    : 'border-red-500/20 bg-red-500/[0.06] text-red-400'"
-                >
-                  <i :class="adminFeedback.ok ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'" class="ri-fw flex-none" />
-                  {{ adminFeedback.message }}
-                </div>
+              <Transition name="sys-modal-fade">
+                <div v-if="adminFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="adminFeedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ adminFeedback.message }}</div>
               </Transition>
 
             </template>
 
+          </div>
+
+          <!-- Foot -->
+          <div class="sys-modal-foot">
+            <div class="sys-foot-meta">
+              <template v-if="tab === 'api'">
+                <span class="sys-dot"
+                  :class="keySource === 'soul' ? 'sys-dot--ok' : keySource === 'none' ? 'sys-dot--idle' : 'sys-dot--live'"
+                ></span>
+                {{ keySourceLabel }}
+              </template>
+              <template v-else-if="tab === 'connect'">
+                <span class="sys-dot sys-dot--idle"></span>
+                Admin-Zugang
+              </template>
+              <template v-else-if="tab === 'admin'">
+                <span class="sys-dot sys-dot--warn"></span>
+                Server-Admin · Rotation
+              </template>
+            </div>
+            <div class="sys-foot-actions">
+              <!-- API-Key tab -->
+              <template v-if="tab === 'api'">
+                <button
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  @click="testApiKey"
+                  :disabled="testing || !apiKey"
+                >
+                  <svg v-if="testing" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite">
+                    <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
+                  </svg>
+                  {{ testing ? 'Teste…' : 'Key testen' }}
+                </button>
+                <button
+                  class="sys-btn-ed sys-btn-ed--primary"
+                  @click="saveConfig"
+                  :disabled="saving"
+                >{{ saving ? 'Speichert…' : 'Speichern' }}</button>
+              </template>
+              <!-- Connect tab -->
+              <template v-else-if="tab === 'connect'">
+                <button
+                  class="sys-btn-ed sys-btn-ed--primary"
+                  @click="connectAdmin"
+                  :disabled="connectingAdmin || !connectToken"
+                >{{ connectingAdmin ? 'Prüfe…' : 'Verbinden' }}</button>
+              </template>
+              <!-- Admin tab -->
+              <template v-else-if="tab === 'admin'">
+                <button
+                  class="sys-btn-ed sys-btn-ed--danger"
+                  @click="saveMaster"
+                  :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)"
+                >{{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}</button>
+              </template>
+            </div>
           </div>
 
         </div>
@@ -536,7 +514,6 @@ async function connectAdmin() {
   connectingAdmin.value = true
   connectFeedback.value = null
   try {
-    // Token validieren: leere set-master Anfrage (nur Auth-Check)
     const res = await fetch('/api/set-master', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': connectToken.value },
@@ -567,7 +544,7 @@ const masterAnthropicKey = ref('')
 const newAdminToken     = ref('')
 const savingMaster      = ref(false)
 const adminFeedback     = ref(null)
-const graceUntil        = ref(null)  // ISO-String wenn Grace-Period aktiv
+const graceUntil        = ref(null)
 const graceCountdown    = ref('')
 const checkWA           = ref(false)
 const checkVC           = ref(false)
@@ -636,7 +613,6 @@ async function saveMaster() {
       masterAnthropicKey.value = ''
       newAdminToken.value      = ''
       await loadStatus()
-      // Master-Key rotiert → Cert sofort erneuern (Grace Period noch aktiv) + Parent benachrichtigen
       if (masterRotated) emit('master-rotated')
     } else {
       adminFeedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
@@ -666,9 +642,5 @@ watch(() => props.open, (val) => {
 </script>
 
 <style scoped>
-.modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-
-.fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.25s ease; }
-.fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
