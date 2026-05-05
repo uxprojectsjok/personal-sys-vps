@@ -184,11 +184,15 @@ end
 -- Domain-Format: https://<hostname>(:<port>)?  — kein Trailing-Slash
 -- Kein localhost/private IP (SSRF-Schutz)
 local function valid_domain(d)
-  if type(d) ~= "string" or d == "" then return false end
-  if d:sub(-1) == "/" then d = d:sub(1, -2) end   -- trailing slash tolerant
+  if type(d) ~= "string" then return false end
+  d = d:match("^%s*(.-)%s*$") or d            -- führende/nachfolgende Leerzeichen
+  if d == "" then return false end
+  while d:sub(-1) == "/" do d = d:sub(1, -2) end  -- alle trailing slashes
   if d:sub(1, 8) ~= "https://" then return false end
   local host = d:sub(9):match("^([^/]+)") or ""
-  if not host:match("^[a-zA-Z0-9][a-zA-Z0-9%.%-]+(:[0-9]+)?$") then return false end
+  if host == "" or #host > 253 then return false end
+  if host:match("[^%a%d%.%-%:]") then return false end  -- nur sichere Zeichen
+  if not host:match("%.") then return false end           -- mind. ein Punkt
   local bare = host:match("^([^:]+)")
   if bare:match("^localhost") or bare:match("^127%.") or bare:match("^10%.") or
      bare:match("^192%.168%.") or bare:match("^172%.1[6-9]%.") or

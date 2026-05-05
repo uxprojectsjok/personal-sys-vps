@@ -93,7 +93,7 @@
                     <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
                   Leer lassen → Server-Key (Fallback).
                   <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">console.anthropic.com</a>
                 </p>
@@ -137,7 +137,7 @@
                     <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
                   Für KI-Bildgenerierung.
                   <a href="https://wavespeed.ai" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">wavespeed.ai</a>
                 </p>
@@ -170,7 +170,7 @@
                     <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.08em">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
                   Für Text-to-Speech.
                   <a href="https://elevenlabs.io" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">elevenlabs.io</a>
                 </p>
@@ -187,14 +187,14 @@
 
               <!-- Soul-Cert rotieren -->
               <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--sys-rule)">
-                <div style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-fg-dim);margin-bottom:10px">Soul-Cert</div>
+                <div style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:10px">Soul-Cert</div>
                 <button
                   @click="handleRotateCert"
                   :disabled="certRotateBusy"
                   class="sys-btn-ed sys-btn-ed--ghost"
                   style="width:100%;justify-content:center"
                 >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.06em;margin:6px 0 0">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:6px 0 0">
                   Altes Cert sofort ungültig — sys.md wird automatisch heruntergeladen.
                 </p>
                 <Transition name="sys-modal-fade">
@@ -281,7 +281,7 @@
                   />
                   <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--ghost" style="white-space:nowrap">Generieren</button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
               </div>
 
               <!-- Master Anthropic-Key -->
@@ -317,7 +317,7 @@
               <!-- Admin-Token rotieren -->
               <div class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
                 <label class="sys-field-label">Admin-Token rotieren</label>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);letter-spacing:0.06em;margin:0 0 8px">Bei Leak: neuen Token generieren. Der alte wird sofort ungültig.</p>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:0 0 8px">Bei Leak: neuen Token generieren. Der alte wird sofort ungültig.</p>
                 <div style="display:flex;gap:8px">
                   <input
                     v-model="newAdminToken"
@@ -414,7 +414,7 @@ import { useVault } from '~/composables/useVault.js'
 const props = defineProps({ open: Boolean })
 const emit  = defineEmits(['close', 'master-rotated'])
 
-const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer } = useSoul()
+const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer, exportAsBlob } = useSoul()
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 
 // ── Admin-Erkennung (nur aus localStorage — nie vom Server) ─────────────────
@@ -705,7 +705,7 @@ async function handleRotateCert() {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
     await pushToServer()
-    downloadSoulLocal()
+    await exportAsBlob()
     let validated = false
     try {
       const soulId = soulToken.value?.split('.')?.[0] ?? ''
