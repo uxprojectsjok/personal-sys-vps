@@ -101,9 +101,13 @@ if type(body.elevenlabs_key) == "string" then
     ngx.say(cjson.encode({ ok = false, status = 400, error = "key_format_invalid" }))
     return
   end
+  -- sk_-Keys (neues Format) nutzen Authorization: Bearer; ältere Hex-Keys xi-api-key
+  local el_headers = key:sub(1,3) == "sk_"
+    and { ["Authorization"] = "Bearer " .. key }
+    or  { ["xi-api-key"]   = key }
   local res, err = httpc:request_uri("https://api.elevenlabs.io/v1/user", {
-    method  = "GET",
-    headers = { ["xi-api-key"] = key },
+    method     = "GET",
+    headers    = el_headers,
     ssl_verify = false,
   })
   if not res then
