@@ -182,11 +182,38 @@
           </div>
 
           <!-- Step 5: Einstellungen -->
-          <div v-show="currentStep === 5" class="p-5 space-y-3">
+          <div v-show="currentStep === 5" class="p-5 space-y-4">
+
+            <!-- Anthropic Key inline -->
+            <div class="space-y-2">
+              <p class="text-xs font-semibold text-white/75">Anthropic API-Key</p>
+              <div class="flex gap-0">
+                <input
+                  v-model="wizardApiKey"
+                  type="password"
+                  class="sys-input sys-input--mono"
+                  style="flex:1;border-right:none;font-size:12px"
+                  placeholder="sk-ant-..."
+                  autocomplete="off"
+                  spellcheck="false"
+                  @keyup.enter="saveWizardApiKey"
+                />
+                <button
+                  @click="saveWizardApiKey"
+                  :disabled="wizardApiKeySaving || !wizardApiKey"
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="border-left:none;white-space:nowrap;font-size:11px;padding:0 14px"
+                >{{ wizardApiKeySaving ? 'Speichert…' : 'Speichern' }}</button>
+              </div>
+              <p v-if="wizardApiKeyOk === true" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok)">Anthropic Key gespeichert ✓</p>
+              <p v-else-if="wizardApiKeyOk === false" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-err)">Fehler beim Speichern</p>
+            </div>
+
+            <!-- Alle weiteren Einstellungen -->
             <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
               <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-white/75">Node-Einstellungen</p>
-                <p class="text-xs text-white/40 mt-0.5">API-Keys, Admin-Token, ElevenLabs, WhatsApp</p>
+                <p class="text-xs font-semibold text-white/75">Weitere Einstellungen</p>
+                <p class="text-xs text-white/40 mt-0.5">WaveSpeed, ElevenLabs, Admin-Token, Modell</p>
               </div>
               <button
                 @click="settingsLocalOpen = true"
@@ -378,9 +405,30 @@ async function handleDeleteVault() {
   }
 }
 
-const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob } = useSoul()
+const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob, soulToken } = useSoul()
 
 const settingsLocalOpen  = ref(false)
+
+// ── Step 5: Anthropic Key ──────────────────────────────────────────────────────
+const wizardApiKey      = ref('')
+const wizardApiKeySaving = ref(false)
+const wizardApiKeyOk    = ref(null)  // true | false | null
+
+async function saveWizardApiKey() {
+  if (!wizardApiKey.value || wizardApiKeySaving.value) return
+  wizardApiKeySaving.value = true
+  wizardApiKeyOk.value     = null
+  try {
+    const res = await fetch('/api/set-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body:    JSON.stringify({ anthropic_key: wizardApiKey.value })
+    })
+    wizardApiKeyOk.value = res.ok
+    if (res.ok) { wizardApiKey.value = ''; setTimeout(() => { wizardApiKeyOk.value = null }, 4000) }
+  } catch { wizardApiKeyOk.value = false }
+  finally  { wizardApiKeySaving.value = false }
+}
 const certRotateBusy     = ref(false)
 const certRotationResult = ref(null)
 const certCopied         = ref(false)
