@@ -378,7 +378,7 @@ async function handleDeleteVault() {
   }
 }
 
-const { rotateCert, soulContent: composableSoulContent, clear: clearSoul } = useSoul()
+const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer } = useSoul()
 
 const settingsLocalOpen  = ref(false)
 const certRotateBusy     = ref(false)
@@ -416,9 +416,11 @@ async function handleRotateCert() {
   try {
     const result = await rotateCert()
     if (!result) { alert('Cert-Rotation fehlgeschlagen'); return }
+    // Vault-Datei + Server + lokaler Download — alle drei aktualisieren
     if (vaultConnected.value && composableSoulContent.value) {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
+    await pushToServer()
     downloadSoulLocal()
     let validated = false
     try {

@@ -414,7 +414,7 @@ import { useVault } from '~/composables/useVault.js'
 const props = defineProps({ open: Boolean })
 const emit  = defineEmits(['close', 'master-rotated'])
 
-const { soulToken, rotateCert, soulContent: composableSoulContent } = useSoul()
+const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer } = useSoul()
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 
 // ── Admin-Erkennung (nur aus localStorage — nie vom Server) ─────────────────
@@ -700,9 +700,11 @@ async function handleRotateCert() {
   try {
     const result = await rotateCert()
     if (!result) { alert('Cert-Rotation fehlgeschlagen'); return }
+    // Vault-Datei + Server + lokaler Download — alle drei aktualisieren
     if (vaultConnected.value && composableSoulContent.value) {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
+    await pushToServer()
     downloadSoulLocal()
     let validated = false
     try {

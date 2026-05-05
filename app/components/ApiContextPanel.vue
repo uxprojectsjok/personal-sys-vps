@@ -249,7 +249,7 @@ async function onSave() {
   font-family: var(--sys-serif);
   font-size: 13px;
   line-height: 1.55;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
   margin: 4px 0 0;
 }
 
