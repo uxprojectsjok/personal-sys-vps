@@ -844,3 +844,6 @@
   84%  { width: 0%;   opacity: 1; }
   100% { width: 0%;   opacity: 1; }
 }
+
+/* ── Editorial Add-on ──────────────────────────────────── */
+@import "./sys-editorial.css";
