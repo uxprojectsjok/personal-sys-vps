@@ -56,7 +56,7 @@
           </div>
 
           <!-- Body -->
-          <div class="sys-modal-body">
+          <div class="sys-modal-body" style="padding:24px 28px;overflow-y:auto">
 
             <!-- ── Tab: Mein API-Key ── -->
             <template v-if="tab === 'api'">
