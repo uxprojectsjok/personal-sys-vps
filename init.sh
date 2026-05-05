@@ -462,6 +462,61 @@ info "Restarting OpenResty..."
 systemctl enable openresty
 systemctl restart openresty
 
+# ── 15. soul-mcp (MCP Server) ─────────────────────────────────────────────────
+info "Setting up soul-mcp (MCP server on port 3098)..."
+cd "$SCRIPT_DIR/soul-mcp"
+npm install --silent
+
+# .env für soul-mcp
+cat > "$SCRIPT_DIR/soul-mcp/.env" <<MCPENV
+PORT=3098
+BASE_URL=https://${DOMAIN}
+SYS_API_URL=https://${DOMAIN}
+POLYGON_NETWORK=main
+MCPENV
+chmod 600 "$SCRIPT_DIR/soul-mcp/.env"
+
+# systemd service mit korrekten Pfaden schreiben
+cat > /etc/systemd/system/soul-mcp.service <<MCPSVC
+[Unit]
+Description=SaveYourSoul MCP Server
+Documentation=https://${DOMAIN}/mcp
+After=network.target openresty.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=${SCRIPT_DIR}/soul-mcp
+ExecStart=/usr/bin/node server.mjs
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=soul-mcp
+EnvironmentFile=${SCRIPT_DIR}/soul-mcp/.env
+
+[Install]
+WantedBy=multi-user.target
+MCPSVC
+
+# Eigentümer setzen damit www-data lesen und ausführen kann
+chown -R www-data:www-data "$SCRIPT_DIR/soul-mcp"
+chmod 600 "$SCRIPT_DIR/soul-mcp/.env"
+
+systemctl daemon-reload
+systemctl enable soul-mcp
+systemctl restart soul-mcp
+
+sleep 2
+if systemctl is-active --quiet soul-mcp; then
+  info "soul-mcp läuft auf Port 3098 ✓"
+else
+  warn "soul-mcp konnte nicht gestartet werden — prüfe: journalctl -u soul-mcp -n 20"
+fi
+
+cd "$SCRIPT_DIR"
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 if $MULTI_HOSTER; then

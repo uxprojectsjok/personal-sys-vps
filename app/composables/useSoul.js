@@ -375,6 +375,15 @@ Mögliche section-Werte (exakt so schreiben):
         updated = appendSessionLog(updated, sessionLog);
       }
 
+      // Platzhalterwerte entfernen sobald echter Inhalt angekommen ist
+      if (sectionsUpdated.length > 0 || sessionLog) {
+        updated = updated
+          .replace(/^\*Noch nicht beschrieben\.\*\s*$/gm, '')
+          .replace(/^\*Noch nicht konfiguriert\.\*\s*$/gm, '')
+          .replace(/^\*Noch keine Sessions\.\*\s*$/gm, '')
+          .replace(/\n{3,}/g, '\n\n');
+      }
+
       // last_session aktualisieren + speichern
       updateContent(updated);
 
