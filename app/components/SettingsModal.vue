@@ -106,8 +106,8 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
                   <button
-                    @click="testKey('anthropic', apiKey)"
-                    :disabled="anthTest?.loading || !apiKey"
+                    @click="testKey('anthropic', apiKey, !apiKey && !!keyPreview)"
+                    :disabled="anthTest?.loading || (!apiKey && !keyPreview)"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
                   >{{ anthTest?.loading ? 'Teste…' : 'Testen' }}</button>
@@ -151,7 +151,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
                   <button
-                    @click="testKey('wavespeed', wavespeedKey || wavespeedPreview)"
+                    @click="testKey('wavespeed', wavespeedKey, !wavespeedKey && wavespeedKeySet)"
                     :disabled="waveTest?.loading || (!wavespeedKey && !wavespeedKeySet)"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
@@ -196,7 +196,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
                   <button
-                    @click="testKey('elevenlabs', elevenlabsKey || elevenlabsPreview)"
+                    @click="testKey('elevenlabs', elevenlabsKey, !elevenlabsKey && elevenlabsKeySet)"
                     :disabled="labsTest?.loading || (!elevenlabsKey && !elevenlabsKeySet)"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
@@ -508,14 +508,25 @@ async function loadStatus() {
   } catch {}
 }
 
-async function testKey(type, key) {
-  if (!key) return
+async function testKey(type, key, useStored = false) {
   const stateRef = { anthropic: anthTest, wavespeed: waveTest, elevenlabs: labsTest }[type]
   stateRef.value = { loading: true, ok: null, message: '' }
   let ok = false
   let msg = ''
   try {
-    if (type === 'anthropic') {
+    if (useStored) {
+      // Gespeicherter Key → Server liest aus config.json und testet serverseitig
+      const res = await fetch('/api/test-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+        body: JSON.stringify({ key_type: type, use_stored: true })
+      })
+      const d = await res.json().catch(() => ({}))
+      ok  = d.ok === true
+      msg = ok ? 'Key gültig ✓' : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : ''}`
+    } else if (!key) {
+      ok = false; msg = 'Kein Key eingegeben'
+    } else if (type === 'anthropic') {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -535,9 +546,8 @@ async function testKey(type, key) {
       ok  = res.status === 200
       msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
     } else if (type === 'wavespeed') {
-      // WaveSpeed key ist 64-stelliger Hex-String — Format reicht als Validierung
       ok  = /^[0-9a-f]{32,}$/i.test(key)
-      msg = ok ? 'Format OK (Hex-Key erkannt)' : 'Ungültiges Format — 64-stelliger Hex erwartet'
+      msg = ok ? 'Format OK (Hex-Key erkannt)' : 'Ungültiges Format — Hex erwartet'
     }
   } catch (e) {
     ok  = false
