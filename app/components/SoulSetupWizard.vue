@@ -182,10 +182,10 @@
           </div>
 
           <!-- Step 5: Einstellungen -->
-          <div v-show="currentStep === 5" class="p-5 space-y-5">
+          <div v-show="currentStep === 5" style="display:flex;flex-direction:column;gap:20px;padding:20px">
 
             <!-- Modell -->
-            <div class="sys-field" style="margin-bottom:0;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">Modell</label>
               <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
                 <option value="">Server-Standard</option>
@@ -196,36 +196,36 @@
             </div>
 
             <!-- Anthropic -->
-            <div class="sys-field" style="margin-bottom:0;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 Anthropic API-Key
                 <span v-if="cfgAnthSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
-                style="font-size:12px" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
+                placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
                 :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
             </div>
 
             <!-- WaveSpeed -->
-            <div class="sys-field" style="margin-bottom:0;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 WaveSpeed API-Key
                 <span v-if="cfgWaveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
-                style="font-size:12px" :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
                 autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true"
                 :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
             </div>
 
             <!-- ElevenLabs -->
-            <div class="sys-field" style="margin-bottom:0;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 ElevenLabs API-Key
                 <span v-if="cfgLabsSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
-                style="font-size:12px" :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
+                :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
                 autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true"
                 :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
             </div>
