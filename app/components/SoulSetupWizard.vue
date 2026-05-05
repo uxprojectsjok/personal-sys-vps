@@ -182,45 +182,63 @@
           </div>
 
           <!-- Step 5: Einstellungen -->
-          <div v-show="currentStep === 5" class="p-5 space-y-4">
+          <div v-show="currentStep === 5" class="p-5 space-y-3">
 
-            <!-- Anthropic Key inline -->
-            <div class="space-y-2">
-              <p class="text-xs font-semibold text-white/75">Anthropic API-Key</p>
-              <div class="flex gap-0">
-                <input
-                  v-model="wizardApiKey"
-                  type="password"
-                  class="sys-input sys-input--mono"
-                  style="flex:1;border-right:none;font-size:12px"
-                  placeholder="sk-ant-..."
-                  autocomplete="off"
-                  spellcheck="false"
-                  @keyup.enter="saveWizardApiKey"
-                />
-                <button
-                  @click="saveWizardApiKey"
-                  :disabled="wizardApiKeySaving || !wizardApiKey"
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  style="border-left:none;white-space:nowrap;font-size:11px;padding:0 14px"
-                >{{ wizardApiKeySaving ? 'Speichert…' : 'Speichern' }}</button>
-              </div>
-              <p v-if="wizardApiKeyOk === true" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok)">Anthropic Key gespeichert ✓</p>
-              <p v-else-if="wizardApiKeyOk === false" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-err)">Fehler beim Speichern</p>
+            <!-- Modell -->
+            <div class="sys-field" style="margin-bottom:0">
+              <label class="sys-field-label">Modell</label>
+              <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
+                <option value="">Server-Standard</option>
+                <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
+                <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+              </select>
             </div>
 
-            <!-- Alle weiteren Einstellungen -->
-            <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-white/75">Weitere Einstellungen</p>
-                <p class="text-xs text-white/40 mt-0.5">WaveSpeed, ElevenLabs, Admin-Token, Modell</p>
-              </div>
-              <button
-                @click="settingsLocalOpen = true"
-                class="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition min-h-[32px]"
-              >Öffnen</button>
+            <!-- Anthropic -->
+            <div class="sys-field" style="margin-bottom:0">
+              <label class="sys-field-label">
+                Anthropic API-Key
+                <span v-if="cfgAnthSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
+                style="font-size:12px" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" />
             </div>
-            <SettingsModal :open="settingsLocalOpen" @close="settingsLocalOpen = false" @master-rotated="settingsLocalOpen = false" />
+
+            <!-- WaveSpeed -->
+            <div class="sys-field" style="margin-bottom:0">
+              <label class="sys-field-label">
+                WaveSpeed API-Key
+                <span v-if="cfgWaveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
+                style="font-size:12px" :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true" />
+            </div>
+
+            <!-- ElevenLabs -->
+            <div class="sys-field" style="margin-bottom:0">
+              <label class="sys-field-label">
+                ElevenLabs API-Key
+                <span v-if="cfgLabsSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
+                style="font-size:12px" :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
+                autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true" />
+            </div>
+
+            <!-- Speichern -->
+            <button
+              @click="saveCfgStep"
+              :disabled="cfgSaving"
+              class="sys-btn-ed sys-btn-ed--primary"
+              style="width:100%;justify-content:center"
+            >{{ cfgSaving ? 'Speichert…' : 'Speichern' }}</button>
+            <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:10px;margin:0"
+              :style="cfgFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+              {{ cfgFeedback.message }}
+            </p>
+
           </div>
 
         </div>
@@ -289,7 +307,6 @@ import VaultSessionPanel  from './VaultSessionPanel.vue'
 import ApiContextPanel    from './ApiContextPanel.vue'
 import VaultServicesPanel from './VaultServicesPanel.vue'
 import SoulNetworkPanel   from './SoulNetworkPanel.vue'
-import SettingsModal      from './SettingsModal.vue'
 
 const props = defineProps({
   soulCert:    { type: String, default: '' },
@@ -407,28 +424,69 @@ async function handleDeleteVault() {
 
 const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob, soulToken } = useSoul()
 
-const settingsLocalOpen  = ref(false)
+// ── Step 5: Config ─────────────────────────────────────────────────────────────
+const cfgModel     = ref('')
+const cfgAnthKey   = ref('')
+const cfgAnthSet   = ref(false)
+const cfgWaveKey   = ref('')
+const cfgWaveSet   = ref(false)
+const cfgWaveDirty = ref(false)
+const cfgLabsKey   = ref('')
+const cfgLabsSet   = ref(false)
+const cfgLabsDirty = ref(false)
+const cfgSaving    = ref(false)
+const cfgFeedback  = ref(null)
 
-// ── Step 5: Anthropic Key ──────────────────────────────────────────────────────
-const wizardApiKey      = ref('')
-const wizardApiKeySaving = ref(false)
-const wizardApiKeyOk    = ref(null)  // true | false | null
-
-async function saveWizardApiKey() {
-  if (!wizardApiKey.value || wizardApiKeySaving.value) return
-  wizardApiKeySaving.value = true
-  wizardApiKeyOk.value     = null
+async function loadCfgStep() {
+  if (!soulToken.value) return
   try {
+    const res = await fetch('/api/get-config', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    cfgModel.value   = data.model || ''
+    cfgAnthSet.value = !!data.anthropic_key
+    cfgWaveSet.value = !!data.wavespeed_key
+    cfgLabsSet.value = !!data.elevenlabs_key
+  } catch {}
+}
+
+async function saveCfgStep() {
+  if (cfgSaving.value) return
+  cfgSaving.value   = true
+  cfgFeedback.value = null
+  try {
+    const body = {}
+    if (cfgModel.value)   body.model          = cfgModel.value
+    if (cfgAnthKey.value) body.anthropic_key   = cfgAnthKey.value
+    if (cfgWaveKey.value) body.wavespeed_key   = cfgWaveKey.value
+    if (cfgLabsKey.value) body.elevenlabs_key  = cfgLabsKey.value
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body:    JSON.stringify({ anthropic_key: wizardApiKey.value })
+      body:    JSON.stringify(body)
     })
-    wizardApiKeyOk.value = res.ok
-    if (res.ok) { wizardApiKey.value = ''; setTimeout(() => { wizardApiKeyOk.value = null }, 4000) }
-  } catch { wizardApiKeyOk.value = false }
-  finally  { wizardApiKeySaving.value = false }
+    if (res.ok) {
+      if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
+      if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
+      if (cfgLabsKey.value) { cfgLabsSet.value = true; cfgLabsKey.value = ''; cfgLabsDirty.value = false }
+      cfgFeedback.value = { ok: true, message: 'Konfiguration gespeichert ✓' }
+      setTimeout(() => { cfgFeedback.value = null }, 3000)
+    } else {
+      cfgFeedback.value = { ok: false, message: 'Fehler beim Speichern' }
+    }
+  } catch (e) {
+    cfgFeedback.value = { ok: false, message: 'Netzwerkfehler: ' + e.message }
+  } finally {
+    cfgSaving.value = false
+  }
 }
+
+watch(currentStep, (step) => {
+  if (step === 5) loadCfgStep()
+})
+
 const certRotateBusy     = ref(false)
 const certRotationResult = ref(null)
 const certCopied         = ref(false)
