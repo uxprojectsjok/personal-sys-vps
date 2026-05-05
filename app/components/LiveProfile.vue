@@ -117,18 +117,11 @@
               class="lp-carousel-track"
               :style="{ transform: `translateX(-${carouselIndex * 100}%)` }"
             >
-              <div class="lp-slide lp-slide--beta">
+              <div class="lp-slide">
                 <VoiceRecorder
                   :soul-meta="soulMeta" :embedded="true"
                   @saved="$emit('voice-saved', $event)" @close="$emit('close')"
                 />
-                <div class="lp-beta-overlay" aria-hidden="true">
-                  <div class="lp-beta-box">
-                    <span class="lp-beta-tag">Beta</span>
-                    <p class="lp-beta-title">Stimm-Klon · ElevenLabs / XTTS</p>
-                    <p class="lp-beta-desc">Für Developer — eigenen Dienst integrieren.</p>
-                  </div>
-                </div>
               </div>
               <div class="lp-slide">
                 <MotionRecorder
@@ -313,28 +306,6 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 }
 .lp-slide {
   flex: none; width: 100%; height: 100%; overflow-y: auto;
-}
-.lp-slide--beta { position: relative; }
-.lp-beta-overlay {
-  position: absolute; inset: 0; z-index: 10;
-  background: rgba(0,0,0,0.72); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-}
-.lp-beta-box {
-  text-align: center; padding: 28px 24px;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-}
-.lp-beta-tag {
-  font-family: var(--sys-mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--sys-accent-bright); border: 1px solid rgba(167,139,250,0.4); padding: 3px 10px;
-}
-.lp-beta-title {
-  font-family: var(--sys-sans); font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6);
-  margin: 0;
-}
-.lp-beta-desc {
-  font-family: var(--sys-sans); font-size: 11px; color: rgba(255,255,255,0.3);
-  margin: 0; line-height: 1.5;
 }
 
 </style>
