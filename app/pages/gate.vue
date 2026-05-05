@@ -1,58 +1,62 @@
 <template>
   <div class="gate-root">
-    <div class="gate-card">
+    <main class="gate-col">
+
       <div class="gate-logo">
         <img src="~/assets/logo.png" alt="SYS" class="gate-logo-img" />
       </div>
 
-      <h1 class="gate-title">Zugang</h1>
-      <p class="gate-subtitle">Persönlicher SYS-Node</p>
+      <div class="gate-head">
+        <span class="gate-kicker">SYS · Private Node</span>
+        <h1 class="gate-display">Zugang<em>.</em></h1>
+        <p class="gate-lede">Persönlicher SYS-Node</p>
+      </div>
 
       <form class="gate-form" @submit.prevent="submit">
-        <div v-if="error" class="gate-error" role="alert">
-          {{ error }}
-        </div>
 
-        <div class="gate-field">
-          <label for="gate-password" class="gate-label">Passwort</label>
+        <p v-if="error" class="gate-error">{{ error }}</p>
+
+        <div class="sys-field">
+          <span class="sys-field-label">Passwort</span>
           <input
             id="gate-password"
             v-model="password"
             type="password"
             autocomplete="current-password"
-            class="gate-input"
+            class="sys-input"
             placeholder="Node-Zugangspasswort"
             :disabled="loading"
             required
           />
         </div>
 
-        <div v-if="soulRegistered" class="gate-field">
-          <label for="gate-cert" class="gate-label">
+        <div v-if="soulRegistered" class="sys-field">
+          <span class="sys-field-label">
             Soul-Cert
-            <span class="gate-label-hint">32-stelliger Hex-Code aus deiner Session</span>
-          </label>
+            <span class="sys-field-hint">32-stelliger Hex-Code aus deiner Session</span>
+          </span>
           <input
             id="gate-cert"
             v-model="cert"
             type="text"
             autocomplete="off"
             spellcheck="false"
-            class="gate-input gate-input--mono"
+            class="sys-input sys-input--mono"
             placeholder="a1b2c3d4…"
             :disabled="loading"
           />
-          <p v-if="certAutoFilled" class="gate-autofill-hint">
-            <i class="ri-checkbox-circle-line"></i> Automatisch aus aktiver Session geladen
-          </p>
+          <p v-if="certAutoFilled" class="sys-field-ok">✓ Automatisch aus aktiver Session geladen</p>
         </div>
 
-        <button type="submit" class="sys-btn-filled gate-submit" :disabled="loading">
-          <span v-if="loading"><i class="ri-loader-4-line gate-spin"></i></span>
-          <span v-else>Eintreten</span>
-        </button>
+        <button
+          type="submit"
+          class="sys-btn-ed sys-btn-ed--primary"
+          style="width:100%;justify-content:center"
+          :disabled="loading"
+        >{{ loading ? 'Lädt…' : 'Eintreten' }}</button>
+
       </form>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -143,134 +147,81 @@ async function submit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--sys-bg);
-  padding: 1.5rem;
+  background: var(--sys-paper-3, #0d0b14);
+  padding: clamp(24px, 5vw, 48px) 24px;
 }
 
-.gate-card {
+.gate-col {
   width: 100%;
-  max-width: 400px;
-  background: var(--sys-bg-elevated);
-  border: 1px solid var(--sys-border);
-  border-radius: 1.25rem;
-  padding: 2.5rem 2rem;
+  max-width: 380px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0;
+  gap: 32px;
 }
 
 .gate-logo {
-  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
 }
 
 .gate-logo-img {
-  width: 88px;
-  height: 88px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
 }
 
-.gate-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--sys-fg);
-  margin: 0 0 0.25rem;
-  text-align: center;
-}
-
-.gate-subtitle {
-  font-size: 0.8125rem;
-  color: var(--sys-fg-muted);
-  margin: 0 0 2rem;
-  text-align: center;
-}
-
-.gate-form {
-  width: 100%;
+.gate-head {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 8px;
+  border-bottom: 1px solid var(--sys-rule);
+  padding-bottom: 24px;
 }
 
-.gate-error {
-  background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.4);
-  color: #f87171;
-  border-radius: 0.625rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-}
-
-.gate-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.gate-label {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--sys-fg-muted);
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.gate-label-hint {
-  font-size: 0.75rem;
-  font-weight: 400;
+.gate-kicker {
+  font-family: var(--sys-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
   color: var(--sys-fg-dim);
 }
 
-.gate-input {
-  background: var(--sys-bg-surface);
-  border: 1px solid var(--sys-border);
-  border-radius: 0.625rem;
-  padding: 0.75rem 1rem;
+.gate-display {
+  font-family: var(--sys-serif);
+  font-size: clamp(36px, 7vw, 52px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
   color: var(--sys-fg);
-  font-size: 0.9375rem;
-  font-family: inherit;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.15s;
-  min-height: 44px;
-  box-sizing: border-box;
-}
-
-.gate-input:focus {
-  border-color: var(--sys-orange);
-}
-
-.gate-input--mono {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.8125rem;
-  letter-spacing: 0.03em;
-}
-
-.gate-autofill-hint {
-  font-size: 0.75rem;
-  color: #4ade80;
   margin: 0;
+  line-height: 0.95;
+}
+
+.gate-display em {
+  font-style: italic;
+  color: var(--sys-accent-bright);
+}
+
+.gate-lede {
+  font-family: var(--sys-serif);
+  font-size: 15px;
+  color: var(--sys-fg-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.gate-form {
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.gate-submit {
-  width: 100%;
-  justify-content: center;
-  height: 48px;
-  font-size: 1rem;
-  margin-top: 0.5rem;
-}
-
-.gate-spin {
-  display: inline-block;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.gate-error {
+  font-family: var(--sys-mono);
+  font-size: 11px;
+  color: var(--sys-err);
+  border-left: 2px solid var(--sys-err);
+  padding-left: 10px;
+  line-height: 1.6;
+  margin: 0;
 }
 </style>
