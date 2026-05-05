@@ -71,7 +71,7 @@
               </div>
 
               <!-- Model -->
-              <div class="sys-field">
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">Modell</label>
                 <select v-model="model" class="sys-input" style="cursor:pointer">
                   <option value="">Server-Standard</option>
@@ -82,7 +82,7 @@
               </div>
 
               <!-- Anthropic Key -->
-              <div class="sys-field">
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">Anthropic API-Key</label>
                 <div style="display:flex;gap:0">
                   <input
@@ -90,6 +90,7 @@
                     :type="showKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none"
+                    :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'"
                     placeholder="sk-ant-..."
                     autocomplete="off"
                     spellcheck="false"
@@ -104,7 +105,7 @@
                     <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                <div style="display:flex;align-items:center;gap:8px">
                   <button
                     @click="testKey('anthropic', apiKey, !apiKey && !!keyPreview)"
                     :disabled="anthTest?.loading || (!apiKey && !keyPreview)"
@@ -116,14 +117,14 @@
                     {{ anthTest.message }}
                   </span>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
                   Leer lassen → Server-Key (Fallback).
                   <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">console.anthropic.com</a>
                 </p>
               </div>
 
               <!-- WaveSpeed Key -->
-              <div class="sys-field">
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
                   WaveSpeed API-Key
                   <span v-if="wavespeedKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ wavespeedPreview }}</span>
@@ -134,6 +135,7 @@
                     :type="showWavespeedKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none"
+                    :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'"
                     :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
                     autocomplete="off"
                     spellcheck="false"
@@ -149,7 +151,7 @@
                     <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                <div style="display:flex;align-items:center;gap:8px">
                   <button
                     @click="testKey('wavespeed', wavespeedKey, !wavespeedKey && wavespeedKeySet)"
                     :disabled="waveTest?.loading || (!wavespeedKey && !wavespeedKeySet)"
@@ -161,14 +163,14 @@
                     {{ waveTest.message }}
                   </span>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
                   Für KI-Bildgenerierung.
                   <a href="https://wavespeed.ai" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">wavespeed.ai</a>
                 </p>
               </div>
 
               <!-- ElevenLabs Key -->
-              <div class="sys-field" style="margin-bottom:0">
+              <div class="sys-field" style="gap:12px;margin-bottom:0">
                 <label class="sys-field-label">
                   ElevenLabs API-Key
                   <span v-if="elevenlabsKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ elevenlabsPreview }}</span>
@@ -179,6 +181,7 @@
                     :type="showElevenlabsKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none"
+                    :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'"
                     :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
                     autocomplete="off"
                     spellcheck="false"
@@ -194,7 +197,7 @@
                     <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                <div style="display:flex;align-items:center;gap:8px">
                   <button
                     @click="testKey('elevenlabs', elevenlabsKey, !elevenlabsKey && elevenlabsKeySet)"
                     :disabled="labsTest?.loading || (!elevenlabsKey && !elevenlabsKeySet)"
@@ -206,7 +209,7 @@
                     {{ labsTest.message }}
                   </span>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
                   Für Text-to-Speech.
                   <a href="https://elevenlabs.io" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">elevenlabs.io</a>
                 </p>
