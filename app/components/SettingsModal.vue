@@ -93,7 +93,19 @@
                     <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                  <button
+                    @click="testKey('anthropic', apiKey)"
+                    :disabled="anthTest?.loading || !apiKey"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >{{ anthTest?.loading ? 'Teste…' : 'Testen' }}</button>
+                  <span v-if="anthTest && !anthTest.loading" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="anthTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ anthTest.message }}
+                  </span>
+                </div>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
                   Leer lassen → Server-Key (Fallback).
                   <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">console.anthropic.com</a>
                 </p>
@@ -137,7 +149,19 @@
                     <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                  <button
+                    @click="testKey('wavespeed', wavespeedKey || wavespeedPreview)"
+                    :disabled="waveTest?.loading || (!wavespeedKey && !wavespeedKeySet)"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >{{ waveTest?.loading ? 'Teste…' : 'Testen' }}</button>
+                  <span v-if="waveTest && !waveTest.loading" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="waveTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ waveTest.message }}
+                  </span>
+                </div>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
                   Für KI-Bildgenerierung.
                   <a href="https://wavespeed.ai" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">wavespeed.ai</a>
                 </p>
@@ -170,7 +194,19 @@
                     <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                  <button
+                    @click="testKey('elevenlabs', elevenlabsKey || elevenlabsPreview)"
+                    :disabled="labsTest?.loading || (!elevenlabsKey && !elevenlabsKeySet)"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >{{ labsTest?.loading ? 'Teste…' : 'Testen' }}</button>
+                  <span v-if="labsTest && !labsTest.loading" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="labsTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ labsTest.message }}
+                  </span>
+                </div>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin-top:4px">
                   Für Text-to-Speech.
                   <a href="https://elevenlabs.io" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">elevenlabs.io</a>
                 </p>
@@ -366,16 +402,6 @@
               <!-- API-Key tab -->
               <template v-if="tab === 'api'">
                 <button
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  @click="testApiKey"
-                  :disabled="testing || !apiKey"
-                >
-                  <svg v-if="testing" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite">
-                    <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-                  </svg>
-                  {{ testing ? 'Teste…' : 'Key testen' }}
-                </button>
-                <button
                   class="sys-btn-ed sys-btn-ed--primary"
                   @click="saveConfig"
                   :disabled="saving"
@@ -438,8 +464,11 @@ const apiKey    = ref('')
 const model     = ref('')
 const showKey   = ref(false)
 const saving    = ref(false)
-const testing   = ref(false)
 const feedback  = ref(null)
+
+const anthTest  = ref(null)  // { loading, ok, message }
+const waveTest  = ref(null)
+const labsTest  = ref(null)
 const keySource  = ref('none')   // 'soul' | 'master' | 'env' | 'none'
 const keyPreview = ref('')
 
@@ -479,29 +508,29 @@ async function loadStatus() {
   } catch {}
 }
 
-async function testApiKey() {
-  if (!apiKey.value) return
-  testing.value = true
-  feedback.value = null
+async function testKey(type, key) {
+  if (!key) return
+  const stateRef = { anthropic: anthTest, wavespeed: waveTest, elevenlabs: labsTest }[type]
+  stateRef.value = { loading: true, ok: null, message: '' }
   try {
+    const body = type === 'anthropic' ? { anthropic_key: key }
+               : type === 'wavespeed'  ? { wavespeed_key: key }
+               :                         { elevenlabs_key: key }
     const res = await fetch('/api/test-key', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${soulToken.value}`,
-      },
-      body: JSON.stringify({ anthropic_key: apiKey.value })
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify(body)
     })
     const d = await res.json().catch(() => ({}))
-    feedback.value = d.ok
-      ? { ok: true,  message: 'Key gültig ✓' }
-      : { ok: false, message: `Fehler ${d.status || res.status} — Key ungültig oder kein Guthaben` }
+    const isFormatOk = d.error === 'format_ok_api_unreachable'
+    stateRef.value = { loading: false, ok: d.ok, message: d.ok
+      ? (isFormatOk ? 'Format OK (API nicht erreichbar)' : 'Key gültig ✓')
+      : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : ''}`
+    }
   } catch {
-    feedback.value = { ok: false, message: 'Netzwerkfehler beim Testen' }
-  } finally {
-    testing.value = false
-    setTimeout(() => { feedback.value = null }, 5000)
+    stateRef.value = { loading: false, ok: false, message: 'Netzwerkfehler' }
   }
+  setTimeout(() => { stateRef.value = null }, 6000)
 }
 
 async function saveConfig() {

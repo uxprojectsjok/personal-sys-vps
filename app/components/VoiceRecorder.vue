@@ -105,7 +105,7 @@
         v-if="!isPreview"
         @click="isRecording ? handleStop() : handleStart()"
         :disabled="!isRecording && !consentGiven"
-        class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         :class="isRecording
           ? 'border border-red-900/50 bg-[rgba(239,68,68,0.12)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]'
           : 'border border-white/20 bg-[rgba(255,255,255,0.08)] text-white/80 hover:bg-[rgba(255,255,255,0.14)]'"
