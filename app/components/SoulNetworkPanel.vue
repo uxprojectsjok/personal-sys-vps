@@ -230,7 +230,7 @@
           >
             + Soul verbinden
           </button>
-          <p v-if="error" class="text-xs text-red-400 mt-2">{{ error }}</p>
+          <p v-if="error" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-fg-dim);margin-top:8px">{{ error }}</p>
         </div>
 
       </div>
@@ -287,7 +287,7 @@
             <div class="rounded-none bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-4 py-3">
               <input
                 v-model="newDomain"
-                type="url"
+                type="text"
                 placeholder="Domain (z.B. https://soul.name.de) — leer lassen wenn selber VPS"
                 class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none"
                 autocomplete="off"
@@ -323,7 +323,7 @@
               class="rounded-none px-3 py-2 text-xs leading-relaxed"
               :class="testResult === 'ok'
                 ? 'bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.18)] text-white/80'
-                : 'bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.18)] text-red-400'"
+                : 'border border-[rgba(167,139,250,0.2)] text-[var(--sys-fg-dim)]'"
             >
               <span v-if="testResult === 'ok' && testMutual">✓ Soul gefunden · Verbindung gegenseitig</span>
               <span v-else-if="testResult === 'ok'">✓ Soul gefunden · warte auf Gegenseite</span>
@@ -339,7 +339,7 @@
                 :class="testResult === 'ok'
                   ? 'border-white/25 text-white/80 bg-[rgba(255,255,255,0.07)]'
                   : testResult
-                    ? 'border-[rgba(239,68,68,0.3)] text-red-400 bg-[rgba(239,68,68,0.06)]'
+                    ? 'border-[rgba(167,139,250,0.3)] text-[var(--sys-accent-bright)] bg-[rgba(167,139,250,0.06)]'
                     : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.04)]'"
                 :disabled="testLoading || !newSoulId.trim()"
                 @click="handleTest"
@@ -359,7 +359,7 @@
               </button>
             </div>
 
-            <p v-if="modalError" class="text-xs text-red-400">{{ modalError }}</p>
+            <p v-if="modalError" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);border-left:2px solid var(--sys-accent-bright);padding-left:10px;margin:0">{{ modalError }}</p>
           </div>
         </div>
       </div>

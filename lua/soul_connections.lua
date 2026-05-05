@@ -185,6 +185,7 @@ end
 -- Kein localhost/private IP (SSRF-Schutz)
 local function valid_domain(d)
   if type(d) ~= "string" or d == "" then return false end
+  if d:sub(-1) == "/" then d = d:sub(1, -2) end   -- trailing slash tolerant
   if d:sub(1, 8) ~= "https://" then return false end
   local host = d:sub(9):match("^([^/]+)") or ""
   if not host:match("^[a-zA-Z0-9][a-zA-Z0-9%.%-]+(:[0-9]+)?$") then return false end
