@@ -540,13 +540,18 @@ async function testKey(type, key, useStored = false) {
       ok  = res.status === 200
       msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : res.status === 429 ? ' · Rate-Limit' : ''}`
     } else if (type === 'elevenlabs') {
-      // sk_-Keys (neue Format) nutzen Authorization: Bearer; ältere Hex-Keys xi-api-key
-      const headers = key.startsWith('sk_')
-        ? { 'Authorization': `Bearer ${key}` }
-        : { 'xi-api-key': key }
-      const res = await fetch('https://api.elevenlabs.io/v1/user', { headers })
-      ok  = res.status === 200
-      msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
+      // ElevenLabs blockiert CORS → immer über Server testen
+      const body = key
+        ? { elevenlabs_key: key }
+        : { key_type: 'elevenlabs', use_stored: true }
+      const res = await fetch('/api/test-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+        body: JSON.stringify(body)
+      })
+      const d = await res.json().catch(() => ({}))
+      ok  = d.ok === true
+      msg = ok ? 'Key gültig ✓' : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : res.status === 401 ? ' · Ungültiger Key' : ''}`
     } else if (type === 'wavespeed') {
       ok  = /^[0-9a-f]{32,}$/i.test(key)
       msg = ok ? 'Format OK (Hex-Key erkannt)' : 'Ungültiges Format — Hex erwartet'
