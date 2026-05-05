@@ -23,7 +23,7 @@
 
     <!-- Track-Name -->
     <div class="flex-1 min-w-0">
-      <p class="text-xs text-[var(--sys-fg-muted)] truncate">
+      <p class="text-xs text-[var(--sys-fg)] truncate">
         {{ currentTrack || "Kein Track geladen" }}
       </p>
       <!-- Progress Bar -->

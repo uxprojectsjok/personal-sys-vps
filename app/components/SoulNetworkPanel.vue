@@ -53,7 +53,7 @@
 
         <!-- Eigene Soul-ID -->
         <div class="px-5 pt-4 pb-3">
-          <p class="text-xs font-medium text-[var(--sys-fg-dim)] mb-2">Deine Soul-ID</p>
+          <p class="text-xs font-medium text-[var(--sys-fg-muted)] mb-2">Deine Soul-ID</p>
           <div class="flex items-center gap-2 rounded-none bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-3 py-2.5">
             <p class="flex-1 text-xs font-mono text-[var(--sys-fg-muted)] truncate select-all">{{ ownSoulId || '—' }}</p>
             <button
@@ -76,7 +76,7 @@
 
         <!-- Peer-Removed-Notifications -->
         <div v-if="removedByPeer.length" class="px-5 pb-3 space-y-2">
-          <p class="text-xs font-medium text-[var(--sys-fg-dim)] pt-3 pb-1">Getrennte Verbindungen</p>
+          <p class="text-xs font-medium text-[var(--sys-fg-muted)] pt-3 pb-1">Getrennte Verbindungen</p>
           <div
             v-for="n in removedByPeer"
             :key="n.soul_id"
@@ -89,8 +89,8 @@
                 </svg>
                 <p class="text-xs text-red-400 font-medium">{{ n.alias }} hat getrennt</p>
               </div>
-              <p class="text-xs font-mono text-[var(--sys-fg-dim)] mt-0.5 truncate">{{ n.soul_id }}</p>
-              <p v-if="n.removed_at" class="text-xs text-[var(--sys-fg-dim)] mt-0.5">
+              <p class="text-xs font-mono text-[var(--sys-fg-muted)] mt-0.5 truncate">{{ n.soul_id }}</p>
+              <p v-if="n.removed_at" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
                 {{ new Date(n.removed_at * 1000).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) }}
               </p>
             </div>
@@ -114,8 +114,8 @@
             <div class="flex items-start justify-between gap-3">
               <div class="flex-1 min-w-0">
                 <p class="text-xs text-[var(--sys-fg)] font-medium truncate">{{ req.alias || req.soul_id.substring(0, 16) }}</p>
-                <p class="text-xs font-mono text-[var(--sys-fg-dim)] mt-0.5 truncate">{{ req.soul_id }}</p>
-                <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5 truncate opacity-70">{{ req.domain }}</p>
+                <p class="text-xs font-mono text-[var(--sys-fg-muted)] mt-0.5 truncate">{{ req.soul_id }}</p>
+                <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5 truncate opacity-70">{{ req.domain }}</p>
                 <div class="flex flex-wrap gap-1 mt-1">
                   <span
                     v-for="p in req.permissions"
@@ -196,9 +196,9 @@
                   {{ conn.available ? 'offen' : 'gesichert' }}
                 </span>
               </div>
-              <p class="text-xs font-mono text-[var(--sys-fg-dim)] mt-0.5 truncate">{{ conn.soul_id }}</p>
-              <p v-if="conn.domain" class="text-xs text-[var(--sys-fg-dim)] mt-0.5 truncate opacity-60">{{ conn.domain }}</p>
-              <p v-if="conn.encrypted && !conn.available" class="text-xs text-[var(--sys-fg-dim)] opacity-60 mt-0.5 leading-relaxed">
+              <p class="text-xs font-mono text-[var(--sys-fg-muted)] mt-0.5 truncate">{{ conn.soul_id }}</p>
+              <p v-if="conn.domain" class="text-xs text-[var(--sys-fg-muted)] mt-0.5 truncate opacity-70">{{ conn.domain }}</p>
+              <p v-if="conn.encrypted && !conn.available" class="text-xs text-[var(--sys-fg-muted)] opacity-70 mt-0.5 leading-relaxed">
                 Vault verschlüsselt · verfügbar wenn Owner entsperrt
               </p>
               <div class="flex flex-wrap gap-1 mt-1">
@@ -219,7 +219,7 @@
         </div>
 
         <div v-else-if="!loading" class="px-5 py-4">
-          <p class="text-xs text-[var(--sys-fg-dim)]">Noch keine verbundenen Souls.</p>
+          <p class="text-xs text-[var(--sys-fg-muted)]">Noch keine verbundenen Souls.</p>
         </div>
 
         <!-- Neue Verbindung Button -->
@@ -257,7 +257,7 @@
           <div class="px-5 pt-4 pb-2 flex items-start justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-[var(--sys-fg)]">Soul verbinden</p>
-              <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5">Peer-to-Peer · beide Seiten müssen verbinden</p>
+              <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">Peer-to-Peer · beide Seiten müssen verbinden</p>
             </div>
             <button
               class="w-8 h-8 flex items-center justify-center rounded-none text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-none"
@@ -277,7 +277,7 @@
                 v-model="newSoulId"
                 type="text"
                 placeholder="Soul-ID der anderen Person"
-                class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none"
+                class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-muted)] focus:outline-none"
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -289,7 +289,7 @@
                 v-model="newDomain"
                 type="text"
                 placeholder="Domain (z.B. https://soul.name.de) — leer lassen wenn selber VPS"
-                class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none"
+                class="w-full bg-transparent text-xs font-mono text-[var(--sys-fg)] placeholder-[var(--sys-fg-muted)] focus:outline-none"
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -300,7 +300,7 @@
               v-model="newAlias"
               type="text"
               placeholder="Name / Alias (z.B. Maria)"
-              class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-4 py-3 text-sm text-[var(--sys-fg)] placeholder-[var(--sys-fg-dim)] focus:outline-none focus:border-[rgba(255,255,255,0.30)] transition-colors"
+              class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-4 py-3 text-sm text-[var(--sys-fg)] placeholder-[var(--sys-fg-muted)] focus:outline-none focus:border-[rgba(255,255,255,0.30)] transition-colors"
             />
 
             <!-- Permissions -->
@@ -497,7 +497,7 @@ async function copyId(id) {
   font-family: 'Noto Serif', Georgia, serif;
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(236,231,245,0.55);
+  color: var(--sys-fg-muted);
   margin: 0;
 }
 .slide-up-enter-active, .slide-up-leave-active { transition: opacity 0.2s, transform 0.2s; }

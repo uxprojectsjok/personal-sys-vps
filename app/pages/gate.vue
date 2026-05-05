@@ -183,7 +183,7 @@ async function submit() {
   font-size: 10px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
 }
 
 .gate-display {
@@ -204,7 +204,7 @@ async function submit() {
 .gate-lede {
   font-family: var(--sys-serif);
   font-size: 15px;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
   margin: 0;
   line-height: 1.5;
 }

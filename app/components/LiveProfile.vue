@@ -263,7 +263,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
   font-size: 10px;
   letter-spacing: 0.1em;
   line-height: 1.65;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
 }
 
 .lp-dsgvo {
@@ -271,8 +271,8 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sys-fg-dim);
-  opacity: 0.6;
+  color: var(--sys-fg-muted);
+  opacity: 0.7;
   line-height: 1.6;
   margin: 0;
 }

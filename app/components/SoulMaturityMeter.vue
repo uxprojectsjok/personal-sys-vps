@@ -98,12 +98,12 @@ const props = defineProps({
 const open = ref(false);
 
 const pillars = [
-  { key: "herkunft",  label: "Herkunft",  max: 25, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#f59e0b", valueColor: "text-[var(--sys-fg-dim)]" },
-  { key: "tiefe",     label: "Tiefe",     max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#60a5fa", valueColor: "text-[var(--sys-fg-dim)]" },
-  { key: "biometrie", label: "Biometrie", max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#c084fc", valueColor: "text-[var(--sys-fg-dim)]" },
-  { key: "archiv",    label: "Archiv",    max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#34d399", valueColor: "text-[var(--sys-fg-dim)]" },
-  { key: "signatur",  label: "Skills",    max: 15, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#fb923c", valueColor: "text-[var(--sys-fg-dim)]" },
-  { key: "netzwerk",  label: "Net Skill", max: 10, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#22d3ee", valueColor: "text-[var(--sys-fg-dim)]" },
+  { key: "herkunft",  label: "Herkunft",  max: 25, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#f59e0b", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "tiefe",     label: "Tiefe",     max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#60a5fa", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "biometrie", label: "Biometrie", max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#c084fc", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "archiv",    label: "Archiv",    max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#34d399", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "signatur",  label: "Skills",    max: 15, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#fb923c", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "netzwerk",  label: "Net Skill", max: 10, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#22d3ee", valueColor: "text-[var(--sys-fg-muted)]" },
 ];
 
 const levelColor = computed(() => {
@@ -182,7 +182,7 @@ const levelColor = computed(() => {
 .soul-meter-hint {
   font-family: var(--sys-mono);
   font-size: 11px;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
 }
 
 .soul-meter-breakdown {
@@ -237,13 +237,13 @@ const levelColor = computed(() => {
 .soul-meter-skills-suffix {
   font-family: var(--sys-mono);
   font-size: 10px;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
   margin-left: 4px;
 }
 .soul-meter-skills-empty {
   font-family: var(--sys-serif);
   font-size: 13px;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
   line-height: 1.5;
 }
 </style>

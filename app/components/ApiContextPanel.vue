@@ -268,7 +268,7 @@ async function onSave() {
 .api-panel-perm-hint {
   font-family: var(--sys-mono);
   font-size: 10px;
-  color: var(--sys-fg-dim);
+  color: var(--sys-fg-muted);
   letter-spacing: 0.06em;
 }
 

@@ -22,14 +22,14 @@
           <!-- Meta bar (rail slot) -->
           <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--sys-rule);background:var(--sys-paper-3)">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px;border-right:1px solid var(--sys-rule)">
-              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-dim)">L</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim)">Dieses Gerät</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Dieses Gerät</span>
               <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ localLastSession || '—' }}</span>
               <span v-if="newerSide === 'local'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px">
-              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-dim)">S</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim)">Server</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Server</span>
               <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ serverLastSession || '—' }}</span>
               <span v-if="newerSide === 'server'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
             </div>
@@ -65,20 +65,20 @@
               <div v-if="openSections[s.name]" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="sys-card-ed" style="margin-bottom:0">
                   <div class="sys-card-head">
-                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-dim)">L – Dieses Gerät</span>
+                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L – Dieses Gerät</span>
                   </div>
                   <div class="sys-card-body">
                     <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.localSnippet }}</p>
-                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);opacity:.5;margin:6px 0 0">+{{ s.localLen - 200 }} Zeichen</p>
+                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.localLen - 200 }} Zeichen</p>
                   </div>
                 </div>
                 <div class="sys-card-ed" style="margin-bottom:0">
                   <div class="sys-card-head">
-                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-dim)">S – Server</span>
+                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S – Server</span>
                   </div>
                   <div class="sys-card-body">
                     <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.serverSnippet }}</p>
-                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim);opacity:.5;margin:6px 0 0">+{{ s.serverLen - 200 }} Zeichen</p>
+                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.serverLen - 200 }} Zeichen</p>
                   </div>
                 </div>
               </div>

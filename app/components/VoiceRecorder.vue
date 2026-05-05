@@ -80,7 +80,7 @@
         v-model="consentGiven"
         class="mt-0.5 flex-none w-3.5 h-3.5 cursor-pointer accent-[#22c55e]"
       />
-      <span class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">
+      <span class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
         Ich stimme zu, dass diese Aufnahme zur Erstellung eines KI-Stimmklons verarbeitet werden darf
         (EU AI Act Art. 50, Art. 9 DSGVO). Die Verarbeitung erfolgt ausschließlich durch mich selbst.
       </span>
@@ -89,7 +89,7 @@
     <!-- Idle-Hinweis -->
     <p
       v-if="!isRecording && !isPreview"
-      class="text-center text-xs text-[var(--sys-fg-dim)]/50 tracking-[0.06em]"
+      class="text-center text-xs text-[var(--sys-fg-muted)]/70 tracking-[0.06em]"
     >
       Mindestens 30 Sek. frei sprechen für optimale Qualität
     </p>

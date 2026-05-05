@@ -115,7 +115,7 @@
                 <p class="text-xs font-semibold text-white/75">
                   {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}
                 </p>
-                <p class="text-xs text-white/40 truncate">
+                <p class="text-xs text-white/55 truncate">
                   {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : 'Lokaler Ordner') : 'Vault über Lokal oder Cloud verbinden' }}
                 </p>
               </div>
@@ -155,7 +155,7 @@
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-medium" style="color:var(--sys-fg-muted)">{{ deleteLoading ? 'Wird gelöscht…' : 'Cloud-Vault löschen' }}</p>
-                <p class="text-xs mt-0.5" style="color:var(--sys-fg-dim)">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
+                <p class="text-xs mt-0.5" style="color:var(--sys-fg-muted)">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
               </div>
             </button>
 

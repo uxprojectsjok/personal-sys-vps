@@ -63,7 +63,7 @@
                 </div>
                 <div class="text-center">
                   <p class="text-sm font-semibold text-[var(--sys-fg)]">{{ bundleFile.name }}</p>
-                  <p v-if="bundle" class="text-xs text-[var(--sys-fg-dim)] mt-0.5">
+                  <p v-if="bundle" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
                     {{ bundle.files?.length }} Datei(en) · {{ bundle.created }}
                   </p>
                 </div>
@@ -79,7 +79,7 @@
                 </div>
                 <div class="text-center">
                   <p class="text-sm text-[var(--sys-fg-muted)]">Datei hier ablegen</p>
-                  <p class="text-xs text-[var(--sys-fg-dim)] mt-0.5">oder klicken zum Auswählen</p>
+                  <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">oder klicken zum Auswählen</p>
                 </div>
               </template>
               <input ref="fileInputEl" type="file" accept=".soul,application/json" class="hidden" @change="handleFileSelect" />
@@ -201,7 +201,7 @@
               <!-- Lokaler Vault verbinden -->
               <div class="rounded-xl border border-[var(--sys-border)] bg-[var(--sys-bg)] px-4 py-3">
                 <p class="text-xs font-semibold text-[var(--sys-fg)] mb-0.5">Lokaler Vault</p>
-                <p class="text-xs text-[var(--sys-fg-dim)] leading-relaxed mb-3">
+                <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-3">
                   Wähle einen lokalen Ordner um{{ otherFiles.length ? ` ${otherFiles.length} Vault-Datei(en) zu speichern und` : '' }} das Dashboard zu verknüpfen.
                 </p>
 

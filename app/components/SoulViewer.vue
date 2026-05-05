@@ -49,7 +49,7 @@
           <button @click="dismissSync()" class="text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors text-xs px-1" aria-label="Schließen">✕</button>
         </div>
 
-        <p class="text-[10px] text-[var(--sys-fg-dim)] mb-2">
+        <p class="text-[10px] text-[var(--sys-fg-muted)] mb-2">
           {{ changedSections.length }} Abschnitt{{ changedSections.length !== 1 ? 'e' : '' }} unterschiedlich ·
           <span class="font-mono">L {{ localLastSession || '—' }}</span>
           <span class="opacity-40 mx-1">/</span>
@@ -64,16 +64,16 @@
           >
             <div class="flex items-center justify-between">
               <span class="text-[10px] font-medium text-[var(--sys-fg-muted)]">{{ s.name }}</span>
-              <span class="text-[10px] font-mono text-[var(--sys-fg-dim)]">L {{ s.localLen }} / S {{ s.serverLen }}</span>
+              <span class="text-[10px] font-mono text-[var(--sys-fg-muted)]">L {{ s.localLen }} / S {{ s.serverLen }}</span>
             </div>
             <Transition name="expand">
               <div v-if="openSyncSections[s.name]" class="mt-2 grid grid-cols-2 gap-1.5">
                 <div class="rounded bg-white/[0.03] px-2 py-1.5 border border-[var(--sys-border)]">
-                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-dim)] mb-0.5">Lokal</p>
+                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-muted)] mb-0.5">Lokal</p>
                   <p class="text-[10px] text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.localSnippet || '(leer)' }}</p>
                 </div>
                 <div class="rounded bg-white/[0.03] px-2 py-1.5 border border-[var(--sys-border)]">
-                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-dim)] mb-0.5">Server</p>
+                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-muted)] mb-0.5">Server</p>
                   <p class="text-[10px] text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.serverSnippet || '(leer)' }}</p>
                 </div>
               </div>
@@ -131,7 +131,7 @@
                 :class="openedSections[section.key] ? 'text-[var(--sys-fg)]' : 'text-[var(--sys-fg-muted)]'">
                 {{ section.label }}
               </span>
-              <span v-if="!getContent(section.key)" class="text-[10px] text-[var(--sys-fg-dim)] opacity-50 flex-none">leer</span>
+              <span v-if="!getContent(section.key)" class="text-[10px] text-[var(--sys-fg-muted)] opacity-60 flex-none">leer</span>
             </div>
             <svg class="w-3 h-3 text-[var(--sys-fg-dim)] flex-none transition-transform duration-200"
               :class="openedSections[section.key] ? 'rotate-180' : ''"
@@ -150,7 +150,7 @@
                   class="text-xs text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">
                   {{ getContent(section.key) }}
                 </p>
-                <p v-else class="text-xs text-[var(--sys-fg-dim)] italic opacity-50">Noch nichts eingetragen.</p>
+                <p v-else class="text-xs text-[var(--sys-fg-muted)] italic opacity-60">Noch nichts eingetragen.</p>
                 <div class="flex justify-end mt-2">
                   <button @click.stop="startEdit(section.key)"
                     class="inline-flex items-center gap-1 text-[10px] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-white/[0.06] transition-colors px-2 py-1 rounded min-h-[32px]">
@@ -165,7 +165,7 @@
                 <textarea
                   ref="editTextareaRef"
                   v-model="editText"
-                  class="w-full min-h-[100px] bg-white/[0.04] border border-[var(--sys-border)] rounded-lg px-2.5 py-2 text-xs text-[var(--sys-fg)] leading-relaxed resize-y focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-dim)] transition-colors"
+                  class="w-full min-h-[100px] bg-white/[0.04] border border-[var(--sys-border)] rounded-lg px-2.5 py-2 text-xs text-[var(--sys-fg)] leading-relaxed resize-y focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-muted)] transition-colors"
                   :placeholder="section.label + ' …'"
                   @keydown.ctrl.enter="saveEdit(section.key)"
                   @keydown.meta.enter="saveEdit(section.key)"
@@ -231,7 +231,7 @@
 
         <!-- Kalender -->
         <div>
-          <p class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-dim)] mb-2 px-0.5">Kalender</p>
+          <p class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-muted)] mb-2 px-0.5">Kalender</p>
           <SoulCalendar />
         </div>
 
