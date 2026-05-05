@@ -25,6 +25,43 @@ end
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
+-- ── use_stored: Key aus config.json laden ─────────────────────────────────────
+if body.use_stored == true then
+  local key_type = body.key_type
+  local soul_id  = ngx.ctx and ngx.ctx.soul_id or ""
+  if soul_id == "" then
+    ngx.status = 401
+    ngx.say('{"ok":false,"error":"unauthorized"}')
+    return
+  end
+  local config_path = "/var/lib/sys/souls/" .. soul_id .. "/config.json"
+  local f = io.open(config_path, "r")
+  if not f then
+    ngx.status = 200
+    ngx.say('{"ok":false,"error":"no_stored_key"}')
+    return
+  end
+  local raw = f:read("*a"); f:close()
+  local ok_j, cfg_data = pcall(cjson.decode, raw or "")
+  if not ok_j or type(cfg_data) ~= "table" then
+    ngx.status = 200
+    ngx.say('{"ok":false,"error":"config_parse_error"}')
+    return
+  end
+  if key_type == "anthropic" then
+    body.anthropic_key = cfg_data.anthropic_key
+  elseif key_type == "elevenlabs" then
+    body.elevenlabs_key = cfg_data.elevenlabs_key
+  elseif key_type == "wavespeed" then
+    body.wavespeed_key = cfg_data.wavespeed_key
+  end
+  if not body.anthropic_key and not body.elevenlabs_key and not body.wavespeed_key then
+    ngx.status = 200
+    ngx.say('{"ok":false,"error":"no_stored_key"}')
+    return
+  end
+end
+
 local httpc = http.new()
 httpc:set_timeout(12000)
 
