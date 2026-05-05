@@ -71,3 +71,9 @@ end
 
 ngx.ctx.soul_id = soul_id
 ngx.req.clear_header("Authorization")
+
+-- Anthropic key für Proxy-Locations (chat, soul-update) — pcall ist sicher,
+-- weil ngx.var.anthropic_key nur existiert wo "set $anthropic_key" deklariert ist.
+pcall(function()
+  ngx.var.anthropic_key = cfg.get_anthropic_key(soul_id)
+end)
