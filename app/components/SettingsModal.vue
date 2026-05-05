@@ -512,24 +512,46 @@ async function testKey(type, key) {
   if (!key) return
   const stateRef = { anthropic: anthTest, wavespeed: waveTest, elevenlabs: labsTest }[type]
   stateRef.value = { loading: true, ok: null, message: '' }
+  let ok = false
+  let msg = ''
   try {
-    const body = type === 'anthropic' ? { anthropic_key: key }
-               : type === 'wavespeed'  ? { wavespeed_key: key }
-               :                         { elevenlabs_key: key }
-    const res = await fetch('/api/test-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify(body)
-    })
-    const d = await res.json().catch(() => ({}))
-    const isFormatOk = d.error === 'format_ok_api_unreachable'
-    stateRef.value = { loading: false, ok: d.ok, message: d.ok
-      ? (isFormatOk ? 'Format OK (API nicht erreichbar)' : 'Key gültig ✓')
-      : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : ''}`
+    if (type === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'test' }] })
+      })
+      ok  = res.status === 200
+      msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : res.status === 429 ? ' · Rate-Limit' : ''}`
+    } else if (type === 'elevenlabs') {
+      const res = await fetch('https://api.elevenlabs.io/v1/user', {
+        headers: { 'xi-api-key': key }
+      })
+      ok  = res.status === 200
+      msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
+    } else if (type === 'wavespeed') {
+      try {
+        const res = await fetch('https://api.wavespeed.ai/api/v3/me', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        })
+        ok  = res.status === 200
+        msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
+      } catch {
+        // CORS blockiert — nur Format prüfen
+        ok  = key.length >= 24
+        msg = ok ? 'Format OK' : 'Key zu kurz'
+      }
     }
-  } catch {
-    stateRef.value = { loading: false, ok: false, message: 'Netzwerkfehler' }
+  } catch (e) {
+    ok  = false
+    msg = `Verbindungsfehler: ${e.message}`
   }
+  stateRef.value = { loading: false, ok, message: msg }
   setTimeout(() => { stateRef.value = null }, 6000)
 }
 
