@@ -33,9 +33,6 @@
                   </svg>
                 </button>
               </div>
-              <p style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-orange);border-left:2px solid var(--sys-orange);padding-left:10px;margin:0">
-                Notiere diesen Hash — er ist dein einziger Identifikator. Kein Name wird gespeichert.
-              </p>
             </div>
 
             <div class="sys-field" style="margin-bottom:0">

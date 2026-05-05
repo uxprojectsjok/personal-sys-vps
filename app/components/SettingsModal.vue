@@ -540,9 +540,11 @@ async function testKey(type, key, useStored = false) {
       ok  = res.status === 200
       msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : res.status === 429 ? ' · Rate-Limit' : ''}`
     } else if (type === 'elevenlabs') {
-      const res = await fetch('https://api.elevenlabs.io/v1/user', {
-        headers: { 'xi-api-key': key }
-      })
+      // sk_-Keys (neue Format) nutzen Authorization: Bearer; ältere Hex-Keys xi-api-key
+      const headers = key.startsWith('sk_')
+        ? { 'Authorization': `Bearer ${key}` }
+        : { 'xi-api-key': key }
+      const res = await fetch('https://api.elevenlabs.io/v1/user', { headers })
       ok  = res.status === 200
       msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : ''}`
     } else if (type === 'wavespeed') {
