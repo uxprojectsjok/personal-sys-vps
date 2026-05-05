@@ -4,7 +4,6 @@
 -- Auth: vault_auth.lua (soul_cert)
 
 local cjson   = require("cjson.safe")
-local http    = require("resty.http")
 local soul_id = ngx.ctx.soul_id
 
 if not soul_id then
@@ -100,55 +99,14 @@ for k, v in pairs(DEFAULTS) do
   if amort[k] == nil then amort[k] = v end
 end
 
--- Aktivieren: Verifikation prüfen
+-- Aktivieren
 if incoming.enabled == true and amort.enabled ~= true then
-  -- 1. Erst im shared-dict Cache nachschauen
-  local cache    = ngx.shared.verify_cache
-  local cached   = cache and cache:get("v1:" .. soul_id)
-  local verified = false
-  local wallet   = nil
-
-  if cached then
-    local ok_c, cd = pcall(cjson.decode, cached)
-    if ok_c and type(cd) == "table" then
-      verified = cd.verified == true
-      wallet   = cd.wallet
-    end
-  else
-    -- Cache kalt: live Abfrage via internem Endpoint
-    local httpc = http.new()
-    httpc:set_timeout(12000)
-    local res, err = httpc:request_uri(
-      "http://127.0.0.1:3098/internal/verify/" .. soul_id,
-      { method = "GET", headers = { ["Accept"] = "application/json" } }
-    )
-    if res and res.status == 200 then
-      local ok_v, vd = pcall(cjson.decode, res.body)
-      if ok_v and type(vd) == "table" then
-        verified = vd.verified == true
-        wallet   = vd.wallet
-        -- Im Cache speichern
-        if cache then
-          local ttl = verified and 86400 or 300
-          vd.cached_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
-          cache:set("v1:" .. soul_id, cjson.encode(vd), ttl)
-        end
-      end
-    end
+  amort.enabled      = true
+  amort.activated_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  -- Wallet aus Anfrage übernehmen wenn vorhanden
+  if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$") then
+    amort.verified_wallet = incoming.wallet
   end
-
-  if not verified then
-    ngx.status = 403
-    ngx.say(cjson.encode({
-      error   = "verification_required",
-      message = "Amortisation nur für Polygon-verifizierte Souls aktivierbar. Bitte erst auf der Blockchain verankern.",
-    }))
-    return
-  end
-
-  amort.enabled         = true
-  amort.activated_at    = os.date("!%Y-%m-%dT%H:%M:%SZ")
-  amort.verified_wallet = wallet
 end
 
 if incoming.enabled == false then

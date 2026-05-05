@@ -215,7 +215,14 @@ onMounted(async () => {
   addMessage('assistant', 'Hallo, was wollen wir heute tun?')
 
   fetchFromServer(true).then(() => {
-    if (syncStatus.value === 'differs' && serverContent.value) acceptServerVersion()
+    // Nur auto-akzeptieren wenn der Server NEUER ist (last_session-Datum vergleichen).
+    // Ist der Server älter oder gleich, bleibt der 'differs'-Banner sichtbar damit
+    // der Nutzer selbst entscheiden kann — verhindert den Verlust lokaler Änderungen.
+    if (syncStatus.value === 'differs' && serverContent.value) {
+      const localDate  = soulContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? '';
+      const serverDate = serverContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? '';
+      if (serverDate > localDate) acceptServerVersion();
+    }
   }).catch(() => {})
   requestCameraPermissions().catch(() => {})
 
