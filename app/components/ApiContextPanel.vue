@@ -42,7 +42,7 @@
           <div class="sys-field" style="margin-bottom:0">
             <span class="sys-field-label">Freigaben</span>
             <p class="api-panel-prose">Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.</p>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
               <label
                 v-for="(perm, key) in permLabels"
                 :key="key"
@@ -247,27 +247,27 @@ async function onSave() {
 
 .api-panel-prose {
   font-family: var(--sys-serif);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.7;
   color: var(--sys-fg-muted);
-  margin: 4px 0 0;
+  margin: 6px 0 0;
 }
 
 .api-panel-perm {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
 }
 .api-panel-perm-label {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sys-fg-muted);
   flex: 1;
 }
 .api-panel-perm-hint {
   font-family: var(--sys-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--sys-fg-muted);
   letter-spacing: 0.06em;
 }
