@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "SaveYourSoul",
   "short_name": "SYS",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Soul als Identitätsmotor – Chat, Voice & Soul-Login im Browser",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [
-    "https://YOUR_DOMAIN/*",
-    "https://claude.ai/*"
+    "https://*/*",
+    "http://localhost/*"
   ],
   "background": {
     "service_worker": "background.js"

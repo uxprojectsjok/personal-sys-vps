@@ -81,8 +81,13 @@
       </div>
 
       <div class="settings-section">
-        <label class="settings-label">Endpoint</label>
-        <div class="mono-text">sys.uxprojects-jok.com</div>
+        <label class="settings-label">Server-URL</label>
+        <p class="settings-hint">URL deines SYS-Nodes (z.B. https://soul.deinname.de)</p>
+        <input type="url" id="sys-url-input" class="url-input" placeholder="https://soul.deinname.de">
+        <div class="btn-row" style="margin-top:8px">
+          <button id="sys-url-save" class="btn-primary">URL speichern</button>
+        </div>
+        <div id="sys-url-status" class="connect-status"></div>
       </div>
 
     </div>

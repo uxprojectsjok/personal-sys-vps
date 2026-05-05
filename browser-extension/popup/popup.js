@@ -1,8 +1,7 @@
 // popup.js – SaveYourSoul Companion Extension
 'use strict'
 
-const API_BASE = 'https://YOUR_DOMAIN'
-
+let API_BASE    = ''   // set from chrome.storage.local.sys_url
 let soulCert    = null
 let soulContent = null
 let pageInfo    = null
@@ -17,9 +16,14 @@ if (isDetached) document.documentElement.classList.add('detached')
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const data = await chrome.storage.local.get(['soul_cert', 'soul_cache', 'el_agent_url'])
+  const data = await chrome.storage.local.get(['soul_cert', 'soul_cache', 'el_agent_url', 'sys_url'])
+  API_BASE    = data.sys_url    ? data.sys_url.replace(/\/$/, '') : ''
   soulCert    = data.soul_cert  || null
   soulContent = data.soul_cache || null
+
+  // Konfigurierte URL in Einstellungen anzeigen
+  const urlInput = document.getElementById('sys-url-input')
+  if (urlInput && API_BASE) urlInput.value = API_BASE
 
   if (soulCert && soulContent) {
     const nameMatch = soulContent.match(/soul_name:\s*(.+)/)
@@ -43,6 +47,10 @@ async function init() {
 // ── Soul ──────────────────────────────────────────────────────────────────────
 
 async function loadSoul() {
+  if (!API_BASE) {
+    setStatus('disconnected', 'Nicht konfiguriert', 'Server-URL in ⚙️ eintragen')
+    return
+  }
   if (!soulContent) setStatus('loading', 'Verbinde…', 'Soul wird geladen…')
   try {
     const r = await fetch(`${API_BASE}/api/soul`, {
@@ -113,6 +121,12 @@ async function sendMessage() {
   const loadingEl = appendMsg('loading', '…')
   isStreaming = true
   document.getElementById('send-btn').disabled = true
+
+  if (!API_BASE) {
+    loadingEl.remove()
+    appendMsg('assistant', 'Server-URL nicht konfiguriert — bitte in ⚙️ eintragen.')
+    return
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/chat`, {
@@ -304,19 +318,21 @@ function renderFileChips() {
 
 async function connectFromSysTab() {
   const statusEl = document.getElementById('connect-status')
-  statusEl.textContent = 'Suche SYS-Tab…'
 
-  let tabs = await chrome.tabs.query({ url: 'https://YOUR_DOMAIN/*' })
-
-  // Fallback: alle Tabs manuell filtern (Chrome-Permission-Edge-Case)
-  if (!tabs.length) {
-    const allTabs = await chrome.tabs.query({})
-    tabs = allTabs.filter(t => t.url && t.url.startsWith('https://YOUR_DOMAIN'))
+  if (!API_BASE) {
+    statusEl.textContent = '⚠ Server-URL nicht konfiguriert — bitte oben eintragen'
+    return
   }
 
+  statusEl.textContent = 'Suche SYS-Tab…'
+
+  const sysOrigin = new URL(API_BASE).origin
+  const allTabs   = await chrome.tabs.query({})
+  let tabs = allTabs.filter(t => t.url && t.url.startsWith(sysOrigin))
+
   if (!tabs.length) {
-    statusEl.textContent = '⚠ SYS-Tab nicht gefunden – bitte YOUR_DOMAIN öffnen'
-    chrome.tabs.create({ url: 'https://YOUR_DOMAIN/session' })
+    statusEl.textContent = `⚠ SYS-Tab nicht gefunden – ${API_BASE} öffnen`
+    chrome.tabs.create({ url: `${API_BASE}/session` })
     return
   }
 
@@ -352,8 +368,8 @@ async function connectFromSysTab() {
   }
 
   if (!found) {
-    statusEl.textContent = '⚠ Keine Soul-Session gefunden – bitte auf YOUR_DOMAIN/session einloggen'
-    chrome.tabs.create({ url: 'https://YOUR_DOMAIN/session' })
+    statusEl.textContent = `⚠ Keine Soul-Session gefunden – bitte auf ${API_BASE}/session einloggen`
+    chrome.tabs.create({ url: `${API_BASE}/session` })
     return
   }
 
@@ -389,6 +405,17 @@ function setupListeners() {
   document.getElementById('soul-login-btn').addEventListener('click', triggerSoulLogin)
   document.getElementById('connect-btn').addEventListener('click', connectFromSysTab)
   document.getElementById('disconnect-btn').addEventListener('click', disconnect)
+  document.getElementById('sys-url-save').addEventListener('click', async () => {
+    const input = document.getElementById('sys-url-input')
+    const statusEl = document.getElementById('sys-url-status')
+    const raw = input.value.trim().replace(/\/$/, '')
+    if (!raw) { statusEl.textContent = '⚠ URL eintragen'; return }
+    try { new URL(raw) } catch { statusEl.textContent = '⚠ Ungültige URL'; return }
+    await chrome.storage.local.set({ sys_url: raw })
+    API_BASE = raw
+    statusEl.textContent = '✓ Gespeichert'
+    setTimeout(() => { statusEl.textContent = '' }, 2000)
+  })
   document.getElementById('detach-btn').addEventListener('click', detachWindow)
   if (isDetached) document.getElementById('detach-btn').style.display = 'none'
   document.getElementById('attach-btn').addEventListener('click', () =>

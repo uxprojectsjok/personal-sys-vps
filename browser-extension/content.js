@@ -15,12 +15,10 @@ function getPageInfo() {
 
 function findLoginContainers() {
   const containers = new Set()
-  // Klassische Forms mit Password
   document.querySelectorAll('form').forEach(f => {
     if (f.querySelector('input[type="password"], input[type="email"], input[name*="email"], input[name*="user"]'))
       containers.add(f)
   })
-  // Shadow-DOM / React-Portals ohne <form>: Email-Inputs die allein stehen
   document.querySelectorAll('input[type="email"], input[type="text"][autocomplete*="email"]').forEach(input => {
     const parent = input.closest('[data-testid], [role="main"], section, div[class*="login"], div[class*="auth"], div[class*="signin"]') || input.parentElement?.parentElement
     if (parent && !parent.querySelector('.sys-soul-login-btn')) containers.add(parent)
@@ -29,8 +27,6 @@ function findLoginContainers() {
 }
 
 function injectSoulLogin() {
-  // Nicht auf SYS-eigenen Seiten injizieren
-  if (location.hostname.includes('YOUR_DOMAIN')) return
   findLoginContainers().forEach(form => {
     if (form.querySelector('.sys-soul-login-btn')) return
 
@@ -73,7 +69,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true })
   }
   if (msg.type === 'GET_SOUL_TOKEN') {
-    // Liest Soul-Token direkt aus sessionStorage der SYS-Seite
     const soulRaw = sessionStorage.getItem('sys.soul')
     if (!soulRaw) { sendResponse({ error: 'no_soul' }); return }
     const id   = soulRaw.match(/soul_id:\s*(.+)/)?.[1]?.trim()
@@ -83,36 +78,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 })
 
-// Auto-inject on page ready
-if (document.readyState === 'complete') {
-  injectSoulLogin()
-} else {
-  window.addEventListener('load', injectSoulLogin)
-}
-
 // ── Soul-Cert Auto-Fill (claude.ai MCP-Connector) ────────────────────────────
-//
-// Erkennt Eingabefelder die neben einem "Soul-Cert"-Label stehen und injiziert
-// einen Ein-Klick-Button der den gespeicherten cert aus chrome.storage einträgt.
-// Läuft nur auf claude.ai. MutationObserver fängt SPA-Dialog-Renders ab.
 
-function findSoulCertInputs() {
+function findSoulCertInputs(isSysOAuth) {
   const isClaude = location.hostname.includes('claude.ai')
-  const isOAuth  = location.hostname.includes('YOUR_DOMAIN') && location.pathname.startsWith('/oauth')
-
-  if (!isClaude && !isOAuth) return []
+  if (!isClaude && !isSysOAuth) return []
 
   const results = []
 
-  // OAuth-Consent-Seite: direkt per ID/Name
-  if (isOAuth) {
+  if (isSysOAuth) {
     const direct = document.getElementById('soul_cert') ||
                    document.querySelector('input[name="soul_cert"]')
     if (direct && !direct.dataset.sysCertInjected) results.push(direct)
     return results
   }
 
-  // claude.ai: Label-Text-Suche (SPA-Dialoge)
   document.querySelectorAll('input[type="text"], input:not([type])').forEach(input => {
     if (input.dataset.sysCertInjected) return
     let node = input.parentElement
@@ -129,21 +109,18 @@ function findSoulCertInputs() {
   return results
 }
 
-async function injectSoulCertFill() {
-  const inputs = findSoulCertInputs()
+async function injectSoulCertFill(isSysOAuth) {
+  const inputs = findSoulCertInputs(isSysOAuth)
   if (!inputs.length) return
 
   const data = await chrome.storage.local.get('soul_cert')
   const cert = data.soul_cert
   if (!cert) return
 
-  const isOAuth = location.hostname.includes('YOUR_DOMAIN') && location.pathname.startsWith('/oauth')
-
   inputs.forEach(input => {
     input.dataset.sysCertInjected = '1'
 
-    // OAuth-Seite: Cert eintragen, User klickt selbst auf Verbinden
-    if (isOAuth) {
+    if (isSysOAuth) {
       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set
       if (nativeSetter) nativeSetter.call(input, cert)
       else input.value = cert
@@ -152,7 +129,6 @@ async function injectSoulCertFill() {
       return
     }
 
-    // claude.ai: Fill-Button einfügen
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.textContent = '⬡ Soul-Cert eintragen'
@@ -182,29 +158,49 @@ async function injectSoulCertFill() {
   })
 }
 
-// claude.ai: MutationObserver für SPA-Dialoge
-if (location.hostname.includes('claude.ai')) {
-  const observer = new MutationObserver(() => injectSoulCertFill())
-  observer.observe(document.body, { childList: true, subtree: true })
-  injectSoulCertFill()
-}
+// ── Init (async — liest konfigurierte SYS-URL aus Storage) ───────────────────
 
-// YOUR_DOMAIN/oauth: direkt beim Laden
-if (location.hostname.includes('YOUR_DOMAIN') && location.pathname.startsWith('/oauth')) {
-  if (document.readyState === 'complete') {
-    injectSoulCertFill()
-  } else {
-    window.addEventListener('load', injectSoulCertFill)
+chrome.storage.local.get('sys_url', ({ sys_url }) => {
+  let sysOrigin = null
+  if (sys_url) {
+    try { sysOrigin = new URL(sys_url).origin } catch {}
   }
 
-  // Nachträgliche Verbindung: wenn soul_cert in Storage gesetzt wird, sofort füllen
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.soul_cert?.newValue) {
-      // sysCertInjected-Flag zurücksetzen damit erneutes Füllen möglich
-      document.querySelectorAll('[data-sys-cert-injected]').forEach(el => {
-        delete el.dataset.sysCertInjected
-      })
-      injectSoulCertFill()
+  const isSysPage  = sysOrigin && location.origin === sysOrigin
+  const isSysOAuth = isSysPage && location.pathname.startsWith('/oauth')
+  const isClaude   = location.hostname.includes('claude.ai')
+
+  // Soul-Login nicht auf SYS-eigenen Seiten injizieren
+  if (!isSysPage) {
+    if (document.readyState === 'complete') {
+      injectSoulLogin()
+    } else {
+      window.addEventListener('load', injectSoulLogin)
     }
-  })
-}
+  }
+
+  // Soul-Cert Auto-Fill: claude.ai
+  if (isClaude) {
+    const observer = new MutationObserver(() => injectSoulCertFill(false))
+    observer.observe(document.body, { childList: true, subtree: true })
+    injectSoulCertFill(false)
+  }
+
+  // Soul-Cert Auto-Fill: SYS OAuth-Consent-Seite
+  if (isSysOAuth) {
+    if (document.readyState === 'complete') {
+      injectSoulCertFill(true)
+    } else {
+      window.addEventListener('load', () => injectSoulCertFill(true))
+    }
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.soul_cert?.newValue) {
+        document.querySelectorAll('[data-sys-cert-injected]').forEach(el => {
+          delete el.dataset.sysCertInjected
+        })
+        injectSoulCertFill(true)
+      }
+    })
+  }
+})
