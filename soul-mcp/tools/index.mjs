@@ -11,8 +11,6 @@ import { register as videoGet }       from './video_get.mjs';
 import { register as contextList }    from './context_list.mjs';
 import { register as contextGet }     from './context_get.mjs';
 import { register as calendarRead }   from './calendar_read.mjs';
-import { register as networkList }    from './network_list.mjs';
-import { register as networkPeerGet } from './network_peer_get.mjs';
 import { register as verifyHuman }    from './verify_human.mjs';
 import { register as soulEarnings }   from './soul_earnings.mjs';
 import { register as soulDiscover }   from './soul_discover.mjs';
@@ -49,9 +47,6 @@ export function registerTools(server, token) {
   contextList(server, token);
   contextGet(server, token);
   calendarRead(server, token);
-  // Netzwerk
-  networkList(server, token);
-  networkPeerGet(server, token);
   // Profile (Analyse-Ergebnisse)
   profileGet(server, token);
   profileSave(server, token);

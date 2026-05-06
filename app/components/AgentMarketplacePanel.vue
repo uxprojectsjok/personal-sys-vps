@@ -216,6 +216,18 @@
                 </ol>
               </details>
 
+              <!-- Trusted Souls Whitelist -->
+              <div class="field-group" style="margin-top:16px">
+                <label class="field-label">Vertraute Souls <span class="field-hint">(Soul-IDs, kommasepariert — erhalten Free-Tools ohne Zahlung)</span></label>
+                <textarea
+                  v-model="trustedSoulsInput"
+                  class="input mono"
+                  rows="2"
+                  placeholder="uuid1, uuid2, …"
+                  style="resize:vertical;font-size:11px"
+                />
+              </div>
+
               <p v-if="amortError" class="field-error">{{ amortError }}</p>
               <p v-else-if="amortSuccess" class="field-ok">Gespeichert ✓</p>
             </div>
@@ -413,6 +425,12 @@ const amort = reactive({
   pol_per_request: '0.001',
   wallet:          '',
   free_tools:      ['soul_read', 'verify_human', 'soul_maturity'],
+  trusted_souls:   [],
+})
+
+const trustedSoulsInput = computed({
+  get: () => amort.trusted_souls.join(', '),
+  set: v  => { amort.trusted_souls = v.split(',').map(s => s.trim()).filter(s => /^[a-f0-9-]{36}$/i.test(s)) },
 })
 const freeToolsStr = computed({
   get: () => amort.free_tools.join(', '),
@@ -455,7 +473,7 @@ const showToolPicker = ref(false)
 const AVAILABLE_TOOLS = [
   'audio_get', 'audio_list', 'beme_chat', 'calendar_read',
   'context_get', 'context_list',
-  'image_get', 'image_list', 'network_list', 'network_peer_get',
+  'image_get', 'image_list',
   'profile_get', 'profile_save', 'soul_cloud_push', 'soul_discover',
   'soul_earnings', 'soul_maturity', 'soul_read', 'soul_skills',
   'soul_write', 'vault_manifest', 'verify_human', 'video_get', 'video_list',
@@ -506,6 +524,7 @@ async function loadAmort() {
     amort.pol_per_request = a.pol_per_request ?? '0.001'
     amort.wallet          = a.wallet          ?? ''
     amort.free_tools      = Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity']
+    amort.trusted_souls   = Array.isArray(a.trusted_souls) ? a.trusted_souls : []
     amortActive.value     = amort.enabled
     if (a.enabled !== undefined) modeTouched.value = true
     currentCid.value      = a.agent_registry_cid || ''
@@ -560,6 +579,7 @@ async function setMode(mode) {
           pol_per_request: amort.pol_per_request,
           wallet:          amort.wallet,
           free_tools:      amort.free_tools,
+          trusted_souls:   amort.trusted_souls,
         }),
       })
       const d = await r.json()
@@ -591,6 +611,7 @@ async function saveAmort() {
         pol_per_request: amort.pol_per_request,
         wallet:          amort.wallet,
         free_tools:      amort.free_tools,
+        trusted_souls:   amort.trusted_souls,
       }),
     })
     const d = await r.json()

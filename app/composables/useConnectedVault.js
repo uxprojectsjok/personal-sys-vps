@@ -93,7 +93,7 @@ async function fetchOneSoulVault(soulCert, soul_id, alias) {
  * Holt Public Vault Kontext für alle verbundenen Souls.
  *
  * @param {string} soulCert       - Eigenes Soul-Cert (Bearer-Auth)
- * @param {Array}  connections    - Array von { soul_id, alias } aus useVaultConnections
+ * @param {Array}  connections    - Array von { soul_id, alias }
  * @returns {{ publicVaultContext: string|null, imageManifest: Object, networkPdfBlocks: Array, networkImageBlocks: Array }}
  *   imageManifest: {
  *     [soul_id]: { alias, files, cipheredFiles, audio, video, documents }
