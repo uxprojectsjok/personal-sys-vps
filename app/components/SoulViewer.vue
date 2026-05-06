@@ -277,8 +277,12 @@ const saveFlash        = ref(false);
 const syncSaving       = ref(false);
 const isEnriching      = ref(false);
 const enrichStatus     = ref(null);
-const manualEdited     = ref(false);
-const needsUpdate      = computed(() => hasMessages.value || manualEdited.value);
+const manualEdited          = ref(false);
+const lastEnrichedUserCount = ref(0);
+const needsUpdate      = computed(() => {
+  const userCount = messages.value.filter(m => m.role === "user").length;
+  return (userCount > lastEnrichedUserCount.value) || manualEdited.value;
+});
 
 // Scroll to top when diff appears so the amber block is visible
 watch(syncStatus, (val) => {
@@ -376,6 +380,7 @@ async function triggerEnrichment() {
     if (!result) {
       enrichStatus.value = { type: "error", message: "Verbindung fehlgeschlagen." };
     } else {
+      lastEnrichedUserCount.value = messages.value.filter(m => m.role === "user").length;
       manualEdited.value = false;
       if (!result.changed) {
         enrichStatus.value = { type: "success", message: "Nichts Soul-Würdiges gefunden." };
@@ -385,7 +390,7 @@ async function triggerEnrichment() {
           type: "success",
           message: n > 0 ? `${n} Sektion${n > 1 ? "en" : ""} aktualisiert` : "Session-Log eingetragen",
         };
-        appendGrowthEntry();
+        await appendGrowthEntry();
         await pushToServer();
         if (vaultConnected.value) {
           await writeSoulMd(soulContent.value, "sys").catch(() => {});
