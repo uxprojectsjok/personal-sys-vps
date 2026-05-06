@@ -272,72 +272,6 @@
 
     </template>
 
-    <!-- ── NETZWERK ──────────────────────────────────────────────────────── -->
-    <template v-if="tab === 'network'">
-      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">Soul-Zertifikat benötigt</div>
-      <template v-else>
-
-        <!-- Datei hinzufügen -->
-        <button @click="publicPickerOpen = !publicPickerOpen"
-          class="w-full flex items-center justify-center gap-1.5 py-2 rounded-none border border-dashed border-white/15 text-white/40 hover:text-white/70 hover:border-white/30 transition text-xs">
-          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-          </svg>
-          Datei hinzufügen
-        </button>
-
-        <!-- Picker aus Server-Dateien -->
-        <div v-if="publicPickerOpen" class="rounded-none border border-white/8 bg-white/3 max-h-36 overflow-y-auto">
-          <button v-for="f in serverFilesNotPublic" :key="f.name"
-            @click="isSafePublicFilename(f.name) && addPublicFile(f.name)"
-            :disabled="!isSafePublicFilename(f.name)"
-            :title="isSafePublicFilename(f.name) ? '' : 'Dateiname enthält Leerzeichen oder Sonderzeichen – bitte umbenennen (nur Buchstaben, Zahlen, Bindestrich, Punkt, Unterstrich erlaubt)'"
-            class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-            :class="isSafePublicFilename(f.name) ? 'hover:bg-white/5' : 'opacity-40 cursor-not-allowed'">
-            <span class="text-xs font-mono truncate" :class="isSafePublicFilename(f.name) ? 'text-white/60' : 'text-red-400/70'">{{ f.name }}</span>
-            <span v-if="!isSafePublicFilename(f.name)" class="ml-auto text-[10px] text-red-400/60 shrink-0">umbenennen</span>
-            <span v-else class="ml-auto text-xs text-white/35 shrink-0">{{ TYPE_LABELS[f.type] }}</span>
-          </button>
-          <p v-if="serverFilesNotPublic.length === 0" class="px-3 py-2 text-xs text-white/35">
-            Alle Server-Dateien bereits freigegeben
-          </p>
-        </div>
-
-        <!-- Leerer Zustand -->
-        <p v-if="!Object.keys(networkArchive).length" class="py-3 text-center text-sm text-white/30">Noch keine Dateien freigegeben</p>
-
-        <!-- Dateien gruppiert nach Typ -->
-        <div v-for="(files, type) in networkArchive" :key="type">
-          <div class="flex items-center gap-2 px-1 pt-2 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">{{ TYPE_LABELS[type] }} · {{ files.length }}</p>
-          </div>
-          <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
-            <div v-for="name in files" :key="name" class="flex items-center gap-2 px-3 min-h-[44px]">
-              <span class="w-1.5 h-1.5 rounded-full shrink-0 bg-white/30"/>
-              <span class="text-sm text-white/70 truncate flex-1 font-mono">{{ name }}</span>
-              <button
-                @click.stop="onDeleteNetworkFile(name)"
-                :disabled="!!networkBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 shrink-0 text-white/25 hover:text-red-400 hover:bg-red-950/30"
-                aria-label="Entfernen"
-              >
-                <svg v-if="networkBusy[name]" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-                </svg>
-                <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <p v-if="publicSyncError" class="text-xs text-red-400">{{ publicSyncError }}</p>
-        <p v-else-if="publicSyncOk" class="text-xs text-[#22c55e]/80">Freigabe aktualisiert ✓</p>
-
-      </template>
-    </template>
-
     <!-- Dateien importieren (Lokal-Tab + Vault verbunden) -->
     <label
       v-if="tab === 'local' && vaultConnected"
@@ -541,7 +475,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["logout-required"]);
 
-const TABS = [{ id: "local", label: "Lokal" }, { id: "server", label: "Server" }, { id: "network", label: "Netzwerk" }];
+const TABS = [{ id: "local", label: "Lokal" }, { id: "server", label: "Server" }];
 const TYPE_LABELS = { audio: "Audio", video: "Video", images: "Bilder", context: "Kontext", profiles: "KI-Profile" };
 const MEDIA_EXTS  = /\.(mp3|wav|ogg|m4a|flac|aac|webm|mp4|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|md|txt|pdf)$/i;
 const SKIP_FILES  = /^(voice_profile\.json|motion_profile\.json)$/i;
@@ -555,8 +489,6 @@ const {
   loaded, localFiles, syncedFiles, activeFiles,
   loadContext, fetchVpsVaultFiles, setActive, scanVault: scanApiVault,
   syncFile, syncAll, isSyncing, syncError, deleteVaultFile,
-  publicShare, publicSyncing, publicSyncError,
-  loadPublicShare, savePublicShare, syncPublicFiles,
   resetContext, sessionExpired,
   baseUrl
 } = useApiContext();
@@ -710,13 +642,6 @@ async function deleteSelectedServer() {
   else showError(`${ok} gelöscht, ${fail} fehlgeschlagen`);
 }
 
-// Public Vault / Netzwerk
-const publicOpen    = ref(false);
-const publicPickerOpen = ref(false);
-const publicSaving  = ref(false);
-const publicSyncOk  = ref(false);
-const networkBusy   = reactive({});
-
 // Inline-Player
 const playerSrc  = ref("");
 const playerTab  = ref("");    // "local" | "server"
@@ -770,51 +695,7 @@ const serverArchive = computed(() => {
 const hasLocalFiles  = computed(() => Object.keys(localArchive.value).length > 0);
 const hasServerFiles = computed(() => Object.keys(serverArchive.value).length > 0);
 
-const networkArchive = computed(() => {
-  const result = {};
-  for (const type of ["audio", "video", "images", "context"]) {
-    const files = publicShare.value.public_files
-      .map(pf => pfName(pf))
-      .filter(name => {
-        const t = typeFromName(name);
-        const key = t === "image" ? "images" : (t || "context");
-        return key === type;
-      });
-    if (files.length) result[type] = files;
-  }
-  return result;
-});
-
-// Alle Server-Dateien als flache Liste mit type (für Public-Picker)
-const allServerFiles = computed(() => {
-  const result = [];
-  for (const [type, files] of Object.entries(serverArchive.value)) {
-    for (const name of files) result.push({ name, type });
-  }
-  return result;
-});
-
-const serverFilesNotPublic = computed(() => {
-  const already    = new Set(publicShare.value.public_files.map(pf => pfName(pf)));
-  const serverList = allServerFiles.value.filter(f => !already.has(f.name));
-  // Lokale Dateien die weder bereits public noch auf dem Server sind
-  const serverNames = new Set(allServerFiles.value.map(f => f.name));
-  const localList   = [];
-  for (const [type, files] of Object.entries(localArchive.value)) {
-    for (const name of files) {
-      if (!already.has(name) && !serverNames.has(name)) {
-        localList.push({ name, type });
-      }
-    }
-  }
-  return [...serverList, ...localList];
-});
-
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-function pfName(pf)   { return typeof pf === "string" ? pf : pf.name; }
-function pfCipher(pf) { return typeof pf === "object" ? (pf.cipher || "open") : "open"; }
-function isSafePublicFilename(name) { return /^[a-zA-Z0-9._-]+$/.test(name) && name.length <= 120; }
 
 function typeFromName(name) {
   const lower = name.toLowerCase();
@@ -1112,77 +993,6 @@ async function onPlayServer(type, name) {
 onMounted(() => document.addEventListener("click", closeMenu));
 onUnmounted(() => { closePlayer(); document.removeEventListener("click", closeMenu); });
 
-// ── Public Vault ───────────────────────────────────────────────────────────
-
-async function addPublicFile(name) {
-  publicShare.value.public_files.push({ name, cipher: "open" });
-  publicPickerOpen.value = false;
-  await onUploadNetworkFile(name);
-}
-
-function removePublicFileLocal(idx) {
-  publicShare.value.public_files.splice(idx, 1);
-}
-
-function setPfCipher(idx, cipher) {
-  const pf = publicShare.value.public_files[idx];
-  publicShare.value.public_files[idx] = { name: pfName(pf), cipher };
-}
-
-async function onSyncPublic() {
-  if (!props.soulCert) return;
-  if (!vaultKey.value || vaultKey.value === "__encrypted__") {
-    publicSyncError.value = "Vault ist gesperrt oder Schlüssel fehlt. Bitte zuerst den Vault öffnen (Vault-Zugang → entsperren).";
-    return;
-  }
-  publicSyncOk.value = false;
-  publicSaving.value = true;
-  const saved = await savePublicShare(props.soulCert);
-  publicSaving.value = false;
-  if (!saved) { publicSyncError.value = "Konfiguration konnte nicht gespeichert werden."; return; }
-  await syncPublicFiles(props.soulCert, vaultKey.value || "");
-  if (!publicSyncError.value) {
-    publicSyncOk.value = true;
-    setTimeout(() => { publicSyncOk.value = false; }, 3000);
-  }
-}
-
-async function onUploadNetworkFile(name) {
-  if (!props.soulCert) return;
-  networkBusy[name] = "up";
-  publicSyncOk.value = false;
-  publicSaving.value = true;
-  const saved = await savePublicShare(props.soulCert);
-  publicSaving.value = false;
-  if (!saved) {
-    publicSyncError.value = "Konfiguration konnte nicht gespeichert werden.";
-    const rollbackIdx = publicShare.value.public_files.findIndex(pf => pfName(pf) === name);
-    if (rollbackIdx !== -1) publicShare.value.public_files.splice(rollbackIdx, 1);
-    delete networkBusy[name]; return;
-  }
-  await syncPublicFiles(props.soulCert, vaultKey.value || "");
-  delete networkBusy[name];
-  if (publicSyncError.value) {
-    const rollbackIdx = publicShare.value.public_files.findIndex(pf => pfName(pf) === name);
-    if (rollbackIdx !== -1) publicShare.value.public_files.splice(rollbackIdx, 1);
-    await savePublicShare(props.soulCert);
-  } else {
-    showSuccess(`${name} hochgeladen ✓`);
-    publicSyncOk.value = true;
-    setTimeout(() => { publicSyncOk.value = false; }, 3000);
-  }
-}
-
-async function onDeleteNetworkFile(name) {
-  if (!props.soulCert) return;
-  networkBusy[name] = "del";
-  const idx = publicShare.value.public_files.findIndex(pf => pfName(pf) === name);
-  if (idx !== -1) publicShare.value.public_files.splice(idx, 1);
-  await savePublicShare(props.soulCert);
-  delete networkBusy[name];
-  showSuccess(`${name} aus Netzwerk entfernt ✓`);
-}
-
 // ── Init ───────────────────────────────────────────────────────────────────
 
 watch(() => props.soulCert, async (cert) => {
@@ -1190,11 +1000,9 @@ watch(() => props.soulCert, async (cert) => {
   serverLoading.value = true;
   const status = await loadContext(cert);
   if (status === "auth_failed") {
-    // sessionExpired wurde in loadContext gesetzt → index.vue's watcher ruft switchSoul().
     serverLoading.value = false;
     return;
   }
-  await loadPublicShare(cert);
   serverLoading.value = false;
 }, { immediate: true });
 
