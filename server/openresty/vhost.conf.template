@@ -217,35 +217,6 @@ server {
     content_by_lua_file /etc/openresty/lua/test_key.lua;
   }
 
-  # ── Peer-Verify: öffentlich + CORS — validiert soul_id+cert für Handshake ────
-  location = /api/peer/verify {
-    limit_req zone=api burst=20 nodelay;
-    limit_except GET OPTIONS { deny all; }
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Content-Type" always;
-    if ($request_method = 'OPTIONS') { return 204; }
-    content_by_lua_file /etc/openresty/lua/peer_verify.lua;
-  }
-
-  # ── Peer-Connect: öffentlich + CORS — bidirektionaler Handshake (POST) ───────
-  location = /api/peer/connect {
-    limit_req zone=gate burst=5 nodelay;
-    limit_except POST OPTIONS { deny all; }
-    client_max_body_size 4K;
-    client_body_buffer_size 4K;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    add_header Access-Control-Allow-Origin "*" always;
-    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Content-Type" always;
-    if ($request_method = 'OPTIONS') { return 204; }
-    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
-    resolver_timeout 5s;
-    content_by_lua_file /etc/openresty/lua/peer_connect.lua;
-  }
 
   # ── Soul-Cert generieren (kein Auth – HMAC ist die Absicherung) ──────────────
   location = /api/soul-cert {
@@ -467,36 +438,6 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_public.lua;
   }
 
-  # ── Soul Network: Peer-Dateien lesen (Service-Token + Soul-Cert) ─────────────
-  # Peer-Datei direkt als Binary (für web_fetch via Token-URL)
-  location /api/vault/peer-stream {
-    limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/vault_peer_stream.lua;
-  }
-
-  # Muss VOR /api/vault/connections stehen (längerer Prefix gewinnt)
-  location /api/vault/connections/peer-files {
-    limit_req zone=chat burst=20 nodelay;
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/vault_connections_peer.lua;
-  }
-
-  # ── Soul Network: Verbindungen (GET/POST/DELETE/ack/test) ─────────────────────
-  # vault_auth akzeptiert soul-cert UND service-token (Vault muss offen sein)
-  # Längerer Prefix als ^~ /api/vault/ → gewinnt
-  location /api/vault/connections {
-    limit_req zone=chat burst=20 nodelay;
-    client_max_body_size 64K;
-    client_body_buffer_size 64K;
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
-  }
 
   # ── Dienste verwalten (add / list / revoke) – nur soul-cert ──────────────────
   # Längerer Prefix als ^~ /api/vault/ → gewinnt

@@ -99,9 +99,11 @@ async function handleMcp(req, res) {
   const server = new McpServer({ name: 'soul-mcp', version: '1.0.0' });
 
   // Token-Typ erkennen:
-  //   soul_cert  → "{uuid}.{32hex}"   — OAuth-Inhaber, voller Zugang
-  //   pol_access → "{48hex}"          — bezahlter externer Agent, nur free_tools
+  //   service_token → "{64hex}"        — OAuth-Inhaber, voller Zugang
+  //   pol_access    → "{48hex}"        — bezahlter externer Agent, nur free_tools
+  //   peer_cert     → "{uuid}.{32hex}" — whitelisted Soul, nur free_tools
   const isPaidToken = /^[0-9a-f]{48}$/i.test(token) && !token.includes('.');
+  const isPeerToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{32}$/i.test(token);
 
   if (isPaidToken) {
     // pol_access_token validieren + free_tools laden
@@ -115,6 +117,20 @@ async function handleMcp(req, res) {
       });
     }
     registerPaidTools(server, token, paid.free_tools || []);
+  } else if (isPeerToken) {
+    // Peer-Soul-Cert — prüfen ob soul_id in trusted_souls der Ziel-Soul
+    const peerSoulId  = token.split('.')[0];
+    const targetSoulId = req.query.soul_id || null;
+    const trusted = await checkTrustedSoul(peerSoulId, targetSoulId);
+    if (!trusted) {
+      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+      return res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Soul nicht in der Whitelist. Kontakt zum Soul-Inhaber aufnehmen.' },
+        id: null,
+      });
+    }
+    registerPaidTools(server, token, trusted.free_tools);
   } else {
     registerTools(server, token);
   }
@@ -439,6 +455,35 @@ function extractToken(req) {
   const match = auth.match(/^Bearer\s+(.+)$/i);
   if (match) return match[1].trim();
   return null;
+}
+
+/**
+ * Prüft ob peerSoulId in trusted_souls der Ziel-Soul steht.
+ * Gibt { free_tools } zurück oder null wenn nicht vertraut.
+ */
+async function checkTrustedSoul(peerSoulId, targetSoulId) {
+  try {
+    let soulId = targetSoulId;
+    if (!soulId) {
+      // Single-Soul-Fallback: ersten Soul im Verzeichnis nehmen
+      const { readdir } = await import('fs/promises');
+      const dirs = await readdir('/var/lib/sys/souls/');
+      soulId = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) || null;
+    }
+    if (!soulId) return null;
+
+    const raw = await readFile(`/var/lib/sys/souls/${soulId}/api_context.json`, 'utf8');
+    const ctx = JSON.parse(raw);
+    const trusted = ctx?.amortization?.trusted_souls || [];
+    if (!trusted.includes(peerSoulId)) return null;
+
+    const freeTools = ctx?.amortization?.free_tools?.length
+      ? ctx.amortization.free_tools
+      : ['soul_read', 'verify_human', 'soul_maturity'];
+    return { free_tools: freeTools };
+  } catch {
+    return null;
+  }
 }
 
 /**

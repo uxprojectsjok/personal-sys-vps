@@ -40,6 +40,7 @@ local DEFAULTS = {
   pol_per_request = "0.001",
   wallet          = "",
   free_tools      = setmetatable({}, cjson.array_mt),
+  trusted_souls   = setmetatable({}, cjson.array_mt),
   token_duration  = "1d",
   activated_at    = cjson.null,
   verified_wallet = cjson.null,
@@ -147,6 +148,17 @@ if type(incoming.free_tools) == "table" then
     end
   end
   amort.free_tools = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
+end
+
+-- trusted_souls: Array von soul_ids (UUID-Format) — bekommen free_tools ohne Zahlung
+if type(incoming.trusted_souls) == "table" then
+  local clean = {}
+  for _, sid in ipairs(incoming.trusted_souls) do
+    if type(sid) == "string" and sid:match("^[a-fA-F0-9%-]+$") and #sid <= 64 then
+      clean[#clean + 1] = sid
+    end
+  end
+  amort.trusted_souls = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
 end
 
 -- token_duration: erlaubte Werte
