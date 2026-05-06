@@ -356,17 +356,7 @@ async function handleLocalFile(file) {
     return { text: `[Video: "${name}"]`, contentBlocks: null, mediaUrl: url, mediaType: 'video' }
   }
   if (IMAGE_EXT.test(name)) {
-    let base64
-    try { base64 = await compressImage(file) } catch { return { text: `[Bild: "${name}" – Fehler]`, contentBlocks: null } }
-    const previewUrl = URL.createObjectURL(file); mediaBlobUrls.push(previewUrl)
-    return {
-      text: `[Bild: "${name}"]`,
-      contentBlocks: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-        { type: 'text', text: `[Bild: "${name}" – bitte beschreib es]` },
-      ],
-      mediaUrl: previewUrl, mediaType: 'image',
-    }
+    return { _imageFile: file, name }
   }
   if (PDF_EXT.test(name)) {
     if (file.size > 5 * 1024 * 1024) return { text: `[PDF: "${name}" – zu groß (max 5 MB)]`, contentBlocks: null }
@@ -409,6 +399,10 @@ async function handleFileChip() {
   if (!file) return
   const result = await handleLocalFile(file)
   if (!result) return
+  if (result._imageFile) {
+    await handleImageVision(result._imageFile, result.name)
+    return
+  }
   const meta = {}
   if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
   if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
@@ -475,23 +469,17 @@ async function handleSearchCommand(cmd) {
   return null
 }
 
-// ── Camera pipeline ────────────────────────────────────────────────
-async function handleCameraCapture(capture) {
-  cameraOpen.value = false
-  visionLoading.value = true
-
+// ── Shared vision pipeline (camera + file upload) ──────────────────
+async function runVisionAnalysis(base64, caption, previewUrl) {
   const authHeader = { Authorization: `Bearer ${props.soulCert}` }
-  const base64 = capture.frameBase64 ?? capture.base64 ?? null
-  if (!base64) { visionLoading.value = false; return }
 
-  const previewUrl = `data:image/jpeg;base64,${base64}`
-  addMessage('user', capture.caption || '[Kamerabild]', { mediaUrl: previewUrl, mediaType: 'image' })
+  addMessage('user', caption, { mediaUrl: previewUrl, mediaType: 'image' })
   addMessage('assistant', '', { streaming: true })
   await scrollToBottom()
 
   let soulReaction = ''
-  let genPrompt = ''
-  let outputMode = 'skip'
+  let genPrompt    = ''
+  let outputMode   = 'skip'
   try {
     const vRes = await fetch('/api/vision-analyze', {
       method: 'POST',
@@ -499,12 +487,12 @@ async function handleCameraCapture(capture) {
       body: JSON.stringify({
         imageBase64: base64,
         mimeType: 'image/jpeg',
-        transcript: capture.caption ?? capture.transcript ?? '',
+        transcript:  caption,
         soulContext: [props.soulContent, contextText.value].filter(Boolean).join('\n\n').slice(0, 800),
       }),
     })
     if (vRes.ok) {
-      const vData = await vRes.json()
+      const vData  = await vRes.json()
       soulReaction = vData.soulReaction ?? vData.analysis ?? ''
       genPrompt    = vData.genPrompt   ?? ''
       outputMode   = vData.outputMode  ?? 'skip'
@@ -514,17 +502,38 @@ async function handleCameraCapture(capture) {
   updateLastMessage(soulReaction || 'Ich sehe das Bild.')
 
   if (outputMode === 'edit-multi' && genPrompt) {
-    setLastMessageMeta('genPrompt',    genPrompt)
+    setLastMessageMeta('genPrompt',     genPrompt)
     setLastMessageMeta('pendingBase64', base64)
     setLastMessageMeta('actions', [
       { label: 'Bild generieren', primary: true,  type: 'wavespeed-generate' },
-      { label: 'Überspringen',    primary: false, type: 'skip' },
+      { label: 'Überspringen',    primary: false,  type: 'skip' },
     ])
   }
 
   setLastMessageMeta('streaming', false)
-  visionLoading.value = false
   await scrollToBottom()
+}
+
+async function handleImageVision(file, name) {
+  visionLoading.value = true
+  let base64
+  try { base64 = await compressImage(file) }
+  catch { visionLoading.value = false; return }
+  const previewUrl = URL.createObjectURL(file)
+  mediaBlobUrls.push(previewUrl)
+  await runVisionAnalysis(base64, `[Bild: "${name}"]`, previewUrl)
+  visionLoading.value = false
+}
+
+// ── Camera pipeline ────────────────────────────────────────────────
+async function handleCameraCapture(capture) {
+  cameraOpen.value = false
+  visionLoading.value = true
+  const base64 = capture.frameBase64 ?? capture.base64 ?? null
+  if (!base64) { visionLoading.value = false; return }
+  const previewUrl = `data:image/jpeg;base64,${base64}`
+  await runVisionAnalysis(base64, capture.caption || '[Kamerabild]', previewUrl)
+  visionLoading.value = false
 }
 
 // ── WaveSpeed image generation ─────────────────────────────────────
