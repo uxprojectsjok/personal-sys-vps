@@ -83,6 +83,7 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 
 ```
 ├── init.sh                  Setup script — zero to running in one command
+├── update.sh                Pull latest git changes and redeploy Lua + frontend
 ├── reset.sh                 Delete soul, release node (data gone, config preserved)
 ├── recover-password.sh      Reset gate password without losing soul data
 ├── deinstall.sh             Remove everything init.sh installed
@@ -206,6 +207,7 @@ The script prompts for domain, email, and optionally an Anthropic API key and Wa
 
 | Script | What it does |
 |--------|-------------|
+| `bash /opt/sys/update.sh` | **Update** — pulls latest git changes, redeploys Lua files and frontend. No data loss. |
 | `bash /opt/sys/recover-password.sh` | **Forgot password** — sets a new gate password. Soul data is fully preserved. Requires SSH access. |
 | `bash /opt/sys/reset.sh` | **Remove soul** — deletes all soul data, releases the node for a new registration. OpenResty, SSL, and all configuration are preserved. |
 | `bash /opt/sys/deinstall.sh` | **Full uninstall** — removes everything init.sh installed. Ubuntu is untouched. Delete the DNS record manually at your provider afterward. |
@@ -223,7 +225,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 60c3a09cf2152e61890a6734cd355e7db6d5dc9608894d1f1115c7a3713955ec
+Current release fingerprint: 0eaa435dd786b21b8d8cbcff4d949baf8598ae1458fc2ccd573996345cd1232c
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
