@@ -177,7 +177,7 @@
           </div>
 
           <!-- Step 4: Einstellungen -->
-          <div v-show="currentStep === 5" style="display:flex;flex-direction:column;gap:20px;padding:20px">
+          <div v-show="currentStep === 4" style="display:flex;flex-direction:column;gap:20px;padding:20px">
 
             <!-- Modell -->
             <div style="display:flex;flex-direction:column;gap:12px">
@@ -494,7 +494,7 @@ async function saveCfgStep() {
 }
 
 watch(currentStep, (step) => {
-  if (step === 5) loadCfgStep()
+  if (step === 4) loadCfgStep()
 })
 
 const certRotateBusy     = ref(false)
