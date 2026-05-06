@@ -66,6 +66,18 @@
             :key="j"
             v-html="renderText(para)"
           ></p>
+
+          <!-- Action buttons (z.B. Bildgenerierung anbieten) -->
+          <div v-if="m.actions?.length" class="msg-actions">
+            <button
+              v-for="a in m.actions"
+              :key="a.label"
+              class="msg-action-btn"
+              :class="a.primary ? 'primary' : 'secondary'"
+              :disabled="m.actionsDisabled"
+              @click="handleMsgAction(m, a)"
+            >{{ a.label }}</button>
+          </div>
         </div>
       </article>
 
@@ -227,7 +239,7 @@ const emit = defineEmits(['cert-error', 'role-change'])
 const { chat, isLoading, error, certError } = useClaude()
 const {
   messages, conversationSummary,
-  addMessage, updateLastMessage, setLastMessageMeta,
+  addMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
   toApiMessages, getMessagesToSummarize, pruneWithSummary,
 } = useSession()
 const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected } = useVault()
@@ -478,6 +490,8 @@ async function handleCameraCapture(capture) {
   await scrollToBottom()
 
   let soulReaction = ''
+  let genPrompt = ''
+  let outputMode = 'skip'
   try {
     const vRes = await fetch('/api/vision-analyze', {
       method: 'POST',
@@ -492,12 +506,95 @@ async function handleCameraCapture(capture) {
     if (vRes.ok) {
       const vData = await vRes.json()
       soulReaction = vData.soulReaction ?? vData.analysis ?? ''
+      genPrompt    = vData.genPrompt   ?? ''
+      outputMode   = vData.outputMode  ?? 'skip'
     }
   } catch { /* weiter ohne Vision */ }
 
   updateLastMessage(soulReaction || 'Ich sehe das Bild.')
+
+  if (outputMode === 'edit-multi' && genPrompt) {
+    setLastMessageMeta('genPrompt',    genPrompt)
+    setLastMessageMeta('pendingBase64', base64)
+    setLastMessageMeta('actions', [
+      { label: 'Bild generieren', primary: true,  type: 'wavespeed-generate' },
+      { label: 'Überspringen',    primary: false, type: 'skip' },
+    ])
+  }
+
   setLastMessageMeta('streaming', false)
   visionLoading.value = false
+  await scrollToBottom()
+}
+
+// ── WaveSpeed image generation ─────────────────────────────────────
+async function handleMsgAction(msg, action) {
+  if (action.type === 'skip') {
+    setMessageMetaById(msg.id, 'actions', [])
+    return
+  }
+  if (action.type === 'wavespeed-generate') {
+    setMessageMetaById(msg.id, 'actionsDisabled', true)
+    await runWavespeedGeneration(msg)
+    setMessageMetaById(msg.id, 'actions', [])
+  }
+}
+
+async function runWavespeedGeneration(msg) {
+  const authHeader = { Authorization: `Bearer ${props.soulCert}` }
+  addMessage('assistant', '', { streaming: true })
+  await scrollToBottom()
+
+  try {
+    const submitRes = await fetch('/api/wavespeed-submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader },
+      body: JSON.stringify({
+        outputMode:  'edit-multi',
+        prompt:      msg.genPrompt,
+        imageBase64: msg.pendingBase64,
+      }),
+    })
+    if (!submitRes.ok) {
+      updateLastMessage('_(Bildgenerierung fehlgeschlagen)_')
+      setLastMessageMeta('streaming', false)
+      return
+    }
+    const { taskId } = await submitRes.json()
+    if (!taskId) {
+      updateLastMessage('_(Keine Task-ID erhalten)_')
+      setLastMessageMeta('streaming', false)
+      return
+    }
+
+    // Poll every 4 s, max 25 attempts (~100 s)
+    let imageUrl = null
+    for (let i = 0; i < 25; i++) {
+      await new Promise(r => setTimeout(r, 4000))
+      try {
+        const pollRes = await fetch(`/api/wavespeed-result?id=${encodeURIComponent(taskId)}`, {
+          headers: authHeader,
+        })
+        if (pollRes.ok) {
+          const pollData = await pollRes.json()
+          if (pollData.url) { imageUrl = pollData.url; break }
+          if (pollData.error && pollData.status !== 'pending' && pollData.status !== 'running') break
+        }
+      } catch { /* retry */ }
+    }
+
+    if (imageUrl) {
+      updateLastMessage('[Generiertes Bild]')
+      setLastMessageMeta('mediaUrl',   imageUrl)
+      setLastMessageMeta('mediaType',  'image')
+    } else {
+      updateLastMessage('_(Bildgenerierung: kein Ergebnis)_')
+    }
+  } catch {
+    updateLastMessage('_(Bildgenerierung fehlgeschlagen)_')
+  }
+
+  setLastMessageMeta('streaming', false)
   await scrollToBottom()
 }
 
@@ -809,6 +906,36 @@ defineExpose({
 }
 .stream-indicator span:nth-child(2) { animation-delay: 0.2s; }
 .stream-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Message action buttons ──────────────────────────────────────── */
+.msg-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+.msg-action-btn {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 7px 16px;
+  border: 1px solid var(--rule-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.msg-action-btn.primary {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+.msg-action-btn.primary:hover:not(:disabled) {
+  background: var(--accent-bright); border-color: var(--accent-bright);
+}
+.msg-action-btn.secondary {
+  background: transparent; color: var(--fg-3);
+}
+.msg-action-btn.secondary:hover:not(:disabled) {
+  color: var(--fg); border-color: var(--rule);
+}
+.msg-action-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 700px) {
