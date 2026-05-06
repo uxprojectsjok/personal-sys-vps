@@ -197,7 +197,12 @@
             </div>
             <div class="login-kicker">Soul laden</div>
             <h2 class="login-title">Mit sys<em>.</em>md einloggen</h2>
-            <p class="login-sub">Lade deine Soul-Datei — lokal gespeichert, verlässt dieses Gerät nicht.</p>
+            <p class="login-sub">
+              Lade deine Soul-Datei — lokal gespeichert, verlässt dieses Gerät nicht.
+              <template v-if="allowCreateSoul">
+                <br><em>Auf diesem Node ist noch keine Soul registriert. Deine bestehende sys.md wird importiert und hier neu verankert.</em>
+              </template>
+            </p>
             <div class="sys-field" style="margin-bottom:0">
               <span class="sys-field-label">Soul-Datei</span>
               <SoulUpload @uploaded="handleLoginUpload" />
@@ -317,7 +322,7 @@ import FirstSetupModal from '~/components/FirstSetupModal.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
@@ -397,8 +402,23 @@ async function handleSoulCreate({ name, idea }) {
   fetchNodeStatus()
 }
 
-function handleLoginUpload(text) {
-  importFromText(text)
+async function handleLoginUpload(text) {
+  if (allowCreateSoul.value) {
+    // Frischer VPS — bestehende Soul importieren und registrieren
+    const result = await importAndSetup(text)
+    if (!result.ok) {
+      const msg = result.error === 'node_locked'
+        ? 'Dieser Node ist bereits einer anderen Soul zugewiesen.'
+        : result.error === 'no_soul_id'
+        ? 'Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.'
+        : `Import fehlgeschlagen (${result.error}).`
+      alert(msg)
+      return
+    }
+  } else {
+    // Bestehende Soul auf diesem Server — normaler Login
+    importFromText(text)
+  }
   loginOpen.value = false
   fetchNodeStatus()
 }

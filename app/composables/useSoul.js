@@ -180,6 +180,50 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     save();
   }
 
+  // Importiert eine bestehende sys.md auf einem neuen VPS:
+  // holt einen neuen Cert vom Server (kein proof nötig auf frischem Server),
+  // aktualisiert den Cert in der sys.md, legt das Soul-Verzeichnis an und
+  // schreibt sys.md auf den Server — identisch zu createNew().
+  async function importAndSetup(markdown) {
+    if (!isClient) return { ok: false, error: 'not_client' };
+    const idMatch = markdown.match(/soul_id:\s*([a-f0-9-]{36})/i);
+    const soulId  = idMatch?.[1]?.trim();
+    if (!soulId) return { ok: false, error: 'no_soul_id' };
+
+    const oldCertMatch = markdown.match(/soul_cert:\s*([a-f0-9]{20,})/i);
+    const oldCert      = oldCertMatch?.[1]?.trim() || '';
+
+    try {
+      const res = await fetch('/api/soul-cert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soul_id: soulId, proof: oldCert }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { ok: false, error: err.error || 'cert_failed' };
+      }
+      const data    = await res.json();
+      const newCert = data.cert;
+      if (!newCert) return { ok: false, error: 'no_cert' };
+
+      soulCert.value    = newCert;
+      soulContent.value = updateFrontmatterField(markdown, 'soul_cert', newCert);
+      isLoaded.value    = true;
+      save();
+
+      if (data.first_setup && data.admin_token) {
+        firstSetupToken.value = data.admin_token;
+        localStorage.setItem('sys_admin_token', data.admin_token);
+      }
+
+      await pushToServer();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'network_error' };
+    }
+  }
+
   // Holt ein frisches HMAC-Cert vom Server für die aktuell geladene Soul.
   // Nötig nach importFromText() wenn der gespeicherte Cert veraltet/lokal ist.
   // Schlägt still fehl (kein Server / offline) – alter Cert bleibt erhalten.
@@ -658,6 +702,7 @@ Mögliche section-Werte (exakt so schreiben):
     save,
     createNew,
     importFromText,
+    importAndSetup,
     refreshCert,
     rotateCert,
     updateContent,
