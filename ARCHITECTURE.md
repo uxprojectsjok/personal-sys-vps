@@ -26,8 +26,6 @@ For setup and operations: [ONBOARDING.md](ONBOARDING.md)
 │  /api/soul           → vault_auth.lua → api_serve.lua   │
 │  /api/vault/*        → vault_auth.lua → vault_sync.lua  │
 │  /api/node-status    → node_status.lua                  │
-│  /api/peer/verify    → peer_verify.lua                  │
-│  /api/peer/connect   → peer_connect.lua                 │
 │  /api/soul/pay       → soul_pay.lua  (public, POL)      │
 │  /api/soul/paid-read → soul_paid_read.lua               │
 │  /mcp                → soul-mcp (Node.js :3098)         │
@@ -39,7 +37,6 @@ For setup and operations: [ONBOARDING.md](ONBOARDING.md)
 │                                                          │
 │  sys.md                  Identity file (enc. or plain)  │
 │  api_context.json        Permissions + vault index      │
-│  soul_connections.json   Peer connections               │
 │  earnings.json           POL payment records            │
 │  pinata_jwt              Per-soul IPFS/Pinata JWT       │
 │  vault/audio/                                            │
@@ -192,20 +189,28 @@ Key never leaves the browser.
 
 ---
 
-## Peer-to-Peer Soul Connections
+## Soul-to-Soul Connections (Whitelist)
 
-Two nodes can mutually verify and connect:
+Peer souls connect via the MCP endpoint — no handshake, no separate protocol.
 
 ```
-Node A → GET /api/peer/verify?soul_id=… @ Node B   (CORS, public)
-Node B → responds with node_status + soul_id signature
-Node A → POST /api/peer/connect @ Node B            (authenticated)
-       → stores connection in soul_connections.json
+Soul B → POST /mcp  Authorization: Bearer soul_id_B.soul_cert_B
+       → server checks: is soul_id_B in amortization.trusted_souls?
+       → yes → registerPaidTools with free_tools
+       → no  → 401
 ```
 
-Connections are stored in `soul_connections.json` and managed via `SoulNetworkPanel.vue`.
+Setup: enter the peer's `soul_id` in the **Agent Marketplace → Vertraute Souls** field and save. The connecting soul uses their own `soul_id.soul_cert` as Bearer token — their credentials never leave their system, yours never leave yours.
 
-**Multi-Hoster:** The `target_soul_id` parameter on `/api/peer/connect` routes to a specific soul on a multi-host node. Same-VPS souls use direct filesystem reads.
+**Token type detection in `soul-mcp/server.mjs`:**
+
+| Token format | Type | Access |
+|---|---|---|
+| 64 hex chars | service_token (OAuth owner) | full tools |
+| 48 hex chars | pol_access_token (paying agent) | free_tools |
+| uuid.32hex | peer soul_cert | free_tools if whitelisted |
+
+Whitelist stored in `api_context.json` under `amortization.trusted_souls[]`.
 
 ---
 
@@ -261,9 +266,11 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 `soul-mcp/` — Node.js MCP server with OAuth 2.0 + PKCE, port 3098, accessible via OpenResty at `/mcp`.
 
-**Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `network_list`, `network_peer_get`, `calendar_read`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
+**Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `calendar_read`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
 
 **Available tools (paid agent / pol_access_token):** configured per soul via `amortization.free_tools`
+
+**Available tools (whitelisted peer soul):** same as `amortization.free_tools` — controlled by the soul owner
 
 ---
 
@@ -284,7 +291,7 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 | `useApiContext` | API permissions, AES-256-CBC vault encryption |
 | `useChainAnchor` | Polygon + IPFS blockchain anchoring |
 | `useClaude` | Claude API SSE streaming |
-| `useVaultConnections` | Peer-to-peer soul connections |
+| `useConnectedVault` | Public vault context from peer souls via MCP |
 
 ---
 

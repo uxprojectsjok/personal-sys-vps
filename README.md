@@ -47,9 +47,8 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 - File viewer, audio player, video player built in
 
 **Networking**
-- Peer-to-peer soul connections between SYS nodes
-- Public profile (opt-in) with vault sharing for peers
 - MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
+- Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
 - WhatsApp integration via Twilio (personal bot with soul context)
 - Browser extension (Chrome MV3) for automatic soul_cert injection
 
@@ -89,14 +88,14 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 │
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
 │   ├── pages/               Routes: index, session, gate, api-docs, …
-│   ├── components/          UI components (SoulNetworkPanel, Vault, Chat, …)
+│   ├── components/          UI components (SoulViewer, Vault, Chat, AgentMarketplacePanel, …)
 │   └── composables/         Shared state: useSoul, useVault, useChainAnchor, …
 │
 ├── lua/                     OpenResty Lua scripts (production API layer)
 │   ├── soul_cert.lua        Soul cert issuance (HMAC-SHA256)
 │   ├── soul_auth.lua        Request authentication
 │   ├── gate_auth.lua        Gate password protection
-│   ├── peer_connect.lua     Cross-domain soul connections
+│   ├── soul_amortization.lua Agent Marketplace + trusted souls whitelist
 │   ├── vault_sync.lua       Vault file upload/sync
 │   └── …                   (40+ additional Lua endpoints)
 │
@@ -172,7 +171,7 @@ bearer = soul_id + "." + soul_cert
 
 `soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. Claude and other MCP-compatible AI clients can connect and access sys.md and vault files with granular permissions.
 
-Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `network_list`
+Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `soul_discover`, `verify_human`
 
 ---
 
@@ -223,7 +222,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 6b0b4f4cd0bf78d57dde148c8bf560eed73e9ef66ce54479b9db25b1d2248074
+Current release fingerprint: 3af55618e35249943cb93190a58d896f3a42c545070a01aa7fabf0e21794de13
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
