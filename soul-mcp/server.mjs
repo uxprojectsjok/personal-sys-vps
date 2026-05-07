@@ -14,7 +14,7 @@
  */
 
 import 'dotenv/config';
-import { readFile } from 'fs/promises';
+import { readFile, readdir } from 'fs/promises';
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -266,7 +266,7 @@ app.post('/internal/verify-tx', async (req, res) => {
   }
 });
 
-// ── Pinata JWT: .env hat Vorrang, dann soul-spezifisch, dann global ──────────
+// ── Pinata JWT: .env → soul-spezifisch → global → erster Soul im System ──────
 async function getPinataJwt(soulId) {
   const envJwt = (process.env.PINATA_JWT || '').trim();
   if (envJwt) return envJwt;
@@ -281,10 +281,22 @@ async function getPinataJwt(soulId) {
   // Globaler Fallback (Legacy / Single-Node)
   try {
     const jwt = await readFile('/var/lib/sys/pinata_jwt', 'utf8');
-    return jwt.trim();
-  } catch {
-    return '';
-  }
+    const trimmed = jwt.trim();
+    if (trimmed) return trimmed;
+  } catch { /* no global JWT */ }
+  // Letzter Fallback: ersten verfügbaren soul-spezifischen JWT nehmen
+  // (wichtig für discover-souls, das ohne soulId aufgerufen wird)
+  try {
+    const dirs = await readdir('/var/lib/sys/souls/');
+    for (const dir of dirs) {
+      try {
+        const jwt = await readFile(`/var/lib/sys/souls/${dir}/pinata_jwt`, 'utf8');
+        const trimmed = jwt.trim();
+        if (trimmed) return trimmed;
+      } catch { /* no JWT for this soul */ }
+    }
+  } catch { /* souls dir not accessible */ }
+  return '';
 }
 
 // ── IPFS-Pinning via Pinata (interner Endpoint) ───────────────────────────────
@@ -464,7 +476,6 @@ async function checkTrustedSoul(peerSoulId, targetSoulId) {
     let soulId = targetSoulId;
     if (!soulId) {
       // Kein soul_id angegeben — nur im Single-Soul-Modus sicher
-      const { readdir } = await import('fs/promises');
       const dirs = await readdir('/var/lib/sys/souls/');
       const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
       if (soulDirs.length === 0) return null;
