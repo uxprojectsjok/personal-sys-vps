@@ -175,7 +175,7 @@ app.get('/health', (_req, res) => {
 });
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
-import { verifyHuman } from './lib/blockchain.mjs';
+import { verifyHuman, discoverSouls } from './lib/blockchain.mjs';
 import { ethers }      from 'ethers';
 
 // Polygon-Provider (wiederverwendet aus blockchain.mjs Logik)
@@ -355,94 +355,87 @@ app.post('/internal/pin-json', async (req, res) => {
   }
 });
 
-// ── Soul-Discovery via Pinata-Verzeichnis ─────────────────────────────────────
+// ── Soul-Discovery (Pinata oder Chain-Fallback) ───────────────────────────────
 // GET /internal/discover-souls?q=&amortized=&limit=
-// Durchsucht Pinata nach allen gepinnten SYS-Souls.
-// Optional: q (Name/soul_id Substring), amortized=true (nur zahlungspflichtige)
+// Primär: Pinata-pinList (wenn PINATA_JWT vorhanden)
+// Fallback: Polygon-Chain — liest Calldata der Anchor-TXs (kein JWT nötig)
 app.get('/internal/discover-souls', async (req, res) => {
-  const jwt = await getPinataJwt();
-  if (!jwt) {
-    return res.status(503).json({
-      error: 'pinata_not_configured',
-      message: 'PINATA_JWT nicht gesetzt. Über /api/soul/pinata-config oder soul-mcp/.env konfigurieren.',
-    });
-  }
-
   const limit     = Math.min(parseInt(req.query.limit || '20', 10), 100);
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
 
+  const jwt = await getPinataJwt();
+
+  // ── Pinata-Pfad ───────────────────────────────────────────────────────────
+  if (jwt) {
+    try {
+      const params = new URLSearchParams({
+        status:  'pinned',
+        'metadata[keyvalues][schema]': JSON.stringify({
+          value: 'saveyoursoul/soul/1.0',
+          op:    'eq',
+        }),
+        pageLimit: String(limit),
+      });
+      if (q) params.set('metadata[name]', `soul-${q}`);
+
+      const response = await fetch(
+        `https://api.pinata.cloud/data/pinList?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${jwt}` } },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const rows = data.rows || [];
+
+        const settled = await Promise.allSettled(
+          rows.map(async (pin) => {
+            const cid = pin.ipfs_pin_hash;
+            try {
+              const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
+                signal: AbortSignal.timeout(5000),
+              });
+              if (!r.ok) return null;
+              const meta = await r.json();
+              if (amortized && !(meta.amortization?.enabled === true)) return null;
+              return {
+                cid,
+                ipfs_uri:        `ipfs://${cid}`,
+                gateway_url:     `https://gateway.pinata.cloud/ipfs/${cid}`,
+                soul_id:         meta.soul_id,
+                name:            meta.name,
+                mcp_endpoint:    meta.mcp_endpoint,
+                pay_endpoint:    meta.pay_endpoint,
+                soul_endpoint:   meta.soul_endpoint,
+                verify_endpoint: meta.verify_endpoint,
+                amortization:    meta.amortization ?? null,
+                pinned_at:       pin.date_pinned,
+                source:          'ipfs',
+              };
+            } catch { return null; }
+          }),
+        );
+
+        const results = settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+        return res.json({ ok: true, total: data.count ?? results.length, souls: results, source: 'ipfs' });
+      }
+    } catch { /* fall through to chain discovery */ }
+  }
+
+  // ── Chain-Fallback: Polygon-Anchor-Calldata ───────────────────────────────
   try {
-    // Pinata pinList API — nach schema filtern
-    const params = new URLSearchParams({
-      status:  'pinned',
-      'metadata[keyvalues][schema]': JSON.stringify({
-        value: 'saveyoursoul/soul/1.0',
-        op:    'eq',
-      }),
-      pageLimit: String(limit),
-    });
-
-    if (q) {
-      // Name-Filter: soul-{q}
-      params.set('metadata[name]', `soul-${q}`);
-    }
-
-    const response = await fetch(
-      `https://api.pinata.cloud/data/pinList?${params.toString()}`,
-      { headers: { Authorization: `Bearer ${jwt}` } }
-    );
-
-    if (!response.ok) {
-      const text = await response.text();
-      return res.status(response.status).json({ error: 'Pinata-Fehler', detail: text });
-    }
-
-    const data  = await response.json();
-    const rows  = data.rows || [];
-
-    // Für jeden Pin: Metadaten vom Gateway laden
-    const souls = await Promise.allSettled(
-      rows.map(async (pin) => {
-        const cid = pin.ipfs_pin_hash;
-        try {
-          const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
-            signal: AbortSignal.timeout(5000),
-          });
-          if (!r.ok) return null;
-          const meta = await r.json();
-          // amortized-Filter
-          if (amortized && !(meta.amortization?.enabled === true)) return null;
-          return {
-            cid,
-            ipfs_uri:       `ipfs://${cid}`,
-            gateway_url:    `https://gateway.pinata.cloud/ipfs/${cid}`,
-            soul_id:        meta.soul_id,
-            name:           meta.name,
-            mcp_endpoint:   meta.mcp_endpoint,
-            pay_endpoint:   meta.pay_endpoint,
-            soul_endpoint:  meta.soul_endpoint,
-            verify_endpoint: meta.verify_endpoint,
-            amortization:   meta.amortization ?? null,
-            pinned_at:      pin.date_pinned,
-          };
-        } catch {
-          return null;
-        }
-      })
-    );
-
-    const results = souls
-      .map(r => r.status === 'fulfilled' ? r.value : null)
-      .filter(Boolean);
-
+    const souls = await discoverSouls({ q, amortized, limit });
     res.json({
       ok:     true,
-      total:  data.count ?? results.length,
-      souls:  results,
+      total:  souls.length,
+      souls,
+      source: 'chain',
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error:   err.message,
+      hint:    'chain-basierte Discovery fehlgeschlagen. PINATA_JWT für zuverlässige Discovery konfigurieren.',
+    });
   }
 });
 
