@@ -594,7 +594,7 @@ export function useChainAnchor() {
 
   // ── Blockchain-Anker ──────────────────────────────────────────────────────
 
-  async function anchorSoul() {
+  async function anchorSoul(tags = []) {
     if (!CONTRACT_ADDRESS) {
       anchorError.value = "Smart Contract noch nicht deployed.";
       return null;
@@ -677,13 +677,14 @@ export function useChainAnchor() {
       let anchorData;
       try {
         const meta = { id: soulMeta.value.id, mcp: `${window.location.origin}/mcp` };
-        // agent_registry_cid einbetten falls vorhanden
+        // agent_registry_cid + tags einbetten falls vorhanden
         try {
           const ctx = await fetch('/api/context', {
             headers: { Authorization: `Bearer ${soulToken.value}` },
           }).then(r => r.ok ? r.json() : null);
           if (ctx?.agent_registry_cid) meta.cid = ctx.agent_registry_cid;
         } catch { /* non-critical */ }
+        if (Array.isArray(tags) && tags.length) meta.tags = tags;
 
         const marker = '\x00SYS1\x00';
         const payload = new TextEncoder().encode(marker + JSON.stringify(meta));

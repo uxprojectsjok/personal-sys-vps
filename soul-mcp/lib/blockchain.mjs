@@ -89,7 +89,7 @@ async function fetchAnchoredEvents(provider, contract) {
  * Any bytes after offset 100 are our custom payload.
  *
  * @param {string} inputHex  tx.data hex string
- * @returns {{ id?, mcp?, cid? } | null}
+ * @returns {{ id?, mcp?, cid?, tags? } | null}
  */
 function extractSysMeta(inputHex) {
   try {
@@ -133,12 +133,13 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
       if (!meta?.id || !meta?.mcp) return;
 
       const soul = {
-        soul_id:       meta.id,
-        mcp_endpoint:  meta.mcp,
-        sessions:      Number(ev.args.sessionCount),
-        anchor_date:   new Date(Number(ev.args.timestamp) * 1000).toISOString().split('T')[0],
+        soul_id:        meta.id,
+        mcp_endpoint:   meta.mcp,
+        sessions:       Number(ev.args.sessionCount),
+        anchor_date:    new Date(Number(ev.args.timestamp) * 1000).toISOString().split('T')[0],
         chain_verified: true,
-        network:       net.name,
+        network:        net.name,
+        tags:           Array.isArray(meta.tags) ? meta.tags : [],
       };
 
       // Enrich from IPFS public gateway if CID available
@@ -150,11 +151,15 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
           const r = await fetch(gw, { signal: AbortSignal.timeout(10000) });
           if (r.ok) {
             const ipfs = await r.json();
-            soul.name           = ipfs.name ?? null;
-            soul.cid            = meta.cid;
-            soul.amortization   = ipfs.amortization ?? null;
-            soul.pay_endpoint   = ipfs.pay_endpoint ?? null;
+            soul.name            = ipfs.name ?? null;
+            soul.description     = ipfs.description ?? null;
+            soul.cid             = meta.cid;
+            soul.gateway_url     = gw;
+            soul.amortization    = ipfs.amortization ?? null;
+            soul.pay_endpoint    = ipfs.pay_endpoint ?? null;
             soul.verify_endpoint = ipfs.verify_endpoint ?? null;
+            // Tags aus IPFS ergänzen falls on-chain leer
+            if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
           }
         } catch { /* IPFS fetch failed, use chain-only data */ }
       }
@@ -178,7 +183,9 @@ function filterResults(souls, { q, amortized, limit }) {
     res = res.filter(s =>
       s.soul_id?.includes(lq) ||
       s.name?.toLowerCase().includes(lq) ||
-      s.mcp_endpoint?.toLowerCase().includes(lq),
+      s.mcp_endpoint?.toLowerCase().includes(lq) ||
+      s.description?.toLowerCase().includes(lq) ||
+      s.tags?.some(t => t.toLowerCase().includes(lq)),
     );
   }
   if (amortized) {

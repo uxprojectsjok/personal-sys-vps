@@ -416,6 +416,8 @@ app.get('/internal/discover-souls', async (req, res) => {
                 gateway_url:     `https://gateway.pinata.cloud/ipfs/${cid}`,
                 soul_id:         meta.soul_id,
                 name:            meta.name,
+                description:     meta.description ?? null,
+                tags:            Array.isArray(meta.tags) ? meta.tags : [],
                 mcp_endpoint:    meta.mcp_endpoint,
                 pay_endpoint:    meta.pay_endpoint,
                 soul_endpoint:   meta.soul_endpoint,
@@ -428,8 +430,19 @@ app.get('/internal/discover-souls', async (req, res) => {
           }),
         );
 
-        const results = settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
-        return res.json({ ok: true, total: data.count ?? results.length, souls: results, source: 'ipfs' });
+        let results = settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+        // Client-seitiges Filtern nach q (tags + description + name + soul_id)
+        if (q) {
+          const lq = q.toLowerCase();
+          results = results.filter(s =>
+            s.soul_id?.includes(lq) ||
+            s.name?.toLowerCase().includes(lq) ||
+            s.description?.toLowerCase().includes(lq) ||
+            s.tags?.some(t => t.toLowerCase().includes(lq)),
+          );
+        }
+        if (amortized) results = results.filter(s => s.amortization?.enabled === true);
+        return res.json({ ok: true, total: results.length, souls: results.slice(0, limit), source: 'ipfs' });
       }
     } catch { /* fall through to chain discovery */ }
   }
