@@ -119,14 +119,17 @@ async function handleMcp(req, res) {
     registerPaidTools(server, token, paid.free_tools || []);
   } else if (isPeerToken) {
     // Peer-Soul-Cert — prüfen ob soul_id in trusted_souls der Ziel-Soul
-    const peerSoulId  = token.split('.')[0];
+    const peerSoulId   = token.split('.')[0];
     const targetSoulId = req.query.soul_id || null;
     const trusted = await checkTrustedSoul(peerSoulId, targetSoulId);
-    if (!trusted) {
+    if (!trusted || trusted.error) {
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+      const msg = trusted?.error === 'soul_id_required'
+        ? 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).'
+        : 'Soul nicht in der Whitelist. Kontakt zum Soul-Inhaber aufnehmen.';
       return res.status(401).json({
         jsonrpc: '2.0',
-        error: { code: -32001, message: 'Soul nicht in der Whitelist. Kontakt zum Soul-Inhaber aufnehmen.' },
+        error: { code: -32001, message: msg },
         id: null,
       });
     }
@@ -465,10 +468,16 @@ async function checkTrustedSoul(peerSoulId, targetSoulId) {
   try {
     let soulId = targetSoulId;
     if (!soulId) {
-      // Single-Soul-Fallback: ersten Soul im Verzeichnis nehmen
+      // Kein soul_id angegeben — nur im Single-Soul-Modus sicher
       const { readdir } = await import('fs/promises');
       const dirs = await readdir('/var/lib/sys/souls/');
-      soulId = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) || null;
+      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+      if (soulDirs.length === 0) return null;
+      if (soulDirs.length > 1) {
+        // Multi-Hoster: ?soul_id= ist zwingend erforderlich
+        return { error: 'soul_id_required' };
+      }
+      soulId = soulDirs[0];
     }
     if (!soulId) return null;
 
