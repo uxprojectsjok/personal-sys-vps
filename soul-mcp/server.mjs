@@ -116,7 +116,7 @@ async function handleMcp(req, res) {
         id: null,
       });
     }
-    registerPaidTools(server, token, paid.free_tools || []);
+    registerPaidTools(server, token, paid.free_tools || [], paid.soul_id);
   } else if (isPeerToken) {
     // Peer-Soul-Cert — prüfen ob soul_id in trusted_souls der Ziel-Soul
     const peerSoulId   = token.split('.')[0];
