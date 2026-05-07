@@ -222,7 +222,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 8cf08babab009106ce6f3b15cbf2fbb3ca7f2de83b14e618bef29768c5803229
+Current release fingerprint: f49d24e30e196168972f9be743fbe3d2c15347a6e90562b523d0731389615ce4
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -293,3 +293,7 @@ Apache License 2.0 — see [LICENSE](LICENSE)
 Copyright © 2026 Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com), Marburg, Germany
 
 "SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo. See [NOTICE](NOTICE) for trademark and attribution requirements.
+
+---
+
+**Project site:** [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com/)
