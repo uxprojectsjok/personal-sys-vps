@@ -96,8 +96,12 @@ export function register(server, _token) {
         }
 
         const soulContent = await readRes.text();
+        const commentEndpoint = pay_endpoint.replace(/\/pay(\?.*)?$/, '/paid-comment');
         const lines = [
           `[Soul-Inhalt · ${soul_id.slice(0, 8)}… · Zugang bis ${expiresAt ? new Date(expiresAt).toLocaleString('de-DE') : '?'}]`,
+          `access_token: ${accessToken}`,
+          `comment_endpoint: ${commentEndpoint}`,
+          '---',
           '',
           soulContent,
         ];
