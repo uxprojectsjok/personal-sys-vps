@@ -312,9 +312,6 @@
           <section v-else-if="step === 'ipfs'" class="step">
             <div class="step-head">
               <h2 class="step-title">Auf IPFS <em>veröffentlichen</em></h2>
-              <button class="step-link" :disabled="previewLoading" @click="loadPreview">
-                {{ previewLoading ? 'lade…' : 'Vorschau laden' }}
-              </button>
             </div>
 
             <p class="prose">
@@ -330,7 +327,7 @@
               </div>
             </div>
 
-            <div v-if="preview" class="card">
+            <div class="card">
               <div class="card-head">
                 <span class="kicker">Metadaten · editierbar</span>
               </div>
@@ -576,7 +573,7 @@ const registering   = ref(false)
 const registerError = ref('')
 const newCid        = ref('')
 
-const preview        = ref(null)
+const preview        = ref({ name: '', description: '' })
 const previewLoading = ref(false)
 
 const previewReadonly = computed(() => {
@@ -615,7 +612,10 @@ function toggleTool(name) {
   else amort.free_tools.splice(idx, 1)
 }
 
-watch(step, () => { showToolPicker.value = false })
+watch(step, (newStep) => {
+  showToolPicker.value = false
+  if (newStep === 'ipfs') loadPreview()
+})
 
 const BASE = () => ''
 function authHeader() {
@@ -631,6 +631,7 @@ onMounted(async () => {
   if (!pinataOk.value)               step.value = 'pinata'
   else if (!amortActive.value && !modeTouched.value) step.value = 'mode'
   else if (!registered.value)        step.value = 'ipfs'
+  if (step.value === 'ipfs') loadPreview()
 })
 
 async function loadPinata() {

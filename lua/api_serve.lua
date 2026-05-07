@@ -97,7 +97,7 @@ local actives = ctx.active_files or {}
 -- ── /api/soul ──────────────────────────────────────────────────────────────
 
 if uri == "/api/soul" then
-  if not perm.soul then
+  if ngx.ctx.via_webhook and not perm.soul then
     ngx.status = 403
     ngx.header["Content-Type"] = "application/json"
     ngx.say('{"error":"Soul access not permitted"}')
@@ -149,7 +149,7 @@ if uri == "/api/soul" then
     soul_content = decrypted
   end
 
-  if not perm.calendar then
+  if ngx.ctx.via_webhook and not perm.calendar then
     local cal_start = soul_content:find("\n## Kalender")
     if cal_start then
       local heading_end = soul_content:find("\n", cal_start + 1, true)

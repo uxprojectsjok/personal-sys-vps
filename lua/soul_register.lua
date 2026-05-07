@@ -52,32 +52,7 @@ if not ok_c or type(ctx) ~= "table" then
   return
 end
 
--- Voraussetzung: Polygon-verifiziert (amortization.verified_wallet gesetzt)
 local amort = ctx.amortization
-local is_verified = type(amort) == "table"
-  and type(amort.verified_wallet) == "string"
-  and #amort.verified_wallet > 0
-
-if not is_verified then
-  -- Fallback: verify_cache prüfen
-  local cache   = ngx.shared.verify_cache
-  local cached  = cache and cache:get("v1:" .. soul_id)
-  if cached then
-    local ok_v, cd = pcall(cjson.decode, cached)
-    if ok_v and type(cd) == "table" then
-      is_verified = cd.verified == true
-    end
-  end
-end
-
-if not is_verified then
-  ngx.status = 403
-  ngx.say(cjson.encode({
-    error   = "verification_required",
-    message = "Nur Polygon-verifizierte Souls können registriert werden. Bitte erst auf der Blockchain verankern.",
-  }))
-  return
-end
 
 -- soul_meta direkt hier zusammenbauen (wie soul_meta.lua)
 local sys_path = SOULS_DIR .. soul_id .. "/sys.md"
