@@ -18,7 +18,7 @@ import { readFile } from 'fs/promises';
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools, registerPaidTools } from './tools/index.mjs';
+import { registerTools, registerPaidTools, registerPeerTools } from './tools/index.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 
@@ -133,7 +133,9 @@ async function handleMcp(req, res) {
         id: null,
       });
     }
-    registerPaidTools(server, token, trusted.free_tools);
+    // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
+    const resolvedTargetId = trusted.soul_id;
+    registerPeerTools(server, token, trusted.free_tools, resolvedTargetId);
   } else {
     registerTools(server, token);
   }
@@ -489,7 +491,7 @@ async function checkTrustedSoul(peerSoulId, targetSoulId) {
     const freeTools = ctx?.amortization?.free_tools?.length
       ? ctx.amortization.free_tools
       : ['soul_read', 'verify_human', 'soul_maturity'];
-    return { free_tools: freeTools };
+    return { soul_id: soulId, free_tools: freeTools };
   } catch {
     return null;
   }

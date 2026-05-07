@@ -1,5 +1,8 @@
-import { register as soulRead }       from './soul_read.mjs';
-import { register as soulReadPaid }   from './soul_read_paid.mjs';
+import { register as soulRead }        from './soul_read.mjs';
+import { register as soulReadPaid }    from './soul_read_paid.mjs';
+import { register as soulReadPeer }    from './soul_read_peer.mjs';
+import { register as verifyHumanPeer } from './verify_human_peer.mjs';
+import { register as soulMaturityPeer } from './soul_maturity_peer.mjs';
 import { register as bemeChat }       from './beme_chat.mjs';
 import { register as vaultManifest }  from './vault_manifest.mjs';
 import { register as audioList }      from './audio_list.mjs';
@@ -61,17 +64,27 @@ export function registerTools(server, token) {
 }
 
 /**
- * Registriert nur die Free-Tools für bezahlte externe Agenten (pol_access_token).
- * freeTools: Array von Tool-Namen aus amortization.free_tools (default: soul_read, verify_human, soul_maturity).
- * polToken: der pol_access_token des Agenten.
+ * Registriert Free-Tools für bezahlte externe Agenten (pol_access_token).
  */
 export function registerPaidTools(server, polToken, freeTools = []) {
   const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
 
-  // soul_read verwendet paid-read Endpoint (kein soul_cert nötig)
-  if (allowed.has('soul_read'))    soulReadPaid(server, polToken);
-  // verify_human nutzt Blockchain direkt — kein soul_cert nötig
-  if (allowed.has('verify_human')) verifyHuman(server, polToken);
-  // soul_discover braucht kein soul_cert (interner Endpoint)
+  if (allowed.has('soul_read'))     soulReadPaid(server, polToken);
+  if (allowed.has('verify_human'))  verifyHuman(server, polToken);
   if (allowed.has('soul_discover')) soulDiscover(server, polToken);
+}
+
+/**
+ * Registriert Free-Tools für vertrauenswürdige Peer-Souls (soul_cert-Auth).
+ * Liest direkt vom Dateisystem — kein OpenResty-Token nötig.
+ * targetSoulId: die soul_id des Ziel-Souls (auf diesem Server).
+ */
+export function registerPeerTools(server, peerToken, freeTools = [], targetSoulId) {
+  const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
+
+  if (allowed.has('soul_read'))     soulReadPeer(server, targetSoulId);
+  if (allowed.has('verify_human'))  verifyHumanPeer(server, targetSoulId);
+  if (allowed.has('soul_maturity')) soulMaturityPeer(server, targetSoulId);
+  // soul_discover: interner Endpoint, kein Auth nötig — peerToken wird ignoriert
+  if (allowed.has('soul_discover')) soulDiscover(server, peerToken);
 }
