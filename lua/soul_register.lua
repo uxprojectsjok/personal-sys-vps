@@ -3,7 +3,7 @@
 -- Auth: vault_auth.lua (soul_cert)
 -- Pinnt soul_meta JSON zu IPFS via Pinata (ERC-8004 Agent-Discovery).
 -- Speichert CID in api_context.json als agent_registry_cid.
--- Voraussetzung: Amortisation aktiviert (soul ist polygon-verifiziert).
+-- Kein Anker erforderlich — Registrierung ist unabhängig vom Blockchain-Status.
 
 local cjson = require("cjson.safe")
 local http  = require("resty.http")

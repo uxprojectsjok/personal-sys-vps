@@ -242,8 +242,9 @@
                       <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
                     </div>
+                    <div style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:4px">Bearer-Token (Zugangscode)</div>
                     <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
-                      <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">{{ certRotationResult.cert }}</code>
+                      <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
                       <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                           :style="certCopied ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
@@ -751,7 +752,7 @@ function downloadSoulLocal() {
 async function copyCertResult() {
   if (!certRotationResult.value?.cert) return
   try {
-    await navigator.clipboard.writeText(certRotationResult.value.cert)
+    await navigator.clipboard.writeText(`Bearer ${soulToken.value}`)
     certCopied.value = true
     setTimeout(() => { certCopied.value = false }, 2000)
   } catch {}
