@@ -26,7 +26,6 @@
           <button class="tool" :class="{ active: aiRole === 'soul' }" @click="aiRole = aiRole === 'soul' ? 'session' : 'soul'">
             Modus · {{ aiRole === 'soul' ? 'Soul' : 'Entwicklung' }}
           </button>
-          <button class="tool" @click="settingsOpen = true">Einstellungen</button>
         </div>
       </header>
 
