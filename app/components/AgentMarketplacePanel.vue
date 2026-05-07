@@ -277,7 +277,10 @@
                 <div class="field" style="margin-bottom:10px">
                   <label class="field-label">MCP-Endpunkt</label>
                   <input v-model="newNodeUrl" type="url" class="input" placeholder="https://soul-b.domain.de/mcp" @keyup.enter="addNode" />
-                  <p class="node-hint">Multi-Hoster-Node: URL mit <code>?soul_id=</code> der Ziel-Soul angeben, z.B. <code>…/mcp?soul_id=uuid</code></p>
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field-label">Soul-ID <span class="field-hint">(nur bei Multi-Hoster-Nodes erforderlich)</span></label>
+                  <input v-model="newNodeSoulId" type="text" class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" @keyup.enter="addNode" />
                 </div>
                 <div class="add-node-row">
                   <input v-model="newNodeLabel" type="text" class="input" placeholder="Name (optional)" @keyup.enter="addNode" style="flex:1" />
@@ -492,6 +495,7 @@ const amortSuccess  = ref(false)
 // ═══════════ VERBUNDENE NODES ═══════════
 const connectedNodes = ref([])
 const newNodeUrl     = ref('')
+const newNodeSoulId  = ref('')
 const newNodeLabel   = ref('')
 const bearerCopied   = ref(false)
 
@@ -516,12 +520,20 @@ function saveNodes() {
 }
 
 function addNode() {
-  const url = newNodeUrl.value.trim()
+  let url = newNodeUrl.value.trim()
   if (!url) return
+  const soulId = newNodeSoulId.value.trim()
+  if (soulId) {
+    // Soul-ID als ?soul_id= anhängen (bestehende Parameter respektieren)
+    const u = new URL(url)
+    u.searchParams.set('soul_id', soulId)
+    url = u.toString()
+  }
   connectedNodes.value.push({ url, label: newNodeLabel.value.trim() })
   saveNodes()
-  newNodeUrl.value   = ''
-  newNodeLabel.value = ''
+  newNodeUrl.value    = ''
+  newNodeSoulId.value = ''
+  newNodeLabel.value  = ''
 }
 
 function removeNode(i) {
@@ -981,8 +993,6 @@ async function register() {
 .add-node-form { margin-top: 8px; }
 .add-node-row { display: flex; gap: 8px; align-items: stretch; }
 .add-node-row .input { min-width: 0; }
-.node-hint { font-size: 10px; color: var(--fg-4); margin-top: 5px; line-height: 1.5; }
-.node-hint code { font-family: var(--mono); color: var(--fg-3); }
 
 .sys-modal-enter-active, .sys-modal-leave-active { transition: opacity 0.2s; }
 .sys-modal-enter-active .sys-amm, .sys-modal-leave-active .sys-amm { transition: transform 0.25s ease, opacity 0.2s; }
