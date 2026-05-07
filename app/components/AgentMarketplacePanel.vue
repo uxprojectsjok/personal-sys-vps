@@ -246,7 +246,7 @@
                 <h3 class="connected-title">Verbundene <em>Nodes</em></h3>
               </div>
               <p class="prose" style="margin-bottom:16px">
-                Trage MCP-Endpunkte anderer SYS-Nodes ein. Dein Soul-Cert wird als Bearer-Token verwendet — trage es in deinem KI-Assistenten ein.
+                Trage MCP-Endpunkte anderer SYS-Nodes ein. Dein Soul-Cert wird als Bearer-Token verwendet — trage es in deinem KI-Assistenten ein. Für Souls auf <em>diesem Server</em>: gleiche URL, andere Soul-ID.
               </p>
 
               <!-- Eigener Bearer-Token -->
@@ -275,11 +275,19 @@
               <!-- Neue Node hinzufügen -->
               <div class="add-node-form">
                 <div class="field" style="margin-bottom:10px">
-                  <label class="field-label">MCP-Endpunkt</label>
-                  <input v-model="newNodeUrl" type="url" class="input" placeholder="https://soul-b.domain.de/mcp" @keyup.enter="addNode" />
+                  <div class="field-label-row">
+                    <label class="field-label">MCP-Endpunkt</label>
+                    <button
+                      v-if="selfMcpUrl"
+                      type="button"
+                      class="field-hint-btn"
+                      @click="newNodeUrl = selfMcpUrl"
+                    >Gleicher Host</button>
+                  </div>
+                  <input v-model="newNodeUrl" type="url" class="input" placeholder="https://domain.de/mcp" @keyup.enter="addNode" />
                 </div>
                 <div class="field" style="margin-bottom:10px">
-                  <label class="field-label">Soul-ID <span class="field-hint">(nur bei Multi-Hoster-Nodes erforderlich)</span></label>
+                  <label class="field-label">Soul-ID <span class="field-hint">(erforderlich wenn Ziel mehrere Souls hat)</span></label>
                   <input v-model="newNodeSoulId" type="text" class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" @keyup.enter="addNode" />
                 </div>
                 <div class="add-node-row">
@@ -498,6 +506,8 @@ const newNodeUrl     = ref('')
 const newNodeSoulId  = ref('')
 const newNodeLabel   = ref('')
 const bearerCopied   = ref(false)
+const selfMcpUrl     = ref('')
+
 
 const soulBearerToken = computed(() => props.soulCert || '')
 
@@ -604,6 +614,7 @@ function authHeader() {
 
 // ═══════════ LOAD ═══════════
 onMounted(async () => {
+  selfMcpUrl.value = window.location.origin + '/mcp'
   if (!props.soulCert) return
   loadNodes()
   await Promise.all([loadPinata(), loadAmort()])
@@ -871,6 +882,10 @@ async function register() {
 .field.span-2 { grid-column: 1 / -1; }
 .field-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); }
 .field-hint { color: var(--fg-4); text-transform: none; letter-spacing: 0.05em; margin-left: 6px; }
+.field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.field-label-row .field-label { margin-bottom: 0; }
+.field-hint-btn { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: none; border: 1px solid var(--accent); padding: 2px 7px; cursor: pointer; opacity: 0.8; transition: opacity 0.15s; }
+.field-hint-btn:hover { opacity: 1; }
 .input { width: 100%; padding: 12px 14px; background: var(--paper-2); border: 1px solid var(--rule-2); color: var(--fg); font-family: var(--sans); font-size: 14px; outline: 0; transition: all 0.15s; }
 .input.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; }
 .input:focus { border-color: var(--accent); background: var(--paper); box-shadow: 0 0 0 3px var(--accent-2); }
