@@ -91,7 +91,7 @@ async function fetchAnchoredEvents(provider, contract) {
  * @param {string} inputHex  tx.data hex string
  * @returns {{ id?, mcp?, cid?, tags? } | null}
  */
-function extractSysMeta(inputHex) {
+export function extractSysMeta(inputHex) {
   try {
     const raw = ethers.getBytes(inputHex);
     if (raw.length <= 100) return null;
@@ -102,6 +102,62 @@ function extractSysMeta(inputHex) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Fast discovery: fetches specific TX hashes directly instead of scanning events.
+ * Each entry: { txHash, soulName?, anchorDate?, sessions? }
+ *
+ * Used when souls store their soul_chain_anchor.tx in sys.md — no event scan needed.
+ */
+export async function discoverSoulsFromTxHashes(entries = [], { q = '', amortized = false, limit = 20 } = {}) {
+  const net      = NETWORKS[process.env.POLYGON_NETWORK] ?? NETWORKS.main;
+  const provider = getProvider();
+
+  const souls = [];
+  await Promise.allSettled(entries.map(async ({ txHash, soulName, anchorDate, sessions }) => {
+    try {
+      const tx = await provider.getTransaction(txHash);
+      if (!tx?.data) return;
+      const meta = extractSysMeta(tx.data);
+      if (!meta?.id || !meta?.mcp) return;
+
+      const soul = {
+        soul_id:        meta.id,
+        mcp_endpoint:   meta.mcp,
+        tags:           Array.isArray(meta.tags) ? meta.tags : [],
+        chain_verified: true,
+        network:        net.name,
+        anchor_date:    anchorDate ?? null,
+        sessions:       sessions   ?? null,
+      };
+      if (soulName) soul.name = soulName;
+
+      if (meta.cid) {
+        try {
+          const gw = meta.cid.startsWith('Qm')
+            ? `https://gateway.pinata.cloud/ipfs/${meta.cid}`
+            : `https://ipfs.io/ipfs/${meta.cid}`;
+          const r = await fetch(gw, { signal: AbortSignal.timeout(10000) });
+          if (r.ok) {
+            const ipfs          = await r.json();
+            soul.name           = ipfs.name ?? soul.name ?? null;
+            soul.description    = ipfs.description ?? null;
+            soul.cid            = meta.cid;
+            soul.gateway_url    = gw;
+            soul.amortization   = ipfs.amortization ?? null;
+            soul.pay_endpoint   = ipfs.pay_endpoint ?? null;
+            soul.verify_endpoint = ipfs.verify_endpoint ?? null;
+            if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
+          }
+        } catch { /* IPFS nicht erreichbar */ }
+      }
+
+      souls.push(soul);
+    } catch { /* malformed TX überspringen */ }
+  }));
+
+  return filterResults(souls, { q, amortized, limit });
 }
 
 /**
