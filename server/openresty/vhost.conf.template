@@ -538,6 +538,14 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_paid_write.lua;
   }
 
+  location = /api/soul/paid-comment {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_comment.lua;
+  }
+
   # ── POL-Token Validierung (intern, nur 127.0.0.1) ────────────────────────────
   location = /internal/validate-pol-token {
     default_type application/json;

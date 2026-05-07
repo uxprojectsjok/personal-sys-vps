@@ -22,6 +22,7 @@ import { register as profileSave }           from './profile_save.mjs';
 import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as elevenLabsAgentUpdate } from './elevenlabs_agent_update.mjs';
 import { register as soulPayRead }           from './soul_pay_read.mjs';
+import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
@@ -64,6 +65,7 @@ export function registerTools(server, token) {
   soulCloudPush(server, token);
   elevenLabsAgentUpdate(server, token);
   soulPayRead(server, token);
+  soulPaidComment(server, token);
 }
 
 /**
@@ -113,6 +115,9 @@ export function registerPaidTools(server, polToken, freeTools = [], soulId) {
   if (allowed.has('context_list'))  contextList(server, polToken);
   if (allowed.has('context_get'))   contextGet(server, polToken);
   if (allowed.has('profile_get'))   profileGet(server, polToken);
+
+  // soul_paid_comment: Immer verfügbar für zahlende Agenten (Token bereits vorhanden)
+  soulPaidComment(server, polToken);
 
   // soul_write: Zahlende externe Agenten dürfen nicht schreiben (Sicherheit)
   // soul_earnings: Private Einnahmen-Daten, nicht für externe Agenten
