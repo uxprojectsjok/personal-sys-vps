@@ -92,7 +92,74 @@
             </div>
 
             <p class="prose">
-              Bestimme, wie externe Agenten deine MCP-Tools erreichen — kostenlos oder gegen Bezahlung.
+              Bestimme, wie andere KI-Assistenten auf deine Soul-Daten zugreifen dürfen —
+              kostenlos oder gegen eine kleine Zahlung in POL (Kryptowährung auf Polygon).
+            </p>
+
+            <!-- ── Andere Soul verbinden (oben, da eigenständige Funktion) ── -->
+            <div class="connected-section">
+              <div class="connected-head">
+                <h3 class="connected-title">Andere Soul (SYS-Node) <em>verbinden</em></h3>
+              </div>
+              <p class="prose" style="margin-bottom:16px">
+                Verbinde dich mit der Soul einer anderen Person — auf diesem oder einem anderen Server.
+                Trage dort deinen Zugangscode ein, um deren Daten in deinem KI-Assistenten zu nutzen.
+              </p>
+
+              <!-- Eigener Zugangscode -->
+              <div class="field" style="margin-bottom:20px">
+                <label class="field-label">Dein Zugangscode <span class="field-hint">(in deinem KI-Assistenten als Bearer-Token eintragen)</span></label>
+                <div class="bearer-row">
+                  <code class="bearer-val">{{ soulBearerToken || '—' }}</code>
+                  <button class="bearer-copy" :class="{ copied: bearerCopied }" @click="copyBearer" :disabled="!soulBearerToken">
+                    {{ bearerCopied ? '✓ Kopiert' : 'Kopieren' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Liste verbundener Nodes -->
+              <div v-if="connectedNodes.length" class="node-list">
+                <div v-for="(node, i) in connectedNodes" :key="i" class="node-row">
+                  <div class="node-info">
+                    <span v-if="node.label" class="node-label">{{ node.label }}</span>
+                    <span class="node-url">{{ node.url }}</span>
+                  </div>
+                  <button class="node-remove" @click="removeNode(i)" aria-label="Entfernen">×</button>
+                </div>
+              </div>
+              <p v-else class="no-nodes">Noch keine andere Soul verbunden.</p>
+
+              <!-- Neue Node hinzufügen -->
+              <div class="add-node-form">
+                <div class="field" style="margin-bottom:10px">
+                  <div class="field-label-row">
+                    <label class="field-label">Server-Adresse</label>
+                    <button
+                      v-if="selfMcpUrl"
+                      type="button"
+                      class="field-hint-btn"
+                      @click="newNodeUrl = selfMcpUrl"
+                    >Gleicher Host</button>
+                  </div>
+                  <input v-model="newNodeUrl" type="url" class="input" placeholder="https://domain.de/mcp" @keyup.enter="addNode" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field-label">Soul-ID der anderen Person <span class="field-hint">(nur nötig wenn der Server mehrere Souls hat)</span></label>
+                  <input v-model="newNodeSoulId" type="text" class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" @keyup.enter="addNode" />
+                </div>
+                <div class="add-node-row">
+                  <input v-model="newNodeLabel" type="text" class="input" placeholder="Name (optional)" @keyup.enter="addNode" style="flex:1" />
+                  <button class="btn btn-ghost" :disabled="!newNodeUrl.trim()" @click="addNode">+ Hinzufügen</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Zugangsregeln: wie andere auf mich zugreifen ── -->
+            <div class="connected-head" style="margin-top:28px">
+              <h3 class="connected-title">Wer darf <em>zugreifen?</em></h3>
+            </div>
+            <p class="prose" style="margin-bottom:16px">
+              Lege fest, ob KI-Assistenten anderer Personen kostenlos oder gegen Bezahlung auf deine Soul zugreifen dürfen.
             </p>
 
             <div class="mode-grid">
@@ -105,7 +172,7 @@
                   <span class="mode-mark"></span>
                   <span class="mode-name">Frei</span>
                 </div>
-                <p class="mode-desc">Alle MCP-Tools ohne Zahlung nutzbar. Empfohlen für Entwicklung &amp; öffentliche Souls.</p>
+                <p class="mode-desc">Jeder KI-Assistent kann deine Soul-Daten lesen — ohne Einschränkung.</p>
                 <span class="mode-tag">empfohlen</span>
               </button>
 
@@ -118,7 +185,7 @@
                   <span class="mode-mark"></span>
                   <span class="mode-name">Bezahlt · POL</span>
                 </div>
-                <p class="mode-desc">Pro MCP-Anfrage wird POL fällig. Polygon-Verifikation erforderlich.</p>
+                <p class="mode-desc">Pro Zugriff wird automatisch ein kleiner Betrag POL an dich überwiesen.</p>
                 <span class="mode-tag">on-chain</span>
               </button>
             </div>
@@ -127,11 +194,11 @@
             <div v-if="amort.enabled" class="pay-form">
               <div class="pay-fields">
                 <div class="field">
-                  <label class="field-label">POL pro Anfrage</label>
+                  <label class="field-label">Betrag pro Zugriff <span class="field-hint">(in POL)</span></label>
                   <input v-model="amort.pol_per_request" type="text" class="input mono" placeholder="0.001" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Wallet · 0x…</label>
+                  <label class="field-label">Deine Wallet-Adresse</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
                 <div class="field span-2">
@@ -216,9 +283,9 @@
                 </ol>
               </details>
 
-              <!-- Trusted Souls Whitelist -->
+              <!-- Kostenlose Tools freigeben für -->
               <div class="field-group" style="margin-top:16px">
-                <label class="field-label">Vertraute Souls <span class="field-hint">(Soul-IDs, kommasepariert — erhalten Free-Tools ohne Zahlung)</span></label>
+                <label class="field-label">Kostenlose Tools freigeben für <span class="field-hint">(Soul-IDs kommasepariert)</span></label>
                 <textarea
                   v-model="trustedSoulsInput"
                   class="input mono"
@@ -236,64 +303,7 @@
               <span class="state-mark"></span>
               <div class="state-text">
                 <span class="state-label">{{ modeLoading ? 'Wird gespeichert…' : 'Frei-Modus aktiv' }}</span>
-                <span class="state-value">Alle MCP-Tools sind ohne Zahlung erreichbar.</span>
-              </div>
-            </div>
-
-            <!-- ── Verbundene Nodes (immer sichtbar, ganz unten) ── -->
-            <div class="connected-section">
-              <div class="connected-head">
-                <h3 class="connected-title">Verbundene <em>Nodes</em></h3>
-              </div>
-              <p class="prose" style="margin-bottom:16px">
-                Trage MCP-Endpunkte anderer SYS-Nodes ein. Dein Soul-Cert wird als Bearer-Token verwendet — trage es in deinem KI-Assistenten ein. Für Souls auf <em>diesem Server</em>: gleiche URL, andere Soul-ID.
-              </p>
-
-              <!-- Eigener Bearer-Token -->
-              <div class="field" style="margin-bottom:20px">
-                <label class="field-label">Dein Bearer-Token <span class="field-hint">(für MCP-Client-Konfiguration)</span></label>
-                <div class="bearer-row">
-                  <code class="bearer-val">{{ soulBearerToken || '—' }}</code>
-                  <button class="bearer-copy" :class="{ copied: bearerCopied }" @click="copyBearer" :disabled="!soulBearerToken">
-                    {{ bearerCopied ? '✓ Kopiert' : 'Kopieren' }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Liste -->
-              <div v-if="connectedNodes.length" class="node-list">
-                <div v-for="(node, i) in connectedNodes" :key="i" class="node-row">
-                  <div class="node-info">
-                    <span v-if="node.label" class="node-label">{{ node.label }}</span>
-                    <span class="node-url">{{ node.url }}</span>
-                  </div>
-                  <button class="node-remove" @click="removeNode(i)" aria-label="Entfernen">×</button>
-                </div>
-              </div>
-              <p v-else class="no-nodes">Noch keine Nodes verbunden.</p>
-
-              <!-- Neue Node hinzufügen -->
-              <div class="add-node-form">
-                <div class="field" style="margin-bottom:10px">
-                  <div class="field-label-row">
-                    <label class="field-label">MCP-Endpunkt</label>
-                    <button
-                      v-if="selfMcpUrl"
-                      type="button"
-                      class="field-hint-btn"
-                      @click="newNodeUrl = selfMcpUrl"
-                    >Gleicher Host</button>
-                  </div>
-                  <input v-model="newNodeUrl" type="url" class="input" placeholder="https://domain.de/mcp" @keyup.enter="addNode" />
-                </div>
-                <div class="field" style="margin-bottom:10px">
-                  <label class="field-label">Soul-ID <span class="field-hint">(erforderlich wenn Ziel mehrere Souls hat)</span></label>
-                  <input v-model="newNodeSoulId" type="text" class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" @keyup.enter="addNode" />
-                </div>
-                <div class="add-node-row">
-                  <input v-model="newNodeLabel" type="text" class="input" placeholder="Name (optional)" @keyup.enter="addNode" style="flex:1" />
-                  <button class="btn btn-ghost" :disabled="!newNodeUrl.trim()" @click="addNode">+ Hinzufügen</button>
-                </div>
+                <span class="state-value">Jeder KI-Assistent kann deine Soul-Daten kostenlos lesen.</span>
               </div>
             </div>
           </section>
@@ -881,7 +891,7 @@ async function register() {
 .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .field.span-2 { grid-column: 1 / -1; }
 .field-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); }
-.field-hint { color: var(--fg-4); text-transform: none; letter-spacing: 0.05em; margin-left: 6px; }
+.field-hint { color: var(--fg-2); text-transform: none; letter-spacing: 0.04em; margin-left: 6px; font-size: 10px; }
 .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .field-label-row .field-label { margin-bottom: 0; }
 .field-hint-btn { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: none; border: 1px solid var(--accent); padding: 2px 7px; cursor: pointer; opacity: 0.8; transition: opacity 0.15s; }
@@ -999,11 +1009,11 @@ async function register() {
 .node-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--rule-2); }
 .node-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .node-label { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--fg); }
-.node-url { font-family: var(--mono); font-size: 11px; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-url { font-family: var(--mono); font-size: 11px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-remove { flex: none; width: 28px; height: 28px; border: 1px solid var(--rule-2); background: transparent; color: var(--fg-4); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
 .node-remove:hover { color: var(--err); border-color: rgba(240,163,163,0.3); background: rgba(240,163,163,0.04); }
 
-.no-nodes { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--fg-4); text-align: center; padding: 14px 0; border: 1px dashed var(--rule); margin-bottom: 16px; }
+.no-nodes { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--fg-3); text-align: center; padding: 14px 0; border: 1px dashed var(--rule-2); margin-bottom: 16px; }
 
 .add-node-form { margin-top: 8px; }
 .add-node-row { display: flex; gap: 8px; align-items: stretch; }
