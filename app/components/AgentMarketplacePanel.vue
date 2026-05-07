@@ -239,6 +239,51 @@
                 <span class="state-value">Alle MCP-Tools sind ohne Zahlung erreichbar.</span>
               </div>
             </div>
+
+            <!-- ── Verbundene Nodes (immer sichtbar, ganz unten) ── -->
+            <div class="connected-section">
+              <div class="connected-head">
+                <h3 class="connected-title">Verbundene <em>Nodes</em></h3>
+              </div>
+              <p class="prose" style="margin-bottom:16px">
+                Trage MCP-Endpunkte anderer SYS-Nodes ein. Dein Soul-Cert wird als Bearer-Token verwendet — trage es in deinem KI-Assistenten ein.
+              </p>
+
+              <!-- Eigener Bearer-Token -->
+              <div class="field" style="margin-bottom:20px">
+                <label class="field-label">Dein Bearer-Token <span class="field-hint">(für MCP-Client-Konfiguration)</span></label>
+                <div class="bearer-row">
+                  <code class="bearer-val">{{ soulBearerToken || '—' }}</code>
+                  <button class="bearer-copy" :class="{ copied: bearerCopied }" @click="copyBearer" :disabled="!soulBearerToken">
+                    {{ bearerCopied ? '✓ Kopiert' : 'Kopieren' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Liste -->
+              <div v-if="connectedNodes.length" class="node-list">
+                <div v-for="(node, i) in connectedNodes" :key="i" class="node-row">
+                  <div class="node-info">
+                    <span v-if="node.label" class="node-label">{{ node.label }}</span>
+                    <span class="node-url">{{ node.url }}</span>
+                  </div>
+                  <button class="node-remove" @click="removeNode(i)" aria-label="Entfernen">×</button>
+                </div>
+              </div>
+              <p v-else class="no-nodes">Noch keine Nodes verbunden.</p>
+
+              <!-- Neue Node hinzufügen -->
+              <div class="add-node-form">
+                <div class="field" style="margin-bottom:10px">
+                  <label class="field-label">MCP-Endpunkt</label>
+                  <input v-model="newNodeUrl" type="url" class="input" placeholder="https://soul-b.domain.de/mcp" @keyup.enter="addNode" />
+                </div>
+                <div class="add-node-row">
+                  <input v-model="newNodeLabel" type="text" class="input" placeholder="Name (optional)" @keyup.enter="addNode" style="flex:1" />
+                  <button class="btn btn-ghost" :disabled="!newNodeUrl.trim()" @click="addNode">+ Hinzufügen</button>
+                </div>
+              </div>
+            </div>
           </section>
 
           <!-- ───── STEP 3 · IPFS REGISTRATION ───── -->
@@ -443,6 +488,55 @@ const modeTouched   = ref(false)
 const amortError    = ref('')
 const amortSuccess  = ref(false)
 
+// ═══════════ VERBUNDENE NODES ═══════════
+const connectedNodes = ref([])
+const newNodeUrl     = ref('')
+const newNodeLabel   = ref('')
+const bearerCopied   = ref(false)
+
+const soulBearerToken = computed(() => props.soulCert || '')
+
+const nodesStorageKey = computed(() => {
+  const id = props.soulCert?.split('.')?.[0] || ''
+  return id ? `sys.connected_nodes.${id}` : null
+})
+
+function loadNodes() {
+  if (!nodesStorageKey.value) return
+  try {
+    const raw = localStorage.getItem(nodesStorageKey.value)
+    connectedNodes.value = raw ? JSON.parse(raw) : []
+  } catch { connectedNodes.value = [] }
+}
+
+function saveNodes() {
+  if (!nodesStorageKey.value) return
+  localStorage.setItem(nodesStorageKey.value, JSON.stringify(connectedNodes.value))
+}
+
+function addNode() {
+  const url = newNodeUrl.value.trim()
+  if (!url) return
+  connectedNodes.value.push({ url, label: newNodeLabel.value.trim() })
+  saveNodes()
+  newNodeUrl.value   = ''
+  newNodeLabel.value = ''
+}
+
+function removeNode(i) {
+  connectedNodes.value.splice(i, 1)
+  saveNodes()
+}
+
+async function copyBearer() {
+  if (!soulBearerToken.value) return
+  try {
+    await navigator.clipboard.writeText(`Bearer ${soulBearerToken.value}`)
+    bearerCopied.value = true
+    setTimeout(() => { bearerCopied.value = false }, 2000)
+  } catch { /* ignore */ }
+}
+
 const currentCid    = ref('')
 const registered    = ref(false)
 const registering   = ref(false)
@@ -498,6 +592,7 @@ function authHeader() {
 // ═══════════ LOAD ═══════════
 onMounted(async () => {
   if (!props.soulCert) return
+  loadNodes()
   await Promise.all([loadPinata(), loadAmort()])
   if (!pinataOk.value)               step.value = 'pinata'
   else if (!amortActive.value && !modeTouched.value) step.value = 'mode'
@@ -858,6 +953,33 @@ async function register() {
 .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
 .btn-ghost { border-color: var(--rule-2); color: var(--fg-2); }
 .btn-ghost:hover { color: var(--fg); border-color: var(--accent); }
+
+/* ─── VERBUNDENE NODES ─── */
+.connected-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--rule); }
+.connected-head { margin-bottom: 12px; }
+.connected-title { font-family: var(--serif); font-weight: 400; font-size: clamp(20px, 2.5vw, 24px); letter-spacing: -0.02em; margin: 0; color: var(--fg); }
+.connected-title em { font-style: italic; color: var(--accent); }
+
+.bearer-row { display: flex; align-items: stretch; gap: 8px; }
+.bearer-val { flex: 1; min-width: 0; padding: 10px 14px; background: var(--paper-3); border: 1px solid var(--rule-2); font-family: var(--mono); font-size: 11px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 1.4; }
+.bearer-copy { flex: none; padding: 0 14px; border: 1px solid var(--rule-2); background: var(--paper-2); color: var(--fg-3); font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.bearer-copy:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); background: var(--accent-2); }
+.bearer-copy.copied { color: var(--ok); border-color: rgba(184,220,196,0.35); background: rgba(184,220,196,0.06); }
+.bearer-copy:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.node-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.node-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--rule-2); }
+.node-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.node-label { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--fg); }
+.node-url { font-family: var(--mono); font-size: 11px; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-remove { flex: none; width: 28px; height: 28px; border: 1px solid var(--rule-2); background: transparent; color: var(--fg-4); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
+.node-remove:hover { color: var(--err); border-color: rgba(240,163,163,0.3); background: rgba(240,163,163,0.04); }
+
+.no-nodes { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--fg-4); text-align: center; padding: 14px 0; border: 1px dashed var(--rule); margin-bottom: 16px; }
+
+.add-node-form { margin-top: 8px; }
+.add-node-row { display: flex; gap: 8px; align-items: stretch; }
+.add-node-row .input { min-width: 0; }
 
 .sys-modal-enter-active, .sys-modal-leave-active { transition: opacity 0.2s; }
 .sys-modal-enter-active .sys-amm, .sys-modal-leave-active .sys-amm { transition: transform 0.25s ease, opacity 0.2s; }
