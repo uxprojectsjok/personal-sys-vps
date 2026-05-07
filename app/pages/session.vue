@@ -89,6 +89,9 @@
               @role-change="aiRole = $event"
             />
           </div>
+
+          <!-- Agent Sandbox card -->
+          <AgentSandboxCard />
         </div>
       </main>
 
@@ -156,6 +159,7 @@ import SoulViewer from '~/components/SoulViewer.vue'
 import ConfirmModal from '~/components/ConfirmModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
+import AgentSandboxCard from '~/components/AgentSandboxCard.vue'
 
 const router = useRouter()
 const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken } = useSoul()
