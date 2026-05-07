@@ -147,7 +147,7 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
           const gw = meta.cid.startsWith('Qm')
             ? `https://gateway.pinata.cloud/ipfs/${meta.cid}`
             : `https://ipfs.io/ipfs/${meta.cid}`;
-          const r = await fetch(gw, { signal: AbortSignal.timeout(5000) });
+          const r = await fetch(gw, { signal: AbortSignal.timeout(10000) });
           if (r.ok) {
             const ipfs = await r.json();
             soul.name           = ipfs.name ?? null;

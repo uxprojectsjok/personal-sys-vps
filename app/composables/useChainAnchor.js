@@ -688,7 +688,7 @@ export function useChainAnchor() {
         const marker = '\x00SYS1\x00';
         const payload = new TextEncoder().encode(marker + JSON.stringify(meta));
         const payloadHex = [...payload].map(b => b.toString(16).padStart(2, '0')).join('');
-        const baseTx = await contract.anchor.populateTransaction(soulIdBytes32, contentHash, sessionCount);
+        const baseTx = await contract.anchor.populateTransaction(soulIdBytes32, contentHash, sessionCount, { value: fee });
         anchorData = { ...baseTx, value: fee, data: baseTx.data + payloadHex };
       } catch {
         anchorData = null;
