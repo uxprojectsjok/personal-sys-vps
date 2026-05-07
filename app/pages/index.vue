@@ -17,6 +17,9 @@
             #{{ soulMeta?.name || '------' }} · Soul aktiv · {{ shortId }}
           </div>
           <div class="head-actions">
+            <button class="logout" @click="settingsOpen = true" aria-label="Einstellungen">
+              Einstellungen
+            </button>
             <button class="logout" @click="confirmReset" aria-label="Ausloggen">
               Ausloggen <span class="arr">↗</span>
             </button>
@@ -297,6 +300,7 @@
 
     <ConfirmModal />
 
+    <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; setupOpen = true" />
   </ClientOnly>
 </template>
@@ -319,6 +323,7 @@ import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import VaultExplorer from '~/components/VaultExplorer.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
+import SettingsModal from '~/components/SettingsModal.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
@@ -339,6 +344,7 @@ const filesOpen         = ref(false)   // VaultExplorer
 const encryptOpen       = ref(false)
 const anchorOpen        = ref(false)
 const marketplaceOpen   = ref(false)   // AgentMarketplacePanel
+const settingsOpen      = ref(false)   // SettingsModal
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const initial      = computed(() => (soulMeta.value?.name || 'S').charAt(0).toUpperCase())
