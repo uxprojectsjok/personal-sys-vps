@@ -8,5 +8,30 @@
       Zum Hauptinhalt springen
     </a>
     <slot />
+    <footer class="sys-footer">
+      <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="sys-footer-link">
+        sys.uxprojects-jok.com
+      </a>
+    </footer>
   </div>
 </template>
+
+<style scoped>
+.sys-footer {
+  text-align: center;
+  padding: 18px 16px;
+  border-top: 1px solid rgba(236, 231, 245, 0.06);
+}
+.sys-footer-link {
+  font-family: var(--sys-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(236, 231, 245, 0.28);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.sys-footer-link:hover {
+  color: rgba(236, 231, 245, 0.6);
+}
+</style>
