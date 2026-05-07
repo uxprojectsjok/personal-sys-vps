@@ -44,7 +44,7 @@ export function register(server, token) {
           const err = await res.json().catch(() => ({ error: res.statusText }));
           if (err.error === 'pinata_not_configured') {
             return {
-              content: [{ type: 'text', text: 'Soul-Verzeichnis nicht konfiguriert — PINATA_JWT fehlt.' }],
+              content: [{ type: 'text', text: 'Discovery nicht verfügbar — weder PINATA_JWT noch Chain-Discovery konfiguriert.' }],
               isError: true,
             };
           }
@@ -60,8 +60,10 @@ export function register(server, token) {
           };
         }
 
+        const isChain = data.source === 'chain';
         const lines = [];
         lines.push(`## Soul-Marktplatz — ${souls.length} Einträge${data.total > souls.length ? ` (von ${data.total})` : ''}`);
+        if (isChain) lines.push(`_Quelle: Polygon-Blockchain (kein Pinata konfiguriert)_`);
         if (q) lines.push(`_Suche: "${q}"_`);
         lines.push('');
 
@@ -76,14 +78,16 @@ export function register(server, token) {
             if (Array.isArray(s.amortization.free_tools) && s.amortization.free_tools.length) {
               lines.push(`- **Kostenlos:** ${s.amortization.free_tools.join(', ')}`);
             }
-            lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
+            if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
           } else {
             lines.push(`- **Zugang:** kostenlos (keine Amortisation)`);
           }
 
-          lines.push(`- **Verifikation:** ${s.verify_endpoint}`);
-          lines.push(`- **IPFS:** \`${s.cid}\``);
-          lines.push(`- **Registriert:** ${s.pinned_at?.slice(0, 10) ?? '?'}`);
+          if (s.verify_endpoint) lines.push(`- **Verifikation:** ${s.verify_endpoint}`);
+          if (s.cid) lines.push(`- **IPFS:** \`${s.cid}\``);
+          if (s.pinned_at) lines.push(`- **Registriert:** ${s.pinned_at.slice(0, 10)}`);
+          if (s.anchor_date) lines.push(`- **Anker:** ${s.anchor_date} (${s.sessions ?? 0} Sessions)`);
+          if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓`);
           lines.push('');
         }
 

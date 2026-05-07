@@ -251,7 +251,7 @@ const anchorError = ref("");
 const verifyError = ref("");
 
 export function useChainAnchor() {
-  const { soulContent, soulMeta, save } = useSoul();
+  const { soulContent, soulMeta, soulToken, save } = useSoul();
 
   // AppKit initialisieren + persistente State-Subscriptions (client-only via onMounted)
   // Strategie: Alle State-Updates laufen über persistente Subscriptions – nicht über
@@ -671,11 +671,34 @@ export function useChainAnchor() {
         /* Contract-Fallback */
       }
 
+      // ── Discovery-Metadaten in Calldata einbetten (kein Contract-Change nötig) ──
+      // anchor() nimmt 100 Bytes (4 Selector + 32+32+32). Extra-Bytes dahinter
+      // werden vom EVM ignoriert aber on-chain gespeichert → soul_discover liest sie.
+      let anchorData;
+      try {
+        const meta = { id: soulMeta.value.id, mcp: `${window.location.origin}/mcp` };
+        // agent_registry_cid einbetten falls vorhanden
+        try {
+          const ctx = await fetch('/api/context', {
+            headers: { Authorization: `Bearer ${soulToken.value}` },
+          }).then(r => r.ok ? r.json() : null);
+          if (ctx?.agent_registry_cid) meta.cid = ctx.agent_registry_cid;
+        } catch { /* non-critical */ }
+
+        const marker = '\x00SYS1\x00';
+        const payload = new TextEncoder().encode(marker + JSON.stringify(meta));
+        const payloadHex = [...payload].map(b => b.toString(16).padStart(2, '0')).join('');
+        const baseTx = await contract.anchor.populateTransaction(soulIdBytes32, contentHash, sessionCount);
+        anchorData = { ...baseTx, value: fee, data: baseTx.data + payloadHex };
+      } catch {
+        anchorData = null;
+      }
+
       let tx;
       try {
-        tx = await contract.anchor(soulIdBytes32, contentHash, sessionCount, {
-          value: fee,
-        });
+        tx = anchorData
+          ? await signer.sendTransaction(anchorData)
+          : await contract.anchor(soulIdBytes32, contentHash, sessionCount, { value: fee });
       } catch (txErr) {
         // Nach CALL_EXCEPTION: Rate-Limit nachträglich prüfen für präzisere Fehlermeldung
         if (
