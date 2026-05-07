@@ -1,83 +1,130 @@
-import { register as soulRead }        from './soul_read.mjs';
-import { register as soulReadPaid }    from './soul_read_paid.mjs';
-import { register as soulReadPeer }    from './soul_read_peer.mjs';
-import { register as verifyHumanPeer } from './verify_human_peer.mjs';
-import { register as soulMaturityPeer } from './soul_maturity_peer.mjs';
-import { register as bemeChat }       from './beme_chat.mjs';
-import { register as vaultManifest }  from './vault_manifest.mjs';
-import { register as audioList }      from './audio_list.mjs';
-import { register as audioGet }       from './audio_get.mjs';
-import { register as imageList }      from './image_list.mjs';
-import { register as imageGet }       from './image_get.mjs';
-import { register as videoList }      from './video_list.mjs';
-import { register as videoGet }       from './video_get.mjs';
-import { register as contextList }    from './context_list.mjs';
-import { register as contextGet }     from './context_get.mjs';
-import { register as calendarRead }   from './calendar_read.mjs';
-import { register as verifyHuman }    from './verify_human.mjs';
-import { register as soulEarnings }   from './soul_earnings.mjs';
-import { register as soulDiscover }   from './soul_discover.mjs';
-import { register as soulMaturity }   from './soul_maturity.mjs';
-import { register as soulSkills }     from './soul_skills.mjs';
-import { register as profileGet }     from './profile_get.mjs';
-import { register as profileSave }    from './profile_save.mjs';
-import { register as soulWrite }              from './soul_write.mjs';
+// ── Owner-Tools (service_token / OAuth) ──────────────────────────────────────
+import { register as soulRead }              from './soul_read.mjs';
+import { register as soulWrite }             from './soul_write.mjs';
+import { register as bemeChat }              from './beme_chat.mjs';
+import { register as vaultManifest }         from './vault_manifest.mjs';
+import { register as audioList }             from './audio_list.mjs';
+import { register as audioGet }              from './audio_get.mjs';
+import { register as imageList }             from './image_list.mjs';
+import { register as imageGet }              from './image_get.mjs';
+import { register as videoList }             from './video_list.mjs';
+import { register as videoGet }              from './video_get.mjs';
+import { register as contextList }           from './context_list.mjs';
+import { register as contextGet }            from './context_get.mjs';
+import { register as calendarRead }          from './calendar_read.mjs';
+import { register as verifyHuman }           from './verify_human.mjs';
+import { register as soulEarnings }          from './soul_earnings.mjs';
+import { register as soulDiscover }          from './soul_discover.mjs';
+import { register as soulMaturity }          from './soul_maturity.mjs';
+import { register as soulSkills }            from './soul_skills.mjs';
+import { register as profileGet }            from './profile_get.mjs';
+import { register as profileSave }           from './profile_save.mjs';
 import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as elevenLabsAgentUpdate } from './elevenlabs_agent_update.mjs';
 
+// ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
+import { register as soulReadPaid }          from './soul_read_paid.mjs';
+import { register as soulReadPeer }          from './soul_read_peer.mjs';
+import { register as verifyHumanPeer }       from './verify_human_peer.mjs';
+import { register as soulMaturityPeer }      from './soul_maturity_peer.mjs';
+import { register as soulSkillsPeer }        from './soul_skills_peer.mjs';
+import { register as soulWritePeer }         from './soul_write_peer.mjs';
+import { register as calendarReadPeer }      from './calendar_read_peer.mjs';
+import { register as profileGetPeer }        from './profile_get_peer.mjs';
+import { registerList as vaultListPeer }     from './vault_list_peer.mjs';
+import { registerGet as vaultGetPeer }       from './vault_get_peer.mjs';
+import { register as videoGetPeer }          from './video_get_peer.mjs';
+import { register as contextGetPeer }        from './context_get_peer.mjs';
+
 /**
- * Registriert alle MCP-Tools am Server.
- * Token wird per Closure eingebunden – kein globaler State.
+ * Registriert alle MCP-Tools für den Soul-Inhaber (service_token / OAuth).
  */
 export function registerTools(server, token) {
-  // Identität & Verifikation
   soulRead(server, token);
+  soulWrite(server, token);
   bemeChat(server, token);
   soulMaturity(server, token);
   verifyHuman(server, token);
   soulEarnings(server, token);
   soulDiscover(server, token);
-  // Übersicht
   vaultManifest(server, token);
-  // Medien
   audioList(server, token);
   audioGet(server, token);
   imageList(server, token);
   imageGet(server, token);
   videoList(server, token);
   videoGet(server, token);
-  // Wissen & Kontext
   contextList(server, token);
   contextGet(server, token);
   calendarRead(server, token);
-  // Profile (Analyse-Ergebnisse)
   profileGet(server, token);
   profileSave(server, token);
-  // Skills
   soulSkills(server, token);
-  // Soul schreiben
-  soulWrite(server, token);
-  // Cloud-Sync
   soulCloudPush(server, token);
-  // Agenten-Orchestrierung
   elevenLabsAgentUpdate(server, token);
 }
 
 /**
  * Registriert Free-Tools für bezahlte externe Agenten (pol_access_token).
+ *
+ * Vault-Media-Endpunkte (audio/images/video/context/profile) akzeptiert
+ * vault_auth.lua bereits für pol_access_token → bestehende Tool-Implementierungen
+ * funktionieren direkt.
+ * Alle anderen Tools (soul_read, verify_human, soul_maturity, calendar_read,
+ * soul_skills) benötigen Filesystem-Varianten da /api/soul für pol_access_token
+ * gesperrt ist.
+ *
+ * @param {object} server  — McpServer
+ * @param {string} polToken — pol_access_token (48 Hex-Zeichen)
+ * @param {string[]} freeTools — Array erlaubter Tool-Namen
+ * @param {string} soulId — soul_id des Ziel-Souls (für Filesystem-basierte Tools)
  */
-export function registerPaidTools(server, polToken, freeTools = []) {
+export function registerPaidTools(server, polToken, freeTools = [], soulId) {
   const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
 
+  // soul_read: spezieller paid-read Endpoint (liefert nur AGENT-Block)
   if (allowed.has('soul_read'))     soulReadPaid(server, polToken);
-  if (allowed.has('verify_human'))  verifyHuman(server, polToken);
+
+  // verify_human: /api/vault/manifest ist für pol_access_token gesperrt →
+  // blockchain direkt mit bekannter soul_id aufrufen
+  if (allowed.has('verify_human') && soulId) verifyHumanPeer(server, soulId);
+
+  // soul_maturity: /api/soul gesperrt für pol → Filesystem
+  if (allowed.has('soul_maturity') && soulId) soulMaturityPeer(server, soulId);
+
+  // soul_skills: /api/soul gesperrt → Filesystem
+  if (allowed.has('soul_skills') && soulId) soulSkillsPeer(server, soulId);
+
+  // calendar_read: /api/soul gesperrt → Filesystem
+  if (allowed.has('calendar_read') && soulId) calendarReadPeer(server, soulId);
+
+  // soul_discover: interner Endpoint, kein Auth nötig
   if (allowed.has('soul_discover')) soulDiscover(server, polToken);
+
+  // Vault-Media: vault_auth.lua akzeptiert pol_access_token für diese Pfade
+  if (allowed.has('audio_list'))    audioList(server, polToken);
+  if (allowed.has('audio_get'))     audioGet(server, polToken);
+  if (allowed.has('image_list'))    imageList(server, polToken);
+  if (allowed.has('image_get'))     imageGet(server, polToken);
+  if (allowed.has('video_list'))    videoList(server, polToken);
+  if (allowed.has('video_get'))     videoGet(server, polToken);
+  if (allowed.has('context_list'))  contextList(server, polToken);
+  if (allowed.has('context_get'))   contextGet(server, polToken);
+  if (allowed.has('profile_get'))   profileGet(server, polToken);
+
+  // soul_write: Zahlende externe Agenten dürfen nicht schreiben (Sicherheit)
+  // soul_earnings: Private Einnahmen-Daten, nicht für externe Agenten
 }
 
 /**
  * Registriert Free-Tools für vertrauenswürdige Peer-Souls (soul_cert-Auth).
- * Liest direkt vom Dateisystem — kein OpenResty-Token nötig.
- * targetSoulId: die soul_id des Ziel-Souls (auf diesem Server).
+ * Alle Tools lesen direkt vom Dateisystem — OpenResty-Auth wird umgangen
+ * (Peer-Cert ist auf dem Ziel-Server nicht gültig).
+ *
+ * @param {object} server      — McpServer
+ * @param {string} peerToken   — Peer-Soul-Cert (für soul_discover, kein Auth nötig)
+ * @param {string[]} freeTools — Array erlaubter Tool-Namen
+ * @param {string} targetSoulId — soul_id des Ziel-Souls auf diesem Server
  */
 export function registerPeerTools(server, peerToken, freeTools = [], targetSoulId) {
   const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
@@ -85,6 +132,23 @@ export function registerPeerTools(server, peerToken, freeTools = [], targetSoulI
   if (allowed.has('soul_read'))     soulReadPeer(server, targetSoulId);
   if (allowed.has('verify_human'))  verifyHumanPeer(server, targetSoulId);
   if (allowed.has('soul_maturity')) soulMaturityPeer(server, targetSoulId);
-  // soul_discover: interner Endpoint, kein Auth nötig — peerToken wird ignoriert
+  if (allowed.has('soul_skills'))   soulSkillsPeer(server, targetSoulId);
+  if (allowed.has('calendar_read')) calendarReadPeer(server, targetSoulId);
+  if (allowed.has('profile_get'))   profileGetPeer(server, targetSoulId);
+  if (allowed.has('soul_write'))    soulWritePeer(server, targetSoulId);
+
+  // Vault-Media (Filesystem-basierte Varianten)
+  if (allowed.has('audio_list'))    vaultListPeer(server, targetSoulId, 'audio');
+  if (allowed.has('audio_get'))     vaultGetPeer(server, targetSoulId, 'audio');
+  if (allowed.has('image_list'))    vaultListPeer(server, targetSoulId, 'images');
+  if (allowed.has('image_get'))     vaultGetPeer(server, targetSoulId, 'images');
+  if (allowed.has('video_list'))    vaultListPeer(server, targetSoulId, 'video');
+  if (allowed.has('video_get'))     videoGetPeer(server, targetSoulId);
+  if (allowed.has('context_list'))  vaultListPeer(server, targetSoulId, 'context');
+  if (allowed.has('context_get'))   contextGetPeer(server, targetSoulId);
+
+  // soul_discover: interner Endpoint, kein Auth nötig
   if (allowed.has('soul_discover')) soulDiscover(server, peerToken);
+
+  // soul_earnings: Private Finanz-Daten — nicht für Peers freigegeben
 }
