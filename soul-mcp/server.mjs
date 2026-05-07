@@ -393,7 +393,7 @@ app.get('/internal/discover-souls', async (req, res) => {
             const cid = pin.ipfs_pin_hash;
             try {
               const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
-                signal: AbortSignal.timeout(5000),
+                signal: AbortSignal.timeout(15000),
               });
               if (!r.ok) return null;
               const meta = await r.json();
