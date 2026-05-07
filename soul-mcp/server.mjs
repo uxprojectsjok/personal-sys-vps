@@ -175,7 +175,7 @@ app.get('/health', (_req, res) => {
 });
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
-import { verifyHuman, discoverSouls } from './lib/blockchain.mjs';
+import { verifyHuman, discoverSouls, discoverSoulsFromTxHashes } from './lib/blockchain.mjs';
 import { ethers }      from 'ethers';
 
 // Polygon-Provider (wiederverwendet aus blockchain.mjs Logik)
@@ -447,15 +447,49 @@ app.get('/internal/discover-souls', async (req, res) => {
     } catch { /* fall through to chain discovery */ }
   }
 
-  // ── Chain-Fallback: Polygon-Anchor-Calldata ───────────────────────────────
+  // ── Chain-Fallback: direkte TX-Abfrage aus lokalen sys.md-Ankern ────────────
   try {
+    const SOULS_DIR = '/var/lib/sys/souls/';
+    const txEntries = [];
+
+    try {
+      const dirs = await readdir(SOULS_DIR);
+      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+      await Promise.allSettled(soulDirs.map(async (dir) => {
+        try {
+          const sysmd = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
+          // Frontmatter extrahieren
+          const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
+          if (!fmMatch) return;
+          const fm = fmMatch[1];
+          // soul_chain_anchor Abschnitt: TX-Hash suchen
+          const anchorIdx = fm.indexOf('soul_chain_anchor');
+          if (anchorIdx === -1) return;
+          const chunk = fm.slice(anchorIdx, anchorIdx + 400);
+          const txMatch = chunk.match(/0x[0-9a-fA-F]{64}/);
+          if (!txMatch) return;
+          // soul_name aus Frontmatter
+          const nameMatch = fm.match(/^soul_name:\s*(.+)$/m);
+          const soulName = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
+          // Anchor-Datum aus soul_chain_anchor chunk
+          const dateMatch = chunk.match(/"date"\s*:\s*"([^"]+)"|date:\s*'?([^',\n}]+)'?/);
+          const anchorDate = (dateMatch?.[1] || dateMatch?.[2] || '').trim() || null;
+          // Sessions aus chunk
+          const sessMatch = chunk.match(/"sessions"\s*:\s*(\d+)|sessions:\s*(\d+)/);
+          const sessions = sessMatch ? parseInt(sessMatch[1] || sessMatch[2], 10) : null;
+          txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions });
+        } catch { /* unlesbare Soul überspringen */ }
+      }));
+    } catch { /* souls-Verzeichnis nicht zugänglich */ }
+
+    if (txEntries.length > 0) {
+      const souls = await discoverSoulsFromTxHashes(txEntries, { q, amortized, limit });
+      return res.json({ ok: true, total: souls.length, souls, source: 'chain' });
+    }
+
+    // Letzter Fallback: vollständiger Event-Scan (langsam, aber ohne lokale Daten)
     const souls = await discoverSouls({ q, amortized, limit });
-    res.json({
-      ok:     true,
-      total:  souls.length,
-      souls,
-      source: 'chain',
-    });
+    res.json({ ok: true, total: souls.length, souls, source: 'chain' });
   } catch (err) {
     res.status(500).json({
       error:   err.message,
