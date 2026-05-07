@@ -21,6 +21,7 @@ import { register as profileGet }            from './profile_get.mjs';
 import { register as profileSave }           from './profile_save.mjs';
 import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as elevenLabsAgentUpdate } from './elevenlabs_agent_update.mjs';
+import { register as soulPayRead }           from './soul_pay_read.mjs';
 
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
@@ -62,6 +63,7 @@ export function registerTools(server, token) {
   soulSkills(server, token);
   soulCloudPush(server, token);
   elevenLabsAgentUpdate(server, token);
+  soulPayRead(server, token);
 }
 
 /**
