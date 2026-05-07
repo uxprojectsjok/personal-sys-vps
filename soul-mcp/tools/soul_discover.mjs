@@ -6,19 +6,25 @@ export function register(server, token) {
   server.tool(
     'soul_discover',
     [
-      'Durchsucht das öffentliche SYS-Soul-Verzeichnis (IPFS/Pinata) nach registrierten Souls.',
-      'Gibt Marktplatz-Einträge zurück: MCP-Endpoint, Zahlungskonditionen, soul_id.',
+      'Durchsucht das öffentliche SYS-Soul-Verzeichnis nach registrierten Souls.',
+      'Quellen: IPFS/Pinata (primär) und Polygon-Blockchain (Fallback).',
+      '',
+      'Suche (q) durchsucht: Name, soul_id, Tags, Beschreibung.',
+      'Beispiele: q="Marburg" findet Souls mit Tag "marburg".',
+      '           q="AI" findet Souls die "ai" im Tag oder in der Beschreibung haben.',
       '',
       'Parameter:',
-      '- q:         Freitext-Suche (soul_id Substring oder Name) — optional',
+      '- q:         Freitext-Suche — Name, soul_id, Tags, Beschreibung — optional',
       '- amortized: true = nur Souls die POL-Zahlungen akzeptieren — optional',
       '- limit:     Max. Ergebnisse (1–100, Standard 20) — optional',
       '',
+      'Treffer enthalten gateway_url → vollständige Soul-Metadaten (Pinata-Pin).',
+      '',
       'Typischer Workflow für einen zahlenden Agenten:',
-      '1. soul_discover(amortized=true) → Liste verfügbarer Souls',
-      '2. POL-Transaktion an soul.amortization.wallet senden (pol_per_request Betrag)',
-      '3. POST soul.pay_endpoint mit tx_hash → access_token',
-      '4. MCP-Verbindung zu soul.mcp_endpoint mit access_token',
+      '1. soul_discover(q="Marburg") → Treffer mit Tags, Description, gateway_url',
+      '2. gateway_url öffnen → alle Details der Soul',
+      '3. POL-Transaktion an soul.amortization.wallet senden',
+      '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
     ].join('\n'),
     {
       q:         z.string().optional().describe('Freitext-Suche (soul_id oder Name)'),
@@ -69,6 +75,9 @@ export function register(server, token) {
 
         for (const s of souls) {
           lines.push(`### ${s.name || s.soul_id}`);
+          if (s.description) lines.push(`_${s.description}_`);
+          if (s.tags?.length) lines.push(`**Tags:** ${s.tags.map(t => `\`${t}\``).join(' · ')}`);
+          lines.push('');
           lines.push(`- **soul_id:** \`${s.soul_id}\``);
           lines.push(`- **MCP:** ${s.mcp_endpoint}`);
 
@@ -83,8 +92,8 @@ export function register(server, token) {
             lines.push(`- **Zugang:** kostenlos (keine Amortisation)`);
           }
 
+          if (s.gateway_url) lines.push(`- **Alle Details:** [Pinata Gateway](${s.gateway_url})`);
           if (s.verify_endpoint) lines.push(`- **Verifikation:** ${s.verify_endpoint}`);
-          if (s.cid) lines.push(`- **IPFS:** \`${s.cid}\``);
           if (s.pinned_at) lines.push(`- **Registriert:** ${s.pinned_at.slice(0, 10)}`);
           if (s.anchor_date) lines.push(`- **Anker:** ${s.anchor_date} (${s.sessions ?? 0} Sessions)`);
           if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓`);

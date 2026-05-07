@@ -43,6 +43,24 @@
           </div>
 
           <!-- Divider -->
+          <div class="anc-rule"><span>Discovery-Tags</span></div>
+
+          <!-- Tags -->
+          <div class="anc-tags-wrap">
+            <p class="anc-tags-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</p>
+            <input
+              v-model="tagsRaw"
+              type="text"
+              class="anc-tags-input"
+              placeholder="Marburg, AI, Design, Musik…"
+              :disabled="isAnchoring"
+            />
+            <div v-if="tagsArray.length" class="anc-chips">
+              <span v-for="t in tagsArray" :key="t" class="anc-chip">{{ t }}</span>
+            </div>
+          </div>
+
+          <!-- Divider -->
           <div class="anc-rule"><span>Aktionen</span></div>
 
           <!-- Actions -->
@@ -151,6 +169,16 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close"]);
+
+// ── Tags ─────────────────────────────────────────────────────────────────────
+const tagsRaw   = ref('');
+const tagsArray = computed(() =>
+  tagsRaw.value
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(t => t.length > 0 && t.length <= 32)
+    .slice(0, 10)
+);
 
 const {
   walletAddress,
@@ -279,7 +307,7 @@ async function handleAnchor() {
   anchorExplorerUrl.value = "";
   anchorNetwork.value     = "";
 
-  const tx = await anchorSoul();
+  const tx = await anchorSoul(tagsArray.value);
   if (tx) {
     anchorTx.value = tx;
     const m = soulContent.value?.match(/soul_chain_anchor:\s*(\{.+\})/m);
@@ -516,6 +544,23 @@ function copyProof() {
 .sys-modal-leave-to .anc-panel { transform: translateY(20px) scale(0.98); opacity: 0; }
 .slide-up-enter-active { transition: all 0.2s ease; }
 .slide-up-enter-from { opacity: 0; transform: translateY(6px); }
+
+/* ── Tags ──────────────────────────────────────────────── */
+.anc-tags-wrap { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 8px; }
+.anc-tags-hint { font-family: var(--sys-mono); font-size: 10px; color: var(--sys-fg-dim); letter-spacing: 0.06em; margin: 0; }
+.anc-tags-input {
+  width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--sys-rule);
+  color: var(--sys-fg); font-family: var(--sys-mono); font-size: 12px;
+  padding: 8px 10px; outline: none; box-sizing: border-box;
+}
+.anc-tags-input:focus { border-color: var(--sys-violet); }
+.anc-tags-input:disabled { opacity: 0.4; }
+.anc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.anc-chip {
+  font-family: var(--sys-mono); font-size: 10px; letter-spacing: 0.1em;
+  padding: 3px 8px; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
+  color: var(--sys-accent-bright);
+}
 
 /* ── Mobile ────────────────────────────────────────────── */
 @media (max-width: 639px) {
