@@ -210,10 +210,10 @@
   --sys-bg-surface:  rgba(14, 12, 22, 0.97);
   --sys-bg-overlay:  rgba(8, 7, 12, 0.95);
 
-  /* Text – cool violet silver scale */
-  --sys-fg:       #ece7f5;                        /* cool silver */
-  --sys-fg-muted: rgba(236, 231, 245, 0.72);
-  --sys-fg-dim:   rgba(236, 231, 245, 0.45);
+  /* Text – white scale */
+  --sys-fg:       #ffffff;
+  --sys-fg-muted: rgba(255, 255, 255, 0.70);
+  --sys-fg-dim:   rgba(255, 255, 255, 0.42);
 
   /* Accent = violet (primary CTA) */
   --sys-accent:       #8b5cf6;
