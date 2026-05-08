@@ -330,11 +330,15 @@ app.post('/internal/pin-json', async (req, res) => {
         schema_version: 'ERC-8004/draft',
       },
       pinataMetadata: {
-        name:    `soul-${soul_id}`,
+        name: meta.name ? `soul-${meta.name}` : `soul-${soul_id}`,
         keyvalues: {
           soul_id:    soul_id,
           schema:     'saveyoursoul/soul/1.0',
           registered: new Date().toISOString(),
+          // Tags als durchsuchbare keyvalues (tag_0, tag_1, …)
+          ...((Array.isArray(meta.tags) ? meta.tags : [])
+            .slice(0, 8)
+            .reduce((acc, t, i) => { acc[`tag_${i}`] = t; return acc; }, {})),
         },
       },
       pinataOptions: { cidVersion: 1 },
@@ -368,134 +372,156 @@ app.post('/internal/pin-json', async (req, res) => {
   }
 });
 
-// ── Soul-Discovery (Pinata oder Chain-Fallback) ───────────────────────────────
+// ── Soul-Discovery (Pinata + Chain parallel, merge by soul_id) ────────────────
 // GET /internal/discover-souls?q=&amortized=&limit=
-// Primär: Pinata-pinList (wenn PINATA_JWT vorhanden)
-// Fallback: Polygon-Chain — liest Calldata der Anchor-TXs (kein JWT nötig)
+// Beide Quellen werden gleichzeitig abgefragt und dedupliziert zusammengeführt.
+// Chain-Daten gewinnen bei soul_id-Kollision (chain_verified = true).
 app.get('/internal/discover-souls', async (req, res) => {
   const limit     = Math.min(parseInt(req.query.limit || '20', 10), 100);
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
+  const lq        = q.toLowerCase();
 
   const jwt = await getPinataJwt();
 
-  // ── Pinata-Pfad ───────────────────────────────────────────────────────────
-  if (jwt) {
+  // ── Pinata-Abfrage ─────────────────────────────────────────────────────────
+  async function fetchPinata() {
+    if (!jwt) return [];
     try {
+      // pageLimit höher als limit — Client-Side-Filter braucht Spielraum
       const params = new URLSearchParams({
-        status:  'pinned',
-        'metadata[keyvalues][schema]': JSON.stringify({
-          value: 'saveyoursoul/soul/1.0',
-          op:    'eq',
-        }),
-        pageLimit: String(limit),
+        status:    'pinned',
+        pageLimit: '100',
+        'metadata[keyvalues][schema]': JSON.stringify({ value: 'saveyoursoul/soul/1.0', op: 'eq' }),
       });
-      if (q) params.set('metadata[name]', `soul-${q}`);
-
+      // Tag-Filter via keyvalues wenn Query gesetzt — versuche tag_0..tag_3 (Pinata unterstützt nur eq)
+      // Primär-Filter: metadata[name] enthält soul_name (seit Fix: name=soul-{soul_name})
+      if (q) {
+        params.set('metadata[keyvalues][schema]', JSON.stringify({ value: 'saveyoursoul/soul/1.0', op: 'eq' }));
+      }
       const response = await fetch(
         `https://api.pinata.cloud/data/pinList?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${jwt}` } },
+        { headers: { Authorization: `Bearer ${jwt}` }, signal: AbortSignal.timeout(20000) },
       );
+      if (!response.ok) return [];
+      const data = await response.json();
+      const rows = data.rows || [];
 
-      if (response.ok) {
-        const data = await response.json();
-        const rows = data.rows || [];
-
-        const settled = await Promise.allSettled(
-          rows.map(async (pin) => {
-            const cid = pin.ipfs_pin_hash;
-            try {
-              const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
-                signal: AbortSignal.timeout(15000),
-              });
-              if (!r.ok) return null;
-              const meta = await r.json();
-              if (amortized && !(meta.amortization?.enabled === true)) return null;
-              return {
-                cid,
-                ipfs_uri:        `ipfs://${cid}`,
-                gateway_url:     `https://gateway.pinata.cloud/ipfs/${cid}`,
-                soul_id:         meta.soul_id,
-                name:            meta.name,
-                description:     meta.description ?? null,
-                tags:            Array.isArray(meta.tags) ? meta.tags : [],
-                mcp_endpoint:    meta.mcp_endpoint,
-                pay_endpoint:    meta.pay_endpoint,
-                soul_endpoint:   meta.soul_endpoint,
-                verify_endpoint: meta.verify_endpoint,
-                amortization:    meta.amortization ?? null,
-                pinned_at:       pin.date_pinned,
-                source:          'ipfs',
-              };
-            } catch { return null; }
-          }),
-        );
-
-        let results = settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
-        // Client-seitiges Filtern nach q (tags + description + name + soul_id)
-        if (q) {
-          const lq = q.toLowerCase();
-          results = results.filter(s =>
-            s.soul_id?.includes(lq) ||
-            s.name?.toLowerCase().includes(lq) ||
-            s.description?.toLowerCase().includes(lq) ||
-            s.tags?.some(t => t.toLowerCase().includes(lq)),
-          );
-        }
-        if (amortized) results = results.filter(s => s.amortization?.enabled === true);
-        return res.json({ ok: true, total: results.length, souls: results.slice(0, limit), source: 'ipfs' });
-      }
-    } catch { /* fall through to chain discovery */ }
+      const settled = await Promise.allSettled(
+        rows.map(async (pin) => {
+          const cid = pin.ipfs_pin_hash;
+          try {
+            const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
+              signal: AbortSignal.timeout(12000),
+            });
+            if (!r.ok) return null;
+            const meta = await r.json();
+            if (!meta.soul_id || !meta.mcp_endpoint) return null;
+            return {
+              soul_id:         meta.soul_id,
+              name:            meta.name ?? null,
+              description:     meta.description ?? null,
+              tags:            Array.isArray(meta.tags) ? meta.tags : [],
+              mcp_endpoint:    meta.mcp_endpoint,
+              pay_endpoint:    meta.pay_endpoint ?? null,
+              soul_endpoint:   meta.soul_endpoint ?? null,
+              verify_endpoint: meta.verify_endpoint ?? null,
+              amortization:    meta.amortization ?? null,
+              cid,
+              gateway_url:     `https://gateway.pinata.cloud/ipfs/${cid}`,
+              pinned_at:       pin.date_pinned,
+              chain_verified:  false,
+              source:          'ipfs',
+            };
+          } catch { return null; }
+        }),
+      );
+      return settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+    } catch { return []; }
   }
 
-  // ── Chain-Fallback: direkte TX-Abfrage aus lokalen sys.md-Ankern ────────────
-  try {
-    const SOULS_DIR = '/var/lib/sys/souls/';
-    const txEntries = [];
-
+  // ── Chain-Abfrage (lokale sys.md TX-Hashes, dann Polygon) ─────────────────
+  async function fetchChain() {
     try {
-      const dirs = await readdir(SOULS_DIR);
-      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
-      await Promise.allSettled(soulDirs.map(async (dir) => {
-        try {
-          const sysmd = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
-          // Frontmatter extrahieren
-          const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
-          if (!fmMatch) return;
-          const fm = fmMatch[1];
-          // soul_chain_anchor Abschnitt: TX-Hash suchen
-          const anchorIdx = fm.indexOf('soul_chain_anchor');
-          if (anchorIdx === -1) return;
-          const chunk = fm.slice(anchorIdx, anchorIdx + 400);
-          const txMatch = chunk.match(/0x[0-9a-fA-F]{64}/);
-          if (!txMatch) return;
-          // soul_name aus Frontmatter
-          const nameMatch = fm.match(/^soul_name:\s*(.+)$/m);
-          const soulName = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
-          // Anchor-Datum aus soul_chain_anchor chunk
-          const dateMatch = chunk.match(/"date"\s*:\s*"([^"]+)"|date:\s*'?([^',\n}]+)'?/);
-          const anchorDate = (dateMatch?.[1] || dateMatch?.[2] || '').trim() || null;
-          // Sessions aus chunk
-          const sessMatch = chunk.match(/"sessions"\s*:\s*(\d+)|sessions:\s*(\d+)/);
-          const sessions = sessMatch ? parseInt(sessMatch[1] || sessMatch[2], 10) : null;
-          txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions });
-        } catch { /* unlesbare Soul überspringen */ }
-      }));
-    } catch { /* souls-Verzeichnis nicht zugänglich */ }
+      const SOULS_DIR = '/var/lib/sys/souls/';
+      const txEntries = [];
+      try {
+        const dirs = await readdir(SOULS_DIR);
+        const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+        await Promise.allSettled(soulDirs.map(async (dir) => {
+          try {
+            const sysmd = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
+            const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
+            if (!fmMatch) return;
+            const fm = fmMatch[1];
+            const anchorIdx = fm.indexOf('soul_chain_anchor');
+            if (anchorIdx === -1) return;
+            const chunk = fm.slice(anchorIdx, anchorIdx + 500);
+            const txMatch = chunk.match(/0x[0-9a-fA-F]{64}/);
+            if (!txMatch) return;
+            const nameMatch = fm.match(/^soul_name:\s*(.+)$/m);
+            const soulName = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
+            const dateMatch = chunk.match(/"date"\s*:\s*"([^"]+)"/);
+            const anchorDate = dateMatch?.[1] || null;
+            const sessMatch = chunk.match(/"sessions"\s*:\s*(\d+)/);
+            const sessions = sessMatch ? parseInt(sessMatch[1], 10) : null;
+            // Tags aus soul_chain_anchor.tags (neu: gespeichert seit diesem Fix)
+            const tagsMatch = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
+            let anchorTagsParsed = [];
+            if (tagsMatch) { try { anchorTagsParsed = JSON.parse(tagsMatch[1]); } catch { /**/ } }
+            txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags: anchorTagsParsed });
+          } catch { /**/ }
+        }));
+      } catch { /**/ }
 
-    if (txEntries.length > 0) {
-      const souls = await discoverSoulsFromTxHashes(txEntries, { q, amortized, limit });
-      return res.json({ ok: true, total: souls.length, souls, source: 'chain' });
+      if (txEntries.length > 0) {
+        return await discoverSoulsFromTxHashes(txEntries, { q: '', amortized: false, limit: 100 });
+      }
+      // Vollständiger Event-Scan als letzter Ausweg (cached)
+      return await discoverSouls({ q: '', amortized: false, limit: 100 });
+    } catch { return []; }
+  }
+
+  try {
+    // Beide Quellen parallel abfragen
+    const [pinataResults, chainResults] = await Promise.all([fetchPinata(), fetchChain()]);
+
+    // Merge: soul_id als Key, Chain-Daten gewinnen bei Duplikat
+    const byId = new Map();
+    for (const s of pinataResults) {
+      if (s?.soul_id) byId.set(s.soul_id, s);
+    }
+    for (const s of chainResults) {
+      if (!s?.soul_id) continue;
+      const existing = byId.get(s.soul_id);
+      if (existing) {
+        // Chain verifiziert — Felder zusammenführen, Chain hat Vorrang
+        byId.set(s.soul_id, { ...existing, ...s, chain_verified: true,
+          tags: s.tags?.length ? s.tags : (existing.tags ?? []),
+          source: 'ipfs+chain',
+        });
+      } else {
+        byId.set(s.soul_id, s);
+      }
     }
 
-    // Letzter Fallback: vollständiger Event-Scan (langsam, aber ohne lokale Daten)
-    const souls = await discoverSouls({ q, amortized, limit });
-    res.json({ ok: true, total: souls.length, souls, source: 'chain' });
+    let results = [...byId.values()];
+
+    // Filtern
+    if (q) {
+      results = results.filter(s =>
+        s.soul_id?.includes(lq) ||
+        s.name?.toLowerCase().includes(lq) ||
+        s.description?.toLowerCase().includes(lq) ||
+        s.tags?.some(t => t.toLowerCase().includes(lq)),
+      );
+    }
+    if (amortized) results = results.filter(s => s.amortization?.enabled === true);
+
+    const sources = [...new Set(results.map(s => s.source))].join('+') || 'none';
+    res.json({ ok: true, total: results.length, souls: results.slice(0, limit), source: sources });
   } catch (err) {
-    res.status(500).json({
-      error:   err.message,
-      hint:    'chain-basierte Discovery fehlgeschlagen. PINATA_JWT für zuverlässige Discovery konfigurieren.',
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 

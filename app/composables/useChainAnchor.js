@@ -740,14 +740,17 @@ export function useChainAnchor() {
       // Auf Mobile kann tx.wait() nach App-Switch hängen — der TX-Hash ist aber
       // bereits bekannt und die Transaktion wird gemined unabhängig davon ob wir warten.
       const today = new Date().toISOString().split("T")[0];
-      const anchor = JSON.stringify({
+      const anchorObj = {
         tx: tx.hash,
         hash: contentHash,
         date: today,
         sessions: sessionCount,
         network: ACTIVE_NETWORK.name,
         explorer: `${ACTIVE_NETWORK.explorer}/tx/${tx.hash}`,
-      });
+      };
+      // Tags aus anchorSoul()-Aufruf mitführen — dienen soul_discover als kanonische Quelle
+      if (Array.isArray(tags) && tags.length) anchorObj.tags = tags;
+      const anchor = JSON.stringify(anchorObj);
       if (/soul_chain_anchor:/m.test(soulContent.value)) {
         soulContent.value = soulContent.value.replace(
           /soul_chain_anchor:\s*.+/m,
