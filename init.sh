@@ -81,6 +81,12 @@ echo -e "${YELLOW}  Leer lassen → Anchoring-Feature deaktiviert.${NC}"
 read -p "  WalletConnect Project ID (optional):      " WC_PROJECT_ID
 
 echo ""
+echo -e "${YELLOW}  Zeitzone des Servers — bestimmt Uhrzeitanzeige in Token-Ablaufzeiten${NC}"
+echo -e "${YELLOW}  und Kommentar-Timestamps. Beispiele: Europe/Berlin, UTC, America/New_York${NC}"
+read -p "  Zeitzone [Europe/Berlin]:                 " TIMEZONE
+TIMEZONE="${TIMEZONE:-Europe/Berlin}"
+
+echo ""
 echo -e "${YELLOW}  Zugangspasswort für den Gate-Schutz des Nodes.${NC}"
 if $MULTI_HOSTER; then
   echo -e "${YELLOW}  Im Multi-Hoster-Modus ist dieses Passwort der gemeinsame${NC}"
@@ -100,6 +106,10 @@ done
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── 1b. Zeitzone setzen ───────────────────────────────────────────────────────
+info "Setting timezone to ${TIMEZONE}..."
+timedatectl set-timezone "$TIMEZONE" 2>/dev/null || warn "timedatectl fehlgeschlagen — Zeitzone möglicherweise unbekannt."
 
 # ── 2. OpenResty repository ───────────────────────────────────────────────────
 info "Adding OpenResty repository..."
