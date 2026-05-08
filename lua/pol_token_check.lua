@@ -8,6 +8,7 @@ local cjson = require("cjson.safe")
 local M     = {}
 
 local TOKEN_DIR = "/var/lib/sys/pol_tokens/"
+local UUID_PAT  = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 
 -- Parst "YYYY-MM-DDTHH:MM:SS" (mit oder ohne abschließendes Z) → Unix-Timestamp.
 -- Gibt nil zurück wenn Format nicht erkannt.
@@ -38,7 +39,9 @@ function M.check(token)
     local raw = access_cache:get("tok:" .. tok_lower)
     if raw then
       local ok, data = pcall(cjson.decode, raw)
-      if ok and type(data) == "table" then
+      if ok and type(data) == "table"
+         and type(data.soul_id) == "string"
+         and data.soul_id:match(UUID_PAT) then
         return data
       end
     end
@@ -61,9 +64,17 @@ function M.check(token)
     return nil
   end
 
+  -- soul_id validieren (Path-Traversal-Schutz + Korruptionscheck)
+  if type(data.soul_id) ~= "string" or not data.soul_id:match(UUID_PAT) then
+    return nil
+  end
+
+  -- exp_ts muss bekannt sein; bei unbekanntem Format Token ablehnen (kein Fallback-Default)
+  if not exp_ts then return nil end
+
   -- Gültig → Shared dict mit verbleibender TTL neu befüllen (Restart-Recovery)
   if access_cache then
-    local remaining = exp_ts and (exp_ts - now) or 86400
+    local remaining = exp_ts - now
     if remaining > 0 then
       access_cache:set("tok:" .. tok_lower, raw_file, remaining)
     end

@@ -3,7 +3,8 @@
 -- Bearer = pol_access_token. Gibt Kontext-Dateiliste für zahlende externe Agenten zurück.
 -- Gibt Namen zurück (keine direkten Download-URLs, da diese vault_auth benötigen).
 
-local cjson = require("cjson.safe")
+local cjson     = require("cjson.safe")
+local pol_check = require("pol_token_check")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -26,16 +27,13 @@ if not token or not token:match("^[0-9a-fA-F]+$") or #token < 32 then
   return
 end
 
-local access_cache = ngx.shared.pol_access
-local raw = access_cache:get("tok:" .. token:lower())
-if not raw then
+local tdata = pol_check.check(token)
+if not tdata then
   ngx.status = 401
   ngx.say('{"error":"token_expired_or_invalid","message":"pol_access_token ungültig oder abgelaufen. Neue Zahlung erforderlich."}')
   return
 end
-
-local ok_t, tdata = pcall(cjson.decode, raw)
-if not ok_t or type(tdata) ~= "table" or not tdata.soul_id then
+if not tdata.soul_id then
   ngx.status = 500
   ngx.say('{"error":"token_data_corrupt"}')
   return
