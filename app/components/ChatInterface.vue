@@ -73,9 +73,9 @@
           v-for="msg in agentMessages"
           :key="msg.id"
           class="msg"
-          :class="{ user: msg.type === 'self', ai: msg.type === 'peer' }"
+          :class="{ user: msg.type === 'self', ai: msg.type === 'peer', note: msg.type === 'note' }"
         >
-          <header class="who">
+          <header v-if="msg.author" class="who">
             <span class="handle">{{ msg.author }}</span>
             <time v-if="msg.date">{{ msg.date }}</time>
           </header>
@@ -351,9 +351,8 @@ const agentMessages = computed(() => {
   return parts.map((part, i) => {
     const t = part.trim()
     if (!t) return null
-    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null, wallet: soulMeta.value?.id ?? null, tx: null }
-    // Format: **Name · soul:uuid** · date  (peer)
-    //         **Name** · 0xABCD…1234 · tx:0xabcd… · date  (paid)
+    // Format: **Name · soul:uuid** · date  (peer/self)
+    //         **Name** · tx:0xabcd… · date  (paid)
     const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
     if (pm) {
       const rawName = pm[1].trim()
@@ -372,7 +371,8 @@ const agentMessages = computed(() => {
       // Paid: TX-Hash als Identifikation (⬡ badge), Wallet über Polygonscan nachschlagbar
       return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet: null, tx, isSoulId: false, text }
     }
-    return { id: `msg-${i}`, type: 'peer', author: '?', date: null, wallet: null, tx: null, text: t }
+    // Unattributed content (z.B. freier Text-Block ohne Header)
+    return { id: `note-${i}`, type: 'note', author: null, date: null, wallet: null, tx: null, isSoulId: false, text: t }
   }).filter(Boolean)
 })
 
@@ -881,6 +881,7 @@ defineExpose({
   display: grid; grid-template-columns: 96px 1fr; gap: 20px; align-items: start;
 }
 .msg.user { margin-left: auto; }
+.msg.note { grid-template-columns: 1fr; color: var(--fg-3); font-style: italic; border-left: 2px solid var(--rule-2); padding-left: 12px; }
 
 .who {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
