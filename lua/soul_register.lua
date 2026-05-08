@@ -24,7 +24,7 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
--- Optionaler Body: name_override, description
+-- Optionaler Body: name_override, description, tags
 ngx.req.read_body()
 local body_raw = ngx.req.get_body_data() or "{}"
 local ok_b, body_in = pcall(cjson.decode, body_raw)
@@ -33,6 +33,15 @@ local name_override = (type(body_in.name_override) == "string" and #body_in.name
   and body_in.name_override or nil
 local description = (type(body_in.description) == "string" and #body_in.description > 0)
   and body_in.description or nil
+-- Tags aus Body (Priorität) — Fallback auf soul_chain_anchor (wird weiter unten gesetzt)
+local body_tags = nil
+if type(body_in.tags) == "table" then
+  local clean = setmetatable({}, cjson.array_mt)
+  for _, t in ipairs(body_in.tags) do
+    if type(t) == "string" and #t > 0 and #t <= 60 then clean[#clean + 1] = t end
+  end
+  if #clean > 0 then body_tags = clean end
+end
 
 local SOULS_DIR = "/var/lib/sys/souls/"
 local ctx_file  = SOULS_DIR .. soul_id .. "/api_context.json"
@@ -120,8 +129,9 @@ if created_at   then meta.created      = created_at   end
 if version      then meta.version      = version      end
 if maturity     then meta.maturity     = maturity     end
 if description  then meta.description  = description  end
--- Tags: aus soul_chain_anchor (kanonisch) — ermöglicht soul_discover via Pinata
-if #anchor_tags > 0 then meta.tags = anchor_tags end
+-- Tags: Body hat Priorität, Fallback auf soul_chain_anchor
+local final_tags = body_tags or (#anchor_tags > 0 and anchor_tags or nil)
+if final_tags then meta.tags = final_tags end
 if type(amort) == "table" then
   local no_tools = setmetatable({}, cjson.array_mt)
   meta.amortization = {

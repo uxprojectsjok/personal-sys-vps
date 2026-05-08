@@ -369,6 +369,10 @@
                   <label class="field-label">Beschreibung <span class="field-hint">optional</span></label>
                   <input v-model="preview.description" type="text" class="input" placeholder="Kurze Beschreibung der Soul…" />
                 </div>
+                <div class="field">
+                  <label class="field-label">Tags <span class="field-hint">kommasepariert · für soul_discover</span></label>
+                  <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, Philosophie, KI…" />
+                </div>
               </div>
 
               <details class="readonly">
@@ -625,7 +629,7 @@ const registering   = ref(false)
 const registerError = ref('')
 const newCid        = ref('')
 
-const preview        = ref({ name: '', description: '' })
+const preview        = ref({ name: '', description: '', tags: '' })
 const previewLoading = ref(false)
 
 const previewReadonly = computed(() => {
@@ -816,7 +820,11 @@ async function loadPreview() {
     const r = await fetch(`${BASE()}/api/soul/register-preview`, { headers: authHeader() })
     if (!r.ok) return
     const d = await r.json()
-    if (d.preview) preview.value = { ...d.preview, description: d.preview.description || '' }
+    if (d.preview) preview.value = {
+      ...d.preview,
+      description: d.preview.description || '',
+      tags: Array.isArray(d.preview.tags) ? d.preview.tags.join(', ') : (d.preview.tags || ''),
+    }
   } catch { /* ignore */ } finally {
     previewLoading.value = false
   }
@@ -830,6 +838,8 @@ async function register() {
     const body = {}
     if (preview.value?.name)        body.name_override = preview.value.name
     if (preview.value?.description) body.description   = preview.value.description
+    const tagsArr = (preview.value?.tags || '').split(',').map(t => t.trim()).filter(Boolean)
+    if (tagsArr.length)             body.tags          = tagsArr
 
     const r = await fetch(`${BASE()}/api/soul/register`, {
       method: 'POST',
