@@ -135,19 +135,13 @@ end
 -- Kommentar-Eintrag bauen
 local ts = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
--- Wallet-Adresse aus Token (kryptografisch verifiziert — stammt aus Polygon-TX)
-local wallet_short = ""
-if type(tdata.from) == "string" and #tdata.from >= 10 then
-  wallet_short = " · " .. tdata.from:sub(1,6) .. "…" .. tdata.from:sub(-4)
-end
-
--- TX-Hash (zur Verifikation auf Polygonscan)
+-- TX-Hash als einzige Identifikation (Wallet über Polygonscan nachschlagbar)
 local tx_ref = ""
 if type(tdata.tx_hash) == "string" and #tdata.tx_hash > 10 then
-  tx_ref = " · tx:" .. tdata.tx_hash:sub(1,8) .. "…"
+  tx_ref = " · tx:" .. tdata.tx_hash:sub(1,10) .. "…"
 end
 
-local header = "**" .. author:gsub("[%[%]<>]", "") .. "**" .. wallet_short .. tx_ref .. " · " .. ts:sub(1,10)
+local header = "**" .. author:gsub("[%[%]<>]", "") .. "**" .. tx_ref .. " · " .. ts:sub(1,10)
 local entry  = "\n\n---\n" .. header .. "\n" .. comment
 
 -- In den AGENT-Block einfügen (vor dem End-Marker)
