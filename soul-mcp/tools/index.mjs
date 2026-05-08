@@ -37,6 +37,7 @@ import { registerList as vaultListPeer }     from './vault_list_peer.mjs';
 import { registerGet as vaultGetPeer }       from './vault_get_peer.mjs';
 import { register as videoGetPeer }          from './video_get_peer.mjs';
 import { register as contextGetPeer }        from './context_get_peer.mjs';
+import { register as soulCommentPeer }       from './soul_comment_peer.mjs';
 
 /**
  * Registriert alle MCP-Tools für den Soul-Inhaber (service_token / OAuth).
@@ -156,6 +157,9 @@ export function registerPeerTools(server, peerToken, freeTools = [], targetSoulI
 
   // soul_discover: interner Endpoint, kein Auth nötig
   if (allowed.has('soul_discover')) soulDiscover(server, peerToken);
+
+  // soul_comment: Immer verfügbar für vertrauenswürdige Peers (keine Zahlung nötig)
+  soulCommentPeer(server, peerToken, targetSoulId);
 
   // soul_earnings: Private Finanz-Daten — nicht für Peers freigegeben
 }
