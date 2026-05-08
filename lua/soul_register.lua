@@ -134,15 +134,16 @@ local final_tags = body_tags or (#anchor_tags > 0 and anchor_tags or nil)
 if final_tags then meta.tags = final_tags end
 if type(amort) == "table" then
   local no_tools = setmetatable({}, cjson.array_mt)
+  local days     = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
   meta.amortization = {
-    enabled         = amort.enabled == true,
-    private         = amort.private == true,
-    pol_per_request = amort.pol_per_request,
-    wallet          = amort.wallet,
+    enabled              = amort.enabled == true,
+    private              = amort.private == true,
+    pol_per_request      = amort.pol_per_request,
+    wallet               = amort.wallet,
     -- agent_tools nur im Bezahlt-Modus relevant (gefiltert auf erlaubte Tools)
-    agent_tools     = (amort.enabled == true)
-                      and filter_tools(amort.free_tools) or no_tools,
-    token_duration  = amort.token_duration or "1d",
+    agent_tools          = (amort.enabled == true)
+                           and filter_tools(amort.free_tools) or no_tools,
+    token_duration_days  = days,
   }
 end
 

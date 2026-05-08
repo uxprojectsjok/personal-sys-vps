@@ -203,7 +203,12 @@
                 </div>
                 <div class="field">
                   <label class="field-label">Token-Gültigkeit <span class="field-hint">(1–30 Tage)</span></label>
-                  <input v-model.number="amort.token_duration_days" type="number" min="1" max="30" class="input" placeholder="1" />
+                  <input
+                    :value="amort.token_duration_days"
+                    @input="amort.token_duration_days = Math.min(30, Math.max(1, Math.floor(Number($event.target.value) || 1)))"
+                    @blur="$event.target.value = amort.token_duration_days"
+                    type="number" min="1" max="30" step="1" class="input" placeholder="1"
+                  />
                 </div>
                 <div class="field span-2">
                   <label class="field-label">Kostenlose Tools</label>
