@@ -120,8 +120,9 @@ async function handleMcp(req, res) {
   } else if (isPeerToken) {
     // Peer-Soul-Cert — prüfen ob soul_id in trusted_souls der Ziel-Soul
     const peerSoulId   = token.split('.')[0];
+    const peerCert     = token.split('.')[1];
     const targetSoulId = req.query.soul_id || null;
-    const trusted = await checkTrustedSoul(peerSoulId, targetSoulId);
+    const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
     if (!trusted || trusted.error) {
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
       const msg = trusted?.error === 'soul_id_required'
@@ -515,21 +516,18 @@ function extractToken(req) {
 }
 
 /**
- * Prüft ob peerSoulId in trusted_souls der Ziel-Soul steht.
- * Gibt { free_tools } zurück oder null wenn nicht vertraut.
+ * Prüft ob peerSoulId in trusted_souls der Ziel-Soul steht und verifiziert den Cert.
+ * Same-Server: Cert-Check via lokaler /api/soul/verify-peer-cert Endpoint.
+ * Cross-Domain: Cert-Check via remote Endpoint (gespeichert im trusted_souls Eintrag).
  */
-async function checkTrustedSoul(peerSoulId, targetSoulId) {
+async function checkTrustedSoul(peerSoulId, peerCert, targetSoulId) {
   try {
     let soulId = targetSoulId;
     if (!soulId) {
-      // Kein soul_id angegeben — nur im Single-Soul-Modus sicher
       const dirs = await readdir('/var/lib/sys/souls/');
       const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
       if (soulDirs.length === 0) return null;
-      if (soulDirs.length > 1) {
-        // Multi-Hoster: ?soul_id= ist zwingend erforderlich
-        return { error: 'soul_id_required' };
-      }
+      if (soulDirs.length > 1) return { error: 'soul_id_required' };
       soulId = soulDirs[0];
     }
     if (!soulId) return null;
@@ -537,7 +535,17 @@ async function checkTrustedSoul(peerSoulId, targetSoulId) {
     const raw = await readFile(`/var/lib/sys/souls/${soulId}/api_context.json`, 'utf8');
     const ctx = JSON.parse(raw);
     const trusted = ctx?.amortization?.trusted_souls || [];
-    if (!trusted.includes(peerSoulId)) return null;
+
+    // Eintrag finden: plain UUID (same-server) oder {soul_id, endpoint} (cross-domain)
+    const entry = trusted.find(t =>
+      t === peerSoulId || (typeof t === 'object' && t?.soul_id === peerSoulId)
+    );
+    if (!entry) return null;
+
+    // Cert kryptografisch prüfen
+    const peerEndpoint = typeof entry === 'object' ? entry.endpoint : null;
+    const certOk = await verifyPeerCert(peerSoulId, peerCert, peerEndpoint);
+    if (!certOk) return null;
 
     const freeTools = ctx?.amortization?.free_tools?.length
       ? ctx.amortization.free_tools
@@ -545,6 +553,23 @@ async function checkTrustedSoul(peerSoulId, targetSoulId) {
     return { soul_id: soulId, free_tools: freeTools };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Verifiziert einen soul_cert via /api/soul/verify-peer-cert.
+ * peerEndpoint = null  → lokaler Call (same-server, http://127.0.0.1)
+ * peerEndpoint = URL   → Remote-Call zum Home-Node des Peers (cross-domain)
+ */
+async function verifyPeerCert(soulId, cert, peerEndpoint) {
+  try {
+    const base = peerEndpoint ? peerEndpoint.replace(/\/$/, '') : 'http://127.0.0.1';
+    const url  = `${base}/api/soul/verify-peer-cert?soul_id=${encodeURIComponent(soulId)}&cert=${encodeURIComponent(cert)}`;
+    const res  = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const data = await res.json().catch(() => ({}));
+    return data.ok === true;
+  } catch {
+    return false;
   }
 }
 

@@ -150,12 +150,22 @@ if type(incoming.free_tools) == "table" then
   amort.free_tools = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
 end
 
--- trusted_souls: Array von soul_ids (UUID-Format) — bekommen free_tools ohne Zahlung
+-- trusted_souls: Array von soul_ids (same-server) oder {soul_id,endpoint} (cross-domain)
+local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 if type(incoming.trusted_souls) == "table" then
   local clean = {}
-  for _, sid in ipairs(incoming.trusted_souls) do
-    if type(sid) == "string" and sid:match("^[a-fA-F0-9%-]+$") and #sid <= 64 then
-      clean[#clean + 1] = sid
+  for _, entry in ipairs(incoming.trusted_souls) do
+    if type(entry) == "string" and entry:match(UUID_PAT) then
+      -- Same-Server: plain UUID
+      clean[#clean + 1] = entry
+    elseif type(entry) == "table" then
+      -- Cross-Domain: {soul_id, endpoint}
+      local sid = entry.soul_id
+      local ep  = entry.endpoint
+      if type(sid) == "string" and sid:match(UUID_PAT)
+         and type(ep) == "string" and ep:match("^https?://") and #ep <= 256 then
+        clean[#clean + 1] = { soul_id = sid, endpoint = ep }
+      end
     end
   end
   amort.trusted_souls = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
