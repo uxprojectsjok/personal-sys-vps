@@ -82,8 +82,13 @@
           <div class="body">
             <p v-for="(para, j) in paragraphs(msg.text)" :key="j" v-html="renderText(para)"></p>
             <div v-if="msg.wallet || msg.tx" class="agent-id-bar">
-              <span v-if="msg.wallet" class="agent-id-badge" :title="msg.type === 'self' ? 'Deine soul_id' : 'Polygon-Wallet des Zahlers (kryptografisch verifiziert)'">
-                {{ msg.type === 'self' ? '◈' : '⬡' }} {{ msg.wallet }}
+              <span
+                v-if="msg.wallet"
+                class="agent-id-badge"
+                :class="{ tx: !msg.isSoulId && msg.type !== 'self' }"
+                :title="msg.type === 'self' ? 'Deine soul_id' : msg.isSoulId ? 'soul_id (vertrauenswürdige Peer-Soul)' : 'Polygon-Wallet des Zahlers (kryptografisch verifiziert)'"
+              >
+                {{ (msg.type === 'self' || msg.isSoulId) ? '◈' : '⬡' }} {{ msg.wallet }}
               </span>
               <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">
                 tx {{ msg.tx }}
@@ -314,16 +319,25 @@ const agentMessages = computed(() => {
     const t = part.trim()
     if (!t) return null
     if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null, wallet: soulMeta.value?.id ?? null, tx: null }
-    // Format: **Name** · [0xABCD…1234] · [tx:0xabcd…] · date
+    // Format: **Name · soul:uuid** · date  (peer)
+    //         **Name** · 0xABCD…1234 · tx:0xabcd… · date  (paid)
     const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
     if (pm) {
-      const meta   = pm[2]  // alles zwischen ** und \n
-      const text   = pm[3].trim()
+      const rawName = pm[1].trim()
+      const meta    = pm[2]
+      const text    = pm[3].trim()
+      const tx      = meta.match(/tx:(0x[0-9a-fA-F]+…)/)?.[1] ?? null
+      const date    = meta.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
+      // Peer-Soul: soul_id im Author-Feld (◈ badge, kein Polygon)
+      const soulIdMatch = rawName.match(/soul:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
+      if (soulIdMatch) {
+        const soulId     = soulIdMatch[1]
+        const authorName = rawName.replace(/\s*·\s*soul:[a-f0-9-]{36}/i, '').trim() || soulId.slice(0, 8)
+        return { id: `peer-${i}`, type: 'peer', author: authorName, date, wallet: soulId, tx: null, isSoulId: true, text }
+      }
+      // Paid: Polygon-Wallet im meta-String (⬡ badge)
       const wallet = meta.match(/(0x[0-9a-fA-F]{4,6}…[0-9a-fA-F]{2,6})/)?.[1] ?? null
-      const tx     = meta.match(/tx:(0x[0-9a-fA-F]+…)/)?.[1] ?? null
-      const date   = meta.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
-      const name   = pm[1].trim()
-      return { id: `peer-${i}`, type: 'peer', author: name, date, wallet, tx, text }
+      return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet, tx, isSoulId: false, text }
     }
     return { id: `msg-${i}`, type: 'peer', author: '?', date: null, wallet: null, tx: null, text: t }
   }).filter(Boolean)
