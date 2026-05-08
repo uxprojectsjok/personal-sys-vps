@@ -82,8 +82,8 @@
           <div class="body">
             <p v-for="(para, j) in paragraphs(msg.text)" :key="j" v-html="renderText(para)"></p>
             <div v-if="msg.wallet || msg.tx" class="agent-id-bar">
-              <span v-if="msg.wallet" class="agent-id-badge" title="Polygon-Wallet des Zahlers (kryptografisch verifiziert)">
-                ⬡ {{ msg.wallet }}
+              <span v-if="msg.wallet" class="agent-id-badge" :title="msg.type === 'self' ? 'Deine soul_id' : 'Polygon-Wallet des Zahlers (kryptografisch verifiziert)'">
+                {{ msg.type === 'self' ? '◈' : '⬡' }} {{ msg.wallet }}
               </span>
               <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">
                 tx {{ msg.tx }}
@@ -300,7 +300,7 @@ const canSend = computed(() =>
 )
 
 // ── Agent / Sandbox mode ───────────────────────────────────────────
-const { soulContent: soulContentAgent, updateContent, pushToServer } = useSoul()
+const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer } = useSoul()
 const agentMode      = ref(false)
 const isSavingAgent  = ref(false)
 
@@ -313,7 +313,7 @@ const agentMessages = computed(() => {
   return parts.map((part, i) => {
     const t = part.trim()
     if (!t) return null
-    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null, wallet: null, tx: null }
+    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null, wallet: soulMeta.value?.id ?? null, tx: null }
     // Format: **Name** · [0xABCD…1234] · [tx:0xabcd…] · date
     const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
     if (pm) {
