@@ -223,9 +223,7 @@ local ewf = io.open(earnings_file, "w")
 if ewf then ewf:write(cjson.encode(earnings)); ewf:close() end
 
 -- ── Zugriffs-Token ausstellen ─────────────────────────────────────────────────
--- Dauer aus amortization.token_duration lesen (Fallback: 1h)
-local dur_map = { ["1h"]=3600, ["12h"]=43200, ["1d"]=86400, ["7d"]=604800, ["30d"]=2592000, ["90d"]=7776000 }
-local TOKEN_TTL = dur_map[amort.token_duration or ""] or 3600
+local TOKEN_TTL = 86400  -- immer 24h
 local token_bytes = random.bytes(24, true)
 local access_token = str.to_hex(token_bytes)
 local expires_at   = ngx.now() + TOKEN_TTL
