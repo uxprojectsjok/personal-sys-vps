@@ -23,13 +23,14 @@ export function register(server, _token) {
       '  (Ableitung: pay_endpoint ersetze /pay durch /paid-comment)',
       '- access_token:     pol_access_token aus soul_pay_read (48-stelliger Hex-String)',
       '- comment:          Text des Kommentars (max. 2000 Zeichen)',
-      '- author:           Anzeigename oder soul_id des Verfassers (optional)',
+      '- author:           Anzeigename des Verfassers, idealerweise "Name · soul:uuid" (optional)',
+      '  Die Wallet-Adresse des POL-Zahlers wird automatisch durch den Server ergänzt.',
     ].join('\n'),
     {
       comment_endpoint: z.string().url().describe('URL des paid-comment Endpoints der Ziel-Soul'),
       access_token:     z.string().regex(/^[0-9a-fA-F]{48}$/i).describe('pol_access_token aus soul_pay_read'),
       comment:          z.string().min(1).max(2000).describe('Kommentartext (max. 2000 Zeichen)'),
-      author:           z.string().max(80).optional().describe('Anzeigename des Verfassers'),
+      author:           z.string().max(80).optional().describe('Anzeigename — idealerweise "Name · soul:uuid" für Verifikation'),
     },
     async ({ comment_endpoint, access_token, comment, author }) => {
       try {
