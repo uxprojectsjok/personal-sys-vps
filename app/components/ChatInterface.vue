@@ -128,7 +128,7 @@
             ref="textareaEl"
             v-model="draft"
             class="input"
-            :placeholder="agentMode ? 'Dein Profil-Text — was andere Souls und KIs über dich lesen…' : 'Schreib etwas…'"
+            :placeholder="agentMode ? 'Nachricht schreiben…' : 'Schreib etwas…'"
             rows="1"
             @keydown.enter.exact.prevent="handleSend"
             @keydown.shift.enter.exact="draft += '\n'; $nextTick(autoResize)"
@@ -172,6 +172,21 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
           </svg>
           <span class="chip-label">Nachrichten</span>
+        </button>
+
+        <!-- Aktualisieren (nur im Agent-Modus) -->
+        <button
+          v-if="agentMode"
+          class="chip"
+          :class="{ loading: isRefreshing }"
+          :disabled="isRefreshing"
+          @click="refreshAgentContent"
+          aria-label="Nachrichten aktualisieren"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon" :class="{ pulse: isRefreshing }">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+          </svg>
+          <span class="chip-label">{{ isRefreshing ? 'Lädt…' : 'Neu laden' }}</span>
         </button>
 
         <!-- Camera -->
@@ -305,9 +320,27 @@ const canSend = computed(() =>
 )
 
 // ── Agent / Sandbox mode ───────────────────────────────────────────
-const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer } = useSoul()
+const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer } = useSoul()
 const agentMode      = ref(false)
 const isSavingAgent  = ref(false)
+const isRefreshing   = ref(false)
+let   _agentPollTimer = null
+
+watch(agentMode, async (active) => {
+  if (active) {
+    await refreshAgentContent()
+    _agentPollTimer = setInterval(refreshAgentContent, 30_000)
+  } else {
+    clearInterval(_agentPollTimer)
+    _agentPollTimer = null
+  }
+})
+onUnmounted(() => clearInterval(_agentPollTimer))
+
+async function refreshAgentContent() {
+  isRefreshing.value = true
+  try { await fetchFromServer(true) } finally { isRefreshing.value = false }
+}
 
 const RE_AGENT = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
 
@@ -332,8 +365,9 @@ const agentMessages = computed(() => {
       const soulIdMatch = rawName.match(/soul:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
       if (soulIdMatch) {
         const soulId     = soulIdMatch[1]
+        const isSelf     = soulId === soulMeta.value?.id
         const authorName = rawName.replace(/\s*·\s*soul:[a-f0-9-]{36}/i, '').trim() || soulId.slice(0, 8)
-        return { id: `peer-${i}`, type: 'peer', author: authorName, date, wallet: soulId, tx: null, isSoulId: true, text }
+        return { id: `peer-${i}`, type: isSelf ? 'self' : 'peer', author: authorName, date, wallet: soulId, tx: null, isSoulId: true, text }
       }
       // Paid: TX-Hash als Identifikation (⬡ badge), Wallet über Polygonscan nachschlagbar
       return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet: null, tx, isSoulId: false, text }
@@ -350,13 +384,16 @@ async function handleAgentSend() {
   await nextTick(autoResize)
   isSavingAgent.value = true
   try {
-    const existing = soulContentAgent.value?.match(RE_AGENT)?.[1] || ''
-    const dashIdx  = existing.indexOf('\n\n---\n')
-    const peers    = dashIdx >= 0 ? existing.slice(dashIdx) : ''
-    const block    = `<!-- AGENT:START -->\n${text}${peers}\n<!-- AGENT:END -->`
-    const updated  = RE_AGENT.test(soulContentAgent.value)
-      ? soulContentAgent.value.replace(RE_AGENT, block)
-      : soulContentAgent.value.trimEnd() + '\n\n' + block + '\n'
+    const soulId  = soulMeta.value?.id ?? ''
+    const name    = (soulMeta.value?.name ?? '').trim()
+    const ts      = new Date().toISOString().slice(0, 10)
+    const author  = name ? `${name} · soul:${soulId}` : `soul:${soulId}`
+    const entry   = `\n\n---\n**${author}** · ${ts}\n${text}`
+    const current = soulContentAgent.value ?? ''
+    const updated = RE_AGENT.test(current)
+      ? current.replace(RE_AGENT, (_, inner) =>
+          `<!-- AGENT:START -->${inner.trimEnd()}${entry}\n<!-- AGENT:END -->`)
+      : current.trimEnd() + `\n\n<!-- AGENT:START -->${entry}\n<!-- AGENT:END -->\n`
     updateContent(updated)
     await pushToServer()
   } finally {
