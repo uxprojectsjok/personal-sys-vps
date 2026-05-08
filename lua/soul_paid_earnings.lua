@@ -2,7 +2,8 @@
 -- GET /api/soul/paid-earnings
 -- Bearer: pol_access_token → liest earnings.json der Soul
 
-local cjson = require("cjson.safe")
+local cjson     = require("cjson.safe")
+local pol_check = require("pol_token_check")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -22,36 +23,12 @@ if not token or #token ~= 48 or not token:match("^%x+$") then
   return
 end
 
--- Token-Datei lesen
-local tf = io.open("/var/lib/sys/pol_tokens/" .. token .. ".json", "r")
-if not tf then
+local tok = pol_check.check(token)
+if not tok then
   ngx.status = 401
   ngx.say('{"error":"token_expired_or_invalid"}')
   return
 end
-local raw_tok = tf:read("*a"); tf:close()
-local ok_t, tok = pcall(cjson.decode, raw_tok)
-if not ok_t or type(tok) ~= "table" then
-  ngx.status = 401
-  ngx.say('{"error":"token_corrupt"}')
-  return
-end
-
--- TTL prüfen
-local expires = tok.expires_at
-if expires then
-  local y,mo,d,h,mi,s = expires:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)Z")
-  if y then
-    local exp_ts = os.time({year=y,month=mo,day=d,hour=h,min=mi,sec=s})
-    if exp_ts < os.time() then
-      ngx.status = 401
-      ngx.say('{"error":"token_expired"}')
-      return
-    end
-  end
-end
-
--- soul_id validieren
 local soul_id = tok.soul_id
 if not soul_id or not soul_id:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") then
   ngx.status = 401
