@@ -223,7 +223,8 @@ local ewf = io.open(earnings_file, "w")
 if ewf then ewf:write(cjson.encode(earnings)); ewf:close() end
 
 -- ── Zugriffs-Token ausstellen ─────────────────────────────────────────────────
-local TOKEN_TTL = 86400  -- immer 24h
+local days      = math.max(1, math.min(30, tonumber(amort.token_duration_days) or 1))
+local TOKEN_TTL = days * 86400
 local token_bytes = random.bytes(24, true)
 local access_token = str.to_hex(token_bytes)
 local expires_at   = ngx.now() + TOKEN_TTL

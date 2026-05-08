@@ -201,6 +201,10 @@
                   <label class="field-label">Deine Wallet-Adresse</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
+                <div class="field">
+                  <label class="field-label">Token-Gültigkeit <span class="field-hint">(1–30 Tage)</span></label>
+                  <input v-model.number="amort.token_duration_days" type="number" min="1" max="30" class="input" placeholder="1" />
+                </div>
                 <div class="field span-2">
                   <label class="field-label">Kostenlose Tools</label>
                   <div class="tools-row">
@@ -518,11 +522,12 @@ const savingPinata  = ref(false)
 const pinataError   = ref('')
 
 const amort = reactive({
-  enabled:         false,
-  pol_per_request: '0.001',
-  wallet:          '',
-  free_tools:      ['soul_read', 'verify_human', 'soul_maturity'],
-  trusted_souls:   [],
+  enabled:              false,
+  pol_per_request:      '0.001',
+  wallet:               '',
+  free_tools:           ['soul_read', 'verify_human', 'soul_maturity'],
+  trusted_souls:        [],
+  token_duration_days:  1,
 })
 
 // Same-server peers (plain UUIDs)
@@ -709,8 +714,9 @@ async function loadAmort() {
     amort.enabled         = a.enabled         ?? false
     amort.pol_per_request = a.pol_per_request ?? '0.001'
     amort.wallet          = a.wallet          ?? ''
-    amort.free_tools      = Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity']
-    amort.trusted_souls   = Array.isArray(a.trusted_souls)
+    amort.free_tools           = Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity']
+    amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
+    amort.trusted_souls        = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
       : []
     amortActive.value     = amort.enabled
@@ -763,11 +769,12 @@ async function setMode(mode) {
         method: 'PUT',
         headers: authHeader(),
         body: JSON.stringify({
-          enabled:         false,
-          pol_per_request: amort.pol_per_request,
-          wallet:          amort.wallet,
-          free_tools:      amort.free_tools,
-          trusted_souls:   amort.trusted_souls,
+          enabled:              false,
+          pol_per_request:      amort.pol_per_request,
+          wallet:               amort.wallet,
+          free_tools:           amort.free_tools,
+          trusted_souls:        amort.trusted_souls,
+          token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         }),
       })
       const d = await r.json()
@@ -795,11 +802,12 @@ async function saveAmort() {
       method: 'PUT',
       headers: authHeader(),
       body: JSON.stringify({
-        enabled:         amort.enabled,
-        pol_per_request: amort.pol_per_request,
-        wallet:          amort.wallet,
-        free_tools:      amort.free_tools,
-        trusted_souls:   amort.trusted_souls,
+        enabled:              amort.enabled,
+        pol_per_request:      amort.pol_per_request,
+        wallet:               amort.wallet,
+        free_tools:           amort.free_tools,
+        trusted_souls:        amort.trusted_souls,
+        token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
       }),
     })
     const d = await r.json()

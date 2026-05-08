@@ -320,7 +320,7 @@ const canSend = computed(() =>
 )
 
 // ── Agent / Sandbox mode ───────────────────────────────────────────
-const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer } = useSoul()
+const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent } = useSoul()
 const agentMode      = ref(false)
 const isSavingAgent  = ref(false)
 const isRefreshing   = ref(false)
@@ -339,7 +339,26 @@ onUnmounted(() => clearInterval(_agentPollTimer))
 
 async function refreshAgentContent() {
   isRefreshing.value = true
-  try { await fetchFromServer(true) } finally { isRefreshing.value = false }
+  try {
+    await fetchFromServer(true)
+    // Wenn Server-Version abweicht: nur AGENT-Block übernehmen (Peer-Nachrichten mergen,
+    // eigene Änderungen außerhalb des AGENT-Blocks erhalten)
+    if (syncStatus.value === 'differs' && serverContent.value) {
+      const serverBlock = serverContent.value.match(RE_AGENT)?.[0]
+      const localFull   = soulContentAgent.value ?? ''
+      const localBlock  = localFull.match(RE_AGENT)?.[0]
+      if (serverBlock && serverBlock !== localBlock) {
+        const merged = RE_AGENT.test(localFull)
+          ? localFull.replace(RE_AGENT, serverBlock)
+          : localFull.trimEnd() + `\n\n${serverBlock}\n`
+        updateContent(merged)
+        syncStatus.value    = 'in_sync'
+        serverContent.value = ''
+      }
+    }
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
 const RE_AGENT = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
