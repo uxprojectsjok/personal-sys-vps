@@ -41,8 +41,9 @@ local DEFAULTS = {
   wallet          = "",
   free_tools      = setmetatable({}, cjson.array_mt),
   trusted_souls   = setmetatable({}, cjson.array_mt),
-  token_duration  = "1d",
-  activated_at    = cjson.null,
+  token_duration       = "1d",
+  token_duration_days  = 1,
+  activated_at         = cjson.null,
   verified_wallet = cjson.null,
 }
 
@@ -171,10 +172,16 @@ if type(incoming.trusted_souls) == "table" then
   amort.trusted_souls = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
 end
 
--- token_duration: erlaubte Werte
+-- token_duration: erlaubte Werte (Legacy-Feld, bleibt für Kompatibilität)
 local valid_dur = { ["1h"]=true, ["12h"]=true, ["1d"]=true, ["30d"]=true, ["182d"]=true, ["365d"]=true, ["unlimited"]=true }
 if type(incoming.token_duration) == "string" and valid_dur[incoming.token_duration] then
   amort.token_duration = incoming.token_duration
+end
+
+-- token_duration_days: 1–30 Tage (neues numerisches Feld, überschreibt token_duration)
+if incoming.token_duration_days ~= nil then
+  local d = tonumber(incoming.token_duration_days) or 1
+  amort.token_duration_days = math.max(1, math.min(30, math.floor(d)))
 end
 
 ctx.amortization = amort
