@@ -283,9 +283,9 @@
                 </ol>
               </details>
 
-              <!-- Kostenlose Tools freigeben für -->
+              <!-- Kostenlose Tools freigeben für (same-server / Multi-Hoster) -->
               <div class="field-group" style="margin-top:16px">
-                <label class="field-label">Kostenlose Tools freigeben für <span class="field-hint">(Soul-IDs kommasepariert)</span></label>
+                <label class="field-label">Vertraute Peers — gleicher Server <span class="field-hint">(Soul-IDs kommasepariert)</span></label>
                 <textarea
                   v-model="trustedSoulsInput"
                   class="input mono"
@@ -293,6 +293,35 @@
                   placeholder="uuid1, uuid2, …"
                   style="resize:vertical;font-size:11px"
                 />
+              </div>
+
+              <!-- Cross-Domain Peers -->
+              <div class="field-group" style="margin-top:12px">
+                <label class="field-label">Vertraute Peers — eigene Domain <span class="field-hint">(kryptografisch verifiziert)</span></label>
+                <ul v-if="remotePeers.length" class="peer-list">
+                  <li v-for="p in remotePeers" :key="p.soul_id" class="peer-row">
+                    <span class="peer-id mono">{{ p.soul_id.slice(0, 8) }}…</span>
+                    <span class="peer-ep">{{ p.endpoint }}</span>
+                    <button class="peer-del" @click="removeRemotePeer(p.soul_id)" title="Entfernen">✕</button>
+                  </li>
+                </ul>
+                <div class="peer-add">
+                  <input
+                    v-model="newRemotePeer.soul_id"
+                    class="input mono"
+                    placeholder="soul_id (UUID)"
+                    style="font-size:11px;flex:1"
+                    @keydown.enter.prevent="addRemotePeer"
+                  />
+                  <input
+                    v-model="newRemotePeer.endpoint"
+                    class="input"
+                    placeholder="https://peer-domain.com"
+                    style="font-size:11px;flex:2"
+                    @keydown.enter.prevent="addRemotePeer"
+                  />
+                  <button class="chip" style="white-space:nowrap" @click="addRemotePeer">+ Hinzufügen</button>
+                </div>
               </div>
 
               <p v-if="amortError" class="field-error">{{ amortError }}</p>
@@ -492,10 +521,33 @@ const amort = reactive({
   trusted_souls:   [],
 })
 
+// Same-server peers (plain UUIDs)
 const trustedSoulsInput = computed({
-  get: () => amort.trusted_souls.join(', '),
-  set: v  => { amort.trusted_souls = v.split(',').map(s => s.trim()).filter(s => /^[a-f0-9-]{36}$/i.test(s)) },
+  get: () => amort.trusted_souls.filter(t => typeof t === 'string').join(', '),
+  set: v  => {
+    const strings = v.split(',').map(s => s.trim()).filter(s => /^[a-f0-9-]{36}$/i.test(s))
+    const objects = amort.trusted_souls.filter(t => typeof t === 'object')
+    amort.trusted_souls = [...strings, ...objects]
+  },
 })
+
+// Cross-domain peers ({soul_id, endpoint} objects)
+const remotePeers = computed(() => amort.trusted_souls.filter(t => typeof t === 'object' && t?.soul_id))
+
+const newRemotePeer = reactive({ soul_id: '', endpoint: '' })
+function addRemotePeer() {
+  const sid = newRemotePeer.soul_id.trim()
+  const ep  = newRemotePeer.endpoint.trim().replace(/\/$/, '')
+  if (!/^[a-f0-9-]{36}$/i.test(sid)) return
+  if (!/^https?:\/\/.+/.test(ep)) return
+  if (amort.trusted_souls.some(t => t?.soul_id === sid || t === sid)) return
+  amort.trusted_souls = [...amort.trusted_souls, { soul_id: sid, endpoint: ep }]
+  newRemotePeer.soul_id = ''
+  newRemotePeer.endpoint = ''
+}
+function removeRemotePeer(sid) {
+  amort.trusted_souls = amort.trusted_souls.filter(t => t?.soul_id !== sid)
+}
 const freeToolsStr = computed({
   get: () => amort.free_tools.join(', '),
   set: v => { amort.free_tools = v.split(',').map(s => s.trim()).filter(Boolean) },
@@ -654,7 +706,9 @@ async function loadAmort() {
     amort.pol_per_request = a.pol_per_request ?? '0.001'
     amort.wallet          = a.wallet          ?? ''
     amort.free_tools      = Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity']
-    amort.trusted_souls   = Array.isArray(a.trusted_souls) ? a.trusted_souls : []
+    amort.trusted_souls   = Array.isArray(a.trusted_souls)
+      ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
+      : []
     amortActive.value     = amort.enabled
     if (a.enabled !== undefined) modeTouched.value = true
     currentCid.value      = a.agent_registry_cid || ''
@@ -1072,4 +1126,13 @@ async function register() {
   .amm-foot-actions .btn { flex: 1; justify-content: center; }
   .amm-foot-help { display: none; }
 }
+
+.peer-list { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.peer-row  { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: var(--bg-2); border-radius: 6px; font-size: 11px; }
+.peer-id   { color: var(--fg-2); flex: none; }
+.peer-ep   { color: var(--fg-3); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peer-del  { background: none; border: none; cursor: pointer; color: var(--fg-4); padding: 0 2px; font-size: 12px; line-height: 1; flex: none; }
+.peer-del:hover { color: var(--fg-1); }
+.peer-add  { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.peer-add .input { min-width: 0; padding: 6px 8px; }
 </style>
