@@ -549,7 +549,7 @@ server {
   # ── Peer-Cert Verifikation (öffentlich, für Cross-Domain Peer-Auth) ──────────
   location = /api/soul/verify-peer-cert {
     limit_except GET { deny all; }
-    limit_req zone=chat burst=20 nodelay;
+    limit_req zone=auth burst=3 nodelay;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_verify_peer_cert.lua;
