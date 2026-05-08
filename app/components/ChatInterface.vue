@@ -8,78 +8,85 @@
     <!-- ── Stream ──────────────────────────────────────────────────── -->
     <div ref="scrollEl" class="stream">
 
-
-      <!-- Messages -->
-      <article
-        v-for="(m, i) in messages"
-        :key="m.id || i"
-        class="msg"
-        :class="{ user: m.role === 'user', ai: m.role === 'assistant' }"
-      >
-        <header class="who">
-          <span class="handle">{{ m.role === 'user' ? 'Du' : (localRole === 'soul' ? 'SoulKI' : 'Entw.') }}</span>
-          <time>{{ fmtTime(m.ts || Date.now()) }}</time>
-        </header>
-        <div class="body">
-          <!-- Media previews (image/audio/video) -->
-          <div v-if="m.mediaType === 'image' && m.mediaUrl" class="media-preview">
-            <img :src="m.mediaUrl" alt="" loading="lazy" />
+      <!-- ── AI-Chat-Modus ─────────────────────────────────────────── -->
+      <template v-if="!agentMode">
+        <article
+          v-for="(m, i) in messages"
+          :key="m.id || i"
+          class="msg"
+          :class="{ user: m.role === 'user', ai: m.role === 'assistant' }"
+        >
+          <header class="who">
+            <span class="handle">{{ m.role === 'user' ? 'Du' : (localRole === 'soul' ? 'SoulKI' : 'Entw.') }}</span>
+            <time>{{ fmtTime(m.ts || Date.now()) }}</time>
+          </header>
+          <div class="body">
+            <div v-if="m.mediaType === 'image' && m.mediaUrl" class="media-preview">
+              <img :src="m.mediaUrl" alt="" loading="lazy" />
+            </div>
+            <div v-else-if="m.mediaType === 'audio' && m.mediaUrl" class="media-audio">
+              <audio controls :src="m.mediaUrl" style="accent-color:var(--accent)"></audio>
+            </div>
+            <div v-else-if="m.mediaType === 'video' && m.mediaUrl" class="media-video">
+              <video controls :src="m.mediaUrl" playsinline></video>
+            </div>
+            <div v-if="m.youtubeEmbed" class="media-embed">
+              <iframe
+                :src="`https://www.youtube-nocookie.com/embed/${m.youtubeEmbed.videoId}`"
+                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
+              ></iframe>
+            </div>
+            <div v-if="m.spotifyEmbed" class="media-spotify">
+              <iframe
+                :src="`https://open.spotify.com/embed/track/${m.spotifyEmbed.id}?utm_source=generator&theme=0`"
+                frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
+              ></iframe>
+            </div>
+            <a v-if="m.linkCard" :href="m.linkCard.url" target="_blank" rel="noopener" class="link-card">
+              <span class="lc-icon">{{ m.linkCard.service === 'youtube' ? '▶' : m.linkCard.service === 'spotify' ? '♫' : '🔍' }}</span>
+              <span class="lc-label">{{ m.linkCard.label }}</span>
+              <span class="lc-arr">→</span>
+            </a>
+            <div v-if="m.streaming && !m.text" class="dots">
+              <span></span><span></span><span></span>
+            </div>
+            <p v-for="(para, j) in paragraphs(m.text)" :key="j" v-html="renderText(para)"></p>
+            <div v-if="m.actions?.length" class="msg-actions">
+              <button
+                v-for="a in m.actions" :key="a.label"
+                class="msg-action-btn" :class="a.primary ? 'primary' : 'secondary'"
+                :disabled="m.actionsDisabled" @click="handleMsgAction(m, a)"
+              >{{ a.label }}</button>
+            </div>
           </div>
-          <div v-else-if="m.mediaType === 'audio' && m.mediaUrl" class="media-audio">
-            <audio controls :src="m.mediaUrl" style="accent-color:var(--accent)"></audio>
-          </div>
-          <div v-else-if="m.mediaType === 'video' && m.mediaUrl" class="media-video">
-            <video controls :src="m.mediaUrl" playsinline></video>
-          </div>
+        </article>
+      </template>
 
-          <!-- YouTube embed -->
-          <div v-if="m.youtubeEmbed" class="media-embed">
-            <iframe
-              :src="`https://www.youtube-nocookie.com/embed/${m.youtubeEmbed.videoId}`"
-              frameborder="0" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
-            ></iframe>
-          </div>
-
-          <!-- Spotify embed -->
-          <div v-if="m.spotifyEmbed" class="media-spotify">
-            <iframe
-              :src="`https://open.spotify.com/embed/track/${m.spotifyEmbed.id}?utm_source=generator&theme=0`"
-              frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
-            ></iframe>
-          </div>
-
-          <!-- Link card -->
-          <a v-if="m.linkCard" :href="m.linkCard.url" target="_blank" rel="noopener" class="link-card">
-            <span class="lc-icon">{{ m.linkCard.service === 'youtube' ? '▶' : m.linkCard.service === 'spotify' ? '♫' : '🔍' }}</span>
-            <span class="lc-label">{{ m.linkCard.label }}</span>
-            <span class="lc-arr">→</span>
-          </a>
-
-          <!-- Streaming dots -->
-          <div v-if="m.streaming && !m.text" class="dots">
-            <span></span><span></span><span></span>
-          </div>
-
-          <!-- Text (rendered with minimal markdown) -->
-          <p
-            v-for="(para, j) in paragraphs(m.text)"
-            :key="j"
-            v-html="renderText(para)"
-          ></p>
-
-          <!-- Action buttons (z.B. Bildgenerierung anbieten) -->
-          <div v-if="m.actions?.length" class="msg-actions">
-            <button
-              v-for="a in m.actions"
-              :key="a.label"
-              class="msg-action-btn"
-              :class="a.primary ? 'primary' : 'secondary'"
-              :disabled="m.actionsDisabled"
-              @click="handleMsgAction(m, a)"
-            >{{ a.label }}</button>
-          </div>
+      <!-- ── Agent-Sandbox-Modus ───────────────────────────────────── -->
+      <template v-else>
+        <div v-if="agentMessages.length === 0" class="agent-empty">
+          <p class="agent-empty-icon">⬡</p>
+          <p class="agent-empty-title">Agent Sandbox leer</p>
+          <p class="agent-empty-hint">Schreib unten was du senden willst — externe KIs und andere Souls sehen diesen Text.</p>
         </div>
-      </article>
+        <article
+          v-for="msg in agentMessages"
+          :key="msg.id"
+          class="msg"
+          :class="{ user: msg.type === 'self', ai: msg.type === 'peer' }"
+        >
+          <header class="who">
+            <span class="handle">{{ msg.author }}</span>
+            <time v-if="msg.date">{{ msg.date }}</time>
+          </header>
+          <div class="body">
+            <p v-for="(para, j) in paragraphs(msg.text)" :key="j" v-html="renderText(para)"></p>
+          </div>
+        </article>
+        <div v-if="isSavingAgent" class="dots saving-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </template>
 
       <!-- Scroll anchor -->
       <div ref="chatEnd" class="anchor"></div>
@@ -90,8 +97,9 @@
 
       <!-- Row 1: mode toggle · textarea · send -->
       <div class="dock-main">
-        <!-- Mode toggle pill -->
+        <!-- Mode toggle pill (AI mode only) -->
         <button
+          v-if="!agentMode"
           class="mode-btn"
           :class="{ soul: localRole === 'soul' }"
           @click="toggleRole"
@@ -107,7 +115,7 @@
             ref="textareaEl"
             v-model="draft"
             class="input"
-            placeholder="Schreib etwas…"
+            :placeholder="agentMode ? 'Dein Profil-Text — was andere Souls und KIs über dich lesen…' : 'Schreib etwas…'"
             rows="1"
             @keydown.enter.exact.prevent="handleSend"
             @keydown.shift.enter.exact="draft += '\n'; $nextTick(autoResize)"
@@ -140,6 +148,19 @@
           <span class="mode-dot"></span>
           <span class="chip-label">{{ localRole === 'soul' ? 'Soul' : 'Dev' }}</span>
         </button>
+        <!-- Nachrichten / Agent Sandbox -->
+        <button
+          class="chip"
+          :class="{ active: agentMode }"
+          @click="agentMode = !agentMode"
+          aria-label="Nachrichten"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
+          </svg>
+          <span class="chip-label">Nachrichten</span>
+        </button>
+
         <!-- Camera -->
         <button
           class="chip"
@@ -225,6 +246,7 @@ import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
 import { useYouTube } from '~/composables/useYouTube.js'
 import { useSpotify } from '~/composables/useSpotify.js'
+import { useSoul } from '~/composables/useSoul.js'
 import CameraRecorder from '~/components/CameraRecorder.vue'
 
 // ── Props / Emits ──────────────────────────────────────────────────
@@ -264,7 +286,53 @@ const textareaEl = ref(null)
 const scrollEl   = ref(null)
 const chatEnd    = ref(null)
 
-const canSend = computed(() => draft.value.trim().length > 0 && !isLoading.value)
+const canSend = computed(() =>
+  draft.value.trim().length > 0 &&
+  (agentMode.value ? !isSavingAgent.value : !isLoading.value)
+)
+
+// ── Agent / Sandbox mode ───────────────────────────────────────────
+const { soulContent: soulContentAgent, updateContent, pushToServer } = useSoul()
+const agentMode      = ref(false)
+const isSavingAgent  = ref(false)
+
+const RE_AGENT = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
+
+const agentMessages = computed(() => {
+  const m = soulContentAgent.value?.match(RE_AGENT)
+  if (!m) return []
+  const parts = m[1].split(/\n\n---\n/)
+  return parts.map((part, i) => {
+    const t = part.trim()
+    if (!t) return null
+    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null }
+    const pm = t.match(/^\*\*(.+?)\*\*\s*·\s*(\S+)\n([\s\S]*)/)
+    if (pm) return { id: `peer-${i}`, type: 'peer', author: pm[1], date: pm[2], text: pm[3].trim() }
+    return { id: `msg-${i}`, type: 'peer', author: '?', date: null, text: t }
+  }).filter(Boolean)
+})
+
+async function handleAgentSend() {
+  if (isSavingAgent.value) return
+  const text = draft.value.trim()
+  if (!text) return
+  draft.value = ''
+  await nextTick(autoResize)
+  isSavingAgent.value = true
+  try {
+    const existing = soulContentAgent.value?.match(RE_AGENT)?.[1] || ''
+    const dashIdx  = existing.indexOf('\n\n---\n')
+    const peers    = dashIdx >= 0 ? existing.slice(dashIdx) : ''
+    const block    = `<!-- AGENT:START -->\n${text}${peers}\n<!-- AGENT:END -->`
+    const updated  = RE_AGENT.test(soulContentAgent.value)
+      ? soulContentAgent.value.replace(RE_AGENT, block)
+      : soulContentAgent.value.trimEnd() + '\n\n' + block + '\n'
+    updateContent(updated)
+    await pushToServer()
+  } finally {
+    isSavingAgent.value = false
+  }
+}
 
 // ── Camera / Vision ────────────────────────────────────────────────
 const cameraOpen    = ref(false)
@@ -658,6 +726,7 @@ async function dispatchToChat(text, msgMeta = {}) {
 // ── Send handler ───────────────────────────────────────────────────
 async function handleSend() {
   if (!canSend.value) return
+  if (agentMode.value) { await handleAgentSend(); return }
   const raw = draft.value.trim()
   draft.value = ''
   await nextTick(autoResize)
@@ -966,4 +1035,39 @@ defineExpose({
   .dock-chips { min-height: 52px; }
   .chip       { height: 52px; }
 }
+
+/* ── Agent Sandbox empty state ───────────────────────────────────── */
+.agent-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 32px;
+  text-align: center;
+}
+.agent-empty-icon {
+  font-size: 28px;
+  color: var(--fg-4);
+  margin: 0;
+  line-height: 1;
+}
+.agent-empty-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin: 0;
+}
+.agent-empty-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-4);
+  line-height: 1.6;
+  max-width: 320px;
+  margin: 0;
+}
+.saving-dots { padding: 12px clamp(16px,3vw,40px); }
 </style>
