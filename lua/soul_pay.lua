@@ -227,14 +227,14 @@ local TOKEN_TTL = 86400  -- immer 24h
 local token_bytes = random.bytes(24, true)
 local access_token = str.to_hex(token_bytes)
 local expires_at   = ngx.now() + TOKEN_TTL
-local expires_iso  = os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(expires_at))
+local expires_iso  = os.date("%Y-%m-%dT%H:%M:%S", math.floor(expires_at))
 
 local token_data = cjson.encode({
   soul_id      = soul_id,
   tx_hash      = tx_hash:lower(),
   pol_amount   = vdata.pol_amount,
   from         = vdata.from,
-  issued_at    = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+  issued_at    = os.date("%Y-%m-%dT%H:%M:%S"),
   expires_at   = expires_iso,
 })
 
