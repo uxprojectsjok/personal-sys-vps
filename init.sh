@@ -82,9 +82,46 @@ read -p "  WalletConnect Project ID (optional):      " WC_PROJECT_ID
 
 echo ""
 echo -e "${YELLOW}  Zeitzone des Servers — bestimmt Uhrzeitanzeige in Token-Ablaufzeiten${NC}"
-echo -e "${YELLOW}  und Kommentar-Timestamps. Beispiele: Europe/Berlin, UTC, America/New_York${NC}"
-read -p "  Zeitzone [Europe/Berlin]:                 " TIMEZONE
-TIMEZONE="${TIMEZONE:-Europe/Berlin}"
+echo -e "${YELLOW}  und Kommentar-Timestamps.${NC}"
+echo ""
+echo "  [1] Europe/Berlin    (Deutschland, Österreich, Schweiz)"
+echo "  [2] Europe/London    (UK, Irland)"
+echo "  [3] Europe/Paris     (Frankreich, Belgien, Spanien)"
+echo "  [4] America/New_York (USA East)"
+echo "  [5] America/Chicago  (USA Central)"
+echo "  [6] America/Denver   (USA Mountain)"
+echo "  [7] America/Los_Angeles (USA West)"
+echo "  [8] Asia/Tokyo       (Japan)"
+echo "  [9] Asia/Singapore   (Singapur, Malaysia)"
+echo "  [0] UTC              (koordinierte Weltzeit)"
+echo "  [k] Andere eingeben  (z.B. America/Sao_Paulo)"
+echo ""
+while true; do
+  read -p "  Zeitzone [1]: " TZ_CHOICE
+  TZ_CHOICE="${TZ_CHOICE:-1}"
+  case "$TZ_CHOICE" in
+    1) TIMEZONE="Europe/Berlin"      ; break ;;
+    2) TIMEZONE="Europe/London"      ; break ;;
+    3) TIMEZONE="Europe/Paris"       ; break ;;
+    4) TIMEZONE="America/New_York"   ; break ;;
+    5) TIMEZONE="America/Chicago"    ; break ;;
+    6) TIMEZONE="America/Denver"     ; break ;;
+    7) TIMEZONE="America/Los_Angeles"; break ;;
+    8) TIMEZONE="Asia/Tokyo"         ; break ;;
+    9) TIMEZONE="Asia/Singapore"     ; break ;;
+    0) TIMEZONE="UTC"                ; break ;;
+    k|K)
+      read -p "  Zeitzone eingeben (aus: timedatectl list-timezones): " TIMEZONE
+      if timedatectl list-timezones 2>/dev/null | grep -qx "$TIMEZONE"; then
+        break
+      else
+        warn "Unbekannte Zeitzone '$TIMEZONE'. Bitte nochmals versuchen."
+      fi
+      ;;
+    *) warn "Bitte eine Zahl 0–9 oder k eingeben." ;;
+  esac
+done
+echo -e "  ${GREEN}✓${NC} Zeitzone: $TIMEZONE"
 
 echo ""
 echo -e "${YELLOW}  Zugangspasswort für den Gate-Schutz des Nodes.${NC}"
