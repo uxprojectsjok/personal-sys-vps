@@ -90,8 +90,8 @@
               >
                 {{ (msg.type === 'self' || msg.isSoulId) ? '◈' : '⬡' }} {{ msg.wallet }}
               </span>
-              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">
-                tx {{ msg.tx }}
+              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX — Wallet auf Polygonscan nachschlagbar">
+                ⬡ {{ msg.tx }}
               </span>
             </div>
           </div>
@@ -335,9 +335,8 @@ const agentMessages = computed(() => {
         const authorName = rawName.replace(/\s*·\s*soul:[a-f0-9-]{36}/i, '').trim() || soulId.slice(0, 8)
         return { id: `peer-${i}`, type: 'peer', author: authorName, date, wallet: soulId, tx: null, isSoulId: true, text }
       }
-      // Paid: Polygon-Wallet im meta-String (⬡ badge)
-      const wallet = meta.match(/(0x[0-9a-fA-F]{4,6}…[0-9a-fA-F]{2,6})/)?.[1] ?? null
-      return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet, tx, isSoulId: false, text }
+      // Paid: TX-Hash als Identifikation (⬡ badge), Wallet über Polygonscan nachschlagbar
+      return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet: null, tx, isSoulId: false, text }
     }
     return { id: `msg-${i}`, type: 'peer', author: '?', date: null, wallet: null, tx: null, text: t }
   }).filter(Boolean)
