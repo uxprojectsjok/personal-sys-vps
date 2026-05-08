@@ -5,6 +5,7 @@
 
 local cjson     = require("cjson.safe")
 local resty_aes = require("resty.aes")
+local pol_check = require("pol_token_check")
 local lfs_ok, lfs = pcall(require, "lfs")
 
 ngx.header["Content-Type"]  = "text/plain; charset=utf-8"
@@ -29,19 +30,14 @@ if not token or not token:match("^[0-9a-fA-F]+$") or #token < 32 then
   return
 end
 
--- pol_access shared dict prüfen
-local access_cache = ngx.shared.pol_access
-local raw = access_cache:get("tok:" .. token:lower())
-
-if not raw then
+local tdata = pol_check.check(token)
+if not tdata then
   ngx.status = 401
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"token_expired_or_invalid","message":"pol_access_token ungültig oder abgelaufen. Neue Zahlung erforderlich."}')
   return
 end
-
-local ok_t, tdata = pcall(cjson.decode, raw)
-if not ok_t or type(tdata) ~= "table" or not tdata.soul_id then
+if not tdata.soul_id then
   ngx.status = 500
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"token_data_corrupt"}')

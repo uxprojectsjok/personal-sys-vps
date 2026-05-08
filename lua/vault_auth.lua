@@ -10,6 +10,7 @@
 local cjson      = require("cjson.safe")
 local hmac       = require("hmac_helper")
 local cfg        = require("config_reader")
+local pol_check  = require("pol_token_check")
 
 -- Hilfsfunktion: Session-JSON parsen (JSON oder altes plain-number Format)
 local function parse_session(val)
@@ -196,18 +197,12 @@ end
 -- ── 3. pol_access_token prüfen (bezahlte externe Agenten) ────────────────────
 
 local function check_pol_access_token(token)
-  -- pol_access_token: genau 48 hex-Zeichen, kein Punkt (Lua: kein {n}-Quantor → manueller Längencheck)
   if #token ~= 48 or not token:match("^[0-9a-fA-F]+$") or token:find(".", 1, true) then
     return nil
   end
 
-  local access_cache = ngx.shared.pol_access
-  if not access_cache then return nil end
-  local raw = access_cache:get("tok:" .. token:lower())
-  if not raw then return nil end
-
-  local ok_t, tdata = pcall(cjson.decode, raw)
-  if not ok_t or type(tdata) ~= "table" or not tdata.soul_id then return nil end
+  local tdata = pol_check.check(token)
+  if not tdata or not tdata.soul_id then return nil end
 
   local soul_id = tdata.soul_id
   local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"

@@ -2,7 +2,8 @@
 -- GET /internal/validate-pol-token?token=xxx
 -- Nur localhost. Prüft pol_access shared dict. Gibt {ok, soul_id, expires_at} zurück.
 
-local cjson = require("cjson.safe")
+local cjson     = require("cjson.safe")
+local pol_check = require("pol_token_check")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -30,19 +31,10 @@ if not token:match("^[0-9a-fA-F]+$") or #token < 32 then
   return
 end
 
-local access_cache = ngx.shared.pol_access
-local raw = access_cache:get("tok:" .. token:lower())
-
-if not raw then
+local data = pol_check.check(token)
+if not data then
   ngx.status = 401
   ngx.say('{"ok":false,"error":"token_not_found_or_expired"}')
-  return
-end
-
-local ok, data = pcall(cjson.decode, raw)
-if not ok or type(data) ~= "table" then
-  ngx.status = 500
-  ngx.say('{"ok":false,"error":"token_data_corrupt"}')
   return
 end
 
