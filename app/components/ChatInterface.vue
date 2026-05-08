@@ -81,6 +81,14 @@
           </header>
           <div class="body">
             <p v-for="(para, j) in paragraphs(msg.text)" :key="j" v-html="renderText(para)"></p>
+            <div v-if="msg.wallet || msg.tx" class="agent-id-bar">
+              <span v-if="msg.wallet" class="agent-id-badge" title="Polygon-Wallet des Zahlers (kryptografisch verifiziert)">
+                ⬡ {{ msg.wallet }}
+              </span>
+              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">
+                tx {{ msg.tx }}
+              </span>
+            </div>
           </div>
         </article>
         <div v-if="isSavingAgent" class="dots saving-dots">
@@ -305,10 +313,19 @@ const agentMessages = computed(() => {
   return parts.map((part, i) => {
     const t = part.trim()
     if (!t) return null
-    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null }
-    const pm = t.match(/^\*\*(.+?)\*\*\s*·\s*(\S+)\n([\s\S]*)/)
-    if (pm) return { id: `peer-${i}`, type: 'peer', author: pm[1], date: pm[2], text: pm[3].trim() }
-    return { id: `msg-${i}`, type: 'peer', author: '?', date: null, text: t }
+    if (i === 0) return { id: 'profile', type: 'self', author: 'Du', text: t, date: null, wallet: null, tx: null }
+    // Format: **Name** · [0xABCD…1234] · [tx:0xabcd…] · date
+    const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
+    if (pm) {
+      const meta   = pm[2]  // alles zwischen ** und \n
+      const text   = pm[3].trim()
+      const wallet = meta.match(/(0x[0-9a-fA-F]{4,6}…[0-9a-fA-F]{2,6})/)?.[1] ?? null
+      const tx     = meta.match(/tx:(0x[0-9a-fA-F]+…)/)?.[1] ?? null
+      const date   = meta.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
+      const name   = pm[1].trim()
+      return { id: `peer-${i}`, type: 'peer', author: name, date, wallet, tx, text }
+    }
+    return { id: `msg-${i}`, type: 'peer', author: '?', date: null, wallet: null, tx: null, text: t }
   }).filter(Boolean)
 })
 
@@ -1070,4 +1087,24 @@ defineExpose({
   margin: 0;
 }
 .saving-dots { padding: 12px clamp(16px,3vw,40px); }
+
+/* ── Agent ID-Badges (Wallet + TX) ──────────────────────────────── */
+.agent-id-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.agent-id-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--fg-4);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.agent-id-badge.tx { opacity: 0.6; }
 </style>
