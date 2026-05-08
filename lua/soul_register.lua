@@ -58,6 +58,7 @@ local amort = ctx.amortization
 local sys_path = SOULS_DIR .. soul_id .. "/sys.md"
 local sf = io.open(sys_path, "r")
 local name, created_at, version, maturity
+local anchor_tags = setmetatable({}, cjson.array_mt)
 
 if sf then
   local raw = sf:read("*a"); sf:close()
@@ -68,6 +69,18 @@ if sf then
       created_at = front:match("created:%s*(.-)%s*\n") or front:match("created_at:%s*(.-)%s*\n")
       version    = front:match("version:%s*(.-)%s*\n")
       maturity   = tonumber(front:match("maturity:%s*(.-)%s*\n"))
+      -- Kanonische Tags aus soul_chain_anchor lesen (gesetzt beim Blockchain-Anker)
+      local anchor_raw = front:match("soul_chain_anchor:%s*(.-)%s*\n")
+      if anchor_raw then
+        local ok_a, anchor_obj = pcall(cjson.decode, anchor_raw)
+        if ok_a and type(anchor_obj) == "table" and type(anchor_obj.tags) == "table" then
+          for _, t in ipairs(anchor_obj.tags) do
+            if type(t) == "string" and #t > 0 then
+              anchor_tags[#anchor_tags + 1] = t
+            end
+          end
+        end
+      end
     end
   end
 end
@@ -107,6 +120,8 @@ if created_at   then meta.created      = created_at   end
 if version      then meta.version      = version      end
 if maturity     then meta.maturity     = maturity     end
 if description  then meta.description  = description  end
+-- Tags: aus soul_chain_anchor (kanonisch) — ermöglicht soul_discover via Pinata
+if #anchor_tags > 0 then meta.tags = anchor_tags end
 if type(amort) == "table" then
   local no_tools = setmetatable({}, cjson.array_mt)
   meta.amortization = {
