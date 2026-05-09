@@ -130,7 +130,7 @@
             <div class="peer-form">
               <div class="peer-form-inputs">
                 <input v-model="newPeer.soul_id" class="input mono" placeholder="Soul-ID (UUID)" @keydown.enter.prevent="addPeer" />
-                <input v-model="newPeer.endpoint" class="input" placeholder="https://peer-domain.com  (leer = gleicher Server)" @keydown.enter.prevent="addPeer" />
+                <input v-model="newPeer.endpoint" class="input" placeholder="Peer-Domain oder leer lassen" @keydown.enter.prevent="addPeer" />
               </div>
               <div class="peer-form-row">
                 <input v-model="newPeer.label" class="input" placeholder="Name (optional)" style="flex:1" @keydown.enter.prevent="addPeer" />
@@ -548,13 +548,16 @@ const previewReadonly = computed(() => {
 const showToolPicker = ref(false)
 
 // soul_discover ist immer verfügbar (kein Auth nötig) → nicht konfigurierbar
+// Nur Tools die registerPaidTools() tatsächlich registriert
 const AVAILABLE_TOOLS = [
-  'audio_get', 'audio_list', 'beme_chat', 'calendar_read',
+  'audio_get', 'audio_list',
+  'calendar_read',
   'context_get', 'context_list',
   'image_get', 'image_list',
-  'profile_get', 'profile_save', 'soul_cloud_push',
-  'soul_earnings', 'soul_maturity', 'soul_read', 'soul_skills',
-  'soul_write', 'vault_manifest', 'verify_human', 'video_get', 'video_list',
+  'profile_get',
+  'soul_maturity', 'soul_read', 'soul_skills',
+  'verify_human',
+  'video_get', 'video_list',
 ]
 
 // Beta tools — sichtbar aber nicht interaktiv (developer opt-in)
