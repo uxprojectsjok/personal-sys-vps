@@ -66,18 +66,31 @@ export function register(server, token) {
           };
         }
 
-        const isChain = data.source === 'chain';
+        const sourceLabel = {
+          'ipfs':       'Pinata/IPFS',
+          'chain':      'Blockchain (kein Pinata konfiguriert)',
+          'ipfs+chain': 'Pinata/IPFS + Blockchain',
+          'none':       'keine Quelle',
+        }[data.source] ?? data.source ?? 'unbekannt';
+
         const lines = [];
         lines.push(`## Soul-Marktplatz — ${souls.length} Einträge${data.total > souls.length ? ` (von ${data.total})` : ''}`);
-        if (isChain) lines.push(`_Quelle: Polygon-Blockchain (kein Pinata konfiguriert)_`);
+        lines.push(`_Gesamtquelle: ${sourceLabel}_`);
         if (q) lines.push(`_Suche: "${q}"_`);
         lines.push('');
+
+        const soulSourceLabel = {
+          'ipfs':       'Pinata/IPFS',
+          'chain':      'Blockchain',
+          'ipfs+chain': 'Pinata/IPFS + Blockchain verifiziert',
+        };
 
         for (const s of souls) {
           lines.push(`### ${s.name || s.soul_id}`);
           if (s.description) lines.push(`_${s.description}_`);
           if (s.tags?.length) lines.push(`**Tags:** ${s.tags.map(t => `\`${t}\``).join(' · ')}`);
           lines.push('');
+          lines.push(`- **Quelle:** ${soulSourceLabel[s.source] ?? s.source ?? 'unbekannt'}`);
           lines.push(`- **soul_id:** \`${s.soul_id}\``);
           lines.push(`- **MCP:** ${s.mcp_endpoint}`);
 
