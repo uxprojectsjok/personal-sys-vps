@@ -62,40 +62,51 @@
         </article>
       </template>
 
-      <!-- ── Agent-Sandbox-Modus ───────────────────────────────────── -->
+      <!-- ── Nachrichten-Modus ─────────────────────────────────────── -->
       <template v-else>
-        <div v-if="agentMessages.length === 0" class="agent-empty">
-          <p class="agent-empty-icon">⬡</p>
-          <p class="agent-empty-title">Agent Sandbox leer</p>
-          <p class="agent-empty-hint">Schreib unten was du senden willst — externe KIs und andere Souls sehen diesen Text.</p>
+        <!-- View tabs -->
+        <div class="msg-tabs">
+          <button v-for="[id, label, color] in [['peer','Peers','#34d399'],['agent','Agenten','#a78bfa'],['all','Alle','#60a5fa']]" :key="id"
+            class="msg-tab" :class="{ active: msgView === id }"
+            :style="msgView === id ? { color } : {}"
+            @click="msgView = id">
+            {{ label }}
+          </button>
         </div>
-        <article
-          v-for="msg in agentMessages"
-          :key="msg.id"
+
+        <div v-if="displayMessages.length === 0" class="agent-empty">
+          <p class="agent-empty-icon">⬡</p>
+          <p class="agent-empty-title">{{ msgView === 'peer' ? 'Keine Peer-Nachrichten' : msgView === 'agent' ? 'Agent Sandbox leer' : 'Keine Nachrichten' }}</p>
+          <p class="agent-empty-hint">{{ msgView === 'peer' ? 'Peers schreiben via MCP in deine Social Sphere.' : 'Wähle unten einen Empfänger und schreib eine Nachricht.' }}</p>
+        </div>
+
+        <article v-for="(msg, i) in displayMessages" :key="`${msg.ts}-${i}`"
           class="msg"
-          :class="{ user: msg.type === 'self', ai: msg.type === 'peer', note: msg.type === 'note' }"
+          :class="{ user: msg.from === 'me', ai: msg.from !== 'me' }"
         >
-          <header v-if="msg.author" class="who">
-            <span class="handle">{{ msg.author }}</span>
-            <time v-if="msg.date">{{ msg.date }}</time>
+          <header class="who">
+            <span class="handle" :style="{ color: msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+              {{ msg.from === 'me' ? 'Du' : (msg.author ?? msg.from.slice(0, 8)) }}
+            </span>
+            <span v-if="msg.from === 'me'" class="msg-to-badge"
+              :style="msg.to === 'peer' ? 'color:#34d399' : msg.to === 'agent' ? 'color:#a78bfa' : 'color:#60a5fa'">
+              → {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
+            </span>
+            <time>{{ fmtMsgDate(msg.ts) }}</time>
           </header>
           <div class="body">
-            <p v-for="(para, j) in paragraphs(msg.text)" :key="j" v-html="renderText(para)"></p>
+            <p v-for="(para, j) in paragraphs(msg.content)" :key="j" v-html="renderText(para)"></p>
             <div v-if="msg.wallet || msg.tx" class="agent-id-bar">
-              <span
-                v-if="msg.wallet"
-                class="agent-id-badge"
-                :class="{ tx: !msg.isSoulId && msg.type !== 'self' }"
-                :title="msg.type === 'self' ? 'Deine soul_id' : msg.isSoulId ? 'soul_id (vertrauenswürdige Peer-Soul)' : 'Polygon-Wallet des Zahlers (kryptografisch verifiziert)'"
-              >
-                {{ (msg.type === 'self' || msg.isSoulId) ? '◈' : '⬡' }} {{ msg.wallet }}
+              <span v-if="msg.wallet" class="agent-id-badge"
+                :class="{ tx: !msg.isSoulId }"
+                :title="msg.isSoulId ? 'soul_id' : 'Polygon-Wallet'">
+                {{ msg.isSoulId ? '◈' : '⬡' }} {{ msg.wallet.slice(0, 12) }}…
               </span>
-              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX — Wallet auf Polygonscan nachschlagbar">
-                ⬡ {{ msg.tx }}
-              </span>
+              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">⬡ {{ msg.tx }}</span>
             </div>
           </div>
         </article>
+
         <div v-if="isSavingAgent" class="dots saving-dots">
           <span></span><span></span><span></span>
         </div>
@@ -146,6 +157,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arr-icon">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m-7 7 7-7 7 7"/>
           </svg>
+        </button>
+      </div>
+
+      <!-- Row 1b: recipient selector (messaging mode only) -->
+      <div v-if="agentMode" class="dock-recipients">
+        <span class="recipient-label">An:</span>
+        <button v-for="[id, label, color] in [['peer','@Peer','#34d399'],['agent','@Agent','#a78bfa'],['community','@Community','#60a5fa']]" :key="id"
+          class="recipient-badge" :class="{ active: msgRecipient === id }"
+          :style="msgRecipient === id ? { background: color + '22', color, borderColor: color + '55' } : {}"
+          @click="msgRecipient = id">
+          {{ label }}
         </button>
       </div>
 
@@ -319,11 +341,13 @@ const canSend = computed(() =>
   (agentMode.value ? !isSavingAgent.value : !isLoading.value)
 )
 
-// ── Agent / Sandbox mode ───────────────────────────────────────────
+// ── Messaging mode ─────────────────────────────────────────────────
 const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent } = useSoul()
 const agentMode      = ref(false)
 const isSavingAgent  = ref(false)
 const isRefreshing   = ref(false)
+const msgView        = ref('all')   // 'all' | 'peer' | 'agent'
+const msgRecipient   = ref('peer')  // 'peer' | 'agent' | 'community'
 let   _agentPollTimer = null
 
 watch(agentMode, async (active) => {
@@ -341,16 +365,29 @@ async function refreshAgentContent() {
   isRefreshing.value = true
   try {
     await fetchFromServer(true)
-    // Wenn Server-Version abweicht: nur AGENT-Block übernehmen (Peer-Nachrichten mergen,
-    // eigene Änderungen außerhalb des AGENT-Blocks erhalten)
     if (syncStatus.value === 'differs' && serverContent.value) {
-      const serverBlock = serverContent.value.match(RE_AGENT)?.[0]
-      const localFull   = soulContentAgent.value ?? ''
-      const localBlock  = localFull.match(RE_AGENT)?.[0]
-      if (serverBlock && serverBlock !== localBlock) {
-        const merged = RE_AGENT.test(localFull)
-          ? localFull.replace(RE_AGENT, serverBlock)
-          : localFull.trimEnd() + `\n\n${serverBlock}\n`
+      const localFull = soulContentAgent.value ?? ''
+      let merged = localFull
+
+      // Merge AGENT block
+      const serverAgent = serverContent.value.match(RE_AGENT)?.[0]
+      const localAgent  = merged.match(RE_AGENT)?.[0]
+      if (serverAgent && serverAgent !== localAgent) {
+        merged = RE_AGENT.test(merged)
+          ? merged.replace(RE_AGENT, serverAgent)
+          : merged.trimEnd() + `\n\n${serverAgent}\n`
+      }
+
+      // Merge SOCIAL block
+      const serverSocial = serverContent.value.match(RE_SOCIAL_BLOCK)?.[0]
+      const localSocial  = merged.match(RE_SOCIAL_BLOCK)?.[0]
+      if (serverSocial && serverSocial !== localSocial) {
+        merged = RE_SOCIAL_BLOCK.test(merged)
+          ? merged.replace(RE_SOCIAL_BLOCK, serverSocial)
+          : merged.trimEnd() + `\n\n${serverSocial}\n`
+      }
+
+      if (merged !== localFull) {
         updateContent(merged)
         syncStatus.value    = 'in_sync'
         serverContent.value = ''
@@ -361,41 +398,120 @@ async function refreshAgentContent() {
   }
 }
 
-const RE_AGENT = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
+const RE_AGENT        = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
+const RE_SOCIAL_BLOCK = /<!--\s*SOCIAL:START\s*-->([\s\S]*?)<!--\s*SOCIAL:END\s*-->/
+const MSG_RE_G        = () => /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)-->/g
 
-const agentMessages = computed(() => {
-  const m = soulContentAgent.value?.match(RE_AGENT)
-  if (!m) return []
-  const parts = m[1].split(/\n\n---\n/)
-  return parts.map((part, i) => {
+function parseMsgBlock(blockContent, sphere) {
+  const re   = MSG_RE_G()
+  const msgs = []
+  let m
+  while ((m = re.exec(blockContent)) !== null) {
+    msgs.push({ ts: m[1], from: m[2], to: m[3], content: m[4].trim(), sphere, format: 'new' })
+  }
+  return msgs
+}
+
+function parseOldAgentBlock(blockContent) {
+  return blockContent.split(/\n\n---\n/).map((part, i) => {
     const t = part.trim()
     if (!t) return null
-    // Format: **Name · soul:uuid** · date  (peer/self)
-    //         **Name** · tx:0xabcd… · date  (paid)
     const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
     if (pm) {
-      const rawName = pm[1].trim()
-      const meta    = pm[2]
-      const text    = pm[3].trim()
-      const tx      = meta.match(/tx:(0x[0-9a-fA-F]+…)/)?.[1] ?? null
-      const date    = meta.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
-      // Peer-Soul: soul_id im Author-Feld (◈ badge, kein Polygon)
+      const rawName     = pm[1].trim()
+      const meta        = pm[2]
+      const content     = pm[3].trim()
+      const tx          = meta.match(/tx:(0x[0-9a-fA-F]+…)/)?.[1] ?? null
+      const date        = meta.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
       const soulIdMatch = rawName.match(/soul:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i)
-      if (soulIdMatch) {
-        const soulId     = soulIdMatch[1]
-        const isSelf     = soulId === soulMeta.value?.id
-        const authorName = rawName.replace(/\s*·\s*soul:[a-f0-9-]{36}/i, '').trim() || soulId.slice(0, 8)
-        return { id: `peer-${i}`, type: isSelf ? 'self' : 'peer', author: authorName, date, wallet: soulId, tx: null, isSoulId: true, text }
+      const soulId      = soulIdMatch?.[1] ?? null
+      const isSelf      = soulId === soulMeta.value?.id
+      const authorName  = soulId ? rawName.replace(/\s*·\s*soul:[a-f0-9-]{36}/i, '').trim() || soulId.slice(0, 8) : rawName
+      return {
+        id: `old-${i}`,
+        ts: date ? `${date}T00:00:00Z` : '2000-01-01T00:00:00Z',
+        from: isSelf ? 'me' : (soulId ?? rawName),
+        to: 'agent',
+        content,
+        sphere: 'agent',
+        format: 'old',
+        author: authorName,
+        wallet: soulId,
+        tx,
+        isSoulId: !!soulId,
       }
-      // Paid: TX-Hash als Identifikation (⬡ badge), Wallet über Polygonscan nachschlagbar
-      return { id: `peer-${i}`, type: 'peer', author: rawName, date, wallet: null, tx, isSoulId: false, text }
     }
-    // Unattributed content (z.B. freier Text-Block ohne Header)
-    return { id: `note-${i}`, type: 'note', author: null, date: null, wallet: null, tx: null, isSoulId: false, text: t }
+    if (t) return { id: `note-${i}`, ts: '2000-01-01T00:00:00Z', from: '?', to: 'agent', content: t, sphere: 'agent', format: 'old' }
+    return null
   }).filter(Boolean)
+}
+
+function formatMsgEntry(content, from, to) {
+  const ts   = new Date().toISOString()
+  const safe = content.replace(/\n+/g, ' ').replace(/-->/g, '—>')
+  return `\n<!-- @msg ${ts} ${from} ${to} ${safe.trim()} -->`
+}
+
+function appendToMarkerBlock(md, type, entry) {
+  const end = `<!-- ${type}:END -->`
+  const idx = md.indexOf(end)
+  if (idx === -1) return md
+  return md.slice(0, idx) + entry + '\n' + md.slice(idx)
+}
+
+function fmtMsgDate(ts) {
+  try {
+    const d   = new Date(ts)
+    const now = new Date()
+    const isToday     = d.toDateString() === now.toDateString()
+    const isYesterday = d.toDateString() === new Date(Date.now() - 86400000).toDateString()
+    const hm = d.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })
+    if (isToday)     return hm
+    if (isYesterday) return `Gestern ${hm}`
+    return d.toLocaleDateString('de', { day: '2-digit', month: '2-digit' }) + ' ' + hm
+  } catch { return ts?.slice(0, 16) ?? '' }
+}
+
+const socialMsgs = computed(() => {
+  const m = soulContentAgent.value?.match(RE_SOCIAL_BLOCK)
+  return m ? parseMsgBlock(m[1], 'social') : []
 })
 
-async function handleAgentSend() {
+const agentMsgsNew = computed(() => {
+  const m = soulContentAgent.value?.match(RE_AGENT)
+  return m ? parseMsgBlock(m[1], 'agent') : []
+})
+
+const agentMsgsOld = computed(() => {
+  const m = soulContentAgent.value?.match(RE_AGENT)
+  return m ? parseOldAgentBlock(m[1]) : []
+})
+
+// Kept for legacy backward-compat display (old **author** format)
+const agentMessages = computed(() => agentMsgsOld.value)
+
+const displayMessages = computed(() => {
+  const social    = socialMsgs.value
+  const agentNew  = agentMsgsNew.value
+  const agentOld  = agentMsgsOld.value
+
+  let pool
+  if (msgView.value === 'peer')  pool = social
+  else if (msgView.value === 'agent') pool = [...agentNew, ...agentOld]
+  else {
+    // Plenum: merge + deduplicate by ts|from|to|content
+    const seen = new Set()
+    pool = [...social, ...agentNew, ...agentOld].filter(m => {
+      const k = `${m.ts}|${m.from}|${m.to}|${m.content}`
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+  }
+  return [...pool].sort((a, b) => new Date(a.ts) - new Date(b.ts))
+})
+
+async function handleMsgSend() {
   if (isSavingAgent.value) return
   const text = draft.value.trim()
   if (!text) return
@@ -403,18 +519,16 @@ async function handleAgentSend() {
   await nextTick(autoResize)
   isSavingAgent.value = true
   try {
-    const soulId  = soulMeta.value?.id ?? ''
-    const name    = (soulMeta.value?.name ?? '').trim()
-    const ts      = new Date().toISOString().slice(0, 10)
-    const author  = name ? `${name} · soul:${soulId}` : `soul:${soulId}`
-    const entry   = `\n\n---\n**${author}** · ${ts}\n${text}`
-    const current = soulContentAgent.value ?? ''
-    const updated = RE_AGENT.test(current)
-      ? current.replace(RE_AGENT, (_, inner) =>
-          `<!-- AGENT:START -->${inner.trimEnd()}${entry}\n<!-- AGENT:END -->`)
-      : current.trimEnd() + `\n\n<!-- AGENT:START -->${entry}\n<!-- AGENT:END -->\n`
-    updateContent(updated)
+    const entry   = formatMsgEntry(text, 'me', msgRecipient.value)
+    let current   = soulContentAgent.value ?? ''
+    if (msgRecipient.value === 'peer'      || msgRecipient.value === 'community')
+      current = appendToMarkerBlock(current, 'SOCIAL', entry)
+    if (msgRecipient.value === 'agent'     || msgRecipient.value === 'community')
+      current = appendToMarkerBlock(current, 'AGENT', entry)
+    updateContent(current)
     await pushToServer()
+    // Switch view to show the sent message
+    msgView.value = msgRecipient.value === 'community' ? 'all' : msgRecipient.value
   } finally {
     isSavingAgent.value = false
   }
@@ -812,7 +926,7 @@ async function dispatchToChat(text, msgMeta = {}) {
 // ── Send handler ───────────────────────────────────────────────────
 async function handleSend() {
   if (!canSend.value) return
-  if (agentMode.value) { await handleAgentSend(); return }
+  if (agentMode.value) { await handleMsgSend(); return }
   const raw = draft.value.trim()
   draft.value = ''
   await nextTick(autoResize)
@@ -1180,4 +1294,68 @@ defineExpose({
   white-space: nowrap;
 }
 .agent-id-badge.tx { opacity: 0.6; }
+
+/* ── Nachrichten-Modus: View-Tabs ────────────────────────────────── */
+.msg-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 clamp(16px,3vw,40px);
+  padding-top: 4px;
+  margin-bottom: -12px;
+}
+.msg-tab {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.msg-tab:hover { color: var(--fg-3); }
+.msg-tab.active { border-bottom-color: currentColor; }
+
+/* ── Nachrichten-Modus: "→ @Peer" label ─────────────────────────── */
+.msg-to-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+
+/* ── Nachrichten-Modus: Empfänger-Zeile im Dock ─────────────────── */
+.dock-recipients {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.recipient-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  flex-shrink: 0;
+}
+.recipient-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--fg-4);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.recipient-badge:hover { color: var(--fg-3); border-color: rgba(255,255,255,0.22); }
 </style>
