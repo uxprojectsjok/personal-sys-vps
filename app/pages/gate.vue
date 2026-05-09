@@ -180,7 +180,7 @@ async function submit() {
 
 .gate-kicker {
   font-family: var(--sys-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--sys-fg-muted);
@@ -217,7 +217,7 @@ async function submit() {
 
 .gate-error {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sys-err);
   border-left: 2px solid var(--sys-err);
   padding-left: 10px;

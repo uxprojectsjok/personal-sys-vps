@@ -125,7 +125,7 @@ function handleDrop(e) {
 
 .soul-upload-error {
   font-family: var(--sys-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sys-err, #f0a3a3);
   border-left: 2px solid var(--sys-err, #f0a3a3);
   padding-left: 10px;

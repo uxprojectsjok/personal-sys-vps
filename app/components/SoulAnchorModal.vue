@@ -351,9 +351,9 @@ function copyProof() {
   --rule:   rgba(226,220,240,0.10);
   --rule-2: rgba(226,220,240,0.20);
   --fg:     #ece7f5;
-  --fg-2:   rgba(236,231,245,0.72);
-  --fg-3:   rgba(236,231,245,0.48);
-  --fg-4:   rgba(236,231,245,0.30);
+  --fg-2:   rgba(236,231,245,0.88);
+  --fg-3:   rgba(236,231,245,0.70);
+  --fg-4:   rgba(236,231,245,0.55);
   --accent: #8b5cf6;
   --accent-bright: #a78bfa;
   --accent-dim:    rgba(139,92,246,0.12);
@@ -389,7 +389,7 @@ function copyProof() {
 }
 .anc-head-labels { display: flex; flex-direction: column; gap: 2px; }
 .anc-kicker {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--accent); display: block; margin-bottom: 4px;
 }
 .anc-title  { font-family: var(--serif); font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--fg); line-height: 1; margin: 0; }
@@ -408,7 +408,7 @@ function copyProof() {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--rule);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--fg-3);
   background: var(--paper-3);
   transition: background 0.3s;
@@ -428,14 +428,14 @@ function copyProof() {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--rule);
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
   min-height: 44px;
 }
 .anc-wallet-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--accent); }
 .anc-wallet-dot.pulse { animation: anc-pulse 2s infinite; box-shadow: 0 0 8px var(--accent); }
-.anc-wallet-addr { flex: 1; font-family: var(--mono); font-size: 11px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.anc-wallet-net  { flex: none; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-3); }
-.anc-wallet-empty { color: var(--fg-4); font-size: 11px; letter-spacing: 0.1em; }
+.anc-wallet-addr { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anc-wallet-net  { flex: none; font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); }
+.anc-wallet-empty { color: var(--fg-4); font-size: 12px; letter-spacing: 0.1em; }
 
 /* ── Rule divider ──────────────────────────────────────── */
 .anc-rule {
@@ -445,7 +445,7 @@ function copyProof() {
   color: var(--fg-3);
 }
 .anc-rule span {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; padding: 10px 0;
 }
 .anc-rule::before, .anc-rule::after { content: ""; flex: 1; height: 1px; }
@@ -460,7 +460,7 @@ function copyProof() {
   width: 100%; min-height: 48px; padding: 0 20px;
   border: 0; border-bottom: 1px solid var(--rule);
   background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--fg-3);
   transition: all 0.15s;
 }
@@ -495,12 +495,12 @@ function copyProof() {
 .anc-tx { padding: 16px 20px; border-bottom: 1px solid var(--rule); }
 .anc-tx-head {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-2); margin-bottom: 8px;
 }
 .anc-tx-hash {
   display: flex; align-items: flex-start; gap: 6px;
-  font-family: var(--mono); font-size: 10px; color: var(--fg);
+  font-family: var(--mono); font-size: 12px; color: var(--fg);
   text-decoration: none; word-break: break-all;
 }
 .anc-tx-hash:hover { text-decoration: underline; color: var(--accent-bright); }
@@ -510,22 +510,22 @@ function copyProof() {
 .anc-proof-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .anc-proof-title {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--fg-2);
 }
 .anc-proof-copy {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--fg-3); background: transparent;
   border: 1px solid var(--rule); padding: 4px 10px; cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }
 .anc-proof-copy:hover { color: var(--fg); border-color: var(--rule-2); }
 .anc-proof-data {
-  font-family: var(--mono); font-size: 10px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
   display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;
 }
 .anc-proof-data span { color: var(--fg); }
-.anc-proof-text { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; line-height: 1.6; color: var(--fg-3); }
+.anc-proof-text { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; line-height: 1.6; color: var(--fg-3); }
 
 /* ── Shared icon size ──────────────────────────────────── */
 .anc-ico { width: 14px; height: 14px; flex: none; }
@@ -547,7 +547,7 @@ function copyProof() {
 
 /* ── Tags ──────────────────────────────────────────────── */
 .anc-tags-wrap { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 8px; }
-.anc-tags-hint { font-family: var(--sys-mono); font-size: 10px; color: var(--sys-fg-dim); letter-spacing: 0.06em; margin: 0; }
+.anc-tags-hint { font-family: var(--sys-mono); font-size: 12px; color: var(--sys-fg-dim); letter-spacing: 0.06em; margin: 0; }
 .anc-tags-input {
   width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--sys-rule);
   color: var(--sys-fg); font-family: var(--sys-mono); font-size: 12px;
@@ -557,7 +557,7 @@ function copyProof() {
 .anc-tags-input:disabled { opacity: 0.4; }
 .anc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .anc-chip {
-  font-family: var(--sys-mono); font-size: 10px; letter-spacing: 0.1em;
+  font-family: var(--sys-mono); font-size: 12px; letter-spacing: 0.1em;
   padding: 3px 8px; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
   color: var(--sys-accent-bright);
 }

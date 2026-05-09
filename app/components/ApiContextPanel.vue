@@ -165,7 +165,7 @@ async function onSave() {
 
 .api-panel-title {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--sys-fg-muted);
@@ -173,7 +173,7 @@ async function onSave() {
 
 .api-panel-badge {
   font-family: var(--sys-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -214,7 +214,7 @@ async function onSave() {
 }
 .api-panel-row-label {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   color: var(--sys-fg-muted);
   transition: color 0.15s;
@@ -267,14 +267,14 @@ async function onSave() {
 }
 .api-panel-perm-hint {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sys-fg-muted);
   letter-spacing: 0.06em;
 }
 
 .api-panel-error {
   font-family: var(--sys-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--sys-err);
   padding-left: 10px;
   border-left: 2px solid var(--sys-err);

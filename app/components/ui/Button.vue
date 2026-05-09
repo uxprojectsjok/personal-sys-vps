@@ -144,7 +144,7 @@ defineProps({
   height: auto;
   min-height: unset;
   font-family: var(--sys-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 500;

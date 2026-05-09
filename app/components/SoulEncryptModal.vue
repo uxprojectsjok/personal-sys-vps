@@ -386,9 +386,9 @@ function handleClose() {
   --rule:         rgba(226,220,240,0.10);
   --rule-2:       rgba(226,220,240,0.20);
   --fg:           #ece7f5;
-  --fg-2:         rgba(236,231,245,0.72);
-  --fg-3:         rgba(236,231,245,0.48);
-  --fg-4:         rgba(236,231,245,0.30);
+  --fg-2:         rgba(236,231,245,0.88);
+  --fg-3:         rgba(236,231,245,0.70);
+  --fg-4:         rgba(236,231,245,0.55);
   --accent:       #8b5cf6;
   --accent-2:     rgba(139,92,246,0.14);
   --accent-bright:#a78bfa;
@@ -430,7 +430,7 @@ function handleClose() {
 
 .senc-head-labels { display: flex; flex-direction: column; gap: 2px; }
 .senc-head-kicker {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--accent);
 }
 .senc-head-title {
@@ -470,18 +470,18 @@ function handleClose() {
   width: 22px; height: 22px; flex: none;
   border: 1px solid var(--rule-2); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 10px;
+  font-family: var(--mono); font-size: 12px;
   color: var(--fg-3);
   transition: background 0.2s, color 0.2s;
 }
 .senc-rail-item.on  .senc-num { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .senc-rail-item.done .senc-num { background: rgba(184,220,196,0.15); border-color: var(--ok); color: var(--ok); }
 
-.senc-check { font-size: 10px; line-height: 1; }
+.senc-check { font-size: 12px; line-height: 1; }
 
 .senc-lbl { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.senc-t   { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.senc-sub { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--fg-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.senc-t   { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.senc-sub { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; color: var(--fg-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Body ──────────────────────────────────────────────── */
 .senc-body {
@@ -491,7 +491,7 @@ function handleClose() {
 }
 
 .senc-kicker {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-3); margin-bottom: 6px;
 }
 .senc-title {
@@ -525,7 +525,7 @@ function handleClose() {
 .senc-word-row.invalid { border-color: rgba(240,163,163,0.35); }
 
 .senc-word-num {
-  font-family: var(--mono); font-size: 10px; color: var(--fg-4);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-4);
   width: 16px; flex: none; text-align: right;
 }
 .senc-word-input {
@@ -546,14 +546,14 @@ function handleClose() {
   margin-bottom: 16px;
 }
 .senc-count {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
 }
 .senc-count-full { color: var(--fg); }
 
 .senc-random {
   display: flex; align-items: center; gap: 6px;
   background: transparent; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
   transition: color 0.12s;
 }
 .senc-random:hover { color: var(--fg); }
@@ -633,7 +633,7 @@ function handleClose() {
 .senc-back-btn {
   padding: 8px 20px; border: 1px solid var(--rule-2);
   background: transparent; color: var(--fg-3); cursor: pointer;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   transition: color 0.12s, border-color 0.12s;
 }
 .senc-back-btn:hover { color: var(--fg); border-color: var(--rule-2); }
@@ -649,7 +649,7 @@ function handleClose() {
   margin-bottom: 4px;
 }
 .senc-success-sub {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   color: var(--fg-3);
 }
 .senc-info-box {

@@ -253,7 +253,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 
 .lp-checkbox-label {
   font-family: var(--sys-mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   line-height: 1.65;
   color: var(--sys-fg-muted);
@@ -261,7 +261,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 
 .lp-dsgvo {
   font-family: var(--sys-mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--sys-fg-muted);
@@ -281,7 +281,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
   border: 0; border-right: 1px solid var(--sys-rule);
   background: transparent; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-  font-family: var(--sys-mono); font-size: 9px; letter-spacing: 0.18em;
+  font-family: var(--sys-mono); font-size: 12px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--sys-fg-dim);
   position: relative; transition: color 0.12s, background 0.12s;
 }
