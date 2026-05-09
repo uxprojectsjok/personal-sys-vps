@@ -6,7 +6,7 @@
   <div class="sys-chat">
 
     <!-- ── Stream ──────────────────────────────────────────────────── -->
-    <div ref="scrollEl" class="stream">
+    <div ref="scrollEl" class="stream" :class="{ 'stream--chat': agentMode }">
 
       <!-- ── AI-Chat-Modus ─────────────────────────────────────────── -->
       <template v-if="!agentMode">
@@ -80,32 +80,36 @@
           <p class="agent-empty-hint">{{ msgView === 'peer' ? 'Peers schreiben via MCP in deine Social Sphere.' : 'Wähle unten einen Empfänger und schreib eine Nachricht.' }}</p>
         </div>
 
-        <article v-for="(msg, i) in displayMessages" :key="`${msg.ts}-${i}`"
-          class="msg"
-          :class="{ user: msg.from === 'me', ai: msg.from !== 'me' }"
-        >
-          <header class="who">
-            <span class="handle" :style="{ color: msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
-              {{ msg.from === 'me' ? 'Du' : (msg.author ?? msg.from.slice(0, 8)) }}
-            </span>
-            <span v-if="msg.from === 'me'" class="msg-to-badge"
-              :style="msg.to === 'peer' ? 'color:#34d399' : msg.to === 'agent' ? 'color:#a78bfa' : 'color:#60a5fa'">
-              → {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
-            </span>
-            <time>{{ fmtMsgDate(msg.ts) }}</time>
-          </header>
-          <div class="body">
-            <p v-for="(para, j) in paragraphs(msg.content)" :key="j" v-html="renderText(para)"></p>
-            <div v-if="msg.wallet || msg.tx" class="agent-id-bar">
-              <span v-if="msg.wallet" class="agent-id-badge"
-                :class="{ tx: !msg.isSoulId }"
-                :title="msg.isSoulId ? 'soul_id' : 'Polygon-Wallet'">
-                {{ msg.isSoulId ? '◈' : '⬡' }} {{ msg.wallet.slice(0, 12) }}…
+        <template v-for="(msg, i) in displayMessages" :key="`${msg.ts}-${i}`">
+          <!-- Day separator -->
+          <div v-if="isDifferentDay(msg, displayMessages[i - 1])" class="msg-day-sep">
+            {{ formatDay(msg.ts) }}
+          </div>
+
+          <!-- Bubble -->
+          <div class="msg-bubble" :class="msg.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'">
+            <!-- Sender (other only) -->
+            <div v-if="msg.from !== 'me'" class="msg-sender"
+              :style="{ color: msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+              {{ msg.author ?? msg.from.slice(0, 8) }}
+            </div>
+
+            <!-- Content -->
+            <div class="msg-inner"
+              :class="msg.from === 'me' ? 'msg-inner--me' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+              <p v-for="(para, j) in paragraphs(msg.content)" :key="j" v-html="renderText(para)"></p>
+            </div>
+
+            <!-- Footer: to-badge + time -->
+            <div class="msg-foot">
+              <span v-if="msg.from === 'me'" class="msg-to"
+                :style="msg.to === 'peer' ? 'color:#34d399' : msg.to === 'agent' ? 'color:#a78bfa' : 'color:#60a5fa'">
+                → {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
               </span>
-              <span v-if="msg.tx" class="agent-id-badge tx" title="Polygon TX">⬡ {{ msg.tx }}</span>
+              <time class="msg-time">{{ fmtMsgDate(msg.ts) }}</time>
             </div>
           </div>
-        </article>
+        </template>
 
         <div v-if="isSavingAgent" class="dots saving-dots">
           <span></span><span></span><span></span>
@@ -470,6 +474,21 @@ function fmtMsgDate(ts) {
     if (isYesterday) return `Gestern ${hm}`
     return d.toLocaleDateString('de', { day: '2-digit', month: '2-digit' }) + ' ' + hm
   } catch { return ts?.slice(0, 16) ?? '' }
+}
+
+function isDifferentDay(msg, prev) {
+  if (!prev) return false
+  return new Date(msg.ts).toDateString() !== new Date(prev.ts).toDateString()
+}
+
+function formatDay(ts) {
+  try {
+    const d   = new Date(ts)
+    const now = new Date()
+    if (d.toDateString() === now.toDateString()) return 'Heute'
+    if (d.toDateString() === new Date(Date.now() - 86400000).toDateString()) return 'Gestern'
+    return d.toLocaleDateString('de', { weekday: 'short', day: 'numeric', month: 'short' })
+  } catch { return '' }
 }
 
 const socialMsgs = computed(() => {
@@ -1295,13 +1314,21 @@ defineExpose({
 }
 .agent-id-badge.tx { opacity: 0.6; }
 
+/* ── Nachrichten-Modus: Stream-Override ──────────────────────────── */
+.stream--chat {
+  gap: 6px;
+  padding: clamp(16px,3vw,28px) clamp(12px,3vw,32px);
+  padding-bottom: clamp(24px,4vw,40px);
+}
+
 /* ── Nachrichten-Modus: View-Tabs ────────────────────────────────── */
 .msg-tabs {
   display: flex;
-  gap: 4px;
-  padding: 0 clamp(16px,3vw,40px);
-  padding-top: 4px;
-  margin-bottom: -12px;
+  gap: 2px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0;
+  flex-shrink: 0;
 }
 .msg-tab {
   font-family: var(--mono);
@@ -1312,19 +1339,92 @@ defineExpose({
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 6px 10px;
+  padding: 6px 12px;
+  margin-bottom: -1px;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 .msg-tab:hover { color: var(--fg-3); }
-.msg-tab.active { border-bottom-color: currentColor; }
+.msg-tab.active { border-bottom-color: currentColor; color: inherit; }
 
-/* ── Nachrichten-Modus: "→ @Peer" label ─────────────────────────── */
-.msg-to-badge {
+/* ── Nachrichten-Modus: Tages-Trenner ───────────────────────────── */
+.msg-day-sep {
+  align-self: center;
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--fg-4);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--rule);
+  border-radius: 99px;
+  padding: 3px 12px;
+  margin: 10px auto;
+}
+
+/* ── Nachrichten-Modus: Chat-Bubbles ─────────────────────────────── */
+.msg-bubble {
+  display: flex;
+  flex-direction: column;
+  max-width: min(78%, 440px);
+  gap: 3px;
+}
+.msg-bubble--me    { align-self: flex-end;   align-items: flex-end; }
+.msg-bubble--other { align-self: flex-start; align-items: flex-start; }
+
+.msg-sender {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
   opacity: 0.9;
+  padding: 0 4px;
+}
+
+.msg-inner {
+  padding: 10px 14px;
+  font-family: var(--serif);
+  font-size: clamp(14px,1.4vw,16px);
+  line-height: 1.55;
+  color: var(--fg);
+  word-break: break-word;
+}
+.msg-inner p        { margin: 0 0 6px; }
+.msg-inner p:last-child { margin-bottom: 0; }
+
+.msg-inner--me {
+  background: rgba(139,92,246,0.20);
+  border-radius: 14px 14px 4px 14px;
+}
+.msg-inner--social {
+  background: rgba(255,255,255,0.06);
+  border-radius: 14px 14px 14px 4px;
+  border-left: 2px solid #34d399;
+  color: var(--fg-2);
+}
+.msg-inner--agent {
+  background: rgba(255,255,255,0.06);
+  border-radius: 14px 14px 14px 4px;
+  border-left: 2px solid #a78bfa;
+  color: var(--fg-2);
+}
+
+.msg-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+.msg-to {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.msg-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-4);
+  letter-spacing: 0.06em;
 }
 
 /* ── Nachrichten-Modus: Empfänger-Zeile im Dock ─────────────────── */
