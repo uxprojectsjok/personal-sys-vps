@@ -109,7 +109,7 @@
     <footer class="dock">
 
       <!-- Row 1: mode toggle · textarea · send -->
-      <div class="dock-main">
+      <div class="dock-main" :class="{ 'no-toggle': agentMode }">
         <!-- Mode toggle pill (AI mode only) -->
         <button
           v-if="!agentMode"
@@ -966,6 +966,9 @@ defineExpose({
   align-items: stretch;
   min-height: 60px;
   border-bottom: 1px solid var(--rule);
+}
+.dock-main.no-toggle {
+  grid-template-columns: 1fr auto;
 }
 
 /* Mode toggle button */
