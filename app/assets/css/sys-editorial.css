@@ -242,6 +242,17 @@
 }
 .sys-rail-item.is-active .sys-rail-sub { color: var(--sys-violet); }
 
+@media (max-width: 540px) {
+  .sys-rail-item { padding: 12px 14px; gap: 10px; }
+  .sys-rail-num  { width: 28px; height: 28px; font-size: 12px; }
+  .sys-rail-t    { font-size: 14px; }
+  .sys-rail-sub  { display: none; }
+}
+@media (max-width: 360px) {
+  .sys-rail-item { padding: 10px 10px; gap: 8px; justify-content: center; }
+  .sys-rail-lbl  { display: none; }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    4. MODAL BODY
    ════════════════════════════════════════════════════════════════════════ */
