@@ -105,8 +105,8 @@ export function registerPaidTools(server, polToken, freeTools = [], soulId) {
   // calendar_read: /api/soul gesperrt → Filesystem
   if (allowed.has('calendar_read') && soulId) calendarReadPeer(server, soulId);
 
-  // soul_discover: interner Endpoint, kein Auth nötig
-  if (allowed.has('soul_discover')) soulDiscover(server, polToken);
+  // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
+  soulDiscover(server, polToken);
 
   // Vault-Media: vault_auth.lua akzeptiert pol_access_token für diese Pfade
   if (allowed.has('audio_list'))    audioList(server, polToken);
@@ -127,40 +127,39 @@ export function registerPaidTools(server, polToken, freeTools = [], soulId) {
 }
 
 /**
- * Registriert Free-Tools für vertrauenswürdige Peer-Souls (soul_cert-Auth).
+ * Registriert alle MCP-Tools für vertrauenswürdige Peer-Souls (soul_cert-Auth).
+ * Peers erhalten uneingeschränkten Zugriff auf alle Tools — kein freeTools-Filter.
  * Alle Tools lesen direkt vom Dateisystem — OpenResty-Auth wird umgangen
  * (Peer-Cert ist auf dem Ziel-Server nicht gültig).
  *
- * @param {object} server      — McpServer
- * @param {string} peerToken   — Peer-Soul-Cert (für soul_discover, kein Auth nötig)
- * @param {string[]} freeTools — Array erlaubter Tool-Namen
+ * @param {object} server       — McpServer
+ * @param {string} peerToken    — Peer-Soul-Cert (für soul_discover)
+ * @param {string[]} _freeTools — ignoriert (Peers erhalten immer alle Tools)
  * @param {string} targetSoulId — soul_id des Ziel-Souls auf diesem Server
  */
-export function registerPeerTools(server, peerToken, freeTools = [], targetSoulId) {
-  const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
-
-  if (allowed.has('soul_read'))     soulReadPeer(server, targetSoulId);
-  if (allowed.has('verify_human'))  verifyHumanPeer(server, targetSoulId);
-  if (allowed.has('soul_maturity')) soulMaturityPeer(server, targetSoulId);
-  if (allowed.has('soul_skills'))   soulSkillsPeer(server, targetSoulId);
-  if (allowed.has('calendar_read')) calendarReadPeer(server, targetSoulId);
-  if (allowed.has('profile_get'))   profileGetPeer(server, targetSoulId);
-  if (allowed.has('soul_write'))    soulWritePeer(server, targetSoulId);
+export function registerPeerTools(server, peerToken, _freeTools = [], targetSoulId) {
+  soulReadPeer(server, targetSoulId);
+  verifyHumanPeer(server, targetSoulId);
+  soulMaturityPeer(server, targetSoulId);
+  soulSkillsPeer(server, targetSoulId);
+  calendarReadPeer(server, targetSoulId);
+  profileGetPeer(server, targetSoulId);
+  soulWritePeer(server, targetSoulId);
 
   // Vault-Media (Filesystem-basierte Varianten)
-  if (allowed.has('audio_list'))    vaultListPeer(server, targetSoulId, 'audio');
-  if (allowed.has('audio_get'))     vaultGetPeer(server, targetSoulId, 'audio');
-  if (allowed.has('image_list'))    vaultListPeer(server, targetSoulId, 'images');
-  if (allowed.has('image_get'))     vaultGetPeer(server, targetSoulId, 'images');
-  if (allowed.has('video_list'))    vaultListPeer(server, targetSoulId, 'video');
-  if (allowed.has('video_get'))     videoGetPeer(server, targetSoulId);
-  if (allowed.has('context_list'))  vaultListPeer(server, targetSoulId, 'context');
-  if (allowed.has('context_get'))   contextGetPeer(server, targetSoulId);
+  vaultListPeer(server, targetSoulId, 'audio');
+  vaultGetPeer(server, targetSoulId, 'audio');
+  vaultListPeer(server, targetSoulId, 'images');
+  vaultGetPeer(server, targetSoulId, 'images');
+  vaultListPeer(server, targetSoulId, 'video');
+  videoGetPeer(server, targetSoulId);
+  vaultListPeer(server, targetSoulId, 'context');
+  contextGetPeer(server, targetSoulId);
 
-  // soul_discover: interner Endpoint, kein Auth nötig
-  if (allowed.has('soul_discover')) soulDiscover(server, peerToken);
+  // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
+  soulDiscover(server, peerToken);
 
-  // soul_comment: Immer verfügbar für vertrauenswürdige Peers (keine Zahlung nötig)
+  // soul_comment: immer verfügbar für vertrauenswürdige Peers
   soulCommentPeer(server, peerToken, targetSoulId);
 
   // soul_earnings: Private Finanz-Daten — nicht für Peers freigegeben
