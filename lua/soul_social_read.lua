@@ -189,8 +189,8 @@ if content:sub(1, 4) == "SYS\x01" then
   content = decrypted
 end
 
--- ── SOCIAL-Block ausliefern ───────────────────────────────────────────────────
--- Sicherheitsregel: nur der SOCIAL-Block verlässt den Server — nie die Intimsphäre.
+-- ── Deliver Social Sphere block ──────────────────────────────────────────────
+-- Security rule: only the SOCIAL block leaves the server — never the Private Sphere.
 local SOCIAL_START = "<!-- SOCIAL:START -->"
 local SOCIAL_END   = "<!-- SOCIAL:END -->"
 local s = content:find(SOCIAL_START, 1, true)
@@ -199,15 +199,81 @@ local e = content:find(SOCIAL_END,   1, true)
 if not s or not e or e <= s then
   ngx.status = 404
   ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"no_social_content","message":"Kein Sozialsphäre-Block definiert (<!-- SOCIAL:START --> fehlt in sys.md v2)."}')
+  ngx.say('{"error":"no_social_content","message":"No Social Sphere block in sys.md v2 (<!-- SOCIAL:START --> missing)."}')
   return
 end
 
-local social_content = content:sub(s + #SOCIAL_START, e - 1):match("^%s*(.-)%s*$")
-if not social_content or #social_content == 0 then
+local block_content = content:sub(s + #SOCIAL_START, e - 1):match("^%s*(.-)%s*$")
+if not block_content or #block_content == 0 then
   ngx.status = 204
   return
 end
 
+-- ── Stage-based message filtering ────────────────────────────────────────────
+local stage = tonumber(ngx.req.get_uri_args().stage) or 1
+if stage ~= 2 then stage = 1 end
+local DAY = 86400
+
+local function parse_iso(ts)
+  local y, mo, d, h, mi, sec = ts:match("(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)")
+  if not y then return 0 end
+  return os.time({ year=tonumber(y), month=tonumber(mo), day=tonumber(d),
+                   hour=tonumber(h), min=tonumber(mi), sec=tonumber(sec), isdst=false })
+end
+
+-- Parse <!-- @msg TS FROM TO CONTENT --> single-line entries
+local messages = {}
+for ts, from, to, msg_content in block_content:gmatch(
+    "<!%-%-@msg%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)%s+(.-)%s*%-%->") do
+  table.insert(messages, { ts=ts, from=from, to=to, content=msg_content, epoch=parse_iso(ts) })
+end
+
+if #messages == 0 then
+  -- Legacy static content: return as-is
+  ngx.header["Content-Type"] = "text/plain; charset=utf-8"
+  ngx.say(block_content)
+  return
+end
+
+-- Filter by stage
+local now = ngx.time()
+local filtered = {}
+if stage == 1 then
+  for _, m in ipairs(messages) do
+    if (now - m.epoch) < DAY then table.insert(filtered, m) end
+  end
+else
+  -- stage 2: last 48h; 24–48h range sampled every other
+  local recent, older = {}, {}
+  for _, m in ipairs(messages) do
+    local age = now - m.epoch
+    if age < DAY then
+      table.insert(recent, m)
+    elseif age < 2 * DAY then
+      table.insert(older, m)
+    end
+  end
+  for i, m in ipairs(older) do
+    if i % 2 == 1 then table.insert(filtered, m) end
+  end
+  for _, m in ipairs(recent) do table.insert(filtered, m) end
+end
+
+if #filtered == 0 then ngx.status = 204; return end
+
+-- Format output
+local lines = {}
+for _, m in ipairs(filtered) do
+  local from_label = m.from == "me" and "You" or m.from:sub(1, 8)
+  local to_label   = m.to == "peer" and "@peers" or m.to == "agent" and "@agents" or "@community"
+  local date_str   = m.ts:sub(1, 10) .. " " .. m.ts:sub(12, 16) .. " UTC"
+  local hdr        = m.from == "me"
+    and ("[" .. date_str .. "] " .. from_label .. " → " .. to_label)
+    or  ("[" .. date_str .. "] " .. from_label)
+  table.insert(lines, hdr .. "\n" .. m.content)
+end
+
 ngx.header["Content-Type"] = "text/plain; charset=utf-8"
-ngx.say(social_content)
+ngx.header["X-Msg-Count"]  = tostring(#filtered)
+ngx.header["X-Msg-Stage"]  = tostring(stage)
+ngx.say(table.concat(lines, "\n\n"))

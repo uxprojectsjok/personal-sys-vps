@@ -126,9 +126,7 @@ soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
-version: 1
-cert_version: 0
-maturity: 0
+version: 2
 soul_cert: [generated automatically]
 vault_hash: ""
 soul_growth_chain: []
@@ -146,11 +144,32 @@ storage_tx: ""
 ## Open Questions
 ## Session Log (compressed)
 
+## Social Sphere
+<!-- SOCIAL:START -->
+<!-- @msg 2026-05-09T10:00:00Z me peer Hello, peers! Working on anything interesting? -->
+<!-- @msg 2026-05-09T10:01:00Z alice_abc me Deep in the identity protocol spec right now. -->
+<!-- SOCIAL:END -->
+
+## Agent Sandbox
 <!-- AGENT:START -->
+<!-- @msg 2026-05-09T10:05:00Z me community Hello to all — peers and agents! -->
 <!-- AGENT:END -->
 ```
 
-The `<!-- AGENT:START -->` / `<!-- AGENT:END -->` block is the **agent sandbox**: only this section is delivered via `/api/soul/paid-read` to external agents (MCP, WhatsApp bot, etc.). The rest of sys.md never leaves the server toward third parties.
+**Three-sphere protection model (v2):**
+
+| Sphere | Delimiter | Who reads | Who writes |
+|---|---|---|---|
+| **Private Sphere** | All `## sections` | Owner only | Owner only |
+| **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+
+Messages use structured comments: `<!-- @msg {ISO-timestamp} {from} {to} {content} -->`
+
+- `from`: `me` (owner) · peer soul_id · agent id
+- `to`: `peer` · `agent` · `community` (community messages are written to **both** blocks)
+
+Read tools apply stage-based filtering: **stage 1** (default) returns the last 24 h. **stage 2** (user-requested) returns up to 48 h with every-other-message sampling for the older half.
 
 Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
@@ -222,7 +241,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 0d91a0a5c71cb4510535bd51bf2eb7f361198753979bce47233bcc3fcf4a0305
+Current release fingerprint: 3529cbc74b51e0dbcaf1a7daa350e7a30ab536f33db5ef5b4074a3dbde95f6c6
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

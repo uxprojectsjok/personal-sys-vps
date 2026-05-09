@@ -206,6 +206,98 @@
           </Transition>
         </div>
 
+        <!-- ── NACHRICHTEN ──────────────────────────────────────────────── -->
+        <div class="rounded-xl border overflow-hidden border-[var(--sys-border)] bg-[var(--sys-bg-elevated)]">
+
+          <!-- Header + filter tabs -->
+          <div class="flex items-center justify-between gap-2 px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <i class="ri-chat-3-line ri-fw text-sm flex-none" style="color:#60a5fa" aria-hidden="true" />
+              <span class="text-xs font-medium text-[var(--sys-fg)]">Nachrichten</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button v-for="[id, label, color] in [['peer','Peers','#34d399'],['agent','Agenten','#a78bfa'],['all','Alle','#60a5fa']]" :key="id"
+                @click="msgFilter = id"
+                class="text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all border"
+                :style="msgFilter === id
+                  ? { background: color + '22', color: color, borderColor: color + '55' }
+                  : { background: 'transparent', color: 'var(--sys-fg-dim)', borderColor: 'transparent' }">
+                {{ label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Message list -->
+          <div ref="msgListRef" class="border-t border-[var(--sys-border)] overflow-y-auto px-3 py-2 space-y-3"
+            style="max-height:260px; min-height:48px;">
+            <p v-if="displayMessages.length === 0"
+              class="text-xs text-[var(--sys-fg-muted)] italic opacity-60 py-1">
+              Noch keine Nachrichten.
+            </p>
+            <div v-for="(msg, i) in displayMessages" :key="i">
+              <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                <span class="text-[10px] font-semibold"
+                  :style="{ color: msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+                  {{ msg.from === 'me' ? 'Du' : msg.from.slice(0, 8) }}
+                </span>
+                <template v-if="msg.from === 'me'">
+                  <span class="text-[9px] text-[var(--sys-fg-muted)]">→</span>
+                  <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                    :style="msg.to === 'peer'
+                      ? 'background:rgba(52,211,153,.12);color:#34d399'
+                      : msg.to === 'agent'
+                        ? 'background:rgba(167,139,250,.12);color:#a78bfa'
+                        : 'background:rgba(96,165,250,.12);color:#60a5fa'">
+                    {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
+                  </span>
+                </template>
+                <span v-else class="text-[9px] text-[var(--sys-fg-muted)]">
+                  · {{ msg.sphere === 'social' ? 'Peer' : 'Agent' }}
+                </span>
+                <span class="ml-auto text-[9px] text-[var(--sys-fg-muted)] opacity-50 flex-none">
+                  {{ fmtMsgDate(msg.ts) }}
+                </span>
+              </div>
+              <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">{{ msg.content }}</p>
+            </div>
+          </div>
+
+          <!-- Composer -->
+          <div class="border-t border-[var(--sys-border)] px-3 py-2.5 flex flex-col gap-2">
+            <!-- Recipient badges -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[9px] text-[var(--sys-fg-muted)] uppercase tracking-widest">An:</span>
+              <button v-for="[id, label, color] in [['peer','@Peer','#34d399'],['agent','@Agent','#a78bfa'],['community','@Community','#60a5fa']]" :key="id"
+                @click="msgRecipient = id"
+                class="text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all border"
+                :style="msgRecipient === id
+                  ? { background: color + '22', color: color, borderColor: color + '55' }
+                  : { background: 'transparent', color: 'var(--sys-fg-dim)', borderColor: 'rgba(255,255,255,0.10)' }">
+                {{ label }}
+              </button>
+            </div>
+            <!-- Input + send -->
+            <div class="flex gap-2 items-end">
+              <textarea
+                v-model="msgText"
+                rows="2"
+                class="flex-1 bg-white/[0.04] border border-[var(--sys-border)] rounded-lg px-2.5 py-2 text-xs text-[var(--sys-fg)] leading-relaxed resize-none focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-muted)] transition-colors"
+                placeholder="Nachricht …"
+                @keydown.ctrl.enter="sendMessage"
+                @keydown.meta.enter="sendMessage"
+              />
+              <button
+                @click="sendMessage"
+                :disabled="!msgText.trim() || msgSending"
+                class="flex-none px-3 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style="background:var(--sys-violet);color:white;min-height:32px;align-self:flex-end;">
+                <span v-if="msgSending">…</span>
+                <i v-else class="ri-send-plane-line ri-fw" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+        </div>
 
       </div>
 
@@ -297,6 +389,13 @@ const isEnriching      = ref(false);
 const enrichStatus     = ref(null);
 const manualEdited          = ref(false);
 const lastEnrichedUserCount = ref(0);
+// ── Messages ──────────────────────────────────────────────────────────────
+const msgRecipient = ref('peer');   // 'peer' | 'agent' | 'community'
+const msgText      = ref('');
+const msgFilter    = ref('all');    // 'peer' | 'agent' | 'all'
+const msgSending   = ref(false);
+const msgListRef   = ref(null);
+
 const needsUpdate      = computed(() => {
   const userCount = messages.value.filter(m => m.role === "user").length;
   return (userCount > lastEnrichedUserCount.value) || manualEdited.value;
@@ -323,9 +422,6 @@ const SOUL_SECTIONS = [
   { key: "Weltbild",                             label: "Weltbild",               icon: "ri-earth-line",     color: "var(--chart-2)" },
   { key: "Offene Fragen dieser Person",          label: "Offene Fragen",          icon: "ri-question-line",  color: "var(--sys-fg-muted)" },
   { key: "Session-Log (komprimiert)",            label: "Verlauf",                icon: "ri-history-line",   color: "var(--sys-fg-dim)" },
-  // v2 2026-05-09 — three-sphere sections (marker-delimited, not ## sections)
-  { key: "Sozialsphäre",  label: "Sozialsphäre",  icon: "ri-group-line",  color: "#34d399", type: "social" },
-  { key: "Agent-Sandbox", label: "Agent-Sandbox", icon: "ri-robot-line",  color: "#a78bfa", type: "agent"  },
 ];
 
 // ── Computed ─────────────────────────────────────────────────────────────
@@ -351,6 +447,45 @@ function updateMarkerBlock(md, type, newContent) {
   return md.slice(0, s + start.length) + "\n" + newContent.trim() + "\n" + md.slice(e);
 }
 
+// ── Message helpers ───────────────────────────────────────────────────────
+const MSG_RE_G = () => /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)-->/g;
+
+function parseMessages(blockContent) {
+  const re = MSG_RE_G();
+  const msgs = [];
+  let m;
+  while ((m = re.exec(blockContent)) !== null) {
+    msgs.push({ ts: m[1], from: m[2], to: m[3], content: m[4].trim() });
+  }
+  return msgs.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+}
+
+function formatMsgEntry(content, from, to) {
+  const ts = new Date().toISOString();
+  const safe = content.replace(/\n+/g, ' ').replace(/-->/g, '—>');
+  return `\n<!-- @msg ${ts} ${from} ${to} ${safe.trim()} -->`;
+}
+
+function appendToMarkerBlock(md, type, entry) {
+  const end = `<!-- ${type}:END -->`;
+  const idx = md.indexOf(end);
+  if (idx === -1) return md;
+  return md.slice(0, idx) + entry + '\n' + md.slice(idx);
+}
+
+function fmtMsgDate(ts) {
+  try {
+    const d = new Date(ts);
+    const now = new Date();
+    const isToday     = d.toDateString() === now.toDateString();
+    const isYesterday = d.toDateString() === new Date(Date.now() - 86400000).toDateString();
+    const hm = d.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' });
+    if (isToday)     return hm;
+    if (isYesterday) return `Gestern ${hm}`;
+    return d.toLocaleDateString('de', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+  } catch { return ts.slice(0, 16); }
+}
+
 function getContent(key) {
   // v2 2026-05-09 — marker-delimited blocks for social and agent spheres
   const section = SOUL_SECTIONS.find(s => s.key === key);
@@ -369,6 +504,28 @@ function getContent(key) {
   return c;
 }
 
+
+// ── Message computed ──────────────────────────────────────────────────────
+const socialMessages = computed(() =>
+  parseMessages(extractMarkerBlock(soulContent.value, 'SOCIAL')).map(m => ({ ...m, sphere: 'social' }))
+);
+const agentMessages = computed(() =>
+  parseMessages(extractMarkerBlock(soulContent.value, 'AGENT')).map(m => ({ ...m, sphere: 'agent' }))
+);
+const displayMessages = computed(() => {
+  if (msgFilter.value === 'peer')  return socialMessages.value;
+  if (msgFilter.value === 'agent') return agentMessages.value;
+  // 'all' = Plenum: merge + deduplicate by ts|from|to|content
+  const seen = new Set();
+  return [...socialMessages.value, ...agentMessages.value]
+    .filter(m => {
+      const k = `${m.ts}|${m.from}|${m.to}|${m.content}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+});
 
 const maturity = computed(() => {
   if (!soulContent.value) return { score: 0, level: "Genesis", isMature: false, breakdown: null };
@@ -456,6 +613,34 @@ async function triggerEnrichment() {
     isEnriching.value = false;
   }
 }
+
+// ── Send message ─────────────────────────────────────────────────────────
+async function sendMessage() {
+  const text = msgText.value.trim();
+  if (!text || msgSending.value) return;
+  msgSending.value = true;
+  try {
+    const entry = formatMsgEntry(text, 'me', msgRecipient.value);
+    let updated = soulContent.value;
+    if (msgRecipient.value === 'peer'      || msgRecipient.value === 'community')
+      updated = appendToMarkerBlock(updated, 'SOCIAL', entry);
+    if (msgRecipient.value === 'agent'     || msgRecipient.value === 'community')
+      updated = appendToMarkerBlock(updated, 'AGENT', entry);
+    updateContent(updated);
+    if (vaultConnected.value) writeSoulMd(updated, 'sys').catch(() => {});
+    pushToServer().catch(() => {});
+    msgText.value = '';
+    // Switch view to show the message just sent
+    msgFilter.value = msgRecipient.value === 'community' ? 'all' : msgRecipient.value;
+  } finally {
+    msgSending.value = false;
+  }
+}
+
+// Auto-scroll message list on new messages
+watch(displayMessages, () => {
+  nextTick(() => { if (msgListRef.value) msgListRef.value.scrollTop = msgListRef.value.scrollHeight; });
+}, { flush: 'post' });
 
 // ── Sync comparison ───────────────────────────────────────────────────────
 function extractMeta(md, field) {
