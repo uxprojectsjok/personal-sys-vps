@@ -854,9 +854,9 @@ defineExpose({
   --rule:    rgba(226,220,240,0.10);
   --rule-2:  rgba(226,220,240,0.20);
   --fg:      #ece7f5;
-  --fg-2:    rgba(236,231,245,0.72);
-  --fg-3:    rgba(236,231,245,0.48);
-  --fg-4:    rgba(236,231,245,0.30);
+  --fg-2:    rgba(236,231,245,0.88);
+  --fg-3:    rgba(236,231,245,0.70);
+  --fg-4:    rgba(236,231,245,0.55);
   --accent:  #8b5cf6;
   --accent-bright: #a78bfa;
   --accent-dim:    rgba(139,92,246,0.12);
@@ -903,14 +903,14 @@ defineExpose({
 .msg.note { grid-template-columns: 1fr; color: var(--fg-3); font-style: italic; border-left: 2px solid var(--rule-2); padding-left: 12px; }
 
 .who {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-3);
   padding-top: 6px; text-align: right;
   border-right: 1px solid var(--rule-2); padding-right: 14px;
   display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
 }
 .who .handle { color: var(--fg-3); }
-.who time    { font-family: var(--mono); font-style: normal; color: var(--fg-4); font-size: 9px; letter-spacing: 0.18em; }
+.who time    { font-family: var(--mono); font-style: normal; color: var(--fg-4); font-size: 12px; letter-spacing: 0.10em; }
 .msg.user .who .handle { color: var(--accent-bright); }
 
 .body { font-family: var(--serif); font-size: clamp(16px,1.6vw,17px); line-height: 1.58; color: var(--fg); }
@@ -941,7 +941,7 @@ defineExpose({
 .link-card {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 8px 14px; border: 1px solid var(--rule-2);
-  color: var(--fg-3); font-family: var(--mono); font-size: 11px;
+  color: var(--fg-3); font-family: var(--mono); font-size: 12px;
   letter-spacing: 0.12em; text-decoration: none; margin-bottom: 10px;
   transition: all 0.15s;
 }
@@ -974,8 +974,8 @@ defineExpose({
   padding: 0 16px;
   border: 0; border-right: 1px solid var(--rule);
   background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.2em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--fg-3);
   white-space: nowrap;
   transition: color 0.15s, background 0.15s;
@@ -1036,7 +1036,7 @@ defineExpose({
   height: 42px;
   border: 0; border-right: 1px solid var(--rule);
   background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 10px;
+  font-family: var(--mono); font-size: 12px;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--fg-3); white-space: nowrap;
   transition: color 0.12s, background 0.12s;
@@ -1078,8 +1078,8 @@ defineExpose({
   margin-top: 14px;
 }
 .msg-action-btn {
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.18em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.10em; text-transform: uppercase;
   padding: 7px 16px;
   border: 1px solid var(--rule-2);
   cursor: pointer;
@@ -1107,7 +1107,7 @@ defineExpose({
   .dock-main { grid-template-columns: 1fr auto; }
   .mode-btn  { display: none; } /* auf Mobile in Chips-Zeile verlagert */
   .send      { width: 56px; border-left: 1px solid var(--rule); }
-  .chip      { padding: 0 12px; font-size: 9px; letter-spacing: 0.12em; }
+  .chip      { padding: 0 12px; font-size: 12px; letter-spacing: 0.12em; }
 }
 @media (max-width: 480px) {
   .stream { padding: 20px 16px 32px; }
@@ -1142,15 +1142,15 @@ defineExpose({
 }
 .agent-empty-title {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.22em;
+  font-size: 12px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-3);
   margin: 0;
 }
 .agent-empty-hint {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--fg-4);
   line-height: 1.6;
   max-width: 320px;
@@ -1167,7 +1167,7 @@ defineExpose({
 }
 .agent-id-badge {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--fg-4);
   background: rgba(255,255,255,0.04);

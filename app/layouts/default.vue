@@ -24,7 +24,7 @@
 }
 .sys-footer-link {
   font-family: var(--sys-mono, ui-monospace, monospace);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(236, 231, 245, 0.28);

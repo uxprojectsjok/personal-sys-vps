@@ -137,12 +137,12 @@ async function save() {
 .agent-icon { font-size: 14px; color: var(--fg-3); flex-shrink: 0; transition: color 0.15s; }
 .open .agent-icon { color: var(--accent); }
 
-.agent-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); white-space: nowrap; transition: color 0.15s; }
+.agent-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-3); white-space: nowrap; transition: color 0.15s; }
 .open .agent-label { color: var(--fg-2); }
 
-.agent-empty { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--fg-4); opacity: 0.6; }
-.agent-saved-flash { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: #b8dcc4; }
-.agent-chars { font-family: var(--mono); font-size: 9px; color: var(--fg-4); letter-spacing: 0.1em; }
+.agent-empty { font-family: var(--mono); font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--fg-4); opacity: 0.6; }
+.agent-saved-flash { font-family: var(--mono); font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #b8dcc4; }
+.agent-chars { font-family: var(--mono); font-size: 12px; color: var(--fg-4); letter-spacing: 0.1em; }
 
 .agent-chevron { width: 12px; height: 12px; color: var(--fg-4); transition: transform 0.2s; flex-shrink: 0; }
 .agent-chevron.rotate-180 { transform: rotate(180deg); }
@@ -158,7 +158,7 @@ async function save() {
 
 .agent-hint {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--fg-4);
   letter-spacing: 0.08em;
@@ -174,7 +174,7 @@ async function save() {
   border-radius: 8px;
   padding: 10px 12px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--fg);
   resize: vertical;
@@ -186,7 +186,7 @@ async function save() {
 
 .agent-actions { display: flex; align-items: center; gap: 6px; }
 
-.agent-dirty { flex: 1; font-family: var(--mono); font-size: 9px; color: var(--fg-4); letter-spacing: 0.1em; }
+.agent-dirty { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--fg-4); letter-spacing: 0.1em; }
 
 .agent-btn {
   display: inline-flex;
@@ -198,7 +198,7 @@ async function save() {
   background: transparent;
   color: var(--fg-3);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   cursor: pointer;

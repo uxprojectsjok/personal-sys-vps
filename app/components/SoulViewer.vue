@@ -482,7 +482,7 @@ async function handlePushLocal() {
   padding: 7px 14px 7px 12px;
   border-bottom: 1px solid var(--sys-border, rgba(226,220,240,0.10));
   font-family: ui-monospace, monospace;
-  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   min-height: 34px;
 }
 .meta-indicator {
@@ -494,7 +494,7 @@ async function handlePushLocal() {
 .meta-id { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); white-space: nowrap; }
 .meta-sep { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); opacity: 0.4; }
 .meta-vault { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); white-space: nowrap; }
-.meta-sync { flex: none; font-size: 10px; }
+.meta-sync { flex: none; font-size: 12px; }
 .meta-sync.ok { color: #34d399; }
 .meta-sync.warn { color: #fbbf24; }
 .maturity-pill {
@@ -502,7 +502,7 @@ async function handlePushLocal() {
   padding: 2px 7px; margin-left: auto; flex: none;
   background: rgba(139,92,246,0.10); border: 1px solid rgba(139,92,246,0.22);
   cursor: pointer; color: var(--sys-fg-muted, rgba(236,231,245,0.48));
-  font-family: ui-monospace; font-size: 10px; letter-spacing: 0.12em;
+  font-family: ui-monospace; font-size: 12px; letter-spacing: 0.12em;
   white-space: nowrap; transition: background 0.15s;
 }
 .maturity-pill:hover { background: rgba(139,92,246,0.18); }
@@ -511,14 +511,14 @@ async function handlePushLocal() {
   color: currentColor; transition: transform 0.2s ease;
 }
 .maturity-chevron.rotate-180 { transform: rotate(180deg); }
-.meta-saved { color: #34d399; white-space: nowrap; font-size: 10px; }
+.meta-saved { color: #34d399; white-space: nowrap; font-size: 12px; }
 
 .sync-action-btn {
   display: inline-flex; align-items: center; justify-content: center;
   height: 26px; min-height: 0;
   padding: 0 10px;
   border-radius: 6px;
-  font-size: 10px; font-weight: 500;
+  font-size: 12px; font-weight: 500;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
   color: var(--sys-fg-muted);

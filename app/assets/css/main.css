@@ -212,8 +212,8 @@
 
   /* Text – white scale */
   --sys-fg:       #ffffff;
-  --sys-fg-muted: rgba(255, 255, 255, 0.70);
-  --sys-fg-dim:   rgba(255, 255, 255, 0.42);
+  --sys-fg-muted: rgba(255, 255, 255, 0.85);
+  --sys-fg-dim:   rgba(255, 255, 255, 0.65);
 
   /* Accent = violet (primary CTA) */
   --sys-accent:       #8b5cf6;
@@ -328,11 +328,11 @@
     font-size: max(16px, 1em);
   }
 
-  /* Accessibility: subtiler Focus-Ring */
+  /* Accessibility: Focus-Ring (WCAG 2.2 SC 2.4.11, min. 3:1 Kontrast) */
   :focus-visible {
-    outline: 1px solid rgba(255, 255, 255, 0.25);
-    outline-offset: 2px;
-    border-radius: 6px;
+    outline: 2px solid #8b5cf6;
+    outline-offset: 3px;
+    border-radius: 4px;
   }
   /* Für reine Text-Links (a, .sys-link): kein Box-Outline, nur Underline */
   a:focus-visible, .sys-link:focus-visible {
@@ -673,7 +673,7 @@
               background-color 0.15s ease,
               border-color 0.15s ease,
               color 0.15s ease;
-  cursor: pointer; border: none; outline: none;
+  cursor: pointer; border: none;
   white-space: nowrap; position: relative; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
