@@ -84,8 +84,9 @@ export function register(server, token) {
           if (s.amortization?.enabled) {
             lines.push(`- **Preis:** ${s.amortization.pol_per_request} POL pro Anfrage`);
             lines.push(`- **Wallet:** \`${s.amortization.wallet}\``);
-            if (Array.isArray(s.amortization.free_tools) && s.amortization.free_tools.length) {
-              lines.push(`- **Kostenlos:** ${s.amortization.free_tools.join(', ')}`);
+            const aTools = s.amortization.agent_tools || s.amortization.free_tools;
+            if (Array.isArray(aTools) && aTools.length) {
+              lines.push(`- **Agent-Tools:** ${aTools.join(', ')}`);
             }
             if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
           } else {

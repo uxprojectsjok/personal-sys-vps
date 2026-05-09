@@ -39,7 +39,7 @@ local DEFAULTS = {
   private         = false,
   pol_per_request = "0.001",
   wallet          = "",
-  free_tools      = setmetatable({}, cjson.array_mt),
+  agent_tools     = setmetatable({}, cjson.array_mt),
   trusted_souls   = setmetatable({}, cjson.array_mt),
   token_duration       = "1d",
   token_duration_days  = 1,
@@ -134,7 +134,7 @@ if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$
   amort.wallet = incoming.wallet
 end
 
--- free_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
+-- agent_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
 -- soul_discover ist immer verfügbar und nicht konfigurierbar → nicht in dieser Liste
 local ALLOWED_TOOLS = {
   soul_read=true, soul_maturity=true, soul_skills=true, soul_earnings=true,
@@ -142,14 +142,15 @@ local ALLOWED_TOOLS = {
   video_get=true, video_list=true, context_get=true, context_list=true,
   profile_get=true, calendar_read=true, soul_write=true, verify_human=true,
 }
-if type(incoming.free_tools) == "table" then
+local incoming_tools = incoming.agent_tools or incoming.free_tools  -- backward compat
+if type(incoming_tools) == "table" then
   local clean = {}
-  for _, t in ipairs(incoming.free_tools) do
+  for _, t in ipairs(incoming_tools) do
     if type(t) == "string" and #t <= 64 and ALLOWED_TOOLS[t] then
       clean[#clean + 1] = t
     end
   end
-  amort.free_tools = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
+  amort.agent_tools = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
 end
 
 -- trusted_souls: Array von soul_ids (same-server) oder {soul_id,endpoint} (cross-domain)

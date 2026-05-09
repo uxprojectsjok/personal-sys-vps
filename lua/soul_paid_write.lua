@@ -109,10 +109,11 @@ if type(amort) ~= "table" or amort.enabled ~= true then
   return
 end
 
--- soul_write in free_tools erlaubt?
+-- soul_write in agent_tools erlaubt?
 local write_allowed = false
-if type(amort.free_tools) == "table" then
-  for _, t in ipairs(amort.free_tools) do
+local agent_tools = amort.agent_tools or amort.free_tools  -- backward compat
+if type(agent_tools) == "table" then
+  for _, t in ipairs(agent_tools) do
     if t == "soul_write" then write_allowed = true; break end
   end
 end

@@ -143,7 +143,7 @@ if type(amort) == "table" then
     wallet               = amort.wallet,
     -- agent_tools nur im Bezahlt-Modus relevant (gefiltert auf erlaubte Tools)
     agent_tools          = (amort.enabled == true)
-                           and filter_tools(amort.free_tools) or no_tools,
+                           and filter_tools(amort.agent_tools or amort.free_tools) or no_tools,
     token_duration_days  = days,
   }
 end
