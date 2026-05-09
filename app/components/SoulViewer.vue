@@ -131,6 +131,13 @@
                 :class="openedSections[section.key] ? 'text-[var(--sys-fg)]' : 'text-[var(--sys-fg-muted)]'">
                 {{ section.label }}
               </span>
+              <!-- v2 2026-05-09 — sphere visibility badges -->
+              <span v-if="section.type === 'social'"
+                class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-none"
+                style="background: rgba(52,211,153,0.12); color: #34d399;">Peers</span>
+              <span v-else-if="section.type === 'agent'"
+                class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-none"
+                style="background: rgba(167,139,250,0.12); color: #a78bfa;">Agenten</span>
               <span v-if="!getContent(section.key)" class="text-[10px] text-[var(--sys-fg-muted)] opacity-60 flex-none">leer</span>
             </div>
             <svg class="w-3 h-3 text-[var(--sys-fg-dim)] flex-none transition-transform duration-200"
@@ -162,6 +169,17 @@
 
               <!-- Edit mode -->
               <div v-else class="px-3 py-2.5 flex flex-col gap-2">
+                <!-- v2 2026-05-09 — visibility warning for public spheres -->
+                <p v-if="section.type === 'social'"
+                  class="text-[10px] px-2 py-1.5 rounded-lg border"
+                  style="background: rgba(52,211,153,0.07); border-color: rgba(52,211,153,0.2); color: #34d399;">
+                  Diese Informationen sind für verbundene Peers sichtbar.
+                </p>
+                <p v-else-if="section.type === 'agent'"
+                  class="text-[10px] px-2 py-1.5 rounded-lg border"
+                  style="background: rgba(167,139,250,0.07); border-color: rgba(167,139,250,0.2); color: #a78bfa;">
+                  Dieser Inhalt wird an zahlende KI-Agenten (Agent Marketplace) geliefert.
+                </p>
                 <textarea
                   ref="editTextareaRef"
                   v-model="editText"
@@ -294,6 +312,7 @@ watch(syncStatus, (val) => {
 });
 
 // ── Soul sections config ─────────────────────────────────────────────────
+// type "social" = SOCIAL block (peer-visible); type "agent" = AGENT block (paid-agent-visible)
 const SOUL_SECTIONS = [
   { key: "Kern-Identität",                       label: "Kern-Identität",         icon: "ri-user-line",      color: "var(--chart-1)" },
   { key: "Werte & Überzeugungen",                label: "Werte & Überzeugungen",  icon: "ri-scales-3-line",  color: "var(--sys-violet)" },
@@ -304,12 +323,40 @@ const SOUL_SECTIONS = [
   { key: "Weltbild",                             label: "Weltbild",               icon: "ri-earth-line",     color: "var(--chart-2)" },
   { key: "Offene Fragen dieser Person",          label: "Offene Fragen",          icon: "ri-question-line",  color: "var(--sys-fg-muted)" },
   { key: "Session-Log (komprimiert)",            label: "Verlauf",                icon: "ri-history-line",   color: "var(--sys-fg-dim)" },
+  // v2 2026-05-09 — three-sphere sections (marker-delimited, not ## sections)
+  { key: "Sozialsphäre",  label: "Sozialsphäre",  icon: "ri-group-line",  color: "#34d399", type: "social" },
+  { key: "Agent-Sandbox", label: "Agent-Sandbox", icon: "ri-robot-line",  color: "#a78bfa", type: "agent"  },
 ];
 
 // ── Computed ─────────────────────────────────────────────────────────────
 const parsed = computed(() => parseSoul(soulContent.value));
 
+// Extract content between <!-- TYPE:START --> and <!-- TYPE:END --> markers
+function extractMarkerBlock(md, type) {
+  const start = `<!-- ${type}:START -->`;
+  const end   = `<!-- ${type}:END -->`;
+  const s = md.indexOf(start);
+  const e = md.indexOf(end);
+  if (s === -1 || e === -1 || e <= s) return "";
+  return md.slice(s + start.length, e).trim();
+}
+
+// Replace content between markers, preserving marker lines
+function updateMarkerBlock(md, type, newContent) {
+  const start = `<!-- ${type}:START -->`;
+  const end   = `<!-- ${type}:END -->`;
+  const s = md.indexOf(start);
+  const e = md.indexOf(end);
+  if (s === -1 || e === -1 || e <= s) return md;
+  return md.slice(0, s + start.length) + "\n" + newContent.trim() + "\n" + md.slice(e);
+}
+
 function getContent(key) {
+  // v2 2026-05-09 — marker-delimited blocks for social and agent spheres
+  const section = SOUL_SECTIONS.find(s => s.key === key);
+  if (section?.type === "social") return extractMarkerBlock(soulContent.value, "SOCIAL");
+  if (section?.type === "agent")  return extractMarkerBlock(soulContent.value, "AGENT");
+
   let c = parsed.value.sections[key];
   // Session-Log: beide Varianten zusammenführen
   if (key === "Session-Log (komprimiert)" || key === "Session-Log") {
@@ -353,7 +400,12 @@ function cancelEdit() {
 
 async function saveEdit(key) {
   if (editingSection.value !== key) return;
-  const updated = updateSection(soulContent.value, key, editText.value);
+  // v2 2026-05-09 — marker-delimited blocks bypass updateSection()
+  const section = SOUL_SECTIONS.find(s => s.key === key);
+  let updated;
+  if (section?.type === "social") updated = updateMarkerBlock(soulContent.value, "SOCIAL", editText.value);
+  else if (section?.type === "agent") updated = updateMarkerBlock(soulContent.value, "AGENT", editText.value);
+  else updated = updateSection(soulContent.value, key, editText.value);
   updateContent(updated);
   if (vaultConnected.value) {
     writeSoulMd(soulContent.value, "sys").catch(() => {});
