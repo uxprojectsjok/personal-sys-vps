@@ -93,7 +93,7 @@
 
             <p class="prose">
               Bestimme, wie andere KI-Assistenten auf deine Soul-Daten zugreifen dürfen —
-              kostenlos oder gegen eine kleine Zahlung in POL (Kryptowährung auf Polygon).
+              kostenlos oder gegen eine Zahlung in POL (Kryptowährung auf Polygon).
             </p>
 
             <!-- ── Dein Zugangscode ── -->
@@ -346,9 +346,6 @@
             </button>
           </div>
 
-          <p class="amm-foot-help">
-            Vollständige Anleitung → <code>docs/self-hosting.md</code>
-          </p>
         </footer>
       </div>
     </div>
@@ -953,9 +950,6 @@ async function register() {
 .dot.live { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .dot.ok   { background: var(--ok); box-shadow: 0 0 10px rgba(184,220,196,0.5); }
 .amm-foot-actions { display: flex; gap: 12px; align-items: center; }
-.amm-foot-help { grid-column: 1 / -1; margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-4); border-top: 1px dashed var(--rule); padding-top: 14px; }
-.amm-foot-help .link { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
-.amm-foot-help .link:hover { color: var(--accent-bright); }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; border: 1px solid transparent; background: transparent; color: inherit; transition: all 0.15s; white-space: nowrap; }
 .btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -1041,7 +1035,6 @@ async function register() {
   .amm-foot-meta { order: -1; }
   .amm-foot-actions { width: 100%; }
   .amm-foot-actions .btn { flex: 1; justify-content: center; }
-  .amm-foot-help { display: none; }
 }
 
 .peer-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
