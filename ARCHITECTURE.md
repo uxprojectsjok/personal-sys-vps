@@ -25,10 +25,11 @@ For setup and operations: [ONBOARDING.md](ONBOARDING.md)
 │  /api/chat           → soul_auth.lua → Anthropic API    │
 │  /api/soul           → vault_auth.lua → api_serve.lua   │
 │  /api/vault/*        → vault_auth.lua → vault_sync.lua  │
-│  /api/node-status    → node_status.lua                  │
-│  /api/soul/pay       → soul_pay.lua  (public, POL)      │
-│  /api/soul/paid-read → soul_paid_read.lua               │
-│  /mcp                → soul-mcp (Node.js :3098)         │
+│  /api/node-status       → node_status.lua               │
+│  /api/soul/social-read → soul_social_read.lua (peer)    │
+│  /api/soul/pay          → soul_pay.lua  (public, POL)   │
+│  /api/soul/paid-read    → soul_paid_read.lua            │
+│  /mcp                   → soul-mcp (Node.js :3098)      │
 └───────────────────────────┬──────────────────────────────┘
                             │
                             ▼
@@ -66,7 +67,9 @@ Nitro routes are a dev-only mirror of the Lua scripts. When changing API logic, 
 
 ---
 
-## sys.md Format
+## sys.md Format (v2)
+
+sys.md v2 uses a three-sphere protection model. Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
 ```markdown
 ---
@@ -74,9 +77,8 @@ soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
-version: 1
+version: 2
 cert_version: 0
-maturity: 0
 soul_cert: [generated automatically]
 vault_hash: ""
 soul_growth_chain: []
@@ -84,7 +86,7 @@ soul_chain_anchor: null
 storage_tx: ""
 ---
 
-## Core Identity
+## Core Identity        ← Private Sphere (owner only)
 ## Values & Beliefs
 ## Aesthetics & Resonance
 ## Language Patterns & Expression
@@ -93,11 +95,25 @@ storage_tx: ""
 ## Worldview
 ## Open Questions
 ## Session Log (compressed)
-## Calendar
 
+## Social Sphere        ← visible to trusted peer souls
+<!-- SOCIAL:START -->
+<!-- SOCIAL:END -->
+
+## Agent Sandbox        ← visible to paid external agents
 <!-- AGENT:START -->
 <!-- AGENT:END -->
 ```
+
+**Three-sphere access model:**
+
+| Sphere | Delimiter | Who reads | Who writes |
+|---|---|---|---|
+| **Private Sphere** | All `## sections` | Owner only | Owner only |
+| **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+
+**v1 → v2 migration:** Existing souls (version: 1) are auto-migrated on first peer access — the Social Sphere block is inserted before the Agent Sandbox block (or at end of file), and `version` is bumped to 2.
 
 **Frontmatter fields:**
 
@@ -107,17 +123,13 @@ storage_tx: ""
 | `soul_name` | string | Display name (chosen by the user). |
 | `created` | ISO 8601 | Creation date. |
 | `last_session` | ISO 8601 | Last session date. |
-| `version` | integer | sys.md schema version. |
+| `version` | integer | sys.md schema version. `1` = legacy, `2` = three-sphere. |
 | `cert_version` | integer | Cert rotation counter. Incremented by `soul_rotate_cert`. |
-| `maturity` | 0–100 | Maturity score. Calculated by `shared/utils/soulMaturity.js`. |
 | `soul_cert` | hex(32) | HMAC-SHA256 cert. Issued by the server, stored in the browser. |
 | `vault_hash` | string | SHA-256 of the last vault snapshot. |
 | `soul_growth_chain` | array | Growth milestones (maturity-based). |
 | `soul_chain_anchor` | object | Blockchain anchor (Polygon tx + IPFS CID). |
 | `storage_tx` | string | IPFS/Arweave reference of last cloud push. |
-
-**Agent sandbox (`<!-- AGENT:START -->` / `<!-- AGENT:END -->`):**
-Only the content of this block is delivered via `/api/soul/paid-read` to external agents (MCP, WhatsApp bot, etc.). The rest of sys.md never leaves the server toward third parties. The block is empty until the user explicitly populates it.
 
 ---
 
@@ -189,7 +201,7 @@ Key never leaves the browser.
 
 ---
 
-## Soul-to-Soul Connections (Whitelist)
+## Soul-to-Soul Connections (Trusted Peers)
 
 Peer souls connect via the MCP endpoint — no handshake, no separate protocol.
 
@@ -197,20 +209,24 @@ Peer souls connect via the MCP endpoint — no handshake, no separate protocol.
 Soul B → POST /mcp  Authorization: Bearer soul_id_B.soul_cert_B
        → server checks: is soul_id_B in amortization.trusted_souls?
        → yes → registerPaidTools with agent_tools
+               → soul_read returns Social Sphere block (not full sys.md)
+               → soul_write writes only to Social Sphere block
        → no  → 401
 ```
 
-Setup: enter the peer's `soul_id` in the **Agent Marketplace → Vertraute Souls** field and save. The connecting soul uses their own `soul_id.soul_cert` as Bearer token — their credentials never leave their system, yours never leave yours.
+Setup: enter the peer's `soul_id` in the **Agent Marketplace → Connected Peers** field and save. The connecting soul uses their own `soul_id.soul_cert` as Bearer token — their credentials never leave their system, yours never leave yours.
 
 **Token type detection in `soul-mcp/server.mjs`:**
 
 | Token format | Type | Access |
 |---|---|---|
-| 64 hex chars | service_token (OAuth owner) | full tools |
-| 48 hex chars | pol_access_token (paying agent) | agent_tools |
-| uuid.32hex | peer soul_cert | agent_tools if whitelisted |
+| 64 hex chars | service_token (OAuth owner) | full tools + full sys.md |
+| 48 hex chars | pol_access_token (paying agent) | agent_tools only |
+| uuid.32hex | peer soul_cert | agent_tools + Social Sphere only |
 
 Whitelist stored in `api_context.json` under `amortization.trusted_souls[]`.
+
+For **cross-domain peers** (on a different server), add the peer as `{ "soul_id": "uuid", "endpoint": "https://peer.domain" }`. The peer can then access the Social Sphere via `GET /api/soul/social-read` with their cert — the endpoint verifies the cert against the peer's home server via `/api/soul/verify-peer-cert`.
 
 ---
 
@@ -268,9 +284,9 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 **Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `calendar_read`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
 
-**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools`
+**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools` (14 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `calendar_read`, `verify_human`)
 
-**Available tools (whitelisted peer soul):** same as `amortization.agent_tools` — controlled by the soul owner
+**Available tools (trusted peer soul):** same list as paid agents — `soul_read` returns the Social Sphere block only; `soul_write` and `soul_comment` write only to the Social Sphere block
 
 ---
 

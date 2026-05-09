@@ -1,6 +1,6 @@
 # Authentication Model
 
-**Version:** 1.0-draft
+**Version:** 1.1-draft
 
 ---
 
@@ -9,15 +9,19 @@
 ```
 SOUL_MASTER_KEY  (secret, server-side only)
     └── soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id)[0:32]
-            └── All owner API access validated against this cert
-                    └── vault_key (AES-256) — encrypts content
-                            └── service-token — scoped external access
+            ├── All owner API access validated against this cert
+            │       └── vault_key (AES-256) — encrypts content
+            │               └── service-token — scoped external access
+            └── peer soul_cert — same derivation, different soul_id
+                    └── Social Sphere access only (if in trusted_souls list)
 ```
 
 | Identity | Key Material | Trust Level | Scope |
 |---|---|---|---|
 | Soul owner | soul_cert (= HMAC of master key) | Full | All operations on own soul |
+| Trusted peer | peer soul_cert (same derivation, different soul_id) | Peer | Social Sphere (read/write) only |
 | External service | service-token (64 hex) | Scoped | Permissions in api_context.json |
+| Paid agent | pol_access_token (48 hex) | Agent | Agent Sandbox (read) + configured tools |
 | Mnemonic caller | BIP39 12-word phrase | Scoped | Same as service-token |
 | Server operator | SOUL_MASTER_KEY | Root | Can derive any cert |
 
