@@ -1,74 +1,81 @@
 /**
  * soul_read — Peer-Variante für Verbundene Souls (trusted peers).
  * Liest direkt vom Dateisystem, bypasses OpenResty-Auth.
- * Liefert nur den <!-- AGENT:START --> ... <!-- AGENT:END --> Block.
+ * v2 2026-05-09: Liefert nur den <!-- SOCIAL:START --> ... <!-- SOCIAL:END --> Block.
+ * v1-Migration: Fehlt der SOCIAL-Block, wird er leer eingefügt + version auf 2 gesetzt.
  */
 
-import { readFile } from 'fs/promises';
-import crypto from 'crypto';
+import { readFile, writeFile } from 'fs/promises';
+import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from '../lib/vault_fs.mjs';
 
-const SOULS_DIR    = '/var/lib/sys/souls/';
-const MAGIC        = Buffer.from([0x53, 0x59, 0x53, 0x01]); // SYS\x01
-const AGENT_START  = '<!-- AGENT:START -->';
-const AGENT_END    = '<!-- AGENT:END -->';
+// v2 2026-05-09 — three-sphere model: peers read SOCIAL block, not AGENT block
+const SOCIAL_START = '<!-- SOCIAL:START -->';
+const SOCIAL_END   = '<!-- SOCIAL:END -->';
+const MAGIC        = Buffer.from([0x53, 0x59, 0x53, 0x01]);
+
+// Inserts empty SOCIAL block before <!-- AGENT:START --> (or at end), bumps version 1 → 2
+function migratev1(md) {
+  const block    = '\n## Sozialsphäre\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->\n';
+  const agentIdx = md.indexOf('<!-- AGENT:START -->');
+  const migrated = agentIdx !== -1
+    ? md.slice(0, agentIdx) + block + '\n' + md.slice(agentIdx)
+    : md.trimEnd() + '\n' + block;
+  return migrated.replace(/^version:\s*1\s*$/m, 'version: 2');
+}
 
 export function register(server, targetSoulId) {
   server.tool(
     'soul_read',
     [
-      'Liest den öffentlichen Soul-Inhalt (Agent-Bereich von sys.md).',
-      'Gibt nur den explizit freigegebenen Abschnitt zurück.',
+      'Liest den sozialen Soul-Inhalt (Sozialsphäre-Block von sys.md).',
+      'Gibt nur den explizit für Peers freigegebenen Abschnitt zurück — nie die Intimsphäre.',
       '',
       'WICHTIG: soul_read zu Beginn jeder Sitzung aufrufen, bevor geantwortet wird.',
     ].join('\n'),
     {},
     async () => {
       try {
-        // api_context für optionalen Vault-Key laden
-        let vaultKeyHex = '';
-        try {
-          const raw = await readFile(`${SOULS_DIR}${targetSoulId}/api_context.json`, 'utf8');
-          const ctx = JSON.parse(raw);
-          vaultKeyHex = ctx?.vault_key_hex || '';
-        } catch { /* kein api_context oder kein Key */ }
+        const { vaultKeyHex } = await loadVaultMeta(targetSoulId);
+        const soulPath = `${SOULS_DIR}${targetSoulId}/sys.md`;
+        const rawBuf   = await readFile(soulPath);
+        const wasEncrypted = rawBuf.slice(0, 4).equals(MAGIC);
 
-        let buf = await readFile(`${SOULS_DIR}${targetSoulId}/sys.md`);
-
-        // Verschlüsselung prüfen (Magic: SYS\x01)
-        if (buf.slice(0, 4).equals(MAGIC)) {
-          if (!vaultKeyHex) {
-            return {
-              content: [{ type: 'text', text: 'sys.md ist verschlüsselt — Soul muss einmal im SYS-Browser entsperrt werden.' }],
-              isError: true,
-            };
-          }
-          const key        = Buffer.from(vaultKeyHex, 'hex');
-          const iv         = buf.slice(4, 20);
-          const ciphertext = buf.slice(20);
-          const decipher   = crypto.createDecipheriv('aes-256-cbc', key, iv);
-          buf = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        if (wasEncrypted && !vaultKeyHex) {
+          return {
+            content: [{ type: 'text', text: 'sys.md ist verschlüsselt — Soul muss einmal im SYS-Browser entsperrt werden.' }],
+            isError: true,
+          };
         }
 
-        const md  = buf.toString('utf8');
-        const s   = md.indexOf(AGENT_START);
-        const e   = md.indexOf(AGENT_END);
+        const decBuf = decryptIfNeeded(rawBuf, vaultKeyHex);
+        let md = decBuf.toString('utf8');
+
+        // v1 → v2 auto-migration: SOCIAL-Block fehlt → einmalig einfügen + zurückschreiben
+        if (!md.includes(SOCIAL_START)) {
+          md = migratev1(md);
+          let writeBuf = Buffer.from(md, 'utf8');
+          if (wasEncrypted) writeBuf = encryptBuf(writeBuf, vaultKeyHex);
+          await writeFile(soulPath, writeBuf).catch(() => {}); // best-effort
+        }
+
+        const s = md.indexOf(SOCIAL_START);
+        const e = md.indexOf(SOCIAL_END);
 
         if (s === -1 || e === -1 || e <= s) {
           return {
-            content: [{ type: 'text', text: 'Kein Agent-Bereich definiert (<!-- AGENT:START --> fehlt).' }],
+            content: [{ type: 'text', text: 'Kein Sozialsphäre-Block definiert (<!-- SOCIAL:START --> fehlt).' }],
             isError: true,
           };
         }
 
-        const agentContent = md.slice(s + AGENT_START.length, e).trim();
-        if (!agentContent) {
+        const socialContent = md.slice(s + SOCIAL_START.length, e).trim();
+        if (!socialContent) {
           return {
-            content: [{ type: 'text', text: 'Agent-Bereich ist leer.' }],
-            isError: true,
+            content: [{ type: 'text', text: 'Sozialsphäre-Block ist leer — Soul-Inhaber hat noch keine Informationen für Peers freigegeben.' }],
           };
         }
 
-        return { content: [{ type: 'text', text: agentContent }] };
+        return { content: [{ type: 'text', text: socialContent }] };
       } catch (err) {
         return {
           content: [{ type: 'text', text: `soul_read fehlgeschlagen: ${err.message}` }],

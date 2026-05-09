@@ -1,6 +1,6 @@
 # sys.md Format Specification
 
-**Version:** 1.0-draft
+**Version:** 2.0-draft
 **Status:** Working draft
 
 ---
@@ -9,7 +9,7 @@
 
 A SYS identity file is a plain UTF-8 Markdown file. It consists of a YAML
 frontmatter block followed by a Markdown body structured by `## Section`
-headings.
+headings and two special marker-delimited blocks.
 
 The frontmatter is machine-readable and carries protocol metadata.
 The body is human-readable and AI-consumable identity content.
@@ -39,14 +39,36 @@ and `soul_cert`.
 
 ---
 
-## 2. File Structure
+## 2. Three-Sphere Protection Model (v2)
+
+sys.md v2 divides the file into three access zones:
+
+| Sphere | Delimiter | Who reads | Who writes |
+|---|---|---|---|
+| **Intimsphäre** | Frontmatter + all `## sections` | Owner only | Owner only |
+| **Sozialsphäre** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
+| **Agent-Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+
+### Rules
+
+- The server NEVER sends `## section` content (Intimsphäre) to external parties.
+- `soul_paid_read` delivers only the Agent-Sandbox block to paid agents.
+- `soul_social_read` delivers only the Sozialsphäre block to authenticated peers.
+- Peer writes (`soul_write`) are confined to the Sozialsphäre block — the Agent-Sandbox and Intimsphäre are structurally unreachable.
+- `soul_maturity` and `soul_skills` read the full sys.md internally for computation but return only derived scores/data, never raw content.
+
+---
+
+## 3. File Structure
 
 ```
 {frontmatter}
-{body}
+{Intimsphäre — ## sections}
+{Sozialsphäre — <!-- SOCIAL:START/END -->}
+{Agent-Sandbox — <!-- AGENT:START/END -->}
 ```
 
-### 2.1 Frontmatter
+### 3.1 Frontmatter
 
 MUST be a valid YAML block delimited by `---` at the start of the file.
 
@@ -56,7 +78,7 @@ soul_id:          <uuid-v4>          # REQUIRED
 soul_name:        <string>           # REQUIRED
 created:          <YYYY-MM-DD>       # REQUIRED
 last_session:     <YYYY-MM-DD>       # REQUIRED
-version:          <integer>          # REQUIRED, currently 1
+version:          <integer>          # REQUIRED, 1 or 2
 soul_cert:        <32 hex chars>     # REQUIRED for authenticated use
 vault_hash:       <sha256 hex>       # OPTIONAL, hash of last vault state
 soul_growth_chain: []                # OPTIONAL, growth chain entries
@@ -65,7 +87,7 @@ storage_tx:       <string>           # OPTIONAL, Arweave tx ID
 ---
 ```
 
-### 2.2 Frontmatter Field Reference
+### 3.2 Frontmatter Field Reference
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -73,14 +95,14 @@ storage_tx:       <string>           # OPTIONAL, Arweave tx ID
 | `soul_name` | string | MUST | Display name chosen by the user. |
 | `created` | ISO 8601 date | MUST | Creation date of this soul. |
 | `last_session` | ISO 8601 date | MUST | Date of most recent session. Updated each session. |
-| `version` | integer | MUST | Schema version. Currently `1`. |
+| `version` | integer | MUST | Schema version. `1` = legacy, `2` = three-sphere. |
 | `soul_cert` | 32 hex chars | MUST | HMAC auth token. See `spec/auth.md`. |
 | `vault_hash` | SHA-256 hex | MAY | Hash of the last synced vault state. |
 | `soul_growth_chain` | array | MAY | Chronological chain of session hashes. |
 | `soul_chain_anchor` | string\|null | MAY | Blockchain tx hash for on-chain anchoring. |
 | `storage_tx` | string | MAY | Arweave transaction ID for decentralized storage. |
 
-### 2.3 Body
+### 3.3 Body — Intimsphäre
 
 The body MUST consist of `## Section` headings followed by Markdown content.
 Parsers MUST handle missing sections gracefully (treat as empty, not as error).
@@ -89,7 +111,7 @@ Parsers MUST handle missing sections gracefully (treat as empty, not as error).
 
 | Section | Purpose |
 |---|---|
-| `## Core Identity` | One-sentence identity summary |
+| `## Core Identity` / `## Kern-Identität` | One-sentence identity summary |
 | `## Values & Beliefs` | Motivations, worldview foundations |
 | `## Aesthetics & Resonance` | Music, visuals, atmospheres |
 | `## Speech Patterns & Expression` | How the person communicates |
@@ -103,9 +125,65 @@ Parsers MUST handle missing sections gracefully (treat as empty, not as error).
 
 Additional `##` sections are valid and MUST be preserved by compliant parsers.
 
+### 3.4 Sozialsphäre Block
+
+The Sozialsphäre block is a region within the `## Sozialsphäre` section delimited by:
+
+```
+<!-- SOCIAL:START -->
+(content visible to trusted peers)
+<!-- SOCIAL:END -->
+```
+
+- Typically placed after the `## Sozialsphäre` heading (introduced in v2)
+- Content is readable by authenticated trusted peers via `soul_read` (MCP) or `GET /api/soul/social-read` (HTTP)
+- Peers may write to this block via `soul_write` (MCP) or comment via `soul_comment`
+- The block MAY be empty (peers see a "block is empty" notice)
+- The markers MUST appear on their own lines
+
+### 3.5 Agent-Sandbox Block
+
+The Agent-Sandbox block is delimited by:
+
+```
+<!-- AGENT:START -->
+(content visible to paid agents)
+<!-- AGENT:END -->
+```
+
+- Delivered to external agents via `GET /api/soul/paid-read` after successful POL payment
+- Owner-controlled: only the Soul owner may write here (via the SoulViewer)
+- External paid agents may comment via `POST /api/soul/paid-comment`
+- The markers MUST appear on their own lines
+
 ---
 
-## 3. Maturity Score
+## 4. Versioning and Migration
+
+### 4.1 Version field
+
+| Value | Meaning |
+|---|---|
+| `1` | Legacy — no SOCIAL block. AGENT block may or may not be present. |
+| `2` | Three-sphere — SOCIAL block present. Both marker blocks expected. |
+
+### 4.2 v1 → v2 Auto-Migration
+
+When a peer accesses a v1 soul via `soul_read` or `soul_write`, the server
+automatically inserts an empty SOCIAL block before the AGENT block (or at the
+end of the file if no AGENT block exists), then bumps `version` to `2` and
+writes the file back.
+
+Migration is idempotent: if the SOCIAL block already exists, migration is skipped.
+
+```
+version: 1  →  version: 2
+(no SOCIAL block)  →  ## Sozialsphäre\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->
+```
+
+---
+
+## 5. Maturity Score
 
 The maturity score is a computed value (0–100) representing profile completeness.
 It is derived from the presence and density of standard sections.
@@ -117,7 +195,7 @@ stored in the frontmatter as a canonical value — it is always recomputed.
 
 ---
 
-## 4. Growth Chain
+## 6. Growth Chain
 
 The `soul_growth_chain` is an append-only array of session records:
 
@@ -138,7 +216,7 @@ Server-side signing endpoint: `POST /api/soul-sign-session`
 
 ---
 
-## 5. Encoding and Size
+## 7. Encoding and Size
 
 - Encoding: UTF-8, no BOM
 - Maximum size (unencrypted): 2 MB
@@ -147,25 +225,15 @@ Server-side signing endpoint: `POST /api/soul-sign-session`
 
 ---
 
-## 6. Versioning
-
-The `version` field tracks the schema version. The current version is `1`.
-
-Future versions MUST be backwards-compatible unless the major version changes.
-Parsers encountering an unknown version SHOULD treat unknown frontmatter fields
-as opaque and preserve them on write.
-
----
-
-## 7. Example
+## 8. Example (v2)
 
 ```markdown
 ---
 soul_id: 7f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
 soul_name: "Jan"
 created: 2026-01-15
-last_session: 2026-04-10
-version: 1
+last_session: 2026-05-09
+version: 2
 soul_cert: a3f8b2c1d4e5f6a7b8c9d0e1f2a3b4c5
 vault_hash: ""
 soul_growth_chain: []
@@ -184,7 +252,16 @@ Prefers depth over breadth.
 
 ## Session Log (compressed)
 
-### 2026-04-10
-Finalized the SYS protocol specification. Discussed SSRF mitigations.
-Decided rate-limiting on /api/fetch-bundle is pre-launch, not critical.
+### 2026-05-09
+Finalized the three-sphere sys.md specification.
+
+## Sozialsphäre
+<!-- SOCIAL:START -->
+Offen für Kooperationen im Bereich Identitätsprotokolle und dezentrale Systeme.
+<!-- SOCIAL:END -->
+
+## Agent-Sandbox
+<!-- AGENT:START -->
+Ich bin Jan, ein Designer und Entwickler. Du kannst mich nach meinen Projekten fragen.
+<!-- AGENT:END -->
 ```

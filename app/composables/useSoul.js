@@ -56,12 +56,13 @@ export function useSoul() {
 
   function buildDefaultSoul(id, cert, name, idea) {
     const now = new Date().toISOString().split("T")[0];
+    // v2 2026-05-09 — three-sphere: Intimsphäre + Sozialsphäre + Agent-Sandbox
     return `---
 soul_id: ${id}
 soul_name: ${name || ""}
 created: ${now}
 last_session: ${now}
-version: 1
+version: 2
 soul_cert: ${cert}
 vault_hash: ""
 storage_tx: ""
@@ -91,11 +92,16 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 ## Offene Fragen dieser Person
 *Noch nicht beschrieben.*
 
-## Agent-Sandbox
-*Noch nicht konfiguriert.*
-
 ## Session-Log (komprimiert)
 *Noch keine Sessions.*
+
+## Sozialsphäre
+<!-- SOCIAL:START -->
+<!-- SOCIAL:END -->
+
+## Agent-Sandbox
+<!-- AGENT:START -->
+<!-- AGENT:END -->
 `;
   }
 
