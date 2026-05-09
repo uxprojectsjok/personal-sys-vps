@@ -111,7 +111,7 @@ Parsers MUST handle missing sections gracefully (treat as empty, not as error).
 
 | Section | Purpose |
 |---|---|
-| `## Core Identity` / `## Kern-Identität` | One-sentence identity summary |
+| `## Core Identity` | One-sentence identity summary |
 | `## Values & Beliefs` | Motivations, worldview foundations |
 | `## Aesthetics & Resonance` | Music, visuals, atmospheres |
 | `## Speech Patterns & Expression` | How the person communicates |

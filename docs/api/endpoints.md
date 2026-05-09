@@ -58,7 +58,7 @@ Where `soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version).he
 | DELETE | `/api/vault/public/{file}` | soul_cert | Remove file from public vault |
 | GET | `/api/vault/public/{soul_id}` | none | Manifest of a soul's public vault |
 | GET | `/api/vault/public/{soul_id}/{file}` | soul_cert or api_grant | Download public vault file |
-| GET | `/api/soul/social-read` | peer soul_cert | Read Sozialsphäre block (v2) |
+| GET | `/api/soul/social-read` | peer soul_cert | Read Social Sphere block (v2) |
 | GET | `/api/soul/paid-read` | pol_access_token | Agent reads Agent-Sandbox block |
 | POST | `/api/soul/paid-write` | pol_access_token | Agent writes to Agent-Sandbox block |
 | POST | `/api/soul/paid-comment` | pol_access_token | Agent appends comment to Agent-Sandbox |
@@ -242,7 +242,7 @@ Query parameter:
 
 ### GET /api/soul/social-read
 
-Read the Sozialsphäre block (`<!-- SOCIAL:START/END -->`) of a soul. For authenticated peer souls only. Introduced in sys.md v2.
+Read the Social Sphere block (`<!-- SOCIAL:START/END -->`) of a soul. For authenticated peer souls only. Introduced in sys.md v2.
 
 ```http
 GET /api/soul/social-read?soul_id={target_soul_id}
@@ -411,10 +411,10 @@ Authorization: Bearer {soul_id}.{cert}
 Content-Type: application/json
 
 {
-  "message": "Was denkst du über dieses Projekt?",
+  "message": "What do you think about this project?",
   "history": [
-    { "role": "user",      "content": "Hallo!" },
-    { "role": "assistant", "content": "Hey, schön dass du da bist." }
+    { "role": "user",      "content": "Hello!" },
+    { "role": "assistant", "content": "Hey, great to have you here." }
   ],
   "max_tokens": 1024
 }

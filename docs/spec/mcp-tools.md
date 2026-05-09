@@ -437,10 +437,10 @@ Talk to the soul — the AI responds as the soul owner would.
 **Input:**
 ```json
 {
-  "message": "Was denkst du über dieses Projekt?",
+  "message": "What do you think about this project?",
   "history": [
-    { "role": "user",      "content": "Hallo!" },
-    { "role": "assistant", "content": "Hey, schön dass du da bist." }
+    { "role": "user",      "content": "Hello!" },
+    { "role": "assistant", "content": "Hey, great to have you here." }
   ],
   "max_tokens": 1024
 }
