@@ -93,7 +93,7 @@ http {
   tcp_nopush on;
   types_hash_max_size 2048;
 
-  include /etc/openresty/mime.types;
+  include /usr/local/openresty/nginx/conf/mime.types;
   default_type application/octet-stream;
 
   # TLS global defaults
