@@ -50,6 +50,9 @@ let _discoverCache = null;
 let _discoverCacheTs = 0;
 const DISCOVER_TTL = 5 * 60 * 1000;
 
+// ── TxHash-Discovery cache (TTL 5 min, key = sorted txHashes joined) ─────────
+const _txCache = new Map(); // key → { ts, souls[] }
+
 /**
  * Queries all Anchored events from the SoulRegistry contract in parallel chunks.
  * Returns deduplicated map: soulIdBytes32 → latest event.
@@ -114,6 +117,12 @@ export async function discoverSoulsFromTxHashes(entries = [], { q = '', amortize
   const net      = NETWORKS[process.env.POLYGON_NETWORK] ?? NETWORKS.main;
   const provider = getProvider();
 
+  const cacheKey = entries.map(e => e.txHash).sort().join(',');
+  const cached   = _txCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < DISCOVER_TTL) {
+    return filterResults(cached.souls, { q, amortized, limit });
+  }
+
   const souls = [];
   await Promise.allSettled(entries.map(async ({ txHash, soulName, anchorDate, sessions }) => {
     try {
@@ -157,6 +166,7 @@ export async function discoverSoulsFromTxHashes(entries = [], { q = '', amortize
     } catch { /* malformed TX überspringen */ }
   }));
 
+  _txCache.set(cacheKey, { ts: Date.now(), souls });
   return filterResults(souls, { q, amortized, limit });
 }
 
