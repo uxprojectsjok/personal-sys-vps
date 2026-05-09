@@ -25,28 +25,40 @@ Browser (SPA)
     ▼
 OpenResty (nginx + LuaJIT)
     │
-    ├── /                    → static files (.output/public/)
-    ├── /api/soul-cert       → soul_cert.lua          (no auth)
-    ├── /api/soul-sign-sess  → soul_sign_session.lua  (no auth)
-    ├── /api/fetch-bundle    → fetch_bundle.lua        (no auth)
-    ├── /api/validate        → soul_auth.lua → 200
-    ├── /api/context         → soul_auth.lua → api_context.lua
-    ├── /api/vault/unlock    → soul_auth.lua → vault_unlock.lua
-    ├── /api/vault/sync      → soul_auth.lua → vault_sync.lua
-    ├── /api/chat            → soul_auth.lua → Anthropic proxy (SSE)
-    ├── /api/soul-update     → soul_auth.lua → Anthropic proxy (JSON)
-    ├── /api/soul/v1/token   → soul_auth.lua → soul_token_jwt.lua
-    ├── /api/soul            → vault_auth.lua → api_serve.lua
-    ├── /api/vault/*         → vault_auth.lua → api_serve.lua
-    ├── /api/webhook         → vault_auth.lua → webhook.lua
-    ├── /api/webhook/mnemonic → webhook_mnemonic.lua  (BIP39 auth)
-    ├── /api/vault/external  → vault_auth.lua → external_vault.lua
-    ├── /api/vision          → soul_auth.lua → vision_analyze.lua
-    ├── /api/tts             → soul_auth.lua → tts.lua
-    ├── /api/wavespeed/*     → soul_auth.lua → wavespeed_*.lua
-    ├── /api/beme            → vault_auth.lua → beme.lua
-    ├── /mcp                 → proxy → soul-mcp (Node.js :3098)
-    └── /oauth/              → proxy → soul-mcp (Node.js :3098)
+    ├── /                       → static files (.output/public/)
+    ├── /api/soul-cert          → soul_cert.lua          (no auth)
+    ├── /api/soul-sign-sess     → soul_sign_session.lua  (no auth)
+    ├── /api/fetch-bundle       → fetch_bundle.lua        (no auth)
+    ├── /api/node-status        → node_status.lua         (no auth)
+    ├── /api/soul/verify-peer-cert → soul_verify_peer_cert.lua (no auth)
+    ├── /api/validate           → soul_auth.lua → 200
+    ├── /api/context            → soul_auth.lua → api_context.lua
+    ├── /api/vault/unlock       → soul_auth.lua → vault_unlock.lua
+    ├── /api/vault/sync         → soul_auth.lua → vault_sync.lua
+    ├── /api/chat               → soul_auth.lua → Anthropic proxy (SSE)
+    ├── /api/soul-update        → soul_auth.lua → Anthropic proxy (JSON)
+    ├── /api/soul/v1/token      → soul_auth.lua → soul_token_jwt.lua
+    ├── /api/soul/amortization  → vault_auth.lua → soul_amortization.lua
+    ├── /api/soul/register      → vault_auth.lua → soul_register.lua
+    ├── /api/soul/register-preview → vault_auth.lua → soul_register_preview.lua
+    ├── /api/soul/earnings      → soul_auth.lua → soul_earnings.lua
+    ├── /api/soul/pay           → soul_pay.lua   (no auth, POL verification)
+    ├── /api/soul/paid-read     → soul_paid_read.lua     (pol_access_token)
+    ├── /api/soul/paid-write    → soul_paid_write.lua    (pol_access_token)
+    ├── /api/soul/paid-comment  → soul_paid_comment.lua  (pol_access_token)
+    ├── /api/soul/paid-beme     → soul_paid_beme.lua     (pol_access_token)
+    ├── /api/soul/social-read   → soul_social_read.lua   (peer soul_cert)
+    ├── /api/soul               → vault_auth.lua → api_serve.lua
+    ├── /api/vault/*            → vault_auth.lua → api_serve.lua
+    ├── /api/webhook            → vault_auth.lua → webhook.lua
+    ├── /api/webhook/mnemonic   → webhook_mnemonic.lua  (BIP39 auth)
+    ├── /api/vault/external     → vault_auth.lua → external_vault.lua
+    ├── /api/vision             → soul_auth.lua → vision_analyze.lua
+    ├── /api/tts                → soul_auth.lua → tts.lua
+    ├── /api/wavespeed/*        → soul_auth.lua → wavespeed_*.lua
+    ├── /api/beme               → vault_auth.lua → beme.lua
+    ├── /mcp                    → proxy → soul-mcp (Node.js :3098)
+    └── /oauth/                 → proxy → soul-mcp (Node.js :3098)
 ```
 
 ---
@@ -107,6 +119,18 @@ On success sets: `ngx.ctx.soul_id`, `ngx.ctx.vault_key`,
 | `vault_services.lua` | content | service management |
 | `vault_delete.lua` | content | file deletion |
 | `beme.lua` | content | beme_chat backend — reads sys.md, calls Anthropic server-side |
+| `soul_amortization.lua` | content | Agent Marketplace config (GET/PUT) |
+| `soul_register.lua` | content | IPFS soul registration via Pinata |
+| `soul_register_preview.lua` | content | Preview registration payload |
+| `soul_earnings.lua` | content | POL payment ledger |
+| `soul_pay.lua` | content | POL payment verification + token issuance |
+| `soul_paid_read.lua` | content | Agent Sandbox read (pol_access_token auth) |
+| `soul_paid_write.lua` | content | Agent Sandbox write (pol_access_token auth) |
+| `soul_paid_comment.lua` | content | Agent Sandbox comment (pol_access_token auth) |
+| `soul_paid_beme.lua` | content | beme for paid agents |
+| `soul_social_read.lua` | content | Social Sphere read (peer soul_cert auth) |
+| `soul_verify_peer_cert.lua` | content | Cross-domain peer cert verification |
+| `node_status.lua` | content | Node registration status (public) |
 
 **Note:** `soul_auth.lua`, `vault_auth.lua`, `soul_cert.lua`,
 `soul_sign_session.lua`, `soul_token_jwt.lua`, and `hmac_helper.lua`
@@ -199,8 +223,9 @@ set_by_lua_block $nonce {
 ### resty.http DNS resolution
 
 Any location block that uses `resty.http` to make outbound HTTP requests (e.g. `beme.lua`
-calling `api.anthropic.com`) **must** include a `resolver` directive. OpenResty's Lua HTTP
-client does not use the system resolver — it requires an explicit DNS server in the nginx config:
+calling `api.anthropic.com`, or `soul_social_read.lua` calling a peer's verify endpoint)
+**must** include a `resolver` directive. OpenResty's Lua HTTP client does not use the
+system resolver — it requires an explicit DNS server in the nginx config:
 
 ```nginx
 location = /api/beme {

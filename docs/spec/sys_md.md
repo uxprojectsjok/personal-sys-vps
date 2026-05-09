@@ -45,16 +45,16 @@ sys.md v2 divides the file into three access zones:
 
 | Sphere | Delimiter | Who reads | Who writes |
 |---|---|---|---|
-| **Intimsphäre** | Frontmatter + all `## sections` | Owner only | Owner only |
-| **Sozialsphäre** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
-| **Agent-Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+| **Private Sphere** | Frontmatter + all `## sections` | Owner only | Owner only |
+| **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
 
 ### Rules
 
-- The server NEVER sends `## section` content (Intimsphäre) to external parties.
-- `soul_paid_read` delivers only the Agent-Sandbox block to paid agents.
-- `soul_social_read` delivers only the Sozialsphäre block to authenticated peers.
-- Peer writes (`soul_write`) are confined to the Sozialsphäre block — the Agent-Sandbox and Intimsphäre are structurally unreachable.
+- The server NEVER sends `## section` content (Private Sphere) to external parties.
+- `soul_paid_read` delivers only the Agent Sandbox block to paid agents.
+- `soul_social_read` delivers only the Social Sphere block to authenticated peers.
+- Peer writes (`soul_write`) are confined to the Social Sphere block — the Agent Sandbox and Private Sphere are structurally unreachable.
 - `soul_maturity` and `soul_skills` read the full sys.md internally for computation but return only derived scores/data, never raw content.
 
 ---
@@ -63,9 +63,9 @@ sys.md v2 divides the file into three access zones:
 
 ```
 {frontmatter}
-{Intimsphäre — ## sections}
-{Sozialsphäre — <!-- SOCIAL:START/END -->}
-{Agent-Sandbox — <!-- AGENT:START/END -->}
+{Private Sphere — ## sections}
+{Social Sphere — <!-- SOCIAL:START/END -->}
+{Agent Sandbox — <!-- AGENT:START/END -->}
 ```
 
 ### 3.1 Frontmatter
@@ -102,7 +102,7 @@ storage_tx:       <string>           # OPTIONAL, Arweave tx ID
 | `soul_chain_anchor` | string\|null | MAY | Blockchain tx hash for on-chain anchoring. |
 | `storage_tx` | string | MAY | Arweave transaction ID for decentralized storage. |
 
-### 3.3 Body — Intimsphäre
+### 3.3 Body — Private Sphere
 
 The body MUST consist of `## Section` headings followed by Markdown content.
 Parsers MUST handle missing sections gracefully (treat as empty, not as error).
@@ -125,9 +125,9 @@ Parsers MUST handle missing sections gracefully (treat as empty, not as error).
 
 Additional `##` sections are valid and MUST be preserved by compliant parsers.
 
-### 3.4 Sozialsphäre Block
+### 3.4 Social Sphere Block
 
-The Sozialsphäre block is a region within the `## Sozialsphäre` section delimited by:
+The Social Sphere block is a region within the `## Social Sphere` section delimited by:
 
 ```
 <!-- SOCIAL:START -->
@@ -135,15 +135,15 @@ The Sozialsphäre block is a region within the `## Sozialsphäre` section delimi
 <!-- SOCIAL:END -->
 ```
 
-- Typically placed after the `## Sozialsphäre` heading (introduced in v2)
+- Typically placed after the `## Social Sphere` heading (introduced in v2)
 - Content is readable by authenticated trusted peers via `soul_read` (MCP) or `GET /api/soul/social-read` (HTTP)
 - Peers may write to this block via `soul_write` (MCP) or comment via `soul_comment`
 - The block MAY be empty (peers see a "block is empty" notice)
 - The markers MUST appear on their own lines
 
-### 3.5 Agent-Sandbox Block
+### 3.5 Agent Sandbox Block
 
-The Agent-Sandbox block is delimited by:
+The Agent Sandbox block is delimited by:
 
 ```
 <!-- AGENT:START -->
@@ -178,7 +178,7 @@ Migration is idempotent: if the SOCIAL block already exists, migration is skippe
 
 ```
 version: 1  →  version: 2
-(no SOCIAL block)  →  ## Sozialsphäre\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->
+(no SOCIAL block)  →  ## Social Sphere\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->
 ```
 
 ---
@@ -255,13 +255,13 @@ Prefers depth over breadth.
 ### 2026-05-09
 Finalized the three-sphere sys.md specification.
 
-## Sozialsphäre
+## Social Sphere
 <!-- SOCIAL:START -->
-Offen für Kooperationen im Bereich Identitätsprotokolle und dezentrale Systeme.
+Open for collaboration on identity protocols and decentralized systems.
 <!-- SOCIAL:END -->
 
-## Agent-Sandbox
+## Agent Sandbox
 <!-- AGENT:START -->
-Ich bin Jan, ein Designer und Entwickler. Du kannst mich nach meinen Projekten fragen.
+I am Jan, a designer and developer. You can ask me about my projects.
 <!-- AGENT:END -->
 ```

@@ -1,6 +1,6 @@
 # MCP Tools Specification
 
-**Version:** 1.3
+**Version:** 1.4
 **Protocol:** Model Context Protocol (MCP) — Streamable HTTP transport
 **Auth:** OAuth 2.0 + PKCE
 
@@ -43,30 +43,59 @@ mechanism as direct API service-tokens (see `spec/auth.md` §3).
 
 ---
 
-## 3. Tool Catalog
+## 3. Token Types and Tool Access
 
-### 3.1 soul_read
+The MCP server distinguishes callers by token format:
 
-Read the full sys.md content.
+| Token format | Caller | Tool set |
+|---|---|---|
+| 64 hex chars | Owner (OAuth service-token) | All registered tools |
+| 48 hex chars | Paid agent (pol_access_token) | `amortization.agent_tools` only |
+| `uuid.32hex` | Trusted peer (peer soul_cert) | `amortization.agent_tools` only |
 
-**Requires:** `soul` permission
+**Available tools for paid agents and peers (14 tools, must be explicitly enabled per soul):**
+`soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `calendar_read`, `verify_human`
+
+**Important:** When a peer connects via `uuid.32hex`, `soul_read` reads the **Social Sphere** block (`<!-- SOCIAL:START/END -->`), not the full sys.md. When an owner connects, `soul_read` returns the full sys.md content.
+
+---
+
+## 4. Tool Catalog
+
+### 4.1 soul_read
+
+Read sys.md content. Behavior differs by caller:
+
+- **Owner:** Returns full sys.md content.
+- **Peer (trusted soul):** Returns only the Social Sphere block (`<!-- SOCIAL:START/END -->`). Auto-migrates v1 files to v2 on first access.
+- **Paid agent (pol_access_token):** Not used — paid agents use `soul_paid_read` HTTP endpoint directly.
+
+**Requires:** `soul` permission (owner) or trusted peer cert
 
 **Input:** none
 
-**Output:**
+**Output (owner):**
 ```json
 { "content": "---\nsoul_id: ...\n---\n\n## Core Identity\n..." }
 ```
 
+**Output (peer):**
+```
+(contents of <!-- SOCIAL:START --> ... <!-- SOCIAL:END --> block)
+```
+
 ---
 
-### 3.2 soul_write
+### 4.2 soul_write
 
-Update a `## Section` in sys.md.
+Update content in sys.md. Behavior differs by caller:
 
-**Requires:** `soul` permission
+- **Owner:** Updates any `## Section` by name.
+- **Peer:** Writes only into the Social Sphere block (`<!-- SOCIAL:START/END -->`). Cannot touch the Private Sphere or Agent Sandbox.
 
-**Input:**
+**Requires:** `soul` permission (owner) or trusted peer cert with `soul_write` enabled
+
+**Input (owner):**
 ```json
 {
   "section": "Session Log (compressed)",
@@ -75,19 +104,47 @@ Update a `## Section` in sys.md.
 }
 ```
 
+**Input (peer):**
+```json
+{
+  "content": "Content to write into Social Sphere",
+  "mode": "append"
+}
+```
+
 | `mode` | Behavior |
 |---|---|
-| `replace` | Replace entire section content |
-| `append` | Add content after existing section content |
-| `prepend` | Add content before existing section content |
-
-If the section does not exist, it MUST be created.
+| `replace` | Replace entire block/section content |
+| `append` | Add content after existing content |
+| `prepend` | Add content before existing content |
 
 ---
 
-### 3.3 soul_maturity
+### 4.3 soul_comment
 
-Compute and optionally persist the maturity score.
+Append a comment to the Social Sphere block. For trusted peer souls only.
+The peer's soul_id is automatically attributed.
+
+**Input:**
+```json
+{
+  "comment": "Great to connect!",
+  "author": "Optional display name"
+}
+```
+
+Comment format written to the Social Sphere:
+```
+---
+**Optional display name · soul:peer-uuid** · 2026-05-09
+Great to connect!
+```
+
+---
+
+### 4.4 soul_maturity
+
+Compute and optionally persist the maturity score. Reads full sys.md internally; returns only computed values.
 
 **Requires:** `soul` permission
 
@@ -103,9 +160,9 @@ Compute and optionally persist the maturity score.
 
 ---
 
-### 3.4 soul_skills
+### 4.5 soul_skills
 
-List declared skills or invoke a skill handler.
+List declared skills or invoke a skill handler. Reads full sys.md internally; returns only skill data.
 
 **Requires:** `soul` permission
 
@@ -123,7 +180,48 @@ Skills are declared in the `## Skills` section of sys.md as structured YAML bloc
 
 ---
 
-### 3.5 vault_manifest
+### 4.6 soul_discover
+
+Discover registered souls from the Agent Marketplace. Searches both Pinata/IPFS and Polygon blockchain simultaneously (dual-source merge).
+
+**Requires:** No permission required (always available)
+
+**Input:**
+```json
+{ "query": "designer" }
+```
+
+**Output:**
+```json
+{
+  "souls": [
+    {
+      "soul_id": "uuid-v4",
+      "name": "Jan",
+      "mcp_endpoint": "https://domain/mcp",
+      "source": "ipfs+chain",
+      "source_label": "Registered on IPFS + verified on Polygon blockchain",
+      "chain_verified": true,
+      "amortization": {
+        "enabled": true,
+        "pol_per_request": "0.001",
+        "agent_tools": ["soul_read", "verify_human"]
+      }
+    }
+  ]
+}
+```
+
+**Source values:**
+| `source` | Meaning |
+|---|---|
+| `ipfs` | Found in Pinata/IPFS registry only |
+| `chain` | Found on Polygon blockchain only |
+| `ipfs+chain` | Found in both — strongest trust signal |
+
+---
+
+### 4.7 vault_manifest
 
 Return the full vault index.
 
@@ -146,13 +244,11 @@ Return the full vault index.
 
 ---
 
-### 3.6 audio_list / audio_get
+### 4.8 audio_list / audio_get
 
 List or retrieve audio vault files.
 
 **Requires:** `audio` permission
-
-**audio_list input:** none
 
 **audio_list output:**
 ```json
@@ -173,18 +269,11 @@ Returns a signed direct URL for download (Token already embedded — no Auth hea
 
 ---
 
-### 3.7 image_list / image_get
+### 4.9 image_list / image_get
 
 List or retrieve image vault files.
 
 **Requires:** `images` permission
-
-**image_list input:** none
-
-**image_get input:**
-```json
-{ "filename": "profile.jpg" }
-```
 
 **image_get output:** Returns the image as a base64-encoded MCP `image` content block plus metadata:
 ```json
@@ -195,13 +284,11 @@ The image content block is directly visible to Claude — no fetch required.
 
 ---
 
-### 3.8 video_list / video_get
+### 4.10 video_list / video_get
 
 List or retrieve video vault files.
 
 **Requires:** `video` permission
-
-**video_list input:** none
 
 **video_get input:**
 ```json
@@ -210,11 +297,11 @@ List or retrieve video vault files.
 
 `max_frames` — number of frames to extract, equally spaced over the video duration (1–12, default 6).
 
-**video_get output:** ffmpeg extracts `max_frames` JPEG frames and returns each as a base64-encoded MCP `image` block. Claude can analyze all frames directly.
+**video_get output:** ffmpeg extracts frames and returns each as a base64-encoded MCP `image` block.
 
 ---
 
-### 3.9 context_list / context_get
+### 4.11 context_list / context_get
 
 List or retrieve text context files from `vault/context/`.
 
@@ -224,7 +311,7 @@ Same interface as `audio_list` / `audio_get` for text types (`.md`, `.txt`).
 
 ---
 
-### 3.10 profile_get / profile_save
+### 4.12 profile_get / profile_save
 
 Read or write structured analysis profiles stored in `vault/profile/{type}.json`.
 Profiles are always AES-256-CBC encrypted on disk.
@@ -252,20 +339,9 @@ Profiles are always AES-256-CBC encrypted on disk.
 }
 ```
 
-Recommended data structures:
-- **face:** `{ description, features, expression, estimated_age, style, notes }`
-- **voice:** `{ tone, pace, energy, style, vocabulary_markers, notes }`
-- **motion:** `{ energy_level, gesture_style, presence, posture, behavioral_notes }`
-- **expertise:** `{ domains[], strengths[], experience_level, notes }`
-
-**Typical workflow:**
-1. `image_get` → analyze face → `profile_save face`
-2. `video_get` → analyze motion frames → `profile_save motion`
-3. `soul_read` → derive expertise → `profile_save expertise`
-
 ---
 
-### 3.11 network_list
+### 4.13 network_list
 
 List all connected souls in the Soul Network.
 
@@ -282,7 +358,7 @@ List all connected souls in the Soul Network.
 
 ---
 
-### 3.12 network_peer_get
+### 4.14 network_peer_get
 
 Read shared content from a connected peer's Public Vault.
 
@@ -304,32 +380,15 @@ Optional — read a single file:
 - **PDF files — as MCP `resource` blob (application/pdf, directly readable)**
 - Images, Audio, Video — listed by name
 
-**PDF delivery:**
-PDFs are fetched server-side by the MCP Node.js process via the `/api/vault/peer-stream`
-endpoint and returned as a standard MCP resource blob (`type: "resource"`, `mimeType: "application/pdf"`).
-The binary data is complete — no truncation. MCP clients that support PDF resources can
-read the content directly without any additional fetch.
-
 **Peer Stream Endpoint (direct access):**
 
 ```
 GET /api/vault/peer-stream?soul_id={id}&file={name}&token={service-token}
 ```
 
-- Returns the raw file binary with correct `Content-Type`
-- Auth: service-token via `?token=` query parameter (no header needed)
-- Validates: connection exists + soul_grant scope + file in public_files + not ciphered
-- Works for any file type: PDF, images, audio, video, text
-- Standard HTTP + correct MIME type — readable by any HTTP client (browser, curl, Python, etc.)
-
-**Access control:**
-Access is governed by the peer's `soul_grants` in their `vault_public/config.json`.
-The peer must have explicitly added the requesting soul_id as a grant with the relevant
-scope (`context_files`, `images`, `audio`, `video`, or `all`).
-
 ---
 
-### 3.13 soul_cloud_push
+### 4.15 soul_cloud_push
 
 Push an encrypted bundle to external storage (Arweave, HTTPS endpoint).
 
@@ -347,7 +406,7 @@ The bundle is always AES-256-CBC encrypted before upload.
 
 ---
 
-### 3.14 verify_human
+### 4.16 verify_human
 
 Human-in-the-loop confirmation step. The AI client MUST pause and
 wait for explicit user confirmation before proceeding.
@@ -369,12 +428,11 @@ Call before any destructive or irreversible operation.
 
 ---
 
-### 3.15 beme_chat
+### 4.17 beme_chat
 
 Talk to the soul — the AI responds as the soul owner would.
-Enables people to have conversations with their digital self.
 
-**Requires:** `soul` permission + unlocked vault (sys.md must be synced)
+**Requires:** `soul` permission + unlocked vault
 
 **Input:**
 ```json
@@ -388,35 +446,14 @@ Enables people to have conversations with their digital self.
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `message` | ✓ | Current user message (max 8000 chars) |
-| `history` | — | Prior conversation turns (max 20, optional) |
-| `max_tokens` | — | Max response length (64–4096, default 1024) |
-
 **Output:**
 ```json
 { "response": "...", "soul_name": "Till", "model": "claude-sonnet-4-6" }
 ```
 
-The response is rendered as `**Soul-Name:** response text`.
-
-**How it works:**
-- Server reads sys.md directly from disk (decrypts if vault is open)
-- Builds the same system prompt as the SYS chat app
-- Calls Anthropic API server-side (no API key needed in the MCP client)
-- Returns a single non-streaming response
-
-**Endpoint (direct access):**
-```
-POST /api/beme
-Authorization: Bearer {service-token}   (soul permission required)
-Content-Type: application/json
-```
-
 ---
 
-### 3.16 calendar_read
+### 4.18 calendar_read
 
 Read the `## Calendar` section of sys.md.
 
@@ -424,7 +461,7 @@ Read the `## Calendar` section of sys.md.
 
 ---
 
-### 3.16 elevenlabs_agent_update
+### 4.19 elevenlabs_agent_update
 
 Update the ElevenLabs conversational AI agent configuration.
 
@@ -440,57 +477,13 @@ Update the ElevenLabs conversational AI agent configuration.
 
 ---
 
-### 3.17 twilio_call_config
+## 5. Public Vault API
 
-Configure an outbound Twilio call with voice agent settings.
-
-**Requires:** `soul` permission + Twilio integration configured
+See [architecture/vault.md](../architecture/vault.md) for full details.
 
 ---
 
-## 4. Public Vault API
-
-The Public Vault exposes files from `vault_public/files/` to network partners and MCP tools.
-
-### Manifest
-
-```
-GET /api/vault/public/{soul_id}
-```
-
-Returns the list of public files with type and cipher status. No auth required.
-
-### File Access
-
-```
-GET /api/vault/public/{soul_id}/{filename}
-Authorization: Bearer {soul-cert}
-```
-
-Or via token:
-
-```
-GET /api/vault/public/{soul_id}/{filename}?token={api-grant-token}
-```
-
-Auth options:
-- **Soul-cert** — own soul_cert as Bearer (soul_grant must include requesting soul_id)
-- **API-grant-token** — token from `vault_public/config.json → api_grants[].token` (scoped)
-
-**Limits:** max file size 200 MB. Filenames must match `[a-zA-Z0-9._-]+`.
-
-### Peer Stream (direct binary, for MCP tools)
-
-```
-GET /api/vault/peer-stream?soul_id={id}&file={name}&token={service-token}
-```
-
-Fetches a peer's public vault file as raw binary. Used internally by `network_peer_get`
-but also callable directly. Returns correct `Content-Type` for every file type.
-
----
-
-## 5. Error Responses
+## 6. Error Responses
 
 All tools return structured errors:
 
@@ -506,10 +499,11 @@ All tools return structured errors:
 | `not_found` | 404 | Resource does not exist |
 | `soul_not_synced` | 404 | No sys.md uploaded to VPS |
 | `api_disabled` | 403 | API context not enabled by user |
+| `no_social_content` | 404 | Social Sphere block missing (v1 soul) |
 
 ---
 
-## 6. Rate Limits
+## 7. Rate Limits
 
 | Zone | Rate | Burst | Endpoints |
 |---|---|---|---|

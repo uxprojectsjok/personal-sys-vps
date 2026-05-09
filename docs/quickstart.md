@@ -7,7 +7,7 @@
 
 ## 1. Create your sys.md
 
-A sys.md is a plain Markdown file. Minimum valid sys.md:
+A sys.md is a plain Markdown file. Minimum valid sys.md (v2):
 
 ```markdown
 ---
@@ -15,7 +15,7 @@ soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: "Your Name"
 created: 2026-01-01
 last_session: 2026-01-01
-version: 1
+version: 2
 cert_version: 0
 soul_cert: ""
 vault_hash: ""
@@ -27,10 +27,22 @@ storage_tx: ""
 ## Core Identity
 
 One sentence describing who you are.
+
+## Social Sphere
+<!-- SOCIAL:START -->
+<!-- SOCIAL:END -->
+
+## Agent Sandbox
+<!-- AGENT:START -->
+<!-- AGENT:END -->
 ```
 
 The `soul_id` MUST be a valid UUID v4. The `soul_cert` is populated
 automatically on first login.
+
+**Three-sphere model:** `## sections` above the marker blocks are the Private Sphere
+(owner-only). The Social Sphere block is visible to trusted peer souls. The Agent Sandbox
+block is delivered to paid external agents. See [spec/sys_md.md](spec/sys_md.md) for details.
 
 ---
 
@@ -172,7 +184,8 @@ Service tokens are HS256 JWTs valid for 30 days, signed with `API_SIGNING_KEY`.
 | `/api/soul-cert` | POST | — | soul_cert.lua | Issue soul cert |
 | `/api/validate` | GET | soul_cert | — | Validate cert |
 | `/api/context` | GET/PUT | soul_cert | api_context.lua | Read/write API config |
-| `/api/soul` | GET | vault_auth | api_serve.lua | Read sys.md |
+| `/api/soul` | GET | vault_auth | api_serve.lua | Read sys.md (owner) |
+| `/api/soul/social-read` | GET | peer soul_cert | soul_social_read.lua | Read Social Sphere block |
 | `/api/vault/sync` | POST | soul_cert | vault_sync.lua | Upload vault file |
 | `/api/vault/manifest` | GET | vault_auth | api_serve.lua | List vault resources |
 | `/api/vault/audio[/{f}]` | GET | vault_auth | api_serve.lua | Audio files |
@@ -182,15 +195,15 @@ Service tokens are HS256 JWTs valid for 30 days, signed with `API_SIGNING_KEY`.
 | `/api/vault/unlock` | POST | soul_cert | vault_unlock.lua | Start vault session |
 | `/api/vault/lock` | POST | soul_cert | vault_lock.lua | End vault session |
 | `/api/soul/v1/token` | POST | soul_cert | soul_token_jwt.lua | Issue service token |
+| `/api/soul/amortization` | GET/PUT | soul_cert | soul_amortization.lua | Agent Marketplace config |
 | `/api/soul/earnings` | GET | soul_cert | soul_earnings.lua | POL payment ledger |
 | `/api/soul/pay` | POST | — | soul_pay.lua | Submit POL payment (agent) |
-| `/api/soul/paid-read` | GET | pol_access_token | soul_paid_read.lua | Agent reads sys.md |
+| `/api/soul/paid-read` | GET | pol_access_token | soul_paid_read.lua | Agent reads Agent Sandbox |
 | `/api/soul/register` | POST | soul_cert | soul_register.lua | Register in marketplace |
-| `/api/soul/amortization` | GET/PUT | soul_cert | soul_amortization.lua | Agent pricing config |
-| `/api/soul/pinata-config` | GET/PUT/DELETE | soul_cert | soul_pinata_config.lua | Pinata JWT config |
+| `/api/soul/register-preview` | GET | soul_cert | soul_register_preview.lua | Preview registration |
 | `/api/chat` | POST | soul_cert | Anthropic proxy (SSE) | AI chat streaming |
+| `/api/soul/verify-peer-cert` | GET | — | soul_verify_peer_cert.lua | Cross-domain peer auth |
 | `/api/peer/verify` | GET | — | peer_verify.lua | Node identity check |
-| `/api/peer/connect` | POST | soul_cert | peer_connect.lua | Connect peer soul |
 | `/api/node-status` | GET | — | node_status.lua | Node registration status |
 | `/api/webhook` | POST | vault_auth | webhook.lua | Push to external service |
 

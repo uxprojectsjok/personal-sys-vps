@@ -7,13 +7,16 @@
 
 ## Authentication
 
-All protected endpoints require:
+All protected endpoints require one of these auth methods:
 
-```
-Authorization: Bearer {soul_id}.{soul_cert}
-```
+| Type | Format | Use |
+|---|---|---|
+| Soul cert (owner) | `Authorization: Bearer {soul_id}.{soul_cert}` | Full owner access |
+| Service token | `Authorization: Bearer {64-hex-chars}` | Scoped external access |
+| Peer soul cert | `Authorization: Bearer {peer_soul_id}.{peer_cert}` | Peer access to social block |
+| POL access token | `Authorization: Bearer {48-hex-chars}` | Paid agent access |
 
-Where `soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id).hex()[0:32]`
+Where `soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id + ":" + cert_version).hex()[0:32]`
 
 ---
 
@@ -55,6 +58,19 @@ Where `soul_cert = HMAC-SHA256(SOUL_MASTER_KEY, soul_id).hex()[0:32]`
 | DELETE | `/api/vault/public/{file}` | soul_cert | Remove file from public vault |
 | GET | `/api/vault/public/{soul_id}` | none | Manifest of a soul's public vault |
 | GET | `/api/vault/public/{soul_id}/{file}` | soul_cert or api_grant | Download public vault file |
+| GET | `/api/soul/social-read` | peer soul_cert | Read Sozialsphäre block (v2) |
+| GET | `/api/soul/paid-read` | pol_access_token | Agent reads Agent-Sandbox block |
+| POST | `/api/soul/paid-write` | pol_access_token | Agent writes to Agent-Sandbox block |
+| POST | `/api/soul/paid-comment` | pol_access_token | Agent appends comment to Agent-Sandbox |
+| GET | `/api/soul/paid-beme` | pol_access_token | Agent talk-as-soul |
+| GET | `/api/soul/amortization` | soul_cert | Read Agent Marketplace config |
+| PUT | `/api/soul/amortization` | soul_cert | Update Agent Marketplace config |
+| POST | `/api/soul/register` | soul_cert | Register soul in IPFS marketplace |
+| GET | `/api/soul/register-preview` | soul_cert | Preview marketplace registration |
+| GET | `/api/soul/earnings` | soul_cert | POL payment ledger |
+| POST | `/api/soul/pay` | none | Submit POL payment (agent) |
+| GET | `/api/soul/verify-peer-cert` | none | Verify a peer soul_cert |
+| GET | `/api/node-status` | none | Node registration status |
 
 ---
 
@@ -224,6 +240,96 @@ Query parameter:
 
 ---
 
+### GET /api/soul/social-read
+
+Read the Sozialsphäre block (`<!-- SOCIAL:START/END -->`) of a soul. For authenticated peer souls only. Introduced in sys.md v2.
+
+```http
+GET /api/soul/social-read?soul_id={target_soul_id}
+Authorization: Bearer {peer_soul_id}.{peer_cert}
+```
+
+- Returns `text/plain` — the content between `<!-- SOCIAL:START -->` and `<!-- SOCIAL:END -->`
+- `peer_soul_id` must be in the target soul's `amortization.trusted_souls` list
+- Same-server peers: cert verified locally via HMAC
+- Cross-domain peers: cert verified via `GET /api/soul/verify-peer-cert` on the peer's home server
+- Returns `204 No Content` if the SOCIAL block is empty
+- Returns `404` if the SOCIAL block is not present (v1 soul without migration)
+
+---
+
+### GET /api/soul/paid-read
+
+Read the Agent-Sandbox block (`<!-- AGENT:START/END -->`) of a soul. For paid external agents only.
+
+```http
+GET /api/soul/paid-read
+Authorization: Bearer {pol_access_token}
+```
+
+Returns `text/plain` — content between `<!-- AGENT:START -->` and `<!-- AGENT:END -->`.
+Token is issued after a verified Polygon payment via `POST /api/soul/pay`.
+
+---
+
+### GET /api/soul/amortization
+
+Read the Agent Marketplace configuration for a soul.
+
+```http
+GET /api/soul/amortization
+Authorization: Bearer {soul_id}.{cert}
+```
+
+```json
+{
+  "ok": true,
+  "amortization": {
+    "enabled": true,
+    "private": false,
+    "pol_per_request": "0.001",
+    "wallet": "0x...",
+    "agent_tools": ["soul_read", "soul_maturity", "verify_human"],
+    "trusted_souls": ["uuid-peer-1", { "soul_id": "uuid-peer-2", "endpoint": "https://peer.domain" }],
+    "token_duration_days": 1,
+    "activated_at": "2026-05-01T10:00:00Z"
+  },
+  "agent_registry_cid": "Qm...",
+  "agent_registry_url": "https://ipfs.io/ipfs/Qm..."
+}
+```
+
+---
+
+### PUT /api/soul/amortization
+
+Update Agent Marketplace configuration.
+
+```http
+PUT /api/soul/amortization
+Authorization: Bearer {soul_id}.{cert}
+Content-Type: application/json
+
+{
+  "enabled": true,
+  "pol_per_request": "0.001",
+  "wallet": "0x...",
+  "agent_tools": ["soul_read", "soul_maturity"],
+  "trusted_souls": ["uuid-peer-id"],
+  "token_duration_days": 1,
+  "private": false
+}
+```
+
+**Available `agent_tools` values (14 tools):**
+`soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `calendar_read`, `verify_human`
+
+**`trusted_souls` format:**
+- Same-server peer: `"uuid-v4"` (plain string)
+- Cross-domain peer: `{ "soul_id": "uuid-v4", "endpoint": "https://..." }`
+
+---
+
 ### POST /api/chat
 
 Proxy to Anthropic Claude API with SSE streaming.
@@ -290,23 +396,6 @@ Authorization: Bearer {soul_id}.{cert}
 }
 ```
 
-```http
-PUT /api/vault/profile/motion
-Authorization: Bearer {soul_id}.{cert}
-Content-Type: application/json
-
-{
-  "energy_level": "niedrig-mittel",
-  "gesture_style": "...",
-  "presence": "...",
-  "behavioral_notes": "..."
-}
-```
-
-```json
-{ "ok": true, "type": "motion", "updated_at": "...", "encrypted": true }
-```
-
 ---
 
 ### POST /api/beme
@@ -331,20 +420,9 @@ Content-Type: application/json
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `message` | ✓ | Current user message (max 8000 chars) |
-| `history` | — | Prior conversation turns (max 20 turns) |
-| `max_tokens` | — | Max response tokens (64–4096, default 1024) |
-
 ```json
 { "response": "...", "soul_name": "Till", "model": "claude-sonnet-4-6" }
 ```
-
-The endpoint decrypts sys.md on-the-fly if the vault is unlocked.
-No Anthropic API key is required in the calling client — the server injects it.
-
-**Rate limit:** `chat` zone (same as `/api/chat`)
 
 ---
 
@@ -357,13 +435,6 @@ POST /api/webhook
 Authorization: Bearer {service_token}
 ```
 
-or
-
-```http
-POST /api/webhook
-X-Webhook-Token: {service_token}
-```
-
 Returns a JSON object with soul, audio, video, images, and context data
 according to the permissions configured in `api_context.json`.
 
@@ -371,167 +442,31 @@ according to the permissions configured in `api_context.json`.
 
 ### Public Vault
 
-The public vault lets a soul share specific files with connected souls (Soul Grants) or
-external services (API Grants). Files listed in `public_files` are accessible — no
-separate enable/disable switch exists. If the list is empty, nothing is served.
-
-#### GET /api/vault/public/config
-
-Read own public vault configuration.
-
-```http
-GET /api/vault/public/config
-Authorization: Bearer {soul_id}.{cert}
-```
-
-```json
-{
-  "v": 1,
-  "updated_at": 1744000000,
-  "public_files": [
-    { "name": "profile.png", "cipher": "open" }
-  ],
-  "soul_grants": [
-    {
-      "id": "sc_abc123",
-      "label": "Friend",
-      "soul_id": "other-soul-uuid",
-      "scope": ["soul", "images", "audio", "video", "context_files"],
-      "created": 1744000000
-    }
-  ],
-  "api_grants": [
-    {
-      "id": "ag_xyz",
-      "label": "My Service",
-      "scope": ["context_files"],
-      "token_masked": "a1b2c3d4•••",
-      "created": 1744000000
-    }
-  ]
-}
-```
-
-#### PUT /api/vault/public/config
-
-Save public vault configuration.
-
-```http
-PUT /api/vault/public/config
-Authorization: Bearer {soul_id}.{cert}
-Content-Type: application/json
-
-{
-  "v": 1,
-  "public_files": [
-    { "name": "profile.png", "cipher": "open" }
-  ],
-  "soul_grants": [
-    {
-      "id": "sc_abc123",
-      "soul_id": "other-soul-uuid",
-      "label": "Friend",
-      "scope": ["soul", "images", "audio", "video", "context_files"]
-    }
-  ],
-  "api_grants": [
-    {
-      "id": "ag_xyz",
-      "label": "My Service",
-      "scope": ["context_files"],
-      "token": "a1b2c3d4e5f6..."
-    }
-  ]
-}
-```
-
-| Field | Description |
-|---|---|
-| `public_files` | Files to share. `cipher`: `"open"` (plaintext) or `"ciphered"` (AES-encrypted) |
-| `soul_grants` | Connected souls and their permitted file scopes |
-| `api_grants` | External services with a token and permitted scope |
-
-```json
-{ "ok": true }
-```
-
-#### POST /api/vault/public/sync
-
-Upload a file to the public vault. Must be listed in `public_files` (save config first).
-
-```http
-POST /api/vault/public/sync
-Authorization: Bearer {soul_id}.{cert}
-Content-Type: application/json
-
-{
-  "name": "profile.png",
-  "data": "<base64>",
-  "encrypted": false
-}
-```
-
-```json
-{ "ok": true }
-```
-
-#### DELETE /api/vault/public/{file}
-
-Remove a file from the public vault (deletes the stored file; does not update `public_files` list automatically).
-
-```http
-DELETE /api/vault/public/profile.png
-Authorization: Bearer {soul_id}.{cert}
-```
-
-```json
-{ "ok": true }
-```
+See [architecture/vault.md](../architecture/vault.md) for full details.
 
 #### GET /api/vault/public/{soul_id}
 
 Fetch the manifest of another soul's public vault. No authentication required.
-Returns only files that are physically present in the vault.
-
-```http
-GET /api/vault/public/other-soul-uuid
-```
-
-```json
-{
-  "soul_id": "other-soul-uuid",
-  "files": [
-    { "name": "profile.png", "cipher": "open", "type": "images" },
-    { "name": "docs.md",     "cipher": "open", "type": "context_files" }
-  ]
-}
-```
-
-Returns `[]` for `files` if no files are available.
 
 #### GET /api/vault/public/{soul_id}/{file}
 
-Download a file from a soul's public vault. Requires authentication:
+Download a file from a soul's public vault. Requires Soul Cert or API Grant token.
 
-- **Soul Cert** — the requesting soul must have a Soul Grant with matching scope
-- **API Grant Token** — via `Authorization: Bearer {token}` or `?token={token}`
+---
+
+### GET /api/soul/verify-peer-cert
+
+Verify whether a soul_cert is valid for a given soul_id on this server. Used by remote servers for cross-domain peer auth.
 
 ```http
-GET /api/vault/public/other-soul-uuid/profile.png
-Authorization: Bearer {requesting_soul_id}.{cert}
+GET /api/soul/verify-peer-cert?soul_id={uuid}&cert={32-hex}
 ```
 
-File type → required scope:
+```json
+{ "ok": true }
+```
 
-| File type | Scope |
-|---|---|
-| `images` | `images` |
-| `audio` | `audio` |
-| `video` | `video` |
-| `context_files` (md, txt, pdf) | `context_files` |
-| sys.md (soul identity) | `soul` |
-
-Returns the raw file bytes with appropriate `Content-Type`.
+Returns `{ "ok": false, "error": "invalid_cert" }` on failure. Same response for unknown soul_id (no enumeration).
 
 ---
 
@@ -559,4 +494,5 @@ All endpoints return errors in this format:
 ```
 
 Common error codes: `vault_locked`, `encrypted`, `permission_denied`,
-`invalid_soul_identity`, `api_not_enabled`, `storage_error`, `method_not_allowed`
+`invalid_soul_identity`, `api_not_enabled`, `storage_error`, `method_not_allowed`,
+`peer_not_trusted`, `invalid_peer_cert`, `no_social_content`
