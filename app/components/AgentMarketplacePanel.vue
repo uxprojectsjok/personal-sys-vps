@@ -213,7 +213,7 @@
                 <div class="field span-2">
                   <label class="field-label">Freigegebene Agent-Tools <span class="field-hint">(nach Zahlung verfügbar)</span></label>
                   <div class="tools-row">
-                    <input v-model="freeToolsStr" type="text" class="input mono" placeholder="soul_read, verify_human" />
+                    <input v-model="agentToolsStr" type="text" class="input mono" placeholder="soul_read, verify_human" />
                     <button class="tools-add" type="button" :class="{ on: showToolPicker }" @click.stop="showToolPicker = !showToolPicker" aria-label="Tool auswählen">+</button>
                   </div>
                   <div v-if="showToolPicker" class="tools-picker" @click.stop>
@@ -222,10 +222,10 @@
                       :key="tool"
                       type="button"
                       class="tool-chip"
-                      :class="{ active: amort.free_tools.includes(tool) }"
+                      :class="{ active: amort.agent_tools.includes(tool) }"
                       @click="toggleTool(tool)"
                     >
-                      <span class="chip-check">{{ amort.free_tools.includes(tool) ? '✓' : '+' }}</span>
+                      <span class="chip-check">{{ amort.agent_tools.includes(tool) ? '✓' : '+' }}</span>
                       {{ tool }}
                     </button>
                     <button
@@ -243,54 +243,6 @@
                   </div>
                 </div>
               </div>
-
-              <details class="flow">
-                <summary>
-                  <span class="flow-mark">⌥</span>
-                  <span class="flow-label">Wie der Zahlungsfluss für Agenten aussieht</span>
-                  <span class="flow-arrow">▾</span>
-                </summary>
-                <ol class="flow-list">
-                  <li>
-                    <span class="flow-i">①</span>
-                    <div>
-                      <h4>Soul wird entdeckt</h4>
-                      <p>Agent ruft <code>soul_discover</code> → erhält Wallet-Adresse + Preis.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="flow-i">②</span>
-                    <div>
-                      <h4>POL senden</h4>
-                      <p>Du sendest POL aus deinem Wallet (MetaMask, Rabby …) → erhältst <code>tx_hash</code> → fügst ihn im Agent-Chat ein.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="flow-i">③</span>
-                    <div>
-                      <h4>Agent meldet die Zahlung</h4>
-                      <pre class="code">POST /api/soul/pay
-{ "soul_id": "uuid",
-  "tx_hash": "0x<em>a3f8…d2c1</em>" }</pre>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="flow-i">④</span>
-                    <div>
-                      <h4>Server prüft on-chain</h4>
-                      <pre class="code">{ "access_token": "<em>a3f8d2c1e4b7…</em>",
-  "expires_at": "+1h" }</pre>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="flow-i">⑤</span>
-                    <div>
-                      <h4>Agent verbindet sich</h4>
-                      <pre class="code">Authorization: Bearer <em>a3f8d2c1e4b7…</em></pre>
-                    </div>
-                  </li>
-                </ol>
-              </details>
 
               <!-- Vertraute Peers: Tool-Freigaben (kein Payment nötig) -->
               <div class="field-group" style="margin-top:16px">
@@ -530,7 +482,7 @@ const amort = reactive({
   enabled:              false,
   pol_per_request:      '0.001',
   wallet:               '',
-  free_tools:           ['soul_read', 'verify_human', 'soul_maturity'],
+  agent_tools:          ['soul_read', 'verify_human', 'soul_maturity'],
   trusted_souls:        [],
   token_duration_days:  1,
 })
@@ -562,9 +514,9 @@ function addRemotePeer() {
 function removeRemotePeer(sid) {
   amort.trusted_souls = amort.trusted_souls.filter(t => t?.soul_id !== sid)
 }
-const freeToolsStr = computed({
-  get: () => amort.free_tools.join(', '),
-  set: v => { amort.free_tools = v.split(',').map(s => s.trim()).filter(Boolean) },
+const agentToolsStr = computed({
+  get: () => amort.agent_tools.join(', '),
+  set: v => { amort.agent_tools = v.split(',').map(s => s.trim()).filter(Boolean) },
 })
 const amortActive   = ref(false)
 const savingAmort   = ref(false)
@@ -674,9 +626,9 @@ const AVAILABLE_TOOLS = [
 const BETA_TOOLS = ['elevenlabs_agent_update']
 
 function toggleTool(name) {
-  const idx = amort.free_tools.indexOf(name)
-  if (idx === -1) amort.free_tools.push(name)
-  else amort.free_tools.splice(idx, 1)
+  const idx = amort.agent_tools.indexOf(name)
+  if (idx === -1) amort.agent_tools.push(name)
+  else amort.agent_tools.splice(idx, 1)
 }
 
 watch(step, (newStep) => {
@@ -720,7 +672,7 @@ async function loadAmort() {
     amort.enabled         = a.enabled         ?? false
     amort.pol_per_request = a.pol_per_request ?? '0.001'
     amort.wallet          = a.wallet          ?? ''
-    amort.free_tools           = Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity']
+    amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.trusted_souls        = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
@@ -778,7 +730,7 @@ async function setMode(mode) {
           enabled:              false,
           pol_per_request:      amort.pol_per_request,
           wallet:               amort.wallet,
-          free_tools:           amort.free_tools,
+          agent_tools:          amort.agent_tools,
           trusted_souls:        amort.trusted_souls,
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         }),
@@ -811,7 +763,7 @@ async function saveAmort() {
         enabled:              amort.enabled,
         pol_per_request:      amort.pol_per_request,
         wallet:               amort.wallet,
-        free_tools:           amort.free_tools,
+        agent_tools:          amort.agent_tools,
         trusted_souls:        amort.trusted_souls,
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
       }),

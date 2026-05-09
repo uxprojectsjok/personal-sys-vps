@@ -120,7 +120,7 @@ if type(amort) == "table" then
     enabled         = amort.enabled == true,
     pol_per_request = amort.pol_per_request,
     wallet          = amort.wallet,
-    free_tools      = amort.free_tools,
+    agent_tools     = amort.agent_tools or amort.free_tools,
   }
 end
 

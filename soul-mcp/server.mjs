@@ -100,13 +100,13 @@ async function handleMcp(req, res) {
 
   // Token-Typ erkennen:
   //   service_token → "{64hex}"        — OAuth-Inhaber, voller Zugang
-  //   pol_access    → "{48hex}"        — bezahlter externer Agent, nur free_tools
-  //   peer_cert     → "{uuid}.{32hex}" — whitelisted Soul, nur free_tools
+  //   pol_access    → "{48hex}"        — bezahlter externer Agent, nur agent_tools
+  //   peer_cert     → "{uuid}.{32hex}" — whitelisted Soul, alle Tools
   const isPaidToken = /^[0-9a-f]{48}$/i.test(token) && !token.includes('.');
   const isPeerToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{32}$/i.test(token);
 
   if (isPaidToken) {
-    // pol_access_token validieren + free_tools laden
+    // pol_access_token validieren + agent_tools laden
     const paid = await validatePolToken(token);
     if (!paid.ok) {
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
@@ -116,7 +116,7 @@ async function handleMcp(req, res) {
         id: null,
       });
     }
-    registerPaidTools(server, token, paid.free_tools || [], paid.soul_id);
+    registerPaidTools(server, token, paid.agent_tools || [], paid.soul_id);
   } else if (isPeerToken) {
     // Peer-Soul-Cert — prüfen ob soul_id in trusted_souls der Ziel-Soul
     const peerSoulId   = token.split('.')[0];
@@ -136,7 +136,7 @@ async function handleMcp(req, res) {
     }
     // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
     const resolvedTargetId = trusted.soul_id;
-    registerPeerTools(server, token, trusted.free_tools, resolvedTargetId);
+    registerPeerTools(server, token, [], resolvedTargetId);
   } else {
     registerTools(server, token);
   }
@@ -573,10 +573,10 @@ async function checkTrustedSoul(peerSoulId, peerCert, targetSoulId) {
     const certOk = await verifyPeerCert(peerSoulId, peerCert, peerEndpoint);
     if (!certOk) return null;
 
-    const freeTools = ctx?.amortization?.free_tools?.length
-      ? ctx.amortization.free_tools
-      : ['soul_read', 'verify_human', 'soul_maturity'];
-    return { soul_id: soulId, free_tools: freeTools };
+    const agentTools = ctx?.amortization?.agent_tools?.length
+      ? ctx.amortization.agent_tools
+      : (ctx?.amortization?.free_tools?.length ? ctx.amortization.free_tools : ['soul_read', 'verify_human', 'soul_maturity']);
+    return { soul_id: soulId, agent_tools: agentTools };
   } catch {
     return null;
   }
@@ -601,7 +601,7 @@ async function verifyPeerCert(soulId, cert, peerEndpoint) {
 
 /**
  * Validiert einen pol_access_token via internem OpenResty-Endpoint.
- * Gibt { ok, soul_id, free_tools } oder { ok: false, error } zurück.
+ * Gibt { ok, soul_id, agent_tools } oder { ok: false, error } zurück.
  */
 async function validatePolToken(token) {
   try {
@@ -612,16 +612,18 @@ async function validatePolToken(token) {
     const data = await res.json();
     if (!data.ok) return { ok: false, error: data.error };
 
-    // free_tools aus api_context.json lesen
+    // agent_tools aus api_context.json lesen
     const { readFile } = await import('fs/promises');
     const ctxPath = `/var/lib/sys/souls/${data.soul_id}/api_context.json`;
     try {
       const raw = await readFile(ctxPath, 'utf8');
       const ctx = JSON.parse(raw);
-      const freeTools = ctx?.amortization?.free_tools || ['soul_read', 'verify_human', 'soul_maturity'];
-      return { ok: true, soul_id: data.soul_id, free_tools: freeTools };
+      const agentTools = ctx?.amortization?.agent_tools?.length
+        ? ctx.amortization.agent_tools
+        : (ctx?.amortization?.free_tools || ['soul_read', 'verify_human', 'soul_maturity']);
+      return { ok: true, soul_id: data.soul_id, agent_tools: agentTools };
     } catch {
-      return { ok: true, soul_id: data.soul_id, free_tools: ['soul_read', 'verify_human', 'soul_maturity'] };
+      return { ok: true, soul_id: data.soul_id, agent_tools: ['soul_read', 'verify_human', 'soul_maturity'] };
     }
   } catch (err) {
     return { ok: false, error: `Validierung fehlgeschlagen: ${err.message}` };

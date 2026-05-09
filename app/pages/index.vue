@@ -693,7 +693,7 @@ const journal = computed(() => {
   --rule: rgba(226,220,240,0.10); --rule-2: rgba(226,220,240,0.20);
   --fg: #ece7f5; --fg-2: rgba(236,231,245,0.72); --fg-3: rgba(236,231,245,0.48); --fg-4: rgba(236,231,245,0.30);
   --accent: #8b5cf6; --accent-2: rgba(139,92,246,0.14); --accent-bright: #a78bfa;
-  --serif: 'Noto Serif', Georgia, serif; --mono: 'Oxanium', ui-monospace, monospace;
+  --serif: 'Noto Serif', Georgia, serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 .sys-modal-panel {
   position: relative; z-index: 10;

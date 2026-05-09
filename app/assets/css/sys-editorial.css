@@ -22,7 +22,7 @@
   --sys-err:         #f0a3a3;
 
   --sys-serif: 'Noto Serif', Georgia, serif;
-  --sys-sans:  'Oxanium', 'Inter', system-ui, -apple-system, sans-serif;
+  --sys-sans:  'Inter', system-ui, -apple-system, sans-serif;
   --sys-mono:  'JetBrains Mono', ui-monospace, monospace;
 }
 

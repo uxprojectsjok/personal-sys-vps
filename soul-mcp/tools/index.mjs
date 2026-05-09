@@ -83,11 +83,11 @@ export function registerTools(server, token) {
  *
  * @param {object} server  — McpServer
  * @param {string} polToken — pol_access_token (48 Hex-Zeichen)
- * @param {string[]} freeTools — Array erlaubter Tool-Namen
+ * @param {string[]} agentTools — Array erlaubter Tool-Namen
  * @param {string} soulId — soul_id des Ziel-Souls (für Filesystem-basierte Tools)
  */
-export function registerPaidTools(server, polToken, freeTools = [], soulId) {
-  const allowed = new Set(freeTools.length ? freeTools : ['soul_read', 'verify_human', 'soul_maturity']);
+export function registerPaidTools(server, polToken, agentTools = [], soulId) {
+  const allowed = new Set(agentTools.length ? agentTools : ['soul_read', 'verify_human', 'soul_maturity']);
 
   // soul_read: spezieller paid-read Endpoint (liefert nur AGENT-Block)
   if (allowed.has('soul_read'))     soulReadPaid(server, polToken);

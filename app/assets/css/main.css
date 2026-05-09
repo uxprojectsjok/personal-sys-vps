@@ -290,7 +290,7 @@
   html {
     background: var(--sys-bg);
     color: var(--sys-fg);
-    font-family: "Oxanium", "Inter", system-ui, -apple-system, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
     letter-spacing: var(--sys-tracking);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

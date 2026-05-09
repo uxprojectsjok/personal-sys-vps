@@ -39,7 +39,7 @@ local DEFAULTS = {
   enabled         = false,
   pol_per_request = "0.001",
   wallet          = "",
-  free_tools      = { "soul_read", "verify_human", "soul_maturity" },
+  agent_tools     = { "soul_read", "verify_human", "soul_maturity" },
   activated_at    = cjson.null,
   verified_wallet = cjson.null,
 }
@@ -162,15 +162,16 @@ if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$
   amort.wallet = incoming.wallet
 end
 
--- free_tools: Array von Strings
-if type(incoming.free_tools) == "table" then
+-- agent_tools: Array von Strings
+local incoming_tools = incoming.agent_tools or incoming.free_tools  -- backward compat
+if type(incoming_tools) == "table" then
   local clean = {}
-  for _, t in ipairs(incoming.free_tools) do
+  for _, t in ipairs(incoming_tools) do
     if type(t) == "string" and #t <= 64 then
       clean[#clean + 1] = t
     end
   end
-  amort.free_tools = clean
+  amort.agent_tools = clean
 end
 
 ctx.amortization = amort

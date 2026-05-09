@@ -196,7 +196,7 @@ Peer souls connect via the MCP endpoint — no handshake, no separate protocol.
 ```
 Soul B → POST /mcp  Authorization: Bearer soul_id_B.soul_cert_B
        → server checks: is soul_id_B in amortization.trusted_souls?
-       → yes → registerPaidTools with free_tools
+       → yes → registerPaidTools with agent_tools
        → no  → 401
 ```
 
@@ -207,8 +207,8 @@ Setup: enter the peer's `soul_id` in the **Agent Marketplace → Vertraute Souls
 | Token format | Type | Access |
 |---|---|---|
 | 64 hex chars | service_token (OAuth owner) | full tools |
-| 48 hex chars | pol_access_token (paying agent) | free_tools |
-| uuid.32hex | peer soul_cert | free_tools if whitelisted |
+| 48 hex chars | pol_access_token (paying agent) | agent_tools |
+| uuid.32hex | peer soul_cert | agent_tools if whitelisted |
 
 Whitelist stored in `api_context.json` under `amortization.trusted_souls[]`.
 
@@ -223,11 +223,11 @@ External agent → POST /api/soul/pay { soul_id, tx_hash }
               → Polygon TX verified on-chain
               → pol_access_token issued (1h validity)
               → POST /mcp with Bearer pol_access_token
-              → access restricted to configured free_tools
+              → access restricted to configured agent_tools
 ```
 
 Per-soul configuration stored in:
-- `api_context.json` → `amortization` object (pricing, wallet, free_tools)
+- `api_context.json` → `amortization` object (pricing, wallet, agent_tools)
 - `{soul_id}/pinata_jwt` → Pinata JWT for IPFS soul registration
 - `{soul_id}/earnings.json` → payment ledger
 
@@ -268,9 +268,9 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 **Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `calendar_read`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
 
-**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.free_tools`
+**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools`
 
-**Available tools (whitelisted peer soul):** same as `amortization.free_tools` — controlled by the soul owner
+**Available tools (whitelisted peer soul):** same as `amortization.agent_tools` — controlled by the soul owner
 
 ---
 
