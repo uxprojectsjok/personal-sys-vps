@@ -162,12 +162,18 @@ if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$
   amort.wallet = incoming.wallet
 end
 
--- agent_tools: Array von Strings
+-- agent_tools: nur erlaubte Tools speichern (muss mit registerPaidTools() übereinstimmen)
+local ALLOWED_TOOLS = {
+  soul_read=true, soul_maturity=true, soul_skills=true,
+  audio_get=true, audio_list=true, image_get=true, image_list=true,
+  video_get=true, video_list=true, context_get=true, context_list=true,
+  profile_get=true, calendar_read=true, verify_human=true,
+}
 local incoming_tools = incoming.agent_tools or incoming.free_tools  -- backward compat
 if type(incoming_tools) == "table" then
   local clean = {}
   for _, t in ipairs(incoming_tools) do
-    if type(t) == "string" and #t <= 64 then
+    if type(t) == "string" and #t <= 64 and ALLOWED_TOOLS[t] then
       clean[#clean + 1] = t
     end
   end

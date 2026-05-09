@@ -94,13 +94,13 @@ if sf then
   end
 end
 
--- Erlaubte Tools (muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
--- soul_discover ist immer verfügbar und nicht konfigurierbar → nicht in dieser Liste
+-- Erlaubte Tools (muss mit AgentMarketplacePanel.AVAILABLE_TOOLS und registerPaidTools() übereinstimmen)
+-- soul_discover: immer frei. soul_write/soul_earnings: nur für Owner, nicht für externe Agenten.
 local ALLOWED_TOOLS = {
-  soul_read=true, soul_maturity=true, soul_skills=true, soul_earnings=true,
+  soul_read=true, soul_maturity=true, soul_skills=true,
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
-  profile_get=true, calendar_read=true, soul_write=true, verify_human=true,
+  profile_get=true, calendar_read=true, verify_human=true,
 }
 local function filter_tools(tbl)
   if type(tbl) ~= "table" then return setmetatable({}, cjson.array_mt) end
