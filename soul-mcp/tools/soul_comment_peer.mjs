@@ -15,7 +15,7 @@ const RE_SOCIAL    = /<!--\s*SOCIAL:START\s*-->([\s\S]*?)<!--\s*SOCIAL:END\s*-->
 
 // Inserts empty SOCIAL block before <!-- AGENT:START --> (or at end), bumps version 1 → 2
 function migratev1(md) {
-  const block    = '\n## Sozialsphäre\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->\n';
+  const block    = '\n## Social Sphere\n<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->\n';
   const agentIdx = md.indexOf('<!-- AGENT:START -->');
   const migrated = agentIdx !== -1
     ? md.slice(0, agentIdx) + block + '\n' + md.slice(agentIdx)
