@@ -4,8 +4,8 @@
 
 ## 1. Why OpenResty
 
-Der SYS-Node verwendet OpenResty (nginx + LuaJIT) als alleinigen
-API-Layer in Production. Kein Node.js-Prozess läuft in Production.
+SYS nodes use OpenResty (nginx + LuaJIT) as the sole API layer in production.
+No Node.js process runs in production.
 
 | Concern | Solution |
 |---|---|

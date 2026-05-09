@@ -81,7 +81,7 @@ Each sphere has a dedicated endpoint: `social-read` for peers, `paid-read` for a
 ├─────────────────────────────────────────────┤
 │  Access Layer                                │
 │  soul_cert       — owner full access         │
-│  peer soul_cert  — Sozialsphäre access       │
+│  peer soul_cert  — Social Sphere access       │
 │  service-token   — scoped external access    │
 │  pol_access_token — paid agent access        │
 │  BIP39-auth      — ciphertext access via words│
