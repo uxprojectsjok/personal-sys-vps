@@ -200,6 +200,15 @@ mkdir -p /var/lib/sys/souls
 mkdir -p /var/www/"$DOMAIN"
 mkdir -p /etc/openresty/lua
 mkdir -p /etc/openresty/sites-enabled
+mkdir -p /var/lib/sys/pol_tokens
+
+# mime.types: deinstall.sh löscht /etc/openresty komplett; nach Reinstall
+# erstellt das Paket das Verzeichnis neu aber ohne mime.types.
+# nginx.conf.template referenziert jetzt den originalen OpenResty-Pfad,
+# dieser Copy ist nur ein Fallback für ältere nginx.conf Varianten.
+if [ ! -f /etc/openresty/mime.types ]; then
+  cp /usr/local/openresty/nginx/conf/mime.types /etc/openresty/mime.types
+fi
 
 chown -R www-data:www-data /var/lib/sys
 chmod 750 /var/lib/sys/config
