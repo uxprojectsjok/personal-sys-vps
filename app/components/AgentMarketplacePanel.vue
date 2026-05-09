@@ -660,11 +660,12 @@ const previewReadonly = computed(() => {
 // ═══════════ TOOL PICKER ═══════════
 const showToolPicker = ref(false)
 
+// soul_discover ist immer verfügbar (kein Auth nötig) → nicht konfigurierbar
 const AVAILABLE_TOOLS = [
   'audio_get', 'audio_list', 'beme_chat', 'calendar_read',
   'context_get', 'context_list',
   'image_get', 'image_list',
-  'profile_get', 'profile_save', 'soul_cloud_push', 'soul_discover',
+  'profile_get', 'profile_save', 'soul_cloud_push',
   'soul_earnings', 'soul_maturity', 'soul_read', 'soul_skills',
   'soul_write', 'vault_manifest', 'verify_human', 'video_get', 'video_list',
 ]
