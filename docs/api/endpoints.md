@@ -245,30 +245,61 @@ Query parameter:
 Read the Social Sphere block (`<!-- SOCIAL:START/END -->`) of a soul. For authenticated peer souls only. Introduced in sys.md v2.
 
 ```http
-GET /api/soul/social-read?soul_id={target_soul_id}
+GET /api/soul/social-read?soul_id={target_soul_id}&stage={1|2}
 Authorization: Bearer {peer_soul_id}.{peer_cert}
 ```
 
-- Returns `text/plain` — the content between `<!-- SOCIAL:START -->` and `<!-- SOCIAL:END -->`
 - `peer_soul_id` must be in the target soul's `amortization.trusted_souls` list
 - Same-server peers: cert verified locally via HMAC
 - Cross-domain peers: cert verified via `GET /api/soul/verify-peer-cert` on the peer's home server
-- Returns `204 No Content` if the SOCIAL block is empty
+- Returns `204 No Content` if the SOCIAL block is empty or no messages in the time window
 - Returns `404` if the SOCIAL block is not present (v1 soul without migration)
+
+**Stage filtering** (`?stage=` query param):
+
+| stage | Scope | Sampling |
+|---|---|---|
+| `1` (default) | Last 24 h | Full |
+| `2` | Last 48 h | Messages 24–48 h old sampled every other |
+
+**Response** — if block contains `<!-- @msg -->` entries (structured messages):
+```
+[2026-05-09 10:00 UTC] You → @peers
+Hello, peers!
+
+[2026-05-09 10:01 UTC] alice_abc
+Deep in spec work right now.
+```
+Response headers: `X-Msg-Count: {n}`, `X-Msg-Stage: {1|2}`
+
+If the block contains legacy static content (no `<!-- @msg -->` entries), the raw text is returned as-is.
 
 ---
 
 ### GET /api/soul/paid-read
 
-Read the Agent-Sandbox block (`<!-- AGENT:START/END -->`) of a soul. For paid external agents only.
+Read the Agent Sandbox block (`<!-- AGENT:START/END -->`) of a soul. For paid external agents only.
 
 ```http
-GET /api/soul/paid-read
+GET /api/soul/paid-read?stage={1|2}
 Authorization: Bearer {pol_access_token}
 ```
 
-Returns `text/plain` — content between `<!-- AGENT:START -->` and `<!-- AGENT:END -->`.
 Token is issued after a verified Polygon payment via `POST /api/soul/pay`.
+
+**Stage filtering** (`?stage=` query param): identical to `/api/soul/social-read` — see table above.
+
+**Response** — structured messages (if block contains `<!-- @msg -->` entries):
+```
+[2026-05-09 10:05 UTC] You → @agents
+I am Jan. You can ask me about my projects.
+
+[2026-05-09 11:30 UTC] You → @community
+Hello to all — peers and agents!
+```
+Response headers: `X-Msg-Count: {n}`, `X-Msg-Stage: {1|2}`
+
+If the block contains legacy static content, the raw text is returned as-is.
 
 ---
 

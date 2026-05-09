@@ -127,19 +127,21 @@ Additional `##` sections are valid and MUST be preserved by compliant parsers.
 
 ### 3.4 Social Sphere Block
 
-The Social Sphere block is a region within the `## Social Sphere` section delimited by:
+The Social Sphere block is delimited by:
 
 ```
 <!-- SOCIAL:START -->
-(content visible to trusted peers)
+<!-- @msg 2026-05-09T10:00:00Z me peer Hello, peers! -->
+<!-- @msg 2026-05-09T10:01:00Z alice_abc me Deep in spec work right now. -->
 <!-- SOCIAL:END -->
 ```
 
-- Typically placed after the `## Social Sphere` heading (introduced in v2)
+- Placed after the `## Social Sphere` heading (introduced in v2)
 - Content is readable by authenticated trusted peers via `soul_read` (MCP) or `GET /api/soul/social-read` (HTTP)
 - Peers may write to this block via `soul_write` (MCP) or comment via `soul_comment`
-- The block MAY be empty (peers see a "block is empty" notice)
+- The block MAY be empty (peers receive a "block is empty" notice)
 - The markers MUST appear on their own lines
+- Messages use the `<!-- @msg -->` format (see §3.6)
 
 ### 3.5 Agent Sandbox Block
 
@@ -147,7 +149,7 @@ The Agent Sandbox block is delimited by:
 
 ```
 <!-- AGENT:START -->
-(content visible to paid agents)
+<!-- @msg 2026-05-09T10:05:00Z me community Hello to all — peers and agents! -->
 <!-- AGENT:END -->
 ```
 
@@ -155,6 +157,37 @@ The Agent Sandbox block is delimited by:
 - Owner-controlled: only the Soul owner may write here (via the SoulViewer)
 - External paid agents may comment via `POST /api/soul/paid-comment`
 - The markers MUST appear on their own lines
+- Messages sent with `to: community` are written to **both** the Social Sphere and Agent Sandbox simultaneously
+
+### 3.6 Message Format
+
+Both the Social Sphere and Agent Sandbox use structured single-line HTML comments as the message format:
+
+```
+<!-- @msg {ISO-8601-timestamp} {from} {to} {content} -->
+```
+
+| Field | Values | Description |
+|---|---|---|
+| `timestamp` | ISO 8601 UTC (`2026-05-09T10:00:00Z`) | Creation time |
+| `from` | `me` · peer soul_id · agent id | Message author |
+| `to` | `peer` · `agent` · `community` | Intended recipient scope |
+| `content` | any single-line text | Message body (newlines collapsed to space) |
+
+**Routing rules:**
+- `to: peer` → written to SOCIAL block only
+- `to: agent` → written to AGENT block only
+- `to: community` → written to **both** blocks (deduplication by read tools)
+
+**Stage-based filtering** (applied by all read tools):
+
+| Stage | Scope | Sampling |
+|---|---|---|
+| `1` (default) | Last 24 h | Full |
+| `2` (user-requested) | Last 48 h | Messages 24–48 h old: every other one |
+
+Activate stage 2 by passing `?stage=2` (HTTP) or `stage: 2` (MCP tool argument).
+Stage 2 is only used when the user explicitly asks for more history context.
 
 ---
 
@@ -257,11 +290,14 @@ Finalized the three-sphere sys.md specification.
 
 ## Social Sphere
 <!-- SOCIAL:START -->
-Open for collaboration on identity protocols and decentralized systems.
+<!-- @msg 2026-05-09T09:00:00Z me peer Open for collaboration on identity protocols. -->
+<!-- @msg 2026-05-09T10:12:00Z bob_soul me Interesting! Reach out anytime. -->
+<!-- @msg 2026-05-09T11:30:00Z me community Hello to all — peers and agents! -->
 <!-- SOCIAL:END -->
 
 ## Agent Sandbox
 <!-- AGENT:START -->
-I am Jan, a designer and developer. You can ask me about my projects.
+<!-- @msg 2026-05-09T08:00:00Z me agent I am Jan, a designer and developer. You can ask me about my projects. -->
+<!-- @msg 2026-05-09T11:30:00Z me community Hello to all — peers and agents! -->
 <!-- AGENT:END -->
 ```
