@@ -211,7 +211,7 @@
                   />
                 </div>
                 <div class="field span-2">
-                  <label class="field-label">Kostenlose Tools</label>
+                  <label class="field-label">Freigegebene Agent-Tools <span class="field-hint">(nach Zahlung verfügbar)</span></label>
                   <div class="tools-row">
                     <input v-model="freeToolsStr" type="text" class="input mono" placeholder="soul_read, verify_human" />
                     <button class="tools-add" type="button" :class="{ on: showToolPicker }" @click.stop="showToolPicker = !showToolPicker" aria-label="Tool auswählen">+</button>
@@ -292,7 +292,7 @@
                 </ol>
               </details>
 
-              <!-- Kostenlose Tools freigeben für (same-server / Multi-Hoster) -->
+              <!-- Vertraute Peers: Tool-Freigaben (kein Payment nötig) -->
               <div class="field-group" style="margin-top:16px">
                 <label class="field-label">Vertraute Peers — gleicher Server <span class="field-hint">(Soul-IDs kommasepariert)</span></label>
                 <textarea
