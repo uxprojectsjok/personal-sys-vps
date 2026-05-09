@@ -7,22 +7,30 @@ export function register(server, token) {
     'soul_discover',
     [
       'Durchsucht das öffentliche SYS-Soul-Verzeichnis nach registrierten Souls.',
-      'Quellen: IPFS/Pinata (primär) und Polygon-Blockchain (Fallback).',
+      '',
+      'QUELLEN — beide werden parallel abgefragt und zu einem Ergebnis zusammengeführt:',
+      '- Pinata/IPFS:  Soul hat sich aktiv registriert. Metadaten sind aktuell und vollständig.',
+      '                gateway_url vorhanden → alle Details abrufbar.',
+      '- Blockchain:   Soul wurde auf Polygon verankert (soul_chain_anchor in sys.md).',
+      '                Daten stammen aus dem On-Chain-Anker — kryptografisch gesichert,',
+      '                können aber älter sein als der aktuelle Stand der Soul.',
+      '                Kein Pinata nötig — Blockchain ist immer verfügbar.',
+      '- Pinata + Blockchain verifiziert: Beide Quellen stimmen überein.',
+      '                Höchstes Vertrauen — Metadaten aktuell UND on-chain bestätigt.',
+      '',
+      'VERTRAUENSREIHENFOLGE: Pinata+Blockchain > Pinata > Blockchain',
+      'Bei Duplikaten (gleiche soul_id in beiden Quellen) gewinnt die Blockchain-Seite.',
       '',
       'Suche (q) durchsucht: Name, soul_id, Tags, Beschreibung.',
-      'Beispiele: q="Marburg" findet Souls mit Tag "marburg".',
-      '           q="AI" findet Souls die "ai" im Tag oder in der Beschreibung haben.',
       '',
       'Parameter:',
       '- q:         Freitext-Suche — Name, soul_id, Tags, Beschreibung — optional',
       '- amortized: true = nur Souls die POL-Zahlungen akzeptieren — optional',
       '- limit:     Max. Ergebnisse (1–100, Standard 20) — optional',
       '',
-      'Treffer enthalten gateway_url → vollständige Soul-Metadaten (Pinata-Pin).',
-      '',
       'Typischer Workflow für einen zahlenden Agenten:',
-      '1. soul_discover(q="Marburg") → Treffer mit Tags, Description, gateway_url',
-      '2. gateway_url öffnen → alle Details der Soul',
+      '1. soul_discover(q="Berlin") → Treffer mit Quelle, Tags, gateway_url',
+      '2. gateway_url öffnen → vollständige Metadaten der Soul',
       '3. POL-Transaktion an soul.amortization.wallet senden',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
     ].join('\n'),
@@ -80,9 +88,9 @@ export function register(server, token) {
         lines.push('');
 
         const soulSourceLabel = {
-          'ipfs':       'Pinata/IPFS',
-          'chain':      'Blockchain',
-          'ipfs+chain': 'Pinata/IPFS + Blockchain verifiziert',
+          'ipfs':       'Pinata/IPFS — aktiv registriert, Metadaten aktuell',
+          'chain':      'Blockchain — On-Chain-Anker auf Polygon, kein Pinata-Pin',
+          'ipfs+chain': 'Pinata/IPFS + Blockchain — beide Quellen bestätigt, höchstes Vertrauen',
         };
 
         for (const s of souls) {
@@ -110,7 +118,7 @@ export function register(server, token) {
           if (s.verify_endpoint) lines.push(`- **Verifikation:** ${s.verify_endpoint}`);
           if (s.pinned_at) lines.push(`- **Registriert:** ${s.pinned_at.slice(0, 10)}`);
           if (s.anchor_date) lines.push(`- **Anker:** ${s.anchor_date} (${s.sessions ?? 0} Sessions)`);
-          if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓`);
+          if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓ (soul_id und Metadaten stimmen mit Polygon-Transaktion überein)`);
           lines.push('');
         }
 
