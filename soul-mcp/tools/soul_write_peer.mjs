@@ -22,10 +22,20 @@ function updateSocialBlock(md, newContent, mode) {
   const current = md.slice(s + SOCIAL_START.length, e).trim();
   const after   = md.slice(e);
 
+  // Strip existing @msg entries from current before replace/prepend so structured
+  // message history is preserved; append always leaves existing @msg intact.
+  const msgEntries = current.match(/<!--\s*@msg[\s\S]*?-->/g) || [];
+  const msgHistory = msgEntries.join('\n');
+
   let body;
-  if (mode === 'replace') body = newContent;
-  else if (mode === 'prepend') body = newContent + (current ? '\n\n' + current : '');
-  else body = (current ? current + '\n\n' : '') + newContent; // append (default)
+  if (mode === 'replace') {
+    // Preserve @msg history; replace only non-message content below
+    body = msgHistory ? msgHistory + '\n\n' + newContent : newContent;
+  } else if (mode === 'prepend') {
+    body = newContent + (current ? '\n\n' + current : '');
+  } else {
+    body = (current ? current + '\n\n' : '') + newContent; // append (default)
+  }
 
   return before + '\n' + body.trim() + '\n' + after;
 }

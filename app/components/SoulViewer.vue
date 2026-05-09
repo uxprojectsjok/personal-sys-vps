@@ -411,7 +411,7 @@ watch(syncStatus, (val) => {
 });
 
 // ── Soul sections config ─────────────────────────────────────────────────
-// type "social" = SOCIAL block (peer-visible); type "agent" = AGENT block (paid-agent-visible)
+// Private Sphere sections — messaging is handled by the Nachrichten panel below
 const SOUL_SECTIONS = [
   { key: "Kern-Identität",                       label: "Kern-Identität",         icon: "ri-user-line",      color: "var(--chart-1)" },
   { key: "Werte & Überzeugungen",                label: "Werte & Überzeugungen",  icon: "ri-scales-3-line",  color: "var(--sys-violet)" },
