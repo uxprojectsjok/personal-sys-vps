@@ -501,7 +501,7 @@ app.get('/internal/discover-souls', async (req, res) => {
           source: 'ipfs+chain',
         });
       } else {
-        byId.set(s.soul_id, s);
+        byId.set(s.soul_id, { ...s, source: s.source ?? 'chain' });
       }
     }
 
