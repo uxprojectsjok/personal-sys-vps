@@ -14,7 +14,7 @@
 
 import { ethers }                  from 'ethers';
 import { readFile, writeFile }      from 'node:fs/promises';
-import { extractSysMeta }           from './blockchain.mjs';
+import { extractSysMeta, soulIdToBytes32 } from './blockchain.mjs';
 
 // ── Konstanten ────────────────────────────────────────────────────────────────
 
@@ -288,7 +288,11 @@ function subscribeWs() {
     _ws.websocket.on('close', () => {
       console.log('[soul-index] WebSocket getrennt — reconnect in 15s');
       _ws = null;
-      setTimeout(subscribeWs, 15_000);
+      setTimeout(() => {
+        subscribeWs();
+        // Events die während Downtime angefallen sind nachholen
+        incrementalScan().catch(e => console.error('[soul-index] Re-Scan nach WS-Reconnect:', e.message));
+      }, 15_000);
     });
 
     console.log('[soul-index] WebSocket aktiv →', net.wss);
@@ -321,7 +325,9 @@ async function incrementalScan() {
       const to = Math.min(from + SCAN_CHUNK - 1, current);
       try {
         const events = await contract.queryFilter(filter, from, to);
-        for (const ev of events) await processEvent(ev);
+        for (const ev of events) {
+          await processEvent(ev).catch(e => console.error('[soul-index] Event übersprungen:', e.message));
+        }
         _lastBlock = to + 1;
       } catch { /* Chunk überspringen — wird beim nächsten Neustart wieder versucht */ }
       await sleep(SCAN_DELAY_MS);
@@ -338,19 +344,24 @@ async function incrementalScan() {
 // Gibt eigene Soul sofort im Index — auch auf cold start, bevor der Scan durchläuft.
 
 async function seedFromLocalAnchors() {
-  const SOULS_DIR = '/var/lib/sys/souls/';
+  const SOULS_DIR  = '/var/lib/sys/souls/';
+  // Eigener MCP-Endpoint — bekannt aus Umgebungsvariable
+  const ownMcpEp   = process.env.BASE_URL ? `${process.env.BASE_URL}/mcp` : null;
   try {
     const { readdir } = await import('node:fs/promises');
     const dirs = await readdir(SOULS_DIR);
-    for (const dir of dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d))) {
+    for (const dir of dirs.filter(d => UUID_RE.test(d))) {
       try {
         const raw    = await readFile(`${SOULS_DIR}${dir}/chain_anchor.json`, 'utf8');
         const anchor = JSON.parse(raw);
-        if (!anchor?.tx || _souls.has(dir)) continue;
-        // Vorläufiger Eintrag — wird durch Scan verifiziert und ergänzt
-        _souls.set(dir, {
+        if (!anchor?.tx) continue;
+        // Bytes32-Key — identisch mit processEvent (ev.args.soulId = keccak256(soulId))
+        const key = soulIdToBytes32(dir);
+        if (_souls.has(key)) continue; // bereits durch Scan indexiert
+        // Vorläufiger Eintrag — sofort in querySouls sichtbar, wird durch Scan überschrieben
+        _souls.set(key, {
           soul_id:           dir,
-          mcp_endpoint:      null,
+          mcp_endpoint:      ownMcpEp,
           tags:              Array.isArray(anchor.tags) ? anchor.tags : [],
           name:              anchor.name ?? null,
           sessions:          anchor.sessions ?? 1,
@@ -361,7 +372,7 @@ async function seedFromLocalAnchors() {
           tx_hash:           anchor.tx,
           block_number:      0,
           indexed_at:        new Date().toISOString(),
-          _preliminary:      true, // wird durch Scan überschrieben
+          _preliminary:      true,
         });
         _dirty = true;
       } catch { /* kein chain_anchor.json für diese Soul */ }
