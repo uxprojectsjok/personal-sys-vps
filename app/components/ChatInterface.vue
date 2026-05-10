@@ -74,6 +74,19 @@
           </button>
         </div>
 
+        <!-- Synthese-Block (nur "Alle"-Tab) -->
+        <div v-if="msgView === 'all'" class="synthesis-block">
+          <div class="synthesis-label">
+            <span class="synthesis-dot"></span>
+            Collective Sense-Making
+          </div>
+          <div v-if="isSynthesizing" class="dots synthesis-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <p v-else-if="synthesisText" class="synthesis-text">{{ synthesisText }}</p>
+          <p v-else class="synthesis-empty">Schreib eine Nachricht — die KI synthetisiert was über die Sphären hinaus entsteht.</p>
+        </div>
+
         <div v-if="displayMessages.length === 0" class="agent-empty">
           <p class="agent-empty-icon">⬡</p>
           <p class="agent-empty-title">{{ msgView === 'peer' ? 'Keine Peer-Nachrichten' : msgView === 'agent' ? 'Agent Sandbox leer' : 'Keine Nachrichten' }}</p>
@@ -162,6 +175,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m-7 7 7-7 7 7"/>
           </svg>
         </button>
+      </div>
+
+      <!-- Image preview (messaging mode, when media attached) -->
+      <div v-if="agentMode && msgMedia" class="dock-media-preview">
+        <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
+        <span class="dock-media-name">{{ msgMedia.name ?? 'Bild' }}</span>
+        <button class="dock-media-remove" @click="msgMedia = null" aria-label="Entfernen">✕</button>
       </div>
 
       <!-- Row 1b: recipient selector (messaging mode only) -->
@@ -318,7 +338,7 @@ const {
   addMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
   toApiMessages, getMessagesToSummarize, pruneWithSummary,
 } = useSession()
-const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected } = useVault()
+const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected, writeSoulMd } = useVault()
 const { isConnected: ytConnected, accessToken: ytToken } = useYouTube()
 const { isConnected: spConnected, accessToken: spToken } = useSpotify()
 
@@ -347,11 +367,15 @@ const canSend = computed(() =>
 
 // ── Messaging mode ─────────────────────────────────────────────────
 const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent } = useSoul()
-const agentMode      = ref(false)
-const isSavingAgent  = ref(false)
-const isRefreshing   = ref(false)
-const msgView        = ref('all')   // 'all' | 'peer' | 'agent'
-const msgRecipient   = ref('peer')  // 'peer' | 'agent' | 'community'
+const agentMode       = ref(false)
+const isSavingAgent   = ref(false)
+const isRefreshing    = ref(false)
+const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
+const msgRecipient    = ref('peer')  // 'peer' | 'agent' | 'community'
+const synthesisText   = ref('')
+const isSynthesizing  = ref(false)
+const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
+const SYNTHESIS_N     = 5           // messages per sphere for synthesis
 let   _agentPollTimer = null
 
 watch(agentMode, async (active) => {
@@ -393,6 +417,7 @@ async function refreshAgentContent() {
 
       if (merged !== localFull) {
         updateContent(merged)
+        if (vaultConnected.value) writeSoulMd(merged, 'sys').catch(() => {})
         syncStatus.value    = 'in_sync'
         serverContent.value = ''
       }
@@ -530,24 +555,89 @@ const displayMessages = computed(() => {
   return [...pool].sort((a, b) => new Date(a.ts) - new Date(b.ts))
 })
 
+// ── Collective Sense-Making ────────────────────────────────────────
+async function triggerSynthesis(imageBase64 = null) {
+  const social = [...socialMsgs.value].slice(-SYNTHESIS_N)
+  const agent  = [...agentMsgsNew.value, ...agentMsgsOld.value]
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts))
+    .slice(-SYNTHESIS_N)
+
+  if (social.length === 0 && agent.length === 0) {
+    synthesisText.value = ''
+    return
+  }
+
+  isSynthesizing.value = true
+  synthesisText.value  = ''
+  try {
+    const fmtMsgs = (msgs, label) => msgs.length
+      ? `**${label}**\n` + msgs.map(m => `[${fmtMsgDate(m.ts)}] ${m.from === 'me' ? 'Du' : (m.author ?? m.from.slice(0, 8))}: ${m.content}`).join('\n')
+      : ''
+
+    const context = [fmtMsgs(social, 'Social Sphere (Peers)'), fmtMsgs(agent, 'Agent Sandbox (KIs)')].filter(Boolean).join('\n\n')
+
+    const userContent = imageBase64
+      ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } }, { type: 'text', text: context }]
+      : context
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        stream: false,
+        system: `Du bist ein Synthesizer für verteilte Kommunikation auf einem SYS-Knoten.
+Du bekommst die letzten Nachrichten aus zwei Sphären: der Social Sphere (Peer-zu-Peer zwischen Menschen) und dem Agent Sandbox (Mensch-KI-Kollaboration).
+Finde Querverbindungen, Muster und emergente Ideen die über die einzelnen Sphären hinausgehen.
+Formuliere 2–4 präzise Sätze. Keine Einleitung, keine Überschriften. Direkt zur Synthese.`,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    })
+
+    if (!res.ok) throw new Error(`API ${res.status}`)
+    const data = await res.json()
+    synthesisText.value = data?.content?.[0]?.text ?? ''
+  } catch {
+    synthesisText.value = ''
+  } finally {
+    isSynthesizing.value = false
+  }
+}
+
+watch(msgView, (v) => { if (v === 'all' && agentMode.value) triggerSynthesis() })
+watch(agentMode, (v) => { if (v && msgView.value === 'all') triggerSynthesis() })
+
 async function handleMsgSend() {
   if (isSavingAgent.value) return
   const text = draft.value.trim()
-  if (!text) return
+  if (!text && !msgMedia.value) return
   draft.value = ''
   await nextTick(autoResize)
   isSavingAgent.value = true
+
+  const media = msgMedia.value
+  msgMedia.value = null
+
   try {
-    const entry   = formatMsgEntry(text, 'me', msgRecipient.value)
-    let current   = soulContentAgent.value ?? ''
-    if (msgRecipient.value === 'peer'      || msgRecipient.value === 'community')
+    // In "Alle"-Modus immer @community senden
+    const recipient = msgView.value === 'all' ? 'community' : msgRecipient.value
+    const fullText  = media ? `${text}${text ? ' ' : ''}[Bild]` : text
+    const entry     = formatMsgEntry(fullText, 'me', recipient)
+    let current     = soulContentAgent.value ?? ''
+    if (recipient === 'peer'      || recipient === 'community')
       current = appendToMarkerBlock(current, 'SOCIAL', entry)
-    if (msgRecipient.value === 'agent'     || msgRecipient.value === 'community')
+    if (recipient === 'agent'     || recipient === 'community')
       current = appendToMarkerBlock(current, 'AGENT', entry)
     updateContent(current)
     await pushToServer()
-    // Switch view to show the sent message
-    msgView.value = msgRecipient.value === 'community' ? 'all' : msgRecipient.value
+
+    // Im "Alle"-Modus: Synthese neu triggern (mit Bild wenn vorhanden)
+    if (msgView.value === 'all') {
+      triggerSynthesis(media?.base64 ?? null)
+    } else {
+      msgView.value = recipient === 'community' ? 'all' : recipient
+    }
   } finally {
     isSavingAgent.value = false
   }
@@ -670,6 +760,22 @@ async function handleLocalFile(file) {
 }
 
 async function handleFileChip() {
+  // Nachrichten-Modus: nur Bilder, direkt als msgMedia setzen
+  if (agentMode.value) {
+    let file = null
+    file = await new Promise((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'; input.accept = 'image/*'
+      input.onchange = () => resolve(input.files[0] || null); input.click()
+    })
+    if (!file) return
+    try {
+      const base64 = await compressImage(file)
+      msgMedia.value = { base64, mime: 'image/jpeg', name: file.name }
+    } catch { /* ignore */ }
+    return
+  }
+
   let file = null
   if ('showOpenFilePicker' in window) {
     try {
@@ -815,9 +921,14 @@ async function handleImageVision(file, name) {
 // ── Camera pipeline ────────────────────────────────────────────────
 async function handleCameraCapture(capture) {
   cameraOpen.value = false
-  visionLoading.value = true
   const base64 = capture.frameBase64 ?? capture.base64 ?? null
-  if (!base64) { visionLoading.value = false; return }
+  if (!base64) return
+  // In Nachrichten-Modus: Bild als Anhang setzen, nicht als Vision-Analyse
+  if (agentMode.value) {
+    msgMedia.value = { base64, mime: 'image/jpeg', name: 'Kamerabild' }
+    return
+  }
+  visionLoading.value = true
   const previewUrl = `data:image/jpeg;base64,${base64}`
   await runVisionAnalysis(base64, capture.caption || '[Kamerabild]', previewUrl)
   visionLoading.value = false
@@ -1313,6 +1424,87 @@ defineExpose({
   white-space: nowrap;
 }
 .agent-id-badge.tx { opacity: 0.6; }
+
+/* ── Collective Sense-Making: Synthese-Block ─────────────────────── */
+.synthesis-block {
+  border: 1px solid rgba(96,165,250,0.20);
+  background: rgba(96,165,250,0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.synthesis-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #60a5fa;
+  opacity: 0.8;
+}
+.synthesis-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #60a5fa;
+  flex-shrink: 0;
+  animation: sys-blink 2s infinite;
+}
+.synthesis-text {
+  font-family: var(--serif);
+  font-size: clamp(14px,1.3vw,15px);
+  line-height: 1.6;
+  color: var(--fg-2);
+  margin: 0;
+}
+.synthesis-empty {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-4);
+  margin: 0;
+  font-style: italic;
+}
+.synthesis-dots { padding: 4px 0; }
+
+/* ── Dock: Bild-Vorschau ─────────────────────────────────────────── */
+.dock-media-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--rule);
+  background: rgba(255,255,255,0.02);
+}
+.dock-media-thumb {
+  width: 36px; height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--rule-2);
+  flex-shrink: 0;
+}
+.dock-media-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.dock-media-remove {
+  font-size: 11px;
+  color: var(--fg-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.dock-media-remove:hover { color: var(--fg-2); }
 
 /* ── Nachrichten-Modus: Stream-Override ──────────────────────────── */
 .stream--chat {
