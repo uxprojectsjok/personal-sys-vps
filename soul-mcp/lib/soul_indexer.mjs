@@ -147,16 +147,31 @@ async function saveIndex() {
 
 // ── IPFS-Enrichment ───────────────────────────────────────────────────────────
 
+const IPFS_GATEWAYS = [
+  cid => `https://gateway.pinata.cloud/ipfs/${cid}`,
+  cid => `https://ipfs.io/ipfs/${cid}`,
+  cid => `https://cloudflare-ipfs.com/ipfs/${cid}`,
+  cid => `https://dweb.link/ipfs/${cid}`,
+];
+
+async function fetchIpfs(cid) {
+  for (const gwFn of IPFS_GATEWAYS) {
+    try {
+      const r = await fetch(gwFn(cid), { signal: AbortSignal.timeout(8_000) });
+      if (r.ok) return { r, gw: gwFn(cid) };
+    } catch { /* nächster Gateway */ }
+  }
+  return null;
+}
+
 async function enrichFromIpfs(entry, rawCid) {
   const cid = validCid(rawCid);
   if (!cid) return; // kein gültiger CID — SSRF-Schutz
 
   try {
-    const gw = cid.startsWith('Qm')
-      ? `https://gateway.pinata.cloud/ipfs/${cid}`
-      : `https://ipfs.io/ipfs/${cid}`;
-    const r = await fetch(gw, { signal: AbortSignal.timeout(10_000) });
-    if (!r.ok) return;
+    const result = await fetchIpfs(cid);
+    if (!result) return;
+    const { r, gw } = result;
 
     // Antwortgröße begrenzen — kein unkontrolliertes JSON parsen
     const raw = await r.text();
@@ -188,7 +203,7 @@ async function enrichFromIpfs(entry, rawCid) {
     entry.cid            = cid;
     entry.gateway_url    = gw;
     entry.ipfs_loaded_at = new Date().toISOString();
-  } catch { /* IPFS temporär nicht erreichbar */ }
+  } catch { /* alle IPFS-Gateways nicht erreichbar */ }
 }
 
 // ── Event verarbeiten ─────────────────────────────────────────────────────────
