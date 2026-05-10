@@ -5,6 +5,24 @@
 
 import { ethers } from 'ethers';
 
+const IPFS_GATEWAYS = [
+  cid => `https://gateway.pinata.cloud/ipfs/${cid}`,
+  cid => `https://ipfs.io/ipfs/${cid}`,
+  cid => `https://cloudflare-ipfs.com/ipfs/${cid}`,
+  cid => `https://dweb.link/ipfs/${cid}`,
+];
+
+async function fetchIpfsJson(cid) {
+  for (const gwFn of IPFS_GATEWAYS) {
+    try {
+      const gw = gwFn(cid);
+      const r  = await fetch(gw, { signal: AbortSignal.timeout(8_000) });
+      if (r.ok) return { json: await r.json(), gw };
+    } catch { /* nächster Gateway */ }
+  }
+  return null;
+}
+
 const NETWORKS = {
   amoy: {
     rpc: 'https://rpc-amoy.polygon.technology',
@@ -157,23 +175,18 @@ export async function discoverSoulsFromTxHashes(entries = [], { q = '', amortize
       if (soulName) soul.name = soulName;
 
       if (meta.cid) {
-        try {
-          const gw = meta.cid.startsWith('Qm')
-            ? `https://gateway.pinata.cloud/ipfs/${meta.cid}`
-            : `https://ipfs.io/ipfs/${meta.cid}`;
-          const r = await fetch(gw, { signal: AbortSignal.timeout(10000) });
-          if (r.ok) {
-            const ipfs          = await r.json();
-            soul.name           = ipfs.name ?? soul.name ?? null;
-            soul.description    = ipfs.description ?? null;
-            soul.cid            = meta.cid;
-            soul.gateway_url    = gw;
-            soul.amortization   = ipfs.amortization ?? null;
-            soul.pay_endpoint   = ipfs.pay_endpoint ?? null;
-            soul.verify_endpoint = ipfs.verify_endpoint ?? null;
-            if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
-          }
-        } catch { /* IPFS nicht erreichbar */ }
+        const hit = await fetchIpfsJson(meta.cid).catch(() => null);
+        if (hit) {
+          const { json: ipfs, gw } = hit;
+          soul.name            = ipfs.name ?? soul.name ?? null;
+          soul.description     = ipfs.description ?? null;
+          soul.cid             = meta.cid;
+          soul.gateway_url     = gw;
+          soul.amortization    = ipfs.amortization ?? null;
+          soul.pay_endpoint    = ipfs.pay_endpoint ?? null;
+          soul.verify_endpoint = ipfs.verify_endpoint ?? null;
+          if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
+        }
       }
 
       souls.push(soul);
@@ -233,23 +246,18 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
 
       // Enrich from IPFS public gateway if CID available
       if (meta.cid) {
-        try {
-          const gw = meta.cid.startsWith('Qm')
-            ? `https://gateway.pinata.cloud/ipfs/${meta.cid}`
-            : `https://ipfs.io/ipfs/${meta.cid}`;
-          const r = await fetch(gw, { signal: AbortSignal.timeout(10000) });
-          if (r.ok) {
-            const ipfs = await r.json();
-            soul.name            = ipfs.name ?? null;
-            soul.description     = ipfs.description ?? null;
-            soul.cid             = meta.cid;
-            soul.gateway_url     = gw;
-            soul.amortization    = ipfs.amortization ?? null;
-            soul.pay_endpoint    = ipfs.pay_endpoint ?? null;
-            soul.verify_endpoint = ipfs.verify_endpoint ?? null;
-            if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
-          }
-        } catch { /* IPFS fetch failed, use chain-only data */ }
+        const hit = await fetchIpfsJson(meta.cid).catch(() => null);
+        if (hit) {
+          const { json: ipfs, gw } = hit;
+          soul.name            = ipfs.name ?? null;
+          soul.description     = ipfs.description ?? null;
+          soul.cid             = meta.cid;
+          soul.gateway_url     = gw;
+          soul.amortization    = ipfs.amortization ?? null;
+          soul.pay_endpoint    = ipfs.pay_endpoint ?? null;
+          soul.verify_endpoint = ipfs.verify_endpoint ?? null;
+          if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
+        }
       }
 
       souls.push(soul);
