@@ -177,7 +177,7 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
-import { startIndexer, querySouls, indexStats, seedFromLocalAnchors } from './lib/soul_indexer.mjs';
+import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments } from './lib/soul_indexer.mjs';
 import { writeFile }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -474,6 +474,7 @@ app.post('/internal/pin-json', async (req, res) => {
 app.post('/internal/seed-soul', async (req, res) => {
   try {
     await seedFromLocalAnchors();
+    retryFailedEnrichments().catch(() => {}); // IPFS sofort nachladen
     const stats = indexStats();
     res.json({ ok: true, indexed: stats.souls });
   } catch (e) {
