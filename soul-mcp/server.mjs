@@ -176,7 +176,8 @@ app.get('/health', (_req, res) => {
 });
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
-import { verifyHuman, discoverSouls, discoverSoulsFromTxHashes } from './lib/blockchain.mjs';
+import { verifyHuman } from './lib/blockchain.mjs';
+import { startIndexer, querySouls, indexStats } from './lib/soul_indexer.mjs';
 import { writeFile }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -467,79 +468,32 @@ app.post('/internal/pin-json', async (req, res) => {
   }
 });
 
-// ── Soul-Discovery (Pinata + Chain parallel, merge by soul_id) ────────────────
+// ── Soul-Discovery — liest aus lokalem WebSocket-Index (O(1)) ────────────────
 // GET /internal/discover-souls?q=&amortized=&limit=
-// Beide Quellen werden gleichzeitig abgefragt und dedupliziert zusammengeführt.
-// Chain-Daten gewinnen bei soul_id-Kollision (chain_verified = true).
-// GET /internal/discover-souls — Blockchain-only discovery.
-// Pinata wird nur zum Pinnen genutzt, nicht zur Suche.
-// Quelle der Wahrheit: Polygon-Blockchain (neuester Anker je Soul, gefiltert auf sessions >= 1).
-app.get('/internal/discover-souls', async (req, res) => {
+app.get('/internal/discover-souls', (req, res) => {
   const limit     = Math.min(parseInt(req.query.limit || '20', 10), 100);
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
 
-  try {
-    const SOULS_DIR = '/var/lib/sys/souls/';
-    const txEntries = [];
-    try {
-      const dirs     = await readdir(SOULS_DIR);
-      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
-      await Promise.allSettled(soulDirs.map(async (dir) => {
-        try {
-          // Primär: chain_anchor.json (plaintext, unverschlüsselt — von useChainAnchor geschrieben)
-          const anchorRaw = await readFile(`${SOULS_DIR}${dir}/chain_anchor.json`, 'utf8');
-          const anchor    = JSON.parse(anchorRaw);
-          if (!anchor?.tx) return;
-          txEntries.push({
-            txHash:     anchor.tx,
-            soulName:   anchor.name   || null,
-            anchorDate: anchor.date   || null,
-            sessions:   anchor.sessions ?? null,
-            anchorTags: Array.isArray(anchor.tags) ? anchor.tags : [],
-          });
-        } catch {
-          // Fallback: soul_chain_anchor aus sys.md Frontmatter (nur wenn unverschlüsselt)
-          try {
-            const sysmd   = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
-            const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
-            if (!fmMatch) return;
-            const fm        = fmMatch[1];
-            const anchorIdx = fm.indexOf('soul_chain_anchor');
-            if (anchorIdx === -1) return;
-            const chunk     = fm.slice(anchorIdx, anchorIdx + 500);
-            const txMatch   = chunk.match(/0x[0-9a-fA-F]{64}/);
-            if (!txMatch) return;
-            const nameMatch  = fm.match(/^soul_name:\s*(.+)$/m);
-            const soulName   = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
-            const dateMatch  = chunk.match(/"date"\s*:\s*"([^"]+)"/);
-            const anchorDate = dateMatch?.[1] || null;
-            const sessMatch  = chunk.match(/"sessions"\s*:\s*(\d+)/);
-            const sessions   = sessMatch ? parseInt(sessMatch[1], 10) : null;
-            const tagsMatch  = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
-            let anchorTags   = [];
-            if (tagsMatch) { try { anchorTags = JSON.parse(tagsMatch[1]); } catch { /**/ } }
-            txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags });
-          } catch { /**/ }
-        }
-      }));
-    } catch { /**/ }
+  const souls = querySouls({ q, amortized, limit });
+  const stats = indexStats();
 
-    // Schnellpfad: TX-Hashes aus lokalen sys.md — kein vollständiger Event-Scan nötig
-    const souls = txEntries.length > 0
-      ? await discoverSoulsFromTxHashes(txEntries, { q, amortized, limit })
-      : await discoverSouls({ q, amortized, limit });
-
-    res.json({ ok: true, total: souls.length, souls, source: 'chain' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json({
+    ok:       true,
+    total:    souls.length,
+    souls,
+    source:   'local-index',
+    indexing: stats.scanning,
+    indexed:  stats.souls,
+  });
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT || '3098', 10);
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '127.0.0.1', async () => {
   console.log(`soul-mcp läuft auf 127.0.0.1:${PORT}`);
+  // Indexer non-blocking starten — Discovery ist sofort verfügbar, wächst im Hintergrund
+  startIndexer().catch(e => console.error('[soul-index] Start-Fehler:', e.message));
   console.log(`MCP-Endpunkt: ${BASE_URL}/mcp`);
   console.log(`OAuth: ${BASE_URL}/oauth/authorize`);
 });
