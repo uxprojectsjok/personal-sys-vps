@@ -26,6 +26,43 @@ const SCAN_DELAY_MS    = 300;     // Pause zwischen Chunks — schont den RPC
 const SAVE_INTERVAL_MS = 60_000;  // Disk-Sync alle 60s
 const IPFS_TTL_MS      = 24 * 60 * 60 * 1000; // IPFS-Cache 24h
 
+// ── Härtung: Limits ───────────────────────────────────────────────────────────
+const MAX_SOULS        = 100_000; // OOM-Schutz gegen Spam-Anker
+const MAX_STR          = 256;     // max. Zeichenlänge für String-Felder
+const MAX_DESC         = 1_000;   // Beschreibung darf etwas länger sein
+const MAX_TAGS         = 20;      // max. Tags pro Soul
+const MAX_TAG_LEN      = 64;      // max. Länge eines einzelnen Tags
+const UUID_RE          = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HTTPS_RE         = /^https:\/\/[a-z0-9][\w.-]+(:\d+)?(\/[\w./?=%&@#-]*)?$/i;
+const CID_RE           = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{58,})$/; // CIDv0 + CIDv1
+
+// Bereinigt einen String: kürzt, entfernt Steuerzeichen
+function str(v, max = MAX_STR) {
+  if (typeof v !== 'string') return null;
+  return v.replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, max) || null;
+}
+
+// Bereinigt ein Tags-Array
+function tags(v) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map(t => str(t, MAX_TAG_LEN))
+    .filter(Boolean)
+    .slice(0, MAX_TAGS);
+}
+
+// Validiert eine HTTPS-URL — verhindert SSRF mit file://, javascript:, etc.
+function httpsUrl(v) {
+  const s = str(v);
+  return s && HTTPS_RE.test(s) ? s : null;
+}
+
+// Validiert IPFS-CID (CIDv0 oder CIDv1)
+function validCid(v) {
+  const s = str(v);
+  return s && CID_RE.test(s) ? s : null;
+}
+
 const ABI = [
   'event Anchored(bytes32 indexed soulId, bytes32 indexed contentHash, uint32 sessionCount, uint256 timestamp)',
 ];
@@ -49,6 +86,21 @@ let _scanning  = false;
 let _dirty     = false;
 let _http      = null;
 let _ws        = null;
+
+// Sequentielle Event-Queue — verhindert RPC-Überlast bei Spam-Ankern
+const _queue   = [];
+let   _running = false;
+
+async function enqueue(ev) {
+  _queue.push(ev);
+  if (_running) return;
+  _running = true;
+  while (_queue.length > 0) {
+    const next = _queue.shift();
+    await processEvent(next).catch(e => console.error('[soul-index] processEvent:', e.message));
+  }
+  _running = false;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,81 +147,112 @@ async function saveIndex() {
 
 // ── IPFS-Enrichment ───────────────────────────────────────────────────────────
 
-async function enrichFromIpfs(entry, cid) {
+async function enrichFromIpfs(entry, rawCid) {
+  const cid = validCid(rawCid);
+  if (!cid) return; // kein gültiger CID — SSRF-Schutz
+
   try {
     const gw = cid.startsWith('Qm')
       ? `https://gateway.pinata.cloud/ipfs/${cid}`
       : `https://ipfs.io/ipfs/${cid}`;
     const r = await fetch(gw, { signal: AbortSignal.timeout(10_000) });
     if (!r.ok) return;
-    const ipfs = await r.json();
-    if (ipfs.name)          entry.name           = ipfs.name;
-    if (ipfs.description)   entry.description    = ipfs.description;
-    if (ipfs.amortization)  entry.amortization   = ipfs.amortization;
-    if (ipfs.pay_endpoint)  entry.pay_endpoint   = ipfs.pay_endpoint;
-    if (ipfs.verify_endpoint) entry.verify_endpoint = ipfs.verify_endpoint;
-    if (!entry.tags?.length && Array.isArray(ipfs.tags)) entry.tags = ipfs.tags;
+
+    // Antwortgröße begrenzen — kein unkontrolliertes JSON parsen
+    const raw = await r.text();
+    if (raw.length > 64_000) return;
+    const ipfs = JSON.parse(raw);
+
+    // Alle String-Felder bereinigen bevor sie in den Index kommen
+    const name    = str(ipfs.name);
+    const desc    = str(ipfs.description, MAX_DESC);
+    const payEp   = httpsUrl(ipfs.pay_endpoint);
+    const verEp   = httpsUrl(ipfs.verify_endpoint);
+    const ipfsTags = tags(ipfs.tags);
+
+    if (name)    entry.name          = name;
+    if (desc)    entry.description   = desc;
+    if (payEp)   entry.pay_endpoint  = payEp;
+    if (verEp)   entry.verify_endpoint = verEp;
+    if (!entry.tags?.length && ipfsTags.length) entry.tags = ipfsTags;
+
+    // Amortisierung: nur sichere Felder übernehmen
+    if (ipfs.amortization && typeof ipfs.amortization === 'object') {
+      entry.amortization = {
+        enabled:         !!ipfs.amortization.enabled,
+        pol_per_request: Number(ipfs.amortization.pol_per_request) || 0,
+        wallet:          str(ipfs.amortization.wallet, 42) ?? null,
+      };
+    }
+
     entry.cid            = cid;
     entry.gateway_url    = gw;
     entry.ipfs_loaded_at = new Date().toISOString();
-  } catch { /* IPFS temporär nicht erreichbar — wird beim nächsten Anchor neu versucht */ }
+  } catch { /* IPFS temporär nicht erreichbar */ }
 }
 
 // ── Event verarbeiten ─────────────────────────────────────────────────────────
 
 async function processEvent(ev) {
-  try {
-    const soulKey      = ev.args.soulId;
-    const sessionCount = Number(ev.args.sessionCount);
-    const timestamp    = Number(ev.args.timestamp);
-    const blockNumber  = ev.blockNumber ?? ev.log?.blockNumber;
+  const soulKey      = ev.args.soulId;
+  const sessionCount = Number(ev.args.sessionCount);
+  const timestamp    = Number(ev.args.timestamp);
+  const blockNumber  = ev.blockNumber ?? ev.log?.blockNumber;
 
-    const tx = await getHttp().getTransaction(ev.transactionHash);
-    if (!tx?.data) return;
-    const meta = extractSysMeta(tx.data);
-    if (!meta?.id || !meta?.mcp) return;
-
-    const anchorDate = new Date(timestamp * 1000).toISOString().split('T')[0];
-    const existing   = _souls.get(soulKey);
-
-    if (existing) {
-      if (blockNumber && blockNumber <= existing.block_number) return; // bereits aktueller Stand
-      const firstTs        = new Date(existing.first_anchor_date + 'T00:00:00Z').getTime() / 1000;
-      existing.sessions          = sessionCount;
-      existing.anchor_date       = anchorDate;
-      existing.anchor_count      = (existing.anchor_count ?? 1) + 1;
-      existing.anchor_span_days  = Math.max(0, Math.floor((timestamp - firstTs) / 86400));
-      existing.mcp_endpoint      = meta.mcp;
-      existing.tags              = Array.isArray(meta.tags) ? meta.tags : existing.tags;
-      existing.tx_hash           = ev.transactionHash;
-      if (blockNumber) existing.block_number = blockNumber;
-      // IPFS neu laden wenn CID vorhanden und Cache abgelaufen
-      if (meta.cid && (!existing.ipfs_loaded_at ||
-          Date.now() - new Date(existing.ipfs_loaded_at).getTime() > IPFS_TTL_MS)) {
-        await enrichFromIpfs(existing, meta.cid);
-      }
-    } else {
-      const entry = {
-        soul_id:           meta.id,
-        mcp_endpoint:      meta.mcp,
-        tags:              Array.isArray(meta.tags) ? meta.tags : [],
-        sessions:          sessionCount,
-        anchor_date:       anchorDate,
-        first_anchor_date: anchorDate,
-        anchor_count:      1,
-        anchor_span_days:  0,
-        tx_hash:           ev.transactionHash,
-        block_number:      blockNumber ?? 0,
-        indexed_at:        new Date().toISOString(),
-      };
-      if (meta.cid) await enrichFromIpfs(entry, meta.cid);
-      _souls.set(soulKey, entry);
-    }
-
-    _dirty = true;
-  } catch (e) {
-    console.error('[soul-index] processEvent:', e.message);
+  // OOM-Schutz: Index-Größe deckeln
+  if (!_souls.has(soulKey) && _souls.size >= MAX_SOULS) {
+    console.warn('[soul-index] Index-Limit erreicht — Eintrag übersprungen.');
+    return;
   }
+
+  const tx = await getHttp().getTransaction(ev.transactionHash);
+  if (!tx?.data) return;
+  const meta = extractSysMeta(tx.data);
+  if (!meta) return;
+
+  // Pflichtfelder validieren
+  const soulId = meta.id;
+  const mcpEp  = httpsUrl(meta.mcp);
+  if (!soulId || !UUID_RE.test(soulId) || !mcpEp) return; // ungültige/gefakte Metadaten
+
+  const cleanTags  = tags(meta.tags);
+  const anchorDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+  const existing   = _souls.get(soulKey);
+
+  if (existing) {
+    if (blockNumber && blockNumber <= existing.block_number) return;
+    const firstTs = new Date(existing.first_anchor_date + 'T00:00:00Z').getTime() / 1000;
+    existing.sessions         = sessionCount;
+    existing.anchor_date      = anchorDate;
+    existing.anchor_count     = (existing.anchor_count ?? 1) + 1;
+    existing.anchor_span_days = Math.max(0, Math.floor((timestamp - firstTs) / 86400));
+    existing.mcp_endpoint     = mcpEp;
+    existing.tags             = cleanTags.length ? cleanTags : existing.tags;
+    existing.tx_hash          = ev.transactionHash;
+    if (blockNumber) existing.block_number = blockNumber;
+    if (meta.cid && (!existing.ipfs_loaded_at ||
+        Date.now() - new Date(existing.ipfs_loaded_at).getTime() > IPFS_TTL_MS)) {
+      await enrichFromIpfs(existing, meta.cid);
+    }
+  } else {
+    const entry = {
+      soul_id:           soulId,
+      mcp_endpoint:      mcpEp,
+      tags:              cleanTags,
+      sessions:          sessionCount,
+      anchor_date:       anchorDate,
+      first_anchor_date: anchorDate,
+      anchor_count:      1,
+      anchor_span_days:  0,
+      tx_hash:           ev.transactionHash,
+      block_number:      blockNumber ?? 0,
+      indexed_at:        new Date().toISOString(),
+    };
+    if (meta.cid) await enrichFromIpfs(entry, meta.cid);
+    _souls.set(soulKey, entry);
+  }
+
+  _dirty = true;
 }
 
 // ── WebSocket-Subscriber (Echtzeit) ───────────────────────────────────────────
@@ -182,9 +265,9 @@ function subscribeWs() {
     _ws = new ethers.WebSocketProvider(net.wss);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, _ws);
 
-    contract.on('Anchored', async (...args) => {
+    contract.on('Anchored', (...args) => {
       const ev = args[args.length - 1]; // letztes Argument ist das EventLog-Objekt
-      await processEvent(ev);
+      enqueue(ev); // sequentielle Queue — kein concurrent RPC-Sturm
     });
 
     _ws.websocket.on('close', () => {
