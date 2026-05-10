@@ -277,6 +277,23 @@ server {
     add_header Cache-Control "no-store" always;
   }
 
+  # ── In-App Soul-Tool-Execution (POST) – soul-cert ────────────────────────────
+  location = /api/soul-tool {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    proxy_pass         http://127.0.0.1:3098/internal/run-tool;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   Connection        "";
+    proxy_connect_timeout 5s;
+    proxy_send_timeout    30s;
+    proxy_read_timeout    30s;
+    client_max_body_size  2M;
+  }
+
   # ── Chat → Anthropic Proxy (SSE Streaming) ───────────────────────────────────
   location = /api/chat {
     limit_except POST { deny all; }

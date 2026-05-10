@@ -1,21 +1,50 @@
 // app/composables/useClaude.js
 import { ref } from "vue";
 
+// ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
+const SOUL_TOOLS = [
+  {
+    name: "soul_read",
+    description: "Liest den aktuellen Inhalt der sys.md (Soul-Profil mit allen Sektionen, Werten, Erinnerungen und Sphären).",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "soul_write",
+    description: "Schreibt oder ergänzt eine Sektion in der sys.md. section = Sektionsname, content = Inhalt (Markdown), mode: replace (Standard) = ersetzen, append = ans Ende, prepend = an den Anfang (ideal für Logs). Legt die Sektion an falls sie nicht existiert.",
+    input_schema: {
+      type: "object",
+      properties: {
+        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Session-Log\" oder \"Interessen\"" },
+        content: { type: "string", description: "Neuer Inhalt der Sektion (Markdown)" },
+        mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang (für Logs)" }
+      },
+      required: ["section", "content"]
+    }
+  },
+  {
+    name: "vault_manifest",
+    description: "Listet alle Dateien im persönlichen Vault (Dokumente, Bilder, Audio, Video, Kontext-Dateien).",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "context_get",
+    description: "Liest eine Kontext-Datei aus vault/context/{name}.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Dateiname im context-Ordner (z.B. \"notes.md\")" }
+      },
+      required: ["name"]
+    }
+  }
+];
+
 export function useClaude() {
   const isLoading = ref(false);
   const error = ref(null);
   const certError = ref(false);
   const streamedResponse = ref("");
 
-  /**
-   * Sendet eine Chat-Nachricht an die Claude API via OpenResty-Proxy
-   * @param {Object} opts
-   * @param {Array} opts.messages - Array von { role, content } Objekten
-   * @param {string} opts.soulContent - Inhalt der sys.md als System-Prompt-Kontext
-   * @param {string} opts.soulCert - Soul-Cert für Bearer-Token-Auth
-   * @param {Function} [opts.onDelta] - Callback für jedes Streaming-Delta
-   * @returns {Promise<string|null>} - Vollständiger Response-Text oder null bei Fehler
-   */
   /**
    * Bereitet die Nachrichten für die Anthropic API vor:
    * - Entfernt führende assistant-Nachrichten (API-Anforderung: erster Turn = user)
@@ -177,88 +206,176 @@ ${mediaSignalInstructions}`;
     }
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${soulCert || "anonymous"}`
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 4096,
-          stream: true,
-          system: systemPrompt,
-          // Medien (Profilbild, Netzwerk-PDFs/-Bilder) nur im Soul-Modus übergeben.
-          // Ohne Soul-Kontext würde Claude die automatisch geladenen Dateien fälschlich als
-          // "vom Nutzer mitgeschickt" interpretieren.
-          messages: buildApiMessages(
-            messages,
-            fullSoul && role === "soul" ? profileImageBase64 : null,
-            fullSoul && role === "soul" ? networkPdfBlocks : null,
-            fullSoul && role === "soul" ? networkImageBlocks : null
-          )
-        })
-      });
+      // ── Tools ──────────────────────────────────────────────────────────────
+      const hasSoulTools = !!soulCert;
+      const baseBody = {
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        stream: true,
+        system: systemPrompt,
+      };
+      if (hasSoulTools) baseBody.tools = SOUL_TOOLS;
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          const body = await res.text().catch(() => "");
-          // Anthropic-401 hat JSON-Body ("authentication_error") → kein Cert-Fehler
-          if (body.includes("authentication_error") || body.includes("x-api-key")) {
-            console.error("[chat] Anthropic API-Key Fehler:", body.slice(0, 200));
-            throw new Error(`Anthropic API-Key ungültig: ${body.slice(0, 120)}`);
+      let fullText = "";
+
+      // ── streamRound: eine Streaming-Runde mit der API ──────────────────────
+      async function streamRound(apiMessages, includeTools) {
+        const body = { ...baseBody, messages: apiMessages };
+        if (!includeTools) delete body.tools;
+
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${soulCert || "anonymous"}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            const bodyText = await res.text().catch(() => "");
+            if (bodyText.includes("authentication_error") || bodyText.includes("x-api-key")) {
+              console.error("[chat] Anthropic API-Key Fehler:", bodyText.slice(0, 200));
+              throw new Error(`Anthropic API-Key ungültig: ${bodyText.slice(0, 120)}`);
+            }
+            console.warn("[chat] Cert-Fehler – soul_cert ungültig oder abgelaufen.");
+            certError.value = true;
+            return null;
           }
-          console.warn("[chat] Cert-Fehler – soul_cert ungültig oder abgelaufen.");
-          certError.value = true;
-          return null;
+          const errText = await res.text().catch(() => res.statusText);
+          throw new Error(`API ${res.status}: ${errText}`);
         }
-        const errText = await res.text().catch(() => res.statusText);
-        throw new Error(`API ${res.status}: ${errText}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        const allBlocks = [];
+        let curBlock = null;
+        let stopReason = "end_turn";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          // Letzte Zeile ggf. unvollständig – im Buffer behalten
+          buf = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") break;
+
+            try {
+              const p = JSON.parse(data);
+
+              if (p?.type === "error") {
+                const errType = p?.error?.type ?? "api_error";
+                const errMsg  = p?.error?.message ?? "Unbekannter API-Fehler";
+                throw new Error(`${errType}: ${errMsg}`);
+              }
+
+              if (p?.type === "content_block_start") {
+                curBlock = {
+                  type:      p.content_block.type,
+                  id:        p.content_block.id,
+                  name:      p.content_block.name,
+                  text:      "",
+                  inputJson: ""
+                };
+                allBlocks.push(curBlock);
+              }
+
+              if (p?.type === "content_block_delta" && curBlock) {
+                if (p.delta.type === "text_delta") {
+                  const t = p.delta.text ?? "";
+                  curBlock.text += t;
+                  fullText += t;
+                  streamedResponse.value = fullText;
+                  onDelta?.(t, fullText);
+                } else if (p.delta.type === "input_json_delta") {
+                  curBlock.inputJson += p.delta.partial_json ?? "";
+                }
+              }
+
+              if (p?.type === "message_delta") {
+                stopReason = p.delta?.stop_reason ?? "end_turn";
+              }
+            } catch (parseErr) {
+              if (parseErr.message?.includes("_error")) throw parseErr;
+              // Unvollständiger JSON-Chunk – ignorieren
+            }
+          }
+        }
+
+        return { allBlocks, stopReason };
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        // Letzte Zeile ggf. unvollständig – im Buffer behalten
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") break;
-
-          try {
-            const parsed = JSON.parse(data);
-            // Anthropic SSE Format:
-            // event: content_block_delta → { type: "content_block_delta", delta: { type: "text_delta", text: "..." } }
-            if (parsed?.type === "error") {
-              const errType = parsed?.error?.type ?? "api_error";
-              const errMsg = parsed?.error?.message ?? "Unbekannter API-Fehler";
-              throw new Error(`${errType}: ${errMsg}`);
-            }
-            let delta = "";
-            if (parsed?.type === "content_block_delta" && parsed?.delta?.type === "text_delta") {
-              delta = parsed.delta.text ?? "";
-            }
-
-            if (delta) {
-              fullText += delta;
-              streamedResponse.value = fullText;
-              onDelta?.(delta, fullText);
-            }
-          } catch (parseErr) {
-            if (parseErr.message?.includes("_error")) throw parseErr;
-            // Unvollständiger JSON-Chunk – ignorieren
-          }
+      // ── executeTool: ruft /api/soul-tool auf ──────────────────────────────
+      async function executeTool(name, input) {
+        try {
+          const r = await fetch("/api/soul-tool", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${soulCert || "anonymous"}`
+            },
+            body: JSON.stringify({ tool: name, input })
+          });
+          const j = await r.json().catch(() => ({ content: [{ type: "text", text: "Tool-Fehler" }] }));
+          return j.content?.[0]?.text ?? "";
+        } catch {
+          return `Tool "${name}" nicht erreichbar.`;
         }
+      }
+
+      // ── Haupt-Loop: max. 3 Runden (Tool → Ergebnis → Antwort) ────────────
+      let currentMsgs = buildApiMessages(
+        messages,
+        fullSoul && role === "soul" ? profileImageBase64 : null,
+        fullSoul && role === "soul" ? networkPdfBlocks : null,
+        fullSoul && role === "soul" ? networkImageBlocks : null
+      );
+
+      for (let round = 0; round < 3; round++) {
+        // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
+        const result = await streamRound(currentMsgs, round < 2 && hasSoulTools);
+        if (!result) return null; // Cert-Fehler bereits gesetzt
+
+        const { allBlocks, stopReason } = result;
+
+        if (stopReason !== "tool_use" || !hasSoulTools) break;
+
+        // Assistenten-Turn aus den Content-Blöcken bauen
+        const assistantContent = allBlocks.map(b => {
+          if (b.type === "text") return { type: "text", text: b.text };
+          if (b.type === "tool_use") {
+            let input = {};
+            try { input = JSON.parse(b.inputJson || "{}"); } catch {}
+            return { type: "tool_use", id: b.id, name: b.name, input };
+          }
+          return null;
+        }).filter(Boolean);
+
+        // Tool-Calls ausführen
+        const toolUseBlocks = allBlocks.filter(b => b.type === "tool_use");
+        const toolResultContent = await Promise.all(
+          toolUseBlocks.map(async tb => {
+            let input = {};
+            try { input = JSON.parse(tb.inputJson || "{}"); } catch {}
+            const content = await executeTool(tb.name, input);
+            return { type: "tool_result", tool_use_id: tb.id, content };
+          })
+        );
+
+        // Konversation um Assistenten-Turn + Tool-Ergebnisse erweitern
+        currentMsgs = [
+          ...currentMsgs,
+          { role: "assistant", content: assistantContent },
+          { role: "user",      content: toolResultContent }
+        ];
       }
 
       return fullText;

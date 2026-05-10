@@ -329,15 +329,19 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
    * @param {Array} messages - Nachrichten im Format { role, content }
    * @returns {Promise<{ changed: boolean, sectionsUpdated: string[], logEntry: string } | null>}
    */
-  async function enrichFromSession(messages) {
+  async function enrichFromSession(messages, sphereContext = '') {
     if (typeof window === "undefined") return null;
     if (!messages?.length || !soulContent.value) return null;
 
     try {
-      // Payload client-seitig bauen (Production: OpenResty proxied direkt zu Anthropic)
+      // Nur User-Nachrichten, letzte 12, gecapped — KI-Antworten irrelevant für Soul-Extraktion
       const conversationText = messages
-        .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => `${m.role === "user" ? "MENSCH" : "KI"}: ${m.content}`)
+        .filter(m => m.role === "user")
+        .slice(-12)
+        .map(m => {
+          const raw = typeof m.content === "string" ? m.content : (m.content?.[0]?.text ?? "")
+          return `MENSCH: ${raw.slice(0, 400)}`
+        })
         .join("\n\n");
 
       const systemPrompt = `Du bist der Soul-Archivar. Deine Aufgabe: Analysiere eine Konversation zwischen einem Menschen und einer KI, und extrahiere soul-würdige Erkenntnisse.
@@ -361,6 +365,9 @@ ZUORDNUNG expliziter Fakten:
 - Überzeugungen, Prinzipien, Werte → Werte & Überzeugungen
 - Themen die die Person beschäftigen, Obsessionen → Wiederkehrende Themen & Obsessionen
 
+SOZIALE SPHÄRE & AGENT-SANDBOX:
+Wenn Sphären-Nachrichten angegeben sind, extrahiere daraus Lebensumfeld-Informationen: womit beschäftigt sich die Person gerade, welche Themen tauchen in sozialen Interaktionen auf, welche Werkzeuge und Agenten nutzt sie. Diese fließen in die passenden Sektionen (Wiederkehrende Themen & Obsessionen, Weltbild, Kern-Identität etc.).
+
 ANTWORTFORMAT (strikt JSON, kein Markdown darum):
 {
   "changes": [
@@ -382,6 +389,10 @@ Mögliche section-Werte (exakt so schreiben):
 - Weltbild
 - Offene Fragen dieser Person`;
 
+      const userContent = sphereContext
+        ? `Analysiere diese Konversation:\n\n${conversationText}\n\n---\n\nAktuelles Lebensumfeld aus den Kommunikationssphären (letzte Nachrichten):\n\n${sphereContext}`
+        : `Analysiere diese Konversation:\n\n${conversationText}`;
+
       const res = await fetch("/api/soul-update", {
         method: "POST",
         headers: {
@@ -393,7 +404,7 @@ Mögliche section-Werte (exakt so schreiben):
           max_tokens: 2048,
           stream: false,
           system: systemPrompt,
-          messages: [{ role: "user", content: `Analysiere diese Konversation:\n\n${conversationText}` }]
+          messages: [{ role: "user", content: userContent }]
         })
       });
 

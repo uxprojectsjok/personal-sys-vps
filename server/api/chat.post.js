@@ -41,6 +41,10 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  if (body.stream === false) {
+    return upstream.json();
+  }
+
   // SSE-Header setzen
   setHeader(event, "Content-Type", "text/event-stream");
   setHeader(event, "Cache-Control", "no-cache");

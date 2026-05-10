@@ -6,20 +6,20 @@ export function register(server, token) {
   server.tool(
     'soul_discover',
     [
-      'Durchsucht das öffentliche SYS-Soul-Verzeichnis nach registrierten Souls.',
+      'Durchsucht das SYS-Soul-Verzeichnis nach on-chain verankerten Souls.',
       '',
-      'QUELLEN — beide werden parallel abgefragt und zu einem Ergebnis zusammengeführt:',
-      '- Pinata/IPFS:  Soul hat sich aktiv registriert. Metadaten sind aktuell und vollständig.',
-      '                gateway_url vorhanden → alle Details abrufbar.',
-      '- Blockchain:   Soul wurde auf Polygon verankert (soul_chain_anchor in sys.md).',
-      '                Daten stammen aus dem On-Chain-Anker — kryptografisch gesichert,',
-      '                können aber älter sein als der aktuelle Stand der Soul.',
-      '                Kein Pinata nötig — Blockchain ist immer verfügbar.',
-      '- Pinata + Blockchain verifiziert: Beide Quellen stimmen überein.',
-      '                Höchstes Vertrauen — Metadaten aktuell UND on-chain bestätigt.',
+      'QUELLE: Polygon-Blockchain (einzige Quelle der Wahrheit).',
+      'Pinata/IPFS wird nur zum Pinnen genutzt — nicht zur Suche.',
+      'Metadaten (Name, Tags, Beschreibung) stammen aus dem Calldata des neuesten Anker-TX.',
+      'Falls eine CID hinterlegt ist, wird das IPFS-Metadata-JSON zur Anreicherung geladen.',
       '',
-      'VERTRAUENSREIHENFOLGE: Pinata+Blockchain > Pinata > Blockchain',
-      'Bei Duplikaten (gleiche soul_id in beiden Quellen) gewinnt die Blockchain-Seite.',
+      'QUALITÄTSSIGNALE (verifizierbarer Anti-Fraud, kein subjektives Rating):',
+      '- sessions:         Growth Chain Länge — echte Sessions, kryptografisch signiert.',
+      '                    Nicht fälschbar ohne reale Nutzung.',
+      '- anchor_count:     Wie oft die Soul verankert wurde — zeigt anhaltende Aktivität.',
+      '- anchor_span_days: Tage zwischen erstem und letztem Anker — nachhaltiger Aufbau.',
+      'Sortierung: sessions DESC, dann anchor_span_days DESC.',
+      'Souls ohne echte Session werden nicht angezeigt (Anti-Fraud-Mindestfilter).',
       '',
       'Suche (q) durchsucht: Name, soul_id, Tags, Beschreibung.',
       '',
@@ -29,8 +29,8 @@ export function register(server, token) {
       '- limit:     Max. Ergebnisse (1–100, Standard 20) — optional',
       '',
       'Typischer Workflow für einen zahlenden Agenten:',
-      '1. soul_discover(q="Berlin") → Treffer mit Quelle, Tags, gateway_url',
-      '2. gateway_url öffnen → vollständige Metadaten der Soul',
+      '1. soul_discover(q="Berlin") → Treffer mit Tags, Sessions, Endpunkten',
+      '2. gateway_url öffnen (falls vorhanden) → vollständige IPFS-Metadaten',
       '3. POL-Transaktion an soul.amortization.wallet senden',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
     ].join('\n'),
@@ -56,12 +56,6 @@ export function register(server, token) {
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: res.statusText }));
-          if (err.error === 'pinata_not_configured') {
-            return {
-              content: [{ type: 'text', text: 'Discovery nicht verfügbar — weder PINATA_JWT noch Chain-Discovery konfiguriert.' }],
-              isError: true,
-            };
-          }
           throw new Error(err.error || res.statusText);
         }
 
@@ -70,35 +64,21 @@ export function register(server, token) {
 
         if (souls.length === 0) {
           return {
-            content: [{ type: 'text', text: 'Keine Souls im Verzeichnis gefunden.' + (q ? ` (Suche: "${q}")` : '') }],
+            content: [{ type: 'text', text: 'Keine verankerten Souls gefunden.' + (q ? ` (Suche: "${q}")` : '') }],
           };
         }
 
-        const sourceLabel = {
-          'ipfs':       'Pinata/IPFS',
-          'chain':      'Blockchain (kein Pinata konfiguriert)',
-          'ipfs+chain': 'Pinata/IPFS + Blockchain',
-          'none':       'keine Quelle',
-        }[data.source] ?? data.source ?? 'unbekannt';
-
         const lines = [];
-        lines.push(`## Soul-Marktplatz — ${souls.length} Einträge${data.total > souls.length ? ` (von ${data.total})` : ''}`);
-        lines.push(`_Gesamtquelle: ${sourceLabel}_`);
+        lines.push(`## Soul-Verzeichnis — ${souls.length} Einträge${data.total > souls.length ? ` (von ${data.total})` : ''}`);
+        lines.push(`_Quelle: Polygon-Blockchain · sortiert nach Aktivität_`);
         if (q) lines.push(`_Suche: "${q}"_`);
         lines.push('');
-
-        const soulSourceLabel = {
-          'ipfs':       'Pinata/IPFS — aktiv registriert, Metadaten aktuell',
-          'chain':      'Blockchain — On-Chain-Anker auf Polygon, kein Pinata-Pin',
-          'ipfs+chain': 'Pinata/IPFS + Blockchain — beide Quellen bestätigt, höchstes Vertrauen',
-        };
 
         for (const s of souls) {
           lines.push(`### ${s.name || s.soul_id}`);
           if (s.description) lines.push(`_${s.description}_`);
           if (s.tags?.length) lines.push(`**Tags:** ${s.tags.map(t => `\`${t}\``).join(' · ')}`);
           lines.push('');
-          lines.push(`- **Quelle:** ${soulSourceLabel[s.source] ?? s.source ?? 'unbekannt'}`);
           lines.push(`- **soul_id:** \`${s.soul_id}\``);
           lines.push(`- **MCP:** ${s.mcp_endpoint}`);
 
@@ -117,8 +97,19 @@ export function register(server, token) {
           if (s.gateway_url) lines.push(`- **Alle Details:** [Pinata Gateway](${s.gateway_url})`);
           if (s.verify_endpoint) lines.push(`- **Verifikation:** ${s.verify_endpoint}`);
           if (s.pinned_at) lines.push(`- **Registriert:** ${s.pinned_at.slice(0, 10)}`);
-          if (s.anchor_date) lines.push(`- **Anker:** ${s.anchor_date} (${s.sessions ?? 0} Sessions)`);
-          if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓ (soul_id und Metadaten stimmen mit Polygon-Transaktion überein)`);
+
+          // Trust-Signale — verifizierbarer Anti-Fraud ohne Rating
+          const sessions        = s.sessions ?? 0;
+          const anchorCount     = s.anchor_count ?? 1;
+          const anchorSpanDays  = s.anchor_span_days ?? 0;
+          const firstAnchorDate = s.first_anchor_date ?? s.anchor_date ?? null;
+          if (s.anchor_date) {
+            const spanNote = anchorSpanDays > 0 ? ` · ${anchorSpanDays}d aktiv` : '';
+            const countNote = anchorCount > 1 ? ` · ${anchorCount} Anker` : '';
+            lines.push(`- **Anker:** ${firstAnchorDate}→${s.anchor_date}${spanNote}${countNote}`);
+          }
+          lines.push(`- **Sessions:** ${sessions} (Growth Chain — kryptografisch gesichert)`);
+          if (s.chain_verified) lines.push(`- **Chain:** verifiziert ✓`);
           lines.push('');
         }
 

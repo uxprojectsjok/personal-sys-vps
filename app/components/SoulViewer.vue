@@ -390,6 +390,36 @@ async function saveEdit(key) {
 }
 
 // ── Soul updaten (Enrichment) ─────────────────────────────────────────────
+function buildSphereContext(md) {
+  function parseMsgs(block) {
+    const msgs = []
+    const re = /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g
+    let m
+    while ((m = re.exec(block)) !== null) {
+      msgs.push({ ts: m[1], from: m[2], to: m[3], content: m[4].trim() })
+    }
+    return msgs.slice(-5)
+  }
+  const socialBlock = md.match(/<!--\s*SOCIAL:START\s*-->([\s\S]*?)<!--\s*SOCIAL:END\s*-->/)?.[1] ?? ''
+  const agentBlock  = md.match(/<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/)?.[1]  ?? ''
+  const socialMsgs  = parseMsgs(socialBlock)
+  const agentMsgs   = parseMsgs(agentBlock)
+  if (!socialMsgs.length && !agentMsgs.length) return ''
+  const fmt = (msgs, label) => {
+    if (!msgs.length) return ''
+    const lines = msgs.map(m => {
+      const who = m.from === 'me' ? 'Ich' : m.from.slice(0, 12)
+      const to  = m.to === 'peer' ? '→ Peer' : m.to === 'agent' ? '→ Agent' : '→ Alle'
+      return `[${m.ts.slice(0, 10)}] ${who} ${to}: ${m.content}`
+    }).join('\n')
+    return `## ${label}\n${lines}`
+  }
+  return [
+    fmt(socialMsgs, 'Social Sphere (Peer-Nachrichten)'),
+    fmt(agentMsgs,  'Agent Sandbox (KI-Kollaborationen)'),
+  ].filter(Boolean).join('\n\n')
+}
+
 async function triggerEnrichment() {
   if (isEnriching.value) return;
   if (!hasMessages.value) {
@@ -400,7 +430,8 @@ async function triggerEnrichment() {
   isEnriching.value = true;
   enrichStatus.value = null;
   try {
-    const result = await enrichFromSession(toApiMessages(50));
+    const sphereContext = buildSphereContext(soulContent.value ?? '')
+    const result = await enrichFromSession(toApiMessages(20), sphereContext);
     if (!result) {
       enrichStatus.value = { type: "error", message: "Verbindung fehlgeschlagen." };
     } else {

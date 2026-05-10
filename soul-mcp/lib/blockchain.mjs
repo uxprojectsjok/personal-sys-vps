@@ -67,7 +67,6 @@ async function fetchAnchoredEvents(provider, contract) {
   }
 
   const allEvents = [];
-  // Process in batches of 5 parallel requests
   for (let i = 0; i < chunks.length; i += 5) {
     const batch = chunks.slice(i, i + 5);
     const results = await Promise.allSettled(
@@ -78,12 +77,20 @@ async function fetchAnchoredEvents(provider, contract) {
     }
   }
 
-  // Deduplicate: keep latest event per soulId
-  const map = new Map();
+  // Sort ascending by block so latest event always wins in the map
+  allEvents.sort((a, b) => a.blockNumber - b.blockNumber || a.transactionIndex - b.transactionIndex);
+
+  // Three maps: latest event (for metadata), count (anchor_count), first (anchor_span)
+  const latestMap = new Map();
+  const countMap  = new Map();
+  const firstMap  = new Map();
   for (const ev of allEvents) {
-    map.set(ev.args.soulId, ev);
+    const sid = ev.args.soulId;
+    latestMap.set(sid, ev);
+    countMap.set(sid, (countMap.get(sid) ?? 0) + 1);
+    if (!firstMap.has(sid)) firstMap.set(sid, ev);
   }
-  return map;
+  return { latestMap, countMap, firstMap };
 }
 
 /**
@@ -187,25 +194,34 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
     return filterResults(_discoverCache, { q, amortized, limit });
   }
 
-  const eventMap = await fetchAnchoredEvents(provider, contract);
+  const { latestMap, countMap, firstMap } = await fetchAnchoredEvents(provider, contract);
 
-  // For each unique soul, read the tx calldata
+  // For each unique soul, read the latest tx calldata
   const souls = [];
-  const txFetches = [...eventMap.values()].map(async (ev) => {
+  const txFetches = [...latestMap.entries()].map(async ([soulIdBytes, ev]) => {
     try {
       const tx = await provider.getTransaction(ev.transactionHash);
       if (!tx?.data) return;
       const meta = extractSysMeta(tx.data);
       if (!meta?.id || !meta?.mcp) return;
 
+      const latestTs       = Number(ev.args.timestamp);
+      const firstEv        = firstMap.get(soulIdBytes);
+      const firstTs        = firstEv ? Number(firstEv.args.timestamp) : latestTs;
+      const anchorCount    = countMap.get(soulIdBytes) ?? 1;
+      const anchorSpanDays = Math.floor((latestTs - firstTs) / 86400);
+
       const soul = {
-        soul_id:        meta.id,
-        mcp_endpoint:   meta.mcp,
-        sessions:       Number(ev.args.sessionCount),
-        anchor_date:    new Date(Number(ev.args.timestamp) * 1000).toISOString().split('T')[0],
-        chain_verified: true,
-        network:        net.name,
-        tags:           Array.isArray(meta.tags) ? meta.tags : [],
+        soul_id:           meta.id,
+        mcp_endpoint:      meta.mcp,
+        sessions:          Number(ev.args.sessionCount),
+        anchor_date:       new Date(latestTs * 1000).toISOString().split('T')[0],
+        first_anchor_date: new Date(firstTs  * 1000).toISOString().split('T')[0],
+        anchor_count:      anchorCount,
+        anchor_span_days:  anchorSpanDays,
+        chain_verified:    true,
+        network:           net.name,
+        tags:              Array.isArray(meta.tags) ? meta.tags : [],
       };
 
       // Enrich from IPFS public gateway if CID available
@@ -224,7 +240,6 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
             soul.amortization    = ipfs.amortization ?? null;
             soul.pay_endpoint    = ipfs.pay_endpoint ?? null;
             soul.verify_endpoint = ipfs.verify_endpoint ?? null;
-            // Tags aus IPFS ergänzen falls on-chain leer
             if (!soul.tags.length && Array.isArray(ipfs.tags)) soul.tags = ipfs.tags;
           }
         } catch { /* IPFS fetch failed, use chain-only data */ }
@@ -244,6 +259,10 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
 
 function filterResults(souls, { q, amortized, limit }) {
   let res = souls;
+
+  // Anti-fraud: mindestens 1 echte Session (Growth Chain) — leere Souls werden ausgeschlossen
+  res = res.filter(s => (s.sessions ?? 0) >= 1);
+
   if (q) {
     const lq = q.toLowerCase();
     res = res.filter(s =>
@@ -257,6 +276,14 @@ function filterResults(souls, { q, amortized, limit }) {
   if (amortized) {
     res = res.filter(s => s.amortization?.enabled === true);
   }
+
+  // Sortierung: Sessions DESC (Aktivität), dann Anchor-Span DESC (Nachhaltigkeit)
+  res.sort((a, b) => {
+    const dSess = (b.sessions ?? 0) - (a.sessions ?? 0);
+    if (dSess !== 0) return dSess;
+    return (b.anchor_span_days ?? 0) - (a.anchor_span_days ?? 0);
+  });
+
   return res.slice(0, limit);
 }
 
