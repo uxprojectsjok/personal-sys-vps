@@ -33,6 +33,13 @@ export default defineEventHandler(async (event) => {
   try {
     await mkdir(dir, { recursive: true });
     await writeFile(path, JSON.stringify(anchor), "utf8");
+    // Soul sofort im Indexer sichtbar machen (fire-and-forget)
+    fetch("http://127.0.0.1:3098/internal/seed-soul", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ soul_id }),
+      signal:  AbortSignal.timeout(3000),
+    }).catch(() => {});
   } catch {
     // Dev: soul-Verzeichnis existiert möglicherweise nicht — ignorieren
   }

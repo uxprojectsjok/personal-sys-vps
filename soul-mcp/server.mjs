@@ -177,7 +177,7 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
-import { startIndexer, querySouls, indexStats } from './lib/soul_indexer.mjs';
+import { startIndexer, querySouls, indexStats, seedFromLocalAnchors } from './lib/soul_indexer.mjs';
 import { writeFile }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -465,6 +465,19 @@ app.post('/internal/pin-json', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Soul sofort in Index aufnehmen nach register-anchor ──────────────────────
+// POST /internal/seed-soul  { soul_id }
+// Wird von register-anchor (Lua/Nitro) aufgerufen sobald chain_anchor.json geschrieben ist.
+app.post('/internal/seed-soul', async (req, res) => {
+  try {
+    await seedFromLocalAnchors();
+    const stats = indexStats();
+    res.json({ ok: true, indexed: stats.souls });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

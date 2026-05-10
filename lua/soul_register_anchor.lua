@@ -57,4 +57,14 @@ end
 f:write(cjson.encode(anchor))
 f:close()
 
+-- Soul sofort im Indexer sichtbar machen (fire-and-forget)
+local http = require("resty.http")
+local hc   = http.new()
+hc:set_timeout(3000)
+hc:request_uri("http://127.0.0.1:3098/internal/seed-soul", {
+  method  = "POST",
+  headers = { ["Content-Type"] = "application/json" },
+  body    = cjson.encode({ soul_id = soul_id }),
+})
+
 ngx.say(cjson.encode({ ok = true, soul_id = soul_id, tx = body.tx_hash }))
