@@ -415,11 +415,25 @@ export function indexStats() {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 
+// Wiederholt IPFS-Enrichment für Einträge bei denen es beim Indexieren fehlschlug.
+// Läuft alle 30 Min — stellt sicher dass temporär offline Gateways nachgeholt werden.
+async function retryFailedEnrichments() {
+  const pending = [..._souls.values()].filter(e => e.cid && !e.ipfs_loaded_at);
+  if (pending.length === 0) return;
+  console.log(`[soul-index] IPFS-Retry für ${pending.length} Einträge`);
+  for (const entry of pending) {
+    await enrichFromIpfs(entry, entry.cid);
+    await sleep(200);
+  }
+  if (_dirty) await saveIndex();
+}
+
 export async function startIndexer() {
   await loadIndex();
   await seedFromLocalAnchors();
   subscribeWs();
   setInterval(saveIndex, SAVE_INTERVAL_MS);
+  setInterval(() => retryFailedEnrichments().catch(() => {}), 30 * 60 * 1000);
   process.on('SIGTERM', saveIndex);
   process.on('SIGINT',  saveIndex);
   // Hintergrund-Scan nicht awaiten — non-blocking
