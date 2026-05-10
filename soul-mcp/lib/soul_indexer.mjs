@@ -344,9 +344,8 @@ async function incrementalScan() {
 // Gibt eigene Soul sofort im Index — auch auf cold start, bevor der Scan durchläuft.
 
 async function seedFromLocalAnchors() {
-  const SOULS_DIR  = '/var/lib/sys/souls/';
-  // Eigener MCP-Endpoint — bekannt aus Umgebungsvariable
-  const ownMcpEp   = process.env.BASE_URL ? `${process.env.BASE_URL}/mcp` : null;
+  const SOULS_DIR = '/var/lib/sys/souls/';
+  const ownMcpEp  = process.env.BASE_URL ? `${process.env.BASE_URL}/mcp` : null;
   try {
     const { readdir } = await import('node:fs/promises');
     const dirs = await readdir(SOULS_DIR);
@@ -356,9 +355,21 @@ async function seedFromLocalAnchors() {
         const anchor = JSON.parse(raw);
         if (!anchor?.tx) continue;
         // Bytes32-Key — identisch mit processEvent (ev.args.soulId = keccak256(soulId))
-        const key = soulIdToBytes32(dir);
-        if (_souls.has(key)) continue; // bereits durch Scan indexiert
-        // Vorläufiger Eintrag — sofort in querySouls sichtbar, wird durch Scan überschrieben
+        const key      = soulIdToBytes32(dir);
+        const existing = _souls.get(key);
+
+        if (existing) {
+          // Immer Tags/Name/Sessions aus chain_anchor.json aktualisieren —
+          // der Soul-Betreiber hat diese Daten gerade bewusst geändert (Re-Anchor).
+          const newTags = Array.isArray(anchor.tags) ? anchor.tags : [];
+          if (newTags.length) existing.tags = newTags;
+          if (anchor.name)    existing.name = anchor.name;
+          if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = anchor.sessions;
+          _dirty = true;
+          continue;
+        }
+
+        // Neuer Eintrag — sofort in querySouls sichtbar, wird durch Scan verifiziert
         _souls.set(key, {
           soul_id:           dir,
           mcp_endpoint:      ownMcpEp,
