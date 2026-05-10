@@ -553,6 +553,7 @@ WorkingDirectory=${SCRIPT_DIR}/soul-mcp
 ExecStart=/usr/bin/node server.mjs
 Restart=always
 RestartSec=5
+TimeoutStopSec=10
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=soul-mcp
