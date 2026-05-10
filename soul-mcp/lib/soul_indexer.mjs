@@ -21,8 +21,8 @@ import { extractSysMeta, soulIdToBytes32 } from './blockchain.mjs';
 const CONTRACT_ADDRESS = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B';
 const DEPLOY_BLOCK     = 83_500_000;
 const INDEX_PATH       = '/var/lib/sys/soul_index.json';
-const SCAN_CHUNK       = 5_000;   // Blöcke pro RPC-Request (innerhalb publicnode-Limits)
-const SCAN_DELAY_MS    = 300;     // Pause zwischen Chunks — schont den RPC
+const SCAN_CHUNK       = 8_000;   // Blöcke pro RPC-Request (publicnode erlaubt bis ~10k)
+const SCAN_DELAY_MS    = 150;     // Pause zwischen Chunks — schont den RPC
 const SAVE_INTERVAL_MS = 60_000;  // Disk-Sync alle 60s
 const IPFS_TTL_MS      = 24 * 60 * 60 * 1000; // IPFS-Cache 24h
 
