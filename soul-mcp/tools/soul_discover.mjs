@@ -28,8 +28,16 @@ export function register(server, token) {
       '- amortized: true = nur Souls die POL-Zahlungen akzeptieren — optional',
       '- limit:     Max. Ergebnisse (1–100, Standard 20) — optional',
       '',
-      'Typischer Workflow für einen zahlenden Agenten:',
-      '1. soul_discover(q="Berlin") → Treffer mit Tags, Sessions, Endpunkten',
+      'ZUGANGS-MODELLE — wichtig, nicht verwechseln:',
+      '- amortization.enabled = true  → Zugang per POL-Zahlung möglich.',
+      '  Workflow: POL an wallet → tx_hash → soul_pay_read(pay_endpoint, soul_id, tx_hash)',
+      '- amortization.enabled = false / fehlt → KEIN öffentlicher Zugang.',
+      '  Diese Soul hat keinen Bezahl-Endpunkt konfiguriert.',
+      '  Zugang nur für den Eigentümer selbst oder vertrauenswürdige Peers (soul_cert).',
+      '  soul_pay_read funktioniert hier NICHT — keinen TX-Hash anfordern!',
+      '',
+      'Typischer Workflow für einen zahlenden Agenten (nur amortized=true Souls):',
+      '1. soul_discover(amortized=true) → nur zahlungspflichtige Souls anzeigen',
       '2. gateway_url öffnen (falls vorhanden) → vollständige IPFS-Metadaten',
       '3. POL-Transaktion an soul.amortization.wallet senden',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
@@ -94,7 +102,7 @@ export function register(server, token) {
             }
             if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
           } else {
-            lines.push(`- **Zugang:** kostenlos (keine Amortisation)`);
+            lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);
           }
 
           if (s.gateway_url) lines.push(`- **Alle Details:** [Pinata Gateway](${s.gateway_url})`);
