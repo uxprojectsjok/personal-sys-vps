@@ -376,8 +376,9 @@ const agentMode       = ref(false)
 const isSavingAgent   = ref(false)
 const isRefreshing    = ref(false)
 const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
-const synthesisText   = ref('')
-const isSynthesizing  = ref(false)
+const synthesisText                  = ref('')
+const isSynthesizing                 = ref(false)
+const synthesisTriggeredThisSession  = ref(false)
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
 const msgDoc          = ref(null)    // { file, name } — attached doc in messaging mode
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
@@ -614,7 +615,20 @@ Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was 
 
     if (!res.ok) throw new Error(`API ${res.status}`)
     const data = await res.json()
-    synthesisText.value = data?.content?.[0]?.text ?? ''
+    const text = data?.content?.[0]?.text ?? ''
+    synthesisText.value = text
+
+    if (text) {
+      const ts          = new Date().toISOString()
+      const safeText    = `[Synthese] ${text}`
+      const socialEntry = formatMsgEntry(safeText, 'ki', 'peer',  ts)
+      const agentEntry  = formatMsgEntry(safeText, 'ki', 'agent', ts)
+      let updated = soulContentAgent.value ?? ''
+      updated = appendToMarkerBlock(updated, 'SOCIAL', socialEntry)
+      updated = appendToMarkerBlock(updated, 'AGENT',  agentEntry)
+      updateContent(updated)
+      pushToServer().catch(() => {})
+    }
   } catch {
     synthesisText.value = ''
   } finally {
@@ -622,8 +636,20 @@ Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was 
   }
 }
 
-watch(msgView, (v) => { if (v === 'all' && agentMode.value) triggerSynthesis() })
-watch(agentMode, (v) => { if (v && msgView.value === 'all') triggerSynthesis() })
+watch(msgView, (v) => {
+  if (v === 'all' && agentMode.value && !synthesisTriggeredThisSession.value) {
+    synthesisTriggeredThisSession.value = true
+    triggerSynthesis()
+  }
+})
+watch(agentMode, (active, prev) => {
+  // Reset flag on every entry/exit so next entry triggers fresh synthesis
+  synthesisTriggeredThisSession.value = false
+  if (active && msgView.value === 'all') {
+    synthesisTriggeredThisSession.value = true
+    triggerSynthesis()
+  }
+})
 
 async function handleMsgSend() {
   if (isSavingAgent.value) return
