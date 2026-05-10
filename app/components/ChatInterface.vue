@@ -156,7 +156,7 @@
             ref="textareaEl"
             v-model="draft"
             class="input"
-            :placeholder="agentMode ? 'Nachricht schreiben…' : 'Schreib etwas…'"
+            :placeholder="agentMode ? (msgView === 'peer' ? 'Nachricht an Peers…' : msgView === 'agent' ? 'Nachricht an Agenten…' : 'Nachricht an alle — KI synthetisiert…') : 'Schreib etwas…'"
             rows="1"
             @keydown.enter.exact.prevent="handleSend"
             @keydown.shift.enter.exact="draft += '\n'; $nextTick(autoResize)"
@@ -182,17 +182,6 @@
         <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
         <span class="dock-media-name">{{ msgMedia.name ?? 'Bild' }}</span>
         <button class="dock-media-remove" @click="msgMedia = null" aria-label="Entfernen">✕</button>
-      </div>
-
-      <!-- Row 1b: recipient selector (messaging mode only) -->
-      <div v-if="agentMode" class="dock-recipients">
-        <span class="recipient-label">An:</span>
-        <button v-for="[id, label, color] in [['peer','@Peer','#34d399'],['agent','@Agent','#a78bfa'],['community','@Community','#60a5fa']]" :key="id"
-          class="recipient-badge" :class="{ active: msgRecipient === id }"
-          :style="msgRecipient === id ? { background: color + '22', color, borderColor: color + '55' } : {}"
-          @click="msgRecipient = id">
-          {{ label }}
-        </button>
       </div>
 
       <!-- Row 2: feature chips -->
@@ -371,7 +360,6 @@ const agentMode       = ref(false)
 const isSavingAgent   = ref(false)
 const isRefreshing    = ref(false)
 const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
-const msgRecipient    = ref('peer')  // 'peer' | 'agent' | 'community'
 const synthesisText   = ref('')
 const isSynthesizing  = ref(false)
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
@@ -621,7 +609,7 @@ async function handleMsgSend() {
 
   try {
     // In "Alle"-Modus immer @community senden
-    const recipient = msgView.value === 'all' ? 'community' : msgRecipient.value
+    const recipient = msgView.value === 'all' ? 'community' : msgView.value
     const fullText  = media ? `${text}${text ? ' ' : ''}[Bild]` : text
     const entry     = formatMsgEntry(fullText, 'me', recipient)
     let current     = soulContentAgent.value ?? ''
@@ -1619,35 +1607,4 @@ defineExpose({
   letter-spacing: 0.06em;
 }
 
-/* ── Nachrichten-Modus: Empfänger-Zeile im Dock ─────────────────── */
-.dock-recipients {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--rule);
-  flex-wrap: wrap;
-}
-.recipient-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--fg-4);
-  flex-shrink: 0;
-}
-.recipient-badge {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 3px 10px;
-  border-radius: 99px;
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--fg-4);
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.recipient-badge:hover { color: var(--fg-3); border-color: rgba(255,255,255,0.22); }
 </style>
