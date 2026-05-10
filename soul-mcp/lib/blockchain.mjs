@@ -54,15 +54,22 @@ const DISCOVER_TTL = 5 * 60 * 1000;
 const _txCache = new Map(); // key → { ts, souls[] }
 
 /**
- * Queries all Anchored events from the SoulRegistry contract in parallel chunks.
+ * Queries Anchored events from the SoulRegistry contract in parallel chunks.
  * Returns deduplicated map: soulIdBytes32 → latest event.
+ *
+ * Public Polygon RPCs (publicnode.com etc.) limit eth_getLogs to ~10k blocks.
+ * We use CHUNK=5000 and scan only the most recent RECENT_WINDOW blocks so that
+ * the fallback full-scan stays within the 30-second tool timeout.
  */
+const CHUNK         = 5_000;
+const RECENT_WINDOW = 500_000;
+
 async function fetchAnchoredEvents(provider, contract) {
-  const current = await provider.getBlockNumber();
-  const CHUNK = 100_000;
-  const filter = contract.filters.Anchored();
-  const chunks = [];
-  for (let from = DEPLOY_BLOCK; from <= current; from += CHUNK) {
+  const current   = await provider.getBlockNumber();
+  const fromBlock = Math.max(DEPLOY_BLOCK, current - RECENT_WINDOW);
+  const filter    = contract.filters.Anchored();
+  const chunks    = [];
+  for (let from = fromBlock; from <= current; from += CHUNK) {
     chunks.push([from, Math.min(from + CHUNK - 1, current)]);
   }
 
