@@ -458,8 +458,12 @@ export async function startIndexer() {
   subscribeWs();
   setInterval(saveIndex, SAVE_INTERVAL_MS);
   setInterval(() => retryFailedEnrichments().catch(() => {}), 30 * 60 * 1000);
-  process.on('SIGTERM', saveIndex);
-  process.on('SIGINT',  saveIndex);
+  const shutdown = async () => {
+    await saveIndex().catch(() => {});
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT',  shutdown);
   // Hintergrund-Scan nicht awaiten — non-blocking
   incrementalScan().catch(e => console.error('[soul-index] Scan-Fehler:', e.message));
 }
