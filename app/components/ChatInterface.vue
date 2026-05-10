@@ -350,7 +350,7 @@ const scrollEl   = ref(null)
 const chatEnd    = ref(null)
 
 const canSend = computed(() =>
-  draft.value.trim().length > 0 &&
+  (draft.value.trim().length > 0 || (agentMode.value && !!msgMedia.value)) &&
   (agentMode.value ? !isSavingAgent.value : !isLoading.value)
 )
 
@@ -472,8 +472,10 @@ function formatMsgEntry(content, from, to) {
 function appendToMarkerBlock(md, type, entry) {
   const end = `<!-- ${type}:END -->`
   const idx = md.indexOf(end)
-  if (idx === -1) return md
-  return md.slice(0, idx) + entry + '\n' + md.slice(idx)
+  if (idx !== -1) return md.slice(0, idx) + entry + '\n' + md.slice(idx)
+  // Block fehlt — am Ende erstellen (v1 → v2 Auto-Migration)
+  const start = `<!-- ${type}:START -->`
+  return md.trimEnd() + `\n\n${start}${entry}\n${end}\n`
 }
 
 function fmtMsgDate(ts) {
@@ -653,6 +655,7 @@ async function scrollToBottom() {
 }
 
 watch(() => messages.value?.length, scrollToBottom)
+watch(() => displayMessages.value.length, () => { if (agentMode.value) scrollToBottom() })
 
 // ── Formatters ─────────────────────────────────────────────────────
 function fmtTime(ts) {
