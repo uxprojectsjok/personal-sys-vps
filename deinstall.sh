@@ -43,10 +43,19 @@ read -p "Wirklich deinstallieren? (yes/no): " CONFIRM
 
 # ── 1. Services stoppen ───────────────────────────────────────────────────────
 info "Stopping services..."
-systemctl stop    openresty 2>/dev/null || true
-systemctl disable openresty 2>/dev/null || true
-systemctl stop    nginx     2>/dev/null || true
-systemctl disable nginx     2>/dev/null || true
+# soul-mcp (pm2) zuerst stoppen
+if command -v pm2 &>/dev/null; then
+  timeout 10 pm2 stop all    2>/dev/null || true
+  timeout 10 pm2 delete all  2>/dev/null || true
+  timeout 10 pm2 kill        2>/dev/null || true
+fi
+timeout 10 systemctl stop    openresty 2>/dev/null || true
+timeout 10 systemctl disable openresty 2>/dev/null || true
+# nginx ist OpenResty — nur stoppen wenn eigene Unit vorhanden
+if systemctl list-units --type=service 2>/dev/null | grep -q 'nginx.service'; then
+  timeout 10 systemctl stop    nginx 2>/dev/null || true
+  timeout 10 systemctl disable nginx 2>/dev/null || true
+fi
 
 # ── 2. SSL-Zertifikat ────────────────────────────────────────────────────────
 CERT_PATH="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
