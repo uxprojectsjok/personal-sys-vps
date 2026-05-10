@@ -487,26 +487,41 @@ app.get('/internal/discover-souls', async (req, res) => {
       const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
       await Promise.allSettled(soulDirs.map(async (dir) => {
         try {
-          const sysmd   = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
-          const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
-          if (!fmMatch) return;
-          const fm       = fmMatch[1];
-          const anchorIdx = fm.indexOf('soul_chain_anchor');
-          if (anchorIdx === -1) return;
-          const chunk    = fm.slice(anchorIdx, anchorIdx + 500);
-          const txMatch  = chunk.match(/0x[0-9a-fA-F]{64}/);
-          if (!txMatch) return;
-          const nameMatch  = fm.match(/^soul_name:\s*(.+)$/m);
-          const soulName   = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
-          const dateMatch  = chunk.match(/"date"\s*:\s*"([^"]+)"/);
-          const anchorDate = dateMatch?.[1] || null;
-          const sessMatch  = chunk.match(/"sessions"\s*:\s*(\d+)/);
-          const sessions   = sessMatch ? parseInt(sessMatch[1], 10) : null;
-          const tagsMatch  = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
-          let anchorTags   = [];
-          if (tagsMatch) { try { anchorTags = JSON.parse(tagsMatch[1]); } catch { /**/ } }
-          txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags });
-        } catch { /**/ }
+          // Primär: chain_anchor.json (plaintext, unverschlüsselt — von useChainAnchor geschrieben)
+          const anchorRaw = await readFile(`${SOULS_DIR}${dir}/chain_anchor.json`, 'utf8');
+          const anchor    = JSON.parse(anchorRaw);
+          if (!anchor?.tx) return;
+          txEntries.push({
+            txHash:     anchor.tx,
+            soulName:   anchor.name   || null,
+            anchorDate: anchor.date   || null,
+            sessions:   anchor.sessions ?? null,
+            anchorTags: Array.isArray(anchor.tags) ? anchor.tags : [],
+          });
+        } catch {
+          // Fallback: soul_chain_anchor aus sys.md Frontmatter (nur wenn unverschlüsselt)
+          try {
+            const sysmd   = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
+            const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
+            if (!fmMatch) return;
+            const fm        = fmMatch[1];
+            const anchorIdx = fm.indexOf('soul_chain_anchor');
+            if (anchorIdx === -1) return;
+            const chunk     = fm.slice(anchorIdx, anchorIdx + 500);
+            const txMatch   = chunk.match(/0x[0-9a-fA-F]{64}/);
+            if (!txMatch) return;
+            const nameMatch  = fm.match(/^soul_name:\s*(.+)$/m);
+            const soulName   = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
+            const dateMatch  = chunk.match(/"date"\s*:\s*"([^"]+)"/);
+            const anchorDate = dateMatch?.[1] || null;
+            const sessMatch  = chunk.match(/"sessions"\s*:\s*(\d+)/);
+            const sessions   = sessMatch ? parseInt(sessMatch[1], 10) : null;
+            const tagsMatch  = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
+            let anchorTags   = [];
+            if (tagsMatch) { try { anchorTags = JSON.parse(tagsMatch[1]); } catch { /**/ } }
+            txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags });
+          } catch { /**/ }
+        }
       }));
     } catch { /**/ }
 

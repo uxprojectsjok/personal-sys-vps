@@ -765,6 +765,19 @@ export function useChainAnchor() {
       }
       save();
 
+      // chain_anchor.json (plaintext) — damit soul_discover den TX-Hash ohne Entschlüsselung lesen kann
+      fetch('/api/soul/register-anchor', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+        body:    JSON.stringify({
+          tx_hash:  tx.hash,
+          date:     today,
+          sessions: sessionCount,
+          tags:     Array.isArray(tags) ? tags : [],
+          name:     soulMeta.value?.name ?? null,
+        }),
+      }).catch(() => {});
+
       // ── TX-Hash sofort zurückgeben — UI nicht blockieren ──────────────────
       // Die Transaktion ist gesendet, der Hash steht bereits in sys.md.
       // Bestätigung im Hintergrund polling — blockiert weder den User noch die UI.

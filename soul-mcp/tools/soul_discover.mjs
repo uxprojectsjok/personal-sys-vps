@@ -51,7 +51,7 @@ export function register(server, token) {
         // Direkt internen Endpoint aufrufen (läuft auf demselben Server)
         const res = await fetch(url, {
           headers: { Accept: 'application/json' },
-          signal:  AbortSignal.timeout(15000),
+          signal:  AbortSignal.timeout(30000),
         });
 
         if (!res.ok) {
