@@ -426,7 +426,7 @@ export function querySouls({ q = '', amortized = false, limit = 20 } = {}) {
   return results.slice(0, limit);
 }
 
-export { seedFromLocalAnchors };
+export { seedFromLocalAnchors, retryFailedEnrichments };
 
 export function indexStats() {
   return {
@@ -464,6 +464,8 @@ export async function startIndexer() {
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT',  shutdown);
+  // Sofortiger IPFS-Retry beim Start — nicht auf 30-Min-Interval warten
+  retryFailedEnrichments().catch(() => {});
   // Hintergrund-Scan nicht awaiten — non-blocking
   incrementalScan().catch(e => console.error('[soul-index] Scan-Fehler:', e.message));
 }
