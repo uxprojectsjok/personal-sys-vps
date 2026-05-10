@@ -78,7 +78,7 @@
         <div v-if="msgView === 'all'" class="synthesis-block">
           <div class="synthesis-label">
             <span class="synthesis-dot"></span>
-            Collective Sense-Making
+            Kollektive Synthese
           </div>
           <div v-if="isSynthesizing" class="dots synthesis-dots">
             <span></span><span></span><span></span>
@@ -110,8 +110,17 @@
             <!-- Content -->
             <div class="msg-inner"
               :class="msg.from === 'me' ? 'msg-inner--me' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
-              <img v-if="msgMediaCache.get(msg.ts)" :src="msgMediaCache.get(msg.ts)" class="msg-media-img" alt="" />
-              <p v-for="(para, j) in paragraphs(msg.content.replace('[Bild]', '').trim())" :key="j" v-html="renderText(para)"></p>
+              <div v-if="msgExpiredCache.has(msg.ts)" class="msg-expired">Inhalt abgelaufen</div>
+              <template v-else>
+                <img v-if="msgMediaCache.get(msg.ts)" :src="msgMediaCache.get(msg.ts)" class="msg-media-img" alt="" />
+                <div v-if="msgBlobCache.get(msg.ts)" class="msg-doc-link">
+                  <a :href="msgBlobCache.get(msg.ts).url" :download="msgBlobCache.get(msg.ts).name" class="msg-doc-a">
+                    <span class="msg-doc-icon">↓</span>
+                    <span class="msg-doc-name">{{ msgBlobCache.get(msg.ts).name }}</span>
+                  </a>
+                </div>
+              </template>
+              <p v-for="(para, j) in paragraphs(cleanMsgContent(msg))" :key="j" v-html="renderText(para)"></p>
             </div>
 
             <!-- Footer: to-badge + time -->
@@ -183,6 +192,12 @@
         <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
         <span class="dock-media-name">{{ msgMedia.name ?? 'Bild' }}</span>
         <button class="dock-media-remove" @click="msgMedia = null" aria-label="Entfernen">✕</button>
+      </div>
+      <!-- Doc preview (messaging mode, when doc attached) -->
+      <div v-if="agentMode && msgDoc" class="dock-media-preview">
+        <span class="dock-doc-icon">↓</span>
+        <span class="dock-media-name">{{ msgDoc.name }}</span>
+        <button class="dock-media-remove" @click="msgDoc = null" aria-label="Entfernen">✕</button>
       </div>
 
       <!-- Row 2: feature chips -->
@@ -304,7 +319,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useClaude } from '~/composables/useClaude.js'
 import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
@@ -351,7 +366,7 @@ const scrollEl   = ref(null)
 const chatEnd    = ref(null)
 
 const canSend = computed(() =>
-  (draft.value.trim().length > 0 || (agentMode.value && !!msgMedia.value)) &&
+  (draft.value.trim().length > 0 || (agentMode.value && (!!msgMedia.value || !!msgDoc.value))) &&
   (agentMode.value ? !isSavingAgent.value : !isLoading.value)
 )
 
@@ -364,20 +379,30 @@ const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
 const synthesisText   = ref('')
 const isSynthesizing  = ref(false)
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
-const msgMediaCache   = ref(new Map()) // ts → dataUrl — session-only image display
+const msgDoc          = ref(null)    // { file, name } — attached doc in messaging mode
+const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
+const msgBlobCache    = reactive(new Map()) // ts → { url, name } — session blob URLs for docs
+const msgExpiredCache = reactive(new Set()) // ts — evicted cache entries
 const SYNTHESIS_N     = 5           // messages per sphere for synthesis
-let   _agentPollTimer = null
+const CACHE_TTL_MS    = 30 * 60 * 1000
+const CACHE_MAX_ITEMS = 30
+let   _agentPollTimer  = null
+let   _cacheEvictTimer = null
 
 watch(agentMode, async (active) => {
   if (active) {
     await refreshAgentContent()
-    _agentPollTimer = setInterval(refreshAgentContent, 30_000)
+    _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
+    _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
   } else {
-    clearInterval(_agentPollTimer)
-    _agentPollTimer = null
+    clearInterval(_agentPollTimer);  _agentPollTimer  = null
+    clearInterval(_cacheEvictTimer); _cacheEvictTimer = null
   }
 })
-onUnmounted(() => clearInterval(_agentPollTimer))
+onUnmounted(() => {
+  clearInterval(_agentPollTimer)
+  clearInterval(_cacheEvictTimer)
+})
 
 async function refreshAgentContent() {
   isRefreshing.value = true
@@ -435,6 +460,8 @@ function parseOldAgentBlock(blockContent) {
   return blockContent.split(/\n\n---\n/).map((part, i) => {
     const t = part.trim()
     if (!t) return null
+    // @msg HTML-Kommentare werden von parseMsgBlock verarbeitet — hier überspringen
+    if (/<!--/.test(t)) return null
     const pm = t.match(/^\*\*(.+?)\*\*(.+?)\n([\s\S]*)/)
     if (pm) {
       const rawName     = pm[1].trim()
@@ -578,10 +605,9 @@ async function triggerSynthesis(imageBase64 = null) {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 512,
         stream: false,
-        system: `Du bist ein Synthesizer für verteilte Kommunikation auf einem SYS-Knoten.
-Du bekommst die letzten Nachrichten aus zwei Sphären: der Social Sphere (Peer-zu-Peer zwischen Menschen) und dem Agent Sandbox (Mensch-KI-Kollaboration).
-Finde Querverbindungen, Muster und emergente Ideen die über die einzelnen Sphären hinausgehen.
-Formuliere 2–4 präzise Sätze. Keine Einleitung, keine Überschriften. Direkt zur Synthese.`,
+        system: `Du bekommst Nachrichten aus zwei Bereichen: dem Peer-Bereich (Gespräche mit anderen Menschen) und der Agenten-Sandbox (Mensch-KI-Zusammenarbeit).
+Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was verbindet beide Bereiche?
+2–3 einfache Sätze. Keine Fachbegriffe. Keine Einleitung. Direkt anfangen.`,
         messages: [{ role: 'user', content: userContent }]
       })
     })
@@ -602,22 +628,35 @@ watch(agentMode, (v) => { if (v && msgView.value === 'all') triggerSynthesis() }
 async function handleMsgSend() {
   if (isSavingAgent.value) return
   const text = draft.value.trim()
-  if (!text && !msgMedia.value) return
+  if (!text && !msgMedia.value && !msgDoc.value) return
   draft.value = ''
   await nextTick(autoResize)
   isSavingAgent.value = true
 
   const media = msgMedia.value
+  const doc   = msgDoc.value
   msgMedia.value = null
+  msgDoc.value   = null
 
   try {
-    // In "Alle"-Modus immer @community senden
     const recipient = msgView.value === 'all' ? 'community' : msgView.value
-    const fullText  = media ? `${text}${text ? ' ' : ''}[Bild]` : text
     const msgTs     = new Date().toISOString()
-    const entry     = formatMsgEntry(fullText, 'me', recipient, msgTs)
-    if (media) msgMediaCache.value.set(msgTs, `data:${media.mime};base64,${media.base64}`)
-    let current     = soulContentAgent.value ?? ''
+
+    let fullText
+    if (doc) {
+      const summary = await summarizeDocument(doc.file).catch(() => '')
+      const blobUrl = URL.createObjectURL(doc.file)
+      msgBlobCache.set(msgTs, { url: blobUrl, name: doc.name })
+      fullText = `[Dokument: ${doc.name}]${summary ? ' ' + summary : ''}`
+    } else if (media) {
+      msgMediaCache.set(msgTs, `data:${media.mime};base64,${media.base64}`)
+      fullText = `${text}${text ? ' ' : ''}[Bild]`
+    } else {
+      fullText = text
+    }
+
+    const entry = formatMsgEntry(fullText, 'me', recipient, msgTs)
+    let current = soulContentAgent.value ?? ''
     if (recipient === 'peer'      || recipient === 'community')
       current = appendToMarkerBlock(current, 'SOCIAL', entry)
     if (recipient === 'agent'     || recipient === 'community')
@@ -625,7 +664,6 @@ async function handleMsgSend() {
     updateContent(current)
     await pushToServer()
 
-    // Im "Alle"-Modus: Synthese neu triggern (mit Bild wenn vorhanden)
     if (msgView.value === 'all') {
       triggerSynthesis(media?.base64 ?? null)
     } else {
@@ -634,6 +672,69 @@ async function handleMsgSend() {
   } finally {
     isSavingAgent.value = false
   }
+}
+
+async function summarizeDocument(file) {
+  try {
+    let messages
+    if (PDF_EXT.test(file.name) && file.size <= 5 * 1024 * 1024) {
+      const base64 = await fileToBase64(file)
+      messages = [{ role: 'user', content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+        { type: 'text', text: 'Fasse dieses Dokument in 2–3 Sätzen zusammen.' },
+      ] }]
+    } else {
+      const text = await file.text()
+      messages = [{ role: 'user', content: `Fasse diesen Text in 2–3 Sätzen zusammen:\n\n${text.slice(0, 8000)}` }]
+    }
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 256, stream: false, messages }),
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    return data?.content?.[0]?.text?.trim() ?? ''
+  } catch { return '' }
+}
+
+function evictCache() {
+  const now = Date.now()
+  for (const [ts] of msgMediaCache.entries()) {
+    if (now - new Date(ts).getTime() > CACHE_TTL_MS) {
+      msgMediaCache.delete(ts)
+      msgExpiredCache.add(ts)
+    }
+  }
+  for (const [ts, { url }] of msgBlobCache.entries()) {
+    if (now - new Date(ts).getTime() > CACHE_TTL_MS) {
+      URL.revokeObjectURL(url)
+      msgBlobCache.delete(ts)
+      msgExpiredCache.add(ts)
+    }
+  }
+  const allTs = [...Array.from(msgMediaCache.keys()), ...Array.from(msgBlobCache.keys())].sort()
+  const over  = allTs.length - CACHE_MAX_ITEMS
+  if (over > 0) {
+    allTs.slice(0, over).forEach(ts => {
+      if (msgMediaCache.has(ts)) {
+        msgMediaCache.delete(ts)
+      } else {
+        const e = msgBlobCache.get(ts)
+        if (e) URL.revokeObjectURL(e.url)
+        msgBlobCache.delete(ts)
+      }
+      msgExpiredCache.add(ts)
+    })
+  }
+}
+
+function cleanMsgContent(msg) {
+  let c = msg.content.replace('[Bild]', '').trim()
+  if (msgBlobCache.has(msg.ts) || msgExpiredCache.has(msg.ts)) {
+    c = c.replace(/^\[Dokument:[^\]]*\]\s*/, '')
+  }
+  return c.trim()
 }
 
 // ── Camera / Vision ────────────────────────────────────────────────
@@ -754,19 +855,22 @@ async function handleLocalFile(file) {
 }
 
 async function handleFileChip() {
-  // Nachrichten-Modus: nur Bilder, direkt als msgMedia setzen
   if (agentMode.value) {
-    let file = null
-    file = await new Promise((resolve) => {
+    const file = await new Promise((resolve) => {
       const input = document.createElement('input')
-      input.type = 'file'; input.accept = 'image/*'
+      input.type = 'file'
+      input.accept = 'image/*,.pdf,.txt,.md,.json,.csv,.xml,.yaml,.yml,.log'
       input.onchange = () => resolve(input.files[0] || null); input.click()
     })
     if (!file) return
-    try {
-      const base64 = await compressImage(file)
-      msgMedia.value = { base64, mime: 'image/jpeg', name: file.name }
-    } catch { /* ignore */ }
+    if (IMAGE_EXT.test(file.name)) {
+      try {
+        const base64 = await compressImage(file)
+        msgMedia.value = { base64, mime: 'image/jpeg', name: file.name }
+      } catch { /* ignore */ }
+    } else {
+      msgDoc.value = { file, name: file.name }
+    }
     return
   }
 
@@ -1077,6 +1181,7 @@ onMounted(() => {
   nextTick(autoResize)
 })
 onUnmounted(() => {
+  for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
 })
 
@@ -1584,6 +1689,35 @@ defineExpose({
   border-radius: 8px;
   object-fit: cover;
   margin-bottom: 6px;
+}
+.msg-doc-link { margin-bottom: 6px; }
+.msg-doc-a {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--fg-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  max-width: 200px;
+  transition: background 0.12s;
+}
+.msg-doc-a:hover { background: rgba(255,255,255,0.10); }
+.msg-doc-icon { flex-shrink: 0; font-size: 13px; }
+.msg-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.msg-expired {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--fg-4);
+  font-style: italic;
+  margin-bottom: 4px;
+}
+.dock-doc-icon {
+  font-size: 16px; flex-shrink: 0; color: var(--fg-3);
 }
 
 .msg-inner--me {

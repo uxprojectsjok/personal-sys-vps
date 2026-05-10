@@ -177,7 +177,102 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman, discoverSouls, discoverSoulsFromTxHashes } from './lib/blockchain.mjs';
+import { writeFile }   from 'fs/promises';
+import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// POST /internal/run-tool — führt ein Soul-Tool server-seitig aus (In-App-Chat)
+// Kein Auth nötig — nur localhost erreichbar, soul_cert wird vom Nginx-Proxy vorab geprüft.
+app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) => {
+  const { tool, input = {} } = req.body;
+  if (!tool) return res.status(400).json({ error: 'tool erforderlich' });
+
+  try {
+    const dirs     = await readdir(SOULS_DIR).catch(() => []);
+    const soulId   = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d));
+    if (!soulId) return res.status(404).json({ error: 'Keine Soul gefunden' });
+
+    const { vaultKeyHex } = await loadVaultMeta(soulId);
+    const soulPath = `${SOULS_DIR}${soulId}/sys.md`;
+
+    switch (tool) {
+
+      case 'soul_read': {
+        const rawBuf = await readFile(soulPath);
+        const text   = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
+        return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      case 'soul_write': {
+        const { section, content: newContent, mode = 'replace' } = input;
+        if (!section || !newContent)
+          return res.status(400).json({ error: 'section und content erforderlich' });
+
+        const rawBuf       = await readFile(soulPath);
+        const wasEncrypted = rawBuf.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
+        let   md           = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
+
+        // Aligned mit soul_write.mjs updateSection (multiline, trailing spaces, create-if-missing)
+        const re = new RegExp(
+          `(^## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=^## |\\s*$)`,
+          'm'
+        );
+
+        if (re.test(md)) {
+          md = md.replace(re, (_, h, existing) => {
+            const trim = existing.trim();
+            let body;
+            if (mode === 'prepend')     body = trim ? `${newContent}\n\n${trim}` : newContent;
+            else if (mode === 'append') body = trim ? `${trim}\n\n${newContent}` : newContent;
+            else                        body = newContent;
+            return `${h}${body.trim()}\n\n`;
+          });
+        } else {
+          // Sektion existiert nicht → am Ende anlegen
+          md = md.trimEnd() + `\n\n## ${section}\n${newContent.trim()}\n`;
+        }
+
+        let writeBuf = Buffer.from(md, 'utf8');
+        if (wasEncrypted && vaultKeyHex) writeBuf = encryptBuf(writeBuf, vaultKeyHex);
+        await writeFile(soulPath, writeBuf);
+
+        const verb = mode === 'prepend' ? 'ergänzt (Anfang)' : mode === 'append' ? 'ergänzt (Ende)' : 'ersetzt';
+        return res.json({ content: [{ type: 'text', text: `Sektion "${section}" ${verb}.` }] });
+      }
+
+      case 'vault_manifest': {
+        const vaultDir = `${SOULS_DIR}${soulId}/vault/`;
+        const files = [];
+        async function scanDir(dir, prefix = '') {
+          const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+          for (const e of entries) {
+            if (e.isDirectory()) await scanDir(`${dir}${e.name}/`, `${prefix}${e.name}/`);
+            else files.push(`${prefix}${e.name}`);
+          }
+        }
+        await scanDir(vaultDir);
+        const text = files.length ? files.join('\n') : 'Vault ist leer.';
+        return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      case 'context_get': {
+        const { name } = input;
+        if (!name) return res.status(400).json({ error: 'name erforderlich' });
+        const ctxPath = `${SOULS_DIR}${soulId}/vault/context/${name}`;
+        const text = await readFile(ctxPath, 'utf8').catch(() => null);
+        if (!text) return res.json({ content: [{ type: 'text', text: `Datei "${name}" nicht gefunden.` }] });
+        return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      default:
+        return res.status(400).json({ error: `Unbekanntes Tool: ${tool}` });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Polygon-Provider (wiederverwendet aus blockchain.mjs Logik)
 const NETWORKS = {
@@ -376,150 +471,51 @@ app.post('/internal/pin-json', async (req, res) => {
 // GET /internal/discover-souls?q=&amortized=&limit=
 // Beide Quellen werden gleichzeitig abgefragt und dedupliziert zusammengeführt.
 // Chain-Daten gewinnen bei soul_id-Kollision (chain_verified = true).
+// GET /internal/discover-souls — Blockchain-only discovery.
+// Pinata wird nur zum Pinnen genutzt, nicht zur Suche.
+// Quelle der Wahrheit: Polygon-Blockchain (neuester Anker je Soul, gefiltert auf sessions >= 1).
 app.get('/internal/discover-souls', async (req, res) => {
   const limit     = Math.min(parseInt(req.query.limit || '20', 10), 100);
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
-  const lq        = q.toLowerCase();
-
-  const jwt = await getPinataJwt();
-
-  // ── Pinata-Abfrage ─────────────────────────────────────────────────────────
-  async function fetchPinata() {
-    if (!jwt) return [];
-    try {
-      // pageLimit höher als limit — Client-Side-Filter braucht Spielraum
-      const params = new URLSearchParams({
-        status:    'pinned',
-        pageLimit: '100',
-        'metadata[keyvalues][schema]': JSON.stringify({ value: 'saveyoursoul/soul/1.0', op: 'eq' }),
-      });
-      // Tag-Filter via keyvalues wenn Query gesetzt — versuche tag_0..tag_3 (Pinata unterstützt nur eq)
-      // Primär-Filter: metadata[name] enthält soul_name (seit Fix: name=soul-{soul_name})
-      if (q) {
-        params.set('metadata[keyvalues][schema]', JSON.stringify({ value: 'saveyoursoul/soul/1.0', op: 'eq' }));
-      }
-      const response = await fetch(
-        `https://api.pinata.cloud/data/pinList?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${jwt}` }, signal: AbortSignal.timeout(20000) },
-      );
-      if (!response.ok) return [];
-      const data = await response.json();
-      const rows = data.rows || [];
-
-      const settled = await Promise.allSettled(
-        rows.map(async (pin) => {
-          const cid = pin.ipfs_pin_hash;
-          try {
-            const r = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`, {
-              signal: AbortSignal.timeout(12000),
-            });
-            if (!r.ok) return null;
-            const meta = await r.json();
-            if (!meta.soul_id || !meta.mcp_endpoint) return null;
-            return {
-              soul_id:         meta.soul_id,
-              name:            meta.name ?? null,
-              description:     meta.description ?? null,
-              tags:            Array.isArray(meta.tags) ? meta.tags : [],
-              mcp_endpoint:    meta.mcp_endpoint,
-              pay_endpoint:    meta.pay_endpoint ?? null,
-              soul_endpoint:   meta.soul_endpoint ?? null,
-              verify_endpoint: meta.verify_endpoint ?? null,
-              amortization:    meta.amortization ?? null,
-              cid,
-              gateway_url:     `https://gateway.pinata.cloud/ipfs/${cid}`,
-              pinned_at:       pin.date_pinned,
-              chain_verified:  false,
-              source:          'ipfs',
-            };
-          } catch { return null; }
-        }),
-      );
-      return settled.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
-    } catch { return []; }
-  }
-
-  // ── Chain-Abfrage (lokale sys.md TX-Hashes, dann Polygon) ─────────────────
-  async function fetchChain() {
-    try {
-      const SOULS_DIR = '/var/lib/sys/souls/';
-      const txEntries = [];
-      try {
-        const dirs = await readdir(SOULS_DIR);
-        const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
-        await Promise.allSettled(soulDirs.map(async (dir) => {
-          try {
-            const sysmd = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
-            const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
-            if (!fmMatch) return;
-            const fm = fmMatch[1];
-            const anchorIdx = fm.indexOf('soul_chain_anchor');
-            if (anchorIdx === -1) return;
-            const chunk = fm.slice(anchorIdx, anchorIdx + 500);
-            const txMatch = chunk.match(/0x[0-9a-fA-F]{64}/);
-            if (!txMatch) return;
-            const nameMatch = fm.match(/^soul_name:\s*(.+)$/m);
-            const soulName = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
-            const dateMatch = chunk.match(/"date"\s*:\s*"([^"]+)"/);
-            const anchorDate = dateMatch?.[1] || null;
-            const sessMatch = chunk.match(/"sessions"\s*:\s*(\d+)/);
-            const sessions = sessMatch ? parseInt(sessMatch[1], 10) : null;
-            // Tags aus soul_chain_anchor.tags (neu: gespeichert seit diesem Fix)
-            const tagsMatch = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
-            let anchorTagsParsed = [];
-            if (tagsMatch) { try { anchorTagsParsed = JSON.parse(tagsMatch[1]); } catch { /**/ } }
-            txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags: anchorTagsParsed });
-          } catch { /**/ }
-        }));
-      } catch { /**/ }
-
-      if (txEntries.length > 0) {
-        return await discoverSoulsFromTxHashes(txEntries, { q: '', amortized: false, limit: 100 });
-      }
-      // Vollständiger Event-Scan als letzter Ausweg (cached)
-      return await discoverSouls({ q: '', amortized: false, limit: 100 });
-    } catch { return []; }
-  }
 
   try {
-    // Beide Quellen parallel abfragen
-    const [pinataResults, chainResults] = await Promise.all([fetchPinata(), fetchChain()]);
+    const SOULS_DIR = '/var/lib/sys/souls/';
+    const txEntries = [];
+    try {
+      const dirs     = await readdir(SOULS_DIR);
+      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+      await Promise.allSettled(soulDirs.map(async (dir) => {
+        try {
+          const sysmd   = await readFile(`${SOULS_DIR}${dir}/sys.md`, 'utf8');
+          const fmMatch = sysmd.match(/^---\n([\s\S]*?)\n---/);
+          if (!fmMatch) return;
+          const fm       = fmMatch[1];
+          const anchorIdx = fm.indexOf('soul_chain_anchor');
+          if (anchorIdx === -1) return;
+          const chunk    = fm.slice(anchorIdx, anchorIdx + 500);
+          const txMatch  = chunk.match(/0x[0-9a-fA-F]{64}/);
+          if (!txMatch) return;
+          const nameMatch  = fm.match(/^soul_name:\s*(.+)$/m);
+          const soulName   = nameMatch?.[1]?.trim().replace(/^["']|["']$/g, '') || null;
+          const dateMatch  = chunk.match(/"date"\s*:\s*"([^"]+)"/);
+          const anchorDate = dateMatch?.[1] || null;
+          const sessMatch  = chunk.match(/"sessions"\s*:\s*(\d+)/);
+          const sessions   = sessMatch ? parseInt(sessMatch[1], 10) : null;
+          const tagsMatch  = chunk.match(/"tags"\s*:\s*(\[[^\]]*\])/);
+          let anchorTags   = [];
+          if (tagsMatch) { try { anchorTags = JSON.parse(tagsMatch[1]); } catch { /**/ } }
+          txEntries.push({ txHash: txMatch[0], soulName, anchorDate, sessions, anchorTags });
+        } catch { /**/ }
+      }));
+    } catch { /**/ }
 
-    // Merge: soul_id als Key, Chain-Daten gewinnen bei Duplikat
-    const byId = new Map();
-    for (const s of pinataResults) {
-      if (s?.soul_id) byId.set(s.soul_id, s);
-    }
-    for (const s of chainResults) {
-      if (!s?.soul_id) continue;
-      const existing = byId.get(s.soul_id);
-      if (existing) {
-        // Chain verifiziert — Felder zusammenführen, Chain hat Vorrang
-        byId.set(s.soul_id, { ...existing, ...s, chain_verified: true,
-          tags: s.tags?.length ? s.tags : (existing.tags ?? []),
-          source: 'ipfs+chain',
-        });
-      } else {
-        byId.set(s.soul_id, { ...s, source: s.source ?? 'chain' });
-      }
-    }
+    // Schnellpfad: TX-Hashes aus lokalen sys.md — kein vollständiger Event-Scan nötig
+    const souls = txEntries.length > 0
+      ? await discoverSoulsFromTxHashes(txEntries, { q, amortized, limit })
+      : await discoverSouls({ q, amortized, limit });
 
-    let results = [...byId.values()];
-
-    // Filtern
-    if (q) {
-      results = results.filter(s =>
-        s.soul_id?.includes(lq) ||
-        s.name?.toLowerCase().includes(lq) ||
-        s.description?.toLowerCase().includes(lq) ||
-        s.tags?.some(t => t.toLowerCase().includes(lq)),
-      );
-    }
-    if (amortized) results = results.filter(s => s.amortization?.enabled === true);
-
-    const sources = [...new Set(results.map(s => s.source))].join('+') || 'none';
-    res.json({ ok: true, total: results.length, souls: results.slice(0, limit), source: sources });
+    res.json({ ok: true, total: souls.length, souls, source: 'chain' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
