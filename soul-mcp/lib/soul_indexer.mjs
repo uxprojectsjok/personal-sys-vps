@@ -415,6 +415,8 @@ export function querySouls({ q = '', amortized = false, limit = 20 } = {}) {
   return results.slice(0, limit);
 }
 
+export { seedFromLocalAnchors };
+
 export function indexStats() {
   return {
     souls:      _souls.size,
