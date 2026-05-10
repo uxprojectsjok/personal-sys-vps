@@ -63,9 +63,12 @@ export function register(server, token) {
         const souls = data.souls || [];
 
         if (souls.length === 0) {
-          return {
-            content: [{ type: 'text', text: 'Keine verankerten Souls gefunden.' + (q ? ` (Suche: "${q}")` : '') }],
-          };
+          const scanning = data.indexing === true;
+          const indexed  = data.indexed ?? 0;
+          let msg = scanning
+            ? `Index wird aufgebaut — bitte in 2-3 Minuten erneut versuchen. (${indexed} Souls bisher indexiert, Blockchain-Scan läuft.)`
+            : 'Keine verankerten Souls gefunden.' + (q ? ` (Suche: "${q}")` : '');
+          return { content: [{ type: 'text', text: msg }] };
         }
 
         const lines = [];
