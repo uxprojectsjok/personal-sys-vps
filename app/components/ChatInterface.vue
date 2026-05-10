@@ -621,8 +621,8 @@ Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was 
     if (text) {
       const ts          = new Date().toISOString()
       const safeText    = `[Synthese] ${text}`
-      const socialEntry = formatMsgEntry(safeText, 'ki', 'peer',  ts)
-      const agentEntry  = formatMsgEntry(safeText, 'ki', 'agent', ts)
+      const socialEntry = formatMsgEntry(safeText, 'ki', 'community', ts)
+      const agentEntry  = formatMsgEntry(safeText, 'ki', 'community', ts)
       let updated = soulContentAgent.value ?? ''
       updated = appendToMarkerBlock(updated, 'SOCIAL', socialEntry)
       updated = appendToMarkerBlock(updated, 'AGENT',  agentEntry)
