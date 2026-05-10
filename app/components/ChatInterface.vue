@@ -110,7 +110,8 @@
             <!-- Content -->
             <div class="msg-inner"
               :class="msg.from === 'me' ? 'msg-inner--me' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
-              <p v-for="(para, j) in paragraphs(msg.content)" :key="j" v-html="renderText(para)"></p>
+              <img v-if="msgMediaCache.get(msg.ts)" :src="msgMediaCache.get(msg.ts)" class="msg-media-img" alt="" />
+              <p v-for="(para, j) in paragraphs(msg.content.replace('[Bild]', '').trim())" :key="j" v-html="renderText(para)"></p>
             </div>
 
             <!-- Footer: to-badge + time -->
@@ -363,6 +364,7 @@ const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
 const synthesisText   = ref('')
 const isSynthesizing  = ref(false)
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
+const msgMediaCache   = ref(new Map()) // ts → dataUrl — session-only image display
 const SYNTHESIS_N     = 5           // messages per sphere for synthesis
 let   _agentPollTimer = null
 
@@ -463,8 +465,7 @@ function parseOldAgentBlock(blockContent) {
   }).filter(Boolean)
 }
 
-function formatMsgEntry(content, from, to) {
-  const ts   = new Date().toISOString()
+function formatMsgEntry(content, from, to, ts = new Date().toISOString()) {
   const safe = content.replace(/\n+/g, ' ').replace(/-->/g, '—>')
   return `\n<!-- @msg ${ts} ${from} ${to} ${safe.trim()} -->`
 }
@@ -613,7 +614,9 @@ async function handleMsgSend() {
     // In "Alle"-Modus immer @community senden
     const recipient = msgView.value === 'all' ? 'community' : msgView.value
     const fullText  = media ? `${text}${text ? ' ' : ''}[Bild]` : text
-    const entry     = formatMsgEntry(fullText, 'me', recipient)
+    const msgTs     = new Date().toISOString()
+    const entry     = formatMsgEntry(fullText, 'me', recipient, msgTs)
+    if (media) msgMediaCache.value.set(msgTs, `data:${media.mime};base64,${media.base64}`)
     let current     = soulContentAgent.value ?? ''
     if (recipient === 'peer'      || recipient === 'community')
       current = appendToMarkerBlock(current, 'SOCIAL', entry)
@@ -1573,6 +1576,15 @@ defineExpose({
 }
 .msg-inner p        { margin: 0 0 6px; }
 .msg-inner p:last-child { margin-bottom: 0; }
+.msg-inner p:empty  { display: none; }
+.msg-media-img {
+  display: block;
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-bottom: 6px;
+}
 
 .msg-inner--me {
   background: rgba(139,92,246,0.20);
