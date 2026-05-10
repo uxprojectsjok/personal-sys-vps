@@ -364,7 +364,7 @@ async function seedFromLocalAnchors() {
           const newTags = Array.isArray(anchor.tags) ? anchor.tags : [];
           if (newTags.length) existing.tags = newTags;
           if (anchor.name)    existing.name = anchor.name;
-          if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = anchor.sessions;
+          if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = Math.max(anchor.sessions, 1);
           _dirty = true;
           continue;
         }
@@ -375,7 +375,7 @@ async function seedFromLocalAnchors() {
           mcp_endpoint:      ownMcpEp,
           tags:              Array.isArray(anchor.tags) ? anchor.tags : [],
           name:              anchor.name ?? null,
-          sessions:          anchor.sessions ?? 1,
+          sessions:          Math.max(anchor.sessions ?? 1, 1),
           anchor_date:       anchor.date ?? null,
           first_anchor_date: anchor.date ?? null,
           anchor_count:      1,
