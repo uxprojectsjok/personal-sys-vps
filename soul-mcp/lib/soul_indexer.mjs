@@ -245,11 +245,16 @@ async function processEvent(ev) {
     existing.tags             = cleanTags.length ? cleanTags : existing.tags;
     existing.tx_hash          = ev.transactionHash;
     if (blockNumber) existing.block_number = blockNumber;
-    if (meta.cid && (!existing.ipfs_loaded_at ||
-        Date.now() - new Date(existing.ipfs_loaded_at).getTime() > IPFS_TTL_MS)) {
-      await enrichFromIpfs(existing, meta.cid);
+    if (meta.cid) {
+      // CID immer persistieren — auch wenn IPFS-Fetch scheitert, damit Retry möglich ist
+      if (!existing.cid) existing.cid = validCid(meta.cid) ?? undefined;
+      if (!existing.ipfs_loaded_at ||
+          Date.now() - new Date(existing.ipfs_loaded_at).getTime() > IPFS_TTL_MS) {
+        await enrichFromIpfs(existing, meta.cid);
+      }
     }
   } else {
+    const rawCid = meta.cid ? (validCid(meta.cid) ?? undefined) : undefined;
     const entry = {
       soul_id:           soulId,
       mcp_endpoint:      mcpEp,
@@ -262,8 +267,9 @@ async function processEvent(ev) {
       tx_hash:           ev.transactionHash,
       block_number:      blockNumber ?? 0,
       indexed_at:        new Date().toISOString(),
+      ...(rawCid && { cid: rawCid }), // CID speichern vor IPFS-Versuch
     };
-    if (meta.cid) await enrichFromIpfs(entry, meta.cid);
+    if (rawCid) await enrichFromIpfs(entry, rawCid);
     _souls.set(soulKey, entry);
   }
 
