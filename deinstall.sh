@@ -44,6 +44,62 @@ echo ""
 read -p "Wirklich deinstallieren? (yes/no): " CONFIRM
 [[ "$CONFIRM" != "yes" ]] && error "Abgebrochen."
 
+# ── 0. Netzwerk-Abmeldung (vor Services stop) ────────────────────────────────
+info "Deregistering soul from network..."
+SOUL_DATA_DIR="/var/lib/sys/souls"
+DEREGISTER_SOUL_ID=""
+if [ -d "$SOUL_DATA_DIR" ]; then
+  for d in "$SOUL_DATA_DIR"/*/; do
+    [ -d "$d" ] || continue
+    CANDIDATE=$(basename "$d")
+    if [[ "$CANDIDATE" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+      DEREGISTER_SOUL_ID="$CANDIDATE"
+      break
+    fi
+  done
+fi
+
+if [ -n "$DEREGISTER_SOUL_ID" ]; then
+  # Lokalen Indexer informieren — Soul sofort aus Index entfernen
+  curl -s -m 5 -X POST http://127.0.0.1:3098/internal/deregister-soul \
+    -H 'Content-Type: application/json' \
+    -d "{\"soul_id\":\"$DEREGISTER_SOUL_ID\"}" 2>/dev/null && \
+    info "Soul aus lokalem Index entfernt ($DEREGISTER_SOUL_ID)." || true
+
+  # Pinata JWT suchen — für IPFS-weite Abmeldung (andere Nodes erkennen active:false)
+  PINATA_JWT_VAL=""
+  for jwt_file in \
+    "$SOUL_DATA_DIR/$DEREGISTER_SOUL_ID/pinata_jwt" \
+    "/var/lib/sys/pinata_jwt"; do
+    if [ -f "$jwt_file" ]; then
+      PINATA_JWT_VAL=$(cat "$jwt_file" 2>/dev/null | tr -d '[:space:]')
+      [ -n "$PINATA_JWT_VAL" ] && break
+    fi
+  done
+
+  if [ -n "$PINATA_JWT_VAL" ]; then
+    DEREG_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    DEREG_JSON="{\"active\":false,\"soul_id\":\"$DEREGISTER_SOUL_ID\",\"deregistered\":\"$DEREG_TS\",\"protocol\":\"saveyoursoul/1.0\"}"
+    DEREG_BODY="{\"pinataContent\":$DEREG_JSON,\"pinataMetadata\":{\"name\":\"soul-deregister-$DEREGISTER_SOUL_ID\"}}"
+    PINATA_RESP=$(curl -s -m 15 -X POST "https://api.pinata.cloud/pinning/pinJSONToIPFS" \
+      -H "Authorization: Bearer $PINATA_JWT_VAL" \
+      -H "Content-Type: application/json" \
+      -d "$DEREG_BODY" 2>/dev/null || true)
+    NEW_CID=$(echo "$PINATA_RESP" | grep -oP '(?<="IpfsHash":")[^"]+' || true)
+    if [ -n "$NEW_CID" ]; then
+      info "Soul im IPFS-Netzwerk abgemeldet (CID: $NEW_CID)."
+      info "Andere Nodes erkennen active:false beim nächsten IPFS-Abruf."
+    else
+      warn "IPFS-Abmeldung fehlgeschlagen (Pinata nicht erreichbar oder JWT ungültig)."
+    fi
+  else
+    warn "Kein Pinata-JWT gefunden — Soul nur lokal abgemeldet."
+    warn "Andere Nodes entfernen diesen Soul automatisch wenn der MCP-Endpunkt nicht mehr erreichbar ist."
+  fi
+else
+  info "Keine Soul gefunden — kein Deregistrierungsschritt nötig."
+fi
+
 # ── 1. Services stoppen ───────────────────────────────────────────────────────
 info "Stopping services..."
 # soul-mcp (pm2) zuerst stoppen

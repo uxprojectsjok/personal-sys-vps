@@ -45,6 +45,18 @@ local anchor = {
   name     = type(body.name)     == "string"  and body.name     or cjson.null,
 }
 
+-- CID aus api_context.json mitlesen — damit soul_discover IPFS-Metadaten laden kann
+-- auch wenn die CID nicht im TX-Calldata steht (kein Pinata-JWT konfiguriert etc.)
+local ctx_path = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
+local cf = io.open(ctx_path, "r")
+if cf then
+  local raw_ctx = cf:read("*a"); cf:close()
+  local ok_ctx, ctx = pcall(cjson.decode, raw_ctx)
+  if ok_ctx and type(ctx) == "table" and type(ctx.agent_registry_cid) == "string" then
+    anchor.cid = ctx.agent_registry_cid
+  end
+end
+
 local soul_dir = "/var/lib/sys/souls/" .. soul_id
 local path     = soul_dir .. "/chain_anchor.json"
 
