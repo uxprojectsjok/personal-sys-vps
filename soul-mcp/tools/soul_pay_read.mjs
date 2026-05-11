@@ -73,6 +73,13 @@ export function register(server, _token) {
         const paidReadUrl = pay_endpoint.replace(/\/pay(\?.*)?$/, '/paid-read');
 
         // ── 3. Soul-Inhalt lesen ─────────────────────────────────────────────
+        const commentEndpoint = pay_endpoint.replace(/\/pay(\?.*)?$/, '/paid-comment');
+        const tokenInfo = [
+          `access_token: ${accessToken}`,
+          `gültig bis:   ${expiresAt ? new Date(expiresAt).toLocaleString('de-DE') : 'unbekannt'}`,
+          `Retry mit:    soul_read_by_token(token="${accessToken}", paid_read_url="${paidReadUrl}")`,
+        ].join('\n');
+
         const readRes = await fetch(paidReadUrl, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -83,20 +90,42 @@ export function register(server, _token) {
 
         if (!readRes.ok) {
           const err = await readRes.json().catch(() => ({}));
+          // Token-Fehler (401): kein Token zurückgeben, er ist wertlos
           if (readRes.status === 401) {
             return {
-              content: [{ type: 'text', text: `Lesezugriff verweigert — access_token abgelaufen oder ungültig.` }],
+              content: [{ type: 'text', text: `Lesezugriff verweigert — access_token abgelaufen oder ungültig. Neue Zahlung erforderlich.` }],
               isError: true,
             };
           }
+          // Inhaltsfehler (404 agent_content_empty, 204, 403 privat):
+          // Token ist gültig — zurückgeben damit der Agent später ohne neue Zahlung retried
+          const reason = err.error === 'agent_content_empty'
+            ? 'Der Agent-Sandbox-Block ist leer — der Soul-Inhaber hat noch nichts für Agenten hinterlegt.'
+            : err.error === 'no_agent_content'
+            ? 'Kein AGENT:START/END-Block in sys.md definiert.'
+            : err.error === 'soul_private'
+            ? 'Diese Soul ist als privat markiert — kein Lesezugriff für externe Agenten.'
+            : `Lesezugriff fehlgeschlagen: ${err.error || readRes.status}`;
           return {
-            content: [{ type: 'text', text: `Soul-Lesezugriff fehlgeschlagen: ${err.error || readRes.status}` }],
+            content: [{ type: 'text', text: `${reason}\n\nDer access_token ist trotzdem gültig — du kannst es später erneut versuchen:\n\n${tokenInfo}` }],
             isError: true,
           };
         }
 
+        // 204: Token valide, aber keine Nachrichten im gewählten Zeitfenster
+        if (readRes.status === 204) {
+          return {
+            content: [{ type: 'text', text: `Keine Nachrichten im aktuellen Zeitfenster (Stage 1 = letzte 24h).\nMit ?stage=2 kannst du bis zu 48h abrufen.\n\n${tokenInfo}` }],
+          };
+        }
+
         const soulContent = await readRes.text();
-        const commentEndpoint = pay_endpoint.replace(/\/pay(\?.*)?$/, '/paid-comment');
+        if (!soulContent || !soulContent.trim()) {
+          return {
+            content: [{ type: 'text', text: `Agent-Sandbox leer.\n\n${tokenInfo}` }],
+          };
+        }
+
         const lines = [
           `[Soul-Inhalt · ${soul_id.slice(0, 8)}… · Zugang bis ${expiresAt ? new Date(expiresAt).toLocaleString('de-DE') : '?'}]`,
           `access_token: ${accessToken}`,
