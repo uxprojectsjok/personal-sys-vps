@@ -196,4 +196,13 @@ if not write_ctx(ctx) then
   return
 end
 
+-- Index sofort aktualisieren — damit soul_discover den neuen Bezahl-Endpunkt zeigt
+local httpc = require("resty.http").new()
+httpc:set_timeout(3000)
+httpc:request_uri("http://127.0.0.1:3098/internal/seed-soul", {
+  method  = "POST",
+  headers = { ["Content-Type"] = "application/json" },
+  body    = '{"soul_id":"' .. soul_id .. '"}',
+})
+
 ngx.say(cjson.encode({ ok = true, amortization = amort }))
