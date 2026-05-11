@@ -2,7 +2,7 @@
 // NUR für lokale Entwicklung (nuxt dev).
 // In Production: OpenResty leitet /api/soul/register-anchor an soul_register_anchor.lua weiter.
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { validateSoulToken } from "../../utils/validateSoulToken.js";
 
 export default defineEventHandler(async (event) => {
@@ -26,6 +26,12 @@ export default defineEventHandler(async (event) => {
     tags:     Array.isArray(body.tags) ? body.tags : [],
     name:     body.name     ?? null,
   };
+
+  // CID aus api_context.json ergänzen — Fallback wenn TX-Calldata keine CID hat
+  try {
+    const ctx = JSON.parse(await readFile(`/var/lib/sys/souls/${soul_id}/api_context.json`, "utf8"));
+    if (ctx?.agent_registry_cid) anchor.cid = ctx.agent_registry_cid;
+  } catch { /* kein context vorhanden */ }
 
   const dir  = `/var/lib/sys/souls/${soul_id}`;
   const path = `${dir}/chain_anchor.json`;

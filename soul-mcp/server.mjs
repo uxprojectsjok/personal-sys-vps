@@ -177,7 +177,7 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
-import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments } from './lib/soul_indexer.mjs';
+import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul } from './lib/soul_indexer.mjs';
 import { writeFile }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -477,6 +477,21 @@ app.post('/internal/seed-soul', async (req, res) => {
     retryFailedEnrichments().catch(() => {}); // IPFS sofort nachladen
     const stats = indexStats();
     res.json({ ok: true, indexed: stats.souls });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Soul aus Netzwerk abmelden (bei deinstall.sh) ────────────────────────────
+// POST /internal/deregister-soul  { soul_id }
+app.post('/internal/deregister-soul', async (req, res) => {
+  const { soul_id } = req.body || {};
+  if (!soul_id || !/^[a-f0-9-]{36}$/i.test(soul_id)) {
+    return res.status(400).json({ error: 'soul_id erforderlich' });
+  }
+  try {
+    const removed = await deregisterSoul(soul_id);
+    res.json({ ok: true, removed, soul_id });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

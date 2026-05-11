@@ -185,6 +185,15 @@ async function enrichFromIpfs(entry, rawCid) {
     const verEp   = httpsUrl(ipfs.verify_endpoint);
     const ipfsTags = tags(ipfs.tags);
 
+    // Soul hat sich selbst abgemeldet — aus Index entfernen
+    if (ipfs.active === false) {
+      for (const [k, v] of _souls) {
+        if (v === entry) { _souls.delete(k); break; }
+      }
+      _dirty = true;
+      return;
+    }
+
     if (name)    entry.name          = name;
     if (desc)    entry.description   = desc;
     if (payEp)   entry.pay_endpoint  = payEp;
@@ -376,7 +385,8 @@ async function seedFromLocalAnchors() {
         }
 
         // Neuer Eintrag — sofort in querySouls sichtbar, wird durch Scan verifiziert
-        _souls.set(key, {
+        const rawCid = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
+        const newEntry = {
           soul_id:           dir,
           mcp_endpoint:      ownMcpEp,
           tags:              Array.isArray(anchor.tags) ? anchor.tags : [],
@@ -390,7 +400,10 @@ async function seedFromLocalAnchors() {
           block_number:      0,
           indexed_at:        new Date().toISOString(),
           _preliminary:      true,
-        });
+          ...(rawCid && { cid: rawCid }),
+        };
+        _souls.set(key, newEntry);
+        if (rawCid) await enrichFromIpfs(newEntry, rawCid);
         _dirty = true;
       } catch { /* kein chain_anchor.json für diese Soul */ }
     }
@@ -433,6 +446,19 @@ export function querySouls({ q = '', amortized = false, limit = 20 } = {}) {
 }
 
 export { seedFromLocalAnchors, retryFailedEnrichments };
+
+export async function deregisterSoul(soulId) {
+  if (!soulId || !UUID_RE.test(soulId)) return false;
+  const key = soulIdToBytes32(soulId);
+  if (_souls.has(key)) {
+    _souls.delete(key);
+    _dirty = true;
+    await saveIndex();
+    console.log(`[soul-index] Soul abgemeldet: ${soulId}`);
+    return true;
+  }
+  return false;
+}
 
 export function indexStats() {
   return {
