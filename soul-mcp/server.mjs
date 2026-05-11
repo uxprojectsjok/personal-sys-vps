@@ -497,6 +497,35 @@ app.post('/internal/deregister-soul', async (req, res) => {
   }
 });
 
+// ── Debug: roher Index + Dateistatus für eine Soul ───────────────────────────
+// GET /internal/debug-soul/:soul_id
+app.get('/internal/debug-soul/:soul_id', async (req, res) => {
+  const { soul_id } = req.params;
+  if (!soul_id || !/^[a-f0-9-]{36}$/i.test(soul_id)) {
+    return res.status(400).json({ error: 'Ungültige soul_id' });
+  }
+  const dir   = `/var/lib/sys/souls/${soul_id}`;
+  const out   = { soul_id };
+  // chain_anchor.json
+  try { out.chain_anchor = JSON.parse(await readFile(`${dir}/chain_anchor.json`, 'utf8')); }
+  catch (e) { out.chain_anchor = { error: e.message }; }
+  // api_context.json (nur sichere Felder)
+  try {
+    const ctx = JSON.parse(await readFile(`${dir}/api_context.json`, 'utf8'));
+    out.api_context = {
+      enabled:            ctx.enabled,
+      agent_registry_cid: ctx.agent_registry_cid,
+      amortization:       ctx.amortization,
+    };
+  } catch (e) { out.api_context = { error: e.message }; }
+  // Index-Eintrag
+  const stats = indexStats();
+  const souls = querySouls({ limit: 200 });
+  out.index_entry = souls.find(s => s.soul_id === soul_id) ?? null;
+  out.index_stats = stats;
+  res.json(out);
+});
+
 // ── Soul-Discovery — liest aus lokalem WebSocket-Index (O(1)) ────────────────
 // GET /internal/discover-souls?q=&amortized=&limit=
 app.get('/internal/discover-souls', (req, res) => {
