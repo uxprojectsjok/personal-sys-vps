@@ -383,14 +383,14 @@ async function seedFromLocalAnchors() {
         let localAmort     = null;
         let localPayEp     = null;
         let localVerifyEp  = null;
-        let localDesc      = null;
         try {
           const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
           // CID-Fallback für Souls die vor dem CID-Fix geankert haben
           if (!rawCid && ctx?.agent_registry_cid) rawCid = validCid(ctx.agent_registry_cid) ?? undefined;
           // Amortisierung direkt aus lokalen Daten — kein IPFS-Fetch, keine Gateway-Abhängigkeit
-          if (ctx?.amortization && typeof ctx.amortization === 'object') {
-            const am = ctx.amortization;
+          const am = ctx?.amortization;
+          console.log(`[soul-seed] ${dir}: amort.enabled=${am?.enabled}, wallet=${am?.wallet?.slice(0,6)}, cid=${rawCid?.slice(0,12)}`);
+          if (am && typeof am === 'object') {
             const aTools = Array.isArray(am.agent_tools)
               ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
               : undefined;
@@ -406,7 +406,9 @@ async function seedFromLocalAnchors() {
               localVerifyEp = `${BASE_URL}/api/soul/verify?soul_id=${dir}`;
             }
           }
-        } catch { /* kein api_context */ }
+        } catch (e) {
+          console.log(`[soul-seed] ${dir}: api_context.json fehlt oder unlesbar — ${e.message}`);
+        }
 
         const existing = _souls.get(key);
         if (existing) {
