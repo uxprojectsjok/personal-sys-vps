@@ -196,12 +196,13 @@ async function enrichFromIpfs(entry, rawCid) {
 
     if (name)    entry.name          = name;
     if (desc)    entry.description   = desc;
-    if (payEp)   entry.pay_endpoint  = payEp;
-    if (verEp)   entry.verify_endpoint = verEp;
+    // Lokale Amortisierung (aus api_context.json) hat Vorrang — IPFS nur als Fallback
+    if (!entry.pay_endpoint && payEp)     entry.pay_endpoint     = payEp;
+    if (!entry.verify_endpoint && verEp)  entry.verify_endpoint  = verEp;
     if (!entry.tags?.length && ipfsTags.length) entry.tags = ipfsTags;
 
-    // Amortisierung: nur sichere Felder übernehmen
-    if (ipfs.amortization && typeof ipfs.amortization === 'object') {
+    // Amortisierung: nur setzen wenn noch nicht lokal befüllt
+    if (!entry.amortization && ipfs.amortization && typeof ipfs.amortization === 'object') {
       const am = ipfs.amortization;
       const aTools = Array.isArray(am.agent_tools) ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20) : undefined;
       entry.amortization = {
@@ -363,8 +364,9 @@ async function incrementalScan() {
 // Gibt eigene Soul sofort im Index — auch auf cold start, bevor der Scan durchläuft.
 
 async function seedFromLocalAnchors() {
-  const SOULS_DIR = '/var/lib/sys/souls/';
-  const ownMcpEp  = process.env.BASE_URL ? `${process.env.BASE_URL}/mcp` : null;
+  const SOULS_DIR  = '/var/lib/sys/souls/';
+  const BASE_URL   = process.env.BASE_URL ?? '';
+  const ownMcpEp   = BASE_URL ? `${BASE_URL}/mcp` : null;
   try {
     const { readdir } = await import('node:fs/promises');
     const dirs = await readdir(SOULS_DIR);
@@ -374,46 +376,60 @@ async function seedFromLocalAnchors() {
         const anchor = JSON.parse(raw);
         if (!anchor?.tx) continue;
         // Bytes32-Key — identisch mit processEvent (ev.args.soulId = keccak256(soulId))
-        const key      = soulIdToBytes32(dir);
-        const existing = _souls.get(key);
+        const key = soulIdToBytes32(dir);
 
+        // api_context.json lesen — enthält Amortisierung + CID (lokal, kein IPFS-Fetch nötig)
+        let rawCid         = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
+        let localAmort     = null;
+        let localPayEp     = null;
+        let localVerifyEp  = null;
+        let localDesc      = null;
+        try {
+          const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
+          // CID-Fallback für Souls die vor dem CID-Fix geankert haben
+          if (!rawCid && ctx?.agent_registry_cid) rawCid = validCid(ctx.agent_registry_cid) ?? undefined;
+          // Amortisierung direkt aus lokalen Daten — kein IPFS-Fetch, keine Gateway-Abhängigkeit
+          if (ctx?.amortization && typeof ctx.amortization === 'object') {
+            const am = ctx.amortization;
+            const aTools = Array.isArray(am.agent_tools)
+              ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
+              : undefined;
+            localAmort = {
+              enabled:             !!am.enabled,
+              pol_per_request:     Number(am.pol_per_request) || 0,
+              wallet:              str(am.wallet, 42) ?? null,
+              ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
+              ...(aTools?.length && { agent_tools: aTools }),
+            };
+            if (am.enabled && BASE_URL) {
+              localPayEp    = `${BASE_URL}/api/soul/pay`;
+              localVerifyEp = `${BASE_URL}/api/soul/verify?soul_id=${dir}`;
+            }
+          }
+        } catch { /* kein api_context */ }
+
+        const existing = _souls.get(key);
         if (existing) {
-          // Immer Tags/Name/Sessions aus chain_anchor.json aktualisieren —
-          // der Soul-Betreiber hat diese Daten gerade bewusst geändert (Re-Anchor).
+          // Tags/Name/Sessions aus chain_anchor.json aktualisieren
           const newTags = Array.isArray(anchor.tags) ? anchor.tags : [];
           if (newTags.length) existing.tags = newTags;
           if (anchor.name)    existing.name = anchor.name;
           if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = Math.max(anchor.sessions, 1);
-          // CID nachholen falls beim ursprünglichen Seed noch nicht bekannt
-          if (!existing.cid) {
-            let cidFallback = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
-            if (!cidFallback) {
-              try {
-                const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
-                if (ctx?.agent_registry_cid) cidFallback = validCid(ctx.agent_registry_cid) ?? undefined;
-              } catch { /* kein api_context */ }
-            }
-            if (cidFallback) {
-              existing.cid = cidFallback;
-              await enrichFromIpfs(existing, cidFallback);
-            }
-          }
+          // Lokale Amortisierung hat Vorrang — ist immer aktuell (kein IPFS-Delay)
+          if (localAmort) existing.amortization = localAmort;
+          if (localPayEp) existing.pay_endpoint  = localPayEp;
+          if (localVerifyEp) existing.verify_endpoint = localVerifyEp;
+          // CID für IPFS-Enrichment (description, name via IPFS falls vorhanden)
+          if (!existing.cid && rawCid) existing.cid = rawCid;
           _dirty = true;
           continue;
         }
 
-        // Neuer Eintrag — sofort in querySouls sichtbar, wird durch Scan verifiziert
-        let rawCid = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
-        // Fallback: CID aus api_context.json (für Souls die vor dem CID-Fix geankert haben)
-        if (!rawCid) {
-          try {
-            const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
-            if (ctx?.agent_registry_cid) rawCid = validCid(ctx.agent_registry_cid) ?? undefined;
-          } catch { /* kein api_context */ }
-        }
+        // Neuer Eintrag — sofort in querySouls sichtbar
+        const mcpEp = `${BASE_URL}/mcp?soul_id=${dir}`;
         const newEntry = {
           soul_id:           dir,
-          mcp_endpoint:      ownMcpEp,
+          mcp_endpoint:      mcpEp,
           tags:              Array.isArray(anchor.tags) ? anchor.tags : [],
           name:              anchor.name ?? null,
           sessions:          Math.max(anchor.sessions ?? 1, 1),
@@ -426,9 +442,13 @@ async function seedFromLocalAnchors() {
           indexed_at:        new Date().toISOString(),
           _preliminary:      true,
           ...(rawCid && { cid: rawCid }),
+          ...(localAmort && { amortization: localAmort }),
+          ...(localPayEp && { pay_endpoint: localPayEp }),
+          ...(localVerifyEp && { verify_endpoint: localVerifyEp }),
         };
         _souls.set(key, newEntry);
-        if (rawCid) await enrichFromIpfs(newEntry, rawCid);
+        // IPFS-Enrichment: description + name aus Pinata (optional, kein Blocker)
+        if (rawCid) enrichFromIpfs(newEntry, rawCid).catch(() => {});
         _dirty = true;
       } catch { /* kein chain_anchor.json für diese Soul */ }
     }
