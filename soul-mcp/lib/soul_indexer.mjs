@@ -220,6 +220,39 @@ async function enrichFromIpfs(entry, rawCid) {
   } catch { /* alle IPFS-Gateways nicht erreichbar */ }
 }
 
+// ── Lokale Anreicherung ───────────────────────────────────────────────────────
+// Liest api_context.json für lokal laufende Souls und setzt Amortisierungsdaten.
+// Lokale Daten sind autoritativer als IPFS — der Operator kann sie jederzeit ändern.
+// Silently no-op für fremde Souls (kein api_context.json → kein Schreibzugriff).
+
+async function enrichFromLocal(entry, soulId) {
+  try {
+    const raw = await readFile(`/var/lib/sys/souls/${soulId}/api_context.json`, 'utf8');
+    const ctx = JSON.parse(raw);
+    const am = ctx?.amortization;
+    if (!am || typeof am !== 'object') return;
+    const BASE_URL = process.env.BASE_URL ?? '';
+    const aTools = Array.isArray(am.agent_tools)
+      ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
+      : undefined;
+    entry.amortization = {
+      enabled:             !!am.enabled,
+      pol_per_request:     Number(am.pol_per_request) || 0,
+      wallet:              str(am.wallet, 42) ?? null,
+      ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
+      ...(aTools?.length && { agent_tools: aTools }),
+    };
+    if (am.enabled && BASE_URL) {
+      entry.pay_endpoint    = `${BASE_URL}/api/soul/pay`;
+      entry.verify_endpoint = `${BASE_URL}/api/soul/verify?soul_id=${soulId}`;
+    } else if (!am.enabled) {
+      // Amortisierung deaktiviert — Bezahl-Endpunkte aus Index entfernen
+      entry.pay_endpoint    = undefined;
+      entry.verify_endpoint = undefined;
+    }
+  } catch { /* kein api_context.json → keine lokale Soul → skip */ }
+}
+
 // ── Event verarbeiten ─────────────────────────────────────────────────────────
 
 async function processEvent(ev) {
@@ -286,6 +319,10 @@ async function processEvent(ev) {
     if (rawCid) await enrichFromIpfs(entry, rawCid);
     _souls.set(soulKey, entry);
   }
+
+  // Lokale Amortisierung immer zuletzt — Operator-Daten gewinnen über IPFS
+  const finalEntry = _souls.get(soulKey);
+  if (finalEntry) await enrichFromLocal(finalEntry, soulId);
 
   _dirty = true;
 }
