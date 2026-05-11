@@ -155,17 +155,22 @@ if not s or not e or e <= s then
   return
 end
 
--- Kommentar-Eintrag bauen
-local ts = os.date("%Y-%m-%dT%H:%M:%S")
+-- Kommentar-Eintrag bauen (<!-- @msg --> Format für den Chat-Parser)
+local ts_iso = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
--- TX-Hash als einzige Identifikation (Wallet über Polygonscan nachschlagbar)
-local tx_ref = ""
+-- from: author-Slug ohne Leerzeichen (max. 32 Zeichen)
+local safe_from = author:gsub("[%[%]<>%s/]", "_"):sub(1, 32)
+if safe_from == "" then safe_from = "anonymous" end
+
+-- content: Zeilenumbrüche glätten, --> escapen damit der HTML-Kommentar nicht bricht
+local safe_content = comment:gsub("\n+", " "):gsub("%-%->", "- ->")
+
+-- TX-Hash als Referenz am Ende des Inhalts
 if type(tdata.tx_hash) == "string" and #tdata.tx_hash > 10 then
-  tx_ref = " · tx:" .. tdata.tx_hash:sub(1,10) .. "…"
+  safe_content = safe_content .. " [tx:" .. tdata.tx_hash:sub(1, 10) .. "…]"
 end
 
-local header = "**" .. author:gsub("[%[%]<>]", "") .. "**" .. tx_ref .. " · " .. ts:sub(1,10)
-local entry  = "\n\n---\n" .. header .. "\n" .. comment
+local entry = "\n<!-- @msg " .. ts_iso .. " " .. safe_from .. " agent " .. safe_content .. " -->"
 
 -- In den AGENT-Block einfügen (vor dem End-Marker)
 local before_end = content:sub(1, e - 1)

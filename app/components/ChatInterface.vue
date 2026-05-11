@@ -393,6 +393,7 @@ let   _cacheEvictTimer = null
 watch(agentMode, async (active) => {
   if (active) {
     await refreshAgentContent()
+    await scrollToBottom()
     _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
     _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
   } else {
@@ -1646,6 +1647,10 @@ defineExpose({
   border-bottom: 1px solid var(--rule);
   padding-bottom: 0;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--paper-3);
 }
 .msg-tab {
   font-family: var(--mono);
