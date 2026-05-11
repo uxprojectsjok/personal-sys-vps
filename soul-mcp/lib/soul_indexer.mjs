@@ -202,10 +202,14 @@ async function enrichFromIpfs(entry, rawCid) {
 
     // Amortisierung: nur sichere Felder übernehmen
     if (ipfs.amortization && typeof ipfs.amortization === 'object') {
+      const am = ipfs.amortization;
+      const aTools = Array.isArray(am.agent_tools) ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20) : undefined;
       entry.amortization = {
-        enabled:         !!ipfs.amortization.enabled,
-        pol_per_request: Number(ipfs.amortization.pol_per_request) || 0,
-        wallet:          str(ipfs.amortization.wallet, 42) ?? null,
+        enabled:            !!am.enabled,
+        pol_per_request:    Number(am.pol_per_request) || 0,
+        wallet:             str(am.wallet, 42) ?? null,
+        token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
+        ...(aTools?.length && { agent_tools: aTools }),
       };
     }
 
@@ -380,12 +384,33 @@ async function seedFromLocalAnchors() {
           if (newTags.length) existing.tags = newTags;
           if (anchor.name)    existing.name = anchor.name;
           if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = Math.max(anchor.sessions, 1);
+          // CID nachholen falls beim ursprünglichen Seed noch nicht bekannt
+          if (!existing.cid) {
+            let cidFallback = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
+            if (!cidFallback) {
+              try {
+                const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
+                if (ctx?.agent_registry_cid) cidFallback = validCid(ctx.agent_registry_cid) ?? undefined;
+              } catch { /* kein api_context */ }
+            }
+            if (cidFallback) {
+              existing.cid = cidFallback;
+              await enrichFromIpfs(existing, cidFallback);
+            }
+          }
           _dirty = true;
           continue;
         }
 
         // Neuer Eintrag — sofort in querySouls sichtbar, wird durch Scan verifiziert
-        const rawCid = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
+        let rawCid = anchor.cid ? (validCid(anchor.cid) ?? undefined) : undefined;
+        // Fallback: CID aus api_context.json (für Souls die vor dem CID-Fix geankert haben)
+        if (!rawCid) {
+          try {
+            const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
+            if (ctx?.agent_registry_cid) rawCid = validCid(ctx.agent_registry_cid) ?? undefined;
+          } catch { /* kein api_context */ }
+        }
         const newEntry = {
           soul_id:           dir,
           mcp_endpoint:      ownMcpEp,
