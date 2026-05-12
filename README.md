@@ -1,7 +1,12 @@
 # SaveYourSoul — Personal SYS Node
 
 > ⚠️ **Work in progress — not ready for use.**
-> This repository reflects an actively developed system. Core features are live and running in production, but the codebase is in ongoing refinement. **Multi-hoster mode is in final testing.** Expect breaking changes, incomplete documentation, and missing setup steps. Do not attempt to run this yourself at this stage — a guided setup and public release will follow once the final testing phase is complete.
+> This repository reflects an actively developed system. Core features are live and running in production, and multi-hoster mode appears stable in initial testing. The codebase now requires thorough review across security, bugs, UX/UI, and potential risks before any broader use.
+>
+> **This software is a scientific development project. It is not approved for commercial use.**
+> The goal is a decentralized ecosystem built for and by the people who interact with and participate in it.
+>
+> Expect breaking changes, incomplete documentation, and missing setup steps. Do not attempt to run this yourself at this stage — a guided setup and public release will follow once the testing phase is complete.
 >
 > 🌐 For an overview of the protocol and vision: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
