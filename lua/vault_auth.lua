@@ -39,15 +39,42 @@ local function check_soul_cert(token)
     local cert_version = hmac.read_cert_version(soul_id)
     local matched      = false
 
-    if hmac.cert_for_soul(master_key, soul_id, cert_version) == cert then
+    -- Per-soul Key hat Vorrang (Multi-Hoster), Fallback auf globalen Key
+    local per_soul_key = cfg.get_soul_master_key(soul_id)
+    local active_key   = (per_soul_key and per_soul_key ~= "") and per_soul_key or master_key
+
+    -- Fast path: gespeicherte cert_version
+    if hmac.cert_for_soul(active_key, soul_id, cert_version) == cert then
       matched = true
     else
+      -- Fallback: alle Versionen 0..20 (nach Rotation, bevor api_context aktualisiert)
+      for v = 0, 20 do
+        if v ~= cert_version and hmac.cert_for_soul(active_key, soul_id, v) == cert then
+          matched = true; break
+        end
+      end
+    end
+
+    if not matched then
       -- Grace-Period: vorherigen Key prüfen nach Rotation
-      local prev_key = cfg.get_master_key_prev()
+      local prev_key
+      if per_soul_key and per_soul_key ~= "" then
+        prev_key = cfg.get_soul_master_key_prev(soul_id)
+      end
+      if not prev_key or prev_key == "" then
+        prev_key = cfg.get_master_key_prev()
+      end
       if prev_key and prev_key ~= "" then
         if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert then
           matched = true
           ngx.log(ngx.INFO, "[vault_auth] Grace-Period Cert akzeptiert soul_id=", soul_id)
+        end
+        if not matched then
+          for v = 0, 20 do
+            if v ~= cert_version and hmac.cert_for_soul(prev_key, soul_id, v) == cert then
+              matched = true; break
+            end
+          end
         end
       end
     end
