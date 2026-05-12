@@ -60,6 +60,8 @@
             </div>
           </div>
         </article>
+        <!-- Scroll anchor (chat mode) -->
+        <div ref="chatEnd" class="anchor"></div>
       </template>
 
       <!-- ── Nachrichten-Modus ─────────────────────────────────────── -->
@@ -75,10 +77,16 @@
           <button
             v-if="msgView === 'all'"
             class="msg-tab briefing-btn"
+            :class="{ 'is-loading': isSynthesizing }"
             :disabled="isSynthesizing"
             @click="triggerSynthesis()"
             aria-label="Briefing generieren"
-          >{{ isSynthesizing ? '…' : 'Briefing' }}</button>
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="briefing-icon" :class="{ pulse: isSynthesizing }">
+              <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+            </svg>
+            <span class="briefing-label">{{ isSynthesizing ? '…' : 'Briefing' }}</span>
+          </button>
         </div>
 
         <!-- Scrollable content (eigener Scroll-Container auf Mobile) -->
@@ -147,11 +155,10 @@
             <span></span><span></span><span></span>
           </div>
 
+          <!-- Scroll anchor (inside stream-content so scrollIntoView targets the right container) -->
+          <div ref="chatEnd" class="anchor"></div>
         </div>
       </template>
-
-      <!-- Scroll anchor -->
-      <div ref="chatEnd" class="anchor"></div>
     </div>
 
     <!-- ── Dock ────────────────────────────────────────────────────── -->
@@ -794,8 +801,7 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
-  const el = (agentMode.value && streamContentEl.value) ? streamContentEl.value : scrollEl.value
-  if (el) el.scrollTop = el.scrollHeight
+  chatEnd.value?.scrollIntoView({ block: 'end' })
 }
 
 watch(() => messages.value?.length, scrollToBottom)
@@ -1500,7 +1506,7 @@ defineExpose({
 .chips-inner { display: contents; }
 .mobile-tools-btn { display: none; }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .stream { padding: 20px 16px 32px; }
   .msg    { grid-template-columns: 1fr; }
 
@@ -1581,8 +1587,21 @@ defineExpose({
   }
   .briefing-btn {
     margin-top: auto;
-    font-size: 9px;
+    background: rgba(96,165,250,0.15);
+    border-top: 1px solid rgba(96,165,250,0.30);
+    border-left: none;
+    border-bottom: none;
+    padding: 12px 6px;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    writing-mode: horizontal-tb;
+    transform: none;
+    min-height: 52px;
   }
+  .briefing-icon { width: 16px; height: 16px; }
+  .briefing-label { font-size: 8px; letter-spacing: 0.06em; }
 }
 
 /* ── Agent Sandbox empty state ───────────────────────────────────── */
@@ -1758,22 +1777,29 @@ defineExpose({
 .msg-tab:hover { color: var(--fg-3); }
 .msg-tab.active { border-bottom-color: currentColor; color: inherit; }
 
-/* Briefing button — sits at end of tab row */
+/* Briefing button — distinct action button next to tabs */
 .briefing-btn {
   margin-left: auto;
   color: #60a5fa;
-  opacity: 0.7;
   border-left: 1px solid var(--rule);
+  background: rgba(96,165,250,0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
-.briefing-btn:hover:not(:disabled) { opacity: 1; color: #93c5fd; }
-.briefing-btn:disabled { opacity: 0.35; cursor: default; }
+.briefing-icon {
+  width: 12px; height: 12px; flex-shrink: 0;
+}
+.briefing-btn:hover:not(:disabled) {
+  background: rgba(96,165,250,0.16);
+  color: #93c5fd;
+}
+.briefing-btn.is-loading { opacity: 0.6; cursor: default; }
+.briefing-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* stream-content: desktop passthrough */
+/* stream-content: desktop passthrough — display:contents makes children direct flex items of .stream */
 .stream-content {
   display: contents;
-}
-@media (min-width: 601px) {
-  .stream-content { display: contents; }
 }
 
 /* ── Nachrichten-Modus: Tages-Trenner ───────────────────────────── */
