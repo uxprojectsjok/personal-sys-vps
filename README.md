@@ -294,8 +294,9 @@ Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anch
 
 Operators who want blockchain features need their own WalletConnect Project ID (free: cloud.walletconnect.com).
 
-> **The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the sole anchoring contract of the SYS protocol and must not be replaced.**
-> Using a different contract — whether custom, forked, or third-party — is not permitted within this tool. Cross-node identity verification depends on all nodes referencing the same contract. A diverging contract breaks protocol compatibility and invalidates anchored identities across the network.
+> **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
+>
+> This is what makes SYS a shared ecosystem rather than a collection of isolated nodes. Every soul that anchors writes into the same immutable ledger — and as the contract grows older, the full history of all participating souls becomes traceable across the network. A node using a different contract is no longer SYS-compatible and its anchored identities will not be recognized by the community.
 
 ---
 
