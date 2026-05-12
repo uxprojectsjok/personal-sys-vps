@@ -210,6 +210,18 @@
               <span class="sys-field-label">Soul-Datei</span>
               <SoulUpload @uploaded="handleLoginUpload" />
             </div>
+
+            <!-- Recovery: invalid_proof Deadlock -->
+            <div v-if="pendingResetSoulId" class="login-recovery">
+              <p class="login-recovery-msg">
+                Diese Soul ist bereits auf diesem Server registriert, aber der Cert in der Datei ist veraltet.
+                Du kannst die Registrierung zurücksetzen — Vault-Daten bleiben erhalten.
+              </p>
+              <button class="login-recovery-btn" @click="handleResetRegistration" :disabled="resetBusy">
+                {{ resetBusy ? 'Wird zurückgesetzt…' : 'Registrierung zurücksetzen und erneut importieren' }}
+              </button>
+            </div>
+
             <div class="login-divider">
               <span>oder</span>
             </div>
@@ -409,23 +421,36 @@ async function handleSoulCreate({ name, idea }) {
   fetchNodeStatus()
 }
 
+const pendingResetText  = ref('')   // sys.md-Inhalt der feststeckenden Soul
+const pendingResetSoulId = ref('')  // soul_id für den Reset-Button
+const resetBusy = ref(false)
+
 async function handleLoginUpload(text) {
+  pendingResetText.value   = ''
+  pendingResetSoulId.value = ''
+
   if (allowCreateSoul.value) {
     // Multi-Hoster oder frischer VPS — importieren und serverseitig registrieren
     const result = await importAndSetup(text)
     if (!result.ok) {
-      const msg = result.error === 'node_locked'
-        ? 'Dieser Node ist bereits einer anderen Soul zugewiesen.'
-        : result.error === 'no_soul_id'
-        ? 'Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.'
-        : result.error === 'invalid_proof'
-        ? 'Diese Soul ist bereits auf diesem Server registriert, aber der Cert in der Datei stimmt nicht überein. Bitte die aktualisierte sys.md verwenden (wurde beim ersten Import heruntergeladen).'
-        : `Import fehlgeschlagen (${result.error}).`
-      alert(msg)
+      if (result.error === 'invalid_proof') {
+        // Deadlock: Soul bereits registriert, Cert veraltet → Recovery anbieten
+        const idMatch = text.match(/soul_id:\s*([a-f0-9-]{36})/i)
+        if (idMatch) {
+          pendingResetText.value   = text
+          pendingResetSoulId.value = idMatch[1].trim()
+        }
+      } else {
+        const msg = result.error === 'node_locked'
+          ? 'Dieser Node ist bereits einer anderen Soul zugewiesen.'
+          : result.error === 'no_soul_id'
+          ? 'Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.'
+          : `Import fehlgeschlagen (${result.error}).`
+        alert(msg)
+      }
       return
     }
     // Erstes Setup: aktualisierte sys.md sofort herunterladen — enthält den neuen Cert
-    // der für alle weiteren Logins auf diesem Server als Proof benötigt wird.
     if (firstSetupToken.value) await exportAsBlob()
   } else {
     // Bestehende Soul auf diesem Server — normaler Login
@@ -433,6 +458,32 @@ async function handleLoginUpload(text) {
   }
   loginOpen.value = false
   fetchNodeStatus()
+}
+
+async function handleResetRegistration() {
+  if (!pendingResetSoulId.value || resetBusy.value) return
+  resetBusy.value = true
+  try {
+    const res = await fetch('/api/soul/reset-registration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soul_id: pendingResetSoulId.value })
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(`Reset fehlgeschlagen: ${err.error || res.status}`)
+      return
+    }
+    // Neu-Registrierung mit demselben sys.md-Text
+    const text = pendingResetText.value
+    pendingResetText.value   = ''
+    pendingResetSoulId.value = ''
+    await handleLoginUpload(text)
+  } catch (e) {
+    alert(`Reset fehlgeschlagen: ${e.message}`)
+  } finally {
+    resetBusy.value = false
+  }
 }
 
 function openDecryptFromLogin() {
@@ -689,6 +740,13 @@ const journal = computed(() => {
 /* Login-Sheet Transition */
 .login-sheet-enter-active, .login-sheet-leave-active { transition: transform 0.3s cubic-bezier(0.32,0.72,0,1), opacity 0.25s ease; }
 .login-sheet-enter-from, .login-sheet-leave-to { transform: translateY(100%); opacity: 0; }
+
+/* Recovery Banner */
+.login-recovery { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); }
+.login-recovery-msg { font-family: var(--serif); font-size: 14px; color: var(--fg-3); line-height: 1.5; margin: 0 0 12px; }
+.login-recovery-btn { width: 100%; padding: 11px 16px; background: transparent; border: 1px solid rgba(239,68,68,0.5); color: rgb(239,68,68); font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+.login-recovery-btn:hover:not(:disabled) { background: rgba(239,68,68,0.12); border-color: rgb(239,68,68); }
+.login-recovery-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ────── GENERISCHE MODALS (Setup / Files) ────── */
 .sys-modal-wrap {

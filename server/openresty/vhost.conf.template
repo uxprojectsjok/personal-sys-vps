@@ -225,6 +225,17 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_cert.lua;
   }
 
+  # ── Soul-Registrierung zurücksetzen (Gate-Auth reicht) ───────────────────────
+  # Recovery bei verlorenem Admin-Token oder veralteter sys.md (invalid_proof Deadlock).
+  # Löscht soul_admin.json + api_context.json — Vault-Daten bleiben erhalten.
+  location = /api/soul/reset-registration {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_reset_registration.lua;
+  }
+
   # ── Cert rotieren – nur soul-cert, inkrementiert cert_version in sys.md ────────
   location = /api/soul-rotate-cert {
     limit_except POST { deny all; }
