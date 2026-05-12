@@ -19,6 +19,7 @@ const EXCLUDE_DIRS = new Set([
 const EXCLUDE_FILES = new Set([
   ".env", ".env.example", "package-lock.json",
   "project-hash.mjs",
+  "README.md",  // enthält den Fingerprint selbst — zirkulär, daher ausgeschlossen
 ]);
 
 function collectFiles(dir, files = []) {
