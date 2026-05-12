@@ -797,4 +797,26 @@ watch(() => props.open, (val) => {
 
 <style scoped>
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Override: Rail dient hier als Tab-Navigation, nicht als Step-Wizard.
+   Alle Items immer sichtbar — auch auf Mobile. */
+@media (max-width: 560px) {
+  :deep(.sys-rail) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  :deep(.sys-rail-item) {
+    display: flex !important;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  :deep(.sys-rail-sub) {
+    display: none;
+  }
+  :deep(.sys-rail-num) {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+}
 </style>
