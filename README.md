@@ -297,6 +297,8 @@ Operators who want blockchain features need their own WalletConnect Project ID (
 > **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
 >
 > This is what makes SYS a shared ecosystem rather than a collection of isolated nodes. Every soul that anchors writes into the same immutable ledger — and as the contract grows older, the full history of all participating souls becomes traceable across the network. A node using a different contract is no longer SYS-compatible and its anchored identities will not be recognized by the community.
+>
+> **Agent Marketplace:** The `soul_discover` tool — used by the Agent Marketplace to list souls — reads exclusively from this contract (Polygon blockchain as the single source of truth). A soul that anchors on a different contract will not appear in `soul_discover` and is invisible to all agents on the network.
 
 ---
 
