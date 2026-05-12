@@ -292,7 +292,10 @@ Soul identity hash  →  anchor()  →  Polygon blockchain
 
 Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
 
-Operators who want blockchain features need their own WalletConnect Project ID (free: cloud.walletconnect.com). The contract address is fixed in the protocol — a custom contract instance would break cross-node compatibility.
+Operators who want blockchain features need their own WalletConnect Project ID (free: cloud.walletconnect.com).
+
+> **The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the sole anchoring contract of the SYS protocol and must not be replaced.**
+> Using a different contract — whether custom, forked, or third-party — is not permitted within this tool. Cross-node identity verification depends on all nodes referencing the same contract. A diverging contract breaks protocol compatibility and invalidates anchored identities across the network.
 
 ---
 
