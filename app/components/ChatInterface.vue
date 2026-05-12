@@ -195,6 +195,26 @@
         <button class="dock-media-remove" @click="msgDoc = null" aria-label="Entfernen">✕</button>
       </div>
 
+      <!-- Picker panel — rendered at dock level (not inside overflow-x container) -->
+      <div v-if="agentMode && msgPickerOpen" class="picker-panel">
+        <button class="picker-item" :class="{ active: msgView === 'peer' }" @click="setMsgView('peer')">
+          <span class="picker-dot" style="background:#34d399"></span>Peers
+        </button>
+        <button class="picker-item" :class="{ active: msgView === 'agent' }" @click="setMsgView('agent')">
+          <span class="picker-dot" style="background:#a78bfa"></span>Agenten
+        </button>
+        <button class="picker-item" :class="{ active: msgView === 'all' }" @click="setMsgView('all')">
+          <span class="picker-dot" style="background:#60a5fa"></span>Alle
+        </button>
+        <div class="picker-sep-v"></div>
+        <button class="picker-item picker-item--briefing" :disabled="isSynthesizing" @click="triggerSynthesis(); msgPickerOpen = false">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="picker-briefing-icon" :class="{ pulse: isSynthesizing }">
+            <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+          </svg>
+          {{ isSynthesizing ? 'Generiere…' : 'Briefing' }}
+        </button>
+      </div>
+
       <!-- Row 2: feature chips -->
       <div class="dock-chips">
         <!-- Soul/Dev toggle (Mobile only) -->
@@ -221,34 +241,14 @@
           <span class="chip-label">Nachrichten</span>
         </button>
 
-        <!-- Picker: Peers / Agenten / Alle / Briefing (nur im Nachrichten-Modus) -->
-        <div v-if="agentMode" class="picker-wrap">
-          <button class="chip picker-chip" :class="{ active: msgPickerOpen }" @click="msgPickerOpen = !msgPickerOpen" aria-label="Ansicht wählen">
-            <span class="picker-dot" :style="{ background: currentViewColor }"></span>
-            <span class="chip-label">{{ currentViewLabel }}</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="picker-chevron" :class="{ open: msgPickerOpen }">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
-          <div v-if="msgPickerOpen" class="picker-dropdown">
-            <button class="picker-item" :class="{ active: msgView === 'peer' }" @click="setMsgView('peer')">
-              <span class="picker-dot" style="background:#34d399"></span>Peers
-            </button>
-            <button class="picker-item" :class="{ active: msgView === 'agent' }" @click="setMsgView('agent')">
-              <span class="picker-dot" style="background:#a78bfa"></span>Agenten
-            </button>
-            <button class="picker-item" :class="{ active: msgView === 'all' }" @click="setMsgView('all')">
-              <span class="picker-dot" style="background:#60a5fa"></span>Alle
-            </button>
-            <div class="picker-sep"></div>
-            <button class="picker-item picker-item--briefing" :disabled="isSynthesizing" @click="triggerSynthesis(); msgPickerOpen = false">
-              <svg viewBox="0 0 24 24" fill="currentColor" class="picker-briefing-icon" :class="{ pulse: isSynthesizing }">
-                <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
-              </svg>
-              {{ isSynthesizing ? 'Generiere…' : 'Briefing' }}
-            </button>
-          </div>
-        </div>
+        <!-- Picker trigger (nur im Nachrichten-Modus) -->
+        <button v-if="agentMode" class="chip picker-chip" :class="{ active: msgPickerOpen }" @click="msgPickerOpen = !msgPickerOpen" aria-label="Ansicht wählen">
+          <span class="picker-dot" :style="{ background: currentViewColor }"></span>
+          <span class="chip-label">{{ currentViewLabel }}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="picker-chevron" :class="{ open: msgPickerOpen }">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
 
         <!-- Aktualisieren (nur im Agent-Modus) -->
         <button
@@ -710,11 +710,7 @@ async function handleMsgSend() {
     updateContent(current)
     await pushToServer()
 
-    if (msgView.value === 'all') {
-      triggerSynthesis(media?.base64 ?? null)
-    } else {
-      msgView.value = recipient === 'community' ? 'all' : recipient
-    }
+    msgView.value = recipient === 'community' ? 'all' : recipient
   } finally {
     isSavingAgent.value = false
   }
@@ -1511,11 +1507,7 @@ defineExpose({
   .chip-icon  { width: 15px; height: 15px; }
 }
 
-/* ── Nachrichten-Modus: Picker-Dropdown ──────────────────────────── */
-.picker-wrap {
-  position: relative;
-  flex: none;
-}
+/* ── Nachrichten-Modus: Picker ───────────────────────────────────── */
 .picker-chip {
   gap: 6px;
 }
@@ -1532,23 +1524,24 @@ defineExpose({
 }
 .picker-chevron.open { transform: rotate(180deg); }
 
-.picker-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
-  min-width: 140px;
-  background: #18152a;
-  border: 1px solid var(--rule-2);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  z-index: 50;
+/* Panel rendered at dock level — never clipped by dock-chips overflow */
+.picker-panel {
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
+  border-top: 1px solid var(--rule);
+  background: rgba(24,21,42,0.97);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.picker-panel::-webkit-scrollbar { display: none; }
+
 .picker-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 14px;
+  padding: 0 16px;
+  height: 42px;
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.12em;
@@ -1556,20 +1549,24 @@ defineExpose({
   color: var(--fg-3);
   background: transparent;
   border: none;
+  border-right: 1px solid var(--rule);
   cursor: pointer;
-  text-align: left;
-  transition: color 0.12s, background 0.12s;
   white-space: nowrap;
+  transition: color 0.12s, background 0.12s;
+  flex: none;
 }
-.picker-item:hover:not(:disabled) { color: var(--fg); background: rgba(255,255,255,0.04); }
-.picker-item.active { color: var(--fg); }
+.picker-item:hover:not(:disabled) { color: var(--fg); background: rgba(255,255,255,0.03); }
+.picker-item.active { color: var(--fg); background: rgba(255,255,255,0.05); }
 .picker-item:disabled { opacity: 0.35; cursor: not-allowed; }
-.picker-sep {
-  height: 1px;
-  background: var(--rule);
-  margin: 2px 0;
+
+.picker-sep-v {
+  width: 1px;
+  background: var(--rule-2);
+  margin: 8px 0;
+  flex-shrink: 0;
+  align-self: stretch;
 }
-.picker-item--briefing { color: #60a5fa; }
+.picker-item--briefing { color: #60a5fa; margin-left: auto; }
 .picker-item--briefing:hover:not(:disabled) { color: #93c5fd; }
 .picker-briefing-icon {
   width: 12px; height: 12px; flex-shrink: 0;

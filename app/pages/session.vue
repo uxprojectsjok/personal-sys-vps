@@ -13,7 +13,7 @@
         </button>
         <div class="pill">
           <span class="live"></span>
-          #{{ soulMeta?.name || '------' }} · Soul {{ aiRole === 'soul' ? 'aktiv' : 'Entwicklung' }}
+          #{{ soulMeta?.name || '------' }} · Soul {{ aiRole === 'soul' ? 'aktiv' : 'Dev' }}
         </div>
         <div class="tools">
           <button class="tool" @click="liveProfileVisible = !liveProfileVisible">Profil</button>
@@ -24,7 +24,7 @@
             {{ serverChecking ? '…' : 'Abgleich' }}
           </button>
           <button class="tool" :class="{ active: aiRole === 'soul' }" @click="aiRole = aiRole === 'soul' ? 'session' : 'soul'">
-            Modus · {{ aiRole === 'soul' ? 'Soul' : 'Entwicklung' }}
+            Modus · {{ aiRole === 'soul' ? 'Soul' : 'Dev' }}
           </button>
         </div>
       </header>
