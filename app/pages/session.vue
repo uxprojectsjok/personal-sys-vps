@@ -208,6 +208,7 @@ const indexStrip = computed(() => {
 })
 
 function lockGate() {
+  clear()
   document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/gate'
 }

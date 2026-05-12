@@ -149,36 +149,45 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
   if multi_hoster then
     -- Multi-Hoster: jede neue Soul bekommt eigenen Master-Key + Admin-Token
     -- Beides wird in souls/{soul_id}/soul_admin.json gespeichert (nie in master.json).
-    local rnd = io.open("/dev/urandom", "rb")
-    if rnd then
-      local bytes_key = rnd:read(32)
-      local bytes_adm = rnd:read(32)
-      rnd:close()
-      if bytes_key and bytes_adm and #bytes_key == 32 and #bytes_adm == 32 then
-        local key_hex = ""
-        local adm_hex = ""
-        for i = 1, 32 do key_hex = key_hex .. string.format("%02x", bytes_key:byte(i)) end
-        for i = 1, 32 do adm_hex = adm_hex .. string.format("%02x", bytes_adm:byte(i)) end
+    -- Nur generieren wenn soul_admin.json noch NICHT existiert (verhindert Key-Wechsel bei
+    -- wiederholtem refreshCert vor dem ersten pushToServer).
+    local soul_admin_path = SOULS_DIR .. soul_id .. "/soul_admin.json"
+    local existing_sa = io.open(soul_admin_path, "r")
+    if existing_sa then
+      existing_sa:close()
+      -- soul_admin.json existiert bereits → per-soul Key wurde schon generiert.
+      -- active_key wurde oben bereits via cfg.get_soul_master_key gesetzt.
+      -- first_setup_token bleibt nil (kein erneutes Setup nötig).
+    else
+      local rnd = io.open("/dev/urandom", "rb")
+      if rnd then
+        local bytes_key = rnd:read(32)
+        local bytes_adm = rnd:read(32)
+        rnd:close()
+        if bytes_key and bytes_adm and #bytes_key == 32 and #bytes_adm == 32 then
+          local key_hex = ""
+          local adm_hex = ""
+          for i = 1, 32 do key_hex = key_hex .. string.format("%02x", bytes_key:byte(i)) end
+          for i = 1, 32 do adm_hex = adm_hex .. string.format("%02x", bytes_adm:byte(i)) end
 
-        local soul_master_key_full = "sys_" .. key_hex
-        first_setup_token = "adm_" .. adm_hex
+          local soul_master_key_full = "sys_" .. key_hex
+          first_setup_token = "adm_" .. adm_hex
 
-        os.execute("mkdir -p " .. SOULS_DIR .. soul_id)
-        local soul_admin_path = SOULS_DIR .. soul_id .. "/soul_admin.json"
-        local saf = io.open(soul_admin_path, "w")
-        if saf then
-          saf:write(cjson.encode({
-            admin_token      = first_setup_token,
-            soul_master_key  = soul_master_key_full,
-          }))
-          saf:close()
-          os.execute("chmod 600 " .. soul_admin_path)
-          os.execute("chown www-data:www-data " .. soul_admin_path .. " 2>/dev/null || true")
+          os.execute("mkdir -p " .. SOULS_DIR .. soul_id)
+          local saf = io.open(soul_admin_path, "w")
+          if saf then
+            saf:write(cjson.encode({
+              admin_token      = first_setup_token,
+              soul_master_key  = soul_master_key_full,
+            }))
+            saf:close()
+            os.execute("chmod 600 " .. soul_admin_path)
+            os.execute("chown www-data:www-data " .. soul_admin_path .. " 2>/dev/null || true")
+            -- Cert neu ableiten mit per-soul Key (nur wenn Datei erfolgreich geschrieben)
+            active_key = soul_master_key_full:sub(5)
+            cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
+          end
         end
-
-        -- Cert neu ableiten mit per-soul Key (überschreibt das oben mit global key abgeleitete)
-        active_key = soul_master_key_full:sub(5)
-        cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
       end
     end
 
