@@ -124,7 +124,7 @@ local mf          = io.open(master_path, "r")
 if mf then
   local mr = mf:read("*a"); mf:close()
   local mok, mdata = pcall(cjson.decode, mr)
-  if mok and type(mdata) == "table" then
+  if mok and type(mdata) == "table" and not mdata.multi_hoster then
     if anthropic_key  ~= nil then mdata.anthropic_key  = (anthropic_key  ~= "") and anthropic_key  or nil end
     if wavespeed_key  ~= nil then mdata.wavespeed_key  = (wavespeed_key  ~= "") and wavespeed_key  or nil end
     if elevenlabs_key ~= nil then mdata.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil end
