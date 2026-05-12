@@ -66,30 +66,7 @@
 
       <!-- ── Nachrichten-Modus ─────────────────────────────────────── -->
       <template v-else>
-        <!-- View tabs + Briefing trigger -->
-        <div class="msg-tabs">
-          <button v-for="[id, label, color] in [['peer','Peers','#34d399'],['agent','Agenten','#a78bfa'],['all','Alle','#60a5fa']]" :key="id"
-            class="msg-tab" :class="{ active: msgView === id }"
-            :style="msgView === id ? { color } : {}"
-            @click="msgView = id">
-            {{ label }}
-          </button>
-          <button
-            v-if="msgView === 'all'"
-            class="msg-tab briefing-btn"
-            :class="{ 'is-loading': isSynthesizing }"
-            :disabled="isSynthesizing"
-            @click="triggerSynthesis()"
-            aria-label="Briefing generieren"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" class="briefing-icon" :class="{ pulse: isSynthesizing }">
-              <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
-            </svg>
-            <span class="briefing-label">{{ isSynthesizing ? '…' : 'Briefing' }}</span>
-          </button>
-        </div>
-
-        <!-- Scrollable content (eigener Scroll-Container auf Mobile) -->
+        <!-- stream-content: display:contents on desktop, scroll container on mobile -->
         <div class="stream-content" ref="streamContentEl">
 
           <!-- Synthese-Block (nur "Alle"-Tab) -->
@@ -220,7 +197,7 @@
 
       <!-- Row 2: feature chips -->
       <div class="dock-chips">
-        <!-- Primary: Soul/Dev toggle (Mobile only) -->
+        <!-- Soul/Dev toggle (Mobile only) -->
         <button
           class="chip mode-chip"
           :class="{ soul: localRole === 'soul' }"
@@ -230,7 +207,8 @@
           <span class="mode-dot"></span>
           <span class="chip-label">{{ localRole === 'soul' ? 'Soul' : 'Dev' }}</span>
         </button>
-        <!-- Primary: Nachrichten / Agent Sandbox -->
+
+        <!-- Nachrichten / Agent Sandbox -->
         <button
           class="chip"
           :class="{ active: agentMode }"
@@ -243,97 +221,115 @@
           <span class="chip-label">Nachrichten</span>
         </button>
 
-        <!-- Mobile tools toggle (nur auf Mobile sichtbar) -->
-        <button class="chip mobile-tools-btn" @click="mobileToolsOpen = !mobileToolsOpen" aria-label="Tools">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.65-4.65 3.029 2.496c.384.317.626.74.766 1.208"/>
+        <!-- Picker: Peers / Agenten / Alle / Briefing (nur im Nachrichten-Modus) -->
+        <div v-if="agentMode" class="picker-wrap">
+          <button class="chip picker-chip" :class="{ active: msgPickerOpen }" @click="msgPickerOpen = !msgPickerOpen" aria-label="Ansicht wählen">
+            <span class="picker-dot" :style="{ background: currentViewColor }"></span>
+            <span class="chip-label">{{ currentViewLabel }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="picker-chevron" :class="{ open: msgPickerOpen }">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div v-if="msgPickerOpen" class="picker-dropdown">
+            <button class="picker-item" :class="{ active: msgView === 'peer' }" @click="setMsgView('peer')">
+              <span class="picker-dot" style="background:#34d399"></span>Peers
+            </button>
+            <button class="picker-item" :class="{ active: msgView === 'agent' }" @click="setMsgView('agent')">
+              <span class="picker-dot" style="background:#a78bfa"></span>Agenten
+            </button>
+            <button class="picker-item" :class="{ active: msgView === 'all' }" @click="setMsgView('all')">
+              <span class="picker-dot" style="background:#60a5fa"></span>Alle
+            </button>
+            <div class="picker-sep"></div>
+            <button class="picker-item picker-item--briefing" :disabled="isSynthesizing" @click="triggerSynthesis(); msgPickerOpen = false">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="picker-briefing-icon" :class="{ pulse: isSynthesizing }">
+                <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+              </svg>
+              {{ isSynthesizing ? 'Generiere…' : 'Briefing' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Aktualisieren (nur im Agent-Modus) -->
+        <button
+          v-if="agentMode"
+          class="chip"
+          :class="{ loading: isRefreshing }"
+          :disabled="isRefreshing"
+          @click="refreshAgentContent"
+          aria-label="Nachrichten aktualisieren"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon" :class="{ pulse: isRefreshing }">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
           </svg>
-          <span class="chip-label">{{ mobileToolsOpen ? 'Schließen' : 'Tools' }}</span>
+          <span class="chip-label">{{ isRefreshing ? 'Lädt…' : 'Neu laden' }}</span>
         </button>
 
-        <!-- Secondary chips: collapsible auf Mobile -->
-        <div class="chips-inner" :class="{ 'chips-open': mobileToolsOpen }">
-          <!-- Aktualisieren (nur im Agent-Modus) -->
-          <button
-            v-if="agentMode"
-            class="chip"
-            :class="{ loading: isRefreshing }"
-            :disabled="isRefreshing"
-            @click="refreshAgentContent"
-            aria-label="Nachrichten aktualisieren"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon" :class="{ pulse: isRefreshing }">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
-            </svg>
-            <span class="chip-label">{{ isRefreshing ? 'Lädt…' : 'Neu laden' }}</span>
-          </button>
+        <!-- Camera -->
+        <button
+          class="chip"
+          :class="{ active: cameraOpen, loading: visionLoading }"
+          :disabled="visionLoading"
+          @click="cameraOpen = true"
+          aria-label="Kamera"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon" :class="{ pulse: visionLoading }">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+          </svg>
+          <span class="chip-label">{{ visionLoading ? 'Analyse…' : 'Kamera' }}</span>
+        </button>
 
-          <!-- Camera -->
-          <button
-            class="chip"
-            :class="{ active: cameraOpen, loading: visionLoading }"
-            :disabled="visionLoading"
-            @click="cameraOpen = true"
-            aria-label="Kamera"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon" :class="{ pulse: visionLoading }">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
-            </svg>
-            <span class="chip-label">{{ visionLoading ? 'Analyse…' : 'Kamera' }}</span>
-          </button>
+        <!-- File -->
+        <button class="chip" @click="handleFileChip" aria-label="Datei">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+          </svg>
+          <span class="chip-label">Datei</span>
+        </button>
 
-          <!-- File -->
-          <button class="chip" @click="handleFileChip" aria-label="Datei">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-            </svg>
-            <span class="chip-label">Datei</span>
-          </button>
+        <!-- YouTube -->
+        <button
+          class="chip"
+          :class="{ primed: draft.startsWith('@search-youtube') }"
+          @click="insertSearch('@search-youtube ')"
+          aria-label="YouTube"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" class="chip-icon yt">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+          <span class="chip-label">YouTube</span>
+        </button>
 
-          <!-- YouTube -->
-          <button
-            class="chip"
-            :class="{ primed: draft.startsWith('@search-youtube') }"
-            @click="insertSearch('@search-youtube ')"
-            aria-label="YouTube"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" class="chip-icon yt">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span class="chip-label">YouTube</span>
-          </button>
+        <!-- Spotify -->
+        <button
+          class="chip"
+          :class="{ primed: draft.startsWith('@search-spotify') }"
+          @click="insertSearch('@search-spotify ')"
+          aria-label="Spotify"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" class="chip-icon sp">
+            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+          </svg>
+          <span class="chip-label">Spotify</span>
+        </button>
 
-          <!-- Spotify -->
-          <button
-            class="chip"
-            :class="{ primed: draft.startsWith('@search-spotify') }"
-            @click="insertSearch('@search-spotify ')"
-            aria-label="Spotify"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" class="chip-icon sp">
-              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-            </svg>
-            <span class="chip-label">Spotify</span>
-          </button>
+        <!-- Web -->
+        <button
+          class="chip"
+          :class="{ primed: draft.startsWith('@search-google') }"
+          @click="insertSearch('@search-google ')"
+          aria-label="Web-Suche"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253M3.157 7.582A8.959 8.959 0 0 0 3 12c0 .778.099 1.533.284 2.253"/>
+          </svg>
+          <span class="chip-label">Web</span>
+        </button>
 
-          <!-- Web -->
-          <button
-            class="chip"
-            :class="{ primed: draft.startsWith('@search-google') }"
-            @click="insertSearch('@search-google ')"
-            aria-label="Web-Suche"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="chip-icon">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253M3.157 7.582A8.959 8.959 0 0 0 3 12c0 .778.099 1.533.284 2.253"/>
-            </svg>
-            <span class="chip-label">Web</span>
-          </button>
-
-          <!-- Loading dots (while streaming) -->
-          <div v-if="isLoading" class="stream-indicator">
-            <span></span><span></span><span></span>
-          </div>
+        <!-- Loading dots (while streaming) -->
+        <div v-if="isLoading" class="stream-indicator">
+          <span></span><span></span><span></span>
         </div>
       </div>
     </footer>
@@ -401,14 +397,22 @@ const canSend = computed(() =>
 
 // ── Messaging mode ─────────────────────────────────────────────────
 const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent } = useSoul()
-const agentMode       = ref(false)
-const isSavingAgent   = ref(false)
-const isRefreshing    = ref(false)
-const mobileToolsOpen = ref(false)
-const msgView         = ref('all')   // 'all' | 'peer' | 'agent'
+const agentMode      = ref(false)
+const isSavingAgent  = ref(false)
+const isRefreshing   = ref(false)
+const msgPickerOpen  = ref(false)
+const msgView        = ref('all')   // 'all' | 'peer' | 'agent'
 const synthesisText   = ref('')
 const isSynthesizing  = ref(false)
 const streamContentEl = ref(null)
+
+const currentViewLabel = computed(() =>
+  msgView.value === 'peer' ? 'Peers' : msgView.value === 'agent' ? 'Agenten' : 'Alle'
+)
+const currentViewColor = computed(() =>
+  msgView.value === 'peer' ? '#34d399' : msgView.value === 'agent' ? '#a78bfa' : '#60a5fa'
+)
+function setMsgView(view) { msgView.value = view; msgPickerOpen.value = false }
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
 const msgDoc          = ref(null)    // { file, name } — attached doc in messaging mode
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
@@ -666,10 +670,6 @@ Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was 
     isSynthesizing.value = false
   }
 }
-
-watch(agentMode, async (active) => {
-  if (active) mobileToolsOpen.value = false
-})
 
 async function handleMsgSend() {
   if (isSavingAgent.value) return
@@ -1502,106 +1502,77 @@ defineExpose({
   .chip      { padding: 0 12px; font-size: 12px; letter-spacing: 0.12em; }
 }
 
-/* ── Desktop: chips-inner transparent, mobile-tools-btn hidden ── */
-.chips-inner { display: contents; }
-.mobile-tools-btn { display: none; }
-
 @media (max-width: 600px) {
   .stream { padding: 20px 16px 32px; }
   .msg    { grid-template-columns: 1fr; }
-
-  /* Primary chips: kompakter auf Mobile */
   .mode-chip  { display: inline-flex; }
   .dock-chips { min-height: 52px; }
   .chip       { height: 52px; padding: 0 14px; }
   .chip-icon  { width: 15px; height: 15px; }
-
-  /* Mobile tools toggle anzeigen */
-  .mobile-tools-btn { display: inline-flex; }
-
-  /* Secondary chips: collapsed by default */
-  .chips-inner {
-    display: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .chips-inner::-webkit-scrollbar { display: none; }
-  .chips-inner.chips-open {
-    display: flex;
-    align-items: center;
-  }
-  .chips-inner .chip-label { display: none; }
-  .chips-inner .chip { height: 52px; padding: 0 14px; }
-  .chips-inner .chip-icon { width: 15px; height: 15px; }
 }
 
-/* ── Nachrichten-Modus: Picker als Seitenleiste auf Mobile ─────── */
-@media (max-width: 600px) {
-  .stream--chat {
-    flex-direction: row;
-    overflow: hidden;
-    padding: 0;
-    gap: 0;
-  }
-  .stream-content {
-    flex: 1;
-    min-width: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 16px 12px 24px;
-  }
-  .msg-tabs {
-    order: 1;
-    flex-direction: column;
-    border-bottom: none;
-    border-left: 1px solid var(--rule);
-    width: 40px;
-    flex-shrink: 0;
-    background: var(--paper-3);
-    gap: 0;
-    margin-bottom: 0;
-    padding: 4px 0;
-    align-self: stretch;
-    overflow: hidden;
-    z-index: 2;
-  }
-  .msg-tab {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    padding: 14px 6px;
-    border-bottom: none;
-    border-right: none;
-    border-left: 2px solid transparent;
-    margin-bottom: 0;
-    font-size: 9px;
-    letter-spacing: 0.06em;
-    height: auto;
-    flex: none;
-    min-height: 44px;
-  }
-  .msg-tab.active {
-    border-bottom-color: transparent;
-    border-left-color: currentColor;
-  }
-  .briefing-btn {
-    margin-top: auto;
-    background: rgba(96,165,250,0.15);
-    border-top: 1px solid rgba(96,165,250,0.30);
-    border-left: none;
-    border-bottom: none;
-    padding: 12px 6px;
-    flex-direction: column;
-    gap: 4px;
-    justify-content: center;
-    align-items: center;
-    writing-mode: horizontal-tb;
-    transform: none;
-    min-height: 52px;
-  }
-  .briefing-icon { width: 16px; height: 16px; }
-  .briefing-label { font-size: 8px; letter-spacing: 0.06em; }
+/* ── Nachrichten-Modus: Picker-Dropdown ──────────────────────────── */
+.picker-wrap {
+  position: relative;
+  flex: none;
+}
+.picker-chip {
+  gap: 6px;
+}
+.picker-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.picker-chevron {
+  width: 10px; height: 10px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+  opacity: 0.6;
+}
+.picker-chevron.open { transform: rotate(180deg); }
+
+.picker-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  background: #18152a;
+  border: 1px solid var(--rule-2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+.picker-item:hover:not(:disabled) { color: var(--fg); background: rgba(255,255,255,0.04); }
+.picker-item.active { color: var(--fg); }
+.picker-item:disabled { opacity: 0.35; cursor: not-allowed; }
+.picker-sep {
+  height: 1px;
+  background: var(--rule);
+  margin: 2px 0;
+}
+.picker-item--briefing { color: #60a5fa; }
+.picker-item--briefing:hover:not(:disabled) { color: #93c5fd; }
+.picker-briefing-icon {
+  width: 12px; height: 12px; flex-shrink: 0;
 }
 
 /* ── Agent Sandbox empty state ───────────────────────────────────── */
@@ -1747,57 +1718,7 @@ defineExpose({
   padding-bottom: clamp(24px,4vw,40px);
 }
 
-/* ── Nachrichten-Modus: View-Tabs ────────────────────────────────── */
-.msg-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 0;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--paper-3);
-}
-.msg-tab {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--fg-4);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 6px 12px;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.msg-tab:hover { color: var(--fg-3); }
-.msg-tab.active { border-bottom-color: currentColor; color: inherit; }
-
-/* Briefing button — distinct action button next to tabs */
-.briefing-btn {
-  margin-left: auto;
-  color: #60a5fa;
-  border-left: 1px solid var(--rule);
-  background: rgba(96,165,250,0.08);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.briefing-icon {
-  width: 12px; height: 12px; flex-shrink: 0;
-}
-.briefing-btn:hover:not(:disabled) {
-  background: rgba(96,165,250,0.16);
-  color: #93c5fd;
-}
-.briefing-btn.is-loading { opacity: 0.6; cursor: default; }
-.briefing-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* stream-content: desktop passthrough — display:contents makes children direct flex items of .stream */
+/* stream-content: display:contents makes children direct flex items of .stream */
 .stream-content {
   display: contents;
 }
