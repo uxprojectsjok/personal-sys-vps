@@ -91,6 +91,13 @@ local SOULS_DIR = "/var/lib/sys/souls/"
 local ctx_file  = SOULS_DIR .. soul_id .. "/api_context.json"
 local cf = io.open(ctx_file, "r")
 
+-- Aktiven Key ermitteln: per-soul (multi-hoster) oder global
+local active_key = master_key
+if multi_hoster then
+  local psk = cfg.get_soul_master_key(soul_id)
+  if psk and psk ~= "" then active_key = psk end
+end
+
 if cf then
   cf:close()
   -- Bestehende Soul → proof erforderlich
@@ -102,10 +109,15 @@ if cf then
   end
 
   -- Alle cert_versions 0..20 prüfen — aktueller Key + vorheriger Key (Grace-Period)
-  local prev_key = cfg.get_master_key_prev()
+  local prev_key
+  if multi_hoster then
+    prev_key = cfg.get_soul_master_key_prev(soul_id)
+  end
+  if not prev_key or prev_key == "" then prev_key = cfg.get_master_key_prev() end
+
   local valid = false
   for v = 0, 20 do
-    if hmac.cert_for_soul(master_key, soul_id, v) == proof then
+    if hmac.cert_for_soul(active_key, soul_id, v) == proof then
       valid = true; break
     end
     if prev_key and prev_key ~= "" then
@@ -128,67 +140,100 @@ end
 if cf then
   cert_version = hmac.read_cert_version(soul_id)
 end
-local cert = hmac.cert_for_soul(master_key, soul_id, cert_version)
+local cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
 
--- ── First-Setup: neue Soul + noch kein admin_token → einmalig generieren ──────
--- Tritt nur auf einer frischen Instanz auf (master.json hat noch kein admin_token).
--- Der Token wird genau einmal im Response mitgeschickt und danach nie wieder.
+-- ── First-Setup: neue Soul → Admin-Token + ggf. per-Soul-Key generieren ──────
 local first_setup_token = nil
 if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
-  -- Node-Owner sperren: soul_id dauerhaft in master.json verankern.
-  -- Im Multi-Hoster-Modus wird kein Lock gesetzt — jede Soul kann sich registrieren.
-  if not multi_hoster and (not node_soul_id or node_soul_id == "") then
-    master_data.node_soul_id = soul_id
-    local mpath = get_master_path()
-    os.execute("mkdir -p /var/lib/sys/config")
-    local lf = io.open(mpath, "w")
-    if lf then
-      lf:write(cjson.encode(master_data)); lf:close()
-      os.execute("chmod 600 " .. mpath)
-      os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
-      cfg.invalidate_master_cache()
-    end
-    -- Global-Fallback sync (Abwärtskompatibilität mit älteren Lua-Skripten)
-    if mpath ~= MASTER_PATH_GLOBAL then
-      local gf = io.open(MASTER_PATH_GLOBAL, "w")
-      if gf then
-        gf:write(cjson.encode(master_data)); gf:close()
-        os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
-        os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
-      end
-    end
-  end
 
-  local master = read_master()
-  if not master or type(master.admin_token) ~= "string" or master.admin_token == "" then
-    -- Zufälligen admin_token aus /dev/urandom generieren
+  if multi_hoster then
+    -- Multi-Hoster: jede neue Soul bekommt eigenen Master-Key + Admin-Token
+    -- Beides wird in souls/{soul_id}/soul_admin.json gespeichert (nie in master.json).
     local rnd = io.open("/dev/urandom", "rb")
     if rnd then
-      local bytes = rnd:read(32); rnd:close()
-      if bytes and #bytes == 32 then
-        local hex = ""
-        for i = 1, 32 do hex = hex .. string.format("%02x", bytes:byte(i)) end
-        first_setup_token = "adm_" .. hex
+      local bytes_key = rnd:read(32)
+      local bytes_adm = rnd:read(32)
+      rnd:close()
+      if bytes_key and bytes_adm and #bytes_key == 32 and #bytes_adm == 32 then
+        local key_hex = ""
+        local adm_hex = ""
+        for i = 1, 32 do key_hex = key_hex .. string.format("%02x", bytes_key:byte(i)) end
+        for i = 1, 32 do adm_hex = adm_hex .. string.format("%02x", bytes_adm:byte(i)) end
 
-        -- In master.json persistieren (domain-spezifisch + global)
-        local existing = master or {}
-        existing.admin_token = first_setup_token
-        local mpath = get_master_path()
-        os.execute("mkdir -p /var/lib/sys/config")
-        local wf = io.open(mpath, "w")
-        if wf then
-          wf:write(cjson.encode(existing)); wf:close()
-          os.execute("chmod 600 " .. mpath)
-          os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
-          cfg.invalidate_master_cache()
+        local soul_master_key_full = "sys_" .. key_hex
+        first_setup_token = "adm_" .. adm_hex
+
+        os.execute("mkdir -p " .. SOULS_DIR .. soul_id)
+        local soul_admin_path = SOULS_DIR .. soul_id .. "/soul_admin.json"
+        local saf = io.open(soul_admin_path, "w")
+        if saf then
+          saf:write(cjson.encode({
+            admin_token      = first_setup_token,
+            soul_master_key  = soul_master_key_full,
+          }))
+          saf:close()
+          os.execute("chmod 600 " .. soul_admin_path)
+          os.execute("chown www-data:www-data " .. soul_admin_path .. " 2>/dev/null || true")
         end
-        -- Global-Fallback sync
-        if mpath ~= MASTER_PATH_GLOBAL then
-          local gf = io.open(MASTER_PATH_GLOBAL, "w")
-          if gf then
-            gf:write(cjson.encode(existing)); gf:close()
-            os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
-            os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+
+        -- Cert neu ableiten mit per-soul Key (überschreibt das oben mit global key abgeleitete)
+        active_key = soul_master_key_full:sub(5)
+        cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
+      end
+    end
+
+  else
+    -- Single-Hoster: Node-Owner sperren
+    if not node_soul_id or node_soul_id == "" then
+      master_data.node_soul_id = soul_id
+      local mpath = get_master_path()
+      os.execute("mkdir -p /var/lib/sys/config")
+      local lf = io.open(mpath, "w")
+      if lf then
+        lf:write(cjson.encode(master_data)); lf:close()
+        os.execute("chmod 600 " .. mpath)
+        os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
+        cfg.invalidate_master_cache()
+      end
+      if mpath ~= MASTER_PATH_GLOBAL then
+        local gf = io.open(MASTER_PATH_GLOBAL, "w")
+        if gf then
+          gf:write(cjson.encode(master_data)); gf:close()
+          os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+          os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+        end
+      end
+    end
+
+    local master = read_master()
+    if not master or type(master.admin_token) ~= "string" or master.admin_token == "" then
+      -- Einmaliger admin_token für den Single-Hoster-Owner
+      local rnd = io.open("/dev/urandom", "rb")
+      if rnd then
+        local bytes = rnd:read(32); rnd:close()
+        if bytes and #bytes == 32 then
+          local hex = ""
+          for i = 1, 32 do hex = hex .. string.format("%02x", bytes:byte(i)) end
+          first_setup_token = "adm_" .. hex
+
+          local existing = master or {}
+          existing.admin_token = first_setup_token
+          local mpath = get_master_path()
+          os.execute("mkdir -p /var/lib/sys/config")
+          local wf = io.open(mpath, "w")
+          if wf then
+            wf:write(cjson.encode(existing)); wf:close()
+            os.execute("chmod 600 " .. mpath)
+            os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
+            cfg.invalidate_master_cache()
+          end
+          if mpath ~= MASTER_PATH_GLOBAL then
+            local gf = io.open(MASTER_PATH_GLOBAL, "w")
+            if gf then
+              gf:write(cjson.encode(existing)); gf:close()
+              os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+              os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+            end
           end
         end
       end

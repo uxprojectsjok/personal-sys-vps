@@ -89,6 +89,13 @@ local function read_soul_config(soul_id)
   return read_json_file("/var/lib/sys/souls/" .. soul_id .. "/config.json")
 end
 
+-- ── soul_admin.json lesen (per-soul Keys im Multi-Hoster-Modus) ──────────────
+local function read_soul_admin(soul_id)
+  if not soul_id then return nil end
+  if not soul_id:match("^[a-zA-Z0-9%-]+$") or #soul_id > 64 then return nil end
+  return read_json_file("/var/lib/sys/souls/" .. soul_id .. "/soul_admin.json")
+end
+
 -- ── SOUL_MASTER_KEY: master.json → env ───────────────────────────────────────
 -- Gibt rohen 64-Hex-String zurück (sys_-Prefix wird entfernt).
 function M.get_master_key()
@@ -113,6 +120,41 @@ function M.get_master_key_prev()
   if k:sub(1, 4) ~= "sys_" or #k ~= 68 then return nil end
   if type(ts) ~= "number" or ts <= 0 or ngx.now() > ts then return nil end
   return k:sub(5)  -- strip prefix
+end
+
+-- ── Per-Soul SOUL_MASTER_KEY (Multi-Hoster) ──────────────────────────────────
+-- Gibt per-soul Key aus soul_admin.json zurück, oder nil wenn nicht vorhanden.
+-- nil = Fallback auf globalen get_master_key().
+function M.get_soul_master_key(soul_id)
+  local sa = read_soul_admin(soul_id)
+  if not sa then return nil end
+  local k = sa.soul_master_key
+  if type(k) == "string" and k:sub(1, 4) == "sys_" and #k == 68 then
+    return k:sub(5)
+  end
+  return nil
+end
+
+-- ── Vorheriger per-Soul Key (Grace-Period nach Rotation) ─────────────────────
+function M.get_soul_master_key_prev(soul_id)
+  local sa = read_soul_admin(soul_id)
+  if not sa then return nil end
+  local k  = sa.soul_master_key_prev
+  local ts = sa.prev_valid_until_ts
+  if type(k) ~= "string" or k == "" then return nil end
+  if k:sub(1, 4) ~= "sys_" or #k ~= 68 then return nil end
+  if type(ts) ~= "number" or ts <= 0 or ngx.now() > ts then return nil end
+  return k:sub(5)
+end
+
+-- ── Per-Soul ADMIN_TOKEN validieren ──────────────────────────────────────────
+function M.validate_soul_admin_token(soul_id, token)
+  if type(token) ~= "string" or token:sub(1, 4) ~= "adm_" or #token ~= 68 then
+    return false
+  end
+  local sa = read_soul_admin(soul_id)
+  if not sa or type(sa.admin_token) ~= "string" then return false end
+  return sa.admin_token == token
 end
 
 -- ── ANTHROPIC_API_KEY: soul config → master.json → env ───────────────────────

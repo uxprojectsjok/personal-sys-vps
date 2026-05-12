@@ -24,6 +24,10 @@ if soul_id == "" or cert == "" then return ngx.exit(401) end
 local hmac         = require("hmac_helper")
 local cert_version = hmac.read_cert_version(soul_id)
 
+-- Aktiven Key ermitteln: per-soul (multi-hoster) oder global
+local per_soul_key = cfg.get_soul_master_key(soul_id)
+local active_key   = (per_soul_key and per_soul_key ~= "") and per_soul_key or master_key
+
 -- Prüft alle cert_versions 0..20 gegen einen Key.
 -- Fallback für fehlendes api_context.json (z.B. nach Vault-Deletion):
 -- read_cert_version gibt 0 zurück, aber Soul hat höhere Version.
@@ -37,9 +41,9 @@ local function try_versions(key)
 end
 
 -- 1. Aktuellen Key prüfen (gespeicherte Version zuerst, dann 0..20 als Fallback)
-local matched = hmac.cert_for_soul(master_key, soul_id, cert_version) == cert
+local matched = hmac.cert_for_soul(active_key, soul_id, cert_version) == cert
 if not matched then
-  if try_versions(master_key) then
+  if try_versions(active_key) then
     ngx.log(ngx.INFO, "[sys/auth] Fallback cert_version match soul_id=", soul_id)
     matched = true
   end
@@ -47,7 +51,11 @@ end
 
 -- 2. Vorherigen Key prüfen (Grace-Period nach Rotation)
 if not matched then
-  local prev_key = cfg.get_master_key_prev()
+  local prev_key
+  if per_soul_key then
+    prev_key = cfg.get_soul_master_key_prev(soul_id)
+  end
+  if not prev_key or prev_key == "" then prev_key = cfg.get_master_key_prev() end
   if prev_key and prev_key ~= "" then
     if hmac.cert_for_soul(prev_key, soul_id, cert_version) == cert
        or try_versions(prev_key) then

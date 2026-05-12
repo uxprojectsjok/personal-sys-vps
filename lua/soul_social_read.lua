@@ -109,8 +109,11 @@ local cert_ok = false
 
 if found_same_server then
   -- Same-Server: lokale HMAC-Verifikation
-  local master_key = cfg.get_master_key()
-  if master_key and master_key ~= "" then
+  -- Per-soul key hat Vorrang (multi-hoster), Fallback auf globalen Master-Key
+  local global_key  = cfg.get_master_key()
+  local per_soul_key = cfg.get_soul_master_key(peer_soul_id)
+  local active_key  = (per_soul_key and per_soul_key ~= "") and per_soul_key or global_key
+  if active_key and active_key ~= "" then
     local cv_ctx = io.open(SOULS_DIR .. peer_soul_id .. "/api_context.json", "r")
     local cv = 0
     if cv_ctx then
@@ -122,9 +125,23 @@ if found_same_server then
     end
     -- Prüfe cert_version und Fallback ±1
     for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-      if v >= 0 and hmac.cert_for_soul(master_key, peer_soul_id, v) == peer_cert then
+      if v >= 0 and hmac.cert_for_soul(active_key, peer_soul_id, v) == peer_cert then
         cert_ok = true
         break
+      end
+    end
+    -- Grace-Period: auch prev key prüfen wenn kein Treffer
+    if not cert_ok then
+      local prev_key
+      if per_soul_key then prev_key = cfg.get_soul_master_key_prev(peer_soul_id) end
+      if not prev_key or prev_key == "" then prev_key = cfg.get_master_key_prev() end
+      if prev_key and prev_key ~= "" then
+        for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
+          if v >= 0 and hmac.cert_for_soul(prev_key, peer_soul_id, v) == peer_cert then
+            cert_ok = true
+            break
+          end
+        end
       end
     end
   end

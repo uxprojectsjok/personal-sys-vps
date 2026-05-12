@@ -153,10 +153,12 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (res.ok) {
         const data = await res.json();
         cert = data.cert;
-        // First-Setup: frische Instanz — admin_token einmalig im Response
+        // First-Setup: admin_token einmalig im Response
         if (data.first_setup && data.admin_token) {
           firstSetupToken.value = data.admin_token;
           localStorage.setItem("sys_admin_token", data.admin_token);
+          // Per-soul key (multi-hoster: jede Soul hat eigenen Token)
+          localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
         }
       }
     } catch {
@@ -221,6 +223,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (data.first_setup && data.admin_token) {
         firstSetupToken.value = data.admin_token;
         localStorage.setItem('sys_admin_token', data.admin_token);
+        localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
       }
 
       await pushToServer();
