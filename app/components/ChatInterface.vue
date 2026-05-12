@@ -241,7 +241,25 @@
           <span class="chip-label">Nachrichten</span>
         </button>
 
-        <!-- Picker trigger (nur im Nachrichten-Modus) -->
+        <!-- Desktop: Ansicht-Chips direkt sichtbar (≥601px) -->
+        <template v-if="agentMode">
+          <button v-for="[id, label, color] in [['peer','Peers','#34d399'],['agent','Agenten','#a78bfa'],['all','Alle','#60a5fa']]" :key="id"
+            class="chip view-chip"
+            :class="{ active: msgView === id }"
+            :style="msgView === id ? { color } : {}"
+            @click="msgView = id"
+          >
+            <span class="chip-label">{{ label }}</span>
+          </button>
+          <button class="chip view-chip view-chip--briefing" :disabled="isSynthesizing" @click="triggerSynthesis()">
+            <svg viewBox="0 0 24 24" fill="currentColor" class="chip-icon" :class="{ pulse: isSynthesizing }">
+              <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+            </svg>
+            <span class="chip-label">{{ isSynthesizing ? '…' : 'Briefing' }}</span>
+          </button>
+        </template>
+
+        <!-- Mobile: Picker-Chip (≤600px) -->
         <button v-if="agentMode" class="chip picker-chip" :class="{ active: msgPickerOpen }" @click="msgPickerOpen = !msgPickerOpen" aria-label="Ansicht wählen">
           <span class="picker-dot" :style="{ background: currentViewColor }"></span>
           <span class="chip-label">{{ currentViewLabel }}</span>
@@ -1508,9 +1526,31 @@ defineExpose({
 }
 
 /* ── Nachrichten-Modus: Picker ───────────────────────────────────── */
-.picker-chip {
-  gap: 6px;
+
+/* Desktop (>600px): view-chips direkt sichtbar, picker-chip + panel versteckt */
+.view-chip { display: inline-flex; }
+.view-chip--briefing { color: #60a5fa; }
+.view-chip--briefing:hover:not(:disabled) { color: #93c5fd; }
+.view-chip--briefing:disabled { opacity: 0.35; cursor: not-allowed; }
+.picker-chip { display: none; }
+.picker-panel { display: none; }
+
+/* Mobile (≤600px): view-chips versteckt, picker-chip + panel aktiv */
+@media (max-width: 600px) {
+  .view-chip  { display: none; }
+  .picker-chip { display: inline-flex; gap: 6px; }
+  .picker-panel {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid var(--rule);
+    background: rgba(24,21,42,0.97);
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .picker-panel::-webkit-scrollbar { display: none; }
 }
+
 .picker-dot {
   width: 5px; height: 5px;
   border-radius: 50%;
@@ -1523,18 +1563,6 @@ defineExpose({
   opacity: 0.6;
 }
 .picker-chevron.open { transform: rotate(180deg); }
-
-/* Panel rendered at dock level — never clipped by dock-chips overflow */
-.picker-panel {
-  display: flex;
-  align-items: stretch;
-  border-top: 1px solid var(--rule);
-  background: rgba(24,21,42,0.97);
-  flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.picker-panel::-webkit-scrollbar { display: none; }
 
 .picker-item {
   display: inline-flex;
