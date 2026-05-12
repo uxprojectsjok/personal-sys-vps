@@ -8,7 +8,7 @@
 
       <!-- HEADER -->
       <header class="sess-head">
-        <button class="back" @click="isMultiHoster ? lockGate() : $router.push('/')" aria-label="Zurück">
+        <button class="back" @click="$router.push('/')" aria-label="Zurück">
           <span class="arr">←</span> Zurück
         </button>
         <div class="pill">
@@ -26,6 +26,7 @@
           <button class="tool" :class="{ active: aiRole === 'soul' }" @click="aiRole = aiRole === 'soul' ? 'session' : 'soul'">
             Modus · {{ aiRole === 'soul' ? 'Soul' : 'Dev' }}
           </button>
+          <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
         </div>
       </header>
 
@@ -352,6 +353,8 @@ function reloadPage() { location.reload() }
 .tool:hover:not(:disabled) { color: var(--fg); }
 .tool.active { color: var(--accent); }
 .tool:disabled { opacity: 0.4; cursor: not-allowed; }
+.tool--logout { color: var(--err, #f0a3a3); }
+.tool--logout:hover { color: var(--fg); }
 
 
 /* Banners */

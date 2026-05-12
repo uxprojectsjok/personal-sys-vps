@@ -324,8 +324,8 @@
                 <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
               </div>
 
-              <!-- Master Anthropic-Key -->
-              <div class="sys-field">
+              <!-- Master Anthropic-Key (nur global-Admin, nicht per-soul) -->
+              <div class="sys-field" v-if="!isSoulAdmin">
                 <label class="sys-field-label">Server Anthropic-Key (Fallback für alle)</label>
                 <input
                   v-model="masterAnthropicKey"
@@ -448,15 +448,31 @@ const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer,
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 
 // ── Admin-Erkennung (nur aus localStorage — nie vom Server) ─────────────────
-const ADMIN_KEY = 'sys_admin_token'
-const isAdmin   = ref(false)
-const adminToken = ref('')
+const ADMIN_KEY    = 'sys_admin_token'
+const isAdmin      = ref(false)
+const adminToken   = ref('')
+const isSoulAdmin  = ref(false)  // true = per-soul token (multi-hoster), false = global token
+
+const currentSoulId = computed(() => soulToken.value?.split('.')?.[0] ?? '')
 
 function detectAdmin() {
+  // Per-soul token zuerst prüfen (multi-hoster: jede Soul hat eigenen Token)
+  const soulId = currentSoulId.value
+  if (soulId) {
+    const perSoul = localStorage.getItem(`sys_admin_token_${soulId}`)
+    if (perSoul && perSoul.startsWith('adm_') && perSoul.length === 68) {
+      isAdmin.value    = true
+      adminToken.value  = perSoul
+      isSoulAdmin.value = true
+      return
+    }
+  }
+  // Globaler Token (single-hoster / legacy)
   const stored = localStorage.getItem(ADMIN_KEY)
   if (stored && stored.startsWith('adm_') && stored.length === 68) {
-    isAdmin.value   = true
-    adminToken.value = stored
+    isAdmin.value    = true
+    adminToken.value  = stored
+    isSoulAdmin.value = false
   }
 }
 
@@ -616,13 +632,39 @@ async function connectAdmin() {
   connectingAdmin.value = true
   connectFeedback.value = null
   try {
-    const res = await fetch('/api/set-master', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': connectToken.value },
-      body: JSON.stringify({}),
-    })
-    if (res.ok) {
-      localStorage.setItem(ADMIN_KEY, connectToken.value)
+    // Per-soul token zuerst versuchen (multi-hoster)
+    const soulId = currentSoulId.value
+    let matched = false
+    if (soulId) {
+      const res = await fetch('/api/set-master', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Soul-Admin-Token': connectToken.value,
+          'X-Soul-Id': soulId,
+        },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        localStorage.setItem(`sys_admin_token_${soulId}`, connectToken.value)
+        matched = true
+        isSoulAdmin.value = true
+      }
+    }
+    // Fallback: globaler Admin-Token (single-hoster)
+    if (!matched) {
+      const res = await fetch('/api/set-master', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': connectToken.value },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        localStorage.setItem(ADMIN_KEY, connectToken.value)
+        matched = true
+        isSoulAdmin.value = false
+      }
+    }
+    if (matched) {
       connectFeedback.value = { ok: true, message: 'Admin-Zugang verbunden ✓' }
       setTimeout(() => {
         detectAdmin()
@@ -687,15 +729,16 @@ async function saveMaster() {
   adminFeedback.value = null
   try {
     const body = {}
-    if (newMasterKey.value)       body.soul_master_key  = newMasterKey.value
-    if (masterAnthropicKey.value) body.anthropic_key    = masterAnthropicKey.value
-    if (newAdminToken.value)      body.new_admin_token  = newAdminToken.value
+    if (newMasterKey.value)                     body.soul_master_key = newMasterKey.value
+    if (!isSoulAdmin.value && masterAnthropicKey.value) body.anthropic_key = masterAnthropicKey.value
+    if (newAdminToken.value)                    body.new_admin_token = newAdminToken.value
+    const soulId = currentSoulId.value
+    const authHeaders = isSoulAdmin.value && soulId
+      ? { 'X-Soul-Admin-Token': adminToken.value, 'X-Soul-Id': soulId }
+      : { 'X-Admin-Token': adminToken.value }
     const res = await fetch('/api/set-master', {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'X-Admin-Token': adminToken.value,
-      },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(body),
     })
     const d = await res.json().catch(() => ({}))
@@ -704,7 +747,11 @@ async function saveMaster() {
       let msg = 'Gespeichert ✓'
       if (d.prev_valid_until) msg += ' — Grace-Period 15 min aktiv'
       if (newAdminToken.value) {
-        localStorage.setItem(ADMIN_KEY, newAdminToken.value)
+        if (isSoulAdmin.value && soulId) {
+          localStorage.setItem(`sys_admin_token_${soulId}`, newAdminToken.value)
+        } else {
+          localStorage.setItem(ADMIN_KEY, newAdminToken.value)
+        }
         adminToken.value = newAdminToken.value
         msg += ' — Admin-Token rotiert & gespeichert'
       }

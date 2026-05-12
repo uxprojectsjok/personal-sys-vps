@@ -42,12 +42,16 @@ if not sf then
 end
 sf:close()
 
-local master_key = cfg.get_master_key()
-if not master_key or master_key == "" then
+local global_key = cfg.get_master_key()
+if not global_key or global_key == "" then
   ngx.status = 503
   ngx.say('{"ok":false,"error":"no_master_key"}')
   return
 end
+
+-- Per-soul key hat Vorrang (multi-hoster), Fallback auf globalen Key
+local per_soul_key = type(cfg.get_soul_master_key) == "function" and cfg.get_soul_master_key(soul_id) or nil
+local master_key   = (per_soul_key and per_soul_key ~= "") and per_soul_key or global_key
 
 local hmac = require("hmac_helper")
 
@@ -80,7 +84,13 @@ end
 local matched = try_versions(master_key)
 
 if not matched then
-  local prev_key = type(cfg.get_master_key_prev) == "function" and cfg.get_master_key_prev() or ""
+  local prev_key
+  if per_soul_key then
+    prev_key = type(cfg.get_soul_master_key_prev) == "function" and cfg.get_soul_master_key_prev(soul_id) or nil
+  end
+  if not prev_key or prev_key == "" then
+    prev_key = type(cfg.get_master_key_prev) == "function" and cfg.get_master_key_prev() or nil
+  end
   if prev_key and prev_key ~= "" then
     matched = try_versions(prev_key)
   end
