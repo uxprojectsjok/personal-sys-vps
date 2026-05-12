@@ -398,7 +398,7 @@ async function confirmReset() {
     cancelText: 'Abbrechen',
     danger: true,
   })
-  if (ok) _clear?.()
+  if (ok) lockGate()
 }
 
 async function handleSoulCreate({ name, idea }) {
@@ -411,17 +411,22 @@ async function handleSoulCreate({ name, idea }) {
 
 async function handleLoginUpload(text) {
   if (allowCreateSoul.value) {
-    // Frischer VPS — bestehende Soul importieren und registrieren
+    // Multi-Hoster oder frischer VPS — importieren und serverseitig registrieren
     const result = await importAndSetup(text)
     if (!result.ok) {
       const msg = result.error === 'node_locked'
         ? 'Dieser Node ist bereits einer anderen Soul zugewiesen.'
         : result.error === 'no_soul_id'
         ? 'Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.'
+        : result.error === 'invalid_proof'
+        ? 'Diese Soul ist bereits auf diesem Server registriert, aber der Cert in der Datei stimmt nicht überein. Bitte die aktualisierte sys.md verwenden (wurde beim ersten Import heruntergeladen).'
         : `Import fehlgeschlagen (${result.error}).`
       alert(msg)
       return
     }
+    // Erstes Setup: aktualisierte sys.md sofort herunterladen — enthält den neuen Cert
+    // der für alle weiteren Logins auf diesem Server als Proof benötigt wird.
+    if (firstSetupToken.value) await exportAsBlob()
   } else {
     // Bestehende Soul auf diesem Server — normaler Login
     importFromText(text)
