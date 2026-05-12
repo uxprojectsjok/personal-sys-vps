@@ -91,7 +91,9 @@ The default mode. The first soul to register locks the node — subsequent regis
 
 One VPS hosts multiple souls. Registration is always open. Use cases: families, friend groups, companies, or soul hosting services.
 
-In Multi-Hoster mode, every soul still has isolated data under `/var/lib/sys/souls/{soul_id}/`. Secrets (SOUL_MASTER_KEY, API_SIGNING_KEY) are shared at the node level — each soul gets its own HMAC-derived cert from the same key.
+In Multi-Hoster mode, every soul has fully isolated data under `/var/lib/sys/souls/{soul_id}/`. Each soul receives its own `soul_master_key` and `admin_token` at registration, stored in `soul_admin.json`. All soul certs and API keys are derived from these per-soul secrets — no soul can impersonate another, even on the same node.
+
+When a soul first imports their sys.md, the node generates fresh credentials and immediately triggers a download of the updated sys.md (which contains the new cert). This updated file is required for all subsequent logins on this node.
 
 > **WalletConnect limitation in Multi-Hoster mode:** All souls on the node share the same WalletConnect Project ID. If the Project ID needs to change, the frontend must be rebuilt and redeployed.
 
@@ -162,7 +164,11 @@ To delete soul data without uninstalling the server:
 bash /opt/sys/reset.sh
 ```
 
-Removes all soul data and resets the node to "ready for first registration". OpenResty, SSL, and all configuration are preserved.
+**Personal Node:** removes the single soul and unlocks the node for a new registration.
+
+**Multi-Hoster:** lists all registered souls by number. Select one to delete or `a` to remove all. Vault data, SSL, and server configuration are fully preserved in both cases. OpenResty is restarted to clear the session cache.
+
+> **Stuck after a failed import?** If you dismissed the admin token modal by accident or your sys.md has an outdated cert, the login sheet shows a *"Registrierung zurücksetzen"* button — no SSH required.
 
 ---
 

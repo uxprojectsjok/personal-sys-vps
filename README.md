@@ -94,7 +94,7 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 
 ```
 ├── init.sh                  Setup script — zero to running in one command
-├── reset.sh                 Delete soul, release node (data gone, config preserved)
+├── reset.sh                 Delete soul(s) and release node — single or multi-hoster aware
 ├── recover-password.sh      Reset gate password without losing soul data
 ├── deinstall.sh             Remove everything init.sh installed
 │
@@ -104,9 +104,11 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 │   └── composables/         Shared state: useSoul, useVault, useChainAnchor, …
 │
 ├── lua/                     OpenResty Lua scripts (production API layer)
-│   ├── soul_cert.lua        Soul cert issuance (HMAC-SHA256)
-│   ├── soul_auth.lua        Request authentication
+│   ├── soul_cert.lua        Soul cert issuance — per-soul key on multi-hoster
+│   ├── soul_auth.lua        Request authentication (per-soul key aware)
+│   ├── vault_auth.lua       Vault endpoint auth (per-soul key aware)
 │   ├── gate_auth.lua        Gate password protection
+│   ├── soul_reset_registration.lua  Recovery endpoint — clears stale registration (gate auth only)
 │   ├── soul_amortization.lua Agent Marketplace + trusted souls whitelist
 │   ├── vault_sync.lua       Vault file upload/sync
 │   └── …                   (40+ additional Lua endpoints)
@@ -237,7 +239,7 @@ The script prompts for domain, email, and optionally an Anthropic API key and Wa
 | Script | What it does |
 |--------|-------------|
 | `bash /opt/sys/recover-password.sh` | **Forgot password** — sets a new gate password. Soul data is fully preserved. Requires SSH access. |
-| `bash /opt/sys/reset.sh` | **Remove soul** — deletes all soul data, releases the node for a new registration. OpenResty, SSL, and all configuration are preserved. |
+| `bash /opt/sys/reset.sh` | **Remove soul** — Personal Node: deletes the single soul. Multi-Hoster: lists all souls, delete one or all. OpenResty, SSL, and all configuration are preserved. |
 | `bash /opt/sys/deinstall.sh` | **Full uninstall** — removes everything init.sh installed. Ubuntu is untouched. Delete the DNS record manually at your provider afterward. |
 
 > `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
@@ -253,7 +255,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 595244ebf1f1028304455186290beb2fc72f52d81c805d14b1641593572f2836
+Current release fingerprint: 6fe94ba3a4000e62525d7a6b36a63d5b308dbb542cb81c585365a282448983e6
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
