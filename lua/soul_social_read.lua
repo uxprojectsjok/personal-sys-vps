@@ -261,7 +261,19 @@ end
 
 if #filtered == 0 then ngx.status = 204; return end
 
--- Format output
+-- raw=1: return <!-- @msg --> format for frontend peer-social polling
+if (args.raw or "") == "1" then
+  local out = {}
+  for _, m in ipairs(filtered) do
+    out[#out + 1] = string.format("<!-- @msg %s %s %s %s -->", m.ts, m.from, m.to, m.content)
+  end
+  ngx.header["Content-Type"] = "text/plain; charset=utf-8"
+  ngx.header["X-Msg-Count"]  = tostring(#filtered)
+  ngx.say(table.concat(out, "\n"))
+  return
+end
+
+-- Format output (MCP context — human-readable)
 local lines = {}
 for _, m in ipairs(filtered) do
   local from_label = m.from == "me" and "You" or m.from:sub(1, 8)

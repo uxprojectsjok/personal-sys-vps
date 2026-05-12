@@ -8,7 +8,7 @@
 
       <!-- HEADER -->
       <header class="sess-head">
-        <button class="back" @click="$router.push('/')" aria-label="Zurück">
+        <button class="back" @click="isMultiHoster ? lockGate() : $router.push('/')" aria-label="Zurück">
           <span class="arr">←</span> Zurück
         </button>
         <div class="pill">
@@ -178,6 +178,7 @@ const enrichStatus = ref(null)
 const certErrorVisible = ref(false)
 const aiRole = ref('soul')
 const chatRef = ref(null)
+const isMultiHoster = ref(false)
 
 // ── Onboarding
 const ONBOARDING_KEY = 'sys_onboarding_done'
@@ -205,12 +206,18 @@ const indexStrip = computed(() => {
     : ['Designentscheidungen', 'Typografie-Hierarchie', 'Klarheit vs. Spektakel', 'Editorial als UI']
 })
 
+function lockGate() {
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
+  window.location.href = '/gate'
+}
+
 // ── Lifecycle (preserves original init order)
 onMounted(async () => {
   if (!localStorage.getItem(ONBOARDING_KEY)) showOnboarding.value = true
   clearSession()
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
+  fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
 
   // Initial AI greeting (removes need for empty-state placeholder)
   addMessage('assistant', 'Hallo, was wollen wir heute tun?')

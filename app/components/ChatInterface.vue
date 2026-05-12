@@ -441,6 +441,8 @@ const CACHE_TTL_MS    = 30 * 60 * 1000
 const CACHE_MAX_ITEMS = 30
 let   _agentPollTimer  = null
 let   _cacheEvictTimer = null
+const peerIds        = ref([])
+const peerSocialMsgs = ref([])
 
 watch(agentMode, async (active) => {
   if (active) {
@@ -448,9 +450,19 @@ watch(agentMode, async (active) => {
     await scrollToBottom()
     _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
     _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
+    // Load same-server peer IDs for social polling (multi-hoster)
+    try {
+      const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+      if (r.ok) {
+        const d = await r.json()
+        peerIds.value = (d.amortization?.trusted_souls ?? []).filter(t => typeof t === 'string')
+      }
+    } catch { /* silent */ }
   } else {
     clearInterval(_agentPollTimer);  _agentPollTimer  = null
     clearInterval(_cacheEvictTimer); _cacheEvictTimer = null
+    peerIds.value        = []
+    peerSocialMsgs.value = []
   }
 })
 onUnmounted(() => {
@@ -491,9 +503,34 @@ async function refreshAgentContent() {
         serverContent.value = ''
       }
     }
+    // Fetch peer SOCIAL blocks (multi-hoster same-server peers)
+    if (peerIds.value.length) {
+      peerSocialMsgs.value = await fetchPeerSocialBlocks()
+    }
   } finally {
     isRefreshing.value = false
   }
+}
+
+async function fetchPeerSocialBlocks() {
+  if (!peerIds.value.length || !props.soulCert) return []
+  const results = await Promise.allSettled(
+    peerIds.value.map(async (peerId) => {
+      try {
+        const r = await fetch(`/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`, {
+          headers: { Authorization: `Bearer ${props.soulCert}` }
+        })
+        if (r.status === 204 || !r.ok) return []
+        const text = await r.text()
+        if (!text.trim()) return []
+        return parseMsgBlock(text, 'social').map(m => ({
+          ...m,
+          from: m.from === 'me' ? peerId : m.from
+        }))
+      } catch { return [] }
+    })
+  )
+  return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 }
 
 const RE_AGENT        = /<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/
@@ -589,8 +626,18 @@ function formatDay(ts) {
 }
 
 const socialMsgs = computed(() => {
-  const m = soulContentAgent.value?.match(RE_SOCIAL_BLOCK)
-  return m ? parseMsgBlock(m[1], 'social') : []
+  const m   = soulContentAgent.value?.match(RE_SOCIAL_BLOCK)
+  const own = m ? parseMsgBlock(m[1], 'social') : []
+  if (!peerSocialMsgs.value.length) return own
+  const seen = new Set()
+  return [...own, ...peerSocialMsgs.value]
+    .filter(msg => {
+      const k = `${msg.ts}|${msg.from}|${msg.to}|${msg.content}`
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    .sort((a, b) => new Date(a.ts) - new Date(b.ts))
 })
 
 const agentMsgsNew = computed(() => {
