@@ -164,6 +164,8 @@ for _SDIR in \
     _BASE=$(basename "$_F")
     [[ "$_BASE" == "00-default"* ]] && continue
     [[ "$_BASE" == "$DOMAIN" ]]     && continue
+    # Skip if already listed (both sites-enabled paths may contain the same files)
+    echo "$ACTIVE_SITES" | grep -qF "· $_BASE" && continue
     SHARED_SERVER=true
     ACTIVE_SITES="$ACTIVE_SITES\n    · $_BASE"
   done
