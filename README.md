@@ -234,6 +234,22 @@ The script prompts for domain, email, and optionally an Anthropic API key and Wa
 | **Personal Node** | Single soul. First registrant is the permanent owner. |
 | **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. |
 
+These modes are independent of the server's infrastructure. A Personal Node can run on a VPS that already hosts other websites — SYS detects existing sites automatically and integrates safely alongside them.
+
+### Shared-server support
+
+If `init.sh` detects other active sites on the server (via `sites-enabled`), it switches to shared-server mode:
+
+- **nginx.conf** is extended only with the directives SYS needs — not overwritten
+- **Existing vhost configs** are left untouched
+- **Packages** (OpenResty, Node.js, Certbot) are not reinstalled or upgraded
+- **`deinstall.sh`** removes only SYS-owned files: vhost, Lua scripts, soul data, soul-mcp — OpenResty and all other sites remain intact
+
+> **Node mode ≠ Shared server**
+> *Personal Node* / *Multi-Hoster* controls how many souls the SYS node accepts.
+> *Shared server* describes whether other websites exist alongside SYS on the same VPS.
+> Both combinations are fully supported.
+
 ### Managing your soul
 
 | Script | What it does |
