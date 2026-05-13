@@ -300,9 +300,7 @@ fi
 info "Removing data directories..."
 rm -rf /var/lib/sys
 rm -rf /var/www/"$DOMAIN"
-if ! $SHARED_SERVER; then
-  rm -rf /opt/sys
-fi
+rm -rf /opt/sys
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
