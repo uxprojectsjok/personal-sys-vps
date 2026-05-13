@@ -445,15 +445,16 @@ if [[ -n "$SSL_CERT" || -n "$SSL_KEY" ]]; then
   openssl pkey -in "$SSL_KEY" -check -noout 2>/dev/null \
     || error "Ungültiger privater Schlüssel: $SSL_KEY"
 
-  # Cert und Key zusammengehörig? (Modulus-Vergleich)
-  CERT_MOD=$(openssl x509 -noout -modulus -in "$SSL_CERT" 2>/dev/null | openssl md5)
-  KEY_MOD=$(openssl pkey -noout -modulus -in "$SSL_KEY"   2>/dev/null | openssl md5)
-  [[ "$CERT_MOD" != "$KEY_MOD" ]] \
-    && error "Zertifikat und Schlüssel passen nicht zusammen."
+  # Cert und Key zusammengehörig? (Public-Key-Vergleich — RSA und ECDSA)
+  CERT_PUB=$(openssl x509 -noout -pubkey -in "$SSL_CERT" 2>/dev/null | openssl md5 2>/dev/null || true)
+  KEY_PUB=$(openssl pkey -pubout -in "$SSL_KEY" 2>/dev/null | openssl md5 2>/dev/null || true)
+  if [[ -n "$CERT_PUB" && -n "$KEY_PUB" && "$CERT_PUB" != "$KEY_PUB" ]]; then
+    error "Zertifikat und Schlüssel passen nicht zusammen."
+  fi
 
   # Deckt das Zertifikat die Domain ab? (CN oder SAN)
   CERT_DOMAINS=$(openssl x509 -noout -text -in "$SSL_CERT" 2>/dev/null \
-    | grep -oP '(?<=DNS:)[^,\s]+')
+    | grep -oP '(?<=DNS:)[^,\s]+' || true)
   DOMAIN_MATCH=false
   for cd in $CERT_DOMAINS; do
     # Exakter Treffer oder Wildcard (*.example.com deckt sub.example.com)
