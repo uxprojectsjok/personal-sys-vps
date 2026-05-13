@@ -128,6 +128,14 @@
             </div>
           </template>
 
+          <!-- Briefing: typing-bubble while AI is generating -->
+          <div v-if="isSynthesizing" class="msg-bubble msg-bubble--other briefing-bubble">
+            <div class="msg-sender" style="color:#60a5fa">Briefing</div>
+            <div class="msg-inner msg-inner--agent">
+              <div class="dots"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+
           <div v-if="isSavingAgent" class="dots saving-dots">
             <span></span><span></span><span></span>
           </div>
@@ -867,6 +875,7 @@ async function scrollToBottom() {
 
 watch(() => messages.value?.length, scrollToBottom)
 watch(() => displayMessages.value.length, () => { if (agentMode.value) scrollToBottom() })
+watch(isSynthesizing, (val) => { if (val) nextTick(scrollToBottom) })
 
 // ── Formatters ─────────────────────────────────────────────────────
 function fmtTime(ts) {
