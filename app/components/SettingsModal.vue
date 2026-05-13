@@ -528,7 +528,13 @@ async function loadStatus() {
   } catch {}
 }
 
+function sanitizeKey(k) {
+  // Remove non-ISO-8859-1 characters (e.g. zero-width spaces from copy-paste)
+  return (k || '').replace(/[^\x20-\xFF]/g, '').trim()
+}
+
 async function testKey(type, key, useStored = false) {
+  key = sanitizeKey(key)
   const stateRef = { anthropic: anthTest, wavespeed: waveTest, elevenlabs: labsTest }[type]
   stateRef.value = { loading: true, ok: null, message: '' }
   let ok = false
@@ -589,10 +595,10 @@ async function saveConfig() {
   feedback.value = null
   try {
     const body = {}
-    if (apiKey.value) body.anthropic_key = apiKey.value
+    if (apiKey.value) body.anthropic_key = sanitizeKey(apiKey.value)
     if (model.value) body.model = model.value
-    if (wavespeedDirty.value) body.wavespeed_key = wavespeedKey.value
-    if (elevenlabsDirty.value) body.elevenlabs_key = elevenlabsKey.value
+    if (wavespeedDirty.value) body.wavespeed_key = sanitizeKey(wavespeedKey.value)
+    if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: {
