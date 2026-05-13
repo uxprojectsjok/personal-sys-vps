@@ -30,14 +30,49 @@ echo ""
 read -p "Domain that was configured (e.g. soul.yourdomain.com): " DOMAIN
 [[ -z "$DOMAIN" ]] && error "Domain required."
 
+# ── Shared-Server-Erkennung ───────────────────────────────────────────────────
+# Prüft ob neben der SYS-Domain noch andere Sites aktiv sind.
+# Wenn ja: OpenResty, Node.js und /etc/openresty bleiben unangetastet.
+SHARED_SERVER=false
+for _SDIR in \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  [ -d "$_SDIR" ] || continue
+  for _F in "$_SDIR"/*; do
+    [ -f "$_F" ] || continue
+    _BASE=$(basename "$_F")
+    [[ "$_BASE" == "00-default"* ]] && continue
+    [[ "$_BASE" == "$DOMAIN" ]]     && continue
+    SHARED_SERVER=true
+    break 2
+  done
+done
+
 echo ""
-warn "ACHTUNG: Alle SYS-Daten auf diesem VPS werden unwiderruflich gelöscht."
-warn "  · Alle Soul-Daten unter /var/lib/sys/"
-warn "  · SSL-Zertifikat für $DOMAIN"
-warn "  · OpenResty, Node.js, Certbot"
-warn "  · /var/www/$DOMAIN/"
-warn "  · Swap-Datei /swapfile"
-warn "  · /etc/openresty/"
+if $SHARED_SERVER; then
+  warn "Shared Server erkannt — weitere Sites sind aktiv."
+  warn "ACHTUNG: Folgende SYS-Daten werden unwiderruflich gelöscht:"
+  warn "  · Soul-Daten unter /var/lib/sys/"
+  warn "  · SSL-Zertifikat für $DOMAIN (optional)"
+  warn "  · /var/www/$DOMAIN/"
+  warn "  · SYS Lua-Scripts in /etc/openresty/lua/"
+  warn "  · SYS vhost-Config für $DOMAIN"
+  warn "  · soul-mcp Service"
+  warn ""
+  warn "NICHT gelöscht (andere Sites nutzen diese):"
+  warn "  · OpenResty (Paket + /etc/openresty/)"
+  warn "  · Node.js"
+  warn "  · Certbot"
+  warn "  · Swap-Datei"
+else
+  warn "ACHTUNG: Alle SYS-Daten auf diesem VPS werden unwiderruflich gelöscht."
+  warn "  · Alle Soul-Daten unter /var/lib/sys/"
+  warn "  · SSL-Zertifikat für $DOMAIN"
+  warn "  · OpenResty, Node.js, Certbot"
+  warn "  · /var/www/$DOMAIN/"
+  warn "  · Swap-Datei /swapfile"
+  warn "  · /etc/openresty/"
+fi
 echo ""
 warn "Stelle sicher dass du ein Backup deiner Soul hast (.soul-Bundle oder sys.md)."
 echo ""
@@ -102,18 +137,26 @@ fi
 
 # ── 1. Services stoppen ───────────────────────────────────────────────────────
 info "Stopping services..."
-# soul-mcp (pm2) zuerst stoppen
+
+# soul-mcp immer stoppen (gehört zu SYS)
 if command -v pm2 &>/dev/null; then
   timeout 10 pm2 stop all    2>/dev/null || true
   timeout 10 pm2 delete all  2>/dev/null || true
   timeout 10 pm2 kill        2>/dev/null || true
 fi
-timeout 10 systemctl stop    openresty 2>/dev/null || true
-timeout 10 systemctl disable openresty 2>/dev/null || true
-# nginx ist OpenResty — nur stoppen wenn eigene Unit vorhanden
-if systemctl list-units --type=service 2>/dev/null | grep -q 'nginx.service'; then
-  timeout 10 systemctl stop    nginx 2>/dev/null || true
-  timeout 10 systemctl disable nginx 2>/dev/null || true
+timeout 10 systemctl stop    soul-mcp  2>/dev/null || true
+timeout 10 systemctl disable soul-mcp  2>/dev/null || true
+
+# OpenResty nur stoppen wenn dedizierter Server
+if $SHARED_SERVER; then
+  info "Shared Server: OpenResty bleibt aktiv (andere Sites laufen noch)."
+else
+  timeout 10 systemctl stop    openresty 2>/dev/null || true
+  timeout 10 systemctl disable openresty 2>/dev/null || true
+  if systemctl list-units --type=service 2>/dev/null | grep -q 'nginx.service'; then
+    timeout 10 systemctl stop    nginx 2>/dev/null || true
+    timeout 10 systemctl disable nginx 2>/dev/null || true
+  fi
 fi
 
 # ── 2. SSL-Zertifikat ────────────────────────────────────────────────────────
@@ -160,43 +203,100 @@ else
 fi
 
 # ── 3. Pakete deinstallieren ──────────────────────────────────────────────────
-info "Removing OpenResty..."
-apt-get remove --purge -y openresty 2>/dev/null || true
-
-info "Removing Certbot..."
-if $DELETE_CERT; then
-  apt-get remove --purge -y certbot 2>/dev/null || true
+if $SHARED_SERVER; then
+  info "Shared Server: Pakete (OpenResty, Node.js, Certbot) bleiben installiert."
 else
-  # Cert behalten → ohne --purge, sonst fragt certbot interaktiv nach /etc/letsencrypt
-  apt-get remove -y certbot 2>/dev/null || true
+  info "Removing OpenResty..."
+  apt-get remove --purge -y openresty 2>/dev/null || true
+
+  info "Removing Certbot..."
+  if $DELETE_CERT; then
+    apt-get remove --purge -y certbot 2>/dev/null || true
+  else
+    apt-get remove -y certbot 2>/dev/null || true
+  fi
+
+  info "Removing Node.js..."
+  apt-get remove --purge -y nodejs 2>/dev/null || true
+
+  apt-get autoremove -y 2>/dev/null || true
+
+  info "Removing package repositories..."
+  rm -f /etc/apt/sources.list.d/openresty.list
+  rm -f /etc/apt/sources.list.d/nodesource.list
+  apt-get update -qq 2>/dev/null || true
+
+  info "Removing swap..."
+  if swapon --show | grep -q /swapfile 2>/dev/null; then
+    swapoff /swapfile
+  fi
+  rm -f /swapfile
+  sed -i '/\/swapfile/d' /etc/fstab 2>/dev/null || true
 fi
 
-info "Removing Node.js..."
-apt-get remove --purge -y nodejs 2>/dev/null || true
-
-apt-get autoremove -y 2>/dev/null || true
-
-# ── 4. Package repositories entfernen ────────────────────────────────────────
-info "Removing package repositories..."
-rm -f /etc/apt/sources.list.d/openresty.list
-rm -f /etc/apt/sources.list.d/nodesource.list
-apt-get update -qq 2>/dev/null || true
-
-# ── 5. Swap entfernen ─────────────────────────────────────────────────────────
-info "Removing swap..."
-if swapon --show | grep -q /swapfile 2>/dev/null; then
-  swapoff /swapfile
+# ── 4. SYS systemd Drop-In entfernen ─────────────────────────────────────────
+info "Removing SYS systemd environment files..."
+rm -f /etc/systemd/system/soul-mcp.service 2>/dev/null || true
+rm -f /etc/systemd/system/openresty.service.d/sys-node.conf 2>/dev/null || true
+# Ältere Installs schrieben env.conf — nur entfernen wenn kein Shared Server
+# (auf Shared Servern könnte env.conf fremde Variablen enthalten)
+if ! $SHARED_SERVER; then
+  rm -f /etc/systemd/system/openresty.service.d/env.conf 2>/dev/null || true
 fi
-rm -f /swapfile
-# Eintrag aus /etc/fstab entfernen falls vorhanden
-sed -i '/\/swapfile/d' /etc/fstab 2>/dev/null || true
+systemctl daemon-reload
+
+# ── 5. SYS nginx-Konfiguration entfernen ─────────────────────────────────────
+info "Removing SYS vhost and nginx config..."
+
+# vhost für diese Domain aus sites-available und sites-enabled entfernen
+for _SDIR in \
+  /etc/openresty/sites-available \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-available \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  rm -f "$_SDIR/$DOMAIN" 2>/dev/null || true
+done
+
+if $SHARED_SERVER; then
+  # Nur SYS-eigene Lua-Scripts entfernen (via Manifest aus init.sh)
+  _LUA_MANIFEST=/var/lib/sys/config/lua-manifest.txt
+  if [ -f "$_LUA_MANIFEST" ]; then
+    while IFS= read -r _SCRIPT; do
+      rm -f "/etc/openresty/lua/$_SCRIPT" 2>/dev/null || true
+      rm -f "/usr/local/openresty/nginx/conf/lua/$_SCRIPT" 2>/dev/null || true
+    done < "$_LUA_MANIFEST"
+    info "SYS Lua-Scripts entfernt ($(wc -l < "$_LUA_MANIFEST") Dateien)."
+  else
+    warn "Kein Lua-Manifest gefunden — Lua-Scripts NICHT entfernt."
+    warn "Manuell bereinigen: /etc/openresty/lua/soul_*.lua, gate_*.lua, vault_*.lua usw."
+  fi
+
+  # sys-node-globals.conf entfernen + include aus nginx.conf entfernen
+  rm -f /etc/openresty/sys-node-globals.conf 2>/dev/null || true
+  for _NC in /etc/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf; do
+    [ -f "$_NC" ] || continue
+    if grep -q "sys-node-globals.conf" "$_NC"; then
+      sed -i '/sys-node-globals.conf/d' "$_NC"
+      info "SYS-Include aus $_NC entfernt."
+    fi
+  done
+
+  # OpenResty neu laden (kein Ausfall für andere Sites)
+  info "OpenResty neu laden (andere Sites bleiben aktiv)..."
+  openresty -t && systemctl reload openresty 2>/dev/null || \
+    warn "OpenResty reload fehlgeschlagen — manuell prüfen."
+else
+  # Dedizierter Server: komplettes /etc/openresty entfernen
+  rm -rf /etc/openresty
+fi
 
 # ── 6. Datenverzeichnisse löschen ─────────────────────────────────────────────
 info "Removing data directories..."
 rm -rf /var/lib/sys
 rm -rf /var/www/"$DOMAIN"
-rm -rf /etc/openresty
-rm -rf /opt/sys
+if ! $SHARED_SERVER; then
+  rm -rf /opt/sys
+fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""

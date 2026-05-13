@@ -150,6 +150,44 @@ echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── Shared-Server-Erkennung ───────────────────────────────────────────────────
+# Prüft ob OpenResty bereits läuft und weitere (Nicht-SYS) Sites aktiv sind.
+# Wenn ja: SYS fügt sich ein statt zu überschreiben.
+SHARED_SERVER=false
+ACTIVE_SITES=""
+for _SDIR in \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  [ -d "$_SDIR" ] || continue
+  for _F in "$_SDIR"/*; do
+    [ -f "$_F" ] || continue
+    _BASE=$(basename "$_F")
+    [[ "$_BASE" == "00-default"* ]] && continue
+    [[ "$_BASE" == "$DOMAIN" ]]     && continue
+    SHARED_SERVER=true
+    ACTIVE_SITES="$ACTIVE_SITES\n    · $_BASE"
+  done
+done
+
+if $SHARED_SERVER; then
+  echo ""
+  echo -e "${YELLOW}┌──────────────────────────────────────────────────────────────────┐${NC}"
+  echo -e "${YELLOW}│  Bestehender OpenResty-Server erkannt                            │${NC}"
+  echo -e "${YELLOW}│                                                                  │${NC}"
+  echo -e "${YELLOW}│  Aktive Sites auf diesem VPS:${NC}"
+  echo -e "${YELLOW}${ACTIVE_SITES}${NC}"
+  echo -e "${YELLOW}│                                                                  │${NC}"
+  echo -e "${YELLOW}│  SYS fügt sich NEBEN die bestehenden Sites ein.                 │${NC}"
+  echo -e "${YELLOW}│  · nginx.conf wird nur erweitert, nicht überschrieben           │${NC}"
+  echo -e "${YELLOW}│  · Bestehende vhost-Konfigurationen bleiben unverändert         │${NC}"
+  echo -e "${YELLOW}│  · Pakete werden nicht neuinstalliert                           │${NC}"
+  echo -e "${YELLOW}│  · deinstall.sh entfernt später nur SYS-eigene Dateien          │${NC}"
+  echo -e "${YELLOW}└──────────────────────────────────────────────────────────────────┘${NC}"
+  echo ""
+  read -p "  Fortfahren? (yes/no): " _SHARED_CONFIRM
+  [[ "$_SHARED_CONFIRM" == "yes" ]] || error "Abgebrochen."
+fi
+
 # ── 1b. Zeitzone setzen ───────────────────────────────────────────────────────
 info "Setting timezone to ${TIMEZONE}..."
 timedatectl set-timezone "$TIMEZONE" 2>/dev/null || warn "timedatectl fehlgeschlagen — Zeitzone möglicherweise unbekannt."
@@ -225,10 +263,34 @@ chmod -R 755 /var/www/"$DOMAIN"
 info "Installing Lua scripts..."
 cp "$SCRIPT_DIR"/lua/*.lua /etc/openresty/lua/
 
+# Manifest schreiben — deinstall.sh entfernt nur diese Dateien (shared-server-safe)
+ls "$SCRIPT_DIR/lua/"*.lua | xargs -n1 basename \
+  > /var/lib/sys/config/lua-manifest.txt
+
 # ── 8. Master Key + Gate-Passwort-Hash ───────────────────────────────────────
-info "Generating Soul Master Key..."
-RAW_KEY=$(openssl rand -hex 32)
-MASTER_KEY="sys_${RAW_KEY}"
+# Bestehenden Master Key wiederverwenden falls master.json schon existiert
+# (schützt bestehende Soul-Certs bei Reinstall oder Skript-Neustart).
+EXISTING_MASTER_KEY=""
+for _MJ in \
+  "/var/lib/sys/config/$DOMAIN/master.json" \
+  "/var/lib/sys/config/master.json"; do
+  if [ -f "$_MJ" ]; then
+    EXISTING_MASTER_KEY=$(python3 -c \
+      "import json; print(json.load(open('$_MJ')).get('soul_master_key',''))" \
+      2>/dev/null || true)
+    [ -n "$EXISTING_MASTER_KEY" ] && break
+  fi
+done
+
+if [ -n "$EXISTING_MASTER_KEY" ]; then
+  warn "Bestehende SYS-Installation erkannt — Master Key wird wiederverwendet."
+  MASTER_KEY="$EXISTING_MASTER_KEY"
+  RAW_KEY="${MASTER_KEY#sys_}"
+else
+  info "Generating Soul Master Key..."
+  RAW_KEY=$(openssl rand -hex 32)
+  MASTER_KEY="sys_${RAW_KEY}"
+fi
 
 # Gate-Passwort-Hash: HMAC-SHA256(master_key_raw, "gate_pw:" + password)
 # master_key ohne sys_-Prefix als ASCII-String (64 Hex-Zeichen) → passt zu hmac_helper.lua
@@ -274,26 +336,70 @@ chown www-data:www-data /var/lib/sys/config/master.json
 info "Configuring OpenResty (HTTP-only, Phase 1)..."
 mkdir -p /usr/local/openresty/nginx/logs
 
-if grep -q "lua_package_path" /etc/openresty/nginx.conf 2>/dev/null; then
-  # Unsere Config ist bereits aktiv — nur fehlende Zonen idempotent eintragen
-  info "nginx.conf (SYS) bereits vorhanden — überspringe Überschreibung."
-  for ZONE_LINE in \
-    "limit_req_zone \$binary_remote_addr zone=chat:10m rate=1r/s;" \
-    "limit_req_zone \$binary_remote_addr zone=chat_api:10m rate=2r/s;" \
-    "limit_req_zone \$binary_remote_addr zone=vault_upload:10m rate=5r/s;" \
-    "limit_req_zone \$binary_remote_addr zone=gate:10m rate=5r/m;"; do
-    ZONE_NAME=$(echo "$ZONE_LINE" | grep -oP 'zone=\K[^:]+')
-    if ! grep -q "zone=${ZONE_NAME}" /etc/openresty/nginx.conf; then
-      sed -i "/# Rate limit zones/a\\  ${ZONE_LINE}" /etc/openresty/nginx.conf
-      info "Zone ${ZONE_NAME} zu nginx.conf hinzugefügt."
-    fi
-  done
+# Aktive nginx.conf finden (Installations-Pfade variieren)
+_NGINX_CONF=""
+for _NC in /etc/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf; do
+  [ -f "$_NC" ] && _NGINX_CONF="$_NC" && break
+done
+
+_SYS_GLOBALS=/etc/openresty/sys-node-globals.conf
+
+if grep -q "gate_sessions" "$_NGINX_CONF" 2>/dev/null; then
+  # SYS-Globals sind bereits aktiv (frühere Installation oder manuell gesetzt)
+  info "nginx.conf: SYS-Globals bereits vorhanden — überspringe."
+
+elif [ -n "$_NGINX_CONF" ] && grep -q "lua_package_path" "$_NGINX_CONF" 2>/dev/null; then
+  # Shared server: fremde nginx.conf mit Lua — NUR fehlende SYS-Direktiven ergänzen
+  info "Shared Server: füge SYS-Globals als Include in nginx.conf ein..."
+
+  # Nur Direktiven schreiben die noch nicht in nginx.conf vorhanden sind
+  {
+    echo "# SYS-NODE globals — automatisch von init.sh eingefügt"
+    echo "# Nicht manuell bearbeiten — wird von deinstall.sh entfernt"
+    for _VAR in SOUL_MASTER_KEY API_SIGNING_KEY ANTHROPIC_API_KEY; do
+      grep -q "env ${_VAR};" "$_NGINX_CONF" || echo "env ${_VAR};"
+    done
+    for _DICT_NAME in gate_sessions vault_sessions verify_cache pol_tx_used pol_access; do
+      grep -q "$_DICT_NAME" "$_NGINX_CONF" || case $_DICT_NAME in
+        gate_sessions)   echo "lua_shared_dict gate_sessions    2m;" ;;
+        vault_sessions)  echo "lua_shared_dict vault_sessions  10m;" ;;
+        verify_cache)    echo "lua_shared_dict verify_cache     5m;" ;;
+        pol_tx_used)     echo "lua_shared_dict pol_tx_used     10m;" ;;
+        pol_access)      echo "lua_shared_dict pol_access      10m;" ;;
+      esac
+    done
+    for _ZONE in chat chat_api vault_upload gate; do
+      grep -q "zone=${_ZONE}:" "$_NGINX_CONF" || case $_ZONE in
+        chat)         echo "limit_req_zone \$binary_remote_addr zone=chat:10m         rate=1r/s;" ;;
+        chat_api)     echo "limit_req_zone \$binary_remote_addr zone=chat_api:10m     rate=2r/s;" ;;
+        vault_upload) echo "limit_req_zone \$binary_remote_addr zone=vault_upload:10m rate=5r/s;" ;;
+        gate)         echo "limit_req_zone \$binary_remote_addr zone=gate:10m         rate=5r/m;" ;;
+      esac
+    done
+  } > "$_SYS_GLOBALS"
+
+  # include-Zeile in nginx.conf injizieren (vor der letzten schließenden Klammer)
+  if ! grep -q "sys-node-globals.conf" "$_NGINX_CONF"; then
+    python3 - <<PYEOF
+content = open('$_NGINX_CONF').read()
+include_line = '  include /etc/openresty/sys-node-globals.conf;'
+last = content.rfind('\n}')
+if last != -1:
+    content = content[:last] + '\n' + include_line + content[last:]
+    open('$_NGINX_CONF', 'w').write(content)
+    print('[sys] sys-node-globals.conf in nginx.conf eingefügt.')
+else:
+    print('[warn] Abschlussklammer nicht gefunden — include manuell in nginx.conf einfügen:')
+    print('  ' + include_line)
+PYEOF
+  fi
+
 else
-  # Keine oder Standard-OpenResty-Config → durch unser Template ersetzen
+  # Kein nginx.conf oder Standard-Config ohne Lua → vollständig durch Template ersetzen
   sed "s/{{DOMAIN}}/$DOMAIN/g" \
     "$SCRIPT_DIR/server/openresty/nginx.conf.template" \
     > /etc/openresty/nginx.conf
-  info "nginx.conf erstellt."
+  info "nginx.conf erstellt (dedizierter Server)."
 fi
 
 sed "s/{{DOMAIN}}/$DOMAIN/g" \
@@ -449,6 +555,10 @@ echo ""
 # nginx.conf deklariert env-Variablen (env SOUL_MASTER_KEY;), aber die Werte
 # müssen beim Start von OpenResty im Prozess-Environment vorhanden sein.
 # Ohne diesen Override sind alle Lua-Variablen leer → soul_auth schlägt fehl.
+#
+# Schreibt in sys-node.conf (nicht env.conf) damit bestehende Drop-In-Dateien
+# anderer Anwendungen unverändert bleiben. Auf Shared Servern koexistieren
+# mehrere .conf-Dateien — systemd lädt alle und last-writer wins.
 info "Creating systemd environment override for OpenResty..."
 mkdir -p /etc/systemd/system/openresty.service.d
 {
@@ -456,11 +566,11 @@ mkdir -p /etc/systemd/system/openresty.service.d
   [ -n "$ANTHROPIC_KEY" ] && echo "Environment=\"ANTHROPIC_API_KEY=${ANTHROPIC_KEY}\""
   echo "Environment=\"SOUL_MASTER_KEY=${MASTER_KEY}\""
   echo "Environment=\"API_SIGNING_KEY=${API_SIGNING_KEY}\""
-} > /etc/systemd/system/openresty.service.d/env.conf
+} > /etc/systemd/system/openresty.service.d/sys-node.conf
 systemctl daemon-reload
 
 # Prüfen ob der Override korrekt geschrieben wurde und die Keys enthält
-OVERRIDE_FILE="/etc/systemd/system/openresty.service.d/env.conf"
+OVERRIDE_FILE="/etc/systemd/system/openresty.service.d/sys-node.conf"
 
 _override_error() {
   echo ""

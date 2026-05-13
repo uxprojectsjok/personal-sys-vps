@@ -163,8 +163,30 @@ PYEOF
 fi
 
 # ── OpenResty restart — löscht gate_sessions + verify_cache (shared dicts) ───
-info "OpenResty restart (löscht Session-Cache)..."
-systemctl restart openresty 2>/dev/null || openresty -s stop && openresty 2>/dev/null || true
+# Auf Shared Servern würde ein Restart kurzzeitig ALLE Sites unterbrechen.
+# → Wenn mehr als eine Nicht-Default-Site aktiv ist: nur reload.
+#   (Shared dicts laufen natürlich ab — gate_sessions TTL: 2 Minuten)
+_NON_DEFAULT_SITES=0
+for _SDIR in \
+  /etc/openresty/sites-enabled \
+  /usr/local/openresty/nginx/conf/sites-enabled; do
+  [ -d "$_SDIR" ] || continue
+  for _F in "$_SDIR"/*; do
+    [ -f "$_F" ] || continue
+    [[ "$(basename "$_F")" == "00-default"* ]] && continue
+    _NON_DEFAULT_SITES=$((_NON_DEFAULT_SITES + 1))
+  done
+done
+
+if [ "$_NON_DEFAULT_SITES" -gt 1 ]; then
+  info "Shared Server: OpenResty wird neu geladen statt neugestartet."
+  info "(gate_sessions laufen innerhalb von 2 Minuten natürlich ab)"
+  openresty -t && systemctl reload openresty 2>/dev/null || true
+else
+  info "OpenResty restart (löscht Session-Cache)..."
+  systemctl restart openresty 2>/dev/null || \
+    (openresty -s stop && openresty) 2>/dev/null || true
+fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
