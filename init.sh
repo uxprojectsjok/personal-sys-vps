@@ -358,6 +358,8 @@ elif [ -n "$_NGINX_CONF" ] && grep -q "lua_package_path" "$_NGINX_CONF" 2>/dev/n
   {
     echo "# SYS-NODE globals — automatisch von init.sh eingefügt"
     echo "# Nicht manuell bearbeiten — wird von deinstall.sh entfernt"
+    grep -q "resolver " "$_NGINX_CONF" || echo "resolver 8.8.8.8 1.1.1.1 valid=300s ipv6=off;"
+    grep -q "resolver_timeout" "$_NGINX_CONF" || echo "resolver_timeout 5s;"
     for _VAR in SOUL_MASTER_KEY API_SIGNING_KEY ANTHROPIC_API_KEY; do
       grep -q "env ${_VAR};" "$_NGINX_CONF" || echo "env ${_VAR};"
     done
