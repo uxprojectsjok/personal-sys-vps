@@ -448,11 +448,12 @@ async function saveCfgStep() {
   cfgSaving.value   = true
   cfgFeedback.value = null
   try {
+    const sanitizeKey = k => (k || '').replace(/[^\x20-\xFF]/g, '').trim()
     const body = {}
     if (cfgModel.value)   body.model         = cfgModel.value
-    if (cfgAnthKey.value) body.anthropic_key  = cfgAnthKey.value
-    if (cfgWaveKey.value) body.wavespeed_key  = cfgWaveKey.value
-    if (cfgLabsKey.value) body.elevenlabs_key = cfgLabsKey.value
+    if (cfgAnthKey.value) body.anthropic_key  = sanitizeKey(cfgAnthKey.value)
+    if (cfgWaveKey.value) body.wavespeed_key  = sanitizeKey(cfgWaveKey.value)
+    if (cfgLabsKey.value) body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
@@ -476,8 +477,10 @@ async function saveCfgStep() {
         const td = await tr.json()
         if (td.ok) {
           cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindung OK ✓' }
+        } else if (td.status === 0 || td.error === 'no_stored_key') {
+          cfgFeedback.value = { ok: null, message: 'Gespeichert · Server-Verbindungstest fehlgeschlagen — Key kann trotzdem gültig sein' }
         } else {
-          cfgFeedback.value = { ok: false, message: `Gespeichert, aber Anthropic antwortet ${td.status || '?'} — Key prüfen` }
+          cfgFeedback.value = { ok: false, message: `Gespeichert, aber Anthropic antwortet ${td.status} — Key prüfen` }
         }
       } catch {
         cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindungstest nicht möglich' }
