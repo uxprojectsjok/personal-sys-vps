@@ -140,9 +140,15 @@ info "Stopping services..."
 
 # soul-mcp immer stoppen (gehört zu SYS)
 if command -v pm2 &>/dev/null; then
-  timeout 10 pm2 stop all    2>/dev/null || true
-  timeout 10 pm2 delete all  2>/dev/null || true
-  timeout 10 pm2 kill        2>/dev/null || true
+  if $SHARED_SERVER; then
+    # Shared Server: nur soul-mcp entfernen, andere PM2-Prozesse unangetastet
+    timeout 10 pm2 stop   soul-mcp 2>/dev/null || true
+    timeout 10 pm2 delete soul-mcp 2>/dev/null || true
+  else
+    timeout 10 pm2 stop all    2>/dev/null || true
+    timeout 10 pm2 delete all  2>/dev/null || true
+    timeout 10 pm2 kill        2>/dev/null || true
+  fi
 fi
 timeout 10 systemctl stop    soul-mcp  2>/dev/null || true
 timeout 10 systemctl disable soul-mcp  2>/dev/null || true
