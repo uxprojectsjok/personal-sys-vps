@@ -114,13 +114,23 @@
             <p class="prose" style="margin-bottom:16px">
               Peers haben gegenseitig kostenlosen Zugriff auf alle MCP-Tools — ohne Zahlung.
               Trage deinen Zugangscode (oben) auf dem Peer-Node ein.
+              Für Cross-Domain-Nachrichten: beide Seiten müssen sich gegenseitig mit <code>https://domain</code> als Endpoint eintragen.
             </p>
 
             <div v-if="peers.length" class="node-list">
               <div v-for="(peer, i) in peers" :key="peer.soul_id" class="node-row">
                 <div class="node-info">
                   <span v-if="peer.label" class="node-label">{{ peer.label }}</span>
-                  <span class="node-url mono">{{ peer.soul_id }}<span v-if="peer.endpoint" class="peer-sep"> · </span><span v-if="peer.endpoint">{{ peer.endpoint }}</span></span>
+                  <span class="node-url mono">{{ peer.soul_id }}</span>
+                  <div class="peer-endpoint-row">
+                    <input
+                      :value="peer.endpoint"
+                      @change="e => { peer.endpoint = e.target.value.trim().replace(/\/$/, ''); savePeersSilent() }"
+                      class="input peer-endpoint-input"
+                      placeholder="https://peer.domain.com"
+                      title="Cross-Domain-Endpoint (leer = same-server)"
+                    />
+                  </div>
                 </div>
                 <button class="node-remove" @click="removePeer(i)" aria-label="Peer entfernen">×</button>
               </div>
@@ -130,7 +140,7 @@
             <div class="peer-form">
               <div class="peer-form-inputs">
                 <input v-model="newPeer.soul_id" class="input mono" placeholder="Soul-ID (UUID)" @keydown.enter.prevent="addPeer" />
-                <input v-model="newPeer.endpoint" class="input" placeholder="Peer-Domain oder leer lassen" @keydown.enter.prevent="addPeer" />
+                <input v-model="newPeer.endpoint" class="input" placeholder="https://peer.domain.com (leer = same-server)" @keydown.enter.prevent="addPeer" />
               </div>
               <div class="peer-form-row">
                 <input v-model="newPeer.label" class="input" placeholder="Name (optional)" style="flex:1" @keydown.enter.prevent="addPeer" />
@@ -1044,6 +1054,8 @@ async function register() {
 .peer-form-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .peer-form-row { display: flex; gap: 8px; align-items: stretch; }
 .peer-sep { color: var(--fg-4); margin: 0 2px; }
+.peer-endpoint-row { margin-top: 4px; }
+.peer-endpoint-input { font-size: 12px; padding: 3px 7px; height: auto; width: 100%; box-sizing: border-box; }
 .section-divider { height: 1px; background: var(--rule); margin: 24px 0; }
 
 @media (max-width: 639px) {
