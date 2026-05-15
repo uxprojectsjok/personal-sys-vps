@@ -444,7 +444,7 @@ const msgDoc          = ref(null)    // { file, name } — attached doc in messa
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
 const msgBlobCache    = reactive(new Map()) // ts → { url, name } — session blob URLs for docs
 const msgExpiredCache = reactive(new Set()) // ts — evicted cache entries
-const SYNTHESIS_N     = 5           // messages per sphere for synthesis
+const SYNTHESIS_N     = 3           // messages per sphere for synthesis
 const CACHE_TTL_MS    = 30 * 60 * 1000
 const CACHE_MAX_ITEMS = 30
 let   _agentPollTimer  = null
@@ -458,12 +458,14 @@ watch(agentMode, async (active) => {
     await scrollToBottom()
     _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
     _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
-    // Load same-server peer IDs for social polling (multi-hoster)
+    // Load peer list for social polling (same-server strings + cross-domain objects)
     try {
       const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
       if (r.ok) {
         const d = await r.json()
-        peerIds.value = (d.amortization?.trusted_souls ?? []).filter(t => typeof t === 'string')
+        peerIds.value = (d.amortization?.trusted_souls ?? [])
+          .map(p => typeof p === 'string' ? { soul_id: p, endpoint: null } : p)
+          .filter(p => p && p.soul_id)
       }
     } catch { /* silent */ }
   } else {
@@ -523,11 +525,12 @@ async function refreshAgentContent() {
 async function fetchPeerSocialBlocks() {
   if (!peerIds.value.length || !props.soulCert) return []
   const results = await Promise.allSettled(
-    peerIds.value.map(async (peerId) => {
+    peerIds.value.map(async (peer) => {
       try {
-        const r = await fetch(`/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`, {
-          headers: { Authorization: `Bearer ${props.soulCert}` }
-        })
+        const peerId  = peer.soul_id
+        const baseUrl = peer.endpoint ? peer.endpoint.replace(/\/$/, '') : ''
+        const url     = `${baseUrl}/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
         if (r.status === 204 || !r.ok) return []
         const text = await r.text()
         if (!text.trim()) return []
@@ -712,11 +715,9 @@ async function triggerSynthesis(imageBase64 = null) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
+        max_tokens: 120,
         stream: false,
-        system: `Du bekommst Nachrichten aus zwei Bereichen: dem Peer-Bereich (Gespräche mit anderen Menschen) und der Agenten-Sandbox (Mensch-KI-Zusammenarbeit).
-Schreib eine kurze, klare Zusammenfassung auf Deutsch: Was passiert gerade? Was verbindet beide Bereiche?
-2–3 einfache Sätze. Keine Fachbegriffe. Keine Einleitung. Direkt anfangen.`,
+        system: `Fasse die folgenden Nachrichten in maximal 2 kurzen Sätzen auf Deutsch zusammen. Keine Einleitung, keine Labels, kein "Im Peer-Bereich". Nur das Wesentliche. Direkt anfangen.`,
         messages: [{ role: 'user', content: userContent }]
       })
     })

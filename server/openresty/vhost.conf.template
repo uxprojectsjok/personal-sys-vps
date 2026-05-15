@@ -585,10 +585,13 @@ server {
 
   # ── SOCIAL-Block für Cross-Domain Peers (v2 2026-05-09) ─────────────────────
   location = /api/soul/social-read {
+    if ($request_method = OPTIONS) { add_header Access-Control-Allow-Origin "*"; add_header Access-Control-Allow-Headers "Authorization"; add_header Access-Control-Allow-Methods "GET, OPTIONS"; add_header Content-Length 0; return 204; }
     limit_except GET { deny all; }
     limit_req zone=chat burst=10 nodelay;
     default_type text/plain;
     add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Headers "Authorization" always;
     content_by_lua_file /etc/openresty/lua/soul_social_read.lua;
   }
 
