@@ -81,6 +81,12 @@
             <p v-else class="synthesis-text">{{ synthesisText }}</p>
           </div>
 
+          <!-- Peer connectivity error notice -->
+          <div v-if="peerPollErrors.length && (msgView === 'peer' || msgView === 'all')" class="peer-error-notice">
+            <span class="peer-error-icon">⚠</span>
+            <span>{{ peerPollErrors.length === 1 ? 'Peer nicht erreichbar' : `${peerPollErrors.length} Peers nicht erreichbar` }} · {{ peerPollErrors.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
+          </div>
+
           <div v-if="displayMessages.length === 0" class="agent-empty">
             <p class="agent-empty-icon">⬡</p>
             <p class="agent-empty-title">{{ msgView === 'peer' ? 'Keine Peer-Nachrichten' : msgView === 'agent' ? 'Agent Sandbox leer' : 'Keine Nachrichten' }}</p>
@@ -117,13 +123,19 @@
                 <p v-for="(para, j) in paragraphs(cleanMsgContent(msg))" :key="j" v-html="renderText(para)"></p>
               </div>
 
-              <!-- Footer: to-badge + time -->
+              <!-- Footer: to-badge + time + delivery -->
               <div class="msg-foot">
                 <span v-if="msg.from === 'me'" class="msg-to"
                   :style="msg.to === 'peer' ? 'color:#34d399' : msg.to === 'agent' ? 'color:#a78bfa' : 'color:#60a5fa'">
                   → {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
                 </span>
                 <time class="msg-time">{{ fmtMsgDate(msg.ts) }}</time>
+                <span
+                  v-if="msg.from === 'me' && (msg.to === 'peer' || msg.to === 'community') && msgDeliveryStatus.has(msg.ts)"
+                  class="msg-delivery"
+                  :class="`msg-delivery--${msgDeliveryStatus.get(msg.ts)}`"
+                  :title="deliveryTitle(msg.ts)"
+                >{{ deliveryIcon(msg.ts) }}</span>
               </div>
             </div>
           </template>
@@ -449,8 +461,16 @@ const CACHE_TTL_MS    = 30 * 60 * 1000
 const CACHE_MAX_ITEMS = 30
 let   _agentPollTimer  = null
 let   _cacheEvictTimer = null
-const peerIds        = ref([])
-const peerSocialMsgs = ref([])
+const peerIds           = ref([])
+const peerSocialMsgs    = ref([])
+const msgDeliveryStatus = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
+const peerPollStatus    = reactive(new Map()) // soul_id → { ok, error, ts }
+
+const peerPollErrors = computed(() =>
+  [...peerPollStatus.entries()]
+    .filter(([, v]) => !v.ok)
+    .map(([soul_id, v]) => ({ soul_id, error: v.error }))
+)
 
 watch(agentMode, async (active) => {
   if (active) {
@@ -473,6 +493,8 @@ watch(agentMode, async (active) => {
     clearInterval(_cacheEvictTimer); _cacheEvictTimer = null
     peerIds.value        = []
     peerSocialMsgs.value = []
+    msgDeliveryStatus.clear()
+    peerPollStatus.clear()
   }
 })
 onUnmounted(() => {
@@ -531,6 +553,8 @@ async function fetchPeerSocialBlocks() {
         const baseUrl = peer.endpoint ? peer.endpoint.replace(/\/$/, '') : ''
         const url     = `${baseUrl}/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`
         const r = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
+        const ok = r.ok || r.status === 204
+        peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
         if (r.status === 204 || !r.ok) return []
         const text = await r.text()
         if (!text.trim()) return []
@@ -538,7 +562,10 @@ async function fetchPeerSocialBlocks() {
           ...m,
           from: m.from === 'me' ? peerId : m.from
         }))
-      } catch { return [] }
+      } catch (e) {
+        peerPollStatus.set(peer.soul_id, { ok: false, error: e?.message ?? 'Netzwerkfehler', ts: Date.now() })
+        return []
+      }
     })
   )
   return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
@@ -758,10 +785,12 @@ async function handleMsgSend() {
   msgMedia.value = null
   msgDoc.value   = null
 
-  try {
-    const recipient = msgView.value === 'all' ? 'community' : msgView.value
-    const msgTs     = new Date().toISOString()
+  const recipient     = msgView.value === 'all' ? 'community' : msgView.value
+  const msgTs         = new Date().toISOString()
+  const trackDelivery = recipient !== 'agent'
+  if (trackDelivery) msgDeliveryStatus.set(msgTs, 'saving')
 
+  try {
     let fullText
     if (doc) {
       const summary = await summarizeDocument(doc.file).catch(() => '')
@@ -784,10 +813,52 @@ async function handleMsgSend() {
     updateContent(current)
     await pushToServer()
 
+    if (trackDelivery) {
+      msgDeliveryStatus.set(msgTs, 'saved')
+      checkPeerReachabilityForMsg(msgTs)   // async, updates to 'delivered' or 'error'
+    }
     msgView.value = recipient === 'community' ? 'all' : recipient
+  } catch {
+    if (trackDelivery) msgDeliveryStatus.set(msgTs, 'error')
   } finally {
     isSavingAgent.value = false
   }
+}
+
+async function checkPeerReachabilityForMsg(msgTs) {
+  const crossDomainPeers = peerIds.value.filter(p => p.endpoint)
+  if (!crossDomainPeers.length) return   // same-server only — 'saved' is sufficient
+  let anyReachable = false
+  await Promise.allSettled(crossDomainPeers.map(async (peer) => {
+    try {
+      const url = `${peer.endpoint.replace(/\/$/, '')}/api/soul/social-read?soul_id=${encodeURIComponent(peer.soul_id)}&raw=1`
+      const r   = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
+      const ok  = r.ok || r.status === 204
+      peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
+      if (ok) anyReachable = true
+    } catch (e) {
+      peerPollStatus.set(peer.soul_id, { ok: false, error: e?.message ?? 'Netzwerkfehler', ts: Date.now() })
+    }
+  }))
+  msgDeliveryStatus.set(msgTs, anyReachable ? 'delivered' : 'error')
+}
+
+function deliveryIcon(ts) {
+  const s = msgDeliveryStatus.get(ts)
+  if (s === 'saving')    return '···'
+  if (s === 'saved')     return '✓'
+  if (s === 'delivered') return '✓✓'
+  if (s === 'error')     return '!'
+  return ''
+}
+
+function deliveryTitle(ts) {
+  const s = msgDeliveryStatus.get(ts)
+  if (s === 'saving')    return 'Wird gesendet…'
+  if (s === 'saved')     return 'Gespeichert'
+  if (s === 'delivered') return 'Peer erreichbar'
+  if (s === 'error')     return 'Fehler — Peer prüfen'
+  return ''
 }
 
 async function summarizeDocument(file) {
@@ -1922,5 +1993,38 @@ defineExpose({
   color: var(--fg-4);
   letter-spacing: 0.06em;
 }
+
+/* ── Delivery indicator ─────────────────────────────────────────── */
+.msg-delivery {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  transition: color 0.2s, opacity 0.2s;
+  cursor: default;
+  user-select: none;
+}
+.msg-delivery--saving    { color: var(--fg-4); opacity: 0.5; }
+.msg-delivery--saved     { color: var(--fg-4); }
+.msg-delivery--delivered { color: #34d399; }
+.msg-delivery--error     { color: #fbbf24; }
+
+/* ── Peer error notice ──────────────────────────────────────────── */
+.peer-error-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(251,191,36,0.07);
+  border: 1px solid rgba(251,191,36,0.18);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #fbbf24;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+  flex-shrink: 0;
+  word-break: break-all;
+}
+.peer-error-icon { flex-shrink: 0; margin-top: 1px; }
 
 </style>
