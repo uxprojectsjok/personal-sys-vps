@@ -60,17 +60,18 @@
         </div>
       </article>
 
-      <!-- ── Soziale Sphere ─────────────────────────────────────────── -->
-      <div v-if="displayMessages.length > 0 || peerPollErrors.length" class="social-section">
-        <div class="social-section-hdr">
-          <span class="social-section-label">Soziale Sphere</span>
-          <button class="social-action" :disabled="isRefreshing" @click="refreshAgentContent" title="Aktualisieren">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="social-action-icon" :class="{ pulse: isRefreshing }">
+      <!-- ── Soziale Sphere — läuft direkt in den Chat ein ─────────── -->
+      <template v-if="displayMessages.length > 0 || peerPollErrors.length">
+
+        <div class="social-rule">
+          <span class="social-rule-label">Soziale Sphere</span>
+          <button class="social-rule-btn" :disabled="isRefreshing" @click="refreshAgentContent" :title="isRefreshing ? 'Lädt…' : 'Aktualisieren'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="social-rule-icon" :class="{ pulse: isRefreshing }">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
             </svg>
           </button>
-          <button class="social-action" :disabled="isSynthesizing" @click="triggerSynthesis" title="Briefing">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="social-action-icon" :class="{ pulse: isSynthesizing }">
+          <button class="social-rule-btn" :disabled="isSynthesizing" @click="triggerSynthesis" title="Briefing">
+            <svg viewBox="0 0 24 24" fill="currentColor" class="social-rule-icon" :class="{ pulse: isSynthesizing }">
               <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
             </svg>
           </button>
@@ -85,7 +86,6 @@
           <div v-if="isDifferentDay(msg, displayMessages[i - 1])" class="msg-day-sep">
             {{ formatDay(msg.ts) }}
           </div>
-
           <div class="msg-bubble" :class="msg.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'">
             <div v-if="msg.from !== 'me'" class="msg-sender"
               :style="{ color: msg.sphere === 'synthesis' ? '#60a5fa' : msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
@@ -131,7 +131,8 @@
         <div v-if="isSavingAgent" class="dots saving-dots">
           <span></span><span></span><span></span>
         </div>
-      </div>
+
+      </template>
 
       <div ref="chatEnd" class="anchor"></div>
     </div>
@@ -139,12 +140,22 @@
     <!-- ── Dock ────────────────────────────────────────────────────── -->
     <footer class="dock">
 
-      <!-- Mode bar -->
+      <!-- Mode bar + recipient picker -->
       <div class="dock-mode-bar">
         <span class="mode-dot" :class="{ soul: localRole === 'soul' }"></span>
-        <button class="mode-label-btn" @click="toggleRole" :title="localRole === 'soul' ? 'Wechsel zu Entwicklung' : 'Wechsel zu Soul'">
-          {{ localRole === 'soul' ? 'Soul' : 'Entwicklung' }}
+        <button class="mode-label-btn" @click="toggleRole" :title="localRole === 'soul' ? 'Wechsel zu Dev' : 'Wechsel zu Soul'">
+          {{ localRole === 'soul' ? 'Soul' : 'Dev' }}
         </button>
+        <div class="recipient-picker">
+          <button
+            v-for="[id, label, color] in [['ki','KI','var(--accent)'],['peer','Peer','#34d399'],['agent','Agent','#a78bfa'],['community','All','#60a5fa']]"
+            :key="id"
+            class="recipient-btn"
+            :class="{ active: msgRecipient === id }"
+            :style="msgRecipient === id ? { color } : {}"
+            @click="msgRecipient = id"
+          >{{ label }}</button>
+        </div>
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity">
           <span></span><span></span><span></span>
         </span>
@@ -258,8 +269,11 @@ const canSend = computed(() =>
 )
 
 const inputPlaceholder = computed(() => {
-  if (localRole.value === 'soul') return 'Schreib etwas… · peer: Hallo · suche nach X · spiele X'
-  return 'Entwicklungs-Modus — Frage stellen oder Code analysieren…'
+  if (localRole.value !== 'soul') return 'Was willst du an deiner Soul weiterentwickeln?'
+  if (msgRecipient.value === 'peer')      return 'An Peers schreiben…'
+  if (msgRecipient.value === 'agent')     return 'An Agent Sandbox schreiben…'
+  if (msgRecipient.value === 'community') return 'An alle schreiben…'
+  return 'Schreib etwas…'
 })
 
 // ── Messaging / Social sphere state ───────────────────────────────
@@ -268,6 +282,7 @@ const isSavingAgent      = ref(false)
 const isRefreshing       = ref(false)
 const isSynthesizing     = ref(false)
 const localSynthesisMsgs = ref([])
+const msgRecipient       = ref('ki')   // 'ki' | 'peer' | 'agent' | 'community'
 const msgMedia        = ref(null)    // { base64, mime, name? } — attached image in messaging mode
 const msgDoc          = ref(null)    // { file, name } — attached doc in messaging mode
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
@@ -1089,9 +1104,14 @@ async function handleSend() {
   if (intent.type === 'mode-dev') {
     localRole.value = 'session'; emit('role-change', 'session'); return
   }
-  if (intent.type === 'peer')      { await handlePeerSend(intent.query, 'peer'); return }
-  if (intent.type === 'community') { await handlePeerSend(intent.query, 'community'); return }
+  if (intent.type === 'peer')      { await handlePeerSend(intent.query || raw, 'peer'); return }
+  if (intent.type === 'community') { await handlePeerSend(intent.query || raw, 'community'); return }
   if (intent.type === 'ki')        { await triggerSynthesis(); return }
+
+  // Soul-Modus, Empfänger ≠ KI → soziale Sphere
+  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
+    await handlePeerSend(raw, msgRecipient.value); return
+  }
 
   if (intent.type === 'youtube' || intent.type === 'spotify' || intent.type === 'google') {
     const result = await handleSearchCommand({ type: intent.type, query: intent.query })
@@ -1273,6 +1293,26 @@ defineExpose({
   padding: 0; transition: color 0.15s;
 }
 .mode-label-btn:hover { color: var(--fg-3); }
+
+/* Recipient picker */
+.recipient-picker {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: 8px;
+  border-left: 1px solid var(--rule);
+  padding-left: 8px;
+}
+.recipient-btn {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--fg-4);
+  background: transparent; border: 0;
+  cursor: pointer; padding: 2px 6px;
+  transition: color 0.12s;
+}
+.recipient-btn:hover { color: var(--fg-2); }
+.recipient-btn.active { font-weight: 600; }
 .mode-activity {
   display: flex; align-items: center; gap: 3px;
   margin-left: auto;
@@ -1465,40 +1505,39 @@ defineExpose({
 }
 .dock-media-remove:hover { color: var(--fg-2); }
 
-/* ── Soziale Sphere ──────────────────────────────────────────────── */
-.social-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border-top: 1px solid var(--rule-2);
-  padding-top: clamp(20px,3vw,32px);
-  margin-top: clamp(16px,2vw,24px);
-}
-
-.social-section-hdr {
+/* ── Soziale Sphere — Trennlinie ─────────────────────────────────── */
+.social-rule {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin: clamp(20px,3vw,32px) 0 clamp(10px,2vw,16px);
+  opacity: 0.6;
 }
-.social-section-label {
+.social-rule::before, .social-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule-2);
+}
+.social-rule::before { flex: none; width: 0; }
+.social-rule-label {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 9px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--fg-4);
-  flex: 1;
+  white-space: nowrap;
 }
-.social-action {
+.social-rule-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px;
+  width: 20px; height: 20px;
   background: transparent; border: 0;
   cursor: pointer; color: var(--fg-4);
-  transition: color 0.12s;
+  transition: color 0.12s; flex-shrink: 0;
 }
-.social-action:hover:not(:disabled) { color: var(--fg-2); }
-.social-action:disabled { opacity: 0.3; cursor: not-allowed; }
-.social-action-icon { width: 13px; height: 13px; }
+.social-rule-btn:hover:not(:disabled) { color: var(--fg-2); }
+.social-rule-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.social-rule-icon { width: 12px; height: 12px; }
 
 /* ── Tages-Trenner ──────────────────────────────────────────────── */
 .msg-day-sep {
