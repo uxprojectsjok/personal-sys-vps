@@ -69,18 +69,6 @@
         <!-- stream-content: display:contents on desktop, scroll container on mobile -->
         <div class="stream-content" ref="streamContentEl">
 
-          <!-- Synthese-Block (nur "Alle"-Tab) -->
-          <div v-if="msgView === 'all' && synthesisText" class="synthesis-block">
-            <div class="synthesis-label">
-              <span class="synthesis-dot"></span>
-              Kollektive Synthese
-            </div>
-            <div v-if="isSynthesizing" class="dots synthesis-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <p v-else class="synthesis-text">{{ synthesisText }}</p>
-          </div>
-
           <!-- Peer connectivity error notice -->
           <div v-if="peerPollErrors.length && (msgView === 'peer' || msgView === 'all')" class="peer-error-notice">
             <span class="peer-error-icon">⚠</span>
@@ -103,13 +91,13 @@
             <div class="msg-bubble" :class="msg.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'">
               <!-- Sender (other only) -->
               <div v-if="msg.from !== 'me'" class="msg-sender"
-                :style="{ color: msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+                :style="{ color: msg.sphere === 'synthesis' ? '#60a5fa' : msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
                 {{ msg.author ?? msg.from.slice(0, 8) }}
               </div>
 
               <!-- Content -->
               <div class="msg-inner"
-                :class="msg.from === 'me' ? 'msg-inner--me' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+                :class="msg.from === 'me' ? 'msg-inner--me' : msg.sphere === 'synthesis' ? 'msg-inner--synthesis' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')"
                 <div v-if="msgExpiredCache.has(msg.ts)" class="msg-expired">Inhalt abgelaufen</div>
                 <template v-else>
                   <img v-if="msgMediaCache.get(msg.ts)" :src="msgMediaCache.get(msg.ts)" class="msg-media-img" alt="" />
@@ -440,8 +428,8 @@ const isSavingAgent  = ref(false)
 const isRefreshing   = ref(false)
 const msgPickerOpen  = ref(false)
 const msgView        = ref('all')   // 'all' | 'peer' | 'agent'
-const synthesisText   = ref('')
-const isSynthesizing  = ref(false)
+const isSynthesizing    = ref(false)
+const localSynthesisMsgs = ref([])
 const streamContentEl = ref(null)
 
 const currentViewLabel = computed(() =>
@@ -456,7 +444,6 @@ const msgDoc          = ref(null)    // { file, name } — attached doc in messa
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
 const msgBlobCache    = reactive(new Map()) // ts → { url, name } — session blob URLs for docs
 const msgExpiredCache = reactive(new Set()) // ts — evicted cache entries
-const SYNTHESIS_N     = 3           // messages per sphere for synthesis
 const CACHE_TTL_MS    = 30 * 60 * 1000
 const CACHE_MAX_ITEMS = 30
 let   _agentPollTimer  = null
@@ -491,8 +478,9 @@ watch(agentMode, async (active) => {
   } else {
     clearInterval(_agentPollTimer);  _agentPollTimer  = null
     clearInterval(_cacheEvictTimer); _cacheEvictTimer = null
-    peerIds.value        = []
-    peerSocialMsgs.value = []
+    peerIds.value           = []
+    peerSocialMsgs.value    = []
+    localSynthesisMsgs.value = []
     msgDeliveryStatus.clear()
     peerPollStatus.clear()
   }
@@ -695,14 +683,15 @@ const displayMessages = computed(() => {
   const social    = socialMsgs.value
   const agentNew  = agentMsgsNew.value
   const agentOld  = agentMsgsOld.value
+  const ki        = localSynthesisMsgs.value
 
   let pool
-  if (msgView.value === 'peer')  pool = social
-  else if (msgView.value === 'agent') pool = [...agentNew, ...agentOld]
+  if (msgView.value === 'peer')        pool = [...social, ...ki]
+  else if (msgView.value === 'agent')  pool = [...agentNew, ...agentOld, ...ki]
   else {
     // Plenum: merge + deduplicate by ts|from|to|content
     const seen = new Set()
-    pool = [...social, ...agentNew, ...agentOld].filter(m => {
+    pool = [...social, ...agentNew, ...agentOld, ...ki].filter(m => {
       const k = `${m.ts}|${m.from}|${m.to}|${m.content}`
       if (seen.has(k)) return false
       seen.add(k)
@@ -712,62 +701,48 @@ const displayMessages = computed(() => {
   return [...pool].sort((a, b) => new Date(a.ts) - new Date(b.ts))
 })
 
-// ── Collective Sense-Making ────────────────────────────────────────
-async function triggerSynthesis(imageBase64 = null) {
-  const social = [...socialMsgs.value].slice(-SYNTHESIS_N)
-  const agent  = [...agentMsgsNew.value, ...agentMsgsOld.value]
-    .sort((a, b) => new Date(a.ts) - new Date(b.ts))
-    .slice(-SYNTHESIS_N)
-
-  if (social.length === 0 && agent.length === 0) {
-    synthesisText.value = ''
-    return
-  }
+// ── KI Gesprächsbeitrag (lokal, nicht gepusht) ────────────────────
+async function triggerSynthesis() {
+  if (isSynthesizing.value) return
+  const recent = displayMessages.value.slice(-5)
+  if (recent.length === 0) return
 
   isSynthesizing.value = true
-  synthesisText.value  = ''
+  await nextTick(scrollToBottom)
   try {
-    const fmtMsgs = (msgs, label) => msgs.length
-      ? `**${label}**\n` + msgs.map(m => `[${fmtMsgDate(m.ts)}] ${m.from === 'me' ? 'Du' : (m.author ?? m.from.slice(0, 8))}: ${m.content}`).join('\n')
-      : ''
-
-    const context = [fmtMsgs(social, 'Social Sphere (Peers)'), fmtMsgs(agent, 'Agent Sandbox (KIs)')].filter(Boolean).join('\n\n')
-
-    const userContent = imageBase64
-      ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } }, { type: 'text', text: context }]
-      : context
+    const context = recent
+      .map(m => `${m.from === 'me' ? 'Du' : (m.author ?? m.from.slice(0, 8))}: ${m.content}`)
+      .join('\n')
 
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 120,
+        max_tokens: 160,
         stream: false,
-        system: `Fasse die folgenden Nachrichten in maximal 2 kurzen Sätzen auf Deutsch zusammen. Keine Einleitung, keine Labels, kein "Im Peer-Bereich". Nur das Wesentliche. Direkt anfangen.`,
-        messages: [{ role: 'user', content: userContent }]
+        system: `Du nimmst als KI natürlich an einem Gespräch teil. Antworte direkt und kurz auf Deutsch wie ein Teilnehmer — keine Zusammenfassung, keine Einleitung, keine Labels. Maximal 2–3 Sätze.`,
+        messages: [{ role: 'user', content: context }]
       })
     })
 
     if (!res.ok) throw new Error(`API ${res.status}`)
     const data = await res.json()
-    const text = data?.content?.[0]?.text ?? ''
-    synthesisText.value = text
-
+    const text = (data?.content?.[0]?.text ?? '').trim()
     if (text) {
-      const ts          = new Date().toISOString()
-      const safeText    = `[Synthese] ${text}`
-      const socialEntry = formatMsgEntry(safeText, 'ki', 'community', ts)
-      const agentEntry  = formatMsgEntry(safeText, 'ki', 'community', ts)
-      let updated = soulContentAgent.value ?? ''
-      updated = appendToMarkerBlock(updated, 'SOCIAL', socialEntry)
-      updated = appendToMarkerBlock(updated, 'AGENT',  agentEntry)
-      updateContent(updated)
-      pushToServer().catch(() => {})
+      localSynthesisMsgs.value = [...localSynthesisMsgs.value, {
+        ts:     new Date().toISOString(),
+        from:   'ki',
+        to:     'community',
+        content: text,
+        sphere: 'synthesis',
+        format: 'new',
+        author: 'KI',
+        local:  true,
+      }]
+      await nextTick(scrollToBottom)
     }
-  } catch {
-    synthesisText.value = ''
-  } finally {
+  } catch { /* silent */ } finally {
     isSynthesizing.value = false
   }
 }
@@ -1783,50 +1758,6 @@ defineExpose({
 }
 .agent-id-badge.tx { opacity: 0.6; }
 
-/* ── Collective Sense-Making: Synthese-Block ─────────────────────── */
-.synthesis-block {
-  border: 1px solid rgba(96,165,250,0.20);
-  background: rgba(96,165,250,0.04);
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.synthesis-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #60a5fa;
-  opacity: 0.8;
-}
-.synthesis-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: #60a5fa;
-  flex-shrink: 0;
-  animation: sys-blink 2s infinite;
-}
-.synthesis-text {
-  font-family: var(--serif);
-  font-size: clamp(14px,1.3vw,15px);
-  line-height: 1.6;
-  color: var(--fg-2);
-  margin: 0;
-}
-.synthesis-empty {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--fg-4);
-  margin: 0;
-  font-style: italic;
-}
-.synthesis-dots { padding: 4px 0; }
 
 /* ── Dock: Bild-Vorschau ─────────────────────────────────────────── */
 .dock-media-preview {
@@ -1973,6 +1904,13 @@ defineExpose({
   border-radius: 14px 14px 14px 4px;
   border-left: 2px solid #a78bfa;
   color: var(--fg-2);
+}
+.msg-inner--synthesis {
+  background: rgba(96,165,250,0.07);
+  border-radius: 14px 14px 14px 4px;
+  border-left: 2px solid #60a5fa;
+  color: var(--fg-2);
+  font-style: italic;
 }
 
 .msg-foot {
