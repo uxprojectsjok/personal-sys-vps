@@ -358,9 +358,15 @@ async function fetchPeerSocialBlocks() {
   const results = await Promise.allSettled(
     peerIds.value.map(async (peer) => {
       try {
-        const peerId  = peer.soul_id
-        const baseUrl = peer.endpoint ? peer.endpoint.replace(/\/$/, '') : ''
-        const url     = `${baseUrl}/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`
+        const peerId = peer.soul_id
+        // Cross-domain peers go through the server-side proxy to satisfy CSP.
+        // Same-server peers use the direct local endpoint.
+        let url
+        if (peer.endpoint) {
+          url = `/api/soul/peer-social-read?endpoint=${encodeURIComponent(peer.endpoint.replace(/\/$/, ''))}&soul_id=${encodeURIComponent(peerId)}&raw=1`
+        } else {
+          url = `/api/soul/social-read?soul_id=${encodeURIComponent(peerId)}&raw=1`
+        }
         const r = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
         const ok = r.ok || r.status === 204
         peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
@@ -589,7 +595,7 @@ async function checkPeerReachabilityForMsg(msgTs) {
   let anyReachable = false
   await Promise.allSettled(crossDomainPeers.map(async (peer) => {
     try {
-      const url = `${peer.endpoint.replace(/\/$/, '')}/api/soul/social-read?soul_id=${encodeURIComponent(peer.soul_id)}&raw=1`
+      const url = `/api/soul/peer-social-read?endpoint=${encodeURIComponent(peer.endpoint.replace(/\/$/, ''))}&soul_id=${encodeURIComponent(peer.soul_id)}&raw=1`
       const r   = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
       const ok  = r.ok || r.status === 204
       peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
