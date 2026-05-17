@@ -551,7 +551,9 @@ async function fetchPeerSocialBlocks() {
           from: m.from === 'me' ? peerId : m.from
         }))
       } catch (e) {
-        peerPollStatus.set(peer.soul_id, { ok: false, error: e?.message ?? 'Netzwerkfehler', ts: Date.now() })
+        let host = peer.endpoint ?? '(same-server)'
+        try { host = new URL(peer.endpoint).hostname } catch {}
+        peerPollStatus.set(peer.soul_id, { ok: false, error: `${e?.message ?? 'Netzwerkfehler'} [${host}]`, ts: Date.now() })
         return []
       }
     })
@@ -812,7 +814,9 @@ async function checkPeerReachabilityForMsg(msgTs) {
       peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
       if (ok) anyReachable = true
     } catch (e) {
-      peerPollStatus.set(peer.soul_id, { ok: false, error: e?.message ?? 'Netzwerkfehler', ts: Date.now() })
+      let host = peer.endpoint ?? '(same-server)'
+      try { host = new URL(peer.endpoint).hostname } catch {}
+      peerPollStatus.set(peer.soul_id, { ok: false, error: `${e?.message ?? 'Netzwerkfehler'} [${host}]`, ts: Date.now() })
     }
   }))
   msgDeliveryStatus.set(msgTs, anyReachable ? 'delivered' : 'error')

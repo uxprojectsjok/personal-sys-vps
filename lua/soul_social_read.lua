@@ -241,7 +241,7 @@ end
 -- Parse <!-- @msg TS FROM TO CONTENT --> single-line entries
 local messages = {}
 for ts, from, to, msg_content in block_content:gmatch(
-    "<!%-%-@msg%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)%s+(.-)%s*%-%->") do
+    "<!%-%-%s*@msg%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)%s+(.-)%s*%-%->") do
   table.insert(messages, { ts=ts, from=from, to=to, content=msg_content, epoch=parse_iso(ts) })
 end
 
