@@ -258,7 +258,7 @@ const canSend = computed(() =>
 )
 
 const inputPlaceholder = computed(() => {
-  if (localRole.value === 'soul') return 'Schreib etwas… · "→ peers: Hallo" für Peer-Nachrichten · "suche nach X" · "spiele X"'
+  if (localRole.value === 'soul') return 'Schreib etwas… · peer: Hallo · suche nach X · spiele X'
   return 'Entwicklungs-Modus — Frage stellen oder Code analysieren…'
 })
 
