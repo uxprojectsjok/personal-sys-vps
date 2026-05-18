@@ -136,6 +136,10 @@
               @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
               title="Datei aus vault/shared löschen"
             >×</button>
+            <template v-if="item.sphere === 'synthesis' && item.local">
+              <button v-if="!item.forwarded" class="msg-forward-btn" @click="forwardSynthesis(item)" title="An Peers weiterleiten">→ Peers</button>
+              <span v-else class="msg-forwarded">✓ gesendet</span>
+            </template>
           </div>
         </div>
 
@@ -632,6 +636,12 @@ watch(displayMessages, (msgs) => {
   }
 }, { immediate: true })
 
+async function forwardSynthesis(item) {
+  const idx = localSynthesisMsgs.value.findIndex(m => m.ts === item.ts)
+  if (idx !== -1) localSynthesisMsgs.value[idx] = { ...localSynthesisMsgs.value[idx], forwarded: true }
+  await handlePeerSend(item.content, 'peer')
+}
+
 async function deleteSharedFile(filename) {
   const ownId = props.soulCert?.split('.')?.[0] || ''
   try {
@@ -695,7 +705,7 @@ async function triggerSynthesis() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 160,
         stream: false,
-        system: `Du beobachtest einen Chat-Verlauf und unterstützt die Teilnehmer von außen. Deine Aufgabe: Gib einen kurzen thematischen Impuls, fasse etwas Wesentliches zusammen oder ergänze einen relevanten Fakt aus deinem Wissen. Wenn ein Thema im Gespräch aufgetaucht ist, zu dem eine Web-Suche sinnvoll wäre, füge am Ende einen Markdown-Link ein: [Suchbegriff](https://www.google.com/search?q=URL-kodierter+Begriff). Sprich die Teilnehmer direkt an. Kein Smalltalk, keine Wiederholungen, keine Meta-Kommentare. Maximal 2–3 Sätze auf Deutsch.`,
+        system: `Du analysierst einen Chat-Verlauf. Formuliere einen kurzen sachlichen Beitrag: thematischer Impuls, knappe Zusammenfassung oder ein konkreter Fakt. Keine Anrede, keine Namen, keine Erklärung deiner Rolle, kein Emoji, kein Smalltalk. Wenn eine Web-Suche sinnvoll wäre, füge am Ende einen Markdown-Link ein: [Suchbegriff](https://www.google.com/search?q=URL-kodierter+Begriff). Maximal 2–3 Sätze auf Deutsch.`,
         messages: [{ role: 'user', content: context }]
       })
     })
@@ -1014,6 +1024,20 @@ async function handleFileChip() {
     })
   }
   if (!file) return
+
+  // In peer/social mode: stage as attachment preview, don't dispatch to AI
+  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
+    if (IMAGE_EXT.test(file.name)) {
+      try {
+        const b64 = await compressImage(file).catch(() => fileToBase64(file))
+        msgMedia.value = { base64: b64, mime: 'image/jpeg', name: file.name }
+      } catch { /* ignore */ }
+    } else {
+      msgDoc.value = { file, name: file.name }
+    }
+    return
+  }
+
   const result = await handleLocalFile(file)
   if (!result) return
   if (result._imageFile) {
@@ -1173,6 +1197,13 @@ async function handleCameraCapture(capture) {
   cameraOpen.value = false
   const base64 = capture.frameBase64 ?? capture.base64 ?? null
   if (!base64) return
+
+  // In peer/social mode: stage as attachment preview, don't run vision
+  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
+    msgMedia.value = { base64, mime: 'image/jpeg', name: 'kamerabild.jpg' }
+    return
+  }
+
   visionLoading.value = true
   const previewUrl = `data:image/jpeg;base64,${base64}`
   await runVisionAnalysis(base64, capture.caption || '[Kamerabild]', previewUrl)
@@ -1960,5 +1991,27 @@ defineExpose({
   transition: color 0.15s;
 }
 .msg-vault-del:hover { color: #f0a3a3; }
+
+/* ── Synthesis forward button ───────────────────────────────────── */
+.msg-forward-btn {
+  margin-left: 6px;
+  background: transparent;
+  border: 1px solid rgba(96,165,250,0.3);
+  color: #60a5fa;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  padding: 1px 6px;
+  transition: all 0.15s;
+}
+.msg-forward-btn:hover { background: rgba(96,165,250,0.08); border-color: #60a5fa; }
+.msg-forwarded {
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #34d399;
+  letter-spacing: 0.06em;
+}
 
 </style>
