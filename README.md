@@ -36,6 +36,20 @@ You  →  sys.md (your identity file)
 
 The node accepts souls per its configured mode. In **Personal** mode, the first person to register becomes the permanent owner. In **Multi-Hoster** mode, multiple souls share one VPS (families, teams, hosting services).
 
+### Core use case
+
+> **Set up your soul. Interact in chat. The Soul-Archivar records.**
+
+Three phases — nothing more:
+
+| Phase | What happens | Who acts |
+|-------|-------------|----------|
+| **Set up** | Create soul, configure peers, connect MCP | You (once) |
+| **Interact** | Chat — with AI, peers, community | You (ongoing) |
+| **Record** | Soul grows silently, growth chain updated, server synced | Soul-Archivar KI (automatic) |
+
+---
+
 ### What the node does
 
 **Identity & Authentication**
@@ -43,18 +57,28 @@ The node accepts souls per its configured mode. In **Personal** mode, the first 
 - HMAC-SHA256 soul_cert — stateless, no cookies, no OAuth
 - Gate password protects the entire interface
 
-**AI Features**
-- Chat with Claude (Anthropic API, SSE streaming, context control)
-- Vision analysis: camera image → Claude → description or image generation
+**AI & Soul**
+- Chat with Claude — the KI embodies your soul in first person
+- **Soul-Archivar KI**: automatically observes every conversation and grows your sys.md — no button required. Runs after 3 min, then every 8 min and every 4th message.
+- Manual soul update available for on-demand deep analysis (Claude Sonnet)
+- Vision analysis: camera → Claude → description or image generation
 - Text-to-speech via ElevenLabs (voice cloning supported)
 - AI image generation via WaveSpeed AI
-- Soul update: Claude writes structured data into sys.md sections
+- Background synthesis KI: reads the social sphere, contributes facts and impulses into the conversation
 
 > **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, Twilio, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+
+**Peer Network (Social Sphere)**
+- Add trusted peers by soul_id + endpoint
+- @mention peers by name in chat to send messages into the Social Sphere
+- Attach images and files — uploaded to `vault/shared`, served cross-domain with peer auth
+- KI synthesis: reads the live social stream, periodically contributes a brief — forwarded to peers with `[KI]` attribution
+- Peer reachability shown inline; detailed error shown on auth failure
 
 **Vault**
 - Local vault (File System Access API, no upload needed)
 - Server vault: images, audio, video, context files — encrypted upload
+- Vault Shared: peer-accessible file store (`/var/lib/sys/souls/{soul_id}/vault_shared/`)
 - Optional vault encryption (AES-256-CBC, magic header `SYSCRYPT01`)
 - File viewer, audio player, video player built in
 
@@ -271,7 +295,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: fe497080b8d14ca822084b49ce2986ab6a76b2d57ca6ccc98f94825bd1c3cf7e
+Current release fingerprint: 796e95f8fcb4c29af953e13e9359a416384c1aeaf57e71cf410a7f98476cb3c4
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

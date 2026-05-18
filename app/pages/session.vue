@@ -13,7 +13,15 @@
         </button>
         <div class="pill">
           <span class="live"></span>
-          #{{ soulMeta?.name || '------' }} · Soul {{ aiRole === 'soul' ? 'aktiv' : 'Dev' }}
+          #{{ soulMeta?.name || '------' }} · aktiv
+          <template v-if="soulMeta?.id">
+            <span class="pill-sep">·</span>
+            <button class="soul-id-btn" @click="copySoulId" :title="soulMeta.id">
+              {{ soulIdCopied ? '✓' : soulMeta.id.slice(0, 8) + '…' }}
+            </button>
+          </template>
+          <span v-if="isGrowingQuietly" class="soul-growing" title="Seele wächst…">◌</span>
+          <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">✦</span></Transition>
         </div>
         <div class="tools">
           <button class="tool" @click="liveProfileVisible = !liveProfileVisible">Profil</button>
@@ -22,9 +30,6 @@
           </button>
           <button class="tool" v-if="hasSoul" @click="handleCheckServer" :disabled="serverChecking">
             {{ serverChecking ? '…' : 'Abgleich' }}
-          </button>
-          <button class="tool" :class="{ active: aiRole === 'soul' }" @click="aiRole = aiRole === 'soul' ? 'session' : 'soul'">
-            Modus · {{ aiRole === 'soul' ? 'Soul' : 'Dev' }}
           </button>
           <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
         </div>
@@ -68,26 +73,14 @@
         <!-- Chat column -->
         <div class="col-chat" :class="{ 'mobile-hidden': mobileView !== 'chat' }">
 
-          <!-- Onboarding editorial banner -->
-          <Transition name="slide-up">
-            <div v-if="showOnboarding" class="onboard">
-              <span class="n">Schnellstart</span>
-              <div class="step"><b>01</b> Soul eingeloggt</div>
-              <div class="step"><b>02</b> MCP <code>&lt;dein-server&gt;/mcp</code></div>
-              <div class="step"><b>03</b> Im KI-Client <code>/soul_guide</code></div>
-              <button class="close" @click="dismissOnboarding">✕</button>
-            </div>
-          </Transition>
-
           <!-- Chat stream -->
           <div class="chat-wrap">
             <ChatInterface
               ref="chatRef"
               :soul-content="soulContent"
               :soul-cert="soulToken"
-              :role="aiRole"
+              role="soul"
               @cert-error="handleCertError"
-              @role-change="aiRole = $event"
             />
           </div>
 
@@ -141,7 +134,7 @@
  * All wiring to composables preserved (useSoul, useSession, useVault, useChainAnchor, useCamera).
  * Feature logic unchanged — only layout, typography, color replaced.
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useSession } from '~/composables/useSession.js'
@@ -160,8 +153,9 @@ import SettingsModal from '~/components/SettingsModal.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 
 const router = useRouter()
-const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken } = useSoul()
-const { messages, clearSession, addMessage } = useSession()
+const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer } = useSoul()
+const { messages, clearSession, addMessage, toApiMessages } = useSession()
+const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()
 const { isSupported: vaultSupported, isConnected: vaultConnected, contextFiles, fileManifest, connectVault, restoreVault, writeSoulMd, loadProfileLocal, scanVault } = useVault()
 const { vaultKey } = useVaultSession()
@@ -177,17 +171,69 @@ const settingsOpen    = ref(false)
 const isEnriching = ref(false)
 const enrichStatus = ref(null)
 const certErrorVisible = ref(false)
-const aiRole = ref('soul')
 const chatRef = ref(null)
 const isMultiHoster = ref(false)
 
-// ── Onboarding
-const ONBOARDING_KEY = 'sys_onboarding_done'
-const showOnboarding = ref(false)
-function dismissOnboarding() {
-  showOnboarding.value = false
-  localStorage.setItem(ONBOARDING_KEY, '1')
+// ── Soul ID copy
+const soulIdCopied = ref(false)
+async function copySoulId() {
+  if (!soulMeta.value?.id) return
+  await navigator.clipboard.writeText(soulMeta.value.id).catch(() => {})
+  soulIdCopied.value = true
+  setTimeout(() => { soulIdCopied.value = false }, 2000)
 }
+
+// ── Background soul growth ──────────────────────────────────────────
+// The synthesis KI observes conversations and silently grows the soul.
+// Fires every 20 min when there's meaningful new content.
+let _soulGrowthTimer    = null
+let _lastGrowthAiCount  = 0
+const isGrowingQuietly  = ref(false)
+const soulJustGrew      = ref(false)   // brief flash indicator
+
+function buildLiveSphereContext() {
+  const social = chatRef.value?.getSocialMessages() ?? []
+  if (!social.length) return ''
+  const lines = social.slice(-8).map(m => {
+    const from = m.from === 'me' ? 'Ich' : m.from.slice(0, 8)
+    const to   = m.to === 'peer' ? '→ Peer' : m.to === 'agent' ? '→ Agent' : '→ Alle'
+    return `[${(m.ts || '').slice(0, 10)}] ${from} ${to}: ${(m.content || '').replace(/^\[KI\]\s*/, '').slice(0, 200)}`
+  }).join('\n')
+  return `## Social Sphere\n${lines}`
+}
+
+async function runBackgroundSoulGrowth() {
+  if (isGrowingQuietly.value) return
+  const aiMsgs     = toApiMessages(12)
+  const sphereCtx  = buildLiveSphereContext()
+  const aiUserMsgs = aiMsgs.filter(m => m.role === 'user').length
+  const socialCount = (chatRef.value?.getSocialMessages() ?? []).length
+  if (aiUserMsgs < 2 && socialCount < 3) return
+  if (aiUserMsgs <= _lastGrowthAiCount && socialCount === 0) return
+
+  isGrowingQuietly.value = true
+  try {
+    const result = await enrichFromSession(aiMsgs, sphereCtx)
+    if (result?.changed) {
+      _lastGrowthAiCount = aiUserMsgs
+      await appendGrowthEntry().catch(() => {})
+      await pushToServer().catch(() => {})
+      if (vaultConnected.value) {
+        await writeSoulMd(soulContent.value, 'sys').catch(() => {})
+      }
+      soulJustGrew.value = true
+      setTimeout(() => { soulJustGrew.value = false }, 3000)
+    }
+  } catch { /* silent */ } finally {
+    isGrowingQuietly.value = false
+  }
+}
+
+// Also trigger on every 4th new user message — captures short sessions
+watch(
+  () => messages.value.filter(m => m.role === 'user').length,
+  (n) => { if (n > 0 && n % 4 === 0) runBackgroundSoulGrowth() }
+)
 
 // ── Derived display values
 const sessionNo = computed(() => String(soulMeta.value?.chainCount ?? 0).padStart(3, '0'))
@@ -215,7 +261,6 @@ function lockGate() {
 
 // ── Lifecycle (preserves original init order)
 onMounted(async () => {
-  if (!localStorage.getItem(ONBOARDING_KEY)) showOnboarding.value = true
   clearSession()
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
@@ -249,7 +294,13 @@ onMounted(async () => {
     .catch(() => {})
 
   if (!soulContent.value) router.replace('/')
+
+  // Background soul growth — first at 3 min, then every 8 min
+  setTimeout(() => { runBackgroundSoulGrowth() }, 3 * 60 * 1000)
+  _soulGrowthTimer = setInterval(() => { runBackgroundSoulGrowth() }, 8 * 60 * 1000)
 })
+
+onUnmounted(() => { clearInterval(_soulGrowthTimer) })
 
 function syncVaultSoul() {
   const f = contextFiles.value.find(x => x.name.toLowerCase().endsWith('.md') && validateSoul(x.text).valid)
@@ -348,7 +399,15 @@ function reloadPage() { location.reload() }
 }
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
 .sess-head .back:hover { color: var(--accent); }
-.sess-head .pill { justify-self: center; display: flex; align-items: center; gap: 12px; padding: 8px 18px; border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); }
+.sess-head .pill { justify-self: center; display: flex; align-items: center; gap: 10px; padding: 8px 18px; border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); }
+.pill-sep { color: var(--fg-4); }
+.soul-id-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; color: var(--fg-3); background: transparent; border: 1px solid var(--rule-2); border-radius: 3px; padding: 2px 7px; cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+.soul-id-btn:hover { color: var(--accent); border-color: var(--accent); }
+.soul-growing { font-size: 13px; color: var(--accent); opacity: 0.6; animation: soul-pulse 1.4s ease-in-out infinite; }
+.soul-grew { font-size: 12px; color: var(--accent); }
+@keyframes soul-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }
+.fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.5s; }
+.fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
 .sess-head .tools { display: flex; align-items: center; }
 .tool { padding: 10px 16px; border-left: 1px solid var(--rule); border-top: 0; border-bottom: 0; border-right: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; background: transparent; white-space: nowrap; }
 .tool:hover:not(:disabled) { color: var(--fg); }
@@ -370,7 +429,7 @@ function reloadPage() { location.reload() }
 /* Body */
 /* min-height: 0 is critical — without it the grid item expands to content height
    and overflows the 1fr track, making the dock push below the viewport */
-.sess-body { display: grid; grid-template-columns: 320px 1fr; gap: 0; overflow: hidden; min-height: 0; }
+.sess-body { display: grid; grid-template-columns: 360px 1fr; gap: 0; overflow: hidden; min-height: 0; }
 @media (max-width: 900px) { .sess-body { grid-template-columns: 1fr; } .mobile-hidden { display: none !important; } }
 @media (min-width: 901px) { .mobile-hidden { display: flex !important; } }
 
