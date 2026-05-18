@@ -202,7 +202,13 @@ Service tokens are HS256 JWTs valid for 30 days, signed with `API_SIGNING_KEY`.
 | `/api/soul/register` | POST | soul_cert | soul_register.lua | Register in marketplace |
 | `/api/soul/register-preview` | GET | soul_cert | soul_register_preview.lua | Preview registration |
 | `/api/chat` | POST | soul_cert | Anthropic proxy (SSE) | AI chat streaming |
+| `/api/soul-update` | POST | soul_cert | Anthropic proxy | Soul-Archivar: write soul sections from conversation |
 | `/api/soul/verify-peer-cert` | GET | — | soul_verify_peer_cert.lua | Cross-domain peer auth |
+| `/api/soul/peer-social-read` | GET | soul_cert | soul_peer_proxy.lua | Server-side proxy for peer social read |
+| `/api/vault/shared` | POST | soul_cert | vault_shared_upload.lua | Upload file to vault/shared (peer-accessible) |
+| `/api/vault/shared/{soul_id}/{file}` | GET | peer soul_cert | vault_shared_serve.lua | Serve shared file to authenticated peer |
+| `/api/vault/shared/{file}` | DELETE | soul_cert | vault_shared_delete.lua | Delete own shared file |
+| `/api/vault/peer-media` | GET | soul_cert | vault_peer_media_proxy.lua | Browser→own node→peer vault/shared proxy |
 | `/api/peer/verify` | GET | — | peer_verify.lua | Node identity check |
 | `/api/node-status` | GET | — | node_status.lua | Node registration status |
 | `/api/webhook` | POST | vault_auth | webhook.lua | Push to external service |

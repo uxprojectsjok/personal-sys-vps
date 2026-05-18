@@ -27,7 +27,7 @@
           :class="{ user: item.role === 'user', ai: item.role === 'assistant' }"
         >
           <header class="who">
-            <span class="handle">{{ item.role === 'user' ? 'Du' : (localRole === 'soul' ? 'SoulKI' : 'Entw.') }}</span>
+            <span class="handle">{{ item.role === 'user' ? 'Du' : 'SoulKI' }}</span>
             <time>{{ fmtTime(item.ts || Date.now()) }}</time>
           </header>
           <div class="body">
@@ -100,6 +100,7 @@
                     :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
                     class="msg-media-img" alt="" loading="lazy"
                   />
+                  <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
                 </template>
                 <div v-else class="msg-doc-link">
@@ -112,6 +113,7 @@
                     <span class="msg-doc-icon">↓</span>
                     <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
                   </a>
+                  <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Datei nicht ladbar</span>
                   <span v-else class="msg-media-loading">Wird geladen…</span>
                 </div>
               </template>
@@ -165,10 +167,7 @@
 
       <!-- Mode bar + recipient picker -->
       <div class="dock-mode-bar">
-        <span class="mode-dot" :class="{ soul: localRole === 'soul' }"></span>
-        <button class="mode-label-btn" @click="toggleRole" :title="localRole === 'soul' ? 'Wechsel zu Dev' : 'Wechsel zu Soul'">
-          {{ localRole === 'soul' ? 'Soul' : 'Dev' }}
-        </button>
+        <span class="mode-dot soul"></span>
         <div class="recipient-picker">
           <button
             v-for="[id, label, color] in [['ki','KI','var(--accent)'],['peer','Peer','#34d399'],['agent','Agent','#a78bfa'],['community','All','#60a5fa']]"
@@ -261,7 +260,7 @@ const props = defineProps({
   soulCert:    { type: String, default: '' },
   role:        { type: String, default: 'soul' },  // 'soul' | 'session'
 })
-const emit = defineEmits(['cert-error', 'role-change'])
+const emit = defineEmits(['cert-error'])
 
 // ── Composables ────────────────────────────────────────────────────
 const { chat, isLoading, error, certError } = useClaude()
@@ -277,14 +276,8 @@ const { isConnected: spConnected, accessToken: spToken } = useSpotify()
 // ── Cert error passthrough ─────────────────────────────────────────
 watch(certError, (v) => { if (v) emit('cert-error') })
 
-// ── Local role (synced with prop, togglable) ───────────────────────
-const localRole = ref(props.role)
-watch(() => props.role, (v) => { localRole.value = v })
-
-function toggleRole() {
-  localRole.value = localRole.value === 'soul' ? 'session' : 'soul'
-  emit('role-change', localRole.value)
-}
+// ── Local role — always soul mode ──────────────────────────────────
+const localRole = ref('soul')
 
 // ── Input state ────────────────────────────────────────────────────
 const draft      = ref('')
@@ -325,7 +318,8 @@ const peerIds           = ref([])
 const peerSocialMsgs    = ref([])
 const msgDeliveryStatus  = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
 const peerPollStatus     = reactive(new Map()) // soul_id → { ok, error, ts }
-const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL
+const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL | null (loading)
+const vaultBlobErrors    = reactive(new Set()) // 'soul_id:filename' → failed to load
 const sessionSharedFiles = ref([])             // [{ filename, label }] — uploaded this session
 
 const peerPollErrors = computed(() =>
@@ -343,6 +337,7 @@ onUnmounted(() => {
   peerPollStatus.clear()
   for (const url of vaultBlobUrls.values()) URL.revokeObjectURL(url)
   vaultBlobUrls.clear()
+  vaultBlobErrors.clear()
 })
 
 async function refreshAgentContent() {
@@ -588,10 +583,11 @@ const unifiedStream = computed(() => {
 })
 
 function resolveAuthor(msg) {
-  if (msg.author) return msg.author
-  if (!msg.from || msg.from === 'me') return 'Du'
-  const peer = peerIds.value.find(p => p.soul_id === msg.from)
-  return peer?.label || msg.from.slice(0, 8)
+  if (msg.sphere === 'synthesis') return 'KI'
+  const senderName = msg.author
+    || (!msg.from || msg.from === 'me' ? 'Du' : (peerIds.value.find(p => p.soul_id === msg.from)?.label || msg.from.slice(0, 8)))
+  if (msg.content?.startsWith('[KI]')) return `KI@${senderName}`
+  return senderName
 }
 
 function peerLabelForTo(to) {
@@ -625,17 +621,18 @@ function vaultRefProxyUrl(ref) {
 
 async function loadVaultBlob(ref) {
   const key = `${ref.soul_id}:${ref.filename}`
-  if (vaultBlobUrls.has(key)) return
+  if (vaultBlobUrls.has(key) || vaultBlobErrors.has(key)) return
   vaultBlobUrls.set(key, null) // loading sentinel
   try {
     const proxyUrl = ref.soul_id === (props.soulCert?.split('.')?.[0] || '')
       ? `/api/vault/shared/${ref.soul_id}/${ref.filename}`
       : vaultRefProxyUrl(ref)
     const r = await fetch(proxyUrl, { headers: { Authorization: `Bearer ${props.soulCert}` } })
-    if (!r.ok) { vaultBlobUrls.delete(key); return }
+    if (!r.ok) { vaultBlobUrls.delete(key); vaultBlobErrors.add(key); return }
     const blob = await r.blob()
+    vaultBlobErrors.delete(key)
     vaultBlobUrls.set(key, URL.createObjectURL(blob))
-  } catch { vaultBlobUrls.delete(key) }
+  } catch { vaultBlobUrls.delete(key); vaultBlobErrors.add(key) }
 }
 
 watch(displayMessages, (msgs) => {
@@ -648,7 +645,7 @@ watch(displayMessages, (msgs) => {
 async function forwardSynthesis(item) {
   const idx = localSynthesisMsgs.value.findIndex(m => m.ts === item.ts)
   if (idx !== -1) localSynthesisMsgs.value[idx] = { ...localSynthesisMsgs.value[idx], forwarded: true }
-  await handlePeerSend(item.content, 'peer')
+  await handlePeerSend(`[KI] ${item.content}`, 'peer')
 }
 
 async function deleteSharedFile(filename) {
@@ -698,7 +695,9 @@ async function uploadToSharedVault(file) {
 async function triggerSynthesis() {
   if (isSynthesizing.value) return
   const recent = displayMessages.value.slice(-5)
-  if (recent.length === 0) return
+  if (recent.length < 2) return
+  const totalContent = recent.map(m => m.content || '').join(' ').replace(/\[.*?\]\(.*?\)/g, '').trim()
+  if (totalContent.length < 80) return
 
   isSynthesizing.value = true
   await nextTick(scrollToBottom)
@@ -712,9 +711,9 @@ async function triggerSynthesis() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 160,
+        max_tokens: 100,
         stream: false,
-        system: `Schau dir diesen Chat-Verlauf an und liefere einen kurzen, nützlichen Beitrag — einen konkreten Fakt, eine knappe Zusammenfassung, oder einen Impuls zum Thema. Kein "Ich", keine Anrede, keine Meta-Kommentare. Wenn passend, hänge einen Google-Suchlink an: [Suchbegriff](https://www.google.com/search?q=Begriff). Max. 2 Sätze, Deutsch, direkt formuliert.`,
+        system: `Lies den Chat-Verlauf und liefere genau 1–2 Sätze auf Deutsch: einen konkreten Fakt, eine präzise Zusammenfassung oder einen nützlichen Impuls zum Thema. Kein "Ich", keine Anrede, kein Meta-Kommentar, keine Einleitung. Nur Inhalt. Optional: ein Google-Suchlink am Ende — [Begriff](https://www.google.com/search?q=Begriff).`,
         messages: [{ role: 'user', content: context }]
       })
     })
@@ -751,31 +750,38 @@ async function handlePeerSend(text, recipient) {
   const attachFile = msgMedia.value ? msgMedia.value._file || null : (msgDoc.value ? msgDoc.value.file || null : null)
   const attachName = msgMedia.value ? (msgMedia.value.name || 'bild.jpg') : (msgDoc.value ? msgDoc.value.name : null)
   if ((msgMedia.value || msgDoc.value) && attachName) {
+    let uploadOk = false
     try {
       const ownSoulId = props.soulCert?.split('.')?.[0] || ''
       let b64, fileName
       if (msgMedia.value) {
         b64 = msgMedia.value.base64
         fileName = attachName
-        // POST directly with existing base64
         const r = await fetch('/api/vault/shared', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
           body: JSON.stringify({ name: fileName, data: b64 }),
         })
-        if (r.ok) {
-          const d = await r.json()
-          attachmentStr = `[${fileName}](vault-shared://${ownSoulId}/${d.filename})`
-          sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
-        }
+        if (!r.ok) throw new Error(`Upload ${r.status}`)
+        const d = await r.json()
+        attachmentStr = `[${fileName}](vault-shared://${ownSoulId}/${d.filename})`
+        sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
+        uploadOk = true
       } else if (msgDoc.value?.file) {
         const stored = await uploadToSharedVault(msgDoc.value.file)
         attachmentStr = `[${msgDoc.value.name}](vault-shared://${ownSoulId}/${stored})`
         sessionSharedFiles.value.push({ filename: stored, label: msgDoc.value.name })
+        uploadOk = true
       }
-    } catch { /* attachment upload failed — send text-only */ }
+    } catch (e) {
+      addMessage('assistant', `Anlage konnte nicht hochgeladen werden — ${e?.message ?? 'Fehler'}. Nachricht ohne Datei senden?`)
+      msgDeliveryStatus.set(msgTs, 'error')
+      isSavingAgent.value = false
+      return
+    }
     msgMedia.value = null
     msgDoc.value   = null
+    if (!uploadOk && !text) { isSavingAgent.value = false; return }
   }
 
   const fullText = [attachmentStr, text].filter(Boolean).join(' ')
@@ -891,7 +897,7 @@ function evictCache() {
 }
 
 function cleanMsgContent(msg) {
-  let c = msg.content.replace('[Bild]', '').trim()
+  let c = (msg.content || '').replace('[Bild]', '').replace(/^\[KI\]\s*/, '').trim()
   if (msgBlobCache.has(msg.ts) || msgExpiredCache.has(msg.ts)) {
     c = c.replace(/^\[Dokument:[^\]]*\]\s*/, '')
   }
@@ -1096,8 +1102,6 @@ function detectIntent(text) {
   // KI synthesis trigger
   if (/^ki[:\s]/i.test(t)) return { type: 'ki', query: '' }
   // Mode switch
-  if (/\b(?:soul.?modus|soul.?mode|wechsel.*soul|lass.*soul|in.*soul)\b/i.test(t)) return { type: 'mode-soul', query: '' }
-  if (/\b(?:entwicklungs.?modus|dev.?modus|wechsel.*(?:entwicklung|dev)|lass.*(?:entwicklung|dev))\b/i.test(t)) return { type: 'mode-dev', query: '' }
   return { type: 'chat', query: t }
 }
 
@@ -1207,9 +1211,24 @@ async function handleCameraCapture(capture) {
   const base64 = capture.frameBase64 ?? capture.base64 ?? null
   if (!base64) return
 
-  // In peer/social mode: stage as attachment preview, don't run vision
+  // In peer/social mode: compress then stage as attachment
   if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
-    msgMedia.value = { base64, mime: 'image/jpeg', name: 'kamerabild.jpg' }
+    let compressed = base64
+    try {
+      const img = new Image()
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = `data:image/jpeg;base64,${base64}` })
+      const MAX = 1024
+      let w = img.naturalWidth, h = img.naturalHeight
+      if (w > MAX || h > MAX) {
+        if (w >= h) { h = Math.round(h * MAX / w); w = MAX }
+        else { w = Math.round(w * MAX / h); h = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      compressed = canvas.toDataURL('image/jpeg', 0.75).split(',')[1]
+    } catch { /* use original */ }
+    msgMedia.value = { base64: compressed, mime: 'image/jpeg', name: 'kamerabild.jpg' }
     return
   }
 
@@ -1348,12 +1367,6 @@ async function handleSend() {
 
   const intent = detectIntent(raw)
 
-  if (intent.type === 'mode-soul') {
-    localRole.value = 'soul'; emit('role-change', 'soul'); return
-  }
-  if (intent.type === 'mode-dev') {
-    localRole.value = 'session'; emit('role-change', 'session'); return
-  }
   if (intent.type === 'peer')          { await handlePeerSend(intent.query || raw, 'peer'); return }
   if (intent.type === 'community')     { await handlePeerSend(intent.query || raw, 'community'); return }
   if (intent.type === 'peer-specific') { await handlePeerSend(intent.query || raw, intent.soul_id); return }
@@ -1412,9 +1425,11 @@ onMounted(async () => {
   await refreshAgentContent()
   // Auto-briefing on open (small delay so content renders first)
   setTimeout(() => {
-    if (displayMessages.value.length > 0) {
+    const msgs = displayMessages.value
+    const total = msgs.slice(-5).map(m => m.content || '').join(' ').replace(/\[.*?\]\(.*?\)/g, '').trim()
+    if (msgs.length >= 2 && total.length >= 80) {
       triggerSynthesis()
-      _lastBriefingMsgCount = displayMessages.value.length
+      _lastBriefingMsgCount = msgs.length
     }
   }, 3000)
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
@@ -1434,8 +1449,9 @@ onUnmounted(() => {
 })
 
 defineExpose({
-  focusInput: () => textareaEl.value?.focus(),
-  sendExternal: (text) => { if (text?.trim() && !isLoading.value) dispatchToChat(text, {}) },
+  focusInput:         () => textareaEl.value?.focus(),
+  sendExternal:       (text) => { if (text?.trim() && !isLoading.value) dispatchToChat(text, {}) },
+  getSocialMessages:  () => displayMessages.value,
 })
 </script>
 
@@ -1864,6 +1880,10 @@ defineExpose({
 .msg-media-loading {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
   color: var(--fg-4); padding: 6px 0;
+}
+.msg-media-error {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: #f87171; padding: 6px 0;
 }
 .msg-expired {
   font-family: var(--mono);

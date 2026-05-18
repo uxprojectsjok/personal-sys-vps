@@ -31,6 +31,20 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 
 ---
 
+## Core use case
+
+> Set up your soul. Interact in chat. The Soul-Archivar records.
+
+Three phases:
+
+1. **Set up** — Create soul, configure peers, connect MCP (once)
+2. **Interact** — Chat with the soul KI, exchange messages with peers, use community sphere
+3. **Record** — The Soul-Archivar KI observes every session and writes soul-worthy observations into sys.md automatically, without user action
+
+The chat KI embodies the person in first person ("Ich"). The Soul-Archivar is a separate process that writes factual observations as an outside recorder. Both read the same sys.md.
+
+---
+
 ## Design Principles
 
 | Principle | Implementation |
@@ -40,6 +54,7 @@ encrypted content. Encryption is the default; plaintext is an explicit opt-in.
 | **Stateless auth** | HMAC-SHA256 cert derived from key + soul_id — no session DB |
 | **User-controlled sharing** | Granular service-token permissions per data type |
 | **Protocol, not platform** | sys.md format is open; any compatible server is valid |
+| **Passive recording** | Soul grows automatically — no button required |
 
 ---
 
