@@ -137,6 +137,12 @@
             </div>
             <p v-else class="no-nodes">Noch keine Peers verbunden.</p>
 
+            <div class="own-endpoint-row">
+              <span class="oe-label">Dein Endpoint</span>
+              <code class="oe-val">{{ ownOrigin }}</code>
+              <button class="oe-copy" :class="{ copied: endpointCopied }" @click="copyOwnEndpoint">{{ endpointCopied ? '✓' : 'Kopieren' }}</button>
+            </div>
+
             <div class="peer-form">
               <div class="peer-form-inputs">
                 <input v-model="newPeer.soul_id" class="input mono" placeholder="Soul-ID (UUID)" @keydown.enter.prevent="addPeer" />
@@ -524,6 +530,18 @@ const amortSuccess  = ref(false)
 // ═══════════ SOUL BEARER ═══════════
 const bearerCopied    = ref(false)
 const soulBearerToken = computed(() => props.soulCert || '')
+
+// ═══════════ OWN ENDPOINT ═══════════
+const endpointCopied = ref(false)
+const ownOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+
+async function copyOwnEndpoint() {
+  try {
+    await navigator.clipboard.writeText(ownOrigin)
+    endpointCopied.value = true
+    setTimeout(() => { endpointCopied.value = false }, 2000)
+  } catch { /* ignore */ }
+}
 
 const nodesStorageKey = computed(() => {
   const id = props.soulCert?.split('.')?.[0] || ''
@@ -1070,4 +1088,25 @@ async function register() {
 @media (max-width: 639px) {
   .peer-form-inputs { grid-template-columns: 1fr; }
 }
+
+.own-endpoint-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-bottom: 12px;
+  background: var(--paper-3); border: 1px solid var(--rule-2);
+}
+.oe-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--fg-4); flex-shrink: 0;
+}
+.oe-val {
+  font-family: var(--mono); font-size: 12px; color: var(--accent-bright);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.oe-copy {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  background: transparent; border: 1px solid var(--rule-2); color: var(--fg-3);
+  cursor: pointer; padding: 2px 8px; flex-shrink: 0; transition: all 0.15s;
+}
+.oe-copy:hover { color: var(--fg); border-color: var(--accent); background: var(--accent-2); }
+.oe-copy.copied { color: var(--ok); border-color: rgba(184,220,196,0.35); }
 </style>
