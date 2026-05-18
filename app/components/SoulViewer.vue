@@ -191,52 +191,6 @@
 
       </div>
 
-      <!-- ── SOUL UPDATEN + KALENDER ──────────────────────────────────── -->
-      <div class="px-4 pb-4 space-y-3">
-
-        <!-- Soul updaten Button -->
-        <button
-          @click="triggerEnrichment"
-          :disabled="isEnriching"
-          class="sys-cta-primary cta-sweep w-full h-11 flex items-center justify-between px-5 rounded-xl transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-          :class="{ 'soul-update-pending': needsUpdate && !isEnriching }"
-        >
-          <span class="text-sm font-bold text-white">{{ isEnriching ? 'Soul wird analysiert…' : 'Soul updaten' }}</span>
-          <svg v-if="isEnriching" class="w-4 h-4 animate-spin flex-none" style="color: rgba(255,255,255,0.75)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-          </svg>
-          <svg v-else class="w-4 h-4 flex-none group-hover:translate-x-0.5 transition-transform" style="color: rgba(255,255,255,0.75)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>
-          </svg>
-        </button>
-
-        <!-- Enrich status -->
-        <Transition name="fade-quick">
-          <div v-if="enrichStatus"
-            class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs border"
-            :class="enrichStatus.type === 'success'
-              ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400'
-              : enrichStatus.type === 'error'
-                ? 'border-red-500/20 bg-red-500/[0.06] text-red-400'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)]'"
-          >
-            <svg v-if="enrichStatus.type === 'success'" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-            </svg>
-            <svg v-else-if="enrichStatus.type === 'error'" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
-            </svg>
-            <span>{{ enrichStatus.message }}</span>
-          </div>
-        </Transition>
-
-        <!-- Kalender -->
-        <div>
-          <p class="text-[10px] font-medium tracking-widest uppercase text-[var(--sys-fg-muted)] mb-2 px-0.5">Kalender</p>
-          <SoulCalendar />
-        </div>
-
-      </div>
     </div>
 
   </div>
@@ -248,21 +202,15 @@ import { parseSoul, updateSection } from "#shared/utils/soulParser.js";
 import { computeMaturity } from "#shared/utils/soulMaturity.js";
 import { useSoul } from "~/composables/useSoul.js";
 import { useVault } from "~/composables/useVault.js";
-import { useSession } from "~/composables/useSession.js";
-import { useChainAnchor } from "~/composables/useChainAnchor.js";
 import SoulMaturityMeter from "~/components/SoulMaturityMeter.vue";
-import SoulCalendar from "~/components/SoulCalendar.vue";
 
 // ── Composables ──────────────────────────────────────────────────────────
 const {
   soulContent, soulMeta, syncStatus, syncError, serverContent,
   updateContent, acceptServerVersion, pushToServer, dismissSync,
-  enrichFromSession,
 } = useSoul();
 
 const { writeSoulMd, isConnected: vaultConnected } = useVault();
-const { toApiMessages, messages } = useSession();
-const { appendGrowthEntry } = useChainAnchor();
 
 // ── Local state ──────────────────────────────────────────────────────────
 const scrollContainerRef = ref(null);
@@ -275,15 +223,6 @@ const openedSections   = ref({});
 const openSyncSections = ref({});
 const saveFlash        = ref(false);
 const syncSaving       = ref(false);
-const isEnriching      = ref(false);
-const enrichStatus     = ref(null);
-const manualEdited          = ref(false);
-const lastEnrichedUserCount = ref(0);
-
-const needsUpdate      = computed(() => {
-  const userCount = messages.value.filter(m => m.role === "user").length;
-  return (userCount > lastEnrichedUserCount.value) || manualEdited.value;
-});
 
 // Scroll to top when diff appears so the amber block is visible
 watch(syncStatus, (val) => {
@@ -305,7 +244,6 @@ const SOUL_SECTIONS = [
   { key: "Emotionale Signatur",                  label: "Emotionale Signatur",    icon: "ri-emotion-line",   color: "#fbbf24" },
   { key: "Weltbild",                             label: "Weltbild",               icon: "ri-earth-line",     color: "var(--chart-2)" },
   { key: "Offene Fragen dieser Person",          label: "Offene Fragen",          icon: "ri-question-line",  color: "var(--sys-fg-muted)" },
-  { key: "Session-Log (komprimiert)",            label: "Verlauf",                icon: "ri-history-line",   color: "var(--sys-fg-dim)" },
 ];
 
 // ── Computed ─────────────────────────────────────────────────────────────
@@ -352,9 +290,6 @@ const maturity = computed(() => {
   return computeMaturity(soulContent.value);
 });
 
-const hasMessages = computed(() =>
-  messages.value.filter(m => m.role === "user").length > 0
-);
 
 // ── Section toggle ────────────────────────────────────────────────────────
 function toggleSection(key) {
@@ -384,81 +319,10 @@ async function saveEdit(key) {
   }
   editingSection.value = null;
   editText.value = "";
-  manualEdited.value = true;
   saveFlash.value = true;
   setTimeout(() => { saveFlash.value = false; }, 2000);
 }
 
-// ── Soul updaten (Enrichment) ─────────────────────────────────────────────
-function buildSphereContext(md) {
-  function parseMsgs(block) {
-    const msgs = []
-    const re = /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g
-    let m
-    while ((m = re.exec(block)) !== null) {
-      msgs.push({ ts: m[1], from: m[2], to: m[3], content: m[4].trim() })
-    }
-    return msgs.slice(-5)
-  }
-  const socialBlock = md.match(/<!--\s*SOCIAL:START\s*-->([\s\S]*?)<!--\s*SOCIAL:END\s*-->/)?.[1] ?? ''
-  const agentBlock  = md.match(/<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/)?.[1]  ?? ''
-  const socialMsgs  = parseMsgs(socialBlock)
-  const agentMsgs   = parseMsgs(agentBlock)
-  if (!socialMsgs.length && !agentMsgs.length) return ''
-  const fmt = (msgs, label) => {
-    if (!msgs.length) return ''
-    const lines = msgs.map(m => {
-      const who = m.from === 'me' ? 'Ich' : m.from.slice(0, 12)
-      const to  = m.to === 'peer' ? '→ Peer' : m.to === 'agent' ? '→ Agent' : '→ Alle'
-      return `[${m.ts.slice(0, 10)}] ${who} ${to}: ${m.content}`
-    }).join('\n')
-    return `## ${label}\n${lines}`
-  }
-  return [
-    fmt(socialMsgs, 'Social Sphere (Peer-Nachrichten)'),
-    fmt(agentMsgs,  'Agent Sandbox (KI-Kollaborationen)'),
-  ].filter(Boolean).join('\n\n')
-}
-
-async function triggerEnrichment() {
-  if (isEnriching.value) return;
-  if (!hasMessages.value) {
-    enrichStatus.value = { type: "error", message: "Erst chatten, dann updaten." };
-    setTimeout(() => { enrichStatus.value = null; }, 3000);
-    return;
-  }
-  isEnriching.value = true;
-  enrichStatus.value = null;
-  try {
-    const sphereContext = buildSphereContext(soulContent.value ?? '')
-    const result = await enrichFromSession(toApiMessages(20), sphereContext);
-    if (!result) {
-      enrichStatus.value = { type: "error", message: "Verbindung fehlgeschlagen." };
-    } else {
-      lastEnrichedUserCount.value = messages.value.filter(m => m.role === "user").length;
-      manualEdited.value = false;
-      if (!result.changed) {
-        enrichStatus.value = { type: "success", message: "Nichts Soul-Würdiges gefunden." };
-      } else {
-        const n = result.sectionsUpdated.length;
-        enrichStatus.value = {
-          type: "success",
-          message: n > 0 ? `${n} Sektion${n > 1 ? "en" : ""} aktualisiert` : "Session-Log eingetragen",
-        };
-        await appendGrowthEntry();
-        await pushToServer();
-        if (vaultConnected.value) {
-          await writeSoulMd(soulContent.value, "sys").catch(() => {});
-        }
-      }
-    }
-    setTimeout(() => { enrichStatus.value = null; }, 4000);
-  } catch {
-    enrichStatus.value = { type: "error", message: "Fehler beim Soul-Update." };
-  } finally {
-    isEnriching.value = false;
-  }
-}
 
 
 // ── Sync comparison ───────────────────────────────────────────────────────
@@ -521,17 +385,6 @@ async function handlePushLocal() {
 </script>
 
 <style scoped>
-/* ── Soul update pending ────────────────────────────────────────────── */
-.soul-update-pending {
-  background: linear-gradient(135deg, #92400e 0%, #d97706 100%) !important;
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.45) !important;
-  animation: pulse-amber 2.4s ease-in-out infinite;
-}
-@keyframes pulse-amber {
-  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-  50%       { box-shadow: 0 0 26px rgba(245, 158, 11, 0.6); }
-}
-
 /* ── Meta bar (single compact line) ────────────────────────────────── */
 .meta-bar {
   display: flex; align-items: center; gap: 7px;

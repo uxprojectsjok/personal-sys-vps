@@ -694,7 +694,9 @@ async function uploadToSharedVault(file) {
 // ── KI Gesprächsbeitrag (lokal, nicht gepusht) ────────────────────
 async function triggerSynthesis() {
   if (isSynthesizing.value) return
-  const recent = displayMessages.value.slice(-5)
+  const recent = displayMessages.value
+    .filter(m => m.sphere !== 'synthesis' && !m.content?.startsWith('[KI]'))
+    .slice(-5)
   if (recent.length < 2) return
   const totalContent = recent.map(m => m.content || '').join(' ').replace(/\[.*?\]\(.*?\)/g, '').trim()
   if (totalContent.length < 80) return
