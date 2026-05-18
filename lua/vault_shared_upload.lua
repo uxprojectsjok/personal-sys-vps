@@ -20,7 +20,15 @@ if not soul_id or not soul_id:match("^[a-zA-Z0-9%-]+$") then
 end
 
 ngx.req.read_body()
-local body = ngx.req.get_body_data() or "{}"
+local body = ngx.req.get_body_data()
+if not body then
+  local tmp = ngx.req.get_body_file()
+  if tmp then
+    local f = io.open(tmp, "r")
+    if f then body = f:read("*a"); f:close() end
+  end
+end
+body = body or "{}"
 local ok, data = pcall(cjson.decode, body)
 if not ok or type(data) ~= "table" then
   ngx.status = 400; ngx.say('{"error":"invalid_json"}'); return
