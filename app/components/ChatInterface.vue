@@ -1179,7 +1179,8 @@ async function handleSend() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────
-let _briefingTimer = null
+let _briefingTimer        = null
+let _lastBriefingMsgCount = 0
 
 onMounted(async () => {
   nextTick(autoResize)
@@ -1203,10 +1204,22 @@ onMounted(async () => {
   } catch { /* silent */ }
   await refreshAgentContent()
   // Auto-briefing on open (small delay so content renders first)
-  setTimeout(() => { if (displayMessages.value.length > 0) triggerSynthesis() }, 3000)
+  setTimeout(() => {
+    if (displayMessages.value.length > 0) {
+      triggerSynthesis()
+      _lastBriefingMsgCount = displayMessages.value.length
+    }
+  }, 3000)
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
   _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
-  _briefingTimer   = setInterval(() => { if (displayMessages.value.length > 0) triggerSynthesis() }, 15 * 60 * 1000)
+  // Every 3 min — only fires if new messages arrived since last briefing
+  _briefingTimer   = setInterval(() => {
+    const count = displayMessages.value.length
+    if (count > 0 && count !== _lastBriefingMsgCount) {
+      _lastBriefingMsgCount = count
+      triggerSynthesis()
+    }
+  }, 3 * 60 * 1000)
 })
 onUnmounted(() => {
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
