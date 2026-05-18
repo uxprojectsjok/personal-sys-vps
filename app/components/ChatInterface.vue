@@ -165,6 +165,14 @@
     <!-- ── Dock ────────────────────────────────────────────────────── -->
     <footer class="dock">
 
+      <!-- Soul-Archivar läuft -->
+      <Transition name="fade-quick">
+        <div v-if="props.growthLocked" class="dock-growth-lock">
+          <span class="dock-growth-spinner"></span>
+          <span>Soul-Archivar schreibt…</span>
+        </div>
+      </Transition>
+
       <!-- Mode bar + recipient picker -->
       <div class="dock-mode-bar">
         <span class="mode-dot soul"></span>
@@ -185,13 +193,13 @@
 
       <!-- Input row -->
       <div class="dock-main">
-        <button class="dock-icon" @click="cameraOpen = true" :disabled="visionLoading" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
+        <button class="dock-icon" @click="cameraOpen = true" :disabled="visionLoading || props.growthLocked" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg" :class="{ pulse: visionLoading }">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
           </svg>
         </button>
-        <button class="dock-icon" @click="handleFileChip" title="Datei anhängen">
+        <button class="dock-icon" @click="handleFileChip" title="Datei anhängen" :disabled="props.growthLocked">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
           </svg>
@@ -201,7 +209,8 @@
             ref="textareaEl"
             v-model="draft"
             class="input"
-            :placeholder="inputPlaceholder"
+            :placeholder="props.growthLocked ? 'Soul-Archivar schreibt…' : inputPlaceholder"
+            :disabled="props.growthLocked"
             rows="1"
             @keydown.enter.exact.prevent="handleSend"
             @keydown.shift.enter.exact="draft += '\n'; $nextTick(autoResize)"
@@ -256,9 +265,10 @@ import CameraRecorder from '~/components/CameraRecorder.vue'
 
 // ── Props / Emits ──────────────────────────────────────────────────
 const props = defineProps({
-  soulContent: { type: String, default: '' },
-  soulCert:    { type: String, default: '' },
-  role:        { type: String, default: 'soul' },  // 'soul' | 'session'
+  soulContent:  { type: String,  default: '' },
+  soulCert:     { type: String,  default: '' },
+  role:         { type: String,  default: 'soul' },
+  growthLocked: { type: Boolean, default: false },
 })
 const emit = defineEmits(['cert-error'])
 
@@ -287,7 +297,7 @@ const chatEnd    = ref(null)
 
 const canSend = computed(() =>
   (draft.value.trim().length > 0 || !!msgMedia.value || !!msgDoc.value) &&
-  !isLoading.value && !isSavingAgent.value
+  !isLoading.value && !isSavingAgent.value && !props.growthLocked
 )
 
 const inputPlaceholder = computed(() => {
@@ -1569,6 +1579,23 @@ defineExpose({
   display: flex;
   flex-direction: column;
 }
+
+/* Growth lock banner */
+.dock-growth-lock {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(139, 92, 246, 0.07);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--accent); opacity: 0.8;
+}
+.dock-growth-spinner {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(139, 92, 246, 0.3);
+  border-top-color: var(--accent);
+  animation: dock-spin 0.9s linear infinite;
+}
+@keyframes dock-spin { to { transform: rotate(360deg); } }
 
 /* Mode bar */
 .dock-mode-bar {
