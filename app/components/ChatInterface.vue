@@ -92,8 +92,31 @@
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
                 </a>
               </div>
+              <!-- Vault-shared attachment -->
+              <template v-if="getMsgVaultRef(item.content)">
+                <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
+                  <img
+                    v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    class="msg-media-img" alt="" loading="lazy"
+                  />
+                  <div v-else class="msg-media-loading">Bild wird geladen…</div>
+                </template>
+                <div v-else class="msg-doc-link">
+                  <a
+                    v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    :href="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    :download="getMsgVaultRef(item.content).label"
+                    class="msg-doc-a"
+                  >
+                    <span class="msg-doc-icon">↓</span>
+                    <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
+                  </a>
+                  <span v-else class="msg-media-loading">Wird geladen…</span>
+                </div>
+              </template>
             </template>
-            <p v-for="(para, j) in paragraphs(cleanMsgContent(item))" :key="j" v-html="renderText(para)"></p>
+            <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
           </div>
           <div class="msg-foot">
             <span v-if="item.from === 'me'" class="msg-to"
@@ -284,8 +307,9 @@ let   _agentPollTimer  = null
 let   _cacheEvictTimer = null
 const peerIds           = ref([])
 const peerSocialMsgs    = ref([])
-const msgDeliveryStatus = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
-const peerPollStatus    = reactive(new Map()) // soul_id → { ok, error, ts }
+const msgDeliveryStatus  = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
+const peerPollStatus     = reactive(new Map()) // soul_id → { ok, error, ts }
+const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL
 
 const peerPollErrors = computed(() =>
   [...peerPollStatus.entries()]
@@ -300,6 +324,8 @@ onUnmounted(() => {
   localSynthesisMsgs.value = []
   msgDeliveryStatus.clear()
   peerPollStatus.clear()
+  for (const url of vaultBlobUrls.values()) URL.revokeObjectURL(url)
+  vaultBlobUrls.clear()
 })
 
 async function refreshAgentContent() {
@@ -550,6 +576,69 @@ function peerLabelForTo(to) {
   return peer?.label ? `@${peer.label}` : `@${String(to).slice(0, 8)}…`
 }
 
+// ── Vault Shared: Upload + Inline-Rendering ───────────────────────
+const VAULT_SHARED_IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i
+
+function getMsgVaultRef(content) {
+  const m = String(content || '').match(/\[([^\]]+)\]\(vault-shared:\/\/([^/\)]+)\/([^\)]+)\)/)
+  if (!m) return null
+  return { label: m[1], soul_id: m[2], filename: m[3] }
+}
+
+function cleanVaultRef(content) {
+  return String(content || '').replace(/\[([^\]]+)\]\(vault-shared:\/\/[^\)]+\)/g, '').trim()
+}
+
+function vaultRefProxyUrl(ref) {
+  const peer = peerIds.value.find(p => p.soul_id === ref.soul_id)
+  const endpoint = peer?.endpoint || ''
+  const params = new URLSearchParams({ soul_id: ref.soul_id, file: ref.filename })
+  if (endpoint) params.set('endpoint', endpoint)
+  return `/api/vault/peer-media?${params}`
+}
+
+async function loadVaultBlob(ref) {
+  const key = `${ref.soul_id}:${ref.filename}`
+  if (vaultBlobUrls.has(key)) return
+  vaultBlobUrls.set(key, null) // loading sentinel
+  try {
+    const proxyUrl = ref.soul_id === (props.soulCert?.split('.')?.[0] || '')
+      ? `/api/vault/shared/${ref.soul_id}/${ref.filename}`
+      : vaultRefProxyUrl(ref)
+    const r = await fetch(proxyUrl, { headers: { Authorization: `Bearer ${props.soulCert}` } })
+    if (!r.ok) { vaultBlobUrls.delete(key); return }
+    const blob = await r.blob()
+    vaultBlobUrls.set(key, URL.createObjectURL(blob))
+  } catch { vaultBlobUrls.delete(key) }
+}
+
+watch(displayMessages, (msgs) => {
+  for (const msg of msgs) {
+    const ref = getMsgVaultRef(msg.content)
+    if (ref) loadVaultBlob(ref)
+  }
+}, { immediate: true })
+
+async function uploadToSharedVault(file) {
+  const isImg = VAULT_SHARED_IMAGE.test(file.name)
+  let b64
+  if (isImg) {
+    b64 = await compressImage(file).catch(() => null)
+    if (!b64) b64 = await fileToBase64(file)
+  } else {
+    b64 = await fileToBase64(file)
+  }
+  if (file.size > 10 * 1024 * 1024) throw new Error('Datei zu groß (max 10 MB)')
+  const r = await fetch('/api/vault/shared', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+    body: JSON.stringify({ name: file.name, data: b64 }),
+  })
+  if (!r.ok) throw new Error(`Upload fehlgeschlagen (${r.status})`)
+  const d = await r.json()
+  return d.filename
+}
+
 // ── KI Gesprächsbeitrag (lokal, nicht gepusht) ────────────────────
 async function triggerSynthesis() {
   if (isSynthesizing.value) return
@@ -597,12 +686,44 @@ async function triggerSynthesis() {
 }
 
 async function handlePeerSend(text, recipient) {
-  if (isSavingAgent.value || !text) return
+  if (isSavingAgent.value || (!text && !msgMedia.value && !msgDoc.value)) return
   isSavingAgent.value = true
   const msgTs = new Date().toISOString()
   msgDeliveryStatus.set(msgTs, 'saving')
+
+  // Upload attachment if present
+  let attachmentStr = ''
+  const attachFile = msgMedia.value ? msgMedia.value._file || null : (msgDoc.value ? msgDoc.value.file || null : null)
+  const attachName = msgMedia.value ? (msgMedia.value.name || 'bild.jpg') : (msgDoc.value ? msgDoc.value.name : null)
+  if ((msgMedia.value || msgDoc.value) && attachName) {
+    try {
+      const ownSoulId = props.soulCert?.split('.')?.[0] || ''
+      let b64, fileName
+      if (msgMedia.value) {
+        b64 = msgMedia.value.base64
+        fileName = attachName
+        // POST directly with existing base64
+        const r = await fetch('/api/vault/shared', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+          body: JSON.stringify({ name: fileName, data: b64 }),
+        })
+        if (r.ok) {
+          const d = await r.json()
+          attachmentStr = `[${fileName}](vault-shared://${ownSoulId}/${d.filename})`
+        }
+      } else if (msgDoc.value?.file) {
+        const stored = await uploadToSharedVault(msgDoc.value.file)
+        attachmentStr = `[${msgDoc.value.name}](vault-shared://${ownSoulId}/${stored})`
+      }
+    } catch { /* attachment upload failed — send text-only */ }
+    msgMedia.value = null
+    msgDoc.value   = null
+  }
+
+  const fullText = [attachmentStr, text].filter(Boolean).join(' ')
   try {
-    const entry = formatMsgEntry(text, 'me', recipient, msgTs)
+    const entry = formatMsgEntry(fullText, 'me', recipient, msgTs)
     let current = soulContentAgent.value ?? ''
     const toSocial = recipient !== 'agent' && recipient !== 'ki'
     const toAgent  = recipient === 'agent' || recipient === 'community'
@@ -1654,6 +1775,10 @@ defineExpose({
 .msg-doc-a:hover { background: rgba(255,255,255,0.10); }
 .msg-doc-icon { flex-shrink: 0; font-size: 13px; }
 .msg-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.msg-media-loading {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--fg-4); padding: 6px 0;
+}
 .msg-expired {
   font-family: var(--mono);
   font-size: 11px;
