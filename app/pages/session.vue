@@ -80,6 +80,7 @@
               :soul-content="soulContent"
               :soul-cert="soulToken"
               role="soul"
+              :growth-locked="isGrowingQuietly"
               @cert-error="handleCertError"
             />
           </div>

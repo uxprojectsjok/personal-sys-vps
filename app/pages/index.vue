@@ -40,7 +40,12 @@
               <div>
                 <div class="kicker">Soul · {{ soulMeta?.version || '01' }}</div>
                 <h1 class="name">{{ soulMeta?.name || 'Seele' }}<em>.</em></h1>
-                <code class="soul-id">{{ soulMeta?.id || '—' }}</code>
+                <div class="soul-id-row">
+                  <code class="soul-id">{{ soulMeta?.id || '—' }}</code>
+                  <button v-if="soulMeta?.id" class="soul-id-copy" @click="copyId" :title="idCopied ? 'Kopiert!' : 'Soul-ID kopieren'">
+                    {{ idCopied ? '✓' : 'Kopieren' }}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -361,6 +366,13 @@ const settingsOpen      = ref(false)   // SettingsModal
 // ── Computed ──────────────────────────────────────────────────────────────
 const initial      = computed(() => (soulMeta.value?.name || 'S').charAt(0).toUpperCase())
 const shortId      = computed(() => { const id = soulMeta.value?.id || ''; return id ? id.slice(0, 8) + '…' + id.slice(-4) : '—' })
+const idCopied     = ref(false)
+async function copyId() {
+  if (!soulMeta.value?.id) return
+  await navigator.clipboard.writeText(soulMeta.value.id).catch(() => {})
+  idCopied.value = true
+  setTimeout(() => { idCopied.value = false }, 2000)
+}
 const shortCert    = computed(() => { const c = soulMeta.value?.cert || ''; return c ? c.slice(0, 8) + '…' + c.slice(-4) : '—' })
 
 // chainCount aus soul_growth_chain Array-Länge
@@ -588,7 +600,10 @@ const journal = computed(() => {
 .profile .avatar img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
 .profile .name { font-family: var(--serif); font-weight: 400; font-size: clamp(32px,4.5vw,44px); line-height: 0.95; letter-spacing: -0.025em; margin: 8px 0 10px; color: var(--fg); }
 .profile .name em { color: var(--accent); font-style: italic; }
+.profile .soul-id-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .profile .soul-id { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; color: var(--fg-3); background: rgba(255,255,255,0.03); padding: 6px 10px; border: 1px solid var(--rule); display: inline-block; word-break: break-all; }
+.profile .soul-id-copy { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); background: transparent; border: 1px solid var(--rule-2); border-radius: 3px; padding: 3px 8px; cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+.profile .soul-id-copy:hover { color: var(--accent); border-color: var(--accent); }
 
 .cta { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 26px; background: var(--accent); color: var(--on-accent); border: 0; cursor: pointer; text-align: left; transition: all 0.2s; position: relative; overflow: hidden; }
 .cta::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); transform: translateX(-100%); transition: transform 0.6s; }
