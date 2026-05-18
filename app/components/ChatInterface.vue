@@ -403,8 +403,17 @@ async function fetchPeerSocialBlocks() {
         }
         const r = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
         const ok = r.ok || r.status === 204
-        peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
-        if (r.status === 204 || !r.ok) return []
+        if (!ok) {
+          let errDetail = `HTTP ${r.status}`
+          try {
+            const body = await r.json()
+            if (body?.error) errDetail = body.error + (body.message ? ` · ${body.message}` : '')
+          } catch { /* not JSON */ }
+          peerPollStatus.set(peer.soul_id, { ok: false, error: errDetail, ts: Date.now() })
+          return []
+        }
+        peerPollStatus.set(peer.soul_id, { ok: true, error: null, ts: Date.now() })
+        if (r.status === 204) return []
         const text = await r.text()
         if (!text.trim()) return []
         return parseMsgBlock(text, 'social').map(m => ({
@@ -705,7 +714,7 @@ async function triggerSynthesis() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 160,
         stream: false,
-        system: `Du analysierst einen Chat-Verlauf. Formuliere einen kurzen sachlichen Beitrag: thematischer Impuls, knappe Zusammenfassung oder ein konkreter Fakt. Keine Anrede, keine Namen, keine Erklärung deiner Rolle, kein Emoji, kein Smalltalk. Wenn eine Web-Suche sinnvoll wäre, füge am Ende einen Markdown-Link ein: [Suchbegriff](https://www.google.com/search?q=URL-kodierter+Begriff). Maximal 2–3 Sätze auf Deutsch.`,
+        system: `Schau dir diesen Chat-Verlauf an und liefere einen kurzen, nützlichen Beitrag — einen konkreten Fakt, eine knappe Zusammenfassung, oder einen Impuls zum Thema. Kein "Ich", keine Anrede, keine Meta-Kommentare. Wenn passend, hänge einen Google-Suchlink an: [Suchbegriff](https://www.google.com/search?q=Begriff). Max. 2 Sätze, Deutsch, direkt formuliert.`,
         messages: [{ role: 'user', content: context }]
       })
     })
