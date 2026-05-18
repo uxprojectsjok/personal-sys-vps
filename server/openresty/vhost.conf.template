@@ -615,6 +615,15 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_shared_serve.lua;
   }
 
+  # ── Vault Shared — Delete own file ────────────────────────────────────────────
+  location ~ ^/api/vault/shared/[^/]+$ {
+    limit_except DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_delete.lua;
+  }
+
   # ── Vault Peer Media Proxy (browser → own node → peer's vault/shared) ─────────
   location = /api/vault/peer-media {
     limit_except GET { deny all; }

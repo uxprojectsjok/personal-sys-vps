@@ -130,6 +130,12 @@
               :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
+            <button
+              v-if="item.from === 'me' && getMsgVaultRef(item.content)"
+              class="msg-vault-del"
+              @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
+              title="Datei aus vault/shared löschen"
+            >×</button>
           </div>
         </div>
 
@@ -216,6 +222,12 @@
         <span class="dock-doc-icon">↓</span>
         <span class="dock-media-name">{{ msgDoc.name }}</span>
         <button class="dock-media-remove" @click="msgDoc = null" aria-label="Entfernen">✕</button>
+      </div>
+
+      <!-- Session shared files banner -->
+      <div v-if="sessionSharedFiles.length" class="shared-files-banner">
+        <span class="sfb-info">{{ sessionSharedFiles.length }} Datei{{ sessionSharedFiles.length > 1 ? 'en' : '' }} in vault/shared — auf Gerät sichern falls gewünscht</span>
+        <button class="sfb-delete" @click="deleteAllSessionFiles">Alle löschen</button>
       </div>
 
     </footer>
@@ -310,6 +322,7 @@ const peerSocialMsgs    = ref([])
 const msgDeliveryStatus  = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
 const peerPollStatus     = reactive(new Map()) // soul_id → { ok, error, ts }
 const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL
+const sessionSharedFiles = ref([])             // [{ filename, label }] — uploaded this session
 
 const peerPollErrors = computed(() =>
   [...peerPollStatus.entries()]
@@ -619,6 +632,29 @@ watch(displayMessages, (msgs) => {
   }
 }, { immediate: true })
 
+async function deleteSharedFile(filename) {
+  const ownId = props.soulCert?.split('.')?.[0] || ''
+  try {
+    await fetch(`/api/vault/shared/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    })
+  } catch { /* silent — remove from tracking anyway */ }
+  sessionSharedFiles.value = sessionSharedFiles.value.filter(f => f.filename !== filename)
+  const key = `${ownId}:${filename}`
+  if (vaultBlobUrls.has(key)) {
+    const url = vaultBlobUrls.get(key)
+    if (url) URL.revokeObjectURL(url)
+    vaultBlobUrls.delete(key)
+  }
+}
+
+async function deleteAllSessionFiles() {
+  for (const f of [...sessionSharedFiles.value]) {
+    await deleteSharedFile(f.filename)
+  }
+}
+
 async function uploadToSharedVault(file) {
   const isImg = VAULT_SHARED_IMAGE.test(file.name)
   let b64
@@ -711,10 +747,12 @@ async function handlePeerSend(text, recipient) {
         if (r.ok) {
           const d = await r.json()
           attachmentStr = `[${fileName}](vault-shared://${ownSoulId}/${d.filename})`
+          sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
         }
       } else if (msgDoc.value?.file) {
         const stored = await uploadToSharedVault(msgDoc.value.file)
         attachmentStr = `[${msgDoc.value.name}](vault-shared://${ownSoulId}/${stored})`
+        sessionSharedFiles.value.push({ filename: stored, label: msgDoc.value.name })
       }
     } catch { /* attachment upload failed — send text-only */ }
     msgMedia.value = null
@@ -1006,12 +1044,15 @@ function detectIntent(text) {
   // @all → community (send to everyone)
   const allMention = t.match(/^@all\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
-  // @name → specific peer by label
+  // @name → specific peer by label (exact match, then unique prefix match)
   const nameMention = t.match(/^@(\w+)\b\s*(.*)/is)
   if (nameMention) {
     const name = nameMention[1].toLowerCase()
-    const peer = peerIds.value.find(p => p.label?.toLowerCase() === name || p.label?.toLowerCase().startsWith(name))
-    if (peer) return { type: 'peer-specific', soul_id: peer.soul_id, query: (nameMention[2].trim() || t) }
+    const exact = peerIds.value.find(p => p.label?.toLowerCase() === name)
+    if (exact) return { type: 'peer-specific', soul_id: exact.soul_id, query: (nameMention[2].trim() || t) }
+    const prefix = peerIds.value.filter(p => p.label?.toLowerCase().startsWith(name))
+    if (prefix.length === 1) return { type: 'peer-specific', soul_id: prefix[0].soul_id, query: (nameMention[2].trim() || t) }
+    if (prefix.length > 1)   return { type: 'ambiguous', candidates: prefix, name: nameMention[1] }
   }
   // Peer message: "→ peers: msg", "peer: msg", "an peers: msg"
   const peerMatch = t.match(/^(?:→\s*|peer(?:s)?:|an\s+(?:meine[n]?\s+)?peers?:\s*)(.+)/is)
@@ -1273,10 +1314,15 @@ async function handleSend() {
   if (intent.type === 'mode-dev') {
     localRole.value = 'session'; emit('role-change', 'session'); return
   }
-  if (intent.type === 'peer')         { await handlePeerSend(intent.query || raw, 'peer'); return }
-  if (intent.type === 'community')    { await handlePeerSend(intent.query || raw, 'community'); return }
+  if (intent.type === 'peer')          { await handlePeerSend(intent.query || raw, 'peer'); return }
+  if (intent.type === 'community')     { await handlePeerSend(intent.query || raw, 'community'); return }
   if (intent.type === 'peer-specific') { await handlePeerSend(intent.query || raw, intent.soul_id); return }
-  if (intent.type === 'ki')           { await triggerSynthesis(); return }
+  if (intent.type === 'ki')            { await triggerSynthesis(); return }
+  if (intent.type === 'ambiguous') {
+    const names = intent.candidates.map(p => `@${p.label}`).join(', ')
+    addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
+    return
+  }
 
   // Soul-Modus, Empfänger ≠ KI → soziale Sphere
   if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
@@ -1866,5 +1912,53 @@ defineExpose({
   word-break: break-all;
 }
 .peer-error-icon { flex-shrink: 0; margin-top: 1px; }
+
+/* ── Vault shared session banner ────────────────────────────────── */
+.shared-files-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(139,92,246,0.07);
+  border-top: 1px solid rgba(139,92,246,0.18);
+  flex-shrink: 0;
+}
+.sfb-info {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-4);
+  letter-spacing: 0.05em;
+  flex: 1;
+  min-width: 0;
+}
+.sfb-delete {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid rgba(240,163,163,0.3);
+  color: #f0a3a3;
+  cursor: pointer;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.sfb-delete:hover { background: rgba(240,163,163,0.08); border-color: #f0a3a3; }
+
+/* ── Vault delete button on own messages ────────────────────────── */
+.msg-vault-del {
+  margin-left: 4px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-4);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.msg-vault-del:hover { color: #f0a3a3; }
 
 </style>

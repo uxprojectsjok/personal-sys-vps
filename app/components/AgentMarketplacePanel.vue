@@ -140,12 +140,13 @@
             <div class="peer-form">
               <div class="peer-form-inputs">
                 <input v-model="newPeer.soul_id" class="input mono" placeholder="Soul-ID (UUID)" @keydown.enter.prevent="addPeer" />
-                <input v-model="newPeer.endpoint" class="input" placeholder="https://peer.domain.com (leer = same-server)" @keydown.enter.prevent="addPeer" />
+                <input v-model="newPeer.endpoint" class="input" placeholder="https://peer.domain.com" title="Cross-Domain-Endpoint (leer = same-server)" @keydown.enter.prevent="addPeer" />
               </div>
               <div class="peer-form-row">
                 <input v-model="newPeer.label" class="input" placeholder="Name (Pflicht — z.B. Jan)" style="flex:1" @keydown.enter.prevent="addPeer" />
                 <button class="btn btn-ghost" :disabled="!newPeer.soul_id.trim() || !newPeer.label.trim()" @click="addPeer">+ Hinzufügen</button>
               </div>
+              <p v-if="peerError" class="field-error" style="margin-top:4px">{{ peerError }}</p>
             </div>
 
             <div class="section-divider"></div>
@@ -439,8 +440,9 @@ const amort = reactive({
 })
 
 // Unified peers: { soul_id, endpoint, label }
-const peers   = ref([])
-const newPeer = reactive({ soul_id: '', endpoint: '', label: '' })
+const peers     = ref([])
+const newPeer   = reactive({ soul_id: '', endpoint: '', label: '' })
+const peerError = ref('')
 
 function buildPeers(trustedSouls, localNodes) {
   const labelMap = new Map()
@@ -462,11 +464,17 @@ function peersToTrustedSouls(peersArr) {
 }
 
 function addPeer() {
+  peerError.value = ''
   const sid = newPeer.soul_id.trim()
   if (!/^[a-f0-9-]{36}$/i.test(sid)) return
-  if (!newPeer.label.trim()) return
-  if (peers.value.some(p => p.soul_id === sid)) return
-  peers.value.push({ soul_id: sid, endpoint: newPeer.endpoint.trim().replace(/\/$/, ''), label: newPeer.label.trim() })
+  const label = newPeer.label.trim()
+  if (!label) return
+  if (peers.value.some(p => p.soul_id === sid)) { peerError.value = 'Dieser Peer ist bereits verbunden.'; return }
+  if (peers.value.some(p => p.label?.toLowerCase() === label.toLowerCase())) {
+    peerError.value = `Name "${label}" ist bereits vergeben — bitte eindeutigen Namen wählen.`
+    return
+  }
+  peers.value.push({ soul_id: sid, endpoint: newPeer.endpoint.trim().replace(/\/$/, ''), label })
   newPeer.soul_id = ''
   newPeer.endpoint = ''
   newPeer.label = ''
