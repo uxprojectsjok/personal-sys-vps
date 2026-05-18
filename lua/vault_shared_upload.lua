@@ -34,8 +34,9 @@ if not ok or type(data) ~= "table" then
   ngx.status = 400; ngx.say('{"error":"invalid_json"}'); return
 end
 
-local safe_name = tostring(data.name or ""):match("^([%w%-%._]{1,120})$")
-if not safe_name then
+-- Explicit char class avoids LuaJIT %w-in-set interpretation issues
+local safe_name = tostring(data.name or "")
+if safe_name == "" or #safe_name > 120 or safe_name:find("[^A-Za-z0-9%.%-%_]") then
   ngx.status = 400; ngx.say('{"error":"invalid_filename"}'); return
 end
 
