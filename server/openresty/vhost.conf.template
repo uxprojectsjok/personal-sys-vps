@@ -596,6 +596,33 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_social_read.lua;
   }
 
+  # ── Vault Shared — Upload (owner only) ───────────────────────────────────────
+  location = /api/vault/shared {
+    limit_except POST { deny all; }
+    limit_req zone=vault_upload burst=5 nodelay;
+    client_max_body_size 15M;
+    client_body_buffer_size 15M;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_upload.lua;
+  }
+
+  # ── Vault Shared — Serve to authenticated peers ───────────────────────────────
+  location ~ ^/api/vault/shared/[^/]+/.+ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    default_type application/octet-stream;
+    content_by_lua_file /etc/openresty/lua/vault_shared_serve.lua;
+  }
+
+  # ── Vault Peer Media Proxy (browser → own node → peer's vault/shared) ─────────
+  location = /api/vault/peer-media {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/octet-stream;
+    content_by_lua_file /etc/openresty/lua/vault_peer_media_proxy.lua;
+  }
+
   # ── Peer Social Read Proxy (server-side, avoids CSP cross-origin) ────────────
   location = /api/soul/peer-social-read {
     limit_except GET { deny all; }
