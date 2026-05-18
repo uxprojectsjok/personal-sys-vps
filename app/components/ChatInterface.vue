@@ -8,131 +8,121 @@
     <!-- ── Stream ──────────────────────────────────────────────────── -->
     <div ref="scrollEl" class="stream">
 
-      <!-- AI Chat messages -->
-      <article
-        v-for="(m, i) in messages"
-        :key="m.id || i"
-        class="msg"
-        :class="{ user: m.role === 'user', ai: m.role === 'assistant' }"
-      >
-        <header class="who">
-          <span class="handle">{{ m.role === 'user' ? 'Du' : (localRole === 'soul' ? 'SoulKI' : 'Entw.') }}</span>
-          <time>{{ fmtTime(m.ts || Date.now()) }}</time>
-        </header>
-        <div class="body">
-          <div v-if="m.mediaType === 'image' && m.mediaUrl" class="media-preview">
-            <img :src="m.mediaUrl" alt="" loading="lazy" />
-          </div>
-          <div v-else-if="m.mediaType === 'audio' && m.mediaUrl" class="media-audio">
-            <audio controls :src="m.mediaUrl" style="accent-color:var(--accent)"></audio>
-          </div>
-          <div v-else-if="m.mediaType === 'video' && m.mediaUrl" class="media-video">
-            <video controls :src="m.mediaUrl" playsinline></video>
-          </div>
-          <div v-if="m.youtubeEmbed" class="media-embed">
-            <iframe
-              :src="`https://www.youtube-nocookie.com/embed/${m.youtubeEmbed.videoId}`"
-              frameborder="0" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
-            ></iframe>
-          </div>
-          <div v-if="m.spotifyEmbed" class="media-spotify">
-            <iframe
-              :src="`https://open.spotify.com/embed/track/${m.spotifyEmbed.id}?utm_source=generator&theme=0`"
-              frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
-            ></iframe>
-          </div>
-          <a v-if="m.linkCard" :href="m.linkCard.url" target="_blank" rel="noopener" class="link-card">
-            <span class="lc-icon">{{ m.linkCard.service === 'youtube' ? '▶' : m.linkCard.service === 'spotify' ? '♫' : '🔍' }}</span>
-            <span class="lc-label">{{ m.linkCard.label }}</span>
-            <span class="lc-arr">→</span>
-          </a>
-          <div v-if="m.streaming && !m.text" class="dots">
-            <span></span><span></span><span></span>
-          </div>
-          <p v-for="(para, j) in paragraphs(m.text)" :key="j" v-html="renderText(para)"></p>
-          <div v-if="m.actions?.length" class="msg-actions">
-            <button
-              v-for="a in m.actions" :key="a.label"
-              class="msg-action-btn" :class="a.primary ? 'primary' : 'secondary'"
-              :disabled="m.actionsDisabled" @click="handleMsgAction(m, a)"
-            >{{ a.label }}</button>
-          </div>
-        </div>
-      </article>
+      <div v-if="peerPollErrors.length" class="peer-error-notice">
+        <span class="peer-error-icon">⚠</span>
+        <span>{{ peerPollErrors.length === 1 ? 'Peer nicht erreichbar' : `${peerPollErrors.length} Peers nicht erreichbar` }} · {{ peerPollErrors.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
+      </div>
 
-      <!-- ── Soziale Sphere — läuft direkt in den Chat ein ─────────── -->
-      <template v-if="displayMessages.length > 0 || peerPollErrors.length">
+      <template v-for="(item, idx) in unifiedStream" :key="item.id || `${item._type}-${item.ts ?? item._ts}-${idx}`">
 
-        <div class="social-rule">
-          <span class="social-rule-label">Soziale Sphere</span>
-          <button class="social-rule-btn" :disabled="isRefreshing" @click="refreshAgentContent" :title="isRefreshing ? 'Lädt…' : 'Aktualisieren'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="social-rule-icon" :class="{ pulse: isRefreshing }">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
-            </svg>
-          </button>
-          <button class="social-rule-btn" :disabled="isSynthesizing" @click="triggerSynthesis" title="Briefing">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="social-rule-icon" :class="{ pulse: isSynthesizing }">
-              <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
-            </svg>
-          </button>
+        <!-- Day separator (bubbles only) -->
+        <div v-if="item._type === 'bubble' && item._showDaySep" class="msg-day-sep">
+          {{ formatDay(item.ts) }}
         </div>
 
-        <div v-if="peerPollErrors.length" class="peer-error-notice">
-          <span class="peer-error-icon">⚠</span>
-          <span>{{ peerPollErrors.length === 1 ? 'Peer nicht erreichbar' : `${peerPollErrors.length} Peers nicht erreichbar` }} · {{ peerPollErrors.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
-        </div>
-
-        <template v-for="(msg, i) in displayMessages" :key="`${msg.ts}-${i}`">
-          <div v-if="isDifferentDay(msg, displayMessages[i - 1])" class="msg-day-sep">
-            {{ formatDay(msg.ts) }}
-          </div>
-          <div class="msg-bubble" :class="msg.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'">
-            <div v-if="msg.from !== 'me'" class="msg-sender"
-              :style="{ color: msg.sphere === 'synthesis' ? '#60a5fa' : msg.sphere === 'social' ? '#34d399' : '#a78bfa' }">
-              {{ msg.author ?? msg.from.slice(0, 8) }}
+        <!-- AI message -->
+        <article
+          v-if="item._type === 'ai'"
+          class="msg"
+          :class="{ user: item.role === 'user', ai: item.role === 'assistant' }"
+        >
+          <header class="who">
+            <span class="handle">{{ item.role === 'user' ? 'Du' : (localRole === 'soul' ? 'SoulKI' : 'Entw.') }}</span>
+            <time>{{ fmtTime(item.ts || Date.now()) }}</time>
+          </header>
+          <div class="body">
+            <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview">
+              <img :src="item.mediaUrl" alt="" loading="lazy" />
             </div>
-            <div class="msg-inner"
-              :class="msg.from === 'me' ? 'msg-inner--me' : msg.sphere === 'synthesis' ? 'msg-inner--synthesis' : (msg.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
-              <div v-if="msgExpiredCache.has(msg.ts)" class="msg-expired">Inhalt abgelaufen</div>
-              <template v-else>
-                <img v-if="msgMediaCache.get(msg.ts)" :src="msgMediaCache.get(msg.ts)" class="msg-media-img" alt="" />
-                <div v-if="msgBlobCache.get(msg.ts)" class="msg-doc-link">
-                  <a :href="msgBlobCache.get(msg.ts).url" :download="msgBlobCache.get(msg.ts).name" class="msg-doc-a">
-                    <span class="msg-doc-icon">↓</span>
-                    <span class="msg-doc-name">{{ msgBlobCache.get(msg.ts).name }}</span>
-                  </a>
-                </div>
-              </template>
-              <p v-for="(para, j) in paragraphs(cleanMsgContent(msg))" :key="j" v-html="renderText(para)"></p>
+            <div v-else-if="item.mediaType === 'audio' && item.mediaUrl" class="media-audio">
+              <audio controls :src="item.mediaUrl" style="accent-color:var(--accent)"></audio>
             </div>
-            <div class="msg-foot">
-              <span v-if="msg.from === 'me'" class="msg-to"
-                :style="msg.to === 'peer' ? 'color:#34d399' : msg.to === 'agent' ? 'color:#a78bfa' : 'color:#60a5fa'">
-                → {{ msg.to === 'peer' ? '@Peer' : msg.to === 'agent' ? '@Agent' : '@Community' }}
-              </span>
-              <time class="msg-time">{{ fmtMsgDate(msg.ts) }}</time>
-              <span
-                v-if="msg.from === 'me' && (msg.to === 'peer' || msg.to === 'community') && msgDeliveryStatus.has(msg.ts)"
-                class="msg-delivery"
-                :class="`msg-delivery--${msgDeliveryStatus.get(msg.ts)}`"
-                :title="deliveryTitle(msg.ts)"
-              >{{ deliveryIcon(msg.ts) }}</span>
+            <div v-else-if="item.mediaType === 'video' && item.mediaUrl" class="media-video">
+              <video controls :src="item.mediaUrl" playsinline></video>
+            </div>
+            <div v-if="item.youtubeEmbed" class="media-embed">
+              <iframe
+                :src="`https://www.youtube-nocookie.com/embed/${item.youtubeEmbed.videoId}`"
+                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
+              ></iframe>
+            </div>
+            <div v-if="item.spotifyEmbed" class="media-spotify">
+              <iframe
+                :src="`https://open.spotify.com/embed/track/${item.spotifyEmbed.id}?utm_source=generator&theme=0`"
+                frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
+              ></iframe>
+            </div>
+            <a v-if="item.linkCard" :href="item.linkCard.url" target="_blank" rel="noopener" class="link-card">
+              <span class="lc-icon">{{ item.linkCard.service === 'youtube' ? '▶' : item.linkCard.service === 'spotify' ? '♫' : '🔍' }}</span>
+              <span class="lc-label">{{ item.linkCard.label }}</span>
+              <span class="lc-arr">→</span>
+            </a>
+            <div v-if="item.streaming && !item.text" class="dots">
+              <span></span><span></span><span></span>
+            </div>
+            <p v-for="(para, j) in paragraphs(item.text)" :key="j" v-html="renderText(para)"></p>
+            <div v-if="item.actions?.length" class="msg-actions">
+              <button
+                v-for="a in item.actions" :key="a.label"
+                class="msg-action-btn" :class="a.primary ? 'primary' : 'secondary'"
+                :disabled="item.actionsDisabled" @click="handleMsgAction(item, a)"
+              >{{ a.label }}</button>
             </div>
           </div>
-        </template>
+        </article>
 
-        <div v-if="isSynthesizing" class="msg-bubble msg-bubble--other briefing-bubble">
-          <div class="msg-sender" style="color:#60a5fa">Briefing</div>
-          <div class="msg-inner msg-inner--agent">
-            <div class="dots"><span></span><span></span><span></span></div>
+        <!-- Social / agent / synthesis bubble -->
+        <div
+          v-else-if="item._type === 'bubble'"
+          class="msg-bubble"
+          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
+        >
+          <div v-if="item.from !== 'me'" class="msg-sender"
+            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+            {{ item.author ?? item.from.slice(0, 8) }}
           </div>
-        </div>
-
-        <div v-if="isSavingAgent" class="dots saving-dots">
-          <span></span><span></span><span></span>
+          <div class="msg-inner"
+            :class="item.from === 'me' ? 'msg-inner--me' : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+            <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
+            <template v-else>
+              <img v-if="msgMediaCache.get(item.ts)" :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt="" />
+              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
+                <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
+                  <span class="msg-doc-icon">↓</span>
+                  <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
+                </a>
+              </div>
+            </template>
+            <p v-for="(para, j) in paragraphs(cleanMsgContent(item))" :key="j" v-html="renderText(para)"></p>
+          </div>
+          <div class="msg-foot">
+            <span v-if="item.from === 'me'" class="msg-to"
+              :style="item.to === 'agent' ? 'color:#a78bfa' : item.to === 'community' ? 'color:#60a5fa' : 'color:#34d399'">
+              → {{ peerLabelForTo(item.to) }}
+            </span>
+            <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
+            <span
+              v-if="item.from === 'me' && item.to !== 'agent' && item.to !== 'ki' && msgDeliveryStatus.has(item.ts)"
+              class="msg-delivery"
+              :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
+              :title="deliveryTitle(item.ts)"
+            >{{ deliveryIcon(item.ts) }}</span>
+          </div>
         </div>
 
       </template>
+
+      <!-- Synthesis typing indicator -->
+      <div v-if="isSynthesizing" class="msg-bubble msg-bubble--other briefing-bubble">
+        <div class="msg-sender" style="color:#60a5fa">Briefing</div>
+        <div class="msg-inner msg-inner--agent">
+          <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <div v-if="isSavingAgent" class="dots saving-dots">
+        <span></span><span></span><span></span>
+      </div>
 
       <div ref="chatEnd" class="anchor"></div>
     </div>
@@ -306,6 +296,7 @@ const peerPollErrors = computed(() =>
 onUnmounted(() => {
   clearInterval(_agentPollTimer)
   clearInterval(_cacheEvictTimer)
+  clearInterval(_briefingTimer)
   localSynthesisMsgs.value = []
   msgDeliveryStatus.clear()
   peerPollStatus.clear()
@@ -520,6 +511,38 @@ const displayMessages = computed(() => {
     .sort((a, b) => new Date(a.ts) - new Date(b.ts))
 })
 
+// ── Unified stream: AI articles + social bubbles, sorted by time ──
+const unifiedStream = computed(() => {
+  const ai = (messages.value || []).map(m => ({
+    _type: 'ai',
+    _ts: typeof m.ts === 'number' ? m.ts : new Date(m.ts).getTime(),
+    ...m,
+  }))
+  const bubbles = displayMessages.value.map(m => ({
+    _type: 'bubble',
+    _ts: typeof m.ts === 'string' ? new Date(m.ts).getTime() : (m.ts || 0),
+    ...m,
+  }))
+  const sorted = [...ai, ...bubbles].sort((a, b) => a._ts - b._ts)
+  let lastBubbleDate = null
+  for (const item of sorted) {
+    if (item._type === 'bubble') {
+      const d = new Date(item.ts).toDateString()
+      item._showDaySep = lastBubbleDate !== null && d !== lastBubbleDate
+      lastBubbleDate = d
+    }
+  }
+  return sorted
+})
+
+function peerLabelForTo(to) {
+  if (to === 'peer')      return '@Peers'
+  if (to === 'agent')     return '@Agent'
+  if (to === 'community') return '@Alle'
+  const peer = peerIds.value.find(p => p.soul_id === to)
+  return peer?.label ? `@${peer.label}` : `@${String(to).slice(0, 8)}…`
+}
+
 // ── KI Gesprächsbeitrag (lokal, nicht gepusht) ────────────────────
 async function triggerSynthesis() {
   if (isSynthesizing.value) return
@@ -574,10 +597,10 @@ async function handlePeerSend(text, recipient) {
   try {
     const entry = formatMsgEntry(text, 'me', recipient, msgTs)
     let current = soulContentAgent.value ?? ''
-    if (recipient === 'peer' || recipient === 'community')
-      current = appendToMarkerBlock(current, 'SOCIAL', entry)
-    if (recipient === 'agent' || recipient === 'community')
-      current = appendToMarkerBlock(current, 'AGENT', entry)
+    const toSocial = recipient !== 'agent' && recipient !== 'ki'
+    const toAgent  = recipient === 'agent' || recipient === 'community'
+    if (toSocial) current = appendToMarkerBlock(current, 'SOCIAL', entry)
+    if (toAgent)  current = appendToMarkerBlock(current, 'AGENT', entry)
     updateContent(current)
     await pushToServer()
     msgDeliveryStatus.set(msgTs, 'saved')
@@ -850,6 +873,16 @@ function detectIntent(text) {
   // Web search
   const webMatch = t.match(/^such[e]?\s+(?:(?:im\s+)?(?:netz|web|internet|google)\s+(?:nach\s+)?|nach\s+)(.+)/i)
   if (webMatch) return { type: 'google', query: webMatch[1].trim() }
+  // @all → community (send to everyone)
+  const allMention = t.match(/^@all\b\s*(.*)/is)
+  if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
+  // @name → specific peer by label
+  const nameMention = t.match(/^@(\w+)\b\s*(.*)/is)
+  if (nameMention) {
+    const name = nameMention[1].toLowerCase()
+    const peer = peerIds.value.find(p => p.label?.toLowerCase() === name || p.label?.toLowerCase().startsWith(name))
+    if (peer) return { type: 'peer-specific', soul_id: peer.soul_id, query: (nameMention[2].trim() || t) }
+  }
   // Peer message: "→ peers: msg", "peer: msg", "an peers: msg"
   const peerMatch = t.match(/^(?:→\s*|peer(?:s)?:|an\s+(?:meine[n]?\s+)?peers?:\s*)(.+)/is)
   if (peerMatch) return { type: 'peer', query: peerMatch[1].trim() }
@@ -1110,9 +1143,10 @@ async function handleSend() {
   if (intent.type === 'mode-dev') {
     localRole.value = 'session'; emit('role-change', 'session'); return
   }
-  if (intent.type === 'peer')      { await handlePeerSend(intent.query || raw, 'peer'); return }
-  if (intent.type === 'community') { await handlePeerSend(intent.query || raw, 'community'); return }
-  if (intent.type === 'ki')        { await triggerSynthesis(); return }
+  if (intent.type === 'peer')         { await handlePeerSend(intent.query || raw, 'peer'); return }
+  if (intent.type === 'community')    { await handlePeerSend(intent.query || raw, 'community'); return }
+  if (intent.type === 'peer-specific') { await handlePeerSend(intent.query || raw, intent.soul_id); return }
+  if (intent.type === 'ki')           { await triggerSynthesis(); return }
 
   // Soul-Modus, Empfänger ≠ KI → soziale Sphere
   if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
@@ -1136,20 +1170,34 @@ async function handleSend() {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────
+let _briefingTimer = null
+
 onMounted(async () => {
   nextTick(autoResize)
   try {
     const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
     if (r.ok) {
       const d = await r.json()
+      // Enrich peer list with labels from localStorage
+      const ownId     = props.soulCert?.split('.')?.[0] || ''
+      const lsKey     = ownId ? `sys.connected_nodes.${ownId}` : null
+      let localNodes  = []
+      if (lsKey) { try { localNodes = JSON.parse(localStorage.getItem(lsKey) || '[]') } catch {} }
+      const labelMap  = new Map(localNodes.map(n => [n.soul_id, n.label || '']))
       peerIds.value = (d.amortization?.trusted_souls ?? [])
-        .map(p => typeof p === 'string' ? { soul_id: p, endpoint: null } : p)
+        .map(p => {
+          if (typeof p === 'string') return { soul_id: p, endpoint: null, label: labelMap.get(p) || '' }
+          return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
+        })
         .filter(p => p && p.soul_id)
     }
   } catch { /* silent */ }
   await refreshAgentContent()
+  // Auto-briefing on open (small delay so content renders first)
+  setTimeout(() => { if (displayMessages.value.length > 0) triggerSynthesis() }, 3000)
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
   _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
+  _briefingTimer   = setInterval(() => { if (displayMessages.value.length > 0) triggerSynthesis() }, 15 * 60 * 1000)
 })
 onUnmounted(() => {
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
@@ -1511,39 +1559,6 @@ defineExpose({
 }
 .dock-media-remove:hover { color: var(--fg-2); }
 
-/* ── Soziale Sphere — Trennlinie ─────────────────────────────────── */
-.social-rule {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: clamp(20px,3vw,32px) 0 clamp(10px,2vw,16px);
-  opacity: 0.6;
-}
-.social-rule::before, .social-rule::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--rule-2);
-}
-.social-rule::before { flex: none; width: 0; }
-.social-rule-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--fg-4);
-  white-space: nowrap;
-}
-.social-rule-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px;
-  background: transparent; border: 0;
-  cursor: pointer; color: var(--fg-4);
-  transition: color 0.12s; flex-shrink: 0;
-}
-.social-rule-btn:hover:not(:disabled) { color: var(--fg-2); }
-.social-rule-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.social-rule-icon { width: 12px; height: 12px; }
 
 /* ── Tages-Trenner ──────────────────────────────────────────────── */
 .msg-day-sep {
