@@ -143,8 +143,8 @@
                 <input v-model="newPeer.endpoint" class="input" placeholder="https://peer.domain.com (leer = same-server)" @keydown.enter.prevent="addPeer" />
               </div>
               <div class="peer-form-row">
-                <input v-model="newPeer.label" class="input" placeholder="Name (optional)" style="flex:1" @keydown.enter.prevent="addPeer" />
-                <button class="btn btn-ghost" :disabled="!newPeer.soul_id.trim()" @click="addPeer">+ Hinzufügen</button>
+                <input v-model="newPeer.label" class="input" placeholder="Name (Pflicht — z.B. Jan)" style="flex:1" @keydown.enter.prevent="addPeer" />
+                <button class="btn btn-ghost" :disabled="!newPeer.soul_id.trim() || !newPeer.label.trim()" @click="addPeer">+ Hinzufügen</button>
               </div>
             </div>
 
@@ -464,6 +464,7 @@ function peersToTrustedSouls(peersArr) {
 function addPeer() {
   const sid = newPeer.soul_id.trim()
   if (!/^[a-f0-9-]{36}$/i.test(sid)) return
+  if (!newPeer.label.trim()) return
   if (peers.value.some(p => p.soul_id === sid)) return
   peers.value.push({ soul_id: sid, endpoint: newPeer.endpoint.trim().replace(/\/$/, ''), label: newPeer.label.trim() })
   newPeer.soul_id = ''
