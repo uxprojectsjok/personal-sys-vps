@@ -79,7 +79,7 @@
         >
           <div v-if="item.from !== 'me'" class="msg-sender"
             :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : '#a78bfa' }">
-            {{ item.author ?? item.from.slice(0, 8) }}
+            {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
             :class="item.from === 'me' ? 'msg-inner--me' : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
@@ -535,6 +535,13 @@ const unifiedStream = computed(() => {
   return sorted
 })
 
+function resolveAuthor(msg) {
+  if (msg.author) return msg.author
+  if (!msg.from || msg.from === 'me') return 'Du'
+  const peer = peerIds.value.find(p => p.soul_id === msg.from)
+  return peer?.label || msg.from.slice(0, 8)
+}
+
 function peerLabelForTo(to) {
   if (to === 'peer')      return '@Peers'
   if (to === 'agent')     return '@Agent'
@@ -553,7 +560,7 @@ async function triggerSynthesis() {
   await nextTick(scrollToBottom)
   try {
     const context = recent
-      .map(m => `${m.from === 'me' ? 'Du' : (m.author ?? m.from.slice(0, 8))}: ${m.content}`)
+      .map(m => `${m.from === 'me' ? 'Du' : resolveAuthor(m)}: ${m.content}`)
       .join('\n')
 
     const res = await fetch('/api/chat', {
@@ -563,7 +570,7 @@ async function triggerSynthesis() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 160,
         stream: false,
-        system: `Du nimmst als KI natürlich an einem Gespräch teil. Antworte direkt und kurz auf Deutsch wie ein Teilnehmer — keine Zusammenfassung, keine Einleitung, keine Labels. Maximal 2–3 Sätze.`,
+        system: `Du beobachtest einen Chat-Verlauf und unterstützt die Teilnehmer von außen. Deine Aufgabe: Gib einen kurzen thematischen Impuls, fasse etwas Wesentliches zusammen oder ergänze einen relevanten Fakt oder Kontext aus deinem Wissen — je nachdem was gerade am nützlichsten ist. Sprich die Teilnehmer direkt an. Kein Smalltalk, keine Wiederholungen, keine Meta-Kommentare. Maximal 2–3 Sätze auf Deutsch.`,
         messages: [{ role: 'user', content: context }]
       })
     })
