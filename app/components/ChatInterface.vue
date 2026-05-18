@@ -570,7 +570,7 @@ async function triggerSynthesis() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 160,
         stream: false,
-        system: `Du beobachtest einen Chat-Verlauf und unterstützt die Teilnehmer von außen. Deine Aufgabe: Gib einen kurzen thematischen Impuls, fasse etwas Wesentliches zusammen oder ergänze einen relevanten Fakt oder Kontext aus deinem Wissen — je nachdem was gerade am nützlichsten ist. Sprich die Teilnehmer direkt an. Kein Smalltalk, keine Wiederholungen, keine Meta-Kommentare. Maximal 2–3 Sätze auf Deutsch.`,
+        system: `Du beobachtest einen Chat-Verlauf und unterstützt die Teilnehmer von außen. Deine Aufgabe: Gib einen kurzen thematischen Impuls, fasse etwas Wesentliches zusammen oder ergänze einen relevanten Fakt aus deinem Wissen. Wenn ein Thema im Gespräch aufgetaucht ist, zu dem eine Web-Suche sinnvoll wäre, füge am Ende einen Markdown-Link ein: [Suchbegriff](https://www.google.com/search?q=URL-kodierter+Begriff). Sprich die Teilnehmer direkt an. Kein Smalltalk, keine Wiederholungen, keine Meta-Kommentare. Maximal 2–3 Sätze auf Deutsch.`,
         messages: [{ role: 'user', content: context }]
       })
     })
@@ -759,6 +759,8 @@ function renderText(text) {
   if (!text) return ''
   return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\[([^\]]{1,80})\]\((https:\/\/[^)\s]{1,300})\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-link">$1</a>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
@@ -1287,6 +1289,8 @@ defineExpose({
 .body p   { margin: 0 0 12px; }
 .body p:last-child { margin-bottom: 0; }
 .body code { font-family: var(--mono); font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 1px 5px; }
+.inline-link { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(167,139,250,0.4); transition: text-decoration-color 0.15s; }
+.inline-link:hover { text-decoration-color: var(--accent-bright); }
 .msg.ai .body em { color: var(--accent-bright); font-style: italic; }
 
 @media (max-width: 560px) {
