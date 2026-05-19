@@ -444,7 +444,6 @@ function reloadPage() { location.reload() }
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
-  .tools--desktop { display: none; }
   .burger-btn { display: flex; }
   .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; }
 }
@@ -460,6 +459,7 @@ function reloadPage() { location.reload() }
 .fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.5s; }
 .fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
 .sess-head .tools { display: flex; align-items: center; }
+@media (max-width: 900px) { .sess-head .tools--desktop { display: none; } }
 .tool { padding: 10px 16px; border-left: 1px solid var(--rule); border-top: 0; border-bottom: 0; border-right: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; background: transparent; white-space: nowrap; }
 .tool:hover:not(:disabled) { color: var(--fg); }
 .tool.active { color: var(--accent); }
@@ -481,7 +481,11 @@ function reloadPage() { location.reload() }
 /* min-height: 0 is critical — without it the grid item expands to content height
    and overflows the 1fr track, making the dock push below the viewport */
 .sess-body { display: grid; grid-template-columns: 360px 1fr; gap: 0; overflow: hidden; min-height: 0; }
-@media (max-width: 900px) { .sess-body { grid-template-columns: 1fr; } .mobile-hidden { display: none !important; } }
+@media (max-width: 900px) {
+  .sess-body { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .col-soul, .col-chat { grid-row: 1; grid-column: 1; }
+  .mobile-hidden { display: none !important; }
+}
 @media (min-width: 901px) { .mobile-hidden { display: flex !important; } }
 
 .col-soul { border-right: 1px solid var(--rule); padding: clamp(24px,4vw,40px) clamp(18px,3vw,28px); display: flex; flex-direction: column; gap: 28px; overflow-y: auto; background: linear-gradient(180deg, rgba(139,92,246,0.04) 0%, transparent 40%); min-height: 0; }
