@@ -189,6 +189,14 @@
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity">
           <span></span><span></span><span></span>
         </span>
+        <button
+          class="archivar-toggle"
+          :class="{ active: archivEnabled }"
+          @click="archivEnabled = !archivEnabled"
+          :title="archivEnabled ? 'Soul-Archivar aktiv — klicken zum Deaktivieren' : 'Soul-Archivar pausiert — klicken zum Aktivieren'"
+        >
+          <span class="archivar-dot"></span>Archivar
+        </button>
         <select class="model-select" v-model="selectedModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
           <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
         </select>
@@ -319,6 +327,12 @@ const selectedModel = ref(
   typeof window !== 'undefined' ? (localStorage.getItem('sys_chat_model') || 'claude-sonnet-4-6') : 'claude-sonnet-4-6'
 )
 watch(selectedModel, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_chat_model', v) })
+
+// ── Archivar toggle ─────────────────────────────────────────────────
+const archivEnabled = ref(
+  typeof window !== 'undefined' ? localStorage.getItem('sys_archivar_enabled') !== 'false' : true
+)
+watch(archivEnabled, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_archivar_enabled', v) })
 
 // ── Media drawer ────────────────────────────────────────────────────
 const mediaOpen = ref(false)
@@ -1694,6 +1708,29 @@ defineExpose({
 }
 .model-select:hover { color: var(--fg-2); }
 .model-select option { background: #12101a; color: var(--fg); }
+
+/* Archivar toggle */
+.archivar-toggle {
+  display: flex; align-items: center; gap: 5px;
+  border: 0; border-left: 1px solid var(--rule);
+  background: transparent; cursor: pointer;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-4); padding: 2px 8px;
+  transition: color 0.15s;
+}
+.archivar-toggle:hover { color: var(--fg-2); }
+.archivar-toggle.active { color: var(--accent); }
+.archivar-dot {
+  width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid currentColor;
+  transition: background 0.15s;
+}
+.archivar-toggle.active .archivar-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
 
 /* Main row */
 .dock-main {
