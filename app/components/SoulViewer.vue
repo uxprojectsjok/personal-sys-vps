@@ -402,6 +402,7 @@ async function handlePushLocal() {
 .meta-indicator.on { background: #a78bfa; box-shadow: 0 0 6px rgba(167,139,250,0.5); }
 .meta-id { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); white-space: nowrap; }
 .meta-sep { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); opacity: 0.4; }
+@media (max-width: 500px) { .meta-id, .meta-sep { display: none; } }
 .meta-vault { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); white-space: nowrap; }
 .meta-sync { flex: none; font-size: 12px; }
 .meta-sync.ok { color: #34d399; }

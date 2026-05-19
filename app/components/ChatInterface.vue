@@ -20,17 +20,14 @@
           {{ formatDay(item.ts) }}
         </div>
 
-        <!-- AI message -->
-        <article
+        <!-- AI message — chat bubble, consistent with social stream -->
+        <div
           v-if="item._type === 'ai'"
-          class="msg"
-          :class="{ user: item.role === 'user', ai: item.role === 'assistant' }"
+          class="msg-bubble"
+          :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <header class="who">
-            <span class="handle">{{ item.role === 'user' ? 'Du' : 'SoulKI' }}</span>
-            <time>{{ fmtTime(item.ts || Date.now()) }}</time>
-          </header>
-          <div class="body">
+          <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
+          <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview">
               <img :src="item.mediaUrl" alt="" loading="lazy" />
             </div>
@@ -69,7 +66,8 @@
               >{{ a.label }}</button>
             </div>
           </div>
-        </article>
+          <time class="msg-time-ai">{{ fmtTime(item.ts || Date.now()) }}</time>
+        </div>
 
         <!-- Social / agent / synthesis bubble -->
         <div
@@ -1500,7 +1498,7 @@ defineExpose({
   padding-bottom: clamp(40px,6vw,64px);
   display: flex;
   flex-direction: column;
-  gap: clamp(28px,3.5vw,40px);
+  gap: clamp(16px,3.5vw,40px);
   position: relative;
 }
 .stream::before {
@@ -1513,38 +1511,17 @@ defineExpose({
 
 .anchor { height: 1px; }
 
-/* ── Message ─────────────────────────────────────────────────────── */
-.msg {
-  max-width: 720px;
-  display: grid; grid-template-columns: 96px 1fr; gap: 20px; align-items: start;
-}
-.msg.user { margin-left: auto; }
-.msg.note { grid-template-columns: 1fr; color: var(--fg-3); font-style: italic; border-left: 2px solid var(--rule-2); padding-left: 12px; }
-
-.who {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
-  padding-top: 6px; text-align: right;
-  border-right: 1px solid var(--rule-2); padding-right: 14px;
-  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
-}
-.who .handle { color: var(--fg-3); }
-.who time    { font-family: var(--mono); font-style: normal; color: var(--fg-4); font-size: 12px; letter-spacing: 0.10em; }
-.msg.user .who .handle { color: var(--accent-bright); }
-
-.body { font-family: var(--serif); font-size: clamp(16px,1.6vw,17px); line-height: 1.58; color: var(--fg); }
-.msg.user .body { color: var(--fg-2); }
-.body p   { margin: 0 0 12px; }
-.body p:last-child { margin-bottom: 0; }
-.body code { font-family: var(--mono); font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 1px 5px; }
+/* ── Inline link ─────────────────────────────────────────────────── */
 .inline-link { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(167,139,250,0.4); transition: text-decoration-color 0.15s; }
 .inline-link:hover { text-decoration-color: var(--accent-bright); }
-.msg.ai .body em { color: var(--accent-bright); font-style: italic; }
 
-@media (max-width: 560px) {
-  .msg { grid-template-columns: 1fr; gap: 6px; }
-  .who { border-right: 0; padding-right: 0; text-align: left; align-items: flex-start; border-bottom: 1px solid var(--rule); padding-bottom: 6px; flex-direction: row; gap: 10px; }
+/* ── AI message timestamp ────────────────────────────────────────── */
+.msg-time-ai {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  color: var(--fg-4); padding: 1px 4px;
+  align-self: flex-start;
 }
+.msg-bubble--me .msg-time-ai { align-self: flex-end; }
 
 /* ── Streaming dots ──────────────────────────────────────────────── */
 .dots { display: flex; gap: 6px; padding: 8px 0; }
@@ -1949,6 +1926,16 @@ defineExpose({
   color: var(--fg-2);
   font-style: italic;
 }
+.msg-inner--ki {
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px 14px 14px 4px;
+  border-left: 2px solid rgba(139,92,246,0.45);
+  color: var(--fg);
+  font-size: clamp(15px,1.5vw,16px);
+  line-height: 1.60;
+}
+.msg-inner--ki em { color: var(--accent-bright); font-style: italic; }
+.msg-inner--ki code { font-family: var(--mono); font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 1px 5px; }
 
 .msg-foot {
   display: flex;
