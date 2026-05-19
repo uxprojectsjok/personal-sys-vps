@@ -303,6 +303,10 @@
     letter-spacing: -0.02em;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     background: var(--sys-bg);
     min-height: 100vh;

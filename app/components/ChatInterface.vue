@@ -1163,24 +1163,15 @@ async function onFileInputChange(e) {
 }
 
 async function processPickedFile(file) {
-  if (localRole.value === 'soul' && isInPeerMode()) {
-    if (IMAGE_EXT.test(file.name)) {
-      try {
-        const b64 = await compressImage(file).catch(() => fileToBase64(file))
-        msgMedia.value = { base64: b64, mime: 'image/jpeg', name: file.name }
-      } catch { /* ignore */ }
-    } else {
-      msgDoc.value = { file, name: file.name }
-    }
-    return
+  // Always stage — handleSend routes to peer or KI based on @mention in draft
+  if (IMAGE_EXT.test(file.name)) {
+    try {
+      const b64 = await compressImage(file).catch(() => fileToBase64(file))
+      msgMedia.value = { base64: b64, mime: 'image/jpeg', name: file.name, _file: file }
+    } catch { /* ignore */ }
+  } else {
+    msgDoc.value = { file, name: file.name }
   }
-  const result = await handleLocalFile(file)
-  if (!result) return
-  if (result._imageFile) { await handleImageVision(result._imageFile, result.name); return }
-  const meta = {}
-  if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
-  if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
-  await dispatchToChat(result.text, meta)
 }
 
 // ── NLP intent detection ───────────────────────────────────────────
@@ -1501,6 +1492,27 @@ async function handleSend() {
     return
   }
 
+  // Staged image (picked file) → vision for KI
+  if (msgMedia.value?._file) {
+    const media = msgMedia.value
+    msgMedia.value = null
+    await handleImageVision(media._file, raw || `[Bild: "${media.name}"]`)
+    return
+  }
+  // Staged doc (picked file) → process and dispatch to KI
+  if (msgDoc.value?.file) {
+    const doc = msgDoc.value
+    msgDoc.value = null
+    const result = await handleLocalFile(doc.file)
+    if (!result) return
+    if (result._imageFile) { await handleImageVision(result._imageFile, result.name); return }
+    const meta = {}
+    if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
+    if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
+    await dispatchToChat(result.text || raw, meta)
+    return
+  }
+
   if (intent.type === 'youtube' || intent.type === 'spotify' || intent.type === 'google') {
     const result = await handleSearchCommand({ type: intent.type, query: intent.query })
     if (!result) return
@@ -1810,9 +1822,9 @@ defineExpose({
   min-width: 0;
 }
 .input {
-  font-family: var(--serif); font-size: clamp(15px,1.6vw,17px);
+  font-family: var(--serif); font-size: clamp(16px,1.6vw,17px);
   color: var(--fg); border: 0; outline: 0;
-  background: transparent; padding: 14px 0;
+  background: transparent; padding: 14px 0 14px 8px;
   width: 100%; min-width: 0;
   line-height: 1.45; resize: none; overflow-y: auto;
   min-height: 48px; max-height: 140px;
