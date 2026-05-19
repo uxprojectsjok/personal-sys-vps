@@ -1364,7 +1364,8 @@ async function maybeCompressHistory() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 400, stream: false,
+        model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
+        max_tokens: 400, stream: false,
         system: 'Fasse diesen Gesprächsverlauf prägnant zusammen. Max. 5 Sätze. Auf Deutsch.',
         messages: toSummarize.map((m) => ({ role: m.role, content: m.contentBlocks || m.text })),
       }),
