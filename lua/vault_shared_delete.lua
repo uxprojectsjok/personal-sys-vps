@@ -20,7 +20,7 @@ if not filename then
   ngx.status = 400; ngx.say('{"error":"invalid_path"}'); return
 end
 
-filename = filename:match("^([%w%-%._]+)$")
+filename = filename:match("^([A-Za-z0-9%.%-%_]+)$")
 if not filename then
   ngx.status = 400; ngx.say('{"error":"invalid_filename"}'); return
 end
