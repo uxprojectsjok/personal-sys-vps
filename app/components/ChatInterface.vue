@@ -7,6 +7,7 @@
 
     <!-- ── Stream ──────────────────────────────────────────────────── -->
     <div ref="scrollEl" class="stream">
+      <div class="stream-inner">
 
       <div v-if="peerPollErrors.length" class="peer-error-notice">
         <span class="peer-error-icon">⚠</span>
@@ -158,6 +159,7 @@
       </div>
 
       <div ref="chatEnd" class="anchor"></div>
+      </div><!-- /stream-inner -->
     </div>
 
     <!-- ── Dock ────────────────────────────────────────────────────── -->
@@ -187,21 +189,41 @@
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity">
           <span></span><span></span><span></span>
         </span>
+        <select class="model-select" v-model="selectedModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
+          <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
+        </select>
       </div>
 
       <!-- Input row -->
       <div class="dock-main">
-        <button class="dock-icon" @click="cameraOpen = true" :disabled="visionLoading || props.growthLocked" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg" :class="{ pulse: visionLoading }">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+        <!-- "+" media drawer toggle -->
+        <button
+          class="dock-icon dock-plus"
+          :class="{ active: mediaOpen }"
+          @click="mediaOpen = !mediaOpen"
+          :disabled="props.growthLocked"
+          title="Medien anhängen"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
         </button>
-        <button class="dock-icon" @click="handleFileChip" title="Datei anhängen" :disabled="props.growthLocked">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-          </svg>
-        </button>
+        <!-- Expandable media buttons -->
+        <Transition name="media-drawer">
+          <div v-if="mediaOpen" class="media-drawer">
+            <button class="dock-icon" @click="cameraOpen = true; mediaOpen = false" :disabled="visionLoading || props.growthLocked" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg" :class="{ pulse: visionLoading }">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+              </svg>
+            </button>
+            <button class="dock-icon" @click="handleFileChip; mediaOpen = false" title="Datei anhängen" :disabled="props.growthLocked">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+              </svg>
+            </button>
+          </div>
+        </Transition>
         <div class="input-wrap">
           <textarea
             ref="textareaEl"
@@ -286,6 +308,20 @@ watch(certError, (v) => { if (v) emit('cert-error') })
 
 // ── Local role — always soul mode ──────────────────────────────────
 const localRole = ref('soul')
+
+// ── Model selector ─────────────────────────────────────────────────
+const MODELS = [
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku', hint: 'schnell' },
+  { id: 'claude-sonnet-4-6',          label: 'Sonnet', hint: 'Standard' },
+  { id: 'claude-opus-4-7',            label: 'Opus',   hint: 'tief' },
+]
+const selectedModel = ref(
+  typeof window !== 'undefined' ? (localStorage.getItem('sys_chat_model') || 'claude-sonnet-4-6') : 'claude-sonnet-4-6'
+)
+watch(selectedModel, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_chat_model', v) })
+
+// ── Media drawer ────────────────────────────────────────────────────
+const mediaOpen = ref(false)
 
 // ── Input state ────────────────────────────────────────────────────
 const draft      = ref('')
@@ -1359,6 +1395,7 @@ async function dispatchToChat(text, msgMeta = {}) {
     conversationSummary: conversationSummary.value || null,
     profileImageBase64: profileBase64.value,
     role: localRole.value,
+    model: selectedModel.value,
     onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
   })
 
@@ -1493,12 +1530,10 @@ defineExpose({
 .stream {
   flex: 1;
   overflow-y: auto;
-  padding: clamp(28px,5vw,48px) clamp(20px,4vw,48px);
-  /* Bottom gap so last message breathes above the dock */
-  padding-bottom: clamp(40px,6vw,64px);
+  padding: clamp(16px,3vw,32px) clamp(12px,3vw,32px);
+  padding-bottom: clamp(24px,4vw,48px);
   display: flex;
   flex-direction: column;
-  gap: clamp(16px,3.5vw,40px);
   position: relative;
 }
 .stream::before {
@@ -1508,6 +1543,16 @@ defineExpose({
   pointer-events: none; z-index: 0;
 }
 .stream > * { position: relative; z-index: 1; }
+
+/* Centered inner column — like Claude.ai */
+.stream-inner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px,2.5vw,28px);
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
 
 .anchor { height: 1px; }
 
@@ -1632,39 +1677,67 @@ defineExpose({
 .mode-activity span:nth-child(2) { animation-delay: 0.2s; }
 .mode-activity span:nth-child(3) { animation-delay: 0.4s; }
 
+/* Model selector */
+.model-select {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  color: var(--fg-4);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 6px;
+  cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  outline: 0;
+}
+.model-select:hover { color: var(--fg-2); }
+.model-select option { background: #12101a; color: var(--fg); }
+
 /* Main row */
 .dock-main {
-  display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  display: flex;
   align-items: stretch;
-  min-height: 56px;
+  min-height: 52px;
 }
 
 /* Icon buttons (camera, file) */
 .dock-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 48px;
+  width: 44px; flex-shrink: 0;
   border: 0; border-right: 1px solid var(--rule);
   background: transparent; cursor: pointer;
   color: var(--fg-4);
   transition: color 0.12s, background 0.12s;
-  flex-shrink: 0;
 }
 .dock-icon:hover:not(:disabled) { color: var(--fg-2); background: rgba(255,255,255,0.025); }
 .dock-icon:disabled { opacity: 0.3; cursor: not-allowed; }
 .dock-icon-svg { width: 15px; height: 15px; }
 
+/* "+" toggle */
+.dock-plus { border-right: 1px solid var(--rule); }
+.dock-plus.active { color: var(--accent); }
+.dock-plus svg { transition: transform 0.2s; }
+.dock-plus.active svg { transform: rotate(45deg); }
+
+/* Expandable media buttons */
+.media-drawer { display: flex; }
+.media-drawer-enter-active, .media-drawer-leave-active { transition: opacity 0.15s, max-width 0.2s; overflow: hidden; max-width: 96px; }
+.media-drawer-enter-from, .media-drawer-leave-to { opacity: 0; max-width: 0; }
+
 /* Input wrap */
 .input-wrap {
+  flex: 1;
   display: flex; align-items: center;
-  padding: 0 clamp(14px,2vw,24px);
+  padding: 0 clamp(8px,2vw,16px);
+  min-width: 0;
 }
 .input {
-  font-family: var(--serif); font-size: clamp(16px,1.8vw,18px);
+  font-family: var(--serif); font-size: clamp(15px,1.6vw,17px);
   color: var(--fg); border: 0; outline: 0;
-  background: transparent; padding: 14px 0 14px clamp(12px,2vw,20px);
+  background: transparent; padding: 14px 0;
   width: 100%; min-width: 0;
-  line-height: 1.45; resize: none; overflow-y: hidden;
+  line-height: 1.45; resize: none; overflow-y: auto;
   min-height: 48px; max-height: 140px;
 }
 .input::placeholder { color: var(--fg-3); font-style: italic; }
@@ -1832,7 +1905,7 @@ defineExpose({
 .msg-bubble {
   display: flex;
   flex-direction: column;
-  max-width: min(78%, 440px);
+  max-width: min(88%, 600px);
   gap: 3px;
 }
 .msg-bubble--me    { align-self: flex-end;   align-items: flex-end; }

@@ -244,6 +244,7 @@ const SOUL_SECTIONS = [
   { key: "Emotionale Signatur",                  label: "Emotionale Signatur",    icon: "ri-emotion-line",   color: "#fbbf24" },
   { key: "Weltbild",                             label: "Weltbild",               icon: "ri-earth-line",     color: "var(--chart-2)" },
   { key: "Offene Fragen dieser Person",          label: "Offene Fragen",          icon: "ri-question-line",  color: "var(--sys-fg-muted)" },
+  { key: "Session-Log (komprimiert)",            label: "Verlauf",                icon: "ri-history-line",   color: "var(--sys-fg-muted)" },
 ];
 
 // ── Computed ─────────────────────────────────────────────────────────────

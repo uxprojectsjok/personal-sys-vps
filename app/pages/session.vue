@@ -8,22 +8,25 @@
 
       <!-- HEADER -->
       <header class="sess-head">
-        <button class="back" @click="$router.push('/')" aria-label="Zurück">
-          <span class="arr">←</span> Zurück
-        </button>
-        <div class="pill">
-          <span class="live"></span>
-          #{{ soulMeta?.name || '------' }} · aktiv
-          <template v-if="soulMeta?.id">
-            <span class="pill-sep">·</span>
-            <button class="soul-id-btn" @click="copySoulId" :title="soulMeta.id">
-              {{ soulIdCopied ? '✓' : soulMeta.id.slice(0, 8) + '…' }}
-            </button>
-          </template>
-          <span v-if="isGrowingQuietly" class="soul-growing" title="Seele wächst…">◌</span>
-          <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">✦</span></Transition>
+        <div class="head-left">
+          <button class="back" @click="$router.push('/')" aria-label="Zurück">
+            <span class="arr">←</span> Zurück
+          </button>
+          <div class="pill">
+            <span class="live"></span>
+            #{{ soulMeta?.name || '------' }} · aktiv
+            <template v-if="soulMeta?.id">
+              <span class="pill-sep">·</span>
+              <button class="soul-id-btn" @click="copySoulId" :title="soulMeta.id">
+                {{ soulIdCopied ? '✓' : soulMeta.id.slice(0, 8) + '…' }}
+              </button>
+            </template>
+            <span v-if="isGrowingQuietly" class="soul-growing" title="Seele wächst…">◌</span>
+            <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">✦</span></Transition>
+          </div>
         </div>
-        <div class="tools">
+        <!-- Desktop tools -->
+        <div class="tools tools--desktop">
           <button class="tool" @click="liveProfileVisible = !liveProfileVisible">Profil</button>
           <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
             {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
@@ -33,7 +36,28 @@
           </button>
           <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
         </div>
+        <!-- Mobile burger -->
+        <button class="burger-btn" @click="burgerOpen = !burgerOpen" :aria-expanded="burgerOpen" aria-label="Menü">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path v-if="!burgerOpen" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+            <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </header>
+
+      <!-- Mobile burger menu -->
+      <Transition name="slide-up">
+        <div v-if="burgerOpen" class="burger-menu">
+          <button class="tool" @click="liveProfileVisible = !liveProfileVisible; burgerOpen = false">Profil</button>
+          <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
+            {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
+          </button>
+          <button class="tool" v-if="hasSoul" @click="handleCheckServer; burgerOpen = false" :disabled="serverChecking">
+            {{ serverChecking ? '…' : 'Abgleich' }}
+          </button>
+          <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+        </div>
+      </Transition>
 
       <!-- SUB-HEADER -->
       <!-- Status banners -->
@@ -165,6 +189,7 @@ const certValidating = ref(true)
 const vaultScanning = ref(false)
 const vaultStatus = ref(null)
 const liveProfileVisible = ref(false)
+const burgerOpen         = ref(false)
 const serverChecking = ref(false)
 const mobileView = ref('chat')
 const anchorModalOpen = ref(false)
@@ -381,22 +406,38 @@ function reloadPage() { location.reload() }
 .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); display: inline-block; }
 
 /* Head */
-.sess-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; padding: 14px clamp(16px,3vw,32px); border-bottom: 1px solid var(--rule); background: var(--paper-3); }
+.sess-head {
+  display: flex; align-items: center;
+  padding: 10px clamp(14px,3vw,24px);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-3);
+  gap: 12px;
+}
+.head-left {
+  display: flex; align-items: center; gap: 12px;
+  flex: 1; min-width: 0;
+}
+/* Burger button — mobile only */
+.burger-btn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: 0; background: transparent;
+  color: var(--fg-3); cursor: pointer;
+  flex-shrink: 0;
+}
+.burger-btn:hover { color: var(--fg); }
+/* Burger dropdown menu */
+.burger-menu {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-3);
+}
+.burger-menu .tool:first-child { border-left: 0; }
 @media (max-width: 900px) {
-  /* Two rows: back button | pill (hidden) → then full-width tools row */
-  .sess-head { grid-template-columns: 1fr; grid-template-rows: auto auto; gap: 0; padding: 0; }
-  .sess-head .back { padding: 12px clamp(14px,3vw,24px); border-bottom: 1px solid var(--rule); border-right: 0; }
-  .sess-head .pill { display: none; }
-  /* Tools: full row, scrollable, gradient fade on right edge */
-  .sess-head .tools {
-    grid-column: 1;
-    overflow-x: auto; width: 100%; scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 36px), transparent 100%);
-    mask-image: linear-gradient(to right, black calc(100% - 36px), transparent 100%);
-  }
-  .sess-head .tools::-webkit-scrollbar { display: none; }
-  .tool { padding: 14px 12px; font-size: 12px; min-height: 48px; }
-  .tool:first-child { border-left: 0; }
+  .tools--desktop { display: none; }
+  .burger-btn { display: flex; }
+  .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; }
 }
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
 .sess-head .back:hover { color: var(--accent); }

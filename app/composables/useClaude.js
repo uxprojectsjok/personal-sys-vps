@@ -105,7 +105,7 @@ export function useClaude() {
     return [{ role: "user", content: firstBlocks }, ...rest];
   }
 
-  async function chat({ messages, soulContent, soulCert, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul" }) {
+  async function chat({ messages, soulContent, soulCert, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6" }) {
     if (typeof window === "undefined") return null;
 
     isLoading.value = true;
@@ -221,7 +221,7 @@ ${mediaSignalInstructions}`;
       // ── Tools ──────────────────────────────────────────────────────────────
       const hasSoulTools = !!soulCert;
       const baseBody = {
-        model: "claude-sonnet-4-6",
+        model,
         max_tokens: 4096,
         stream: true,
         system: systemPrompt,
