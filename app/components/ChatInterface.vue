@@ -173,19 +173,9 @@
         </div>
       </Transition>
 
-      <!-- Mode bar + recipient picker -->
+      <!-- Mode bar -->
       <div class="dock-mode-bar">
         <span class="mode-dot soul"></span>
-        <div class="recipient-picker">
-          <button
-            v-for="[id, label, color] in [['ki','KI','var(--accent)'],['peer','Peer','#34d399'],['agent','Agent','#a78bfa'],['community','All','#60a5fa']]"
-            :key="id"
-            class="recipient-btn"
-            :class="{ active: msgRecipient === id }"
-            :style="msgRecipient === id ? { color } : {}"
-            @click="msgRecipient = id"
-          >{{ label }}</button>
-        </div>
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity">
           <span></span><span></span><span></span>
         </span>
@@ -233,7 +223,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
               </svg>
             </button>
-            <button class="dock-icon" @click="handleFileChip; mediaOpen = false" title="Datei anhängen" :disabled="props.growthLocked">
+            <button class="dock-icon" @click="onFileIconClick" title="Datei anhängen" :disabled="props.growthLocked">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
               </svg>
@@ -286,6 +276,8 @@
       @captured="handleCameraCapture"
       @cancel="cameraOpen = false"
     />
+    <!-- Hidden file input — must be in DOM for mobile to work -->
+    <input ref="fileInputEl" type="file" style="display:none;position:fixed" @change="onFileInputChange" />
   </div>
 </template>
 
@@ -363,11 +355,7 @@ const canSend = computed(() =>
 )
 
 const inputPlaceholder = computed(() => {
-  if (localRole.value !== 'soul') return 'Was willst du an deiner Soul weiterentwickeln?'
-  if (msgRecipient.value === 'peer')      return 'An Peers schreiben…'
-  if (msgRecipient.value === 'agent')     return 'An Agent Sandbox schreiben…'
-  if (msgRecipient.value === 'community') return 'An alle schreiben…'
-  return 'Schreib etwas…'
+  return 'Schreib… @name, @agent, @all'
 })
 
 // ── Messaging / Social sphere state ───────────────────────────────
@@ -1029,6 +1017,7 @@ function cleanMsgContent(msg) {
 // ── Camera / Vision ────────────────────────────────────────────────
 const cameraOpen    = ref(false)
 const visionLoading = ref(false)
+const fileInputEl   = ref(null)
 
 // ── Blob URL management ────────────────────────────────────────────
 const mediaBlobUrls = []
@@ -1146,24 +1135,35 @@ async function handleLocalFile(file) {
   return { text: `[Datei: "${name}" – Format nicht unterstützt]`, contentBlocks: null }
 }
 
-async function handleFileChip() {
-  let file = null
+function isInPeerMode() {
+  const t = draft.value.trim()
+  if (!t) return false
+  const intent = detectIntent(t)
+  return intent.type === 'peer' || intent.type === 'community' || intent.type === 'peer-specific' || intent.type === 'agent'
+}
+
+async function onFileIconClick() {
+  mediaOpen.value = false
   if ('showOpenFilePicker' in window) {
     try {
       const [handle] = await window.showOpenFilePicker({ multiple: false })
-      file = await handle.getFile()
+      const file = await handle.getFile()
+      await processPickedFile(file)
+      return
     } catch (e) { if (e.name === 'AbortError') return }
   }
-  if (!file) {
-    file = await new Promise((resolve) => {
-      const input = document.createElement('input'); input.type = 'file'
-      input.onchange = () => resolve(input.files[0] || null); input.click()
-    })
-  }
-  if (!file) return
+  fileInputEl.value?.click()
+}
 
-  // In peer/social mode: stage as attachment preview, don't dispatch to AI
-  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
+async function onFileInputChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  e.target.value = ''
+  await processPickedFile(file)
+}
+
+async function processPickedFile(file) {
+  if (localRole.value === 'soul' && isInPeerMode()) {
     if (IMAGE_EXT.test(file.name)) {
       try {
         const b64 = await compressImage(file).catch(() => fileToBase64(file))
@@ -1174,13 +1174,9 @@ async function handleFileChip() {
     }
     return
   }
-
   const result = await handleLocalFile(file)
   if (!result) return
-  if (result._imageFile) {
-    await handleImageVision(result._imageFile, result.name)
-    return
-  }
+  if (result._imageFile) { await handleImageVision(result._imageFile, result.name); return }
   const meta = {}
   if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
   if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
@@ -1202,9 +1198,12 @@ function detectIntent(text) {
   // Web search
   const webMatch = t.match(/^such[e]?\s+(?:(?:im\s+)?(?:netz|web|internet|google)\s+(?:nach\s+)?|nach\s+)(.+)/i)
   if (webMatch) return { type: 'google', query: webMatch[1].trim() }
-  // @all → community (send to everyone)
-  const allMention = t.match(/^@all\b\s*(.*)/is)
+  // @all/@alle → community (send to everyone)
+  const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
+  // @agent → Agent Sandbox
+  const agentMention = t.match(/^@agent\b\s*(.*)/is)
+  if (agentMention) return { type: 'agent', query: (agentMention[1].trim() || t) }
   // @name → specific peer by label (exact match, then unique prefix match)
   const nameMention = t.match(/^@(\w+)\b\s*(.*)/is)
   if (nameMention) {
@@ -1334,7 +1333,7 @@ async function handleCameraCapture(capture) {
   if (!base64) return
 
   // In peer/social mode: compress then stage as attachment
-  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
+  if (localRole.value === 'soul' && isInPeerMode()) {
     let compressed = base64
     try {
       const img = new Image()
@@ -1494,16 +1493,12 @@ async function handleSend() {
   if (intent.type === 'peer')          { await handlePeerSend(intent.query || raw, 'peer'); return }
   if (intent.type === 'community')     { await handlePeerSend(intent.query || raw, 'community'); return }
   if (intent.type === 'peer-specific') { await handlePeerSend(intent.query || raw, intent.soul_id); return }
+  if (intent.type === 'agent')         { await handlePeerSend(intent.query || raw, 'agent'); return }
   if (intent.type === 'ki')            { await triggerSynthesis(); return }
   if (intent.type === 'ambiguous') {
     const names = intent.candidates.map(p => `@${p.label}`).join(', ')
     addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
     return
-  }
-
-  // Soul-Modus, Empfänger ≠ KI → soziale Sphere
-  if (localRole.value === 'soul' && msgRecipient.value !== 'ki') {
-    await handlePeerSend(raw, msgRecipient.value); return
   }
 
   if (intent.type === 'youtube' || intent.type === 'spotify' || intent.type === 'google') {
@@ -1703,7 +1698,7 @@ defineExpose({
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  height: 28px;
+  height: 36px;
   border-bottom: 1px solid var(--rule);
 }
 .mode-dot {
@@ -1724,25 +1719,6 @@ defineExpose({
 }
 .mode-label-btn:hover { color: var(--fg-3); }
 
-/* Recipient picker */
-.recipient-picker {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  margin-left: 8px;
-  border-left: 1px solid var(--rule);
-  padding-left: 8px;
-}
-.recipient-btn {
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--fg-4);
-  background: transparent; border: 0;
-  cursor: pointer; padding: 2px 6px;
-  transition: color 0.12s;
-}
-.recipient-btn:hover { color: var(--fg-2); }
-.recipient-btn.active { font-weight: 600; }
 .mode-activity {
   display: flex; align-items: center; gap: 3px;
   margin-left: auto;
@@ -1830,7 +1806,7 @@ defineExpose({
 .input-wrap {
   flex: 1;
   display: flex; align-items: center;
-  padding: 0 clamp(8px,2vw,16px);
+  padding: 0 clamp(12px,2.5vw,20px);
   min-width: 0;
 }
 .input {
