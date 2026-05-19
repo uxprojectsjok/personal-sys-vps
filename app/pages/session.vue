@@ -43,41 +43,41 @@
             <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
+        <!-- Burger dropdown — absolute positioned, doesn't affect grid layout -->
+        <Transition name="slide-up">
+          <div v-if="burgerOpen" class="burger-menu">
+            <button class="tool" @click="liveProfileVisible = !liveProfileVisible; burgerOpen = false">Profil</button>
+            <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
+              {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
+            </button>
+            <button class="tool" v-if="hasSoul" @click="handleCheckServer; burgerOpen = false" :disabled="serverChecking">
+              {{ serverChecking ? '…' : 'Abgleich' }}
+            </button>
+            <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+          </div>
+        </Transition>
       </header>
 
-      <!-- Mobile burger menu -->
-      <Transition name="slide-up">
-        <div v-if="burgerOpen" class="burger-menu">
-          <button class="tool" @click="liveProfileVisible = !liveProfileVisible; burgerOpen = false">Profil</button>
-          <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
-            {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
-          </button>
-          <button class="tool" v-if="hasSoul" @click="handleCheckServer; burgerOpen = false" :disabled="serverChecking">
-            {{ serverChecking ? '…' : 'Abgleich' }}
-          </button>
-          <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
-        </div>
-      </Transition>
-
-      <!-- SUB-HEADER -->
-      <!-- Status banners -->
-      <Transition name="slide-up">
-        <div v-if="enrichStatus" class="banner" :class="`b-${enrichStatus.type}`">
-          <span>{{ enrichStatus.message }}</span>
-          <button v-if="enrichStatus.type !== 'loading'" @click="enrichStatus = null" class="close">✕</button>
-        </div>
-      </Transition>
-      <Transition name="slide-up">
-        <div v-if="vaultStatus" class="banner">
-          <span>Vault neu geladen · Soul aktiv</span>
-        </div>
-      </Transition>
-      <Transition name="slide-up">
-        <div v-if="serverVaultEncrypted" class="banner b-warn">
-          <span>Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren</span>
-          <button @click="serverVaultEncrypted = false" class="close">✕</button>
-        </div>
-      </Transition>
+      <!-- SUB-HEADER: status banners — wrapper collapses to 0 when all are hidden -->
+      <div class="sess-sub-head">
+        <Transition name="slide-up">
+          <div v-if="enrichStatus" class="banner" :class="`b-${enrichStatus.type}`">
+            <span>{{ enrichStatus.message }}</span>
+            <button v-if="enrichStatus.type !== 'loading'" @click="enrichStatus = null" class="close">✕</button>
+          </div>
+        </Transition>
+        <Transition name="slide-up">
+          <div v-if="vaultStatus" class="banner">
+            <span>Vault neu geladen · Soul aktiv</span>
+          </div>
+        </Transition>
+        <Transition name="slide-up">
+          <div v-if="serverVaultEncrypted" class="banner b-warn">
+            <span>Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren</span>
+            <button @click="serverVaultEncrypted = false" class="close">✕</button>
+          </div>
+        </Transition>
+      </div>
 
       <!-- BODY -->
       <main class="sess-body">
@@ -396,8 +396,8 @@ function reloadPage() { location.reload() }
   --serif:'Noto Serif', Georgia, serif;
   --sans:'Inter', system-ui, -apple-system, sans-serif;
   --mono:'JetBrains Mono', ui-monospace, monospace;
-  display: grid; grid-template-rows: auto 1fr auto auto;
-  /* height (nicht min-height) damit 1fr einen aufgelösten Wert bekommt */
+  /* 4 rows: header · sub-head (banners, collapses to 0 when empty) · body · tabs */
+  display: grid; grid-template-rows: auto auto 1fr auto;
   height: 100vh; height: 100dvh;
   overflow: hidden;
   background: var(--paper); color: var(--fg); font-family: var(--sans);
@@ -412,6 +412,7 @@ function reloadPage() { location.reload() }
   border-bottom: 1px solid var(--rule);
   background: var(--paper-3);
   gap: 12px;
+  position: relative; /* anchor for burger-menu absolute positioning */
 }
 .head-left {
   display: flex; align-items: center; gap: 12px;
@@ -427,13 +428,20 @@ function reloadPage() { location.reload() }
   flex-shrink: 0;
 }
 .burger-btn:hover { color: var(--fg); }
-/* Burger dropdown menu */
+/* Burger dropdown — overlays content, doesn't push grid rows */
 .burger-menu {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  z-index: 200;
   display: flex;
   border-bottom: 1px solid var(--rule);
   background: var(--paper-3);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 .burger-menu .tool:first-child { border-left: 0; }
+
+/* Sub-header: banners wrapper — collapses to 0 height when empty */
+.sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
   .tools--desktop { display: none; }
   .burger-btn { display: flex; }

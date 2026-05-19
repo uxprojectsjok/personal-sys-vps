@@ -667,10 +667,9 @@ server {
 
   # ── Vault-Dateien servieren (GET) – soul-cert ODER webhook-token ─────────────
   # /api/vault/manifest, /api/vault/audio, /api/vault/video, /api/vault/images, /api/vault/context
-  # ^~ verhindert dass Regex-Locations (z.B. ~* \.webm|mp4) API-Pfade abfangen.
-  # HINWEIS: Steht absichtlich nach den spezifischeren /api/vault/... Prefix-Locations,
-  # da bei Prefix-Matching die längste Übereinstimmung gewinnt (Reihenfolge egal).
-  location ^~ /api/vault/ {
+  # Kein ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) haben Vorrang.
+  # Statische Assets schließen /api/-Pfade bereits per negativem Lookahead aus.
+  location /api/vault/ {
     limit_req zone=chat burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
