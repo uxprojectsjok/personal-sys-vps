@@ -76,8 +76,8 @@
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <div v-if="item.from !== 'me'" class="msg-sender"
-            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : '#a78bfa' }">
+          <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
+            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : item.content?.startsWith('[KI]') ? 'var(--accent)' : '#a78bfa' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
@@ -196,6 +196,14 @@
           :title="archivEnabled ? 'Soul-Archivar aktiv — klicken zum Deaktivieren' : 'Soul-Archivar pausiert — klicken zum Aktivieren'"
         >
           <span class="archivar-dot"></span>Archivar
+        </button>
+        <button
+          class="archivar-toggle"
+          :class="{ active: autonomousKi }"
+          @click="autonomousKi = !autonomousKi"
+          :title="autonomousKi ? 'Autonomer KI-Modus aktiv — KI-Jan postet selbstständig' : 'Autonomer KI-Modus aus'"
+        >
+          <span class="archivar-dot"></span>KI-Auto
         </button>
         <select class="model-select" v-model="selectedModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
           <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
@@ -333,6 +341,12 @@ const archivEnabled = ref(
   typeof window !== 'undefined' ? localStorage.getItem('sys_archivar_enabled') !== 'false' : true
 )
 watch(archivEnabled, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_archivar_enabled', v) })
+
+// ── Autonomer Soul-KI Modus ──────────────────────────────────────────
+const autonomousKi = ref(
+  typeof window !== 'undefined' ? localStorage.getItem('sys_autonomous_ki') === 'true' : false
+)
+watch(autonomousKi, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_autonomous_ki', String(v)) })
 
 // ── Media drawer ────────────────────────────────────────────────────
 const mediaOpen = ref(false)
@@ -643,7 +657,9 @@ const unifiedStream = computed(() => {
 function resolveAuthor(msg) {
   if (msg.sphere === 'synthesis') return 'KI'
   const senderName = msg.author
-    || (!msg.from || msg.from === 'me' ? 'Du' : (peerIds.value.find(p => p.soul_id === msg.from)?.label || msg.from.slice(0, 8)))
+    || (!msg.from || msg.from === 'me'
+        ? (soulMeta.value?.name || 'Du')
+        : (peerIds.value.find(p => p.soul_id === msg.from)?.label || msg.from.slice(0, 8)))
   if (msg.content?.startsWith('[KI]')) return `KI@${senderName}`
   return senderName
 }
@@ -704,6 +720,50 @@ async function forwardSynthesis(item) {
   const idx = localSynthesisMsgs.value.findIndex(m => m.ts === item.ts)
   if (idx !== -1) localSynthesisMsgs.value[idx] = { ...localSynthesisMsgs.value[idx], forwarded: true }
   await handlePeerSend(`[KI] ${item.content}`, 'peer')
+}
+
+let _lastAutonomousPostTs = 0
+const AUTONOMOUS_MIN_INTERVAL_MS = 20 * 60 * 1000
+
+async function runAutonomousKiPost() {
+  if (!autonomousKi.value) return
+  if (isSavingAgent.value) return
+  if (Date.now() - _lastAutonomousPostTs < AUTONOMOUS_MIN_INTERVAL_MS) return
+
+  const soulSnippet = (props.soulContent || '').slice(0, 1200)
+  const recentSocial = displayMessages.value
+    .filter(m => (m.sphere === 'social' || m.sphere === 'agent') && m.ts)
+    .slice(-4)
+    .map(m => `${m.from === 'me' ? (soulMeta.value?.name || 'Ich') : resolveAuthor(m)}: ${(m.content || '').replace(/^\[KI\]\s*/, '').slice(0, 120)}`)
+    .join('\n')
+
+  if (!soulSnippet && !recentSocial) return
+
+  const context = [
+    soulSnippet ? `Soul:\n${soulSnippet}` : '',
+    recentSocial ? `Sphere:\n${recentSocial}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
+      body: JSON.stringify({
+        model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        stream: false,
+        system: `Du bist die Soul-KI des Nutzers. Formuliere einen kurzen, authentischen Ich-Beitrag für den Social-Sphere — was der Nutzer seinen Peers jetzt mitteilen würde, basierend auf Soul und aktuellen Nachrichten. Max. 2 Sätze, Deutsch. Kein Präfix, keine Anrede, kein Meta-Kommentar.`,
+        messages: [{ role: 'user', content: context }],
+      }),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    const text = (data?.content?.[0]?.text ?? '').trim()
+    if (text.length > 10) {
+      _lastAutonomousPostTs = Date.now()
+      await handlePeerSend(`[KI] ${text}`, 'community')
+    }
+  } catch { /* silent */ }
 }
 
 async function deleteSharedFile(filename) {
@@ -782,7 +842,7 @@ async function triggerSynthesis() {
     const data = await res.json()
     const text = (data?.content?.[0]?.text ?? '').trim()
     if (text) {
-      localSynthesisMsgs.value = [...localSynthesisMsgs.value, {
+      const newMsg = {
         ts:     new Date().toISOString(),
         from:   'ki',
         to:     'community',
@@ -791,8 +851,10 @@ async function triggerSynthesis() {
         format: 'new',
         author: 'KI',
         local:  true,
-      }]
+      }
+      localSynthesisMsgs.value = [...localSynthesisMsgs.value, newMsg]
       await nextTick(scrollToBottom)
+      if (autonomousKi.value) forwardSynthesis(newMsg)
     }
   } catch { /* silent */ } finally {
     isSynthesizing.value = false
@@ -1496,13 +1558,14 @@ onMounted(async () => {
   }, 3000)
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
   _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
-  // Every 3 min — only fires if new messages arrived since last briefing
+  // Every 3 min — synthesis if new messages; autonomous post if mode active
   _briefingTimer   = setInterval(() => {
     const count = displayMessages.value.length
     if (count > 0 && count !== _lastBriefingMsgCount) {
       _lastBriefingMsgCount = count
       triggerSynthesis()
     }
+    if (autonomousKi.value) runAutonomousKiPost()
   }, 3 * 60 * 1000)
 })
 onUnmounted(() => {
