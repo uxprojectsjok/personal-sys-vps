@@ -1788,9 +1788,13 @@ defineExpose({
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .stream { padding: 20px 16px 32px; }
+  .stream { padding: 20px 12px 28px; }
   .msg    { grid-template-columns: 1fr; }
   .dock-icon { width: 40px; }
+  .dock-mode-bar { padding: 0 12px; }
+  .dock {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 /* ── Agent Sandbox empty state ───────────────────────────────────── */
