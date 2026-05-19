@@ -193,7 +193,7 @@
           class="archivar-toggle"
           :class="{ active: archivEnabled }"
           @click="archivEnabled = !archivEnabled"
-          :title="archivEnabled ? 'Soul-Archivar aktiv — klicken zum Deaktivieren' : 'Soul-Archivar pausiert — klicken zum Aktivieren'"
+          :title="archivEnabled ? 'Archivar aktiv' : 'Archivar aus'"
         >
           <span class="archivar-dot"></span>Archivar
         </button>
@@ -201,7 +201,7 @@
           class="archivar-toggle"
           :class="{ active: autonomousKi }"
           @click="autonomousKi = !autonomousKi"
-          :title="autonomousKi ? 'Autonomer KI-Modus aktiv — KI-Jan postet selbstständig' : 'Autonomer KI-Modus aus'"
+          :title="autonomousKi ? `KI-Auto aktiv (${soulMeta?.name || 'Soul'})` : 'KI-Auto aus'"
         >
           <span class="archivar-dot"></span>KI-Auto
         </button>
