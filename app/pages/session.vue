@@ -230,6 +230,7 @@ function buildLiveSphereContext() {
 
 async function runBackgroundSoulGrowth() {
   if (isGrowingQuietly.value) return
+  if (typeof window !== 'undefined' && localStorage.getItem('sys_archivar_enabled') === 'false') return
   const aiMsgs     = toApiMessages(12)
   const sphereCtx  = buildLiveSphereContext()
   const aiUserMsgs = aiMsgs.filter(m => m.role === 'user').length
