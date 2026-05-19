@@ -26,7 +26,7 @@ if not target_soul_id or not target_soul_id:match(UUID_PAT) then
   ngx.status = 400; ngx.say('{"error":"invalid_url"}'); return
 end
 
-local filename = raw_file:match("^([%w%-%._]+)$")
+local filename = raw_file:match("^([A-Za-z0-9%.%-%_]+)$")
 if not filename or filename:find("%.%.") then
   ngx.header["Content-Type"] = "application/json"
   ngx.status = 400; ngx.say('{"error":"invalid_filename"}'); return
