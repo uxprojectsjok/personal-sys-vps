@@ -309,15 +309,30 @@ if not file_name or file_name == "" then
   local active_raw  = type(actives) == "table" and (actives[type_name] or "") or ""
   local active_name = type(active_raw) == "string" and active_raw or ""
   local list = {}
+  -- mind.md: immer in der Context-Liste anzeigen wenn Datei existiert (nicht in synced_files)
+  if type_name == "context" then
+    local mf = io.open(base_dir .. "/vault/context/mind.md", "r")
+    if mf then
+      mf:close()
+      table.insert(list, {
+        name   = "mind.md",
+        url    = base_url .. "/api/vault/context/mind.md",
+        mime   = "text/plain; charset=utf-8",
+        active = false
+      })
+    end
+  end
   for _, name in ipairs(files) do
-    local ext = name:match("%.([^%.]+)$") or ""
-    local url = base_url .. "/api/vault/" .. type_name .. "/" .. name
-    table.insert(list, {
-      name   = name,
-      url    = url,
-      mime   = MIME_MAP[ext:lower()] or "application/octet-stream",
-      active = (name == active_name)
-    })
+    if name ~= "mind.md" then  -- Duplikat vermeiden falls manuell hochgeladen
+      local ext = name:match("%.([^%.]+)$") or ""
+      local url = base_url .. "/api/vault/" .. type_name .. "/" .. name
+      table.insert(list, {
+        name   = name,
+        url    = url,
+        mime   = MIME_MAP[ext:lower()] or "application/octet-stream",
+        active = (name == active_name)
+      })
+    end
   end
   local active_url = (active_name ~= "") and (base_url .. "/api/vault/" .. type_name .. "/" .. active_name) or cjson.null
   ngx.header["Content-Type"]  = "application/json"
