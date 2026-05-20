@@ -632,6 +632,77 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_peer_media_proxy.lua;
   }
 
+  # ── Vault Peer Stream (binary Vault-Datei direkt, vault_auth) ────────────────
+  location = /api/vault/peer-stream {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/octet-stream;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_peer_stream.lua;
+  }
+
+  # ── Vault Connections — eigene Liste + Peer-Dateien (soul_auth) ──────────────
+  location = /api/vault/connections {
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location ~ ^/api/vault/connections/test/ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location = /api/vault/connections/network {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location = /api/vault/connections/peer-files {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_connections_peer.lua;
+  }
+
+  # ── Peer-Handshake Eingang (öffentlich, CORS) ────────────────────────────────
+  location = /api/peer/connect {
+    add_header Access-Control-Allow-Origin  "*"                    always;
+    add_header Access-Control-Allow-Headers "Content-Type"         always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS"        always;
+    add_header Cache-Control                "no-store"             always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/peer_connect.lua;
+  }
+
+  # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
+  location = /api/peer/verify {
+    add_header Access-Control-Allow-Origin  "*"                    always;
+    add_header Access-Control-Allow-Headers "Content-Type"         always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS"         always;
+    add_header Cache-Control                "no-store"             always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/peer_verify.lua;
+  }
+
   # ── Peer Social Read Proxy (server-side, avoids CSP cross-origin) ────────────
   location = /api/soul/peer-social-read {
     limit_except GET { deny all; }
