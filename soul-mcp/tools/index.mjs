@@ -24,6 +24,8 @@ import { register as elevenLabsAgentUpdate } from './elevenlabs_agent_update.mjs
 import { register as soulPayRead }           from './soul_pay_read.mjs';
 import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
+import { register as mindRead }              from './mind_read.mjs';
+import { register as mindWrite }             from './mind_write.mjs';
 
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
@@ -69,6 +71,8 @@ export function registerTools(server, token) {
   soulPayRead(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
+  mindRead(server, token);
+  mindWrite(server, token);
 }
 
 /**

@@ -303,6 +303,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useClaude } from '~/composables/useClaude.js'
+import { useMind } from '~/composables/useMind.js'
 import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
 import { useYouTube } from '~/composables/useYouTube.js'
@@ -323,6 +324,7 @@ const emit = defineEmits(['cert-error'])
 
 // ── Composables ────────────────────────────────────────────────────
 const { chat, isLoading, error, certError } = useClaude()
+const { mindContent, loadMind } = useMind()
 const {
   messages, conversationSummary,
   addMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
@@ -1523,6 +1525,7 @@ async function dispatchToChat(text, msgMeta = {}) {
     messages: toApiMessages(),
     soulContent: props.soulContent,
     soulCert: props.soulCert,
+    mindContent: mindContent.value || null,
     vaultContext: null,
     networkContext: recentPeer || null,
     networkPdfBlocks: null,
@@ -1635,6 +1638,7 @@ let _lastBriefingMsgCount = 0
 
 onMounted(async () => {
   nextTick(autoResize)
+  loadMind(props.soulCert)
   try {
     const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
     if (r.ok) {
