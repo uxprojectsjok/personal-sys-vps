@@ -144,6 +144,12 @@
           </div>
         </div>
 
+        <!-- Capture card -->
+        <div v-else-if="item._type === 'capture'" class="msg-bubble msg-bubble--other">
+          <AudioCaptureCard v-if="item.captureMode === 'audio'" />
+          <MotionCaptureCard v-else :mode="item.captureMode" />
+        </div>
+
       </template>
 
       <!-- Synthesis typing indicator -->
@@ -302,7 +308,9 @@ import { useVault } from '~/composables/useVault.js'
 import { useYouTube } from '~/composables/useYouTube.js'
 import { useSpotify } from '~/composables/useSpotify.js'
 import { useSoul } from '~/composables/useSoul.js'
-import CameraRecorder from '~/components/CameraRecorder.vue'
+import CameraRecorder      from '~/components/CameraRecorder.vue'
+import AudioCaptureCard    from '~/components/AudioCaptureCard.vue'
+import MotionCaptureCard   from '~/components/MotionCaptureCard.vue'
 
 // ── Props / Emits ──────────────────────────────────────────────────
 const props = defineProps({
@@ -1238,6 +1246,10 @@ function detectIntent(text) {
   // Web search
   const webMatch = t.match(/^such[e]?\s+(?:(?:im\s+)?(?:netz|web|internet|google)\s+(?:nach\s+)?|nach\s+)(.+)/i)
   if (webMatch) return { type: 'google', query: webMatch[1].trim() }
+  // Capture intents — checked before generic @name match
+  if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
+  if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
+  if (/^@body\b|^@bewegung\b/i.test(t)) return { type: 'capture-body' }
   // @all/@alle → community (send to everyone)
   const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
@@ -1539,6 +1551,14 @@ async function handleSend() {
   const intent = detectIntent(raw)
 
   if (intent.type === 'ki')        { await triggerSynthesis(); return }
+
+  if (intent.type === 'capture-audio' || intent.type === 'capture-face' || intent.type === 'capture-body') {
+    const mode = intent.type.replace('capture-', '')
+    addMessage('capture', `@${mode}`, { _type: 'capture', captureMode: mode })
+    await scrollToBottom()
+    return
+  }
+
   if (intent.type === 'ambiguous') {
     const names = intent.candidates.map(p => `@${p.label}`).join(', ')
     addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
