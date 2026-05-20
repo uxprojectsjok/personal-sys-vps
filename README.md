@@ -295,7 +295,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 7b47907b4d993585b3b7a78a285f812700dbc989babf577a828ff72ec358581a
+Current release fingerprint: 0988c9342f8bdacbd76eb9246f78769b89346f02d2f509d7b4464695da175dbd
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -362,6 +362,15 @@ Use of this software is at your own risk. The Apache 2.0 license excludes warran
 
 - **Open protocol** — Apache 2.0, compatible implementations welcome
 - **Smart contract** — live on Polygon Mainnet, verifiable on Polygonscan
+
+### Recent additions (2026-05)
+
+| Feature | Description |
+|---------|-------------|
+| **mind.md** | KI identity file — 7-section config the AI reads every session and can update itself (Selbstreflexion, Kommunikation, Intellekt). Write-protected: Identität, Grenzen. Readable/writable as a vault context file. |
+| **Emergency Protocol** | 3-level AI lock (KI-Sperre → AI-Blackout → Isolierung) activatable from the header. Lua-based guard blocks API endpoints per level; Level 3 stops the MCP server via systemctl. SSH-only Level 4 (full shutdown). |
+| **Profile capture via chat** | @audio/@stimme, @face/@gesicht, @body/@bewegung — inline capture cards in the chat stream instead of a separate modal menu. |
+| **Tool awareness** | KI receives a full tool manifest in its system prompt from the first message — no more multi-session onboarding needed. |
 
 ---
 
