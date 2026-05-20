@@ -749,18 +749,33 @@ async function runAutonomousKiPost() {
   if (isSavingAgent.value) return
   if (Date.now() - _lastAutonomousPostTs < AUTONOMOUS_MIN_INTERVAL_MS) return
 
-  const soulSnippet = (props.soulContent || '').slice(0, 1200)
-  const recentSocial = displayMessages.value
-    .filter(m => (m.sphere === 'social' || m.sphere === 'agent') && m.ts)
-    .slice(-4)
-    .map(m => `${m.from === 'me' ? (soulMeta.value?.name || 'Ich') : resolveAuthor(m)}: ${(m.content || '').replace(/^\[KI\]\s*/, '').slice(0, 120)}`)
+  // Only run when there's actual recent peer activity (within 90 min)
+  const recentSocialMsgs = displayMessages.value
+    .filter(m => m.sphere === 'social' && m.ts)
+  const lastPeerMsg = recentSocialMsgs.filter(m => m.from !== 'me').slice(-1)[0]
+  if (!lastPeerMsg) return
+  if (Date.now() - new Date(lastPeerMsg.ts).getTime() > 90 * 60 * 1000) return
+
+  const soulName   = soulMeta.value?.name || 'Ich'
+  const soulSnippet = (props.soulContent || '').slice(0, 600)
+
+  // Last 6 social messages for grounding
+  const recentSocial = recentSocialMsgs
+    .slice(-6)
+    .map(m => `${m.from === 'me' ? soulName : resolveAuthor(m)}: ${cleanMsgContent(m).slice(0, 150)}`)
     .join('\n')
 
-  if (!soulSnippet && !recentSocial) return
+  // Last SoulKI insight (if any) — so the auto-post knows what was processed
+  const lastKiThought = (messages.value || [])
+    .filter(m => m.role === 'assistant' && m.text)
+    .slice(-1)
+    .map(m => m.text.slice(0, 200))
+    .join('')
 
   const context = [
-    soulSnippet ? `Soul:\n${soulSnippet}` : '',
-    recentSocial ? `Sphere:\n${recentSocial}` : '',
+    `Soul von ${soulName}:\n${soulSnippet}`,
+    recentSocial ? `Aktuelle Unterhaltung:\n${recentSocial}` : '',
+    lastKiThought ? `Meine letzte Überlegung dazu:\n${lastKiThought}` : '',
   ].filter(Boolean).join('\n\n')
 
   try {
@@ -768,20 +783,23 @@ async function runAutonomousKiPost() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
       body: JSON.stringify({
-        model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
-        max_tokens: 120,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
         stream: false,
-        system: `Du bist die Soul-KI des Nutzers. Formuliere einen kurzen, authentischen Ich-Beitrag für den Social-Sphere — was der Nutzer seinen Peers jetzt mitteilen würde, basierend auf Soul und aktuellen Nachrichten. Max. 2 Sätze, Deutsch. Kein Präfix, keine Anrede, kein Meta-Kommentar.`,
+        system: `Du bist ${soulName}. Schreibe genau eine kurze, spontane Nachricht an deine Peers — basierend auf dem, was GERADE WIRKLICH in der Konversation passiert. Keine allgemeinen Lebensweisheiten. Kein Philosophieren. Beziehe dich konkret auf das Gespräch.
+
+Wenn du nichts Konkretes und Sinnvolles beitragen kannst: antworte nur mit "SKIP" — kein anderer Text.
+
+Wenn du etwas schreibst: max. 2 kurze Sätze. Kein Präfix, keine Anrede, kein Meta-Kommentar. Deutsch. So wie ${soulName} spricht.`,
         messages: [{ role: 'user', content: context }],
       }),
     })
     if (!res.ok) return
     const data = await res.json()
     const text = (data?.content?.[0]?.text ?? '').trim()
-    if (text.length > 10) {
-      _lastAutonomousPostTs = Date.now()
-      await handlePeerSend(`[KI] ${text}`, 'community')
-    }
+    if (!text || text === 'SKIP' || text.startsWith('SKIP') || text.length < 8) return
+    _lastAutonomousPostTs = Date.now()
+    await handlePeerSend(`[KI] ${text}`, 'community')
   } catch { /* silent */ }
 }
 
@@ -873,7 +891,6 @@ async function triggerSynthesis() {
       }
       localSynthesisMsgs.value = [...localSynthesisMsgs.value, newMsg]
       await nextTick(scrollToBottom)
-      if (autonomousKi.value) forwardSynthesis(newMsg)
     }
   } catch { /* silent */ } finally {
     isSynthesizing.value = false
@@ -1483,12 +1500,19 @@ async function dispatchToChat(text, msgMeta = {}) {
   await maybeCompressHistory()
   addMessage('assistant', '', { streaming: true })
 
+  // Recent peer messages so SoulKI knows what's being discussed
+  const recentPeer = displayMessages.value
+    .filter(m => m.sphere === 'social' && m.ts)
+    .slice(-8)
+    .map(m => `${m.from === 'me' ? (soulMeta.value?.name || 'Ich') : resolveAuthor(m)}: ${cleanMsgContent(m).slice(0, 200)}`)
+    .join('\n')
+
   const chatResult = await chat({
     messages: toApiMessages(),
     soulContent: props.soulContent,
     soulCert: props.soulCert,
     vaultContext: null,
-    networkContext: null,
+    networkContext: recentPeer || null,
     networkPdfBlocks: null,
     networkImageBlocks: null,
     conversationSummary: conversationSummary.value || null,
