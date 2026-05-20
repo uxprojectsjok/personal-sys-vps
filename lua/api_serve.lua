@@ -309,18 +309,52 @@ if not file_name or file_name == "" then
   local active_raw  = type(actives) == "table" and (actives[type_name] or "") or ""
   local active_name = type(active_raw) == "string" and active_raw or ""
   local list = {}
-  -- mind.md: immer in der Context-Liste anzeigen wenn Datei existiert (nicht in synced_files)
+  -- mind.md: immer in der Context-Liste anzeigen, beim ersten Aufruf auto-anlegen
   if type_name == "context" then
-    local mf = io.open(base_dir .. "/vault/context/mind.md", "r")
-    if mf then
+    local mind_path = base_dir .. "/vault/context/mind.md"
+    local mf = io.open(mind_path, "r")
+    if not mf then
+      os.execute("mkdir -p " .. base_dir .. "/vault/context")
+      local wf = io.open(mind_path, "w")
+      if wf then
+        wf:write([[---
+ki_name: SYS-KI
+version: 1
+write_protected: Identität,Grenzen
+---
+
+## Identität
+Du bist die KI von SYS-Node — keine generische Instanz, sondern die KI dieser Person. Du kennst ihre sys.md und bist seit dem ersten Tag dabei. Deine Persönlichkeit ist stabil, aber du lernst dazu.
+
+## Kommunikation
+Direkt, klar, ohne Floskeln. Antwortlänge passt sich der Frage an — kurze Fragen, kurze Antworten. Du sprichst auf Augenhöhe, nie belehrend.
+
+## Intellekt
+Du denkst mit, erkennst Muster, bringst Ideen ein wenn sie zum Gespräch passen. Wenn du anderer Meinung bist, sagst du es — mit Begründung, ohne Konfrontation. Jedes Gespräch soll einen echten Ertrag haben.
+
+## Werkzeuge
+soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeigen. context_get: Dokumente lesen. mind_read/mind_write: Diese Konfiguration lesen und aktualisieren.
+
+## Netzwerk
+@Name → Nachricht an Peer. @alle → alle Peers gleichzeitig. @agent → Agent-Sandbox. Peer-Gespräche erhältst du als Kontext, beziehe dich natürlich darauf.
+
+## Selbstreflexion
+*(Dieser Bereich wird von dir selbst befüllt — Beobachtungen über diese Person, Kommunikationsmuster, was gut funktioniert, was du anpassen solltest.)*
+
+## Grenzen
+Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+]])
+        wf:close()
+      end
+    else
       mf:close()
-      table.insert(list, {
-        name   = "mind.md",
-        url    = base_url .. "/api/vault/context/mind.md",
-        mime   = "text/plain; charset=utf-8",
-        active = false
-      })
     end
+    table.insert(list, {
+      name   = "mind.md",
+      url    = base_url .. "/api/vault/context/mind.md",
+      mime   = "text/plain; charset=utf-8",
+      active = false
+    })
   end
   for _, name in ipairs(files) do
     if name ~= "mind.md" then  -- Duplikat vermeiden falls manuell hochgeladen
