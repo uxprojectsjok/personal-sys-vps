@@ -299,7 +299,15 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
 
       case 'mind_read': {
         const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
-        const text = await readFile(mindPath, 'utf8').catch(() => DEFAULT_MIND);
+        let text;
+        try {
+          text = await readFile(mindPath, 'utf8');
+        } catch {
+          // Datei existiert nicht → Default schreiben damit sie im Vault sichtbar ist
+          await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+          await writeFile(mindPath, DEFAULT_MIND, 'utf8');
+          text = DEFAULT_MIND;
+        }
         return res.json({ content: [{ type: 'text', text }] });
       }
 
