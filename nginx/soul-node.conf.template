@@ -187,6 +187,15 @@ server {
     content_by_lua_file /etc/openresty/lua/node_status.lua;
   }
 
+  # ── Emergency: Lock setzen / aufheben / Status ───────────────────────────────
+  location ~ ^/api/emergency/(isolate|restore|status)$ {
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_emergency.lua;
+  }
+
   # ── Soul-API-Token (JWT) ausstellen ──────────────────────────────────────────
   location = /api/soul/v1/token {
     limit_except POST { deny all; }
@@ -233,6 +242,7 @@ server {
   location = /api/soul-update {
     limit_except POST { deny all; }
     limit_req zone=chat burst=5 nodelay;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
 
     set_by_lua_block $anthropic_key {
@@ -269,6 +279,7 @@ server {
   location = /api/chat {
     limit_except POST { deny all; }
     limit_req zone=chat_api burst=5 nodelay;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
 
     set_by_lua_block $anthropic_key {
@@ -310,6 +321,7 @@ server {
     client_body_buffer_size 64K;
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
@@ -649,6 +661,7 @@ server {
     client_body_buffer_size 8M;
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;

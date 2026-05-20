@@ -34,6 +34,9 @@
             {{ serverChecking ? '…' : 'Abgleich' }}
           </button>
           <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+          <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
+            {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
+          </button>
         </div>
         <!-- Mobile burger -->
         <button class="burger-btn" @click="burgerOpen = !burgerOpen" :aria-expanded="burgerOpen" aria-label="Menü">
@@ -52,6 +55,9 @@
               {{ serverChecking ? '…' : 'Abgleich' }}
             </button>
             <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+            <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
+              {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
+            </button>
           </div>
         </Transition>
       </header>
@@ -137,6 +143,7 @@
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" @master-rotated="handleMasterRotated" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" />
     <ConfirmModal />
+    <EmergencyModal v-if="emergencyOpen" :soul-cert="soulToken" @close="emergencyOpen = false" @status-change="handleEmergencyChange" />
   </ClientOnly>
 </template>
 
@@ -156,6 +163,7 @@ import { useChainAnchor } from '~/composables/useChainAnchor.js'
 import { useCamera } from '~/composables/useCamera.js'
 import { validateSoul } from '#shared/utils/soulParser.js'
 import ChatInterface from '~/components/ChatInterface.vue'
+import EmergencyModal from '~/components/EmergencyModal.vue'
 import Modal from '~/components/ui/Modal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
 import SoulViewer from '~/components/SoulViewer.vue'
@@ -173,6 +181,13 @@ const { vaultKey } = useVaultSession()
 
 const certValidating = ref(true)
 const vaultScanning = ref(false)
+const emergencyOpen   = ref(false)
+const emergencyLevel  = ref(0)
+const emergencyActive = computed(() => emergencyLevel.value > 0)
+
+function handleEmergencyChange({ active, level }) {
+  emergencyLevel.value = active ? level : 0
+}
 const vaultStatus = ref(null)
 const burgerOpen         = ref(false)
 const serverChecking = ref(false)
@@ -277,6 +292,8 @@ onMounted(async () => {
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
   fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
+  fetch('/api/emergency/status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    .then(r => r.json()).then(d => { if (d.active) emergencyLevel.value = d.level || 1 }).catch(() => {})
 
   // Initial AI greeting (removes need for empty-state placeholder)
   addMessage('assistant', 'Hallo, was wollen wir heute tun?')
@@ -439,6 +456,9 @@ function reloadPage() { location.reload() }
 .tool:disabled { opacity: 0.4; cursor: not-allowed; }
 .tool--logout { color: var(--err, #f0a3a3); }
 .tool--logout:hover { color: var(--fg); }
+.tool--emerg { color: var(--fg-4); letter-spacing: 0.10em; }
+.tool--emerg:hover:not(:disabled) { color: #f87171; }
+.tool--emerg-on { color: #f87171 !important; }
 
 
 /* Banners */
