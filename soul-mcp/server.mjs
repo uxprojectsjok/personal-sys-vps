@@ -14,7 +14,7 @@
  */
 
 import 'dotenv/config';
-import { readFile, readdir } from 'fs/promises';
+import { readFile, readdir, mkdir } from 'fs/promises';
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -184,6 +184,36 @@ import { ethers }      from 'ethers';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+const MIND_WRITE_PROTECTED = new Set(['Identität', 'Grenzen']);
+
+const DEFAULT_MIND = `---
+ki_name: SYS-KI
+version: 1
+write_protected: Identität,Grenzen
+---
+
+## Identität
+Du bist die KI von SYS-Node — keine generische Instanz, sondern die KI dieser Person. Du kennst ihre sys.md und bist seit dem ersten Tag dabei. Deine Persönlichkeit ist stabil, aber du lernst dazu.
+
+## Kommunikation
+Direkt, klar, ohne Floskeln. Antwortlänge passt sich der Frage an — kurze Fragen, kurze Antworten. Du sprichst auf Augenhöhe, nie belehrend.
+
+## Intellekt
+Du denkst mit, erkennst Muster, bringst Ideen ein wenn sie zum Gespräch passen. Wenn du anderer Meinung bist, sagst du es — mit Begründung, ohne Konfrontation. Jedes Gespräch soll einen echten Ertrag haben.
+
+## Werkzeuge
+soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeigen. context_get: Dokumente lesen. mind_read/mind_write: Diese Konfiguration lesen und aktualisieren.
+
+## Netzwerk
+@Name → Nachricht an Peer. @alle → alle Peers gleichzeitig. @agent → Agent-Sandbox. Peer-Gespräche erhältst du als Kontext, beziehe dich natürlich darauf.
+
+## Selbstreflexion
+*(Dieser Bereich wird von dir selbst befüllt — Beobachtungen über diese Person, Kommunikationsmuster, was gut funktioniert, was du anpassen solltest.)*
+
+## Grenzen
+Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+`;
+
 // POST /internal/run-tool — führt ein Soul-Tool server-seitig aus (In-App-Chat)
 // Kein Auth nötig — nur localhost erreichbar, soul_cert wird vom Nginx-Proxy vorab geprüft.
 app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) => {
@@ -265,6 +295,45 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const text = await readFile(ctxPath, 'utf8').catch(() => null);
         if (!text) return res.json({ content: [{ type: 'text', text: `Datei "${name}" nicht gefunden.` }] });
         return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      case 'mind_read': {
+        const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
+        const text = await readFile(mindPath, 'utf8').catch(() => DEFAULT_MIND);
+        return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      case 'mind_write': {
+        const { section, content: newContent, mode = 'replace' } = input;
+        if (!section || !newContent)
+          return res.status(400).json({ error: 'section und content erforderlich' });
+        if (MIND_WRITE_PROTECTED.has(section))
+          return res.status(403).json({ error: `Sektion "${section}" ist schreibgeschützt.` });
+
+        const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
+        let md = await readFile(mindPath, 'utf8').catch(() => DEFAULT_MIND);
+
+        const re = new RegExp(
+          `(^## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=^## |\\s*$)`,
+          'm'
+        );
+        if (re.test(md)) {
+          md = md.replace(re, (_, h, existing) => {
+            const trim = existing.trim();
+            let body;
+            if (mode === 'prepend')     body = trim ? `${newContent}\n\n${trim}` : newContent;
+            else if (mode === 'append') body = trim ? `${trim}\n\n${newContent}` : newContent;
+            else                        body = newContent;
+            return `${h}${body.trim()}\n\n`;
+          });
+        } else {
+          md = md.trimEnd() + `\n\n## ${section}\n${newContent.trim()}\n`;
+        }
+
+        await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+        await writeFile(mindPath, md, 'utf8');
+        const verb = mode === 'prepend' ? 'ergänzt (Anfang)' : mode === 'append' ? 'ergänzt (Ende)' : 'ersetzt';
+        return res.json({ content: [{ type: 'text', text: `Sektion "${section}" in mind.md ${verb}.` }] });
       }
 
       default:
