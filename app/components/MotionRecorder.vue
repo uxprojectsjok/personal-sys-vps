@@ -320,7 +320,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useMotion }     from "~/composables/useMotion.js";
 import { useVault }      from "~/composables/useVault.js";
 import { useSoul }       from "~/composables/useSoul.js";
@@ -351,27 +351,27 @@ const { syncFile }  = useApiContext();
 
 const PROMPTS = {
   face: [
-    { text: "Neutral – Blick gerade in die Kamera",    sub: "Baseline · Augen offen, ruhiges Gesicht",    secs: 5 },
-    { text: "Natürlich lächeln",                       sub: "Echtes, entspanntes Lächeln",                secs: 4 },
-    { text: "Breit lachen",                            sub: "Volle Emotion – Zähne zeigen",               secs: 4 },
-    { text: "Nachdenklich schauen",                    sub: "Stirn leicht runzeln, Blick leicht weg",     secs: 4 },
-    { text: "Überrascht – Augen weit öffnen",          sub: "Mundwinkel nach unten, Augenbrauen hoch",    secs: 3 },
-    { text: "Zustimmend nicken",                       sub: "3× langsam und bewusst nicken",              secs: 5 },
-    { text: "Kopf schütteln – Nein",                   sub: "3× langsam und bewusst schütteln",           secs: 5 },
-    { text: "2 Sätze über dich laut sprechen",         sub: "Natürliche Mimik beim Sprechen",             secs: 8 },
-    { text: "Blick links – Mitte – rechts",            sub: "Langsam und kontrolliert",                   secs: 5 },
-    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0 },
+    { text: "Neutral – Blick gerade in die Kamera",    sub: "Baseline · Augen offen, ruhiges Gesicht",    secs: 8  },
+    { text: "Natürlich lächeln",                       sub: "Echtes, entspanntes Lächeln",                secs: 7  },
+    { text: "Breit lachen",                            sub: "Volle Emotion – Zähne zeigen",               secs: 7  },
+    { text: "Nachdenklich schauen",                    sub: "Stirn leicht runzeln, Blick leicht weg",     secs: 7  },
+    { text: "Überrascht – Augen weit öffnen",          sub: "Mundwinkel nach unten, Augenbrauen hoch",    secs: 7  },
+    { text: "Zustimmend nicken",                       sub: "3× langsam und bewusst nicken",              secs: 8  },
+    { text: "Kopf schütteln – Nein",                   sub: "3× langsam und bewusst schütteln",           secs: 8  },
+    { text: "2 Sätze über dich laut sprechen",         sub: "Natürliche Mimik beim Sprechen",             secs: 12 },
+    { text: "Blick links – Mitte – rechts",            sub: "Langsam und kontrolliert",                   secs: 8  },
+    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0  },
   ],
   body: [
-    { text: "Ganzkörper ins Bild bringen",             sub: "Kopf bis Füße vollständig im Bild?",         secs: 6 },
-    { text: "Neutrale Haltung – Arme locker seitlich", sub: "Entspannte Referenz-Pose",                   secs: 5 },
-    { text: "5 Schritte vor und zurück gehen",         sub: "Normaler, natürlicher Gang",                 secs: 7 },
-    { text: "Jemanden begrüßen – winken",              sub: "Typische Willkommensgeste",                  secs: 5 },
-    { text: "Sprich und gestikuliere dabei",           sub: "2–3 Sätze frei sprechen",                   secs: 8 },
-    { text: "Arme weit ausbreiten – T-Pose",           sub: "Körpermaß-Referenz für Rigging",             secs: 5 },
-    { text: "Langsam 360° drehen",                     sub: "Einmal komplett rundherum",                  secs: 8 },
-    { text: "Sitzhaltung einnehmen falls möglich",     sub: "Sitz-Pose – Stuhl oder Boden",               secs: 6 },
-    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0 },
+    { text: "Ganzkörper ins Bild bringen",             sub: "Kopf bis Füße vollständig im Bild?",         secs: 10 },
+    { text: "Neutrale Haltung – Arme locker seitlich", sub: "Entspannte Referenz-Pose",                   secs: 8  },
+    { text: "5 Schritte vor und zurück gehen",         sub: "Normaler, natürlicher Gang",                 secs: 10 },
+    { text: "Jemanden begrüßen – winken",              sub: "Typische Willkommensgeste",                  secs: 8  },
+    { text: "Sprich und gestikuliere dabei",           sub: "2–3 Sätze frei sprechen",                   secs: 12 },
+    { text: "Arme weit ausbreiten – T-Pose",           sub: "Körpermaß-Referenz für Rigging",             secs: 8  },
+    { text: "Langsam 360° drehen",                     sub: "Einmal komplett rundherum",                  secs: 12 },
+    { text: "Sitzhaltung einnehmen falls möglich",     sub: "Sitz-Pose – Stuhl oder Boden",               secs: 10 },
+    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0  },
   ]
 };
 
@@ -387,6 +387,7 @@ const isSaving        = ref(false);
 const saved           = ref(false);
 
 let countdownTimer = null;
+let readTimer      = null;
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
@@ -417,12 +418,15 @@ function runPromptTimer() {
   if (!p || p.secs === 0) { promptCountdown.value = 0; return; }
 
   promptCountdown.value = 100;
-  const decrement = 100 / (p.secs * 10);
-
-  countdownTimer = setInterval(() => {
-    promptCountdown.value = Math.max(0, promptCountdown.value - decrement);
-    if (promptCountdown.value <= 0) advancePrompt();
-  }, 100);
+  // 2s Lesepause – Bar bleibt voll, Countdown startet danach
+  readTimer = setTimeout(() => {
+    readTimer = null;
+    const decrement = 100 / (p.secs * 10);
+    countdownTimer = setInterval(() => {
+      promptCountdown.value = Math.max(0, promptCountdown.value - decrement);
+      if (promptCountdown.value <= 0) advancePrompt();
+    }, 100);
+  }, 2000);
 }
 
 function advancePrompt() {
@@ -434,6 +438,7 @@ function advancePrompt() {
 }
 
 function clearTimer() {
+  if (readTimer)      { clearTimeout(readTimer);       readTimer      = null; }
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
 }
 
@@ -529,6 +534,17 @@ function handleClose() {
   if (previewEl.value) { previewEl.value.pause(); previewEl.value.src = ""; }
   emit("close");
 }
+
+// Preview-Video neu laden wenn isPreview true wird — Browser lädt src sonst nicht automatisch
+watch(isPreview, async (v) => {
+  if (v && lastSample.value?.url) {
+    await nextTick();
+    if (previewEl.value) {
+      previewEl.value.src = lastSample.value.url;
+      previewEl.value.load();
+    }
+  }
+});
 
 onMounted(async () => {
   // useMotion ist ein Singleton – Reset beim Mount wenn noch alter State hängt
