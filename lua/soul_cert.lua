@@ -174,6 +174,7 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
           first_setup_token = "adm_" .. adm_hex
 
           os.execute("mkdir -p " .. SOULS_DIR .. soul_id)
+          os.execute("mkdir -p " .. SOULS_DIR .. soul_id .. "/vault_shared && chmod 777 " .. SOULS_DIR .. soul_id .. "/vault_shared")
           local saf = io.open(soul_admin_path, "w")
           if saf then
             saf:write(cjson.encode({
