@@ -283,7 +283,7 @@
     <button
       class="mobile-fab"
       :class="{ open: mobileComposerOpen }"
-      :style="{ bottom: mobileComposerOpen ? `${dockHeight + 12}px` : '16px' }"
+      :style="mobileComposerOpen ? { bottom: `${dockHeight + 12}px` } : {}"
       @click="toggleMobileComposer"
       aria-label="Eingabe öffnen"
     >
@@ -1967,6 +1967,7 @@ defineExpose({
     align-items: center;
     justify-content: center;
     position: fixed;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     right: 18px;
     width: 50px;
     height: 50px;
