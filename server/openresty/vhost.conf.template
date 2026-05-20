@@ -90,7 +90,7 @@ server {
   ################################
   # Static Assets – Long Cache
   ################################
-  location ~* \.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
+  location ~* ^(?!/api/).*\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
     root /var/www/{{DOMAIN}};
     try_files $uri =404;
     access_log off;

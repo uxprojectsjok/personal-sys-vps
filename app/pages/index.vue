@@ -671,6 +671,11 @@ const journal = computed(() => {
 .ticks { display: flex; justify-content: space-between; margin-top: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-4); }
 .maturity .val { font-family: var(--serif); font-size: clamp(28px,8vw,64px); line-height: 0.9; letter-spacing: -0.03em; color: var(--fg); }
 .maturity .val span { font-size: 22px; color: var(--fg-3); font-family: var(--mono); letter-spacing: 0.05em; margin-left: 4px; }
+@media (max-width: 640px) {
+  .maturity { grid-template-columns: 1fr; gap: 8px; }
+  .maturity .val { font-size: clamp(28px,10vw,48px); text-align: left; padding-top: 4px; }
+  .ticks { letter-spacing: 0; font-size: 10px; gap: 4px; }
+}
 
 /* ────── LANDING (private node) ────── */
 .landing { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; align-items: stretch; }
