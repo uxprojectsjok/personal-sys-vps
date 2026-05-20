@@ -2054,7 +2054,7 @@ defineExpose({
   max-height: 220px;
   border-radius: 8px;
   object-fit: cover;
-  margin-bottom: 6px;
+  margin: 6px 0 10px;
 }
 @media (max-width: 900px) {
   .msg-media-img { max-width: clamp(100px, 36vw, 160px); max-height: clamp(100px, 36vw, 160px); }
