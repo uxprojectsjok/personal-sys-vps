@@ -269,7 +269,7 @@ async function handleSave() {
 .cc-dot {
   width: 7px; height: 7px;
   border-radius: 50%;
-  flex-none;
+  flex: none;
 }
 .cc-dot--idle    { background: rgba(255,255,255,0.25); }
 .cc-dot--rec     { background: #ef4444; }
