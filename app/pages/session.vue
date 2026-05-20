@@ -27,7 +27,6 @@
         </div>
         <!-- Desktop tools -->
         <div class="tools tools--desktop">
-          <button class="tool" @click="liveProfileVisible = !liveProfileVisible">Profil</button>
           <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
             {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
           </button>
@@ -46,7 +45,6 @@
         <!-- Burger dropdown — absolute positioned, doesn't affect grid layout -->
         <Transition name="slide-up">
           <div v-if="burgerOpen" class="burger-menu">
-            <button class="tool" @click="liveProfileVisible = !liveProfileVisible; burgerOpen = false">Profil</button>
             <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
               {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
             </button>
@@ -125,17 +123,6 @@
       <span>SYS · cert validating</span>
     </div>
 
-    <!-- Modals / profiles -->
-    <Transition name="slide-up">
-      <LiveProfile
-        v-if="liveProfileVisible"
-        :soul-meta="soulMeta"
-        @voice-saved="handleVoiceSaved"
-        @motion-saved="handleMotionSaved"
-        @close="liveProfileVisible = false"
-      />
-    </Transition>
-
     <Modal
       :open="certErrorVisible"
       title="Zertifikat ungültig"
@@ -167,9 +154,8 @@ import { useVault } from '~/composables/useVault.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
 import { useCamera } from '~/composables/useCamera.js'
-import { validateSoul, updateFrontmatterField } from '#shared/utils/soulParser.js'
+import { validateSoul } from '#shared/utils/soulParser.js'
 import ChatInterface from '~/components/ChatInterface.vue'
-import LiveProfile from '~/components/LiveProfile.vue'
 import Modal from '~/components/ui/Modal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
 import SoulViewer from '~/components/SoulViewer.vue'
@@ -188,7 +174,6 @@ const { vaultKey } = useVaultSession()
 const certValidating = ref(true)
 const vaultScanning = ref(false)
 const vaultStatus = ref(null)
-const liveProfileVisible = ref(false)
 const burgerOpen         = ref(false)
 const serverChecking = ref(false)
 const mobileView = ref('chat')
@@ -368,20 +353,6 @@ async function handleCheckServer() {
 async function handleMasterRotated() {
   await refreshCert()
   settingsOpen.value = false
-}
-
-async function handleVoiceSaved() {
-  if (!soulContent.value) return
-  soulContent.value = updateFrontmatterField(soulContent.value, 'voice_profile', 'voice_samples/voice_profile.json')
-  save()
-  if (vaultConnected.value) await writeSoulMd(soulContent.value, 'sys')
-}
-
-async function handleMotionSaved() {
-  if (!soulContent.value) return
-  soulContent.value = updateFrontmatterField(soulContent.value, 'motion_profile', 'motion_samples/motion_profile.json')
-  save()
-  if (vaultConnected.value) await writeSoulMd(soulContent.value, 'sys')
 }
 
 function handleCertError() { certErrorVisible.value = true }
