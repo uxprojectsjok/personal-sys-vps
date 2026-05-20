@@ -163,7 +163,7 @@
     </div>
 
     <!-- ── Dock ────────────────────────────────────────────────────── -->
-    <footer class="dock">
+    <footer ref="dockEl" class="dock" :class="{ 'mobile-open': mobileComposerOpen }">
 
       <!-- Soul-Archivar läuft -->
       <Transition name="fade-quick">
@@ -278,6 +278,19 @@
     />
     <!-- Hidden file input — must be in DOM for mobile to work -->
     <input ref="fileInputEl" type="file" style="display:none;position:fixed" @change="onFileInputChange" />
+
+    <!-- Mobile floating composer button -->
+    <button
+      class="mobile-fab"
+      :class="{ open: mobileComposerOpen }"
+      :style="{ bottom: mobileComposerOpen ? `${dockHeight + 12}px` : '16px' }"
+      @click="toggleMobileComposer"
+      aria-label="Eingabe öffnen"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mobile-fab-icon" width="20" height="20">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -342,6 +355,22 @@ watch(autonomousKi, v => { if (typeof window !== 'undefined') localStorage.setIt
 
 // ── Media drawer ────────────────────────────────────────────────────
 const mediaOpen = ref(false)
+
+// ── Mobile composer FAB ─────────────────────────────────────────────
+const mobileComposerOpen = ref(false)
+const dockEl             = ref(null)
+const dockHeight         = ref(160)
+
+function toggleMobileComposer() {
+  mobileComposerOpen.value = !mobileComposerOpen.value
+  if (mobileComposerOpen.value) {
+    nextTick(() => { if (dockEl.value) dockHeight.value = dockEl.value.offsetHeight })
+  }
+}
+
+function closeMobileComposer() {
+  mobileComposerOpen.value = false
+}
 
 // ── Input state ────────────────────────────────────────────────────
 const draft      = ref('')
@@ -1478,6 +1507,7 @@ async function handleSend() {
   const raw = draft.value.trim()
   if (!raw && !msgMedia.value && !msgDoc.value) return
   draft.value = ''
+  closeMobileComposer()
   await nextTick(autoResize)
 
   const intent = detectIntent(raw)
@@ -1900,14 +1930,80 @@ defineExpose({
   opacity: 0.35; cursor: not-allowed;
 }
 
+/* ── Mobile FAB (hidden on desktop) ─────────────────────────────── */
+.mobile-fab { display: none; }
+
 /* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .stream { padding: 20px 12px 28px; }
-  .msg    { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  /* Stream fills full height — dock is fixed, so no bottom padding needed */
+  .stream {
+    padding: 16px 12px 80px;
+  }
+  .msg { grid-template-columns: 1fr; }
   .dock-icon { width: 40px; }
   .dock-mode-bar { padding: 0 12px; }
+
+  /* Dock slides up from bottom as fixed overlay */
   .dock {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    transform: translateY(calc(100% + 64px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(18, 16, 26, 0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(139, 92, 246, 0.22);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .dock.mobile-open {
+    transform: translateY(0);
+  }
+
+  /* Floating composer button */
+  .mobile-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 18px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    background: rgba(18, 16, 26, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(139, 92, 246, 0.12);
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.65);
+    z-index: 201;
+    transition:
+      bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      color 0.2s,
+      border-color 0.2s,
+      background 0.2s,
+      box-shadow 0.2s;
+  }
+  .mobile-fab:active {
+    transform: scale(0.93);
+  }
+  .mobile-fab.open {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+    background: rgba(18, 16, 26, 0.88);
+    box-shadow:
+      0 4px 20px rgba(248, 113, 113, 0.15),
+      0 0 0 1px rgba(248, 113, 113, 0.15);
+  }
+  .mobile-fab-icon {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .mobile-fab.open .mobile-fab-icon {
+    transform: rotate(45deg);
   }
 }
 
@@ -2057,7 +2153,7 @@ defineExpose({
   margin: 6px 0 10px;
 }
 @media (max-width: 900px) {
-  .msg-media-img { max-width: clamp(100px, 36vw, 160px); max-height: clamp(100px, 36vw, 160px); }
+  .msg-media-img { max-width: clamp(140px, 48vw, 200px); max-height: clamp(140px, 48vw, 200px); }
 }
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
