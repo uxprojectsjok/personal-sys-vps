@@ -74,14 +74,14 @@
         <div
           v-else-if="item._type === 'bubble'"
           class="msg-bubble"
-          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
+          :class="[item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other', item.sphere === 'synthesis' ? 'msg-bubble--archivar' : '']"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
             :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : item.content?.startsWith('[KI]') ? 'var(--accent)' : '#a78bfa' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
-            :class="item.from === 'me' ? 'msg-inner--me' : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+            :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <img v-if="msgMediaCache.get(item.ts)" :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt="" />
@@ -672,12 +672,14 @@ const unifiedStream = computed(() => {
 })
 
 function resolveAuthor(msg) {
-  if (msg.sphere === 'synthesis') return 'KI'
+  if (msg.sphere === 'synthesis') return 'Archivar'
   const senderName = msg.author
     || (!msg.from || msg.from === 'me'
         ? (soulMeta.value?.name || 'Du')
         : (peerIds.value.find(p => p.soul_id === msg.from)?.label || msg.from.slice(0, 8)))
-  if (msg.content?.startsWith('[KI]')) return `KI@${senderName}`
+  if (msg.content?.startsWith('[KI]')) {
+    return msg.from === 'me' ? 'KI' : `KI@${senderName}`
+  }
   return senderName
 }
 
@@ -1037,7 +1039,7 @@ function evictCache() {
 }
 
 function cleanMsgContent(msg) {
-  let c = (msg.content || '').replace('[Bild]', '').replace(/^\[KI\]\s*/, '').trim()
+  let c = (msg.content || '').replace('[Bild]', '').replace(/^\[KI\]\s*/, '').replace(/^\[Synthese\]\s*/, '').trim()
   if (msgBlobCache.has(msg.ts) || msgExpiredCache.has(msg.ts)) {
     c = c.replace(/^\[Dokument:[^\]]*\]\s*/, '')
   }
@@ -1716,7 +1718,8 @@ defineExpose({
 @keyframes sys-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
 /* ── Media embeds ────────────────────────────────────────────────── */
-.media-preview img, .media-video video { max-width: 280px; display: block; margin-bottom: 10px; }
+.media-preview img { display: block; width: 100%; height: auto; border-radius: 10px; margin-bottom: 10px; }
+.media-video video { max-width: 100%; display: block; border-radius: 10px; margin-bottom: 10px; }
 .media-audio audio  { width: 260px; height: 36px; display: block; margin-bottom: 10px; }
 .media-embed iframe { width: 100%; max-width: 320px; aspect-ratio: 16/9; display: block; margin-bottom: 10px; }
 .media-spotify iframe { width: 100%; max-width: 320px; height: 80px; display: block; margin-bottom: 10px; }
@@ -2147,14 +2150,10 @@ defineExpose({
 .msg-inner p:empty  { display: none; }
 .msg-media-img {
   display: block;
-  max-width: 220px;
-  max-height: 220px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin: 6px 0 10px;
-}
-@media (max-width: 900px) {
-  .msg-media-img { max-width: clamp(140px, 48vw, 200px); max-height: clamp(140px, 48vw, 200px); }
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 4px 0 8px;
 }
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
@@ -2227,6 +2226,39 @@ defineExpose({
 }
 .msg-inner--ki em { color: var(--accent-bright); font-style: italic; }
 .msg-inner--ki code { font-family: var(--mono); font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 1px 5px; }
+
+/* KI sending on my behalf to peers — outgoing but AI-generated */
+.msg-inner--ki-out {
+  background: rgba(139,92,246,0.09);
+  border-radius: 14px 14px 4px 14px;
+  border: 1px dashed rgba(139,92,246,0.28);
+  color: var(--fg-2);
+  font-size: 0.94em;
+}
+
+/* Archivar (synthesis) — journal entry style, not a chat bubble */
+.msg-bubble--archivar {
+  align-self: stretch;
+  max-width: 100%;
+  opacity: 0.78;
+}
+.msg-bubble--archivar .msg-sender {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-align: center;
+  padding: 0 2px;
+}
+.msg-inner--synthesis {
+  background: transparent;
+  border-radius: 0;
+  border-left: none;
+  border-top: 1px solid rgba(96,165,250,0.18);
+  padding: 8px 4px 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--fg-3);
+}
 
 .msg-foot {
   display: flex;
