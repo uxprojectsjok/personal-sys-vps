@@ -36,6 +36,24 @@ const SOUL_TOOLS = [
       },
       required: ["name"]
     }
+  },
+  {
+    name: "mind_read",
+    description: "Liest deine eigene Konfigurationsdatei (mind.md) — Identität, Kommunikation, Intellekt, Werkzeuge, Netzwerk, Selbstreflexion, Grenzen.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "mind_write",
+    description: "Aktualisiert eine Sektion deiner mind.md. Schreibbar: Kommunikation, Intellekt, Werkzeuge, Netzwerk, Selbstreflexion. Schreibgeschützt: Identität, Grenzen. Nur bei echten Erkenntnissen nutzen.",
+    input_schema: {
+      type: "object",
+      properties: {
+        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Selbstreflexion\"" },
+        content: { type: "string", description: "Neuer Inhalt (Markdown)" },
+        mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang" }
+      },
+      required: ["section", "content"]
+    }
   }
 ];
 
@@ -105,7 +123,7 @@ export function useClaude() {
     return [{ role: "user", content: firstBlocks }, ...rest];
   }
 
-  async function chat({ messages, soulContent, soulCert, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6" }) {
+  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6" }) {
     if (typeof window === "undefined") return null;
 
     isLoading.value = true;
@@ -201,7 +219,15 @@ Suche (direkt im Chat tippen):
 Profil-Aufnahmen (einmalig, im Vault gespeichert):
 - "@audio" oder "@stimme" → Stimmprobe aufnehmen
 - "@face" oder "@gesicht" → Gesicht aufnehmen
-- "@body" oder "@bewegung" → Bewegung aufnehmen`;
+- "@body" oder "@bewegung" → Bewegung aufnehmen
+
+Konfiguration (mind.md):
+- mind_read → deine aktuelle Konfiguration lesen
+- mind_write → Selbstreflexion, Kommunikationsstil oder Intellekt anpassen (Identität & Grenzen sind schreibgeschützt)`;
+
+      if (mindContent) {
+        systemPrompt += `\n\n## Deine Konfiguration (mind.md)\n${mindContent}`;
+      }
 
     } else {
       // Session-Modus: neutraler Beobachter – Ziel ist die Entwicklung des digitalen Abbilds

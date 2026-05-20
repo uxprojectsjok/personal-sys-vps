@@ -328,6 +328,15 @@ server {
     content_by_lua_file /etc/openresty/lua/beme.lua;
   }
 
+  # ── KI-Konfiguration mind.md (GET/PUT) – nur soul-cert ──────────────────────
+  location = /api/mind {
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mind.lua;
+  }
+
   # ── API-Context (GET/PUT) – soul-cert oder service-token ────────────────────
   location = /api/context {
     limit_req zone=chat burst=20 nodelay;
