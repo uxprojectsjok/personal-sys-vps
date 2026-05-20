@@ -1,5 +1,5 @@
 // server/api/mind.get.js — Dev-Server stub
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 
 const DEFAULT = `---
@@ -41,6 +41,11 @@ export default defineEventHandler(async (event) => {
   try {
     return readFileSync(path, 'utf-8')
   } catch {
+    // Datei existiert nicht → Default schreiben damit sie im Vault sichtbar ist
+    try {
+      mkdirSync(join('/var/lib/sys/souls', soulId, 'vault/context'), { recursive: true })
+      writeFileSync(path, DEFAULT, 'utf-8')
+    } catch { /* silent */ }
     return DEFAULT
   }
 })
