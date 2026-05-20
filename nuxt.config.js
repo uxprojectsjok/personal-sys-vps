@@ -58,18 +58,10 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: "de" },
       title: "Personal SYS VPS",
-      script: [
-        {
-          // Force viewport zoom reset on Android Chrome before first paint.
-          // Chrome saves zoom per domain; this resets it to 1:1 immediately.
-          innerHTML: `(function(){var m=document.querySelector('meta[name=viewport]');if(m){var c=m.content;m.content='width=device-width,initial-scale=1,maximum-scale=1';setTimeout(function(){m.content=c;},1);}})();`,
-          type: 'text/javascript',
-        }
-      ],
       meta: [
         {
           name: "viewport",
-          content: "width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover",
+          content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover",
         },
         { name: "description", content: "Deine persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt. Unter deiner Kontrolle." },
         { name: "theme-color", content: "#12101a" },
