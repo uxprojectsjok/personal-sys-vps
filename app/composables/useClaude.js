@@ -152,7 +152,7 @@ ${fullSoul}`;
         systemPrompt += `\n\n## Meine Dateien & Erinnerungen\n${vaultContext}`;
       }
       if (networkContext) {
-        systemPrompt += `\n\n## Verbundene Souls (Soul Network)\nDu hast Zugriff auf den Kontext dieser verbundenen Souls:\n\n${networkContext}`;
+        systemPrompt += `\n\n## Laufende Peer-Gespräche\nDas passiert gerade in deinen Unterhaltungen mit anderen:\n\n${networkContext}\n\nDu weißt, was besprochen wird — beziehe dich natürlich darauf, wenn es relevant ist.`;
       }
 
       systemPrompt += `
