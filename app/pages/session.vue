@@ -445,7 +445,9 @@ function reloadPage() { location.reload() }
 .sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
   .burger-btn { display: flex; }
-  .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; }
+  .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; min-width: 0; flex-shrink: 1; overflow: hidden; }
+  .soul-id-btn { display: none; }
+  .pill-sep { display: none; }
 }
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
 .sess-head .back:hover { color: var(--accent); }

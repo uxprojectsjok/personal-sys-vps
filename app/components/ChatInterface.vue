@@ -790,7 +790,7 @@ async function uploadToSharedVault(file) {
   const r = await fetch('/api/vault/shared', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-    body: JSON.stringify({ name: file.name, data: b64 }),
+    body: JSON.stringify({ name: file.name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file', data: b64 }),
   })
   if (!r.ok) throw new Error(`Upload fehlgeschlagen (${r.status})`)
   const d = await r.json()
@@ -864,9 +864,10 @@ async function handlePeerSend(text, recipient) {
     try {
       const ownSoulId = props.soulCert?.split('.')?.[0] || ''
       let b64, fileName
+      const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
       if (msgMedia.value) {
         b64 = msgMedia.value.base64
-        fileName = attachName
+        fileName = sanitizeName(attachName)
         const r = await fetch('/api/vault/shared', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
@@ -1615,6 +1616,7 @@ defineExpose({
 .stream {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: clamp(16px,3vw,32px) clamp(12px,3vw,32px);
   padding-bottom: clamp(24px,4vw,48px);
   display: flex;
