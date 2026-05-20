@@ -82,11 +82,31 @@ end
 
 -- ── HMAC gegen alle cert_versions prüfen (0..20) ────────────────────────────
 
+-- Per-soul Key für Multi-Hoster; fällt auf globalen Key zurück (Single-Hoster)
+local active_key   = master_key
+local per_soul_key = cfg.get_soul_master_key(soul_id)
+if per_soul_key and per_soul_key ~= "" then active_key = per_soul_key end
+
 local valid = false
 for v = 0, 20 do
-  if hmac.cert_for_soul(master_key, soul_id, v) == cert then
-    valid = true
-    break
+  if hmac.cert_for_soul(active_key, soul_id, v) == cert then
+    valid = true; break
+  end
+end
+
+-- Grace-Period: vorherigen Key prüfen (nach Master-Key-Rotation)
+if not valid then
+  local prev_key
+  if per_soul_key and per_soul_key ~= "" then
+    prev_key = cfg.get_soul_master_key_prev(soul_id)
+  end
+  if not prev_key or prev_key == "" then prev_key = cfg.get_master_key_prev() end
+  if prev_key and prev_key ~= "" then
+    for v = 0, 20 do
+      if hmac.cert_for_soul(prev_key, soul_id, v) == cert then
+        valid = true; break
+      end
+    end
   end
 end
 
