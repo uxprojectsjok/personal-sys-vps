@@ -1482,25 +1482,48 @@ async function handleSend() {
 
   const intent = detectIntent(raw)
 
-  if (intent.type === 'peer')          { await handlePeerSend(intent.query || raw, 'peer'); return }
-  if (intent.type === 'community')     { await handlePeerSend(intent.query || raw, 'community'); return }
-  if (intent.type === 'peer-specific') { await handlePeerSend(intent.query || raw, intent.soul_id); return }
-  if (intent.type === 'agent')         { await handlePeerSend(intent.query || raw, 'agent'); return }
-  if (intent.type === 'ki')            { await triggerSynthesis(); return }
+  if (intent.type === 'ki')        { await triggerSynthesis(); return }
   if (intent.type === 'ambiguous') {
     const names = intent.candidates.map(p => `@${p.label}`).join(', ')
     addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
     return
   }
 
-  // Staged image (picked file) → vision for KI
+  // Peer routing — capture staged files BEFORE handlePeerSend clears them,
+  // then also process through KI so the file always lands in chat.
+  const peerIntents = ['peer', 'community', 'peer-specific', 'agent']
+  if (peerIntents.includes(intent.type)) {
+    const peerTarget = intent.type === 'peer-specific' ? intent.soul_id : intent.type
+    const peerText   = intent.query || raw
+    const mediaFile  = msgMedia.value?._file  || null
+    const mediaName  = msgMedia.value?.name   || null
+    const docFile    = msgDoc.value?.file     || null
+    await handlePeerSend(peerText, peerTarget)
+    // Also process the staged file through KI
+    if (mediaFile) {
+      await handleImageVision(mediaFile, peerText || mediaName || '')
+    } else if (docFile) {
+      const result = await handleLocalFile(docFile)
+      if (result) {
+        if (result._imageFile) { await handleImageVision(result._imageFile, result.name) }
+        else {
+          const meta = {}
+          if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
+          if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
+          await dispatchToChat(result.text || peerText, meta)
+        }
+      }
+    }
+    return
+  }
+
+  // No peer — process staged file for KI
   if (msgMedia.value?._file) {
     const media = msgMedia.value
     msgMedia.value = null
-    await handleImageVision(media._file, raw || `[Bild: "${media.name}"]`)
+    await handleImageVision(media._file, raw || media.name || '')
     return
   }
-  // Staged doc (picked file) → process and dispatch to KI
   if (msgDoc.value?.file) {
     const doc = msgDoc.value
     msgDoc.value = null
@@ -2032,6 +2055,9 @@ defineExpose({
   border-radius: 8px;
   object-fit: cover;
   margin-bottom: 6px;
+}
+@media (max-width: 900px) {
+  .msg-media-img { max-width: clamp(100px, 36vw, 160px); max-height: clamp(100px, 36vw, 160px); }
 }
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
