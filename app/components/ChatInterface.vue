@@ -1093,7 +1093,9 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
-  chatEnd.value?.scrollIntoView({ block: 'end' })
+  if (scrollEl.value) {
+    scrollEl.value.scrollTop = scrollEl.value.scrollHeight
+  }
 }
 
 watch(() => messages.value?.length, scrollToBottom)
@@ -2362,11 +2364,10 @@ defineExpose({
   .msg-bubble         { width: 100%; max-width: 100%; align-self: stretch; gap: 4px; box-sizing: border-box; }
   .msg-bubble--me     { align-items: flex-end; }
   .msg-bubble--other  { align-items: flex-start; }
-  /* Inner bubble capped at 88% of container so it looks like a bubble, not a wall-to-wall block */
-  .msg-inner          { max-width: 88%; }
+  /* Inner bubble: merged rule — capped at 88% so it reads as bubble not full-width block */
   .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  .msg-inner  { max-width: 88%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
