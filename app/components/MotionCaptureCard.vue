@@ -331,7 +331,6 @@ async function handleSave() {
   flex-direction: column;
   gap: 10px;
   width: 100%;
-  max-width: 320px;
   box-sizing: border-box;
 }
 
