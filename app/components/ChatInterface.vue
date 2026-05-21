@@ -2188,14 +2188,15 @@ defineExpose({
 }
 .capture-dismiss {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: 8px;
+  right: 8px;
   z-index: 10;
   width: 22px;
   height: 22px;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.15);
-  background: var(--paper-3);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
   color: var(--fg-3);
   font-size: 11px;
   line-height: 1;
@@ -2205,7 +2206,7 @@ defineExpose({
   justify-content: center;
   transition: color 0.15s, background 0.15s;
 }
-.capture-dismiss:hover { color: var(--fg); background: rgba(255,255,255,0.1); }
+.capture-dismiss:hover { color: var(--fg); background: rgba(0,0,0,0.65); }
 
 .msg-sender {
   font-family: var(--mono);
