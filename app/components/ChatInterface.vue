@@ -1739,6 +1739,7 @@ defineExpose({
   gap: 16px;
   max-width: 780px;
   margin: 0 auto; width: 100%;
+  min-width: 0;
 }
 .anchor { height: 1px; }
 
@@ -1845,6 +1846,7 @@ defineExpose({
 .msg-inner p:last-child { margin-bottom: 0; }
 .msg-inner p:empty    { display: none; }
 .msg-inner a          { color: var(--accent-bright); }
+.msg-inner *          { overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 
 .msg-media-img {
   display: block; width: 100%; max-width: 320px; height: auto;
@@ -2353,13 +2355,15 @@ defineExpose({
 
 @media (max-width: 640px) {
   .stream { padding: 16px 12px 110px; box-sizing: border-box; }
-  .stream-inner { gap: 12px; max-width: 100%; width: 100%; box-sizing: border-box; }
+  .stream-inner { gap: 12px; max-width: 100%; width: 100%; min-width: 0; box-sizing: border-box; }
 
-  .msg-bubble { max-width: calc(100% - 8px); gap: 4px; box-sizing: border-box; }
-  .msg-bubble-wrap { max-width: 100%; }
+  .msg-bubble { max-width: 100%; gap: 4px; box-sizing: border-box; }
+  .msg-bubble-wrap { max-width: 92%; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
   .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
+  .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
+  .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
   .msg-doc-a { max-width: 100%; }
   .msg-doc-name { max-width: 100%; }
 
