@@ -58,6 +58,7 @@
             <button class="tool" v-if="hasSoul" @click="handleCheckServer; burgerOpen = false" :disabled="serverChecking">
               {{ serverChecking ? '…' : 'Abgleich' }}
             </button>
+            <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
             <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
             <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
               {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}

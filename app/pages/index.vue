@@ -27,6 +27,20 @@
               <i class="ri-lock-line"></i>
             </button>
           </div>
+          <!-- Mobile burger — nur sichtbar wenn head-actions Einträge verschwinden -->
+          <button class="dash-burger-btn" @click="dashBurgerOpen = !dashBurgerOpen" aria-label="Menü">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path v-if="!dashBurgerOpen" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+              <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <Transition name="slide-up">
+            <div v-if="dashBurgerOpen" class="dash-burger-menu">
+              <button class="dash-burger-item" @click="settingsOpen = true; dashBurgerOpen = false">Einstellungen</button>
+              <button class="dash-burger-item" @click="confirmReset(); dashBurgerOpen = false">Ausloggen</button>
+              <button class="dash-burger-item" @click="lockGate(); dashBurgerOpen = false">Sperren</button>
+            </div>
+          </Transition>
         </header>
 
         <div class="sys-dash-body">
@@ -362,6 +376,7 @@ const encryptOpen       = ref(false)
 const anchorOpen        = ref(false)
 const marketplaceOpen   = ref(false)   // AgentMarketplacePanel
 const settingsOpen      = ref(false)   // SettingsModal
+const dashBurgerOpen    = ref(false)
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const initial      = computed(() => (soulMeta.value?.name || 'S').charAt(0).toUpperCase())
@@ -581,13 +596,52 @@ const journal = computed(() => {
 .sys-dash-head .gate-lock { background: transparent; border: 0; padding: 10px 10px; cursor: pointer; color: var(--fg-3); font-size: 16px; line-height: 1; display: flex; align-items: center; border-left: 1px solid var(--rule-2); }
 .sys-dash-head .gate-lock:hover { color: var(--accent); }
 @media (max-width: 800px) {
-  .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; overflow: hidden; }
+  .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; overflow: visible; position: relative; }
   .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .sys-dash-head .head-actions { min-width: 0; }
 }
 @media (max-width: 480px) {
-  .sys-dash-head .logout:first-child { display: none; }
+  .sys-dash-head .head-actions { display: none; }
+  .dash-burger-btn { display: flex; }
 }
+.slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s ease; }
+.slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(6px); }
+/* Dash burger */
+.dash-burger-btn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: 0; background: transparent;
+  color: var(--fg-3); cursor: pointer;
+}
+.dash-burger-btn:hover { color: var(--fg); }
+.dash-burger-menu {
+  position: absolute;
+  top: 100%; right: 0;
+  z-index: 200;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-top: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.dash-burger-item {
+  padding: 14px 20px;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+.dash-burger-item:last-child { border-bottom: 0; }
+.dash-burger-item:hover { color: var(--fg); background: rgba(255,255,255,0.04); }
 
 .sys-dash-body { display: grid; grid-template-columns: 440px 1fr; gap: 0; }
 @media (max-width: 900px) { .sys-dash-body { grid-template-columns: 1fr; } }
