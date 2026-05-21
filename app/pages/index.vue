@@ -598,7 +598,7 @@ const journal = computed(() => {
 .sys-dash-head .gate-lock { background: transparent; border: 0; padding: 10px 10px; cursor: pointer; color: var(--fg-3); font-size: 16px; line-height: 1; display: flex; align-items: center; border-left: 1px solid var(--rule-2); }
 .sys-dash-head .gate-lock:hover { color: var(--accent); }
 @media (max-width: 800px) {
-  .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; overflow: hidden; }
+  .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; }
   .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .sys-dash-head .head-actions { min-width: 0; }
 }
