@@ -186,14 +186,6 @@ if not safe_name or #safe_name < 1 or #safe_name > 120 then
   return
 end
 
--- mind.md ist KI-verwaltet — kein Client-Upload erlaubt
-if data.type == "context" and safe_name == "mind.md" then
-  ngx.status = 403
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"mind.md wird vom KI-System verwaltet und kann nicht manuell hochgeladen werden."}')
-  return
-end
-
 -- Base64 dekodieren
 if type(data.data) ~= "string" then
   ngx.status = 400
@@ -208,6 +200,16 @@ if not decoded then
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"Invalid base64"}')
   return
+end
+
+-- mind.md muss immer als Klartext vorliegen — verschlüsselten Upload ablehnen
+if data.type == "context" and safe_name == "mind.md" then
+  if decoded:sub(1, 4) == "SYS\x01" then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"mind.md muss im Klartext hochgeladen werden (keine Verschlüsselung)."}')
+    return
+  end
 end
 
 -- ── Sicherheitsprüfungen ───────────────────────────────────────────────────
