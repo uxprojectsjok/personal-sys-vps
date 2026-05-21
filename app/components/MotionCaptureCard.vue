@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useMotion }     from '~/composables/useMotion.js'
 import { useVault }      from '~/composables/useVault.js'
 import { useSoul }       from '~/composables/useSoul.js'
@@ -153,7 +153,7 @@ const {
   lastSample, motionError,
   startCameraPreview, stopCameraPreview,
   startRecording, stopRecording, discardSample,
-  formatDuration, setCaptureMode
+  formatDuration, setCaptureMode, reattachStream
 } = useMotion()
 
 const { isConnected: vaultConnected, writeFile, writeSoulMd } = useVault()
@@ -211,6 +211,7 @@ onMounted(async () => {
   if (localStorage.getItem(CONSENT_KEY) === '1') {
     state.value = 'idle'
     setCaptureMode(props.mode)
+    await nextTick()
     await startCameraPreview(liveEl.value)
   }
 })
@@ -225,6 +226,7 @@ async function giveConsent() {
   localStorage.setItem(CONSENT_KEY, '1')
   state.value = 'idle'
   setCaptureMode(props.mode)
+  await nextTick()
   await startCameraPreview(liveEl.value)
 }
 
@@ -235,6 +237,8 @@ async function handleStart() {
   await startRecording(liveEl.value)
   if (isRecording.value) {
     state.value = 'recording'
+    await nextTick()
+    reattachStream(liveEl.value)
     runPromptTimer()
   }
 }
@@ -245,12 +249,13 @@ async function handleStop() {
   state.value = 'preview'
 }
 
-function handleDiscard() {
+async function handleDiscard() {
   if (previewEl.value) { previewEl.value.pause(); previewEl.value.src = '' }
   discardSample(liveEl.value)
   saved.value = false
   state.value = 'idle'
-  startCameraPreview(liveEl.value)
+  await nextTick()
+  await startCameraPreview(liveEl.value)
 }
 
 function runPromptTimer() {
