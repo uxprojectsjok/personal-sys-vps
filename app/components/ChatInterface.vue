@@ -145,7 +145,7 @@
         </div>
 
         <!-- Capture card -->
-        <div v-else-if="item._type === 'capture'" class="msg-bubble msg-bubble--capture">
+        <div v-else-if="item._type === 'capture'" class="capture-wrap">
           <button class="capture-dismiss" @click="removeMessage(item.id)" aria-label="Schließen">✕</button>
           <AudioCaptureCard v-if="item.captureMode === 'audio'" />
           <MotionCaptureCard v-else :mode="item.captureMode" />
@@ -2179,11 +2179,9 @@ defineExpose({
 }
 .msg-bubble--me      { align-self: flex-end;   align-items: flex-end; }
 .msg-bubble--other   { align-self: flex-start; align-items: flex-start; }
-.msg-bubble--capture {
-  align-self: center;
-  width: calc(100% - 32px);
-  max-width: 360px;
-  height: auto;
+.capture-wrap {
+  align-self: stretch;
+  margin: 0 16px;
   position: relative;
 }
 .capture-dismiss {
@@ -2193,6 +2191,8 @@ defineExpose({
   z-index: 10;
   width: 22px;
   height: 22px;
+  padding: 0;
+  flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(0,0,0,0.45);

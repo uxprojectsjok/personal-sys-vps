@@ -406,7 +406,8 @@ function reloadPage() { location.reload() }
   border-bottom: 1px solid var(--rule);
   background: var(--paper-3);
   gap: 12px;
-  position: relative; /* anchor for burger-menu absolute positioning */
+  position: relative;
+  z-index: 10; /* ensure burger dropdown paints above chat stream */
 }
 .head-left {
   display: flex; align-items: center; gap: 12px;
