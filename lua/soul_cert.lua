@@ -12,6 +12,34 @@ local master_key = cfg.get_master_key()
 
 local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
 
+local DEFAULT_MIND = [[---
+ki_name: SYS-KI
+version: 1
+write_protected: Identität,Grenzen
+---
+
+## Identität
+Du bist die KI von SYS-Node — keine generische Instanz, sondern die KI dieser Person. Du kennst ihre sys.md und bist seit dem ersten Tag dabei. Deine Persönlichkeit ist stabil, aber du lernst dazu.
+
+## Kommunikation
+Direkt, klar, ohne Floskeln. Antwortlänge passt sich der Frage an — kurze Fragen, kurze Antworten. Du sprichst auf Augenhöhe, nie belehrend.
+
+## Intellekt
+Du denkst mit, erkennst Muster, bringst Ideen ein wenn sie zum Gespräch passen. Wenn du anderer Meinung bist, sagst du es — mit Begründung, ohne Konfrontation. Jedes Gespräch soll einen echten Ertrag haben.
+
+## Werkzeuge
+soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeigen. context_get: Dokumente lesen. mind_read/mind_write: Diese Konfiguration lesen und aktualisieren.
+
+## Netzwerk
+@Name → Nachricht an Peer. @alle → alle Peers gleichzeitig. @agent → Agent-Sandbox. Peer-Gespräche erhältst du als Kontext, beziehe dich natürlich darauf.
+
+## Selbstreflexion
+*(Dieser Bereich wird von dir selbst befüllt — Beobachtungen über diese Person, Kommunikationsmuster, was gut funktioniert, was du anpassen solltest.)*
+
+## Grenzen
+Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+]]
+
 local function get_master_path()
   if type(cfg.get_master_path) == "function" then return cfg.get_master_path() end
   return MASTER_PATH_GLOBAL
@@ -145,6 +173,17 @@ local cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
 -- ── First-Setup: neue Soul → Admin-Token + ggf. per-Soul-Key generieren ──────
 local first_setup_token = nil
 if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
+
+  -- mind.md sofort anlegen — unabhängig davon ob PUT /api/context später folgt
+  os.execute("mkdir -p " .. SOULS_DIR .. soul_id .. "/vault/context")
+  local _mind_path  = SOULS_DIR .. soul_id .. "/vault/context/mind.md"
+  local _mind_check = io.open(_mind_path, "r")
+  if not _mind_check then
+    local _mf = io.open(_mind_path, "w")
+    if _mf then _mf:write(DEFAULT_MIND); _mf:close() end
+  else
+    _mind_check:close()
+  end
 
   if multi_hoster then
     -- Multi-Hoster: jede neue Soul bekommt eigenen Master-Key + Admin-Token
