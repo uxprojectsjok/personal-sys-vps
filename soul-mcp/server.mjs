@@ -301,9 +301,15 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
         let text;
         try {
-          text = await readFile(mindPath, 'utf8');
+          const raw = await readFile(mindPath);
+          // Verschlüsselte mind.md (SYS\x01 Magic-Bytes) → Default wiederherstellen
+          if (raw.length >= 4 && raw[0] === 0x53 && raw[1] === 0x59 && raw[2] === 0x53 && raw[3] === 0x01) {
+            await writeFile(mindPath, DEFAULT_MIND, 'utf8');
+            text = DEFAULT_MIND;
+          } else {
+            text = raw.toString('utf8');
+          }
         } catch {
-          // Datei existiert nicht → Default schreiben damit sie im Vault sichtbar ist
           await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
           await writeFile(mindPath, DEFAULT_MIND, 'utf8');
           text = DEFAULT_MIND;

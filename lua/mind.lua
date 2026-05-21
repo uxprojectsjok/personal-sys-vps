@@ -45,15 +45,20 @@ Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion is
 ]]
 
 local function read_mind()
-  local f = io.open(MIND_PATH, "r")
+  local f = io.open(MIND_PATH, "rb")
   if not f then
-    -- Datei existiert nicht → Default schreiben damit sie im Vault sichtbar ist
     os.execute("mkdir -p " .. MIND_DIR)
     local wf = io.open(MIND_PATH, "w")
     if wf then wf:write(DEFAULT_MIND); wf:close() end
     return DEFAULT_MIND
   end
   local content = f:read("*a"); f:close()
+  -- Verschlüsselte mind.md (SYS\x01 Magic-Bytes) → Default wiederherstellen
+  if content:sub(1, 4) == "SYS\x01" then
+    local wf = io.open(MIND_PATH, "w")
+    if wf then wf:write(DEFAULT_MIND); wf:close() end
+    return DEFAULT_MIND
+  end
   return content
 end
 
