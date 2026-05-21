@@ -366,6 +366,8 @@ export function useApiContext() {
 
         const type = fileTypeFromPath(name); // voller Pfad inkl. Ordner
         if (!type) continue;
+        // mind.md wird vom KI-System verwaltet und nicht automatisch synchronisiert
+        if (type === "context" && baseName.toLowerCase() === "mind.md") continue;
         const res = await syncFile(soulCert, type, baseName, buffer, vaultKeyHex);
         if (!res.ok) {
           errors++;
