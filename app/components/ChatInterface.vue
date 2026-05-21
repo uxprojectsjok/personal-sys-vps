@@ -1094,6 +1094,7 @@ function autoResize() {
 async function scrollToBottom() {
   await nextTick()
   if (scrollEl.value) {
+    scrollEl.value.scrollLeft = 0
     scrollEl.value.scrollTop = scrollEl.value.scrollHeight
   }
 }
@@ -2360,14 +2361,16 @@ defineExpose({
   .stream { padding: 16px 12px 110px; box-sizing: border-box; overflow-x: hidden; }
   .stream-inner { gap: 12px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
-  /* Full-width container, alignment via align-items — never overflows */
-  .msg-bubble         { width: 100%; max-width: 100%; align-self: stretch; gap: 4px; box-sizing: border-box; }
-  .msg-bubble--me     { align-items: flex-end; }
-  .msg-bubble--other  { align-items: flex-start; }
-  /* Inner bubble: merged rule — capped at 88% so it reads as bubble not full-width block */
+  /* Mobile bubbles: same align-self strategy as desktop, just wider max-width */
+  .msg-bubble         { max-width: 88%; gap: 4px; box-sizing: border-box; }
+  .msg-bubble--me     { align-self: flex-end; align-items: flex-end; }
+  .msg-bubble--other  { align-self: flex-start; align-items: flex-start; }
+  /* Archivar stays full-width on mobile too */
+  .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
+  /* Inner: fills the bubble (bubble is already constrained) */
   .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { max-width: 88%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
