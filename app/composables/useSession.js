@@ -70,6 +70,10 @@ export function useSession() {
     if (msg) msg[key] = value;
   }
 
+  function removeMessage(id) {
+    messages.value = messages.value.filter(m => m.id !== id);
+  }
+
   function clearSession() {
     messages.value = [];
     sessionId.value = null;
@@ -147,6 +151,7 @@ export function useSession() {
     conversationSummary,
     startSession,
     addMessage,
+    removeMessage,
     updateLastMessage,
     setLastMessageMeta,
     setMessageMetaById,

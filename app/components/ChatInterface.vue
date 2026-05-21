@@ -146,6 +146,7 @@
 
         <!-- Capture card -->
         <div v-else-if="item._type === 'capture'" class="msg-bubble msg-bubble--capture">
+          <button class="capture-dismiss" @click="removeMessage(item.id)" aria-label="Schließen">✕</button>
           <AudioCaptureCard v-if="item.captureMode === 'audio'" />
           <MotionCaptureCard v-else :mode="item.captureMode" />
         </div>
@@ -327,7 +328,7 @@ const { chat, isLoading, error, certError } = useClaude()
 const { mindContent, loadMind } = useMind()
 const {
   messages, conversationSummary,
-  addMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
+  addMessage, removeMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
   toApiMessages, getMessagesToSummarize, pruneWithSummary,
 } = useSession()
 const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected, writeSoulMd } = useVault()
@@ -1557,6 +1558,8 @@ async function handleSend() {
 
   if (intent.type === 'capture-audio' || intent.type === 'capture-face' || intent.type === 'capture-body') {
     const mode = intent.type.replace('capture-', '')
+    // Gegenseitiger Ausschluss: bestehende Capture-Kacheln schließen
+    messages.value.filter(m => m._type === 'capture').forEach(m => removeMessage(m.id))
     addMessage('capture', `@${mode}`, { _type: 'capture', captureMode: mode })
     await scrollToBottom()
     return
@@ -2181,7 +2184,28 @@ defineExpose({
   width: calc(100% - 32px);
   max-width: 520px;
   height: auto;
+  position: relative;
 }
+.capture-dismiss {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--paper-3);
+  color: var(--fg-3);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+.capture-dismiss:hover { color: var(--fg); background: rgba(255,255,255,0.1); }
 
 .msg-sender {
   font-family: var(--mono);
