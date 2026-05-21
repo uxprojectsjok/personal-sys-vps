@@ -2180,9 +2180,9 @@ defineExpose({
 .msg-bubble--me      { align-self: flex-end;   align-items: flex-end; }
 .msg-bubble--other   { align-self: flex-start; align-items: flex-start; }
 .msg-bubble--capture {
-  align-self: center;
-  width: calc(100% - 32px);
-  max-width: 520px;
+  align-self: stretch;
+  margin: 0 16px;
+  max-width: none;
   height: auto;
   position: relative;
 }
