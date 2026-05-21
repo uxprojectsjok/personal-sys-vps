@@ -188,6 +188,13 @@ export function useMotion() {
 
   function setCaptureMode(mode) { captureMode.value = mode; }
 
+  // Stream an neues Video-Element binden (nach Vue-State-Transition nötig)
+  function reattachStream(liveEl) {
+    if (!liveEl || !stream) return;
+    liveEl.srcObject = stream;
+    liveEl.play().catch(() => {});
+  }
+
   return {
     isRecording,
     isPreview,
@@ -202,6 +209,7 @@ export function useMotion() {
     stopRecording,
     discardSample,
     formatDuration,
-    setCaptureMode
+    setCaptureMode,
+    reattachStream
   };
 }
