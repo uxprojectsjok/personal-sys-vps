@@ -258,7 +258,8 @@ async function handleSave() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 280px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .cc-head {
