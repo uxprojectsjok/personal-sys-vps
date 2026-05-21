@@ -1,5 +1,5 @@
 <template>
-  <div class="mcc" :class="hasVideo ? 'mcc--wide' : ''">
+  <div class="mcc">
 
     <!-- Consent -->
     <template v-if="state === 'consent'">
@@ -171,8 +171,7 @@ const promptIndex     = ref(0)
 const promptCountdown = ref(100)
 let countdownTimer    = null
 
-const modeLabel  = computed(() => props.mode === 'face' ? 'Gesicht' : 'Bewegung')
-const hasVideo   = computed(() => state.value === 'idle' || state.value === 'recording' || state.value === 'preview')
+const modeLabel = computed(() => props.mode === 'face' ? 'Gesicht' : 'Bewegung')
 
 const PROMPTS = {
   face: [
@@ -331,9 +330,10 @@ async function handleSave() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 280px;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
 }
-.mcc--wide { max-width: 320px; }
 
 .mcc-head {
   display: flex;
