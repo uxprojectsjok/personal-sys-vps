@@ -38,6 +38,10 @@
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
           </button>
         </div>
+        <!-- Notfall — Mobile: direkt im Header sichtbar -->
+        <button class="tool tool--emerg tool--emerg-hdr" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
+          {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
+        </button>
         <!-- Mobile burger -->
         <button class="burger-btn" @click="burgerOpen = !burgerOpen" :aria-expanded="burgerOpen" aria-label="Menü">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -459,6 +463,9 @@ function reloadPage() { location.reload() }
 .tool--emerg { color: var(--fg-4); letter-spacing: 0.10em; }
 .tool--emerg:hover:not(:disabled) { color: #f87171; }
 .tool--emerg-on { color: #f87171 !important; }
+/* Notfall im Mobile-Header: auf Desktop versteckt, auf Mobile sichtbar */
+.tool--emerg-hdr { display: none; }
+@media (max-width: 900px) { .tool--emerg-hdr { display: block; } }
 
 
 /* Banners */
