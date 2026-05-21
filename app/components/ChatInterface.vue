@@ -1696,7 +1696,7 @@ defineExpose({
 
 <style scoped>
 /* ════════════════════════════════════════════════════════════════════
-   SYS · ChatInterface · Editorial Polish
+   SYS · ChatInterface · Editorial Polish v3
    Drop-in replacement for the <style scoped> block in ChatInterface.vue
    No logic / no template changes required.
    ════════════════════════════════════════════════════════════════════ */
@@ -1819,7 +1819,6 @@ defineExpose({
   padding: 0 6px;
 }
 
-/* Wrap around bubble so we can absolute-position the delete button on top */
 .msg-bubble-wrap {
   position: relative;
   display: inline-flex;
@@ -1920,7 +1919,6 @@ defineExpose({
   font-style: italic;
 }
 
-/* KI sending on my behalf — outgoing dashed border */
 .msg-inner--ki-out {
   background: rgba(139,92,246,0.09);
   border-radius: 16px 16px 4px 16px;
@@ -1929,7 +1927,6 @@ defineExpose({
   font-size: 0.94em;
 }
 
-/* Archivar (synthesis) — journal-entry style, not a bubble */
 .msg-bubble--archivar {
   align-self: stretch;
   max-width: 100%;
@@ -1953,7 +1950,7 @@ defineExpose({
   color: var(--fg-3);
 }
 
-/* ── Foot (time + delivery + actions) ──────────────────────────── */
+/* ── Foot ──────────────────────────────────────────────────────── */
 .msg-foot {
   display: flex; align-items: center;
   gap: 8px;
@@ -1986,8 +1983,6 @@ defineExpose({
 .msg-delivery--delivered { color: #34d399; }
 .msg-delivery--error     { color: #fbbf24; }
 
-/* ── Delete button — old position (in foot) ─────────────────────
-   Bigger hit area, clear distinction from timestamp. */
 .msg-vault-del {
   margin-left: 4px;
   background: transparent;
@@ -2009,8 +2004,6 @@ defineExpose({
   border-color: rgba(240,163,163,0.30);
 }
 
-/* ── Delete button — new position (overlay on bubble, optional) ─
-   Used only if template wraps inner+button in .msg-bubble-wrap. */
 .msg-vault-del-overlay {
   position: absolute;
   top: -8px; right: -8px;
@@ -2029,20 +2022,14 @@ defineExpose({
   transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
 }
 .msg-bubble-wrap:hover .msg-vault-del-overlay,
-.msg-vault-del-overlay:focus-visible {
-  opacity: 1;
-}
+.msg-vault-del-overlay:focus-visible { opacity: 1; }
 .msg-vault-del-overlay:hover {
   color: #f0a3a3;
   border-color: rgba(240,163,163,0.50);
   background: rgba(240,163,163,0.12);
 }
-/* On touch — always visible */
-@media (hover: none) {
-  .msg-vault-del-overlay { opacity: 1; }
-}
+@media (hover: none) { .msg-vault-del-overlay { opacity: 1; } }
 
-/* ── Forward + forwarded ───────────────────────────────────────── */
 .msg-forward-btn {
   margin-left: 6px;
   background: transparent;
@@ -2064,53 +2051,87 @@ defineExpose({
   letter-spacing: 0.06em;
 }
 
-/* ── Capture cards ─────────────────────────────────────────────── */
+/* ── Capture cards — centered, framed, recognizably their own surface ─ */
 .capture-wrap {
-  align-self: stretch;
-  margin: 4px 8px;
+  align-self: center;
+  width: 100%;
+  max-width: 480px;
+  margin: 8px auto;
   position: relative;
+  background: linear-gradient(180deg,
+    rgba(139, 92, 246, 0.06),
+    rgba(139, 92, 246, 0.02) 60%,
+    transparent);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 12px 40px rgba(0, 0, 0, 0.25);
+}
+.capture-wrap > :not(.capture-dismiss) {
+  border-radius: 10px;
+  overflow: hidden;
+}
+.capture-wrap::before {
+  content: "Aufnahme";
+  position: absolute;
+  top: -10px; left: 14px;
+  padding: 1px 8px;
+  background: var(--paper-3);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(167, 139, 250, 0.78);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 4px;
 }
 .capture-dismiss {
   position: absolute;
-  top: 8px; right: 8px; z-index: 10;
-  width: 26px; height: 26px;
-  min-height: 26px;
+  top: -10px; right: 10px;
+  z-index: 10;
+  width: 28px; height: 28px;
+  min-height: 28px;
   padding: 0; flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  color: var(--fg-2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--paper-3);
+  color: var(--fg-3);
   font-size: 12px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .capture-dismiss:hover {
-  color: var(--fg);
-  background: rgba(0,0,0,0.75);
-  border-color: rgba(255,255,255,0.30);
+  color: #f0a3a3;
+  background: rgba(240, 163, 163, 0.10);
+  border-color: rgba(240, 163, 163, 0.40);
 }
+.capture-dismiss:active { transform: scale(0.92); }
 
 /* ════════════════════════════════════════════════════════════════════
-   DOCK
+   DOCK — softer container, modern chat-input feel
    ════════════════════════════════════════════════════════════════════ */
 
 .dock {
-  border-top: 1px solid var(--rule-2);
-  background: var(--paper-3);
+  border-top: 1px solid var(--rule);
+  background: linear-gradient(180deg, rgba(13, 11, 20, 0.92), var(--paper-3));
   flex-shrink: 0;
   display: flex; flex-direction: column;
+  padding: 10px clamp(10px, 2vw, 18px) 12px;
+  gap: 8px;
 }
 
 .dock-growth-lock {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   background: rgba(139, 92, 246, 0.07);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 10px;
   font-family: var(--mono); font-size: 11px;
   letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--accent); opacity: 0.8;
+  color: var(--accent); opacity: 0.85;
 }
 .dock-growth-spinner {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
@@ -2122,9 +2143,9 @@ defineExpose({
 
 .dock-mode-bar {
   display: flex; align-items: center; gap: 10px;
-  padding: 0 16px;
-  height: 36px;
-  border-bottom: 1px solid var(--rule);
+  padding: 0 6px;
+  min-height: 22px;
+  border-bottom: 0;
 }
 .mode-dot {
   width: 5px; height: 5px; border-radius: 50%; flex: none;
@@ -2159,29 +2180,36 @@ defineExpose({
 .model-select {
   margin-left: auto;
   background: transparent;
-  border: 0; border-left: 1px solid var(--rule);
-  color: var(--fg-4);
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  color: var(--fg-3);
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 4px 10px;
+  padding: 3px 10px;
   cursor: pointer;
   appearance: none; -webkit-appearance: none;
   outline: 0;
+  transition: color 0.15s, border-color 0.15s;
 }
-.model-select:hover { color: var(--fg-2); }
+.model-select:hover { color: var(--fg); border-color: var(--rule); }
 .model-select option { background: #12101a; color: var(--fg); }
 
 .archivar-toggle {
-  display: flex; align-items: center; gap: 6px;
-  border: 0; border-left: 1px solid var(--rule);
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid transparent;
   background: transparent; cursor: pointer;
   font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--fg-4); padding: 4px 10px;
-  transition: color 0.15s;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--fg-4); padding: 3px 8px;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
-.archivar-toggle:hover { color: var(--fg-2); }
-.archivar-toggle.active { color: var(--accent); }
+.archivar-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
+.archivar-toggle.active {
+  color: var(--accent);
+  border-color: rgba(139, 92, 246, 0.30);
+  background: rgba(139, 92, 246, 0.08);
+}
 .archivar-dot {
   width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
   border: 1.5px solid currentColor;
@@ -2195,34 +2223,49 @@ defineExpose({
 
 .dock-main {
   display: flex; align-items: stretch;
-  min-height: 56px;
+  min-height: 52px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--rule-2);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dock-main:focus-within {
+  border-color: rgba(139, 92, 246, 0.40);
+  background: rgba(139, 92, 246, 0.05);
 }
 
 .dock-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 48px; flex-shrink: 0;
-  border: 0; border-right: 1px solid var(--rule);
+  width: 44px; flex-shrink: 0;
+  border: 0;
   background: transparent; cursor: pointer;
   color: var(--fg-3);
   transition: color 0.12s, background 0.12s;
 }
-.dock-icon:hover:not(:disabled) { color: var(--fg); background: rgba(255,255,255,0.03); }
+.dock-icon:hover:not(:disabled) {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
 .dock-icon:disabled { opacity: 0.3; cursor: not-allowed; }
 .dock-icon-svg { width: 16px; height: 16px; }
 
-.dock-plus { border-right: 1px solid var(--rule); }
+.dock-plus { color: var(--fg-2); }
 .dock-plus.active { color: var(--accent); }
 .dock-plus svg { transition: transform 0.2s; }
 .dock-plus.active svg { transform: rotate(45deg); }
 
 .media-drawer { display: flex; }
-.media-drawer-enter-active, .media-drawer-leave-active { transition: opacity 0.15s, max-width 0.2s; overflow: hidden; max-width: 96px; }
+.media-drawer-enter-active, .media-drawer-leave-active {
+  transition: opacity 0.18s, max-width 0.22s ease;
+  overflow: hidden; max-width: 88px;
+}
 .media-drawer-enter-from, .media-drawer-leave-to { opacity: 0; max-width: 0; }
 
 .input-wrap {
   flex: 1;
   display: flex; align-items: center;
-  padding: 0 clamp(14px, 2.5vw, 22px);
+  padding: 0 14px;
   min-width: 0;
 }
 .input {
@@ -2230,24 +2273,35 @@ defineExpose({
   font-size: clamp(15px, 1.5vw, 16px);
   color: var(--fg); border: 0; outline: 0;
   background: transparent;
-  padding: 14px 0 14px 4px;
+  padding: 13px 0;
   width: 100%; min-width: 0;
   line-height: 1.5;
   resize: none; overflow-y: auto;
   min-height: 48px; max-height: 140px;
 }
-.input::placeholder { color: var(--fg-3); font-style: italic; }
+.input::placeholder { color: var(--fg-3); font-style: italic; opacity: 0.7; }
 
 .send {
-  width: 64px; border: 0; border-left: 1px solid var(--rule);
+  width: 56px; border: 0;
   background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
-  color: var(--fg-2);
+  color: var(--fg-3);
+  position: relative;
 }
-.send:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); }
-.send:disabled { opacity: 0.25; cursor: not-allowed; }
-.arr-icon { width: 18px; height: 18px; }
+.send::before {
+  content: "";
+  position: absolute; inset: 8px 8px 8px 0;
+  border-radius: 10px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.send svg { position: relative; z-index: 1; }
+.send:not(:disabled) { color: var(--on-accent); }
+.send:not(:disabled)::before { background: var(--accent); }
+.send:hover:not(:disabled)::before { background: var(--accent-bright); }
+.send:disabled { opacity: 0.45; cursor: not-allowed; }
+.arr-icon { width: 16px; height: 16px; }
 
 .pulse { animation: sys-blink 1.2s infinite; }
 
@@ -2286,19 +2340,15 @@ defineExpose({
 .mobile-fab { display: none; }
 
 /* ════════════════════════════════════════════════════════════════════
-   RESPONSIVE — tighter scales on mobile, dock as fixed bottom sheet
+   RESPONSIVE
    ════════════════════════════════════════════════════════════════════ */
 
-/* Tablet — single tweak: tighter bubble cap */
 @media (max-width: 900px) {
   .msg-bubble { max-width: min(82%, 560px); }
 }
 
-/* Mobile */
 @media (max-width: 640px) {
-  .stream {
-    padding: 16px 12px 110px;
-  }
+  .stream { padding: 16px 12px 110px; }
   .stream-inner { gap: 12px; }
 
   .msg-bubble { max-width: 84%; gap: 4px; }
@@ -2313,16 +2363,12 @@ defineExpose({
 
   .msg-foot { gap: 6px; padding: 0 4px; }
 
-  .msg-vault-del-overlay {
-    top: -6px; right: -6px;
-    width: 26px; height: 26px;
-    opacity: 1;
-  }
+  .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
 
-  .dock-mode-bar { padding: 0 12px; gap: 8px; height: 34px; }
-  .dock-icon { width: 44px; }
+  .capture-wrap { max-width: 100%; margin: 8px 0; }
 
   .dock {
+    padding: 8px 12px 10px; gap: 6px;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 200;
@@ -2336,6 +2382,12 @@ defineExpose({
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .dock.mobile-open { transform: translateY(0); }
+
+  .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; }
+  .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
+  .model-select { padding: 3px 8px; font-size: 9.5px; }
+  .dock-icon { width: 42px; }
+  .input-wrap { padding: 0 12px; }
 
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
@@ -2413,29 +2465,32 @@ defineExpose({
 /* ── Dock media preview ─────────────────────────────────────────── */
 .dock-media-preview {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--rule);
-  background: rgba(255,255,255,0.02);
+  padding: 8px 12px;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 10px;
+  order: -1;
 }
 .dock-media-thumb {
-  width: 36px; height: 36px;
+  width: 32px; height: 32px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 5px;
   border: 1px solid var(--rule-2);
   flex-shrink: 0;
 }
 .dock-media-name {
   font-family: var(--mono);
-  font-size: 11px; color: var(--fg-3);
+  font-size: 11px; color: var(--fg-2);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   flex: 1;
+  letter-spacing: 0.02em;
 }
 .dock-media-remove {
-  font-size: 12px; color: var(--fg-3);
+  font-size: 11px; color: var(--fg-3);
   background: transparent; border: 1px solid var(--rule-2);
   cursor: pointer;
-  width: 24px; height: 24px;
-  min-height: 24px;
+  width: 22px; height: 22px;
+  min-height: 22px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
   flex-shrink: 0;
@@ -2466,9 +2521,10 @@ defineExpose({
 .shared-files-banner {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px;
-  padding: 8px 14px;
-  background: rgba(139,92,246,0.06);
-  border-top: 1px solid rgba(139,92,246,0.20);
+  padding: 7px 12px;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 10px;
   flex-shrink: 0;
 }
 .sfb-info {
