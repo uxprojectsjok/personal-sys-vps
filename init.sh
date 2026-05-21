@@ -150,6 +150,15 @@ echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── Auto-Update ───────────────────────────────────────────────────────────────
+# Holt die neueste Version vom GitHub-Repo bevor Dateien deployed werden.
+# --ff-only: schlägt still fehl wenn lokale Änderungen vorhanden sind.
+if [ -d "$SCRIPT_DIR/.git" ]; then
+  info "Prüfe auf Updates..."
+  git -C "$SCRIPT_DIR" pull --ff-only --quiet 2>&1 || \
+    warn "Git-Update übersprungen — lokale Änderungen vorhanden oder kein Netz."
+fi
+
 # ── Shared-Server-Erkennung ───────────────────────────────────────────────────
 # Prüft ob OpenResty bereits läuft und weitere (Nicht-SYS) Sites aktiv sind.
 # Wenn ja: SYS fügt sich ein statt zu überschreiben.
