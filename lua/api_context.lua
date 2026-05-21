@@ -114,13 +114,36 @@ end
 -- ── GET ────────────────────────────────────────────────────────────────────
 
 if ngx.req.get_method() == "GET" then
-  local ctx = read_context()
+  local ctx    = read_context()
+  local synced = filter_existing_synced_files(ctx.synced_files)
+
+  -- mind.md immer zurückgeben wenn die Datei physisch existiert
+  local mind_path = base_dir .. "/vault/context/mind.md"
+  local mind_fh   = io.open(mind_path, "r")
+  if mind_fh then
+    mind_fh:close()
+    local existing_ctx = synced.context
+    local has_mind = false
+    if type(existing_ctx) == "table" then
+      for _, n in ipairs(existing_ctx) do
+        if n == "mind.md" then has_mind = true; break end
+      end
+    end
+    if not has_mind then
+      local new_ctx = { "mind.md" }
+      if type(existing_ctx) == "table" then
+        for _, n in ipairs(existing_ctx) do new_ctx[#new_ctx + 1] = n end
+      end
+      synced.context = new_ctx
+    end
+  end
+
   local safe = {
     enabled      = ctx.enabled      or false,
     cipher_mode  = ctx.cipher_mode  or "ciphered",
     has_token    = (ctx.webhook_token or "") ~= "",
     permissions  = ctx.permissions  or {},
-    synced_files = filter_existing_synced_files(ctx.synced_files),
+    synced_files = synced,
     active_files = ctx.active_files or {}
   }
   ngx.header["Content-Type"]  = "application/json"
