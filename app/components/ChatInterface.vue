@@ -1696,7 +1696,7 @@ defineExpose({
 
 <style scoped>
 /* ════════════════════════════════════════════════════════════════════
-   SYS · ChatInterface · Editorial Polish v3
+   SYS · ChatInterface · Editorial Polish v4
    Drop-in replacement for the <style scoped> block in ChatInterface.vue
    No logic / no template changes required.
    ════════════════════════════════════════════════════════════════════ */
@@ -1806,6 +1806,8 @@ defineExpose({
   display: flex; flex-direction: column;
   max-width: min(78%, 580px);
   gap: 5px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 .msg-bubble--me      { align-self: flex-end;   align-items: flex-end; }
 .msg-bubble--other   { align-self: flex-start; align-items: flex-start; }
@@ -1834,8 +1836,10 @@ defineExpose({
   line-height: 1.55;
   color: var(--fg);
   word-break: break-word;
+  overflow-wrap: anywhere;
   hyphens: auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 .msg-inner p          { margin: 0 0 6px; }
 .msg-inner p:last-child { margin-bottom: 0; }
@@ -2265,7 +2269,7 @@ defineExpose({
 .input-wrap {
   flex: 1;
   display: flex; align-items: center;
-  padding: 0 14px;
+  padding: 0 16px;
   min-width: 0;
 }
 .input {
@@ -2273,7 +2277,7 @@ defineExpose({
   font-size: clamp(15px, 1.5vw, 16px);
   color: var(--fg); border: 0; outline: 0;
   background: transparent;
-  padding: 13px 0;
+  padding: 13px 6px;
   width: 100%; min-width: 0;
   line-height: 1.5;
   resize: none; overflow-y: auto;
@@ -2348,20 +2352,21 @@ defineExpose({
 }
 
 @media (max-width: 640px) {
-  .stream { padding: 16px 12px 110px; }
-  .stream-inner { gap: 12px; }
+  .stream { padding: 16px 12px 110px; box-sizing: border-box; }
+  .stream-inner { gap: 12px; max-width: 100%; width: 100%; box-sizing: border-box; }
 
-  .msg-bubble { max-width: 84%; gap: 4px; }
+  .msg-bubble { max-width: calc(100% - 8px); gap: 4px; box-sizing: border-box; }
+  .msg-bubble-wrap { max-width: 100%; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; }
+  .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
-  .msg-doc-a { max-width: 220px; }
-  .msg-doc-name { max-width: 160px; }
+  .msg-doc-a { max-width: 100%; }
+  .msg-doc-name { max-width: 100%; }
 
   .msg-day-sep::before,
-  .msg-day-sep::after { width: 36px; }
+  .msg-day-sep::after { width: 28px; }
 
-  .msg-foot { gap: 6px; padding: 0 4px; }
+  .msg-foot { gap: 6px; padding: 0 4px; flex-wrap: wrap; }
 
   .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
 
@@ -2383,11 +2388,12 @@ defineExpose({
   }
   .dock.mobile-open { transform: translateY(0); }
 
-  .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; }
+  .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
   .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
   .model-select { padding: 3px 8px; font-size: 9.5px; }
   .dock-icon { width: 42px; }
-  .input-wrap { padding: 0 12px; }
+  .input-wrap { padding: 0 14px; }
+  .input { padding: 13px 4px; }
 
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
