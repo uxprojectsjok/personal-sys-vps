@@ -395,7 +395,7 @@ const canSend = computed(() =>
 )
 
 const inputPlaceholder = computed(() => {
-  return 'Schreib… @name, @agent, @all'
+  return 'Nachricht schreiben…'
 })
 
 // ── Messaging / Social sphere state ───────────────────────────────
@@ -1740,6 +1740,7 @@ defineExpose({
   max-width: 780px;
   margin: 0 auto; width: 100%;
   min-width: 0;
+  overflow-x: hidden;
 }
 .anchor { height: 1px; }
 
@@ -2354,13 +2355,18 @@ defineExpose({
 }
 
 @media (max-width: 640px) {
-  .stream { padding: 16px 12px 110px; box-sizing: border-box; }
-  .stream-inner { gap: 12px; max-width: 100%; width: 100%; min-width: 0; box-sizing: border-box; }
+  .stream { padding: 16px 12px 110px; box-sizing: border-box; overflow-x: hidden; }
+  .stream-inner { gap: 12px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
-  .msg-bubble { max-width: 100%; gap: 4px; box-sizing: border-box; }
-  .msg-bubble-wrap { max-width: 92%; }
+  /* Full-width container, alignment via align-items — never overflows */
+  .msg-bubble         { width: 100%; max-width: 100%; align-self: stretch; gap: 4px; box-sizing: border-box; }
+  .msg-bubble--me     { align-items: flex-end; }
+  .msg-bubble--other  { align-items: flex-start; }
+  /* Inner bubble capped at 88% of container so it looks like a bubble, not a wall-to-wall block */
+  .msg-inner          { max-width: 88%; }
+  .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; box-sizing: border-box; }
+  .msg-inner  { padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
