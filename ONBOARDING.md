@@ -109,10 +109,13 @@ When a soul first imports their sys.md, the node generates fresh credentials and
 **AI**
 - Chat with Claude on your node (Anthropic API, your key, your costs)
 - Claude reads your sys.md as context — sessions build on each other
+- **mind.md** — KI configuration file in `vault/context/mind.md`. Defines the KI's name, communication style, and self-reflection notes. Auto-created on first vault sync. Readable/writable by the KI itself via `mind_read` / `mind_write` tools. Sections `Identität` and `Grenzen` are write-protected.
+- **Emergency Protocol** — 3-level KI lockdown accessible via the "Notfall" button in the chat header. Level 1: chat blocked. Level 2: image generation and all AI calls blocked. Level 3: full isolation (soul-mcp stopped). Instantly reversible with "Wiederherstellen".
 - Vision: upload a camera image → Claude analyzes and describes it
 - Text-to-speech via ElevenLabs (voice cloning supported)
 - AI image generation via WaveSpeed AI
 - Soul update: Claude writes structured data into your sys.md sections
+- Profile capture in chat: type `@gesicht`, `@bewegung`, or `@stimme` to record biometric data directly from within the chat
 
 **Vault**
 - Local vault: files stay on your device (File System Access API)
