@@ -305,6 +305,7 @@
 
   html {
     overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   body {
@@ -312,6 +313,7 @@
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   ::-webkit-scrollbar { width: 3px; height: 3px; }

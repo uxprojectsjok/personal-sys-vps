@@ -2407,7 +2407,7 @@ defineExpose({
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    background: rgba(13, 11, 20, 0.82);
+    background: rgba(22, 14, 38, 0.85);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     border-top: 1px solid rgba(139, 92, 246, 0.28);
@@ -2442,9 +2442,9 @@ defineExpose({
     z-index: 201;
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+      color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s, opacity 0.1s;
   }
-  .mobile-fab:active { transform: scale(0.93); }
+  .mobile-fab:active { opacity: 0.78; }
   .mobile-fab.open {
     color: #f87171;
     background: rgba(18, 16, 26, 0.92);

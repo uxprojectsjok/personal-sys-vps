@@ -295,7 +295,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: ef1391f37079a8698f49bf3e6040b0a48fbd256c6d7dcd2e2d21bd65cfbcadfe
+Current release fingerprint: fec633a60afc7746bce2069cf7aa20d1b123aaa7b977e15400bfc855ea6e3f9b
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
