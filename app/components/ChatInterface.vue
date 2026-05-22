@@ -2384,15 +2384,13 @@ defineExpose({
    ════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 900px) {
-  .msg-bubble { max-width: min(82%, 560px); }
-}
-
-@media (max-width: 900px) {
   /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
-  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; max-width: 100%; }
+  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; width: 100%; max-width: 100%; }
   /* When composer/dock is open: add room for dock + FAB above */
   .mob-composer-open .stream { padding-bottom: 220px; }
-  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+  /* margin: 0 explizit resetten — Desktop hat margin: 0 auto; das würde auf Mobile
+     stream-inner zentrieren wenn die Breite nicht exakt passt → alles nach rechts verschoben */
+  .stream-inner { gap: 14px; width: 100%; max-width: 100%; margin: 0; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
   /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
   .msg-bubble {
