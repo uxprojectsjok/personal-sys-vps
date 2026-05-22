@@ -1892,8 +1892,9 @@ defineExpose({
 
 /* ── Bubble variants — consistent asymmetric tails ─────────────── */
 .msg-inner--me {
-  background: rgba(139,92,246,0.20);
-  border-radius: 16px 16px 4px 16px;
+  background: rgba(139,92,246,0.10);
+  border: 1px solid rgba(139,92,246,0.30);
+  border-radius: 16px 4px 16px 16px;
 }
 .msg-inner--ki {
   background: rgba(255,255,255,0.04);
@@ -2374,7 +2375,7 @@ defineExpose({
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
-  .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; }
+  .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; max-width: 86%; box-sizing: border-box; overflow-x: hidden; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
   /* Inner: 86% max — leaves ~14% breathing room on the side not aligned to */
   .msg-inner  { max-width: 86%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
@@ -2391,7 +2392,12 @@ defineExpose({
 
   .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
 
-  .capture-wrap { max-width: 100%; margin: 8px 0; }
+  .capture-wrap {
+    align-self: stretch;
+    width: 100%; max-width: 100%;
+    margin: 8px 0;
+    box-sizing: border-box;
+  }
 
   /* Dock: glass panel floating above chat */
   .dock {
@@ -2401,16 +2407,26 @@ defineExpose({
     z-index: 200;
     transform: translateY(calc(100% + 80px));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(13, 11, 20, 0.86);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    background: rgba(13, 11, 20, 0.72);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border-top: 1px solid rgba(139, 92, 246, 0.22);
     box-shadow:
-      0 -24px 64px rgba(0, 0, 0, 0.65),
+      0 -24px 64px rgba(0, 0, 0, 0.40),
       0 -1px 0 rgba(139, 92, 246, 0.10);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open { transform: translateY(0); }
+  /* gradient scrim — bubbles fade softly into the dock instead of hitting a hard edge */
+  .dock::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, rgba(13, 11, 20, 0.72));
+    pointer-events: none;
+    z-index: -1;
+  }
 
   .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
   .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
@@ -2422,7 +2438,7 @@ defineExpose({
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
     position: fixed;
-    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     right: 18px;
     width: 54px; height: 54px;
     border-radius: 50%;
