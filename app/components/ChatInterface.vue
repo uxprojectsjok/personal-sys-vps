@@ -2407,9 +2407,9 @@ defineExpose({
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    background: rgba(22, 14, 38, 0.85);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    background: rgba(60, 28, 100, 0.80);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-top: 1px solid rgba(139, 92, 246, 0.28);
     box-shadow: 0 -1px 0 rgba(139, 92, 246, 0.10);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
