@@ -1111,6 +1111,7 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
+  if (scrollEl.value) scrollEl.value.scrollLeft = 0
   if (chatEnd.value) {
     chatEnd.value.scrollIntoView({ behavior: 'smooth', block: 'end' })
   } else if (scrollEl.value) {
@@ -1763,8 +1764,7 @@ defineExpose({
 .stream-inner {
   display: flex; flex-direction: column;
   gap: 16px;
-  max-width: 780px;
-  margin: 0 auto; width: 100%;
+  width: 100%;
   min-width: 0;
   overflow-x: hidden;
 }
@@ -1832,13 +1832,12 @@ defineExpose({
 
 .msg-bubble {
   display: flex; flex-direction: column;
-  max-width: min(78%, 580px);
   gap: 5px;
   box-sizing: border-box;
   min-width: 0;
 }
-.msg-bubble--me      { align-self: flex-end;   align-items: flex-end;   margin-right: 8px; }
-.msg-bubble--other   { align-self: flex-start; align-items: flex-start; }
+.msg-bubble--me      { align-items: flex-end; }
+.msg-bubble--other   { align-items: flex-start; }
 
 .msg-sender {
   font-family: var(--mono);
@@ -2374,6 +2373,11 @@ defineExpose({
 /* ── Desktop dock: mehr Abstand unten — Input-Feld optisch höher ── */
 @media (min-width: 901px) {
   .dock { padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
+  /* Desktop: center the stream column, constrain bubble widths */
+  .stream-inner { max-width: 780px; margin: 0 auto; }
+  .msg-bubble { max-width: min(78%, 580px); }
+  .msg-bubble--me    { align-self: flex-end;   margin-right: 8px; }
+  .msg-bubble--other { align-self: flex-start; }
 }
 
 /* ── Mobile FAB (hidden on desktop) ─────────────────────────────── */
@@ -2385,27 +2389,24 @@ defineExpose({
 
 @media (max-width: 900px) {
   /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
-  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; width: 100%; max-width: 100%; }
-  /* When composer/dock is open: add room for dock + FAB above */
+  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; width: 100%; }
   .mob-composer-open .stream { padding-bottom: 220px; }
-  /* margin: 0 explizit resetten — Desktop hat margin: 0 auto; das würde auf Mobile
-     stream-inner zentrieren wenn die Breite nicht exakt passt → alles nach rechts verschoben */
-  .stream-inner { gap: 14px; width: 100%; max-width: 100%; margin: 0; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+  /* No margin:auto or max-width on desktop → no overrides needed here. Just tighten gap. */
+  .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; }
 
-  /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
+  /* Mobile bubbles: full-width containers, msg-inner positions content left/right */
   .msg-bubble {
     align-self: stretch; width: 100%; max-width: 100%;
-    gap: 4px; box-sizing: border-box; margin-right: 0; margin-left: 0;
+    gap: 4px; margin-right: 0; margin-left: 0;
   }
   .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
-  /* User-Bubbles: inner content rechts ausrichten via align-self, nicht via parent */
+  /* User bubbles: msg-inner right-aligned; KI: left-aligned via parent align-items:flex-start */
   .msg-bubble--me .msg-inner  { align-self: flex-end; border-radius: 16px 4px 16px 16px; }
   .msg-bubble--me .msg-foot   { align-self: flex-end; max-width: 100%; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  /* Alle msg-inner: 74% max — 26% Gegenseite gibt klares Links/Rechts-Layout */
   .msg-inner  { max-width: 74%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
