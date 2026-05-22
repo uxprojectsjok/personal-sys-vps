@@ -2365,19 +2365,17 @@ defineExpose({
   .mob-composer-open .stream { padding-bottom: 220px; }
   .stream-inner { gap: 14px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
-  /* Mobile bubbles: full-width stack — no left/right positional offset.
-     align-self: stretch means every bubble spans the full width of stream-inner.
-     align-items: flex-end/start aligns the inner content (msg-inner) visually.
-     msg-inner: max-width 86% so there's breathing room on the far side.
-  */
+  /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
   .msg-bubble         { align-self: stretch; width: 100%; max-width: 100%; gap: 4px; box-sizing: border-box; margin-right: 0; }
-  .msg-bubble--me     { align-self: stretch; align-items: flex-end; }
+  .msg-bubble--me     { align-self: stretch; align-items: flex-start; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
-  .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; max-width: 86%; box-sizing: border-box; overflow-x: hidden; }
+  /* User-Bubbles: inner content rechts ausrichten via align-self, nicht via parent */
+  .msg-bubble--me .msg-inner  { align-self: flex-end; border-radius: 16px 4px 16px 16px; }
+  .msg-bubble--me .msg-foot   { align-self: flex-end; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  /* Inner: 86% max — leaves ~14% breathing room on the side not aligned to */
+  /* Alle msg-inner: gleiche Größe wie Soul-KI — 86% max, kein overflow */
   .msg-inner  { max-width: 86%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
@@ -2399,7 +2397,7 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: glass panel floating above chat */
+  /* Dock: backdrop-filter + transform = kein Effekt auf Android → solid dark-purple */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
@@ -2407,25 +2405,24 @@ defineExpose({
     z-index: 200;
     transform: translateY(calc(100% + 80px));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(13, 11, 20, 0.72);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    border-top: 1px solid rgba(139, 92, 246, 0.22);
-    box-shadow:
-      0 -24px 64px rgba(0, 0, 0, 0.40),
-      0 -1px 0 rgba(139, 92, 246, 0.10);
+    background: #100c1e;
+    border-top: 2px solid rgba(139, 92, 246, 0.35);
+    box-shadow: 0 -2px 32px rgba(0, 0, 0, 0.60);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open { transform: translateY(0); }
-  /* gradient scrim — bubbles fade softly into the dock instead of hitting a hard edge */
-  .dock::before {
+  /* Gradient-Scrim: im stream verankert, nicht am Dock — faded Bubbles sanft weg */
+  .stream::after {
     content: '';
-    position: absolute;
-    top: -60px; left: 0; right: 0;
-    height: 60px;
-    background: linear-gradient(to bottom, transparent, rgba(13, 11, 20, 0.72));
+    position: sticky;
+    bottom: 0;
+    display: block;
+    height: 64px;
+    background: linear-gradient(to top, #0d0b14 0%, transparent 100%);
     pointer-events: none;
-    z-index: -1;
+    margin-top: -64px;
+    flex-shrink: 0;
+    z-index: 5;
   }
 
   .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
