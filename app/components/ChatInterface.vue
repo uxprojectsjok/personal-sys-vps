@@ -2256,7 +2256,8 @@ defineExpose({
   transition: border-color 0.15s, background 0.15s;
 }
 .dock-main:focus-within {
-  border-color: rgba(139, 92, 246, 0.40);
+  border-color: rgba(139, 92, 246, 0.70);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.22);
   background: rgba(139, 92, 246, 0.05);
 }
 
@@ -2379,14 +2380,18 @@ defineExpose({
 
 @media (max-width: 900px) {
   /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
-  .stream { padding: 16px 16px 90px; box-sizing: border-box; overflow-x: hidden; }
+  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; max-width: 100%; }
   /* When composer/dock is open: add room for dock + FAB above */
   .mob-composer-open .stream { padding-bottom: 220px; }
   .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
   /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
-  .msg-bubble         { align-self: stretch; width: 100%; max-width: 100%; gap: 4px; box-sizing: border-box; margin-right: 0; }
-  .msg-bubble--me     { align-self: stretch; align-items: flex-start; }
+  .msg-bubble {
+    align-self: stretch; width: 100%; max-width: 100%;
+    gap: 4px; box-sizing: border-box; margin-right: 0; margin-left: 0;
+    overflow-x: hidden;
+  }
+  .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
@@ -2416,8 +2421,8 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: kein transform → backdrop-filter funktioniert auf Android.
-     Opacity-Animation statt translateY: kein Stacking-Context-Bug. */
+  /* Dock: Glass-Hintergrund — Chat sichtbar durch das Dock.
+     Kein transform → backdrop-filter funktioniert auf Android. */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
@@ -2426,11 +2431,11 @@ defineExpose({
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    background: rgba(13, 8, 22, 0.42);
-    backdrop-filter: blur(22px) saturate(180%);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    border-top: 1px solid rgba(139, 92, 246, 0.32);
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+    background: rgba(10, 6, 20, 0.22);
+    backdrop-filter: blur(32px) saturate(220%);
+    -webkit-backdrop-filter: blur(32px) saturate(220%);
+    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open { opacity: 1; pointer-events: auto; }
@@ -2443,6 +2448,7 @@ defineExpose({
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
   .input { padding: 13px 4px; font-size: 16px; }
 
+  /* FAB: schwebt über dem Chat, kein Hintergrundcontainer sichtbar */
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
     position: fixed;
@@ -2450,22 +2456,27 @@ defineExpose({
     right: 18px;
     width: 54px; height: 54px;
     border-radius: 50%;
-    border: 1.5px solid rgba(167, 139, 250, 0.55);
+    border: 1.5px solid rgba(167, 139, 250, 0.60);
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    box-shadow: none;
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.32),
+      0 0 18px rgba(139, 92, 246, 0.14);
     cursor: pointer;
-    color: rgba(167, 139, 250, 0.90);
+    color: rgba(167, 139, 250, 0.92);
     z-index: 201;
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      color 0.2s, border-color 0.2s, opacity 0.1s;
+      color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.1s;
   }
   .mobile-fab:active { opacity: 0.65; }
   .mobile-fab.open {
-    color: rgba(248, 113, 113, 0.90);
-    border-color: rgba(248, 113, 113, 0.45);
+    color: rgba(248, 113, 113, 0.92);
+    border-color: rgba(248, 113, 113, 0.50);
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.32),
+      0 0 18px rgba(248, 113, 113, 0.12);
   }
   .mobile-fab-icon { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
   .mobile-fab.open .mobile-fab-icon { transform: rotate(45deg); }
