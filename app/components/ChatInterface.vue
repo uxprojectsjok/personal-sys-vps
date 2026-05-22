@@ -1276,6 +1276,8 @@ function detectIntent(text) {
   if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
   if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
   if (/^@body\b|^@bewegung\b/i.test(t)) return { type: 'capture-body' }
+  // @create-agent → ElevenLabs Voice Clone + Agent erstellen
+  if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
   // @all/@alle → community (send to everyone)
   const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
@@ -1346,6 +1348,46 @@ async function handleSearchCommand(cmd) {
     return { text: `[Web-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://www.google.com/search?q=${encodeURIComponent(safe)}`, service: 'google', label: safe } }
   }
   return null
+}
+
+// ── @create-agent ─────────────────────────────────────────────────
+async function handleCreateAgent() {
+  addMessage('user', '@create-agent')
+  const statusMsg = addMessage('assistant', 'ElevenLabs Agent wird erstellt…', { streaming: true })
+  await scrollToBottom()
+
+  try {
+    const res = await fetch('/api/create-agent', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    })
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      const msg = data.message || data.error || `HTTP ${res.status}`
+      const text = msg === 'elevenlabs_key_missing'
+        ? 'ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.'
+        : `Fehler: ${msg}`
+      setMessageMetaById(statusMsg.id, 'text', text)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    const voiceNote = data.has_voice_clone
+      ? 'Voice Clone aus deinem Audio erstellt.'
+      : 'Kein Vault-Audio gefunden — Agent ohne Stimm-Clone erstellt.'
+
+    setMessageMetaById(statusMsg.id, 'text',
+      `Agent **${data.soul_name}** erstellt.\n${voiceNote}\n\nAgent-ID: \`${data.agent_id}\``)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+    setMessageMetaById(statusMsg.id, 'actions', [
+      { label: 'Agent öffnen', primary: true, url: data.agent_url },
+    ])
+  } catch (err) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  }
+  await scrollToBottom()
 }
 
 // ── Shared vision pipeline (camera + file upload) ──────────────────
@@ -1439,6 +1481,10 @@ async function handleCameraCapture(capture) {
 
 // ── WaveSpeed image generation ─────────────────────────────────────
 async function handleMsgAction(msg, action) {
+  if (action.url) {
+    window.open(action.url, '_blank', 'noopener,noreferrer')
+    return
+  }
   if (action.type === 'skip') {
     setMessageMetaById(msg.id, 'actions', [])
     return
@@ -1585,6 +1631,11 @@ async function handleSend() {
     messages.value.filter(m => m._type === 'capture').forEach(m => removeMessage(m.id))
     addMessage('capture', `@${mode}`, { _type: 'capture', captureMode: mode })
     await scrollToBottom()
+    return
+  }
+
+  if (intent.type === 'create-agent') {
+    await handleCreateAgent()
     return
   }
 
