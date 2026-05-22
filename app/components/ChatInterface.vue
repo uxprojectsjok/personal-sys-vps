@@ -2392,13 +2392,12 @@ defineExpose({
   .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; max-width: 100%; }
   /* When composer/dock is open: add room for dock + FAB above */
   .mob-composer-open .stream { padding-bottom: 220px; }
-  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow: hidden; box-sizing: border-box; }
+  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
   /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
   .msg-bubble {
     align-self: stretch; width: 100%; max-width: 100%;
     gap: 4px; box-sizing: border-box; margin-right: 0; margin-left: 0;
-    overflow: hidden;
   }
   .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
