@@ -545,10 +545,6 @@ function reloadPage() { location.reload() }
 @media (max-width: 900px) {
   .mobile-tabs { display: flex; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
-/* Desktop: 4. Grid-Zeile als Abstand unter dem Dock — hebt Input-Field an */
-@media (min-width: 901px) {
-  .sys-session { grid-template-rows: auto auto 1fr 24px; }
-}
 .mobile-tabs button { flex: 1; padding: 14px; background: transparent; border: 0; color: var(--fg-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .mobile-tabs button.active { color: var(--accent); }
 

@@ -378,7 +378,7 @@ const dockEl             = ref(null)
 const dockHeight         = ref(160)
 // isMobile: Teleport dock+FAB aus overflow:hidden-Containern heraus
 // damit backdrop-filter auf Android Chrome funktioniert
-const isMobile = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches)
+const isMobile = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches)
 let _mqMobile = null
 const _onMqMobile = (e) => { isMobile.value = e.matches }
 
@@ -1653,7 +1653,7 @@ let _briefingTimer        = null
 let _lastBriefingMsgCount = 0
 
 onMounted(async () => {
-  _mqMobile = window.matchMedia('(max-width: 640px)')
+  _mqMobile = window.matchMedia('(max-width: 900px)')
   isMobile.value = _mqMobile.matches
   _mqMobile.addEventListener('change', _onMqMobile)
   nextTick(autoResize)
@@ -2361,6 +2361,11 @@ defineExpose({
 }
 .msg-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* ── Desktop dock: mehr Abstand unten — Input-Feld optisch höher ── */
+@media (min-width: 901px) {
+  .dock { padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
+}
+
 /* ── Mobile FAB (hidden on desktop) ─────────────────────────────── */
 .mobile-fab { display: none; }
 
@@ -2372,12 +2377,12 @@ defineExpose({
   .msg-bubble { max-width: min(82%, 560px); }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
   .stream { padding: 16px 16px 90px; box-sizing: border-box; overflow-x: hidden; }
   /* When composer/dock is open: add room for dock + FAB above */
   .mob-composer-open .stream { padding-bottom: 220px; }
-  .stream-inner { gap: 14px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
   /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
   .msg-bubble         { align-self: stretch; width: 100%; max-width: 100%; gap: 4px; box-sizing: border-box; margin-right: 0; }
