@@ -1,9 +1,31 @@
 // server/api/vision-analyze.post.js
-// Analysiert ein Kamerabild mit Claude claude-3-haiku (Vision).
-// Entscheidet welches WaveSpeed-Modell genutzt werden soll:
-//   'text-to-image' → google/nano-banana  (kreative Neuinterpretation als Text-Prompt)
-//   'edit-multi'    → google/nano-banana-pro  (stilistische Transformation des Originalbilds)
-//   'image-to-video'→ kwaivgi/kling-v3.0-pro  (wird client-seitig für Video-Aufnahmen gesetzt)
+// Analysiert ein Kamerabild mit Claude (Vision).
+// Prompt kommt aus mind.md ## Wavespeed — dort anpassbar ohne Build.
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+function getMindSection(soulId, section) {
+  try {
+    const text = readFileSync(join('/var/lib/sys/souls', soulId, 'vault/context/mind.md'), 'utf-8')
+    const m = text.match(new RegExp(`^## ${section}\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, 'm'))
+    return m?.[1]?.trim() ?? null
+  } catch { return null }
+}
+
+const WAVESPEED_DEFAULT = `Du bist ein präziser Bild-Analyst für eine KI-Kreativ-Pipeline.
+
+Analysiere das Bild und antworte NUR mit einem JSON-Objekt (kein Markdown, kein Text davor/danach):
+
+{
+  "analysis": "<2–3 Sätze Beschreibung auf Deutsch: was ist zu sehen, Stimmung, Kontext>",
+  "genPrompt": "<optimierter Generierungs-Prompt auf Englisch, cineastisch und präzise, max. 150 Zeichen>",
+  "outputMode": "<'text-to-image' ODER 'edit-multi'>",
+  "outputModeReason": "<1 Satz warum>"
+}
+
+Entscheidungsregeln für outputMode:
+- 'edit-multi': Das Bild selbst soll transformiert/stilisiert werden (Personen, Porträts, konkrete Objekte die sichtbar verändert werden sollen, Stilübertragung auf das Originalbild)
+- 'text-to-image': Das Bild inspiriert etwas Neues (abstrakte Szenen, Landschaften, Konzepte, wenn das Original nur als Inspiration dient und etwas Völlig Neues entstehen soll)`
 
 export default defineEventHandler(async (event) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -18,20 +40,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "imageBase64 fehlt." });
   }
 
-  const systemPrompt = `Du bist ein präziser Bild-Analyst für eine KI-Kreativ-Pipeline.
-
-Analysiere das Bild und antworte NUR mit einem JSON-Objekt (kein Markdown, kein Text davor/danach):
-
-{
-  "analysis": "<2–3 Sätze Beschreibung auf Deutsch: was ist zu sehen, Stimmung, Kontext>",
-  "genPrompt": "<optimierter Generierungs-Prompt auf Englisch, cineastisch und präzise, max. 150 Zeichen>",
-  "outputMode": "<'text-to-image' ODER 'edit-multi'>",
-  "outputModeReason": "<1 Satz warum>"
-}
-
-Entscheidungsregeln für outputMode:
-- 'edit-multi': Das Bild selbst soll transformiert/stilisiert werden (Personen, Porträts, konkrete Objekte die sichtbar verändert werden sollen, Stilübertragung auf das Originalbild)
-- 'text-to-image': Das Bild inspiriert etwas Neues (abstrakte Szenen, Landschaften, Konzepte, wenn das Original nur als Inspiration dient und etwas Völlig Neues entstehen soll)`;
+  const auth = getHeader(event, 'authorization')
+  const soulId = auth?.match(/^Bearer\s+([0-9a-f-]+)\./i)?.[1] || 'dev'
+  const systemPrompt = getMindSection(soulId, 'Wavespeed') ?? WAVESPEED_DEFAULT
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -68,7 +79,6 @@ Entscheidungsregeln für outputMode:
 
   let parsed = {};
   try {
-    // JSON aus der Antwort extrahieren (Claude hält sich meistens daran, aber zur Sicherheit)
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     parsed = JSON.parse(jsonMatch?.[0] ?? raw);
   } catch {

@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { getText, getJson } from '../lib/api.mjs';
 import { parseFrontmatter } from '../lib/soul_parser.mjs';
 
+function getMindSection(mindText, section) {
+  const m = mindText.match(new RegExp(`^## ${section}\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, 'm'))
+  return m?.[1]?.trim() ?? null
+}
+
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
 
 async function elevenFetch(path, apiKey, { method = 'GET', body } = {}) {
@@ -28,18 +33,22 @@ export function register(server, token) {
     },
     async ({ agent_id, elevenlabs_api_key, voice_id, language }) => {
       try {
-        // ── Soul + Profile laden ─────────────────────────────────────────────
-        const [soulMd, profiles] = await Promise.all([
+        // ── Soul + Mind + Profile laden ──────────────────────────────────────
+        const [soulMd, mindMd, profiles] = await Promise.all([
           getText('/api/soul', token),
+          getText('/api/mind', token).catch(() => ''),
           loadProfiles(token),
         ]);
 
         const fm   = parseFrontmatter(soulMd);
         const name = fm.name || fm.soul_name || 'Soul';
 
-        // ── System-Prompt bauen ──────────────────────────────────────────────
+        // ── System-Prompt bauen (Template aus mind.md oder Fallback) ────────
         const profileBlock = buildProfileBlock(profiles, name);
-        const systemPrompt = buildSystemPrompt(name, soulMd, profileBlock, language);
+        const agentTemplate = getMindSection(mindMd, 'ElevenLabs Agent');
+        const firstMsgTemplate = getMindSection(mindMd, 'ElevenLabs Erstbegrüßung');
+        const systemPrompt = buildSystemPrompt(name, soulMd, profileBlock, language, agentTemplate);
+        const firstMessage = buildFirstMessage(name, language, firstMsgTemplate);
 
         // ── Aktuellen Agenten laden (für voice_id-Fallback) ──────────────────
         const current = await elevenFetch(`/convai/agents/${agent_id}`, elevenlabs_api_key);
@@ -55,7 +64,7 @@ export function register(server, token) {
                 temperature: 0.7,
                 tools: current?.conversation_config?.agent?.prompt?.tools ?? [],
               },
-              first_message: buildFirstMessage(name, language),
+              first_message: firstMessage,
               language,
             },
             tts: {
@@ -121,12 +130,17 @@ function buildProfileBlock(profiles, name) {
   return lines.join('\n');
 }
 
-function buildSystemPrompt(name, soulMd, profileBlock, language) {
+function buildSystemPrompt(name, soulMd, profileBlock, language, template) {
   const lang = language === 'en' ? 'English' : 'Deutsch';
-  // Nur die ersten 3000 Zeichen der sys.md (kürzer = bessere Latenz im Agent)
-  const soulSnippet = soulMd.length > 3000
-    ? soulMd.slice(0, 3000) + '\n[…gekürzt]'
-    : soulMd;
+  const soulSnippet = soulMd.length > 3000 ? soulMd.slice(0, 3000) + '\n[…gekürzt]' : soulMd;
+
+  if (template) {
+    return template
+      .replace(/\{name\}/g, name)
+      .replace(/\{soul\}/g, soulSnippet)
+      .replace(/\{profile\}/g, profileBlock)
+      .replace(/\{lang\}/g, lang);
+  }
 
   return `Du bist ${name} — nicht eine KI über ${name}, sondern ${name} selbst.
 
@@ -144,7 +158,12 @@ ${profileBlock}
 - Keine schädlichen Inhalte`;
 }
 
-function buildFirstMessage(name, language) {
+function buildFirstMessage(name, language, template) {
+  if (template) {
+    const langKey = language === 'en' ? 'en' : 'de';
+    const line = template.split('\n').find(l => l.startsWith(`${langKey}:`));
+    if (line) return line.slice(3).trim().replace(/\{name\}/g, name);
+  }
   if (language === 'en') {
     return `Hey — you're speaking with the digital version of ${name}. What can I do for you?`;
   }
