@@ -271,6 +271,9 @@
         <button class="dock-media-remove" @click="msgDoc = null" aria-label="Entfernen">✕</button>
       </div>
 
+      <!-- KI-Disclaimer -->
+      <p class="dock-disclaimer">KI kann Fehler machen — überprüfe wichtige Informationen.</p>
+
       <!-- Session shared files banner -->
       <div v-if="sessionSharedFiles.length" class="shared-files-banner">
         <span class="sfb-info">{{ sessionSharedFiles.length }} Datei{{ sessionSharedFiles.length > 1 ? 'en' : '' }} in vault/shared — auf Gerät sichern falls gewünscht</span>
@@ -2566,6 +2569,17 @@ defineExpose({
   color: #f0a3a3;
   border-color: rgba(240,163,163,0.40);
   background: rgba(240,163,163,0.08);
+}
+
+/* ── KI-Disclaimer ──────────────────────────────────────────────── */
+.dock-disclaimer {
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--fg-4);
+  padding: 0 8px 2px;
 }
 
 /* ── Peer error notice ──────────────────────────────────────────── */
