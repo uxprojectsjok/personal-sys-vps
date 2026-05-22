@@ -2407,11 +2407,11 @@ defineExpose({
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    background: rgba(60, 28, 100, 0.80);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-top: 1px solid rgba(139, 92, 246, 0.28);
-    box-shadow: 0 -1px 0 rgba(139, 92, 246, 0.10);
+    background: rgba(13, 8, 22, 0.42);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-top: 1px solid rgba(139, 92, 246, 0.32);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open { opacity: 1; pointer-events: auto; }
