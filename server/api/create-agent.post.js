@@ -10,6 +10,30 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { randomBytes } from 'crypto'
 
+// ── sys.md frontmatter patchen ────────────────────────────────────────────────
+function patchSysMd(sysPath, fields) {
+  let raw
+  try { raw = readFileSync(sysPath, 'utf-8') } catch { return }
+  // Verschlüsselte Datei: nicht anfassen
+  if (raw.charCodeAt(0) === 0x53 && raw.charCodeAt(1) === 0x59) return
+
+  const fmMatch = raw.match(/^---\n([\s\S]*?)\n---/)
+  if (!fmMatch) return
+  let fm = fmMatch[1]
+
+  for (const [key, val] of Object.entries(fields)) {
+    const re = new RegExp(`^(${key}:).*$`, 'm')
+    if (re.test(fm)) {
+      fm = fm.replace(re, `$1 ${val}`)
+    } else {
+      fm += `\n${key}: ${val}`
+    }
+  }
+
+  const updated = raw.replace(/^---\n[\s\S]*?\n---/, `---\n${fm}\n---`)
+  try { writeFileSync(sysPath, updated, 'utf-8') } catch { /* prod: openresty verwaltet */ }
+}
+
 const SOULS_DIR = process.env.SOULS_DIR || '/var/lib/sys/souls'
 const ELEVEN    = 'https://api.elevenlabs.io/v1'
 
@@ -217,6 +241,12 @@ export default defineEventHandler(async (event) => {
 
   const agentData = await elevenPost('/convai/agents/create', elevenKey, agentPayload)
   const agentId = agentData.agent_id
+
+  // ── agent_id + voice_id in sys.md registrieren ────────────────────────────
+  const sysMdPath = join(baseDir, 'sys.md')
+  const sysPatch = { elevenlabs_agent_id: agentId }
+  if (voiceId) sysPatch.elevenlabs_voice_id = voiceId
+  patchSysMd(sysMdPath, sysPatch)
 
   return {
     ok: true,

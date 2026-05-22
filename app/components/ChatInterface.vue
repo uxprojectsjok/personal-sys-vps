@@ -1374,11 +1374,17 @@ async function handleCreateAgent() {
     }
 
     const voiceNote = data.has_voice_clone
-      ? 'Voice Clone aus deinem Audio erstellt.'
-      : 'Kein Vault-Audio gefunden — Agent ohne Stimm-Clone erstellt.'
+      ? `Voice-ID: \`${data.voice_id}\``
+      : 'Kein Vault-Audio — Agent ohne Stimm-Clone erstellt.'
 
-    setMessageMetaById(statusMsg.id, 'text',
-      `Agent **${data.soul_name}** erstellt.\n${voiceNote}\n\nAgent-ID: \`${data.agent_id}\``)
+    const lines = [
+      `Agent **${data.soul_name}** erstellt und in sys.md gespeichert.`,
+      '',
+      `Agent-ID: \`${data.agent_id}\``,
+      voiceNote,
+      `Link: ${data.agent_url}`,
+    ]
+    setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
     setMessageMetaById(statusMsg.id, 'actions', [
       { label: 'Agent öffnen', primary: true, url: data.agent_url },
