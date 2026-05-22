@@ -2392,12 +2392,13 @@ defineExpose({
   .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; max-width: 100%; }
   /* When composer/dock is open: add room for dock + FAB above */
   .mob-composer-open .stream { padding-bottom: 220px; }
-  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+  .stream-inner { gap: 14px; width: 100%; max-width: 100%; min-width: 0; overflow: hidden; box-sizing: border-box; }
 
   /* Mobile bubbles: alle Bubbles stretchen auf volle Breite, Inhalt per align-self positioniert */
   .msg-bubble {
     align-self: stretch; width: 100%; max-width: 100%;
     gap: 4px; box-sizing: border-box; margin-right: 0; margin-left: 0;
+    overflow: hidden;
   }
   .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
@@ -2405,7 +2406,7 @@ defineExpose({
 
   /* User-Bubbles: inner content rechts ausrichten via align-self, nicht via parent */
   .msg-bubble--me .msg-inner  { align-self: flex-end; border-radius: 16px 4px 16px 16px; }
-  .msg-bubble--me .msg-foot   { align-self: flex-end; }
+  .msg-bubble--me .msg-foot   { align-self: flex-end; max-width: 100%; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
   /* Alle msg-inner: 74% max — 26% Gegenseite gibt klares Links/Rechts-Layout */
   .msg-inner  { max-width: 74%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
@@ -2429,18 +2430,19 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: komplett transparent wenn geschlossen — jede semi-transparente
-     background-Farbe erzeugt auf Android Chrome einen eigenen Composite-Layer
-     der als schwarze Fläche auf den FAB-Sibling painted.
-     background + backdrop-filter kommen erst mit .mobile-open. */
+  /* Dock: visibility:hidden entfernt das Element komplett aus dem GPU-Compositing-Baum.
+     opacity:0 alleine reicht nicht — der transition erzeugt trotzdem eine Compositing-Ebene
+     die Android Chrome als schwarze Fläche rendert und auf den FAB durchschlägt. */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 200;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.22s ease;
+    /* visibility springt erst nach dem fade-out auf hidden */
+    transition: opacity 0.22s ease, visibility 0s linear 0.22s;
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -2450,7 +2452,10 @@ defineExpose({
   }
   .dock.mobile-open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+    /* visibility sofort sichtbar beim Öffnen, opacity faded rein */
+    transition: opacity 0.22s ease, visibility 0s linear 0s;
     background: rgba(10, 6, 20, 0.22);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
@@ -2484,11 +2489,6 @@ defineExpose({
     cursor: pointer;
     color: rgba(167, 139, 250, 0.92);
     z-index: 201;
-    /* eigene GPU-Compositing-Ebene — verhindert dass der dunkle Hintergrund
-       der stream-Schicht (overflow-y:auto) auf den FAB durchschlägt */
-    will-change: transform;
-    isolation: isolate;
-    transform: translateZ(0);
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
       color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.1s;
