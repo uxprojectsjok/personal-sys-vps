@@ -2389,8 +2389,8 @@ defineExpose({
   .msg-bubble--me .msg-inner  { align-self: flex-end; border-radius: 16px 4px 16px 16px; }
   .msg-bubble--me .msg-foot   { align-self: flex-end; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  /* Alle msg-inner: gleiche Größe wie Soul-KI — 86% max, kein overflow */
-  .msg-inner  { max-width: 86%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  /* Alle msg-inner: 74% max — 26% Gegenseite gibt klares Links/Rechts-Layout */
+  .msg-inner  { max-width: 74%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }

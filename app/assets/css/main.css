@@ -304,7 +304,6 @@
   }
 
   html {
-    overflow-x: hidden;
     overscroll-behavior-x: none;
   }
 
@@ -312,7 +311,6 @@
     background: var(--sys-bg);
     min-height: 100vh;
     min-height: 100dvh;
-    overflow-x: hidden;
     overscroll-behavior-x: none;
   }
 
