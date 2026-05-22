@@ -204,9 +204,9 @@
         >
           <span class="archivar-dot"></span>KI-Auto
         </button>
-        <select class="model-select" v-model="selectedModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
-          <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
-        </select>
+        <button class="model-btn" @click="cycleModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
+          {{ MODELS.find(m=>m.id===selectedModel)?.label }}
+        </button>
       </div>
 
       <!-- Input row -->
@@ -359,6 +359,11 @@ const selectedModel = ref(
   typeof window !== 'undefined' ? (localStorage.getItem('sys_chat_model') || 'claude-sonnet-4-6') : 'claude-sonnet-4-6'
 )
 watch(selectedModel, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_chat_model', v) })
+
+function cycleModel() {
+  const idx = MODELS.findIndex(m => m.id === selectedModel.value)
+  selectedModel.value = MODELS[(idx + 1) % MODELS.length].id
+}
 
 // ── Archivar toggle ─────────────────────────────────────────────────
 const archivEnabled = ref(
@@ -1106,8 +1111,9 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
-  if (scrollEl.value) {
-    scrollEl.value.scrollLeft = 0
+  if (chatEnd.value) {
+    chatEnd.value.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  } else if (scrollEl.value) {
     scrollEl.value.scrollTop = scrollEl.value.scrollHeight
   }
 }
@@ -2207,7 +2213,7 @@ defineExpose({
 .mode-activity span:nth-child(2) { animation-delay: 0.2s; }
 .mode-activity span:nth-child(3) { animation-delay: 0.4s; }
 
-.model-select {
+.model-btn {
   margin-left: auto;
   background: transparent;
   border: 1px solid var(--rule-2);
@@ -2217,12 +2223,11 @@ defineExpose({
   letter-spacing: 0.08em; text-transform: uppercase;
   padding: 3px 10px;
   cursor: pointer;
-  appearance: none; -webkit-appearance: none;
   outline: 0;
+  white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
 }
-.model-select:hover { color: var(--fg); border-color: var(--rule); }
-.model-select option { background: #12101a; color: var(--fg); }
+.model-btn:hover { color: var(--fg); border-color: var(--rule); }
 
 .archivar-toggle {
   display: inline-flex; align-items: center; gap: 6px;
@@ -2424,9 +2429,10 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: Glass-Hintergrund — Chat sichtbar durch das Dock.
-     backdrop-filter NUR wenn geöffnet — sonst erzeugt es auf Android
-     einen schwarzen Composite-Layer der den FAB-Hintergrund verfärbt. */
+  /* Dock: komplett transparent wenn geschlossen — jede semi-transparente
+     background-Farbe erzeugt auf Android Chrome einen eigenen Composite-Layer
+     der als schwarze Fläche auf den FAB-Sibling painted.
+     background + backdrop-filter kommen erst mit .mobile-open. */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
@@ -2435,24 +2441,26 @@ defineExpose({
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.22s ease;
-    background: rgba(10, 6, 20, 0.22);
+    background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-top: 1px solid rgba(139, 92, 246, 0.28);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
+    border-top: 0;
+    box-shadow: none;
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open {
     opacity: 1;
     pointer-events: auto;
+    background: rgba(10, 6, 20, 0.22);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
+    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
   }
 
   .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
   .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
-  /* font-size ≥ 16px verhindert Android/iOS Auto-Zoom beim Fokus auf <select> */
-  .model-select { padding: 2px 6px; font-size: 16px; transform: scale(0.6); transform-origin: right center; }
+  .model-btn { font-size: 9.5px; padding: 2px 8px; }
   .dock-icon { width: 42px; }
   .input-wrap { padding: 0 14px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
