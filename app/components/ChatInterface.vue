@@ -2435,7 +2435,8 @@ defineExpose({
   .model-select { padding: 3px 8px; font-size: 9.5px; }
   .dock-icon { width: 42px; }
   .input-wrap { padding: 0 14px; }
-  .input { padding: 13px 4px; }
+  /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
+  .input { padding: 13px 4px; font-size: 16px; }
 
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
@@ -2444,28 +2445,22 @@ defineExpose({
     right: 18px;
     width: 54px; height: 54px;
     border-radius: 50%;
-    border: 1px solid rgba(167,139,250,0.30);
-    background: rgba(139, 92, 246, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow:
-      0 8px 28px rgba(139, 92, 246, 0.45),
-      0 0 0 1px rgba(167,139,250,0.20);
+    border: 1.5px solid rgba(167, 139, 250, 0.55);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
     cursor: pointer;
-    color: var(--on-accent);
+    color: rgba(167, 139, 250, 0.90);
     z-index: 201;
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s, opacity 0.1s;
+      color 0.2s, border-color 0.2s, opacity 0.1s;
   }
-  .mobile-fab:active { opacity: 0.78; }
+  .mobile-fab:active { opacity: 0.65; }
   .mobile-fab.open {
-    color: #f87171;
-    background: rgba(18, 16, 26, 0.92);
-    border-color: rgba(248, 113, 113, 0.40);
-    box-shadow:
-      0 6px 22px rgba(248, 113, 113, 0.25),
-      0 0 0 1px rgba(248, 113, 113, 0.20);
+    color: rgba(248, 113, 113, 0.90);
+    border-color: rgba(248, 113, 113, 0.45);
   }
   .mobile-fab-icon { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
   .mobile-fab.open .mobile-fab-icon { transform: rotate(45deg); }
