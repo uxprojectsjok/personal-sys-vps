@@ -1111,7 +1111,9 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
-  if (scrollEl.value) {
+  if (chatEnd.value) {
+    chatEnd.value.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  } else if (scrollEl.value) {
     scrollEl.value.scrollTop = scrollEl.value.scrollHeight
   }
 }
