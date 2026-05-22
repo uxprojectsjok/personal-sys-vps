@@ -1111,9 +1111,7 @@ function autoResize() {
 // ── Scroll ─────────────────────────────────────────────────────────
 async function scrollToBottom() {
   await nextTick()
-  if (chatEnd.value) {
-    chatEnd.value.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  } else if (scrollEl.value) {
+  if (scrollEl.value) {
     scrollEl.value.scrollTop = scrollEl.value.scrollHeight
   }
 }
@@ -2305,7 +2303,7 @@ defineExpose({
 }
 .input {
   font-family: var(--serif);
-  font-size: clamp(15px, 1.5vw, 16px);
+  font-size: clamp(16px, 1.5vw, 18px);
   color: var(--fg); border: 0; outline: 0;
   background: transparent;
   padding: 13px 6px;
@@ -2484,6 +2482,11 @@ defineExpose({
     cursor: pointer;
     color: rgba(167, 139, 250, 0.92);
     z-index: 201;
+    /* eigene GPU-Compositing-Ebene — verhindert dass der dunkle Hintergrund
+       der stream-Schicht (overflow-y:auto) auf den FAB durchschlägt */
+    will-change: transform;
+    isolation: isolate;
+    transform: translateZ(0);
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
       color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.1s;
