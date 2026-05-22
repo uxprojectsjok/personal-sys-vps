@@ -1721,7 +1721,7 @@ defineExpose({
   --mono:    'JetBrains Mono', ui-monospace, monospace;
 
   display: flex; flex-direction: column;
-  flex: 1; min-height: 0; overflow: hidden;
+  flex: 1; min-height: 0; min-width: 0; overflow: hidden;
 }
 
 /* ── Stream ──────────────────────────────────────────────────────── */
@@ -2397,33 +2397,24 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: backdrop-filter + transform = kein Effekt auf Android → solid dark-purple */
+  /* Dock: kein transform → backdrop-filter funktioniert auf Android.
+     Opacity-Animation statt translateY: kein Stacking-Context-Bug. */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 200;
-    transform: translateY(calc(100% + 80px));
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #100c1e;
-    border-top: 2px solid rgba(139, 92, 246, 0.35);
-    box-shadow: 0 -2px 32px rgba(0, 0, 0, 0.60);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    background: rgba(13, 11, 20, 0.82);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    box-shadow: 0 -1px 0 rgba(139, 92, 246, 0.10);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
-  .dock.mobile-open { transform: translateY(0); }
-  /* Gradient-Scrim: im stream verankert, nicht am Dock — faded Bubbles sanft weg */
-  .stream::after {
-    content: '';
-    position: sticky;
-    bottom: 0;
-    display: block;
-    height: 64px;
-    background: linear-gradient(to top, #0d0b14 0%, transparent 100%);
-    pointer-events: none;
-    margin-top: -64px;
-    flex-shrink: 0;
-    z-index: 5;
-  }
+  .dock.mobile-open { opacity: 1; pointer-events: auto; }
 
   .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
   .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }

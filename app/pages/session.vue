@@ -393,6 +393,7 @@ function reloadPage() { location.reload() }
   --mono:'JetBrains Mono', ui-monospace, monospace;
   /* 4 rows: header · sub-head (banners, collapses to 0 when empty) · body · tabs */
   display: grid; grid-template-rows: auto auto 1fr auto;
+  width: 100%; max-width: 100vw;
   height: 100vh; height: 100dvh;
   overflow: hidden;
   background: var(--paper); color: var(--fg); font-family: var(--sans);
@@ -483,7 +484,7 @@ function reloadPage() { location.reload() }
 /* Body */
 /* min-height: 0 is critical — without it the grid item expands to content height
    and overflows the 1fr track, making the dock push below the viewport */
-.sess-body { display: grid; grid-template-columns: 360px 1fr; gap: 0; overflow: hidden; min-height: 0; }
+.sess-body { display: grid; grid-template-columns: 360px 1fr; gap: 0; overflow: hidden; min-height: 0; min-width: 0; }
 @media (max-width: 900px) {
   .sess-body { grid-template-columns: 1fr; grid-template-rows: 1fr; }
   .col-soul, .col-chat { grid-row: 1; grid-column: 1; }
@@ -502,7 +503,7 @@ function reloadPage() { location.reload() }
 .col-soul .ttl em { font-style: italic; color: var(--accent); }
 
 /* min-height: 0 prevents the flex child from growing past its available track */
-.col-chat { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.col-chat { display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
 
 .onboard { display: flex; align-items: center; gap: 24px; padding: 14px clamp(16px,3vw,40px); border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); flex-wrap: wrap; flex-shrink: 0; }
 .onboard .n { color: var(--accent); }
@@ -513,7 +514,7 @@ function reloadPage() { location.reload() }
 .onboard .close:hover { color: var(--accent); }
 
 /* flex: 1 + min-height: 0 — hands all remaining height to ChatInterface */
-.chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
 .chat-wrap :deep(.msg) { font-family: var(--serif); font-size: 17px; line-height: 1.55; }
 
 /* Legal footer */
