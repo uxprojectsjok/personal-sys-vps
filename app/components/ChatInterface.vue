@@ -169,7 +169,9 @@
       </div><!-- /stream-inner -->
     </div>
 
-    <!-- ── Dock ────────────────────────────────────────────────────── -->
+    <!-- ── Dock — Teleport auf mobile heraus aus overflow:hidden Containern
+         damit backdrop-filter auf Android Chrome funktioniert ──────── -->
+    <Teleport to="#teleports" :disabled="!isMobile">
     <footer ref="dockEl" class="dock" :class="{ 'mobile-open': mobileComposerOpen }">
 
       <!-- Soul-Archivar läuft -->
@@ -276,6 +278,7 @@
       </div>
 
     </footer>
+    </Teleport>
 
     <!-- Camera Recorder Overlay -->
     <CameraRecorder
@@ -287,6 +290,7 @@
     <input ref="fileInputEl" type="file" style="display:none;position:fixed" @change="onFileInputChange" />
 
     <!-- Mobile floating composer button -->
+    <Teleport to="#teleports" :disabled="!isMobile">
     <button
       class="mobile-fab"
       :class="{ open: mobileComposerOpen }"
@@ -298,6 +302,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
       </svg>
     </button>
+    </Teleport>
   </div>
 </template>
 
@@ -371,6 +376,11 @@ const mediaOpen = ref(false)
 const mobileComposerOpen = ref(false)
 const dockEl             = ref(null)
 const dockHeight         = ref(160)
+// isMobile: Teleport dock+FAB aus overflow:hidden-Containern heraus
+// damit backdrop-filter auf Android Chrome funktioniert
+const isMobile = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches)
+let _mqMobile = null
+const _onMqMobile = (e) => { isMobile.value = e.matches }
 
 function toggleMobileComposer() {
   mobileComposerOpen.value = !mobileComposerOpen.value
@@ -1643,6 +1653,9 @@ let _briefingTimer        = null
 let _lastBriefingMsgCount = 0
 
 onMounted(async () => {
+  _mqMobile = window.matchMedia('(max-width: 640px)')
+  isMobile.value = _mqMobile.matches
+  _mqMobile.addEventListener('change', _onMqMobile)
   nextTick(autoResize)
   loadMind(props.soulCert)
   try {
@@ -1686,6 +1699,7 @@ onMounted(async () => {
   }, 3 * 60 * 1000)
 })
 onUnmounted(() => {
+  if (_mqMobile) _mqMobile.removeEventListener('change', _onMqMobile)
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
 })
