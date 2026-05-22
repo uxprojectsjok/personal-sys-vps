@@ -492,7 +492,7 @@ function reloadPage() { location.reload() }
 }
 @media (min-width: 901px) { .mobile-hidden { display: flex !important; } }
 
-.col-soul { border-right: 1px solid var(--rule); padding: clamp(24px,4vw,40px) clamp(18px,3vw,28px); display: flex; flex-direction: column; gap: 28px; overflow-y: auto; background: linear-gradient(180deg, rgba(139,92,246,0.04) 0%, transparent 40%); min-height: 0; }
+.col-soul { border-right: 1px solid var(--rule); padding: clamp(24px,4vw,40px) clamp(18px,3vw,28px); display: flex; flex-direction: column; gap: 28px; overflow-y: auto; background: linear-gradient(180deg, rgba(139,92,246,0.04) 0%, transparent 40%); min-height: 0; min-width: 0; }
 @media (max-width: 900px) {
   .col-soul { border-right: 0; padding: 0; gap: 0; }
   /* Hide the "Lebendige Datei / sys.md" header on mobile — SoulViewer shows soul name already */
