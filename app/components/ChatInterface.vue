@@ -2141,7 +2141,9 @@ defineExpose({
 
 .dock {
   border-top: 1px solid var(--rule);
-  background: linear-gradient(180deg, rgba(13, 11, 20, 0.92), var(--paper-3));
+  background: rgba(10, 6, 20, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   flex-shrink: 0;
   display: flex; flex-direction: column;
   padding: 10px clamp(10px, 2vw, 18px) 12px;
@@ -2420,7 +2422,8 @@ defineExpose({
   }
 
   /* Dock: Glass-Hintergrund — Chat sichtbar durch das Dock.
-     Kein transform → backdrop-filter funktioniert auf Android. */
+     backdrop-filter NUR wenn geöffnet — sonst erzeugt es auf Android
+     einen schwarzen Composite-Layer der den FAB-Hintergrund verfärbt. */
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
@@ -2430,17 +2433,23 @@ defineExpose({
     pointer-events: none;
     transition: opacity 0.22s ease;
     background: rgba(10, 6, 20, 0.22);
-    backdrop-filter: blur(32px) saturate(220%);
-    -webkit-backdrop-filter: blur(32px) saturate(220%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-top: 1px solid rgba(139, 92, 246, 0.28);
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
     padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
-  .dock.mobile-open { opacity: 1; pointer-events: auto; }
+  .dock.mobile-open {
+    opacity: 1;
+    pointer-events: auto;
+    backdrop-filter: blur(32px) saturate(220%);
+    -webkit-backdrop-filter: blur(32px) saturate(220%);
+  }
 
   .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
   .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
-  .model-select { padding: 3px 8px; font-size: 9.5px; }
+  /* font-size ≥ 16px verhindert Android/iOS Auto-Zoom beim Fokus auf <select> */
+  .model-select { padding: 2px 6px; font-size: 16px; transform: scale(0.6); transform-origin: right center; }
   .dock-icon { width: 42px; }
   .input-wrap { padding: 0 14px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
