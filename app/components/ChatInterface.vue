@@ -2256,8 +2256,7 @@ defineExpose({
   transition: border-color 0.15s, background 0.15s;
 }
 .dock-main:focus-within {
-  border-color: rgba(139, 92, 246, 0.70);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.75);
   background: rgba(139, 92, 246, 0.05);
 }
 
@@ -2389,7 +2388,6 @@ defineExpose({
   .msg-bubble {
     align-self: stretch; width: 100%; max-width: 100%;
     gap: 4px; box-sizing: border-box; margin-right: 0; margin-left: 0;
-    overflow-x: hidden;
   }
   .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
   .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
