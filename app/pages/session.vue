@@ -158,6 +158,7 @@
  * All wiring to composables preserved (useSoul, useSession, useVault, useChainAnchor, useCamera).
  * Feature logic unchanged — only layout, typography, color replaced.
  */
+definePageMeta({ layout: false })
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'

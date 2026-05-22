@@ -3,7 +3,7 @@
        SYS · ChatInterface.vue — Editorial reading column
        Serif body copy, rule-separated turns, feature chips, mode toggle.
        ═══════════════════════════════════════════════════════════════ -->
-  <div class="sys-chat">
+  <div class="sys-chat" :class="{ 'mob-composer-open': mobileComposerOpen }">
 
     <!-- ── Stream ──────────────────────────────────────────────────── -->
     <div ref="scrollEl" class="stream">
@@ -1814,7 +1814,7 @@ defineExpose({
   box-sizing: border-box;
   min-width: 0;
 }
-.msg-bubble--me      { align-self: flex-end;   align-items: flex-end; }
+.msg-bubble--me      { align-self: flex-end;   align-items: flex-end;   margin-right: 8px; }
 .msg-bubble--other   { align-self: flex-start; align-items: flex-start; }
 
 .msg-sender {
@@ -2358,19 +2358,26 @@ defineExpose({
 }
 
 @media (max-width: 640px) {
-  .stream { padding: 16px 12px 110px; box-sizing: border-box; overflow-x: hidden; }
-  .stream-inner { gap: 12px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+  /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
+  .stream { padding: 16px 16px 90px; box-sizing: border-box; overflow-x: hidden; }
+  /* When composer/dock is open: add room for dock + FAB above */
+  .mob-composer-open .stream { padding-bottom: 220px; }
+  .stream-inner { gap: 14px; width: 100%; min-width: 0; overflow-x: hidden; box-sizing: border-box; }
 
-  /* Mobile bubbles: same align-self strategy as desktop, just wider max-width */
-  .msg-bubble         { max-width: 88%; gap: 4px; box-sizing: border-box; }
-  .msg-bubble--me     { align-self: flex-end; align-items: flex-end; }
-  .msg-bubble--other  { align-self: flex-start; align-items: flex-start; }
-  /* Archivar stays full-width on mobile too */
+  /* Mobile bubbles: full-width stack — no left/right positional offset.
+     align-self: stretch means every bubble spans the full width of stream-inner.
+     align-items: flex-end/start aligns the inner content (msg-inner) visually.
+     msg-inner: max-width 86% so there's breathing room on the far side.
+  */
+  .msg-bubble         { align-self: stretch; width: 100%; max-width: 100%; gap: 4px; box-sizing: border-box; margin-right: 0; }
+  .msg-bubble--me     { align-self: stretch; align-items: flex-end; }
+  .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
-  /* Inner: fills the bubble (bubble is already constrained) */
+
   .msg-bubble--me .msg-inner { border-radius: 16px 4px 16px 16px; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  /* Inner: 86% max — leaves ~14% breathing room on the side not aligned to */
+  .msg-inner  { max-width: 86%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
@@ -2386,19 +2393,22 @@ defineExpose({
 
   .capture-wrap { max-width: 100%; margin: 8px 0; }
 
+  /* Dock: glass panel floating above chat */
   .dock {
-    padding: 8px 12px 10px; gap: 6px;
+    padding: 10px 14px 14px; gap: 8px;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 200;
-    transform: translateY(calc(100% + 64px));
+    transform: translateY(calc(100% + 80px));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(13, 11, 20, 0.94);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-top: 1px solid rgba(139, 92, 246, 0.22);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(13, 11, 20, 0.86);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    box-shadow:
+      0 -24px 64px rgba(0, 0, 0, 0.65),
+      0 -1px 0 rgba(139, 92, 246, 0.10);
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
   .dock.mobile-open { transform: translateY(0); }
 
@@ -2412,16 +2422,16 @@ defineExpose({
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
     position: fixed;
-    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-    right: 16px;
-    width: 52px; height: 52px;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    right: 18px;
+    width: 54px; height: 54px;
     border-radius: 50%;
     border: 1px solid rgba(167,139,250,0.30);
     background: rgba(139, 92, 246, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     box-shadow:
-      0 6px 22px rgba(139, 92, 246, 0.40),
+      0 8px 28px rgba(139, 92, 246, 0.45),
       0 0 0 1px rgba(167,139,250,0.20);
     cursor: pointer;
     color: var(--on-accent);
