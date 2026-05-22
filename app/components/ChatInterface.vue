@@ -2394,20 +2394,15 @@ defineExpose({
   /* No margin:auto or max-width on desktop → no overrides needed here. Just tighten gap. */
   .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; }
 
-  /* Mobile bubbles: full-width containers, msg-inner positions content left/right */
-  .msg-bubble {
-    align-self: stretch; width: 100%; max-width: 100%;
-    gap: 4px; margin-right: 0; margin-left: 0;
-  }
-  .msg-bubble--me     { align-self: stretch; align-items: flex-start; margin-right: 0; }
-  .msg-bubble--other  { align-self: stretch; align-items: flex-start; }
+  /* Mobile bubbles: same left/right alignment as desktop, just wider max-width */
+  .msg-bubble     { max-width: 82%; gap: 4px; margin-right: 0; margin-left: 0; }
+  .msg-bubble--me    { align-self: flex-end;   align-items: flex-end;   margin-right: 0; }
+  .msg-bubble--other { align-self: flex-start; align-items: flex-start; }
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
-  /* User bubbles: msg-inner right-aligned; KI: left-aligned via parent align-items:flex-start */
-  .msg-bubble--me .msg-inner  { align-self: flex-end; border-radius: 16px 4px 16px 16px; }
-  .msg-bubble--me .msg-foot   { align-self: flex-end; max-width: 100%; }
+  .msg-bubble--me .msg-inner  { border-radius: 16px 4px 16px 16px; }
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
-  .msg-inner  { max-width: 74%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
   .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
