@@ -104,6 +104,25 @@ if not ctx.enabled or not ctx.permissions.soul then
   write_file(ctx_path, cjson.encode(ctx))
 end
 
+-- webhook_token in authorized_services.json registrieren damit ElevenLabs
+-- die Webhook-URL /api/soul?token=... aufrufen kann (check_service_token-Pfad).
+local svc_path = BASE_DIR .. "/authorized_services.json"
+local svc_data = {}
+local svc_raw  = read_file(svc_path)
+if svc_raw then
+  local ok_s, sd = pcall(cjson.decode, svc_raw)
+  if ok_s and type(sd) == "table" then svc_data = sd end
+end
+if not svc_data[ctx.webhook_token] then
+  svc_data[ctx.webhook_token] = {
+    name        = "ElevenLabs Agent",
+    permissions = { soul = true, context_files = true },
+    expires_at  = cjson.null,
+    created_at  = math.floor(ngx.now()),
+  }
+  write_file(svc_path, cjson.encode(svc_data))
+end
+
 local host  = ngx.var.host or "localhost"
 local proto = "https"
 local soul_url = proto .. "://" .. host .. "/api/soul?token=" .. ctx.webhook_token

@@ -191,24 +191,16 @@ local function check_service_token(token)
   local vault_key = ""
 
   if not val then
-    -- Keine aktive Session: persistenten vault_key_hex verwenden wenn vorhanden
+    -- Keine aktive Session: persistenten vault_key_hex verwenden wenn vorhanden.
+    -- Kein Fehler bei leerem Key — unverschlüsselte Souls brauchen keinen Key.
+    -- api_serve.lua gibt 403 "encrypted" zurück falls die Datei doch verschlüsselt ist.
     vault_key = load_persisted_key(found_id)
-    if vault_key == "" then
-      ngx.ctx.soul_id      = found_id
-      ngx.ctx.vault_locked = true
-      return nil
-    end
   else
     local expires_at
     expires_at, vault_key = parse_session(val)
     if expires_at and expires_at > 0 and ngx.now() >= expires_at then
       sessions:delete(found_id)
       vault_key = load_persisted_key(found_id)
-      if vault_key == "" then
-        ngx.ctx.soul_id      = found_id
-        ngx.ctx.vault_locked = true
-        return nil
-      end
     elseif vault_key == "" then
       vault_key = load_persisted_key(found_id)
     end
