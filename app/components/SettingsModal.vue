@@ -29,7 +29,7 @@
             </button>
 
             <button
-              v-if="!isAdmin"
+              v-if="!isAdmin && isMultiHoster"
               @click="tab = 'connect'"
               class="sys-rail-item"
               :class="tab === 'connect' ? 'is-active' : ''"
@@ -406,8 +406,8 @@
                 </div>
               </Transition>
 
-              <!-- Admin-Token rotieren -->
-              <div class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
+              <!-- Admin-Token rotieren (nur Multi-Hoster) -->
+              <div v-if="isMultiHoster" class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
                 <label class="sys-field-label">Admin-Token rotieren</label>
                 <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:0 0 8px">Bei Leak: neuen Token generieren. Der alte wird sofort ungültig.</p>
                 <div style="display:flex;gap:8px">
@@ -503,16 +503,34 @@ const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
 
-// ── Admin-Erkennung (nur aus localStorage — nie vom Server) ─────────────────
+// ── Admin-Erkennung ───────────────────────────────────────────────────────────
 const ADMIN_KEY    = 'sys_admin_token'
 const isAdmin      = ref(false)
 const adminToken   = ref('')
-const isSoulAdmin  = ref(false)  // true = per-soul token (multi-hoster), false = global token
+const isSoulAdmin  = ref(false)   // true = per-soul token (multi-hoster)
+const isMultiHoster = ref(false)  // false = single-hoster (soul owner = admin)
 
 const currentSoulId = computed(() => soulToken.value?.split('.')?.[0] ?? '')
 
+async function loadNodeStatus() {
+  try {
+    const res = await fetch('/api/node-status')
+    if (res.ok) {
+      const d = await res.json()
+      isMultiHoster.value = !!d.multi_hoster
+    }
+  } catch {}
+}
+
 function detectAdmin() {
-  // Per-soul token zuerst prüfen (multi-hoster: jede Soul hat eigenen Token)
+  if (!isMultiHoster.value) {
+    // Single-Hoster: soul owner ist immer Admin — kein Token nötig
+    isAdmin.value     = !!soulToken.value
+    isSoulAdmin.value = false
+    adminToken.value  = ''
+    return
+  }
+  // Multi-Hoster: Token aus localStorage lesen
   const soulId = currentSoulId.value
   if (soulId) {
     const perSoul = localStorage.getItem(`sys_admin_token_${soulId}`)
@@ -523,7 +541,6 @@ function detectAdmin() {
       return
     }
   }
-  // Globaler Token (single-hoster / legacy)
   const stored = localStorage.getItem(ADMIN_KEY)
   if (stored && stored.startsWith('adm_') && stored.length === 68) {
     isAdmin.value    = true
@@ -817,7 +834,9 @@ async function saveMaster() {
     const soulId = currentSoulId.value
     const authHeaders = isSoulAdmin.value && soulId
       ? { 'X-Soul-Admin-Token': adminToken.value, 'X-Soul-Id': soulId }
-      : { 'X-Admin-Token': adminToken.value }
+      : adminToken.value
+        ? { 'X-Admin-Token': adminToken.value }
+        : { 'Authorization': `Bearer ${soulToken.value}` }
     const res = await fetch('/api/set-master', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -935,8 +954,9 @@ async function handleRotateCert() {
 }
 
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
-watch(() => props.open, (val) => {
+watch(() => props.open, async (val) => {
   if (val) {
+    await loadNodeStatus()
     detectAdmin()
     loadStatus()
     tab.value           = 'api'

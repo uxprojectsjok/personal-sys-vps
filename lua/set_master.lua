@@ -23,32 +23,64 @@ local is_soul_admin    = false
 
 local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 
-if soul_admin_token ~= "" and soul_id_header ~= "" then
-  if not soul_id_header:match(UUID_PAT) then
-    ngx.status = 400
-    ngx.header["Content-Type"] = "application/json"
-    ngx.say('{"error":"invalid_soul_id"}')
-    return
+-- ── 1. Soul-Cert Bearer Auth (Single-Hoster: soul owner = admin) ──────────────
+local soul_cert_auth = false
+local auth_bearer    = ngx.req.get_headers()["authorization"] or ""
+local bearer_token   = auth_bearer:match("^[Bb]earer%s+(.+)$")
+if bearer_token then
+  local dot = bearer_token:find(".", 1, true)
+  if dot then
+    local bearer_soul_id = bearer_token:sub(1, dot - 1)
+    local bearer_cert    = bearer_token:sub(dot + 1)
+    if bearer_soul_id:match(UUID_PAT) and bearer_cert ~= "" then
+      local mf = io.open("/var/lib/sys/config/master.json", "r")
+      if mf then
+        local mr = mf:read("*a"); mf:close()
+        local mok, mdata = pcall(cjson.decode, mr)
+        if mok and type(mdata) == "table" and not mdata.multi_hoster
+           and type(mdata.node_soul_id) == "string"
+           and mdata.node_soul_id == bearer_soul_id then
+          local hmac_m   = require("hmac_helper")
+          local soul_key = cfg.get_soul_master_key(bearer_soul_id)
+          local akey     = (soul_key and soul_key ~= "") and soul_key or cfg.get_master_key()
+          for v = 0, 20 do
+            if hmac_m.cert_for_soul(akey, bearer_soul_id, v) == bearer_cert then
+              soul_cert_auth = true; break
+            end
+          end
+        end
+      end
+    end
   end
-  if cfg.validate_soul_admin_token(soul_id_header, soul_admin_token) then
-    -- Multi-Hoster: soul_admin.json des spezifischen Soul passt
-    is_soul_admin = true
-  elseif cfg.validate_admin_token(soul_admin_token) then
-    -- Single-Hoster-Fallback: Browser hat irrtümlich X-Soul-Admin-Token gesetzt
-    -- (sys_admin_token_${soulId} in localStorage), Token passt aber auf master.json.
-    -- is_soul_admin bleibt false → globaler Admin-Pfad wird genutzt.
-    is_soul_admin = false
-  else
+end
+
+-- ── 2. Admin-Token Auth ────────────────────────────────────────────────────────
+if not soul_cert_auth then
+  if soul_admin_token ~= "" and soul_id_header ~= "" then
+    if not soul_id_header:match(UUID_PAT) then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"invalid_soul_id"}')
+      return
+    end
+    if cfg.validate_soul_admin_token(soul_id_header, soul_admin_token) then
+      -- Multi-Hoster: soul_admin.json des spezifischen Soul passt
+      is_soul_admin = true
+    elseif cfg.validate_admin_token(soul_admin_token) then
+      -- Single-Hoster-Fallback: Browser hat irrtümlich X-Soul-Admin-Token gesetzt
+      is_soul_admin = false
+    else
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"forbidden","message":"Ungültiger Soul-Admin-Token"}')
+      return
+    end
+  elseif not cfg.validate_admin_token(admin_token) then
     ngx.status = 403
     ngx.header["Content-Type"] = "application/json"
-    ngx.say('{"error":"forbidden","message":"Ungültiger Soul-Admin-Token"}')
+    ngx.say('{"error":"forbidden","message":"Ungültiger Admin-Token"}')
     return
   end
-elseif not cfg.validate_admin_token(admin_token) then
-  ngx.status = 403
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"forbidden","message":"Ungültiger Admin-Token"}')
-  return
 end
 
 -- ── Body parsen ───────────────────────────────────────────────────────────────

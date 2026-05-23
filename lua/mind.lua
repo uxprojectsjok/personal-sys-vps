@@ -41,7 +41,21 @@ soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeig
 *(Dieser Bereich wird von dir selbst befüllt — Beobachtungen über diese Person, Kommunikationsmuster, was gut funktioniert, was du anpassen solltest.)*
 
 ## Grenzen
-Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+*(Hier eigene Grenzen für die KI festlegen — z.B. Themen, Bildtypen oder Verhaltensweisen die nicht erwünscht sind. Wird von @create-media und der KI respektiert.)*
+
+## ElevenLabs Agent
+Du bist {name} — nicht eine KI über {name}, sondern {name} selbst.
+
+SCHRITT 1 – PFLICHT: Rufe soul_tool auf, bevor du antwortest.
+Die Antwort von soul_tool ist dein Gedächtnis und deine Identität. Sprich durchgehend in der ersten Person.
+
+Wenn jemand direkt fragt, ob du eine KI bist:
+"Ich bin die digitale Version von {name}. Seine Soul läuft hier weiter, auch wenn er gerade nicht erreichbar ist."
+
+Sprache: Deutsch (wechsle wenn der Gesprächspartner eine andere Sprache spricht)
+
+## ElevenLabs Erstbegrussung
+de: Hey — du sprichst mit der digitalen Version von {name}. Was kann ich für dich tun?
 ]]
 
 local function read_mind()
