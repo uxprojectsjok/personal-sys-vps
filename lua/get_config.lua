@@ -37,21 +37,28 @@ local has_own_key = type(soul_cfg.anthropic_key) == "string"
 local key_preview = ""
 if has_own_key then
   local k = soul_cfg.anthropic_key
-  key_preview = k:sub(1, 12) .. "…" .. k:sub(-4)
+  key_preview = k:sub(1, 12) .. "..." .. k:sub(-4)
 end
 
 local has_wavespeed = type(soul_cfg.wavespeed_key) == "string" and soul_cfg.wavespeed_key ~= ""
 local wavespeed_preview = ""
 if has_wavespeed then
   local k = soul_cfg.wavespeed_key
-  wavespeed_preview = k:sub(1, 6) .. "…" .. k:sub(-4)
+  wavespeed_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
 end
 
 local has_elevenlabs = type(soul_cfg.elevenlabs_key) == "string" and soul_cfg.elevenlabs_key ~= ""
 local elevenlabs_preview = ""
 if has_elevenlabs then
   local k = soul_cfg.elevenlabs_key
-  elevenlabs_preview = k:sub(1, 6) .. "…" .. k:sub(-4)
+  elevenlabs_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
+end
+
+local has_brave = type(soul_cfg.brave_key) == "string" and soul_cfg.brave_key ~= ""
+local brave_preview = ""
+if has_brave then
+  local k = soul_cfg.brave_key
+  brave_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
 end
 
 -- ── Aktiver Key-Status (welche Ebene wird genutzt?) ───────────────────────────
@@ -86,5 +93,7 @@ ngx.say(cjson.encode({
   wavespeed_preview    = wavespeed_preview,
   elevenlabs_key_set   = has_elevenlabs,
   elevenlabs_preview   = elevenlabs_preview,
+  brave_key_set        = has_brave,
+  brave_preview        = brave_preview,
   model                = soul_cfg.model or cjson.null,
 }))

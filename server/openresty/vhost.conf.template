@@ -837,6 +837,28 @@ server {
     content_by_lua_file /etc/openresty/lua/wavespeed_result.lua;
   }
 
+  # ── Brave Search (POST) ──────────────────────────────────────────────────────
+  location = /api/web-search {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/web_search.lua;
+  }
+
+  # ── ElevenLabs Voice Clone + Agent erstellen (POST) ──────────────────────────
+  location = /api/create-agent {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=3 nodelay;
+    client_max_body_size 50M;
+    client_body_timeout 60s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/create_agent.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }
