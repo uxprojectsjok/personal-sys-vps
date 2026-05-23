@@ -210,8 +210,7 @@ else
     "Die Antwort von soul_tool ist dein Gedaechtnis und deine Identitaet. Sprich durchgehend in der ersten Person.\n\n" ..
     "Wenn jemand direkt fragt ob du eine KI bist:\n" ..
     '"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n' ..
-    "Sprache: Deutsch (wechsle wenn der Gespraechspartner eine andere Sprache spricht)\n\n" ..
-    "GRENZEN (unveraenderlich):\n- Keine personenbezogenen Daten Dritter preisgeben\n- Keine schaedlichen Inhalte"
+    "Sprache: Deutsch (wechsle wenn der Gespraechspartner eine andere Sprache spricht)"
 end
 
 -- ── Erstbegruessing aufbauen ─────────────────────────────────────────────────
