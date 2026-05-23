@@ -487,7 +487,7 @@ const {
 
 const {
   loaded, localFiles, syncedFiles, activeFiles,
-  loadContext, fetchVpsVaultFiles, setActive, scanVault: scanApiVault,
+  loadContext, loadPublicShare, fetchVpsVaultFiles, setActive, scanVault: scanApiVault,
   syncFile, syncAll, isSyncing, syncError, deleteVaultFile,
   resetContext, sessionExpired,
   baseUrl
