@@ -2,6 +2,11 @@
 import { ref } from "vue";
 
 // ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
+// Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
+const SOUL_TOOL_NAMES = new Set([
+  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write"
+]);
+
 const SOUL_TOOLS = [
   {
     name: "soul_read",
@@ -123,7 +128,7 @@ export function useClaude() {
     return [{ role: "user", content: firstBlocks }, ...rest];
   }
 
-  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6" }) {
+  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6", externalTools = [] }) {
     if (typeof window === "undefined") return null;
 
     isLoading.value = true;
@@ -269,13 +274,16 @@ ${mediaSignalInstructions}`;
     try {
       // ── Tools ──────────────────────────────────────────────────────────────
       const hasSoulTools = !!soulCert;
+      const allTools = hasSoulTools
+        ? [...SOUL_TOOLS, ...externalTools]
+        : [];
       const baseBody = {
         model,
         max_tokens: 4096,
         stream: true,
         system: systemPrompt,
       };
-      if (hasSoulTools) baseBody.tools = SOUL_TOOLS;
+      if (hasSoulTools) baseBody.tools = allTools;
 
       let fullText = "";
 
@@ -374,16 +382,21 @@ ${mediaSignalInstructions}`;
         return { allBlocks, stopReason };
       }
 
-      // ── executeTool: ruft /api/soul-tool auf ──────────────────────────────
+      // ── executeTool: soul-tools → /api/soul-tool | MCP-tools → /api/mcp-call ─
       async function executeTool(name, input) {
+        const isSoulTool = SOUL_TOOL_NAMES.has(name);
+        const endpoint = isSoulTool ? "/api/soul-tool" : "/api/mcp-call";
+        const body = isSoulTool
+          ? { tool: name, input }
+          : { name, input };
         try {
-          const r = await fetch("/api/soul-tool", {
+          const r = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${soulCert || "anonymous"}`
             },
-            body: JSON.stringify({ tool: name, input })
+            body: JSON.stringify(body)
           });
           const j = await r.json().catch(() => ({ content: [{ type: "text", text: "Tool-Fehler" }] }));
           return j.content?.[0]?.text ?? "";

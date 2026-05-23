@@ -192,6 +192,29 @@
                 </p>
               </div>
 
+              <!-- Zapier MCP URL -->
+              <div class="sys-field" style="gap:12px">
+                <label class="sys-field-label">
+                  MCP Server URL
+                  <span v-if="mcpUrlSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ mcpPreview }}</span>
+                </label>
+                <input
+                  v-model="mcpUrl"
+                  type="text"
+                  class="sys-input sys-input--mono"
+                  :style="mcpUrlSet ? 'border-color:var(--sys-ok)' : ''"
+                  :placeholder="mcpUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @input="mcpDirty = true"
+                  @keyup.enter="saveConfig"
+                />
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
+                  Zapier MCP: Gmail, Calendar, Docs, Slack u.v.m. direkt im Chat.
+                  <a href="https://zapier.com/mcp" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">zapier.com/mcp</a>
+                </p>
+              </div>
+
               <!-- ElevenLabs Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:0">
                 <label class="sys-field-label">
@@ -532,6 +555,11 @@ const braveKeySet  = ref(false)
 const bravePreview = ref('')
 const braveDirty   = ref(false)
 
+const mcpUrl    = ref('')
+const mcpUrlSet = ref(false)
+const mcpPreview = ref('')
+const mcpDirty  = ref(false)
+
 const keySourceLabel = computed(() => ({
   soul:   'Eigener Key aktiv',
   master: 'Server-Key aktiv',
@@ -554,6 +582,8 @@ async function loadStatus() {
     elevenlabsPreview.value = d.elevenlabs_preview || ''
     braveKeySet.value  = !!d.brave_key_set
     bravePreview.value = d.brave_preview || ''
+    mcpUrlSet.value  = !!d.mcp_url_set
+    mcpPreview.value = d.mcp_preview || ''
     if (d.model) model.value = d.model
   } catch {}
 }
@@ -630,6 +660,7 @@ async function saveConfig() {
     if (wavespeedDirty.value) body.wavespeed_key = sanitizeKey(wavespeedKey.value)
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
     if (braveDirty.value) body.brave_key = sanitizeKey(braveKey.value)
+    if (mcpDirty.value) body.mcp_url = sanitizeKey(mcpUrl.value)
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: {
@@ -649,6 +680,8 @@ async function saveConfig() {
       elevenlabsDirty.value = false
       braveKey.value  = ''
       braveDirty.value = false
+      mcpUrl.value  = ''
+      mcpDirty.value = false
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }
