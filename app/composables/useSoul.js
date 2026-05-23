@@ -153,16 +153,11 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (res.ok) {
         const data = await res.json();
         cert = data.cert;
-        // First-Setup: admin_token einmalig im Response
-        if (data.first_setup && data.admin_token) {
+        // First-Setup: admin_token nur bei Multi-Hoster anzeigen und speichern.
+        // Single-Hoster: soul_cert ist der Admin-Zugang — kein separates Token nötig.
+        if (data.first_setup && data.admin_token && data.is_soul_admin) {
           firstSetupToken.value = data.admin_token;
-          localStorage.setItem("sys_admin_token", data.admin_token);
-          // Per-soul key nur bei Multi-Hoster (is_soul_admin=true) —
-          // Single-Hoster: nur globaler Token, damit detectAdmin() nicht fälschlicherweise
-          // X-Soul-Admin-Token schickt (soul_admin.json existiert nicht beim Single-Hoster).
-          if (data.is_soul_admin) {
-            localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
-          }
+          localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
         }
       }
     } catch {
@@ -224,12 +219,9 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       isLoaded.value    = true;
       save();
 
-      if (data.first_setup && data.admin_token) {
+      if (data.first_setup && data.admin_token && data.is_soul_admin) {
         firstSetupToken.value = data.admin_token;
-        localStorage.setItem('sys_admin_token', data.admin_token);
-        if (data.is_soul_admin) {
-          localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
-        }
+        localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
       }
 
       await pushToServer();
