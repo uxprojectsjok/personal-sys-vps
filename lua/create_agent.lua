@@ -289,10 +289,10 @@ end
 if ares.status ~= 200 then
   ngx.status = 502
   ngx.header["Content-Type"] = "application/json"
-  local detail = (ares.body or ""):sub(1, 300):gsub('["%\\]', function(c)
+  local detail = (ares.body or ""):sub(1, 400):gsub('["%\\]', function(c)
     return c == '"' and '\\"' or '\\\\'
   end)
-  ngx.say('{"error":"elevenlabs_error","status":' .. ares.status .. ',"detail":"' .. detail .. '"}')
+  ngx.say('{"error":"elevenlabs_error","status":' .. ares.status .. ',"message":"ElevenLabs ' .. ares.status .. ': ' .. detail .. '","detail":"' .. detail .. '"}')
   return
 end
 
