@@ -129,6 +129,20 @@ if ctx.synced_files and type(ctx.synced_files.audio) == "table" then
   end
 end
 
+-- Disk-Fallback: Verzeichnis direkt scannen wenn api_context.json keine Treffer hat
+if #candidates == 0 then
+  local ls = io.popen("ls -1 " .. audio_dir .. " 2>/dev/null")
+  if ls then
+    for line in ls:lines() do
+      if line:match("%.webm$") or line:match("%.mp3$")
+         or line:match("%.wav$") or line:match("%.m4a$") then
+        table.insert(candidates, line)
+      end
+    end
+    ls:close()
+  end
+end
+
 -- Erste existierende, unverschluesselte Datei verwenden
 for _, fname in ipairs(candidates) do
   local fpath = audio_dir .. "/" .. fname
