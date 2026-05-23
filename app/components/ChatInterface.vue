@@ -490,7 +490,8 @@ function preflightCheck(type) {
         '3. `@create-agent` eingeben um deinen Agent zu erstellen',
       ].join('\n')
     }
-    const hasAgent = /elevenlabs_agent_id:\s*\S+/.test(props.soulContent || '')
+    const hasAgent = /elevenlabs_agent_id:\s*\S+/.test(props.soulContent || '') ||
+                     /elevenlabs_agent_id:\s*\S+/.test(soulContentAgent.value || '')
     if (!hasAgent) {
       return [
         '**Kein Agent vorhanden**',
@@ -1738,18 +1739,31 @@ async function handleCreateAgent() {
       return
     }
 
+    // agent_id sofort lokal in soul patchen → hasAgent-Check greift ohne Seiten-Reload
+    if (data.agent_id && soulContentAgent.value) {
+      const lineRe = /^(elevenlabs_agent_id:\s*).*$/m
+      const patched = lineRe.test(soulContentAgent.value)
+        ? soulContentAgent.value.replace(lineRe, `$1${data.agent_id}`)
+        : soulContentAgent.value.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_agent_id: ${data.agent_id}\n$2`)
+      updateContent(patched)
+    }
+
     const voiceNote = data.has_voice_clone
       ? `Voice-ID: \`${data.voice_id}\``
       : 'Kein Vault-Audio — Agent ohne Stimm-Clone erstellt.'
 
+    const talkUrl = `https://elevenlabs.io/app/talk-to?agent_id=${data.agent_id}`
     const lines = [
       `Agent **${data.soul_name}** erstellt und in sys.md gespeichert.`,
       '',
       `Agent-ID: \`${data.agent_id}\``,
       voiceNote,
-      `Link: ${data.agent_url}`,
       '',
-      'Telefon-Erreichbarkeit: elevenlabs.io → dein Agent → Twilio → Nummer verbinden.',
+      '**Nächster Schritt:** Agent in ElevenLabs veröffentlichen damit @sprechen funktioniert:',
+      `${data.agent_url} → Security → "Publicly available" aktivieren`,
+      '',
+      `Öffentlicher Link nach Veröffentlichung: ${talkUrl}`,
+      'Telefon: elevenlabs.io → dein Agent → Twilio → Nummer verbinden.',
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
