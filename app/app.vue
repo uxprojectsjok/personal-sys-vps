@@ -5,6 +5,13 @@
   <div id="teleports"></div>
 </template>
 
+<script setup>
+// Service Worker registrieren — erforderlich für PWA-Installierbarkeit auf Android/Chrome
+if (import.meta.client && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
+</script>
+
 <style>
 /* Teleport-Ziel für ChatInterface dock + FAB auf Mobile.
    CSS-Variablen werden hier definiert, damit die teleportierten Elemente

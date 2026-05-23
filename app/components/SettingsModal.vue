@@ -303,6 +303,12 @@
                       :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
                       {{ certRotationResult.validated ? '✓ Cert auf Server validiert' : 'Server-Validierung prüfen — Seite neu laden' }}
                     </p>
+                    <p v-if="certRotationResult.credsUpdated" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-ok);margin-top:4px">
+                      ✓ Biometrische Zugangsdaten aktualisiert
+                    </p>
+                    <p v-else-if="certRotationResult.credsUpdateFailed" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-warn,#f59e0b);margin-top:4px">
+                      Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
+                    </p>
                   </div>
                 </Transition>
               </div>
@@ -486,12 +492,16 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
+import { useSavedCreds } from '~/composables/useSavedCreds.js'
+import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
 
 const props = defineProps({ open: Boolean })
 const emit  = defineEmits(['close', 'master-rotated'])
 
 const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer, exportAsBlob } = useSoul()
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
+const savedCreds = useSavedCreds()
+const passkey    = useSoulPasskey()
 
 // ── Admin-Erkennung (nur aus localStorage — nie vom Server) ─────────────────
 const ADMIN_KEY    = 'sys_admin_token'
@@ -884,20 +894,44 @@ async function handleRotateCert() {
   try {
     const result = await rotateCert()
     if (!result) { alert('Cert-Rotation fehlgeschlagen'); return }
+
     // Vault-Datei + Server + lokaler Download — alle drei aktualisieren
     if (vaultConnected.value && composableSoulContent.value) {
       await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
     }
     await pushToServer()
     await exportAsBlob()
+
+    // Server-Validierung
     let validated = false
     try {
       const soulId = soulToken.value?.split('.')?.[0] ?? ''
       const vRes = await fetch('/api/validate', { headers: { Authorization: `Bearer ${soulId}.${result.cert}` } })
       validated = vRes.ok
     } catch {}
-    certRotationResult.value = { ...result, validated }
-  } finally { certRotateBusy.value = false }
+
+    // Gespeicherte biometrische Zugangsdaten mit neuem Cert aktualisieren.
+    // Eine einzige Biometrik-Bestätigung genügt — danach ist der neue Cert gespeichert.
+    let credsUpdated = false
+    let credsUpdateFailed = false
+    if (savedCreds.hasCreds.value) {
+      try {
+        const prf = await passkey.authenticatePasskey()
+        if (prf) {
+          credsUpdated = await savedCreds.updateCert(result.cert, prf)
+          if (!credsUpdated) credsUpdateFailed = true
+        } else {
+          credsUpdateFailed = true
+        }
+      } catch {
+        credsUpdateFailed = true
+      }
+    }
+
+    certRotationResult.value = { ...result, validated, credsUpdated, credsUpdateFailed }
+  } finally {
+    certRotateBusy.value = false
+  }
 }
 
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────

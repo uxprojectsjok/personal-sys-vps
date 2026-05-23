@@ -161,6 +161,22 @@
           <MotionCaptureCard v-else :mode="item.captureMode" />
         </div>
 
+        <!-- Voice-Agent preview -->
+        <div v-else-if="item._type === 'voice-agent'" class="va-wrap">
+          <div class="va-header">
+            <span class="va-label">Sprachnachricht</span>
+            <button class="va-dismiss" @click="discardVoiceAgent(item.id)" aria-label="Verwerfen">✕</button>
+          </div>
+          <audio v-if="item.audioUrl && !item.agentDone" controls :src="item.audioUrl" class="va-audio"></audio>
+          <p v-if="item.statusText && item.agentRunning" class="va-status">{{ item.statusText }}</p>
+          <div v-if="item.agentRunning" class="dots va-dots"><span></span><span></span><span></span></div>
+          <p v-if="item.agentError" class="va-error">{{ item.agentError }}</p>
+          <div v-if="!item.agentRunning && !item.agentDone" class="va-actions">
+            <button class="va-send" @click="sendToAgent(item)">Senden an Agent</button>
+          </div>
+          <p v-if="item.agentDone" class="va-done">Fertig — Antwort im Chat</p>
+        </div>
+
       </template>
 
       <!-- Synthesis typing indicator -->
@@ -280,6 +296,22 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m-7 7 7-7 7 7"/>
           </svg>
         </button>
+        <!-- Voice-Agent Mikrofon: gedrückt halten zum Aufnehmen -->
+        <button
+          class="dock-icon dock-mic"
+          :class="{ recording: voiceRecording }"
+          :disabled="props.growthLocked"
+          @pointerdown.prevent="startVoiceRecord"
+          @pointerup="stopVoiceRecord"
+          @pointercancel="stopVoiceRecord"
+          title="Gedrückt halten → sprechen → loslassen"
+          aria-label="Mit Agent sprechen"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="dock-icon-svg">
+            <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Attachment previews -->
@@ -345,6 +377,7 @@ import { useSoul } from '~/composables/useSoul.js'
 import CameraRecorder      from '~/components/CameraRecorder.vue'
 import AudioCaptureCard    from '~/components/AudioCaptureCard.vue'
 import MotionCaptureCard   from '~/components/MotionCaptureCard.vue'
+import { sendAudioToAgent } from '~/composables/useElevenLabsConversation.js'
 
 // ── Props / Emits ──────────────────────────────────────────────────
 const props = defineProps({
@@ -402,6 +435,161 @@ const autonomousKi = ref(
 )
 watch(autonomousKi, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_autonomous_ki', String(v)) })
 
+// ── Config status (Preflight-Checks) ───────────────────────────────
+const configStatus = ref(null)
+
+async function loadConfigStatus() {
+  try {
+    const r = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+    if (r.ok) configStatus.value = await r.json()
+  } catch {}
+}
+
+function preflightCheck(type) {
+  const s = configStatus.value
+  if (!s) return null // noch nicht geladen → API-Fehler übernimmt
+
+  if (type === 'web-search' && !s.brave_key_set) {
+    return [
+      '**Brave Search API-Key fehlt**',
+      '',
+      'Damit die KI-Websuche funktioniert:',
+      '1. brave.com/search/api → kostenloser Key (2.000 Suchen/Monat)',
+      '2. Einstellungen → API-Keys → Brave Search eintragen',
+    ].join('\n')
+  }
+
+  if (type === 'create-media' && !s.wavespeed_key_set) {
+    return [
+      '**WaveSpeed API-Key fehlt**',
+      '',
+      'Damit Bilder generiert werden können:',
+      '1. wavespeed.ai → Account erstellen → API-Key kopieren',
+      '2. Einstellungen → API-Keys → WaveSpeed Key eintragen',
+    ].join('\n')
+  }
+
+  if (type === 'create-agent' && !s.elevenlabs_key_set) {
+    return [
+      '**ElevenLabs API-Key fehlt**',
+      '',
+      'Damit dein Sprach-Agent erstellt werden kann:',
+      '1. elevenlabs.io → Account erstellen → API-Key kopieren',
+      '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
+    ].join('\n')
+  }
+
+  if (type === 'voice-agent') {
+    if (!s.elevenlabs_key_set) {
+      return [
+        '**ElevenLabs API-Key fehlt**',
+        '',
+        'Richte zuerst deinen Sprach-Agent ein:',
+        '1. elevenlabs.io → Account erstellen → API-Key kopieren',
+        '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
+        '3. `@create-agent` eingeben um deinen Agent zu erstellen',
+      ].join('\n')
+    }
+    const hasAgent = /elevenlabs_agent_id:\s*\S+/.test(props.soulContent || '')
+    if (!hasAgent) {
+      return [
+        '**Kein Agent vorhanden**',
+        '',
+        'Erstelle zuerst deinen persönlichen Sprach-Agent mit `@create-agent`.',
+      ].join('\n')
+    }
+  }
+
+  return null
+}
+
+// ── Voice-Agent Aufnahme ───────────────────────────────────────────
+const voiceRecording   = ref(false)
+const voiceAgentBlobs  = new Map() // msgId → Blob
+let _vaStream   = null
+let _vaRecorder = null
+let _vaChunks   = []
+
+async function startVoiceRecord() {
+  if (voiceRecording.value) return
+  const err = preflightCheck('voice-agent')
+  if (err) { addMessage('assistant', err); await scrollToBottom(); return }
+  _vaChunks = []
+  try {
+    _vaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
+                 MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+                 MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  : ''
+    _vaRecorder = new MediaRecorder(_vaStream, mime ? { mimeType: mime } : {})
+    _vaRecorder.ondataavailable = e => { if (e.data.size > 0) _vaChunks.push(e.data) }
+    _vaRecorder.start(100)
+    voiceRecording.value = true
+  } catch {}
+}
+
+async function stopVoiceRecord() {
+  if (!voiceRecording.value || !_vaRecorder) return
+  return new Promise(resolve => {
+    _vaRecorder.onstop = async () => {
+      const mime = _vaRecorder.mimeType || 'audio/webm'
+      const blob = new Blob(_vaChunks, { type: mime })
+      voiceRecording.value = false
+      if (blob.size < 2000) { resolve(); return } // zu kurz → verwerfen
+      const url  = URL.createObjectURL(blob)
+      const item = addMessage('voice-agent', '', { _type: 'voice-agent', audioUrl: url })
+      voiceAgentBlobs.set(item.id, blob)
+      await scrollToBottom()
+      resolve()
+    }
+    _vaRecorder.stop()
+    _vaStream?.getTracks().forEach(t => t.stop())
+  })
+}
+
+function discardVoiceAgent(msgId) {
+  const item = messages.value.find(m => m.id === msgId)
+  if (item?.audioUrl) URL.revokeObjectURL(item.audioUrl)
+  voiceAgentBlobs.delete(msgId)
+  removeMessage(msgId)
+}
+
+async function sendToAgent(item) {
+  const blob = voiceAgentBlobs.get(item.id)
+  if (!blob) return
+  setMessageMetaById(item.id, 'agentRunning', true)
+  await scrollToBottom()
+
+  try {
+    const { userText, agentText, audioBlob } = await sendAudioToAgent(blob, {
+      soulCert: props.soulCert,
+      onStatus: (s) => setMessageMetaById(item.id, 'statusText', s),
+    })
+
+    // Vorschau-Karte ausblenden
+    setMessageMetaById(item.id, 'agentDone', true)
+    setMessageMetaById(item.id, 'agentRunning', false)
+
+    // Erkannten Text als User-Bubble
+    if (userText) addMessage('user', userText)
+
+    // Agent-Antwort als Text-Bubble
+    if (agentText || audioBlob) {
+      const agentAudioUrl = audioBlob ? URL.createObjectURL(audioBlob) : null
+      addMessage('assistant', agentText || '', {
+        mediaUrl:  agentAudioUrl || undefined,
+        mediaType: agentAudioUrl ? 'audio' : undefined,
+      })
+    }
+  } catch (err) {
+    const msg = err.message === 'elevenlabs_key_missing' ? 'ElevenLabs API-Key fehlt.' :
+                err.message === 'elevenlabs_agent_missing' ? 'Kein Agent gefunden — erstelle ihn mit @create-agent.' :
+                `Agent-Fehler: ${err.message}`
+    setMessageMetaById(item.id, 'agentRunning', false)
+    setMessageMetaById(item.id, 'agentError', msg)
+  }
+  await scrollToBottom()
+}
+
 // ── Media drawer ────────────────────────────────────────────────────
 const mediaOpen = ref(false)
 
@@ -409,13 +597,15 @@ const mediaOpen = ref(false)
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = [
-  { cmd: '@suche ',       label: 'suche',        desc: 'KI-Websuche (Brave)',         direct: false },
-  { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
-  { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
-  { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
-  { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
-  { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
-  { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',               direct: false },
+  { cmd: '@suche ',        label: 'suche',        desc: 'KI-Websuche (Brave)',         direct: false },
+  { cmd: '@create-media ', label: 'create-media', desc: 'KI-Bild generieren',          direct: false },
+  { cmd: '@audio',         label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
+  { cmd: '@gesicht',       label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
+  { cmd: '@bewegung',      label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
+  { cmd: '@create-agent',  label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
+  { cmd: '@sprechen',      label: 'sprechen',     desc: 'Mit Agent sprechen',          direct: true  },
+  { cmd: '@alle ',         label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
+  { cmd: '@agent ',        label: 'agent',        desc: 'Agent Sandbox',               direct: false },
 ]
 
 function insertCommand(cmd) {
@@ -1332,6 +1522,11 @@ function detectIntent(text) {
   if (/^@body\b|^@bewegung\b/i.test(t)) return { type: 'capture-body' }
   // @create-agent → ElevenLabs Voice Clone + Agent erstellen
   if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
+  // @sprechen → Voice-Agent Aufnahme starten
+  if (/^@sprechen\b/i.test(t)) return { type: 'voice-agent' }
+  // @create-media → KI-Bildgenerierung via WaveSpeed
+  const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
+  if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
   // @suche → KI-Websuche
   const sucheMatch = t.match(/^@suche\b\s*(.*)/is)
   if (sucheMatch) return { type: 'web-search', query: sucheMatch[1].trim() }
@@ -1410,6 +1605,8 @@ async function handleSearchCommand(cmd) {
 // ── KI-Websuche ────────────────────────────────────────────────────
 async function handleWebSearch(query) {
   const safe = query.replace(/<[^>]*>/g, '').trim().slice(0, 300)
+  const preErr = preflightCheck('web-search')
+  if (preErr) { addMessage('user', `@suche ${safe}`); addMessage('assistant', preErr); return }
   addMessage('user', `@suche ${safe}`)
   const statusMsg = addMessage('assistant', 'Suche läuft…', { streaming: true })
   await scrollToBottom()
@@ -1518,6 +1715,8 @@ async function handleWebSearch(query) {
 
 // ── @create-agent ─────────────────────────────────────────────────
 async function handleCreateAgent() {
+  const preErr = preflightCheck('create-agent')
+  if (preErr) { addMessage('user', '@create-agent'); addMessage('assistant', preErr); return }
   addMessage('user', '@create-agent')
   const statusMsg = addMessage('assistant', 'ElevenLabs Agent wird erstellt…', { streaming: true })
   await scrollToBottom()
@@ -1559,6 +1758,101 @@ async function handleCreateAgent() {
     setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
     setMessageMetaById(statusMsg.id, 'streaming', false)
   }
+  await scrollToBottom()
+}
+
+// ── @create-media — KI-Bildgenerierung ────────────────────────────
+async function handleCreateMedia(userPrompt) {
+  const preErr = preflightCheck('create-media')
+  if (preErr) { addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media'); addMessage('assistant', preErr); return }
+  const authHeader = { Authorization: `Bearer ${props.soulCert}` }
+  addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media')
+  const statusMsg = addMessage('assistant', 'Bild wird generiert…', { streaming: true })
+  await scrollToBottom()
+
+  let imagePrompt = userPrompt
+
+  // Kein Prompt → Claude erzeugt einen soul-basierten visuellen Prompt
+  if (!imagePrompt) {
+    setMessageMetaById(statusMsg.id, 'text', 'Soul-Inhalt wird analysiert…')
+    const soulSnippet = (props.soulContent || '').slice(0, 1200)
+    try {
+      const genRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({
+          model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
+          max_tokens: 120,
+          stream: false,
+          system: 'Du bist ein Bildprompt-Spezialist. Erstelle einen präzisen, atmosphärischen englischen Bildprompt (max. 80 Wörter) für einen KI-Bildgenerator. Basiere ihn auf dem Soul-Content des Menschen — seine Persönlichkeit, Ästhetik, Werte. Antworte NUR mit dem Prompt, ohne Kommentar oder Erklärung.',
+          messages: [{ role: 'user', content: `Soul-Content:\n${soulSnippet}` }],
+        }),
+      })
+      if (genRes.ok) {
+        const d = await genRes.json()
+        imagePrompt = d?.content?.[0]?.text?.trim() || ''
+      }
+    } catch { /* weiter ohne soul-prompt */ }
+
+    if (!imagePrompt) {
+      setMessageMetaById(statusMsg.id, 'text', 'Prompt-Generierung fehlgeschlagen.')
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+    setMessageMetaById(statusMsg.id, 'text', `Generiere: _${imagePrompt}_`)
+  }
+
+  // WaveSpeed text-to-image
+  try {
+    const submitRes = await fetch('/api/wavespeed-submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader },
+      body: JSON.stringify({ outputMode: 'text-to-image', prompt: imagePrompt }),
+    })
+
+    if (!submitRes.ok) {
+      const err = await submitRes.json().catch(() => ({}))
+      const msg = err.message === 'wavespeed_key_missing'
+        ? 'WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen.'
+        : `Fehler: ${err.message || submitRes.status}`
+      setMessageMetaById(statusMsg.id, 'text', msg)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    const { taskId } = await submitRes.json()
+    if (!taskId) {
+      setMessageMetaById(statusMsg.id, 'text', 'Keine Task-ID erhalten.')
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    // Poll alle 4 s, max. 30 Versuche (~2 min)
+    let imageUrl = null
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 4000))
+      try {
+        const pollRes = await fetch(`/api/wavespeed-result?id=${encodeURIComponent(taskId)}`, { headers: authHeader })
+        if (pollRes.ok) {
+          const p = await pollRes.json()
+          if (p.url) { imageUrl = p.url; break }
+          if (p.error && p.status !== 'pending' && p.status !== 'running') break
+        }
+      } catch { /* retry */ }
+    }
+
+    if (imageUrl) {
+      setMessageMetaById(statusMsg.id, 'text', imagePrompt)
+      setMessageMetaById(statusMsg.id, 'mediaUrl',  imageUrl)
+      setMessageMetaById(statusMsg.id, 'mediaType', 'image')
+    } else {
+      setMessageMetaById(statusMsg.id, 'text', 'Bildgenerierung: kein Ergebnis erhalten.')
+    }
+  } catch (err) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+  }
+
+  setMessageMetaById(statusMsg.id, 'streaming', false)
   await scrollToBottom()
 }
 
@@ -1808,8 +2102,18 @@ async function handleSend() {
     return
   }
 
+  if (intent.type === 'voice-agent') {
+    await startVoiceRecord()
+    return
+  }
+
   if (intent.type === 'create-agent') {
     await handleCreateAgent()
+    return
+  }
+
+  if (intent.type === 'create-media') {
+    await handleCreateMedia(intent.query)
     return
   }
 
@@ -1903,6 +2207,7 @@ onMounted(async () => {
   nextTick(autoResize)
   loadMind(props.soulCert)
   loadMcpTools(props.soulCert)
+  loadConfigStatus()
   try {
     const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
     if (r.ok) {
@@ -2377,6 +2682,56 @@ defineExpose({
   border-color: rgba(240, 163, 163, 0.40);
 }
 .capture-dismiss:active { transform: scale(0.92); }
+
+/* ── Voice-Agent preview ─────────────────────────────────────────── */
+.va-wrap {
+  margin: 0 clamp(10px, 4vw, 32px);
+  padding: 14px 16px;
+  border: 1px solid var(--rule-2);
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.06);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.va-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.va-label {
+  font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent-bright); font-family: var(--sans);
+}
+.va-dismiss {
+  background: none; border: none; cursor: pointer;
+  color: var(--fg-4); font-size: 14px; padding: 2px 4px;
+  transition: color .15s;
+}
+.va-dismiss:hover { color: var(--fg); }
+.va-audio {
+  width: 100%; height: 36px; accent-color: var(--accent);
+  border-radius: 8px;
+}
+.va-status { font-size: 12px; color: var(--fg-3); font-family: var(--sans); }
+.va-dots { justify-content: flex-start; padding: 4px 0; }
+.va-error { font-size: 12px; color: #f0a3a3; font-family: var(--sans); }
+.va-done  { font-size: 12px; color: var(--fg-3); font-family: var(--sans); }
+.va-actions { display: flex; gap: 8px; }
+.va-send {
+  padding: 7px 18px; border-radius: 99px;
+  background: var(--accent); color: var(--on-accent);
+  border: none; cursor: pointer; font-size: 13px; font-family: var(--sans);
+  font-weight: 600; transition: opacity .15s;
+}
+.va-send:hover { opacity: .88; }
+
+/* ── Mic button ──────────────────────────────────────────────────── */
+.dock-mic {
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.dock-mic.recording {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
 
 /* ════════════════════════════════════════════════════════════════════
    DOCK — softer container, modern chat-input feel

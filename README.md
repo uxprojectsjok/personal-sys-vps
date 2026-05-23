@@ -147,7 +147,6 @@ Three phases — nothing more:
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
 │   └── tools/               soul_read, soul_write, vault_manifest, …
 │
-├── browser-extension/       Chrome MV3 extension
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
 │   └── project-hash.mjs     SHA-256 fingerprint of all source files
@@ -295,7 +294,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 455e1d94a13383e1
+Current release fingerprint: f76333717c542ff0
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
