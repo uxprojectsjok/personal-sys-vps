@@ -39,6 +39,8 @@
                   <button class="dash-burger-item" @click="settingsOpen = true; dashBurgerOpen = false">Einstellungen</button>
                   <button class="dash-burger-item" @click="confirmReset(); dashBurgerOpen = false">Ausloggen</button>
                   <button class="dash-burger-item" @click="lockGate(); dashBurgerOpen = false">Sperren</button>
+                  <button v-if="pwa.isInstallable.value && !pwa.isIos.value" class="dash-burger-item dash-burger-item--accent" @click="pwa.promptInstall(); dashBurgerOpen = false">App installieren</button>
+                  <button v-if="pwa.isInstallable.value && pwa.isIos.value" class="dash-burger-item dash-burger-item--accent" @click="dashBurgerOpen = false">Teilen → Startbildschirm</button>
                 </div>
               </Transition>
             </div>
@@ -335,12 +337,34 @@
 
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; setupOpen = true" />
+
+    <!-- ── PWA Install Banner ─────────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="pwa-slide">
+        <div v-if="pwa.isInstallable.value" class="pwa-banner" role="banner">
+          <div class="pwa-banner-inner">
+            <div class="pwa-banner-text">
+              <span class="pwa-banner-title">SYS als App installieren</span>
+              <span v-if="pwa.isIos.value" class="pwa-banner-sub">
+                Safari → Teilen
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin:0 2px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0 3-3m-3 3V2.25"/></svg>
+                → Zum Startbildschirm
+              </span>
+              <span v-else class="pwa-banner-sub">Offline-fähig · Kein Gate bei nächster Nutzung</span>
+            </div>
+            <button v-if="!pwa.isIos.value" class="pwa-banner-btn" @click="pwa.promptInstall()">Installieren</button>
+            <button class="pwa-banner-dismiss" @click="pwa.dismiss()" aria-label="Schließen">×</button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </ClientOnly>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useConfirm } from '~/composables/useConfirm.js'
+import { usePwaInstall } from '~/composables/usePwaInstall.js'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useProfile } from '~/composables/useProfile.js'
@@ -364,6 +388,7 @@ const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetu
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
+const pwa = usePwaInstall()
 
 // Node-Status beim Start laden
 onMounted(() => fetchNodeStatus())
@@ -873,4 +898,83 @@ const journal = computed(() => {
   .sys-modal-wrap { padding: 12px; }
   .sys-modal-panel { border-radius: 16px; max-height: calc(100dvh - 24px); }
 }
+
+/* ── PWA Install Banner ───────────────────────────────────────── */
+.pwa-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  width: min(calc(100vw - 32px), 500px);
+}
+.pwa-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(13, 11, 20, 0.92);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.pwa-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pwa-banner-title {
+  font-family: var(--sans, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: #ece7f5;
+}
+.pwa-banner-sub {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  color: rgba(236, 231, 245, 0.55);
+  letter-spacing: 0.04em;
+}
+.pwa-banner-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: #8b5cf6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pwa-banner-btn:hover { background: #7c3aed; }
+.pwa-banner-dismiss {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(236, 231, 245, 0.4);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.pwa-banner-dismiss:hover { color: #ece7f5; }
+.pwa-slide-enter-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.pwa-slide-leave-active { transition: all 0.2s ease; }
+.pwa-slide-enter-from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+.pwa-slide-leave-to   { opacity: 0; transform: translateX(-50%) translateY(12px); }
+
+/* Burger install item */
+.dash-burger-item--accent { color: #a78bfa; }
+.dash-burger-item--accent:hover { color: #ece7f5; background: rgba(139, 92, 246, 0.1); }
 </style>

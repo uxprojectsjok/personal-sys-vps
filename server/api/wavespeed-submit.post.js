@@ -7,7 +7,12 @@
 //   image-to-video  → kwaivgi/kling-v3.0-pro/image-to-video  (Kling Pro Video)
 //
 // Gibt {taskId} zurück – Client pollt /api/wavespeed-result.
+// API-Key: zuerst per-soul config.json (wavespeed_key), dann WAVESPEED_KEY env var.
 
+import { readFileSync, existsSync } from 'fs'
+import { join } from 'path'
+
+const SOULS_DIR     = process.env.SOULS_DIR || '/var/lib/sys/souls'
 const WAVESPEED_BASE = "https://api.wavespeed.ai/api/v3";
 
 const MODELS = {
@@ -16,10 +21,25 @@ const MODELS = {
   "image-to-video":  "kwaivgi/kling-v3.0-pro/image-to-video",
 };
 
+function resolveApiKey(authHeader) {
+  try {
+    const token   = (authHeader || '').replace(/^Bearer\s+/i, '')
+    const soul_id = token.split('.')[0]
+    if (soul_id) {
+      const cfg = join(SOULS_DIR, soul_id, 'config.json')
+      if (existsSync(cfg)) {
+        const { wavespeed_key } = JSON.parse(readFileSync(cfg, 'utf8'))
+        if (wavespeed_key) return wavespeed_key
+      }
+    }
+  } catch { /* fallthrough */ }
+  return process.env.WAVESPEED_KEY || ''
+}
+
 export default defineEventHandler(async (event) => {
-  const apiKey = process.env.WAVESPEED_KEY;
+  const apiKey = resolveApiKey(getHeader(event, 'authorization'))
   if (!apiKey) {
-    throw createError({ statusCode: 503, message: "WAVESPEED_KEY nicht konfiguriert." });
+    throw createError({ statusCode: 503, message: "wavespeed_key_missing" });
   }
 
   const body = await readBody(event);
