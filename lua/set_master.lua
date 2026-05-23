@@ -30,13 +30,20 @@ if soul_admin_token ~= "" and soul_id_header ~= "" then
     ngx.say('{"error":"invalid_soul_id"}')
     return
   end
-  if not cfg.validate_soul_admin_token(soul_id_header, soul_admin_token) then
+  if cfg.validate_soul_admin_token(soul_id_header, soul_admin_token) then
+    -- Multi-Hoster: soul_admin.json des spezifischen Soul passt
+    is_soul_admin = true
+  elseif cfg.validate_admin_token(soul_admin_token) then
+    -- Single-Hoster-Fallback: Browser hat irrtümlich X-Soul-Admin-Token gesetzt
+    -- (sys_admin_token_${soulId} in localStorage), Token passt aber auf master.json.
+    -- is_soul_admin bleibt false → globaler Admin-Pfad wird genutzt.
+    is_soul_admin = false
+  else
     ngx.status = 403
     ngx.header["Content-Type"] = "application/json"
     ngx.say('{"error":"forbidden","message":"Ungültiger Soul-Admin-Token"}')
     return
   end
-  is_soul_admin = true
 elseif not cfg.validate_admin_token(admin_token) then
   ngx.status = 403
   ngx.header["Content-Type"] = "application/json"

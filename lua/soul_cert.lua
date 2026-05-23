@@ -15,7 +15,7 @@ local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
 local DEFAULT_MIND = [[---
 ki_name: SYS-KI
 version: 1
-write_protected: Identität,Grenzen
+write_protected: Identität
 ---
 
 ## Identität
@@ -37,7 +37,7 @@ soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeig
 *(Dieser Bereich wird von dir selbst befüllt — Beobachtungen über diese Person, Kommunikationsmuster, was gut funktioniert, was du anpassen solltest.)*
 
 ## Grenzen
-Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+*(Hier eigene Grenzen für die KI festlegen — z.B. Themen, Bildtypen oder Verhaltensweisen die nicht erwünscht sind. Wird von @create-media und der KI respektiert.)*
 ]]
 
 local function get_master_path()
@@ -293,7 +293,7 @@ end
 ngx.header["Content-Type"] = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 if first_setup_token then
-  ngx.say(cjson.encode({ cert = cert, cert_version = cert_version, first_setup = true, admin_token = first_setup_token }))
+  ngx.say(cjson.encode({ cert = cert, cert_version = cert_version, first_setup = true, admin_token = first_setup_token, is_soul_admin = multi_hoster }))
 else
   ngx.say(cjson.encode({ cert = cert, cert_version = cert_version }))
 end

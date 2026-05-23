@@ -157,8 +157,12 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
         if (data.first_setup && data.admin_token) {
           firstSetupToken.value = data.admin_token;
           localStorage.setItem("sys_admin_token", data.admin_token);
-          // Per-soul key (multi-hoster: jede Soul hat eigenen Token)
-          localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
+          // Per-soul key nur bei Multi-Hoster (is_soul_admin=true) —
+          // Single-Hoster: nur globaler Token, damit detectAdmin() nicht fälschlicherweise
+          // X-Soul-Admin-Token schickt (soul_admin.json existiert nicht beim Single-Hoster).
+          if (data.is_soul_admin) {
+            localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
+          }
         }
       }
     } catch {
@@ -223,7 +227,9 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (data.first_setup && data.admin_token) {
         firstSetupToken.value = data.admin_token;
         localStorage.setItem('sys_admin_token', data.admin_token);
-        localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
+        if (data.is_soul_admin) {
+          localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
+        }
       }
 
       await pushToServer();
