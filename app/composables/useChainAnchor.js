@@ -633,26 +633,7 @@ export function useChainAnchor() {
           /* Eigentümer-Check nicht möglich – weiter */
         }
 
-        // ── Pre-Flight: Rate-Limit via READ-Call prüfen ───────────────────────
-        // Polygon Amoy gibt bei Rate-Limit-Reverts keine revert-data zurück
-        // (→ "missing revert data"). Daher vorher per Read-Call prüfen.
-        try {
-          const nextTs = Number(
-            await readContract.nextAnchorAllowed(soulIdBytes32Preflight),
-          );
-          if (nextTs > 0 && nextTs * 1000 > Date.now()) {
-            const diffMs = nextTs * 1000 - Date.now();
-            const diffH = Math.max(0, Math.ceil(diffMs / 3_600_000));
-            const diffMin = Math.max(0, Math.ceil(diffMs / 60_000));
-            const until = new Date(nextTs * 1000).toLocaleString("de-DE");
-            const left =
-              diffH >= 1 ? `noch ${diffH} Std.` : `noch ${diffMin} Min.`;
-            anchorError.value = `Rate-Limit (${left}) – nächster Anker möglich: ${until}`;
-            return null;
-          }
-        } catch {
-          /* Read-Fehler ignorieren – Transaktion trotzdem versuchen */
-        }
+        // Rate-Limit Preflight deaktiviert — kein Zeitlimit zwischen Ankern
       }
 
       // Netzwerk sicherstellen → frischen Provider zurückbekommen
