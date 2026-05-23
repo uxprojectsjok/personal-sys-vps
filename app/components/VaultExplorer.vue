@@ -771,14 +771,17 @@ function switchTab(id) {
 
 async function onRefresh() {
   isScanning.value = true;
-  if (props.soulCert) {
-    await loadContext(props.soulCert);
-    await loadPublicShare(props.soulCert);
-  } else {
-    await scanApiVault();
+  try {
+    if (props.soulCert) {
+      await loadContext(props.soulCert);
+      await loadPublicShare(props.soulCert);
+    } else {
+      await scanApiVault();
+    }
+    showSuccess("Aktualisiert ✓");
+  } finally {
+    isScanning.value = false;
   }
-  isScanning.value = false;
-  showSuccess("Aktualisiert ✓");
 }
 
 // ── Alle hochladen ─────────────────────────────────────────────────────────
