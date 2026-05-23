@@ -1774,9 +1774,9 @@ async function handleCreateMedia(userPrompt) {
 
   let imagePrompt = userPrompt
 
-  // mind.md Grenzen-Sektion extrahieren
+  // mind.md Grenzen-Sektion extrahieren (kein m-Flag — $ = Stringende, nicht Zeilenende)
   const grenzenSection = (() => {
-    const m = (mindContent.value || '').match(/^## Grenzen\s*\n([\s\S]*?)(?=\n## |$)/m)
+    const m = (mindContent.value || '').match(/## Grenzen[ \t]*\n([\s\S]*?)(?=\n## |$)/)
     return m ? m[1].trim() : ''
   })()
 
