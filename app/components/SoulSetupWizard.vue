@@ -222,7 +222,22 @@
               <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
                 autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true"
-                :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
+                :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : ''" />
+            </div>
+
+            <!-- Brave Search -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                Brave Search API-Key
+                <span v-if="cfgBraveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgBraveKey" type="password" class="sys-input sys-input--mono"
+                :placeholder="cfgBraveSet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
+                autocomplete="off" spellcheck="false" @input="cfgBraveDirty = true"
+                :style="cfgBraveSet ? 'border-color:var(--sys-ok)' : ''" />
+              <p style="font-size:10px;color:var(--sys-fg-muted);margin:0;font-family:var(--sys-mono)">
+                Für @suche — <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">brave.com/search/api</a> (Free: 1.000/Monat)
+              </p>
             </div>
 
             <!-- Speichern -->
@@ -425,6 +440,9 @@ const cfgWaveDirty = ref(false)
 const cfgLabsKey   = ref('')
 const cfgLabsSet   = ref(false)
 const cfgLabsDirty = ref(false)
+const cfgBraveKey  = ref('')
+const cfgBraveSet  = ref(false)
+const cfgBraveDirty = ref(false)
 const cfgSaving    = ref(false)
 const cfgFeedback  = ref(null)
 
@@ -438,8 +456,9 @@ async function loadCfgStep() {
     const data = await res.json()
     cfgModel.value   = data.model || ''
     cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
-    cfgWaveSet.value = !!data.wavespeed_key_set
-    cfgLabsSet.value = !!data.elevenlabs_key_set
+    cfgWaveSet.value  = !!data.wavespeed_key_set
+    cfgLabsSet.value  = !!data.elevenlabs_key_set
+    cfgBraveSet.value = !!data.brave_key_set
   } catch {}
 }
 
@@ -452,8 +471,9 @@ async function saveCfgStep() {
     const body = {}
     if (cfgModel.value)   body.model         = cfgModel.value
     if (cfgAnthKey.value) body.anthropic_key  = sanitizeKey(cfgAnthKey.value)
-    if (cfgWaveKey.value) body.wavespeed_key  = sanitizeKey(cfgWaveKey.value)
-    if (cfgLabsKey.value) body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
+    if (cfgWaveKey.value)  body.wavespeed_key  = sanitizeKey(cfgWaveKey.value)
+    if (cfgLabsKey.value)  body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
+    if (cfgBraveKey.value) body.brave_key      = sanitizeKey(cfgBraveKey.value)
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
@@ -463,7 +483,8 @@ async function saveCfgStep() {
 
     if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
     if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
-    if (cfgLabsKey.value) { cfgLabsSet.value = true; cfgLabsKey.value = ''; cfgLabsDirty.value = false }
+    if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
+    if (cfgBraveKey.value) { cfgBraveSet.value = true; cfgBraveKey.value = ''; cfgBraveDirty.value = false }
 
     // Anthropic-Verbindung testen (immer wenn Key vorhanden)
     if (cfgAnthSet.value) {
