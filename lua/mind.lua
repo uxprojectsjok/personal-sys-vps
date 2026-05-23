@@ -19,7 +19,7 @@ local MIND_DIR  = "/var/lib/sys/souls/" .. soul_id .. "/vault/context"
 local DEFAULT_MIND = [[---
 ki_name: SYS-KI
 version: 1
-write_protected: Identität,Grenzen
+write_protected: Identität
 ---
 
 ## Identität
