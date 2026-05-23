@@ -769,6 +769,20 @@ server {
     content_by_lua_file /etc/openresty/lua/api_serve.lua;
   }
 
+  # ── Zapier Eingangs-Webhook (POST) – webhook-token ──────────────────────────
+  # Auth via vault_auth.lua (webhook_token aus api_context.json).
+  # Body: { message, source, action } — schreibt in Agent-Sandbox oder liest Soul-Kurzauszug.
+  location /api/zapier {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    client_max_body_size 64K;
+    client_body_buffer_size 64K;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/zapier.lua;
+  }
+
   # ── Webhook (POST + OPTIONS) – service-token ODER soul-cert ──────────────────
   location /api/webhook {
     limit_req zone=chat burst=10 nodelay;
