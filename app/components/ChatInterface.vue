@@ -59,6 +59,16 @@
               <span></span><span></span><span></span>
             </div>
             <p v-for="(para, j) in paragraphs(item.text)" :key="j" v-html="renderText(para)"></p>
+            <div v-if="item.sources?.length" class="msg-sources">
+              <a v-for="(s, si) in item.sources" :key="s.url"
+                :href="s.url" target="_blank" rel="noopener noreferrer"
+                class="source-chip"
+              >
+                <span class="src-n">[{{ si + 1 }}]</span>
+                <span class="src-title">{{ s.title }}</span>
+                <span class="src-domain">{{ getDomain(s.url) }}</span>
+              </a>
+            </div>
             <div v-if="item.actions?.length" class="msg-actions">
               <button
                 v-for="a in item.actions" :key="a.label"
@@ -397,6 +407,7 @@ const mediaOpen = ref(false)
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = [
+  { cmd: '@suche ',       label: 'suche',        desc: 'KI-Websuche (Brave)',         direct: false },
   { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
   { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
   { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
@@ -1170,6 +1181,10 @@ function paragraphs(s) {
   return String(s || '').split(/\n{2,}/).filter(Boolean)
 }
 
+function getDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url }
+}
+
 function renderText(text) {
   if (!text) return ''
   return text
@@ -1306,15 +1321,18 @@ function detectIntent(text) {
   // Spotify / music
   const spMatch = t.match(/^(?:spiele?\s+(?:(?:das\s+)?(?:lied|song|musik)\s+)?|musik\s+|song\s+|spotify\s+)(.+)/i)
   if (spMatch) return { type: 'spotify', query: spMatch[1].trim() }
-  // Web search
+  // Web search (natural language → KI-Suche)
   const webMatch = t.match(/^such[e]?\s+(?:(?:im\s+)?(?:netz|web|internet|google)\s+(?:nach\s+)?|nach\s+)(.+)/i)
-  if (webMatch) return { type: 'google', query: webMatch[1].trim() }
+  if (webMatch) return { type: 'web-search', query: webMatch[1].trim() }
   // Capture intents — checked before generic @name match
   if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
   if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
   if (/^@body\b|^@bewegung\b/i.test(t)) return { type: 'capture-body' }
   // @create-agent → ElevenLabs Voice Clone + Agent erstellen
   if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
+  // @suche → KI-Websuche
+  const sucheMatch = t.match(/^@suche\b\s*(.*)/is)
+  if (sucheMatch) return { type: 'web-search', query: sucheMatch[1].trim() }
   // @all/@alle → community (send to everyone)
   const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
@@ -1385,6 +1403,115 @@ async function handleSearchCommand(cmd) {
     return { text: `[Web-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://www.google.com/search?q=${encodeURIComponent(safe)}`, service: 'google', label: safe } }
   }
   return null
+}
+
+// ── KI-Websuche ────────────────────────────────────────────────────
+async function handleWebSearch(query) {
+  const safe = query.replace(/<[^>]*>/g, '').trim().slice(0, 300)
+  addMessage('user', `@suche ${safe}`)
+  const statusMsg = addMessage('assistant', 'Suche läuft…', { streaming: true })
+  await scrollToBottom()
+
+  // ── Schritt 1: Brave Search ──────────────────────────────────────
+  let results = []
+  try {
+    const sRes = await fetch('/api/web-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({ query: safe }),
+    })
+    const sData = await sRes.json().catch(() => ({}))
+    if (!sRes.ok) {
+      const msg = sData.message === 'brave_key_missing'
+        ? 'Brave Search API-Key fehlt — bitte in Einstellungen hinterlegen (brave.com/search/api · Free: 2000/Monat).'
+        : `Suchfehler: ${sData.message || sData.error || 'Unbekannt'}`
+      setMessageMetaById(statusMsg.id, 'text', msg)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+    results = sData.results || []
+  } catch (e) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${e.message}`)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+    return
+  }
+
+  if (!results.length) {
+    setMessageMetaById(statusMsg.id, 'text', 'Keine Suchergebnisse gefunden.')
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+    return
+  }
+
+  // ── Schritt 2: Claude KI-Zusammenfassung (streaming) ─────────────
+  const resultCtx = results.map((r, i) =>
+    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.description}`
+  ).join('\n\n')
+
+  const searchSystem = mindContent.value
+    ? (() => {
+        const m = mindContent.value.match(/^## Websearch\s*\n([\s\S]*?)(?=\n## |$)/m)
+        return m?.[1]?.trim() || null
+      })()
+    : null
+
+  const systemPrompt = searchSystem ||
+    'Du bist ein präziser Web-Suchassistent. Beantworte die Frage auf Basis der Suchergebnisse auf Deutsch. Zitiere Quellen als [1], [2] etc.'
+
+  const userMsg = `Suchergebnisse:\n\n${resultCtx}\n\nFrage: ${safe}`
+
+  setMessageMetaById(statusMsg.id, 'text', '')
+
+  try {
+    const chatRes = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({
+        model: selectedModel.value,
+        max_tokens: 1024,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMsg }],
+      }),
+    })
+
+    if (!chatRes.ok) {
+      setMessageMetaById(statusMsg.id, 'text', `KI-Fehler ${chatRes.status}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    const reader  = chatRes.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    let full = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') break
+        try {
+          const p = JSON.parse(data)
+          if (p?.type === 'content_block_delta' && p.delta?.type === 'text_delta') {
+            full += p.delta.text
+            setMessageMetaById(statusMsg.id, 'text', full)
+            scrollToBottom()
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  } catch (e) {
+    setMessageMetaById(statusMsg.id, 'text', `Streaming-Fehler: ${e.message}`)
+  }
+
+  setMessageMetaById(statusMsg.id, 'streaming', false)
+  setMessageMetaById(statusMsg.id, 'sources', results)
+  await scrollToBottom()
 }
 
 // ── @create-agent ─────────────────────────────────────────────────
@@ -1680,6 +1807,15 @@ async function handleSend() {
 
   if (intent.type === 'create-agent') {
     await handleCreateAgent()
+    return
+  }
+
+  if (intent.type === 'web-search') {
+    if (!intent.query) {
+      addMessage('assistant', 'Bitte eine Suchanfrage angeben: `@suche Was ist …`')
+      return
+    }
+    await handleWebSearch(intent.query)
     return
   }
 
@@ -2503,6 +2639,39 @@ defineExpose({
   background: rgba(255,255,255,0.03);
 }
 .msg-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Web-Suche: Quellen-Chips ──────────────────────────────────── */
+.msg-sources {
+  display: flex; flex-direction: column; gap: 5px;
+  margin-top: 14px;
+}
+.source-chip {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rule-2);
+  background: rgba(255,255,255,0.02);
+  text-decoration: none;
+  color: var(--fg-3);
+  transition: background 0.12s, border-color 0.12s;
+  min-width: 0;
+}
+.source-chip:hover { background: rgba(139,92,246,0.07); border-color: rgba(139,92,246,0.25); }
+.src-n {
+  font-family: var(--mono); font-size: 10px; color: var(--accent);
+  letter-spacing: 0.05em; flex-shrink: 0;
+}
+.src-title {
+  font-size: 12px; color: var(--fg-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.src-domain {
+  font-family: var(--mono); font-size: 9.5px; color: var(--fg-4);
+  white-space: nowrap; letter-spacing: 0.04em;
+}
 
 /* ── Desktop dock: mehr Abstand unten — Input-Feld optisch höher ── */
 @media (min-width: 901px) {
