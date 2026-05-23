@@ -1748,6 +1748,8 @@ async function handleCreateAgent() {
       `Agent-ID: \`${data.agent_id}\``,
       voiceNote,
       `Link: ${data.agent_url}`,
+      '',
+      'Telefon-Erreichbarkeit: elevenlabs.io → dein Agent → Twilio → Nummer verbinden.',
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
