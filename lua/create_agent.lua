@@ -226,8 +226,15 @@ if not first_message then
 end
 
 -- ── Agent erstellen ───────────────────────────────────────────────────────────
--- tts nur einfuegen wenn voice_id vorhanden: leeres {} wird von cjson als []
--- codiert, was ElevenLabs mit 400 ablehnt.
+-- tts.model_id immer setzen: nicht-englische Agenten brauchen flash/turbo v2_5.
+-- Ohne explizites Modell greift ElevenLabs auf ein englisches Standardmodell zurueck
+-- und lehnt language="de" mit 400 ab.
+local tts_cfg = {
+  model_id                   = "eleven_flash_v2_5",
+  optimize_streaming_latency = 3,
+}
+if voice_id then tts_cfg.voice_id = voice_id end
+
 local conv_config = {
   agent = {
     prompt = {
@@ -244,15 +251,8 @@ local conv_config = {
     first_message = first_message,
     language      = language,
   },
-  stt = { language = language },
+  tts = tts_cfg,
 }
-if voice_id then
-  conv_config.tts = {
-    voice_id                   = voice_id,
-    model_id                   = "eleven_flash_v2_5",
-    optimize_streaming_latency = 3,
-  }
-end
 
 local agent_payload_ok, agent_payload = pcall(cjson.encode, {
   name                = "SYS Soul Agent - " .. soul_name,

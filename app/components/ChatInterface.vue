@@ -1774,10 +1774,43 @@ async function handleCreateMedia(userPrompt) {
 
   let imagePrompt = userPrompt
 
+  // mind.md Grenzen-Sektion extrahieren
+  const grenzenSection = (() => {
+    const m = (mindContent.value || '').match(/^## Grenzen\s*\n([\s\S]*?)(?=\n## |$)/m)
+    return m ? m[1].trim() : ''
+  })()
+
+  // Direkter Prompt → gegen Grenzen prüfen bevor WaveSpeed aufgerufen wird
+  if (imagePrompt && grenzenSection) {
+    try {
+      const checkRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 10,
+          stream: false,
+          system: `Du prüfst ob ein Bildprompt gegen die definierten Grenzen verstößt.\n\nGrenzen:\n${grenzenSection}\n\nAntworte NUR mit "JA" wenn der Prompt eine Grenze verletzt, oder "NEIN" wenn nicht.`,
+          messages: [{ role: 'user', content: imagePrompt }],
+        }),
+      })
+      if (checkRes.ok) {
+        const cd = await checkRes.json()
+        const verdict = (cd?.content?.[0]?.text || '').trim().toUpperCase()
+        if (verdict.startsWith('JA')) {
+          setMessageMetaById(statusMsg.id, 'text', 'Dieser Prompt verstößt gegen die in mind.md definierten Grenzen.')
+          setMessageMetaById(statusMsg.id, 'streaming', false)
+          return
+        }
+      }
+    } catch { /* bei Fehler: weiter, nicht blockieren */ }
+  }
+
   // Kein Prompt → Claude erzeugt einen soul-basierten visuellen Prompt
   if (!imagePrompt) {
     setMessageMetaById(statusMsg.id, 'text', 'Soul-Inhalt wird analysiert…')
     const soulSnippet = (props.soulContent || '').slice(0, 1200)
+    const grenzenHint = grenzenSection ? `\n\nVerbotene Inhalte laut Grenzen:\n${grenzenSection}` : ''
     try {
       const genRes = await fetch('/api/chat', {
         method: 'POST',
@@ -1786,7 +1819,7 @@ async function handleCreateMedia(userPrompt) {
           model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
           max_tokens: 120,
           stream: false,
-          system: 'Du bist ein Bildprompt-Spezialist. Erstelle einen präzisen, atmosphärischen englischen Bildprompt (max. 80 Wörter) für einen KI-Bildgenerator. Basiere ihn auf dem Soul-Content des Menschen — seine Persönlichkeit, Ästhetik, Werte. Antworte NUR mit dem Prompt, ohne Kommentar oder Erklärung.',
+          system: `Du bist ein Bildprompt-Spezialist. Erstelle einen präzisen, atmosphärischen englischen Bildprompt (max. 80 Wörter) für einen KI-Bildgenerator. Basiere ihn auf dem Soul-Content des Menschen — seine Persönlichkeit, Ästhetik, Werte. Antworte NUR mit dem Prompt, ohne Kommentar oder Erklärung.${grenzenHint}`,
           messages: [{ role: 'user', content: `Soul-Content:\n${soulSnippet}` }],
         }),
       })
