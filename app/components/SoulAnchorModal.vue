@@ -85,7 +85,7 @@
             <button
               class="anc-btn primary"
               :class="{ busy: isCheckingRateLimit || isAnchoring }"
-              :disabled="!isConnected || !canAnchor || (rateLimitActive && !isAnchoring && !isCheckingRateLimit)"
+              :disabled="!isConnected || !canAnchor || isAnchoring || isCheckingRateLimit"
               @click="isCheckingRateLimit || isAnchoring ? handleCancel() : handleAnchor()"
             >
               <svg v-if="isCheckingRateLimit || isAnchoring" class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
@@ -99,10 +99,6 @@
           <div v-if="isAnchoring" class="anc-note info">
             <svg class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
             Transaktion läuft — bitte in der Wallet-App bestätigen.
-          </div>
-          <div v-if="rateLimitActive" class="anc-note warn">
-            Rate-Limit aktiv — nächster Anker möglich:<br>
-            <strong>{{ new Date(rateLimitUntil * 1000).toLocaleString('de-DE') }}</strong>
           </div>
           <div v-if="anchorError" class="anc-note error">{{ anchorError }}</div>
 
