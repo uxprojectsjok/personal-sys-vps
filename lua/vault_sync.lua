@@ -202,14 +202,31 @@ if not decoded then
   return
 end
 
--- mind.md muss immer als Klartext vorliegen — verschlüsselten Upload ablehnen
-if data.type == "context" and safe_name == "mind.md" then
+-- mind.md und sys.md müssen immer als Klartext vorliegen
+if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md") then
   if decoded:sub(1, 4) == "SYS\x01" then
     ngx.status = 400
     ngx.header["Content-Type"] = "application/json"
-    ngx.say('{"error":"mind.md muss im Klartext hochgeladen werden (keine Verschlüsselung)."}')
+    ngx.say('{"error":"' .. safe_name .. ' muss im Klartext hochgeladen werden (keine Verschlüsselung)."}')
     return
   end
+end
+
+-- sys.md → direkt in Soul-Root schreiben, kein Vault-Eintrag
+if data.type == "context" and safe_name == "sys.md" then
+  local soul_md_path = base_dir .. "/sys.md"
+  local wf = io.open(soul_md_path, "w")
+  if not wf then
+    ngx.status = 500
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"Storage error"}')
+    return
+  end
+  wf:write(decoded); wf:close()
+  audit("SOUL_MD_UPDATED", "size=" .. #decoded)
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say(cjson.encode({ ok = true, name = "sys.md", type = "soul", soul_updated = true, size = #decoded }))
+  return
 end
 
 -- ── Sicherheitsprüfungen ───────────────────────────────────────────────────

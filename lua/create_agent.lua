@@ -226,34 +226,37 @@ if not first_message then
 end
 
 -- ── Agent erstellen ───────────────────────────────────────────────────────────
-local tts_config = {}
+-- tts nur einfuegen wenn voice_id vorhanden: leeres {} wird von cjson als []
+-- codiert, was ElevenLabs mit 400 ablehnt.
+local conv_config = {
+  agent = {
+    prompt = {
+      prompt      = system_prompt,
+      llm         = "claude-sonnet-4-6",
+      temperature = 0.7,
+      tools       = {{
+        type        = "webhook",
+        name        = "soul_tool",
+        description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Immer zu Beginn des Gespraechs aufrufen.",
+        api_schema  = { url = soul_url, method = "GET" },
+      }},
+    },
+    first_message = first_message,
+    language      = language,
+  },
+  stt = { language = language },
+}
 if voice_id then
-  tts_config.voice_id                  = voice_id
-  tts_config.model_id                  = "eleven_flash_v2_5"
-  tts_config.optimize_streaming_latency = 3
+  conv_config.tts = {
+    voice_id                   = voice_id,
+    model_id                   = "eleven_flash_v2_5",
+    optimize_streaming_latency = 3,
+  }
 end
 
 local agent_payload_ok, agent_payload = pcall(cjson.encode, {
-  name = "SYS Soul Agent - " .. soul_name,
-  conversation_config = {
-    agent = {
-      prompt = {
-        prompt      = system_prompt,
-        llm         = "claude-sonnet-4-6",
-        temperature = 0.7,
-        tools       = {{
-          type        = "webhook",
-          name        = "soul_tool",
-          description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Immer zu Beginn des Gespraechs aufrufen.",
-          api_schema  = { url = soul_url, method = "GET" },
-        }},
-      },
-      first_message = first_message,
-      language      = language,
-    },
-    tts = tts_config,
-    stt = { language = language },
-  },
+  name                = "SYS Soul Agent - " .. soul_name,
+  conversation_config = conv_config,
 })
 
 if not agent_payload_ok then
