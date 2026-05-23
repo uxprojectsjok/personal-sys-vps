@@ -207,7 +207,20 @@
         <button class="model-btn" @click="cycleModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
           {{ MODELS.find(m=>m.id===selectedModel)?.label }}
         </button>
+        <button class="cmd-toggle" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen" title="@-Befehle">@</button>
       </div>
+
+      <!-- @-Command chip strip -->
+      <Transition name="cmd-strip">
+        <div v-if="cmdsOpen" class="cmd-strip">
+          <button
+            v-for="c in AT_COMMANDS" :key="c.cmd"
+            class="cmd-chip"
+            @click="insertCommand(c)"
+            :title="c.desc"
+          ><span class="cmd-at">@</span>{{ c.label }}</button>
+        </div>
+      </Transition>
 
       <!-- Input row -->
       <div class="dock-main">
@@ -379,6 +392,30 @@ watch(autonomousKi, v => { if (typeof window !== 'undefined') localStorage.setIt
 
 // ── Media drawer ────────────────────────────────────────────────────
 const mediaOpen = ref(false)
+
+// ── @-Command strip ─────────────────────────────────────────────────
+const cmdsOpen = ref(false)
+
+const AT_COMMANDS = [
+  { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
+  { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
+  { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
+  { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
+  { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
+  { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',               direct: false },
+]
+
+function insertCommand(cmd) {
+  if (cmd.direct) {
+    draft.value = cmd.cmd
+    cmdsOpen.value = false
+    handleSend()
+  } else {
+    draft.value = cmd.cmd
+    cmdsOpen.value = false
+    nextTick(() => textareaEl.value?.focus())
+  }
+}
 
 // ── Mobile composer FAB ─────────────────────────────────────────────
 const mobileComposerOpen = ref(false)
@@ -1624,6 +1661,7 @@ async function handleSend() {
   const raw = draft.value.trim()
   if (!raw && !msgMedia.value && !msgDoc.value) return
   draft.value = ''
+  cmdsOpen.value = false
   closeMobileComposer()
   await nextTick(autoResize)
 
@@ -2311,6 +2349,45 @@ defineExpose({
   border-color: var(--accent);
   box-shadow: 0 0 6px var(--accent);
 }
+
+.cmd-toggle {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.05em;
+  color: var(--fg-4);
+  background: transparent; border: 1px solid transparent; cursor: pointer;
+  padding: 2px 7px; border-radius: 999px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.cmd-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
+.cmd-toggle.active { color: var(--accent); border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.08); }
+
+.cmd-strip {
+  display: flex; gap: 6px;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+  padding: 0 2px;
+}
+.cmd-strip::-webkit-scrollbar { display: none; }
+
+.cmd-chip {
+  display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0;
+  padding: 4px 11px; border-radius: 999px;
+  background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.15);
+  color: var(--fg-3);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.cmd-chip:hover {
+  background: rgba(139,92,246,0.16); border-color: rgba(139,92,246,0.38);
+  color: var(--fg-1);
+}
+.cmd-at { color: var(--accent); font-size: 10px; }
+
+.cmd-strip-enter-active { transition: opacity 0.16s ease, max-height 0.18s ease; }
+.cmd-strip-leave-active { transition: opacity 0.12s ease, max-height 0.14s ease; }
+.cmd-strip-enter-from, .cmd-strip-leave-to { opacity: 0; max-height: 0; }
+.cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; max-height: 36px; }
 
 .dock-main {
   display: flex; align-items: stretch;
