@@ -336,6 +336,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useClaude } from '~/composables/useClaude.js'
 import { useMind } from '~/composables/useMind.js'
+import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
 import { useYouTube } from '~/composables/useYouTube.js'
@@ -357,6 +358,7 @@ const emit = defineEmits(['cert-error'])
 // ── Composables ────────────────────────────────────────────────────
 const { chat, isLoading, error, certError } = useClaude()
 const { mindContent, loadMind } = useMind()
+const { mcpTools, loadMcpTools } = useMcpTools()
 const {
   messages, conversationSummary,
   addMessage, removeMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
@@ -1774,6 +1776,7 @@ async function dispatchToChat(text, msgMeta = {}) {
     profileImageBase64: profileBase64.value,
     role: localRole.value,
     model: selectedModel.value,
+    externalTools: mcpTools.value,
     onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
   })
 
@@ -1899,6 +1902,7 @@ onMounted(async () => {
   _mqMobile.addEventListener('change', _onMqMobile)
   nextTick(autoResize)
   loadMind(props.soulCert)
+  loadMcpTools(props.soulCert)
   try {
     const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
     if (r.ok) {
