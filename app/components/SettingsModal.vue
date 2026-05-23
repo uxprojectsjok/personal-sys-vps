@@ -169,6 +169,29 @@
                 </p>
               </div>
 
+              <!-- Brave Search Key -->
+              <div class="sys-field" style="gap:12px">
+                <label class="sys-field-label">
+                  Brave Search API-Key
+                  <span v-if="braveKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ bravePreview }}</span>
+                </label>
+                <input
+                  v-model="braveKey"
+                  type="password"
+                  class="sys-input sys-input--mono"
+                  :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
+                  :placeholder="braveKeySet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @input="braveDirty = true"
+                  @keyup.enter="saveConfig"
+                />
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
+                  Für @suche — KI-Websuchmaschine.
+                  <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">brave.com/search/api</a> (Free: 2000/Monat)
+                </p>
+              </div>
+
               <!-- ElevenLabs Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:0">
                 <label class="sys-field-label">
@@ -504,6 +527,11 @@ const elevenlabsKeySet  = ref(false)
 const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
 
+const braveKey     = ref('')
+const braveKeySet  = ref(false)
+const bravePreview = ref('')
+const braveDirty   = ref(false)
+
 const keySourceLabel = computed(() => ({
   soul:   'Eigener Key aktiv',
   master: 'Server-Key aktiv',
@@ -524,6 +552,8 @@ async function loadStatus() {
     wavespeedPreview.value = d.wavespeed_preview || ''
     elevenlabsKeySet.value  = !!d.elevenlabs_key_set
     elevenlabsPreview.value = d.elevenlabs_preview || ''
+    braveKeySet.value  = !!d.brave_key_set
+    bravePreview.value = d.brave_preview || ''
     if (d.model) model.value = d.model
   } catch {}
 }
@@ -599,6 +629,7 @@ async function saveConfig() {
     if (model.value) body.model = model.value
     if (wavespeedDirty.value) body.wavespeed_key = sanitizeKey(wavespeedKey.value)
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
+    if (braveDirty.value) body.brave_key = sanitizeKey(braveKey.value)
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: {
@@ -616,6 +647,8 @@ async function saveConfig() {
       wavespeedDirty.value = false
       elevenlabsKey.value  = ''
       elevenlabsDirty.value = false
+      braveKey.value  = ''
+      braveDirty.value = false
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }

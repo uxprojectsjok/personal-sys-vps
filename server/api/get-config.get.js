@@ -43,6 +43,10 @@ export default defineEventHandler(async (event) => {
   const elevenlabsPreview = hasElevenlabs
     ? soulCfg.elevenlabs_key.slice(0, 6) + '…' + soulCfg.elevenlabs_key.slice(-4) : ''
 
+  const hasBrave     = typeof soulCfg.brave_key === 'string' && soulCfg.brave_key !== ''
+  const bravePreview = hasBrave
+    ? soulCfg.brave_key.slice(0, 6) + '…' + soulCfg.brave_key.slice(-4) : ''
+
   return {
     has_own_key:         hasOwnKey,
     key_preview:         keyPreview,
@@ -51,6 +55,8 @@ export default defineEventHandler(async (event) => {
     wavespeed_preview:   wavespeedPreview,
     elevenlabs_key_set:  hasElevenlabs,
     elevenlabs_preview:  elevenlabsPreview,
+    brave_key_set:       hasBrave,
+    brave_preview:       bravePreview,
     model:               soulCfg.model || null,
   }
 })
