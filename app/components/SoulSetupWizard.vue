@@ -235,9 +235,6 @@
                 :placeholder="cfgBraveSet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
                 autocomplete="off" spellcheck="false" @input="cfgBraveDirty = true"
                 :style="cfgBraveSet ? 'border-color:var(--sys-ok)' : ''" />
-              <p style="font-size:10px;color:var(--sys-fg-muted);margin:0;font-family:var(--sys-mono)">
-                Für @suche — <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">brave.com/search/api</a> (Free: 1.000/Monat)
-              </p>
             </div>
 
             <!-- Speichern -->

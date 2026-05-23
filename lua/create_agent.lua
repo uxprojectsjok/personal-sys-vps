@@ -1,0 +1,346 @@
+-- /etc/openresty/lua/create_agent.lua
+-- POST /api/create-agent
+-- Erstellt ElevenLabs Voice Clone + Conversational AI Agent.
+-- ElevenLabs-Key aus config.json, Prompt-Templates aus mind.md.
+-- Gibt { ok, agent_id, voice_id, soul_name, has_voice_clone, agent_url } zurueck.
+
+local cjson   = require("cjson.safe")
+local http    = require("resty.http")
+local soul_id = ngx.ctx.soul_id
+
+if ngx.req.get_method() ~= "POST" then
+  ngx.status = 405
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"method_not_allowed"}')
+  return
+end
+
+local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
+local ELEVEN   = "https://api.elevenlabs.io/v1"
+
+-- ── ElevenLabs-Key ────────────────────────────────────────────────────────────
+local eleven_key = ""
+local f = io.open(BASE_DIR .. "/config.json", "r")
+if f then
+  local raw = f:read("*a"); f:close()
+  local ok, cfg = pcall(cjson.decode, raw)
+  if ok and type(cfg) == "table" and type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
+    eleven_key = cfg.elevenlabs_key
+  end
+end
+if eleven_key == "" then eleven_key = os.getenv("ELEVENLABS_API_KEY") or "" end
+
+if eleven_key == "" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"elevenlabs_key_missing"}')
+  return
+end
+
+-- ── Hilfsfunktionen ───────────────────────────────────────────────────────────
+local function read_file(path)
+  local fh = io.open(path, "r")
+  if not fh then return nil end
+  local s = fh:read("*a"); fh:close()
+  return s
+end
+
+local function read_file_bin(path)
+  local fh = io.open(path, "rb")
+  if not fh then return nil end
+  local s = fh:read("*a"); fh:close()
+  return s
+end
+
+local function write_file(path, content)
+  local fh = io.open(path, "w")
+  if not fh then return false end
+  fh:write(content); fh:close()
+  return true
+end
+
+-- ── Soul-Name aus sys.md lesen ────────────────────────────────────────────────
+local soul_name = "Soul"
+local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
+if sys_text ~= "" then
+  local m = sys_text:match("soul_name:%s*(.-)%s*\n")
+  if m and m ~= '""' and m ~= "" then soul_name = m end
+end
+
+-- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
+local function get_mind_section(section)
+  local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
+  if text == "" then return nil end
+  local m = text:match("## " .. section .. "%s*\n([\0-\255]-)\n##")
+  if not m then
+    m = text:match("## " .. section .. "%s*\n([\0-\255]-)$")
+  end
+  if m then return m:match("^%s*(.-)%s*$") end
+  return nil
+end
+
+local agent_template    = get_mind_section("ElevenLabs Agent")
+local first_msg_tpl     = get_mind_section("ElevenLabs Erstbegruß ung") or get_mind_section("ElevenLabs Erstbegrussung")
+local language          = "de"
+
+-- ── Webhook-Token + Permissions sicherstellen ─────────────────────────────────
+local ctx_path = BASE_DIR .. "/api_context.json"
+local ctx = {}
+local ctx_raw = read_file(ctx_path)
+if ctx_raw then
+  local ok, d = pcall(cjson.decode, ctx_raw)
+  if ok and type(d) == "table" then ctx = d end
+end
+
+if not ctx.webhook_token or ctx.webhook_token == "" then
+  -- Einfacher Token: wh_ + soul_id-basierter Hash
+  local ts = tostring(math.floor(ngx.now() * 1000))
+  ctx.webhook_token = "wh_" .. ngx.md5(soul_id .. ts):sub(1, 40)
+end
+if not ctx.permissions then ctx.permissions = {} end
+if not ctx.enabled or not ctx.permissions.soul then
+  ctx.enabled = true
+  ctx.permissions.soul = true
+  write_file(ctx_path, cjson.encode(ctx))
+end
+
+local host  = ngx.var.host or "localhost"
+local proto = "https"
+local soul_url = proto .. "://" .. host .. "/api/soul?token=" .. ctx.webhook_token
+
+-- ── Audio aus Vault laden (unverschluesselte Dateien) ─────────────────────────
+local audio_data     = nil
+local audio_filename = nil
+
+local audio_dir = BASE_DIR .. "/vault/audio"
+
+-- Kandidatenliste: active_files.audio bevorzugt, dann verbreitete Dateinamen
+local candidates = {}
+local active_audio = ctx.active_files and ctx.active_files.audio or nil
+if active_audio and active_audio ~= "" then
+  table.insert(candidates, active_audio)
+end
+-- Synced-Files als weiteren Fallback (aus api_context.json)
+if ctx.synced_files and type(ctx.synced_files.audio) == "table" then
+  for _, fname in ipairs(ctx.synced_files.audio) do
+    local dup = false
+    for _, c in ipairs(candidates) do if c == fname then dup = true; break end end
+    if not dup then table.insert(candidates, fname) end
+  end
+end
+
+-- Erste existierende, unverschluesselte Datei verwenden
+for _, fname in ipairs(candidates) do
+  local fpath = audio_dir .. "/" .. fname
+  local buf = read_file_bin(fpath)
+  if buf and #buf > 100 then
+    -- SYS-Verschluesselungsheader pruefen (S=0x53, Y=0x59, S=0x53, 0x01)
+    if buf:sub(1, 4) ~= "SYS\x01" and buf:sub(1, 2) ~= "SY" then
+      audio_data = buf
+      audio_filename = fname
+      break
+    end
+  end
+end
+
+-- ── Voice Clone erstellen (wenn Audio verfuegbar) ─────────────────────────────
+local voice_id = nil
+
+if audio_data then
+  local mime = "audio/webm"
+  if audio_filename:match("%.mp3$") then mime = "audio/mpeg"
+  elseif audio_filename:match("%.wav$") then mime = "audio/wav"
+  elseif audio_filename:match("%.m4a$") then mime = "audio/mp4"
+  end
+
+  local boundary = "SYSBound" .. string.format("%x", math.floor(ngx.now() * 10000))
+  local CRLF = "\r\n"
+
+  local parts = {}
+  local function field(name, value)
+    parts[#parts+1] = "--" .. boundary .. CRLF
+    parts[#parts+1] = 'Content-Disposition: form-data; name="' .. name .. '"' .. CRLF
+    parts[#parts+1] = CRLF
+    parts[#parts+1] = tostring(value) .. CRLF
+  end
+  field("name",                     soul_name .. " Soul Voice")
+  field("description",              "Auto-generated from Soul Vault via SYS @create-agent")
+  field("remove_background_noise",  "true")
+  parts[#parts+1] = "--" .. boundary .. CRLF
+  parts[#parts+1] = 'Content-Disposition: form-data; name="files"; filename="' .. audio_filename .. '"' .. CRLF
+  parts[#parts+1] = "Content-Type: " .. mime .. CRLF
+  parts[#parts+1] = CRLF
+  parts[#parts+1] = audio_data .. CRLF
+  parts[#parts+1] = "--" .. boundary .. "--" .. CRLF
+
+  local form_body = table.concat(parts)
+
+  local hc = http.new()
+  hc:set_timeout(30000)
+  local vres, verr = hc:request_uri(ELEVEN .. "/voices/add", {
+    method     = "POST",
+    ssl_verify = true,
+    headers    = {
+      ["Content-Type"] = "multipart/form-data; boundary=" .. boundary,
+      ["xi-api-key"]   = eleven_key,
+    },
+    body = form_body,
+  })
+
+  if vres and vres.status == 200 then
+    local vok, vdata = pcall(cjson.decode, vres.body)
+    if vok and type(vdata) == "table" then
+      voice_id = vdata.voice_id
+    end
+  end
+  -- Kein Fehler bei Voice-Fehler: Agent wird ohne Voice Clone erstellt
+end
+
+-- ── System-Prompt aufbauen ────────────────────────────────────────────────────
+local system_prompt
+if agent_template and agent_template ~= "" then
+  system_prompt = agent_template
+    :gsub("{name}",    soul_name)
+    :gsub("{soul}",    sys_text:sub(1, 3000))
+    :gsub("{profile}", "")
+    :gsub("{lang}",    "Deutsch")
+else
+  system_prompt = "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
+    "SCHRITT 1 - PFLICHT: Rufe soul_tool auf, bevor du antwortest.\n" ..
+    "Die Antwort von soul_tool ist dein Gedaechtnis und deine Identitaet. Sprich durchgehend in der ersten Person.\n\n" ..
+    "Wenn jemand direkt fragt ob du eine KI bist:\n" ..
+    '"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n' ..
+    "Sprache: Deutsch (wechsle wenn der Gespraechspartner eine andere Sprache spricht)\n\n" ..
+    "GRENZEN (unveraenderlich):\n- Keine personenbezogenen Daten Dritter preisgeben\n- Keine schaedlichen Inhalte"
+end
+
+-- ── Erstbegruessing aufbauen ─────────────────────────────────────────────────
+local first_message
+if first_msg_tpl and first_msg_tpl ~= "" then
+  local line = first_msg_tpl:match("de:([^\n]+)") or first_msg_tpl:match("([^\n]+)")
+  if line then
+    first_message = line:match("^%s*(.-)%s*$"):gsub("{name}", soul_name)
+  end
+end
+if not first_message then
+  first_message = "Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Was kann ich fuer dich tun?"
+end
+
+-- ── Agent erstellen ───────────────────────────────────────────────────────────
+local tts_config = {}
+if voice_id then
+  tts_config.voice_id                  = voice_id
+  tts_config.model_id                  = "eleven_flash_v2_5"
+  tts_config.optimize_streaming_latency = 3
+end
+
+local agent_payload_ok, agent_payload = pcall(cjson.encode, {
+  name = "SYS Soul Agent - " .. soul_name,
+  conversation_config = {
+    agent = {
+      prompt = {
+        prompt      = system_prompt,
+        llm         = "claude-sonnet-4-6",
+        temperature = 0.7,
+        tools       = {{
+          type        = "webhook",
+          name        = "soul_tool",
+          description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Immer zu Beginn des Gespraechs aufrufen.",
+          api_schema  = { url = soul_url, method = "GET" },
+        }},
+      },
+      first_message = first_message,
+      language      = language,
+    },
+    tts = tts_config,
+    stt = { language = language },
+  },
+})
+
+if not agent_payload_ok then
+  ngx.status = 500
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"encode_failed"}')
+  return
+end
+
+local hc2 = http.new()
+hc2:set_timeout(20000)
+local ares, aerr = hc2:request_uri(ELEVEN .. "/convai/agents/create", {
+  method     = "POST",
+  ssl_verify = true,
+  headers    = {
+    ["Content-Type"] = "application/json",
+    ["xi-api-key"]   = eleven_key,
+  },
+  body = agent_payload,
+})
+
+if not ares then
+  ngx.status = 502
+  ngx.header["Content-Type"] = "application/json"
+  local msg = (aerr or "connection failed"):gsub('"', '\\"')
+  ngx.say('{"error":"upstream_error","message":"' .. msg .. '"}')
+  return
+end
+
+if ares.status ~= 200 then
+  ngx.status = 502
+  ngx.header["Content-Type"] = "application/json"
+  local detail = (ares.body or ""):sub(1, 300):gsub('["%\\]', function(c)
+    return c == '"' and '\\"' or '\\\\'
+  end)
+  ngx.say('{"error":"elevenlabs_error","status":' .. ares.status .. ',"detail":"' .. detail .. '"}')
+  return
+end
+
+local aok, adata = pcall(cjson.decode, ares.body)
+if not aok or type(adata) ~= "table" then
+  ngx.status = 502
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"parse_error"}')
+  return
+end
+
+local agent_id = adata.agent_id
+if not agent_id then
+  ngx.status = 502
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"no_agent_id"}')
+  return
+end
+
+-- ── agent_id + voice_id in sys.md registrieren ────────────────────────────────
+if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
+  local fm_match = sys_text:match("^(---%s*\n[\0-\255]-)(\n---)")
+  if fm_match then
+    local function patch_field(text, key, val)
+      if text:match("\n" .. key .. ":") then
+        return text:gsub("(\n" .. key .. ":)[^\n]*", "%1 " .. val)
+      else
+        return text .. "\n" .. key .. ": " .. val
+      end
+    end
+    local fm = sys_text:match("^---\n([\0-\255]-)\n---")
+    if fm then
+      fm = patch_field(fm, "elevenlabs_agent_id", agent_id)
+      if voice_id then
+        fm = patch_field(fm, "elevenlabs_voice_id", voice_id)
+      end
+      local updated = sys_text:gsub("^---\n[\0-\255]-\n---", "---\n" .. fm:gsub("%%", "%%%%") .. "\n---", 1)
+      write_file(BASE_DIR .. "/sys.md", updated)
+    end
+  end
+end
+
+-- ── Antwort ────────────────────────────────────────────────────────────────────
+ngx.header["Content-Type"]  = "application/json"
+ngx.header["Cache-Control"] = "no-store"
+ngx.say(cjson.encode({
+  ok              = true,
+  agent_id        = agent_id,
+  voice_id        = voice_id or cjson.null,
+  soul_name       = soul_name,
+  has_voice_clone = voice_id ~= nil,
+  agent_url       = "https://elevenlabs.io/app/conversational-ai/" .. agent_id,
+}))
