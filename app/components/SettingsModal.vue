@@ -846,14 +846,17 @@ async function saveMaster() {
         adminToken.value = newAdminToken.value
         msg += ' — Admin-Token rotiert & gespeichert'
       }
-      if (masterRotated) msg += ' — Cert wird erneuert…'
       adminFeedback.value = { ok: true, message: msg }
       if (d.prev_valid_until) startGraceCountdown(d.prev_valid_until)
       newMasterKey.value       = ''
       masterAnthropicKey.value = ''
       newAdminToken.value      = ''
       await loadStatus()
-      if (masterRotated) emit('master-rotated')
+      if (masterRotated) {
+        emit('master-rotated')
+        // Altes Cert ist während der Grace-Period noch gültig — sofort neues ausstellen.
+        await handleRotateCert()
+      }
     } else {
       adminFeedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }

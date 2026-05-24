@@ -218,7 +218,9 @@ async function submit() {
       error.value      = 'Soul-Cert erforderlich. Bitte Cert eingeben.'
       soulRegistered.value = true
     } else if (e?.data?.error === 'invalid_cert') {
-      error.value = 'Soul-Cert ungültig. Nach einer Key-Rotation das neue Cert aus der heruntergeladenen sys.md verwenden oder das Cert-Feld leer lassen.'
+      error.value = 'Soul-Cert ungültig. Das Cert wurde geleert — einfach nur mit Passwort einloggen, danach im Admin-Tab ein neues ausstellen.'
+      cert.value = ''
+      certAutoFilled.value = false
     } else if (e?.data?.error === 'gate_not_configured') {
       error.value = 'Node nicht konfiguriert. init.sh erneut ausführen.'
     } else if (e?.status === 401) {
