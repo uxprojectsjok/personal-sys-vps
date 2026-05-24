@@ -185,10 +185,6 @@
                   @input="braveDirty = true"
                   @keyup.enter="saveConfig"
                 />
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Für @suche — KI-Websuchmaschine.
-                  <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">brave.com/search/api</a> (Free: 2000/Monat)
-                </p>
               </div>
 
               <!-- Zapier MCP URL -->
