@@ -234,11 +234,15 @@ end
 -- ── System-Prompt aufbauen ────────────────────────────────────────────────────
 local system_prompt
 if agent_template and agent_template ~= "" then
+  -- Funktions-Ersetzung: Rückgabewert wird literal verwendet, kein %-Escaping nötig.
+  -- sys_text kann beliebige Zeichen enthalten (URLs, %-Angaben) die sonst als
+  -- Capture-Referenz interpretiert würden und einen Runtime-Error auslösen.
+  local soul_excerpt = sys_text:sub(1, 3000)
   system_prompt = agent_template
-    :gsub("{name}",    soul_name)
-    :gsub("{soul}",    sys_text:sub(1, 3000))
+    :gsub("{name}",    function() return soul_name    end)
+    :gsub("{soul}",    function() return soul_excerpt end)
     :gsub("{profile}", "")
-    :gsub("{lang}",    "Deutsch")
+    :gsub("{lang}",    function() return "Deutsch"    end)
 else
   system_prompt = "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
     "SCHRITT 1 - PFLICHT: Rufe soul_tool auf, bevor du antwortest.\n" ..
@@ -253,7 +257,7 @@ local first_message
 if first_msg_tpl and first_msg_tpl ~= "" then
   local line = first_msg_tpl:match("de:([^\n]+)") or first_msg_tpl:match("([^\n]+)")
   if line then
-    first_message = line:match("^%s*(.-)%s*$"):gsub("{name}", soul_name)
+    first_message = line:match("^%s*(.-)%s*$"):gsub("{name}", function() return soul_name end)
   end
 end
 if not first_message then
