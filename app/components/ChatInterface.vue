@@ -605,6 +605,7 @@ const AT_COMMANDS = [
   { cmd: '@bewegung',      label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
   { cmd: '@create-agent',  label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
   { cmd: '@sprechen',      label: 'sprechen',     desc: 'Mit Agent sprechen',          direct: true  },
+  { cmd: '@diagnose',      label: 'diagnose',     desc: 'Fehlerlog anzeigen',          direct: true  },
   { cmd: '@alle ',         label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
   { cmd: '@agent ',        label: 'agent',        desc: 'Agent Sandbox',               direct: false },
 ]
@@ -1525,6 +1526,8 @@ function detectIntent(text) {
   if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
   // @sprechen → Voice-Agent Aufnahme starten
   if (/^@sprechen\b/i.test(t)) return { type: 'voice-agent' }
+  // @diagnose → OpenResty Fehlerlog anzeigen
+  if (/^@diagnose\b/i.test(t)) return { type: 'diagnose' }
   // @create-media → KI-Bildgenerierung via WaveSpeed
   const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
   if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
@@ -1770,6 +1773,42 @@ async function handleCreateAgent() {
     setMessageMetaById(statusMsg.id, 'actions', [
       { label: 'Agent öffnen', primary: true, url: data.agent_url },
     ])
+  } catch (err) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  }
+  await scrollToBottom()
+}
+
+// ── @diagnose — OpenResty Fehlerlog ───────────────────────────────
+async function handleDiagnose() {
+  addMessage('user', '@diagnose')
+  const statusMsg = addMessage('assistant', 'Fehlerlog wird gelesen…', { streaming: true })
+  await scrollToBottom()
+
+  try {
+    const res = await fetch('/api/diagnose', {
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    })
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      setMessageMetaById(statusMsg.id, 'text', `Fehler: ${data.error || `HTTP ${res.status}`}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    if (!data.lines || data.lines.length === 0) {
+      setMessageMetaById(statusMsg.id, 'text', `Keine Fehler im Log gefunden. ✓\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    const header = `**${data.total_found} Einträge** im OpenResty-Fehlerlog (neueste zuerst):\n\n`
+    const body = data.lines.map(l => `\`\`\`\n${l}\n\`\`\``).join('\n')
+    const footer = `\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`
+    setMessageMetaById(statusMsg.id, 'text', header + body + footer)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
     setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
     setMessageMetaById(statusMsg.id, 'streaming', false)
@@ -2158,6 +2197,11 @@ async function handleSend() {
 
   if (intent.type === 'create-agent') {
     await handleCreateAgent()
+    return
+  }
+
+  if (intent.type === 'diagnose') {
+    await handleDiagnose()
     return
   }
 

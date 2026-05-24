@@ -882,6 +882,15 @@ server {
     content_by_lua_file /etc/openresty/lua/elevenlabs_token.lua;
   }
 
+  location = /api/diagnose {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/diagnose.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }
