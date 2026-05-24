@@ -24,7 +24,6 @@
               </span>
               <span class="sys-rail-lbl">
                 <span class="sys-rail-t">API-Keys</span>
-                <span class="sys-rail-sub">Anthropic · WaveSpeed · ElevenLabs</span>
               </span>
             </button>
 
@@ -270,49 +269,6 @@
                 >{{ feedback.message }}</div>
               </Transition>
 
-              <!-- Soul-Cert rotieren -->
-              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--sys-rule)">
-                <div style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:10px">Soul-Cert</div>
-                <button
-                  @click="handleRotateCert"
-                  :disabled="certRotateBusy"
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  style="width:100%;justify-content:center"
-                >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:6px 0 0">
-                  Altes Cert sofort ungültig — sys.md wird automatisch heruntergeladen.
-                </p>
-                <Transition name="sys-modal-fade">
-                  <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                      <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
-                      <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
-                    </div>
-                    <div style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:4px">Bearer-Token (Zugangscode)</div>
-                    <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
-                      <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
-                      <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                          :style="certCopied ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
-                          <path v-if="certCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                          <path v-else stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/>
-                        </svg>
-                      </button>
-                    </div>
-                    <p style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em"
-                      :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
-                      {{ certRotationResult.validated ? '✓ Cert auf Server validiert' : 'Server-Validierung prüfen — Seite neu laden' }}
-                    </p>
-                    <p v-if="certRotationResult.credsUpdated" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-ok);margin-top:4px">
-                      ✓ Biometrische Zugangsdaten aktualisiert
-                    </p>
-                    <p v-else-if="certRotationResult.credsUpdateFailed" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-warn,#f59e0b);margin-top:4px">
-                      Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
-                    </p>
-                  </div>
-                </Transition>
-              </div>
-
             </template>
 
             <!-- ── Tab: Admin verbinden ── -->
@@ -395,16 +351,54 @@
                     <span style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-accent-bright)">Grace-Period aktiv</span>
                     <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-accent-bright)">{{ graceCountdown }}</span>
                   </div>
-                  <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer">
-                    <input type="checkbox" v-model="checkWA" style="accent-color:var(--sys-violet)" />
-                    <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em">WhatsApp-Bot soul_cert erneuern</span>
-                  </label>
-                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                    <input type="checkbox" v-model="checkVC" style="accent-color:var(--sys-violet)" />
-                    <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em">Voice-Clone Token erneuern</span>
-                  </label>
+                  <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em;margin:0">
+                    ElevenLabs-Agent: <strong style="color:var(--sys-fg)">@create-agent</strong> im Chat ausführen — neuer Webhook-Token wird automatisch registriert.
+                  </p>
                 </div>
               </Transition>
+
+              <!-- Soul-Cert rotieren -->
+              <div style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:16px">
+                <div style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:10px">Soul-Cert</div>
+                <button
+                  @click="handleRotateCert"
+                  :disabled="certRotateBusy"
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="width:100%;justify-content:center"
+                >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:6px 0 0">
+                  Altes Cert sofort ungültig — sys.md wird automatisch heruntergeladen.
+                </p>
+                <Transition name="sys-modal-fade">
+                  <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                      <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
+                      <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
+                    </div>
+                    <div style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:4px">Bearer-Token (Zugangscode)</div>
+                    <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
+                      <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
+                      <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          :style="certCopied ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
+                          <path v-if="certCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                          <path v-else stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <p style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em"
+                      :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
+                      {{ certRotationResult.validated ? '✓ Cert auf Server validiert' : 'Server-Validierung prüfen — Seite neu laden' }}
+                    </p>
+                    <p v-if="certRotationResult.credsUpdated" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-ok);margin-top:4px">
+                      ✓ Biometrische Zugangsdaten aktualisiert
+                    </p>
+                    <p v-else-if="certRotationResult.credsUpdateFailed" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-warn,#f59e0b);margin-top:4px">
+                      Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
+                    </p>
+                  </div>
+                </Transition>
+              </div>
 
               <!-- Admin-Token rotieren (nur Multi-Hoster) -->
               <div v-if="isMultiHoster" class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
@@ -789,8 +783,6 @@ const savingMaster      = ref(false)
 const adminFeedback     = ref(null)
 const graceUntil        = ref(null)
 const graceCountdown    = ref('')
-const checkWA           = ref(false)
-const checkVC           = ref(false)
 let graceTimer          = null
 
 function generateMasterKey() {
@@ -809,8 +801,6 @@ function generateAdminToken() {
 
 function startGraceCountdown(isoString) {
   graceUntil.value = isoString
-  checkWA.value    = false
-  checkVC.value    = false
   function tick() {
     const diff = new Date(isoString) - Date.now()
     if (diff <= 0) { graceCountdown.value = 'Abgelaufen'; return }
