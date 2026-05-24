@@ -2008,6 +2008,13 @@ async function handlePin(query) {
     return d
   }
 
+  // ── @pin help ──────────────────────────────────────────────────
+  if (/^help$/i.test(q)) {
+    addMessage('user', '@pin help')
+    addMessage('assistant', PIN_HELP)
+    return
+  }
+
   // ── @pin / @pin status — vollständiger Status ──────────────────
   if (!q || /^status$/i.test(q)) {
     addMessage('user', q ? '@pin status' : '@pin')
@@ -2048,7 +2055,7 @@ async function handlePin(query) {
           : 'Zugang: nicht konfiguriert  →  `@pin free` oder `@pin paid …`'
       }
 
-      setMessageMetaById(msg.id, 'text', [jwtLine, cidLine, accessLine, '', PIN_HELP].join('\n'))
+      setMessageMetaById(msg.id, 'text', [jwtLine, cidLine, accessLine].join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
       setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
@@ -2242,9 +2249,9 @@ async function handlePin(query) {
     return
   }
 
-  // ── Unbekannter Subbefehl → Hilfe
+  // ── Unbekannter Subbefehl → Kurzhinweis
   addMessage('user', `@pin ${q}`)
-  addMessage('assistant', PIN_HELP)
+  addMessage('assistant', `Unbekannter Befehl. Hilfe: \`@pin help\``)
 }
 
 // ── @create-media — KI-Bildgenerierung ────────────────────────────
