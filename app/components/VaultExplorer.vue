@@ -468,6 +468,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useVault } from "~/composables/useVault.js";
 import { useApiContext } from "~/composables/useApiContext.js";
 import { useVaultSession } from "~/composables/useVaultSession.js";
+import { useMind } from "~/composables/useMind.js";
 
 const props = defineProps({
   soulCert:    { type: String, default: "" },
@@ -494,6 +495,7 @@ const {
 } = useApiContext();
 
 const { vaultKey } = useVaultSession();
+const { clearMindCache } = useMind();
 
 const tab          = ref("local");
 const isScanning   = ref(false);
@@ -568,6 +570,7 @@ async function uploadSelectedLocal() {
       }
     }
   }
+  if ([...names].some(n => n.toLowerCase() === "mind.md")) clearMindCache();
   await loadContext(props.soulCert);
   selectedLocal.value = new Set();
   if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} hochgeladen ✓`);
@@ -871,6 +874,7 @@ async function uploadToServer(type, name) {
       : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
     const res = await syncFile(props.soulCert, serverType, name, file, key);
     if (res.ok) {
+      if (name.toLowerCase() === "mind.md") clearMindCache();
       await loadContext(props.soulCert);
       showSuccess(`${name} hochgeladen ✓`);
     } else {

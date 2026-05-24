@@ -97,11 +97,12 @@ if not ctx.webhook_token or ctx.webhook_token == "" then
   local ts = tostring(math.floor(ngx.now() * 1000))
   ctx.webhook_token = "wh_" .. ngx.md5(soul_id .. ts):sub(1, 40)
 end
-if not ctx.permissions then ctx.permissions = {} end
+if type(ctx.permissions) ~= "table" then ctx.permissions = {} end
 if not ctx.enabled or not ctx.permissions.soul then
   ctx.enabled = true
   ctx.permissions.soul = true
-  write_file(ctx_path, cjson.encode(ctx))
+  local _ok, _js = pcall(cjson.encode, ctx)
+  if _ok and _js then write_file(ctx_path, _js) end
 end
 
 -- webhook_token in authorized_services.json registrieren damit ElevenLabs
@@ -117,10 +118,11 @@ if not svc_data[ctx.webhook_token] then
   svc_data[ctx.webhook_token] = {
     name        = "ElevenLabs Agent",
     permissions = { soul = true, context_files = true },
-    expires_at  = cjson.null,
+    expires_at  = 0,
     created_at  = math.floor(ngx.now()),
   }
-  write_file(svc_path, cjson.encode(svc_data))
+  local _svok, _svjs = pcall(cjson.encode, svc_data)
+  if _svok and _svjs then write_file(svc_path, _svjs) end
 end
 
 local host  = ngx.var.host or "localhost"
@@ -135,7 +137,7 @@ local audio_dir = BASE_DIR .. "/vault/audio"
 
 -- Kandidatenliste: active_files.audio bevorzugt, dann verbreitete Dateinamen
 local candidates = {}
-local active_audio = ctx.active_files and ctx.active_files.audio or nil
+local active_audio = (type(ctx.active_files) == "table") and ctx.active_files.audio or nil
 if active_audio and active_audio ~= "" then
   table.insert(candidates, active_audio)
 end
