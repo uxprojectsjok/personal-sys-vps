@@ -237,7 +237,8 @@ if agent_template and agent_template ~= "" then
   -- Funktions-Ersetzung: Rückgabewert wird literal verwendet, kein %-Escaping nötig.
   -- sys_text kann beliebige Zeichen enthalten (URLs, %-Angaben) die sonst als
   -- Capture-Referenz interpretiert würden und einen Runtime-Error auslösen.
-  local soul_excerpt = sys_text:sub(1, 3000)
+  -- Verschlüsselte sys.md (SYSCRYPT01-Header beginnt mit "SY") nicht als Klartext verwenden
+  local soul_excerpt = (sys_text:sub(1, 2) ~= "SY") and sys_text:sub(1, 3000) or ""
   system_prompt = agent_template
     :gsub("{name}",    function() return soul_name    end)
     :gsub("{soul}",    function() return soul_excerpt end)

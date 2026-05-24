@@ -45,7 +45,7 @@ local name, created_at, version, maturity
 
 if sf then
   local raw = sf:read("*a"); sf:close()
-  if raw:sub(1, 4) ~= "SYS\x01" then
+  if raw:sub(1, 2) ~= "SY" then  -- fängt SYSCRYPT01 und SYS\x01 gleichermaßen ab
     local front = raw:match("^%-%-%-\n(.-)%-%-%-")
     if front then
       name       = front:match("soul_name:%s*(.-)%s*\n")

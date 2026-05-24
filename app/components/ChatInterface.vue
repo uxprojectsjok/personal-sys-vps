@@ -598,7 +598,7 @@ const mediaOpen = ref(false)
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = [
-  { cmd: '@suche ',        label: 'suche',        desc: 'KI-Websuche (Brave)',         direct: false },
+  { cmd: '@suche ',        label: 'suche',        desc: 'KI-Websuche',                 direct: false },
   { cmd: '@create-media ', label: 'create-media', desc: 'KI-Bild generieren',          direct: false },
   { cmd: '@audio',         label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
   { cmd: '@gesicht',       label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
@@ -1947,120 +1947,259 @@ async function handleContact(query) {
 
 // ── @pin — Pinata JWT hinterlegen / Soul veröffentlichen ──────────
 async function handlePin(query) {
-  const q = query.trim()
+  const q    = query.trim()
+  const auth = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
+  const authH = { Authorization: `Bearer ${props.soulCert}` }
 
-  // @pin status
-  if (/^status$/i.test(q)) {
-    addMessage('user', '@pin status')
-    const statusMsg = addMessage('assistant', 'Pinata-Status wird geprüft…', { streaming: true })
+  const PIN_HELP = [
+    '**@pin — Befehle**',
+    '',
+    '`@pin`                                Status anzeigen',
+    '`@pin <jwt>`                          Pinata JWT hinterlegen',
+    '`@pin free`                           Freier Zugang (alle KI-Agenten)',
+    '`@pin paid 0.001 0xWallet`            Bezahlter Zugang (POL-Rate + Wallet)',
+    '`@pin paid 0.001 0xWallet 7`          + Token-Gültigkeit in Tagen (1–30)',
+    '`@pin tools soul_read,verify_human`   Erlaubte Tools festlegen',
+    '`@pin publish <name>`                 Auf IPFS veröffentlichen',
+    '`@pin publish <name> | <desc>`        + Beschreibung',
+    '`@pin publish <name> | <desc> | <tags>`  + Tags (kommasepariert)',
+    '`@pin status`                         Schnellstatus',
+  ].join('\n')
+
+  // Aktuellen Amortization-Stand lesen (für merge-safe PUT)
+  async function getAmort() {
+    const r = await fetch('/api/soul/amortization', { headers: authH })
+    const d = await r.json().catch(() => ({}))
+    return d.amortization || {}
+  }
+
+  // Amortization aktualisieren — liest erst aktuellen Stand, merged Patch
+  async function putAmort(patch) {
+    const cur = await getAmort()
+    const body = {
+      enabled:             cur.enabled             ?? false,
+      pol_per_request:     cur.pol_per_request     ?? '0.001',
+      wallet:              cur.wallet              ?? '',
+      agent_tools:         Array.isArray(cur.agent_tools) ? cur.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
+      token_duration_days: cur.token_duration_days ?? 1,
+      trusted_souls:       Array.isArray(cur.trusted_souls) ? cur.trusted_souls : [],
+      ...patch,
+    }
+    const r = await fetch('/api/soul/amortization', { method: 'PUT', headers: auth, body: JSON.stringify(body) })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(d.error || d.message || `HTTP ${r.status}`)
+    return d
+  }
+
+  // ── @pin / @pin status — vollständiger Status ──────────────────
+  if (!q || /^status$/i.test(q)) {
+    addMessage('user', q ? '@pin status' : '@pin')
+    const msg = addMessage('assistant', 'Wird geprüft…', { streaming: true })
     await scrollToBottom()
     try {
       const [pinRes, amortRes] = await Promise.all([
-        fetch('/api/soul/pinata-config', { headers: { Authorization: `Bearer ${props.soulCert}` } }),
-        fetch('/api/soul/amortization',  { headers: { Authorization: `Bearer ${props.soulCert}` } }),
+        fetch('/api/soul/pinata-config', { headers: authH }),
+        fetch('/api/soul/amortization',  { headers: authH }),
       ])
-      const pinData   = await pinRes.json().catch(() => ({}))
-      const amortData = await amortRes.json().catch(() => ({}))
+      const pin   = await pinRes.json().catch(() => ({}))
+      const amort = (await amortRes.json().catch(() => ({}))).amortization || {}
 
-      const jwtLine = pinData.configured
-        ? `JWT: \`${pinData.preview}\` ✓`
-        : 'JWT: nicht konfiguriert — `@pin <jwt>` zum Hinterlegen'
-      const cid = amortData.amortization?.agent_registry_cid
+      const jwtLine = pin.configured
+        ? `Pinata JWT: \`${pin.preview}\` ✓`
+        : 'Pinata JWT: fehlt  →  `@pin <jwt>`'
+
+      const cid = amort.agent_registry_cid
       const cidLine = cid
-        ? `IPFS CID: \`${cid}\` (veröffentlicht ✓)`
-        : 'IPFS: noch nicht veröffentlicht — `@pin` zum Registrieren'
+        ? `IPFS: veröffentlicht ✓  CID: \`${cid}\``
+        : 'IPFS: noch nicht veröffentlicht  →  `@pin publish <name>`'
 
-      setMessageMetaById(statusMsg.id, 'text', `**Pinata Status**\n\n${jwtLine}\n${cidLine}`)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
+      let accessLine
+      if (amort.enabled === true) {
+        const rate   = amort.pol_per_request || '?'
+        const wallet = amort.wallet ? `\`${amort.wallet.slice(0, 10)}…\`` : 'Wallet fehlt'
+        const days   = amort.token_duration_days || 1
+        const tools  = Array.isArray(amort.agent_tools) && amort.agent_tools.length
+          ? amort.agent_tools.join(', ')
+          : '(keine gesetzt)  →  `@pin tools soul_read,verify_human`'
+        accessLine = `Zugang: Bezahlt  ${rate} POL · ${wallet} · ${days}d\nTools: ${tools}`
+      } else {
+        accessLine = amort.hasOwnProperty?.('enabled')
+          ? 'Zugang: Frei (alle KI-Agenten können deine Soul lesen)'
+          : 'Zugang: nicht konfiguriert  →  `@pin free` oder `@pin paid …`'
+      }
+
+      setMessageMetaById(msg.id, 'text', [jwtLine, cidLine, accessLine, '', PIN_HELP].join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
+      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
     return
   }
 
-  // @pin <jwt> — JWT hinterlegen (alles mit 20+ Zeichen das kein bekannter Subbefehl ist)
+  // ── @pin free ──────────────────────────────────────────────────
+  if (/^free$/i.test(q)) {
+    addMessage('user', '@pin free')
+    const msg = addMessage('assistant', 'Freier Zugang wird aktiviert…', { streaming: true })
+    await scrollToBottom()
+    try {
+      await putAmort({ enabled: false })
+      setMessageMetaById(msg.id, 'text', [
+        'Zugang: Frei ✓',
+        '',
+        'Jeder KI-Assistent kann deine Soul lesen.',
+        'Jetzt veröffentlichen: `@pin publish <dein-name>`',
+      ].join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // ── @pin paid <pol> <wallet> [days] ────────────────────────────
+  const paidM = q.match(/^paid\s+(\S+)\s+(\S+?)(?:\s+(\d+))?$/i)
+  if (paidM) {
+    const pol    = paidM[1]
+    const wallet = paidM[2]
+    const days   = Math.min(30, Math.max(1, parseInt(paidM[3] || '1', 10)))
+    const walletShort = wallet.length > 12 ? wallet.slice(0, 10) + '…' : wallet
+    addMessage('user', `@pin paid ${pol} ${walletShort} ${days}d`)
+    const msg = addMessage('assistant', 'Bezahlter Zugang wird konfiguriert…', { streaming: true })
+    await scrollToBottom()
+    try {
+      await putAmort({ enabled: true, pol_per_request: pol, wallet, token_duration_days: days })
+      setMessageMetaById(msg.id, 'text', [
+        'Bezahlter Zugang ✓',
+        `Rate: ${pol} POL · Wallet: \`${wallet}\` · Gültigkeit: ${days} Tage`,
+        '',
+        'Tools festlegen (optional): `@pin tools soul_read,verify_human,soul_maturity`',
+        'Dann veröffentlichen: `@pin publish <name>`',
+      ].join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // ── @pin tools <t1,t2,...> ─────────────────────────────────────
+  const toolsM = q.match(/^tools\s+(.+)/i)
+  if (toolsM) {
+    const tools = toolsM[1].split(',').map(t => t.trim()).filter(Boolean)
+    addMessage('user', `@pin tools ${tools.join(', ')}`)
+    const msg = addMessage('assistant', 'Tools werden gesetzt…', { streaming: true })
+    await scrollToBottom()
+    try {
+      await putAmort({ agent_tools: tools })
+      setMessageMetaById(msg.id, 'text', [
+        'Tools gesetzt ✓',
+        '',
+        tools.join(', '),
+        '',
+        'Veröffentlichen: `@pin publish <name>`',
+      ].join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // ── @pin publish [name] [| desc] [| tags] ─────────────────────
+  if (/^publish/i.test(q)) {
+    const rest = q.replace(/^publish\s*/i, '').trim()
+    const [namePart = '', descPart = '', tagsPart = ''] = rest.split('|').map(s => s.trim())
+    const body = {}
+    if (namePart)  body.name_override = namePart
+    if (descPart)  body.description   = descPart
+    const tagsArr = tagsPart ? tagsPart.split(',').map(t => t.trim()).filter(Boolean) : []
+    if (tagsArr.length) body.tags = tagsArr
+
+    addMessage('user', namePart ? `@pin publish ${namePart}` : '@pin publish')
+    const msg = addMessage('assistant', 'Wird geprüft…', { streaming: true })
+    await scrollToBottom()
+    try {
+      const pinRes  = await fetch('/api/soul/pinata-config', { headers: authH })
+      const pinData = await pinRes.json().catch(() => ({}))
+      if (!pinData.configured) {
+        setMessageMetaById(msg.id, 'text', [
+          'Pinata JWT fehlt.',
+          '',
+          '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys)',
+          '2. Hinterlegen: `@pin <jwt>`',
+          '3. Dann: `@pin publish <name>`',
+        ].join('\n'))
+        setMessageMetaById(msg.id, 'streaming', false)
+        return
+      }
+
+      setMessageMetaById(msg.id, 'text', 'Soul wird auf IPFS veröffentlicht…')
+
+      const r = await fetch('/api/soul/register', { method: 'POST', headers: auth, body: JSON.stringify(body) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || d.message || `HTTP ${r.status}`}`)
+        setMessageMetaById(msg.id, 'streaming', false)
+        return
+      }
+
+      const lines = ['Soul veröffentlicht ✓', '']
+      if (namePart)       lines.push(`Name: **${namePart}**`)
+      if (descPart)       lines.push(`Beschreibung: ${descPart}`)
+      if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
+      lines.push('', `IPFS CID: \`${d.cid || ''}\``, '', 'Status: `@pin status`')
+      setMessageMetaById(msg.id, 'text', lines.join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // ── @pin <jwt> — JWT hinterlegen (20+ Zeichen, kein bekannter Subbefehl) ──
   if (q.length >= 20) {
-    const preview = q.substring(0, 8) + '…'
-    addMessage('user', `@pin ${preview}`)
-    const statusMsg = addMessage('assistant', 'Pinata JWT wird gespeichert…', { streaming: true })
+    addMessage('user', `@pin ${q.substring(0, 8)}…`)
+    const msg = addMessage('assistant', 'Pinata JWT wird gespeichert…', { streaming: true })
     await scrollToBottom()
     try {
       const r = await fetch('/api/soul/pinata-config', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jwt: q }),
+        method: 'PUT', headers: auth, body: JSON.stringify({ jwt: q }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) {
-        setMessageMetaById(statusMsg.id, 'text', `Fehler: ${d.error || `HTTP ${r.status}`}`)
-        setMessageMetaById(statusMsg.id, 'streaming', false)
+        setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || `HTTP ${r.status}`}`)
+        setMessageMetaById(msg.id, 'streaming', false)
         return
       }
-      setMessageMetaById(statusMsg.id, 'text', 'Pinata JWT gespeichert ✓\n\nSoul jetzt veröffentlichen: `@pin`')
-      setMessageMetaById(statusMsg.id, 'streaming', false)
+      setMessageMetaById(msg.id, 'text', [
+        'Pinata JWT gespeichert ✓',
+        '',
+        'Nächste Schritte:',
+        '1. Zugang: `@pin free` oder `@pin paid 0.001 0xWallet`',
+        '2. Veröffentlichen: `@pin publish <dein-name>`',
+      ].join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
+      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
     return
   }
 
-  // @pin — Soul auf IPFS registrieren (oder Anleitung wenn JWT fehlt)
-  addMessage('user', '@pin')
-  const statusMsg = addMessage('assistant', 'Pinata wird geprüft…', { streaming: true })
-  await scrollToBottom()
-
-  try {
-    const pinRes  = await fetch('/api/soul/pinata-config', {
-      headers: { Authorization: `Bearer ${props.soulCert}` },
-    })
-    const pinData = await pinRes.json().catch(() => ({}))
-
-    if (!pinData.configured) {
-      setMessageMetaById(statusMsg.id, 'text', [
-        'Pinata JWT fehlt.',
-        '',
-        '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys) → API Keys → neuen Key erstellen',
-        '2. Hier hinterlegen: `@pin <dein-jwt-token>`',
-        '3. Soul veröffentlichen: `@pin`',
-      ].join('\n'))
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-
-    setMessageMetaById(statusMsg.id, 'text', 'Soul wird auf IPFS veröffentlicht…')
-
-    const r = await fetch('/api/soul/register', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const d = await r.json().catch(() => ({}))
-
-    if (!r.ok) {
-      setMessageMetaById(statusMsg.id, 'text', `Registrierung fehlgeschlagen: ${d.error || d.message || `HTTP ${r.status}`}`)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-
-    const cid = d.cid || ''
-    setMessageMetaById(statusMsg.id, 'text', [
-      'Soul veröffentlicht ✓',
-      '',
-      `IPFS CID: \`${cid}\``,
-      '',
-      'Deine Soul ist jetzt im Netzwerk auffindbar.',
-      'Status prüfen: `@pin status`',
-    ].join('\n'))
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-  } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-  }
-  await scrollToBottom()
+  // ── Unbekannter Subbefehl → Hilfe
+  addMessage('user', `@pin ${q}`)
+  addMessage('assistant', PIN_HELP)
 }
 
 // ── @create-media — KI-Bildgenerierung ────────────────────────────
