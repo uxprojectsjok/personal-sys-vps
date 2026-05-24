@@ -2034,7 +2034,7 @@ async function handlePin(query) {
 
       const cid = amort.agent_registry_cid
       const cidLine = cid
-        ? `IPFS: veröffentlicht ✓  CID: \`${cid}\``
+        ? `IPFS: veröffentlicht ✓  [${cid}](https://gateway.pinata.cloud/ipfs/${cid})`
         : 'IPFS: noch nicht veröffentlicht  →  `@pin publish <name>`'
 
       let accessLine
@@ -2207,7 +2207,8 @@ async function handlePin(query) {
       if (namePart)       lines.push(`Name: **${namePart}**`)
       if (descPart)       lines.push(`Beschreibung: ${descPart}`)
       if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
-      lines.push('', `IPFS CID: \`${d.cid || ''}\``, '', 'Status: `@pin status`')
+      const pubCid = d.cid || ''
+      lines.push('', pubCid ? `IPFS: [${pubCid}](https://gateway.pinata.cloud/ipfs/${pubCid})` : 'IPFS: kein CID erhalten', '', 'Status: `@pin status`')
       setMessageMetaById(msg.id, 'text', lines.join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
