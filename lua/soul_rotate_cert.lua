@@ -22,11 +22,15 @@ if not soul_id or soul_id == "" then
   return
 end
 
+-- Multi-Hoster: per-soul Key bevorzugen (spiegelt soul_auth.lua-Logik)
+local per_soul_key = cfg.get_soul_master_key(soul_id)
+local active_key   = (per_soul_key and per_soul_key ~= "") and per_soul_key or master_key
+
 -- cert_version lesen und inkrementieren
 local hmac         = require("hmac_helper")
 local old_version  = hmac.read_cert_version(soul_id)
 local new_version  = old_version + 1
-local new_cert     = hmac.cert_for_soul(master_key, soul_id, new_version)
+local new_cert     = hmac.cert_for_soul(active_key, soul_id, new_version)
 
 -- sys.md wird NICHT direkt modifiziert: sie kann AES-verschlüsselt sein.
 -- Der Frontend-Client pusht die aktualisierte sys.md nach der Rotation via PUT /api/context.
