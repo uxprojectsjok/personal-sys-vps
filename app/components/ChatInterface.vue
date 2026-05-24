@@ -606,6 +606,8 @@ const AT_COMMANDS = [
   { cmd: '@create-agent',  label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
   { cmd: '@sprechen',      label: 'sprechen',     desc: 'Mit Agent sprechen',          direct: true  },
   { cmd: '@diagnose',      label: 'diagnose',     desc: 'Fehlerlog anzeigen',          direct: true  },
+  { cmd: '@contact ',      label: 'contact',      desc: 'Peer hinzufügen',             direct: false },
+  { cmd: '@pin ',          label: 'pin',          desc: 'Soul pinnen / Pinata JWT',    direct: false },
   { cmd: '@alle ',         label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
   { cmd: '@agent ',        label: 'agent',        desc: 'Agent Sandbox',               direct: false },
 ]
@@ -1528,6 +1530,12 @@ function detectIntent(text) {
   if (/^@sprechen\b/i.test(t)) return { type: 'voice-agent' }
   // @diagnose → OpenResty Fehlerlog anzeigen
   if (/^@diagnose\b/i.test(t)) return { type: 'diagnose' }
+  // @contact → Peer im Agent-Marketplace hinzufügen
+  const contactMatch = t.match(/^@contact\b\s*(.*)/is)
+  if (contactMatch) return { type: 'contact', query: contactMatch[1].trim() }
+  // @pin → Pinata JWT hinterlegen oder Soul auf IPFS registrieren
+  const pinMatch = t.match(/^@pin\b\s*(.*)/is)
+  if (pinMatch) return { type: 'pin', query: pinMatch[1].trim() }
   // @create-media → KI-Bildgenerierung via WaveSpeed
   const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
   if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
@@ -1808,6 +1816,245 @@ async function handleDiagnose() {
     const body = data.lines.map(l => `\`\`\`\n${l}\n\`\`\``).join('\n')
     const footer = `\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`
     setMessageMetaById(statusMsg.id, 'text', header + body + footer)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  } catch (err) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  }
+  await scrollToBottom()
+}
+
+// ── @contact — Peer im Agent-Marketplace hinzufügen ───────────────
+async function handleContact(query) {
+  const GUIDE = [
+    '**Peer hinzufügen — Format:**',
+    '',
+    '`@contact <soul_id> <name>` — gleicher Server',
+    '`@contact <soul_id> <name> https://peer.domain.com` — anderer Server',
+    '',
+    '**Beispiel:**',
+    '`@contact 550e8400-e29b-41d4-a716-446655440000 Jan`',
+    '',
+    'soul_id und Endpoint findest du im Marketplace-Tab des Peers unter "Dein Endpoint".',
+  ].join('\n')
+
+  if (!query) {
+    addMessage('user', '@contact')
+    addMessage('assistant', GUIDE)
+    return
+  }
+
+  // Parse: soul_id label [https://endpoint]
+  const parts = query.split(/\s+/)
+  const soulId = parts[0]
+
+  if (!/^[a-f0-9-]{36}$/i.test(soulId)) {
+    addMessage('user', `@contact ${query}`)
+    addMessage('assistant', `Ungültige Soul-ID: \`${soulId}\`\n\nErwartet: UUID-Format \`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\`\n\n${GUIDE}`)
+    return
+  }
+
+  let label = ''
+  let endpoint = ''
+  const last = parts[parts.length - 1]
+  if (parts.length >= 3 && last.startsWith('https://')) {
+    endpoint = last.replace(/\/$/, '')
+    label = parts.slice(1, -1).join(' ').trim()
+  } else {
+    label = parts.slice(1).join(' ').trim()
+  }
+
+  if (!label) {
+    addMessage('user', `@contact ${query}`)
+    addMessage('assistant', `Name fehlt.\n\n${GUIDE}`)
+    return
+  }
+
+  addMessage('user', `@contact ${query}`)
+  const statusMsg = addMessage('assistant', `Peer **${label}** wird hinzugefügt…`, { streaming: true })
+  await scrollToBottom()
+
+  try {
+    // Aktuellen Stand lesen
+    const getRes = await fetch('/api/soul/amortization', {
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    })
+    const getData = await getRes.json().catch(() => ({}))
+    const amort = getData.amortization || {}
+    const trusted = Array.isArray(amort.trusted_souls) ? [...amort.trusted_souls] : []
+
+    // Duplikat-Check
+    const dup = trusted.some(t =>
+      (typeof t === 'string' && t === soulId) ||
+      (typeof t === 'object' && t?.soul_id === soulId)
+    )
+    if (dup) {
+      setMessageMetaById(statusMsg.id, 'text', `Peer \`${soulId}\` ist bereits verbunden.`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    // Neuen Eintrag im selben Format wie peersToTrustedSouls()
+    trusted.push(endpoint ? { soul_id: soulId, endpoint } : soulId)
+
+    const putRes = await fetch('/api/soul/amortization', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled:             amort.enabled             ?? false,
+        pol_per_request:     amort.pol_per_request     ?? '0.001',
+        wallet:              amort.wallet              ?? '',
+        agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
+        token_duration_days: amort.token_duration_days ?? 1,
+        trusted_souls:       trusted,
+      }),
+    })
+
+    if (!putRes.ok) {
+      const d = await putRes.json().catch(() => ({}))
+      setMessageMetaById(statusMsg.id, 'text', `Fehler: ${d.error || d.message || `HTTP ${putRes.status}`}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    // localStorage für Agent-Marketplace Label-Anzeige aktualisieren
+    const localKey = `sys.connected_nodes.${props.soulCert?.split('.')?.[0] || ''}`
+    if (localKey !== 'sys.connected_nodes.') {
+      try {
+        const nodes = JSON.parse(localStorage.getItem(localKey) || '[]')
+        if (!nodes.some(n => n.soul_id === soulId)) {
+          nodes.push({
+            soul_id: soulId,
+            url: endpoint ? `${endpoint}/mcp` : `${window.location.origin}/mcp`,
+            label,
+          })
+          localStorage.setItem(localKey, JSON.stringify(nodes))
+        }
+      } catch { /* ignore */ }
+    }
+
+    const lines = [`Peer **${label}** hinzugefügt ✓`, '', `Soul-ID: \`${soulId}\``]
+    if (endpoint) lines.push(`Endpoint: \`${endpoint}\``)
+    lines.push('', 'Sichtbar im Agent-Marketplace unter **Zugang**.')
+    setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  } catch (err) {
+    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'streaming', false)
+  }
+  await scrollToBottom()
+}
+
+// ── @pin — Pinata JWT hinterlegen / Soul veröffentlichen ──────────
+async function handlePin(query) {
+  const q = query.trim()
+
+  // @pin status
+  if (/^status$/i.test(q)) {
+    addMessage('user', '@pin status')
+    const statusMsg = addMessage('assistant', 'Pinata-Status wird geprüft…', { streaming: true })
+    await scrollToBottom()
+    try {
+      const [pinRes, amortRes] = await Promise.all([
+        fetch('/api/soul/pinata-config', { headers: { Authorization: `Bearer ${props.soulCert}` } }),
+        fetch('/api/soul/amortization',  { headers: { Authorization: `Bearer ${props.soulCert}` } }),
+      ])
+      const pinData   = await pinRes.json().catch(() => ({}))
+      const amortData = await amortRes.json().catch(() => ({}))
+
+      const jwtLine = pinData.configured
+        ? `JWT: \`${pinData.preview}\` ✓`
+        : 'JWT: nicht konfiguriert — `@pin <jwt>` zum Hinterlegen'
+      const cid = amortData.amortization?.agent_registry_cid
+      const cidLine = cid
+        ? `IPFS CID: \`${cid}\` (veröffentlicht ✓)`
+        : 'IPFS: noch nicht veröffentlicht — `@pin` zum Registrieren'
+
+      setMessageMetaById(statusMsg.id, 'text', `**Pinata Status**\n\n${jwtLine}\n${cidLine}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // @pin <jwt> — JWT hinterlegen (alles mit 20+ Zeichen das kein bekannter Subbefehl ist)
+  if (q.length >= 20) {
+    const preview = q.substring(0, 8) + '…'
+    addMessage('user', `@pin ${preview}`)
+    const statusMsg = addMessage('assistant', 'Pinata JWT wird gespeichert…', { streaming: true })
+    await scrollToBottom()
+    try {
+      const r = await fetch('/api/soul/pinata-config', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jwt: q }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setMessageMetaById(statusMsg.id, 'text', `Fehler: ${d.error || `HTTP ${r.status}`}`)
+        setMessageMetaById(statusMsg.id, 'streaming', false)
+        return
+      }
+      setMessageMetaById(statusMsg.id, 'text', 'Pinata JWT gespeichert ✓\n\nSoul jetzt veröffentlichen: `@pin`')
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    } catch (err) {
+      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  // @pin — Soul auf IPFS registrieren (oder Anleitung wenn JWT fehlt)
+  addMessage('user', '@pin')
+  const statusMsg = addMessage('assistant', 'Pinata wird geprüft…', { streaming: true })
+  await scrollToBottom()
+
+  try {
+    const pinRes  = await fetch('/api/soul/pinata-config', {
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    })
+    const pinData = await pinRes.json().catch(() => ({}))
+
+    if (!pinData.configured) {
+      setMessageMetaById(statusMsg.id, 'text', [
+        'Pinata JWT fehlt.',
+        '',
+        '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys) → API Keys → neuen Key erstellen',
+        '2. Hier hinterlegen: `@pin <dein-jwt-token>`',
+        '3. Soul veröffentlichen: `@pin`',
+      ].join('\n'))
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    setMessageMetaById(statusMsg.id, 'text', 'Soul wird auf IPFS veröffentlicht…')
+
+    const r = await fetch('/api/soul/register', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    const d = await r.json().catch(() => ({}))
+
+    if (!r.ok) {
+      setMessageMetaById(statusMsg.id, 'text', `Registrierung fehlgeschlagen: ${d.error || d.message || `HTTP ${r.status}`}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+      return
+    }
+
+    const cid = d.cid || ''
+    setMessageMetaById(statusMsg.id, 'text', [
+      'Soul veröffentlicht ✓',
+      '',
+      `IPFS CID: \`${cid}\``,
+      '',
+      'Deine Soul ist jetzt im Netzwerk auffindbar.',
+      'Status prüfen: `@pin status`',
+    ].join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
     setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
@@ -2202,6 +2449,16 @@ async function handleSend() {
 
   if (intent.type === 'diagnose') {
     await handleDiagnose()
+    return
+  }
+
+  if (intent.type === 'contact') {
+    await handleContact(intent.query)
+    return
+  }
+
+  if (intent.type === 'pin') {
+    await handlePin(intent.query)
     return
   }
 
