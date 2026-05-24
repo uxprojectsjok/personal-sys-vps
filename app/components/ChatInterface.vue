@@ -1946,6 +1946,23 @@ async function handleContact(query) {
 }
 
 // ── @pin — Pinata JWT hinterlegen / Soul veröffentlichen ──────────
+const PIN_TOOLS = [
+  { id: 'soul_read',     name: 'Soul lesen',           desc: 'sys.md, Identität, Werte, Session-Log' },
+  { id: 'soul_maturity', name: 'Reifegrad',             desc: 'Reife-Score 0–100 der Soul' },
+  { id: 'soul_skills',   name: 'Skills',                desc: 'Fähigkeiten & Kenntnisse aus der Soul' },
+  { id: 'verify_human',  name: 'Menschlichkeit',        desc: 'Bestätigt, dass hinter der Soul ein Mensch steht' },
+  { id: 'audio_get',     name: 'Audio abrufen',         desc: 'Einzelne Audio-Datei aus dem Vault' },
+  { id: 'audio_list',    name: 'Audio auflisten',       desc: 'Alle Audio-Dateien im Vault' },
+  { id: 'image_get',     name: 'Bild abrufen',          desc: 'Einzelnes Bild aus dem Vault' },
+  { id: 'image_list',    name: 'Bilder auflisten',      desc: 'Alle Bilder im Vault' },
+  { id: 'video_get',     name: 'Video abrufen',         desc: 'Einzelnes Video aus dem Vault' },
+  { id: 'video_list',    name: 'Videos auflisten',      desc: 'Alle Videos im Vault' },
+  { id: 'context_get',   name: 'Kontext-Datei lesen',   desc: 'mind.md oder andere Kontext-Dateien' },
+  { id: 'context_list',  name: 'Kontext auflisten',     desc: 'Alle Kontext-Dateien im Vault' },
+  { id: 'profile_get',   name: 'Profil abrufen',        desc: 'Profilfoto, biometrische Metadaten' },
+  { id: 'calendar_read', name: 'Kalender lesen',        desc: 'Kalender-Einträge der Soul' },
+]
+
 async function handlePin(query) {
   const q    = query.trim()
   const auth = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
@@ -2019,8 +2036,11 @@ async function handlePin(query) {
         const wallet = amort.wallet ? `\`${amort.wallet.slice(0, 10)}…\`` : 'Wallet fehlt'
         const days   = amort.token_duration_days || 1
         const tools  = Array.isArray(amort.agent_tools) && amort.agent_tools.length
-          ? amort.agent_tools.join(', ')
-          : '(keine gesetzt)  →  `@pin tools soul_read,verify_human`'
+          ? amort.agent_tools.map(t => {
+              const meta = PIN_TOOLS.find(pt => pt.id === t)
+              return meta ? `${t} (${meta.name})` : t
+            }).join(', ')
+          : '(keine)  →  `@pin tools` für Liste'
         accessLine = `Zugang: Bezahlt  ${rate} POL · ${wallet} · ${days}d\nTools: ${tools}`
       } else {
         accessLine = amort.hasOwnProperty?.('enabled')
@@ -2088,22 +2108,47 @@ async function handlePin(query) {
     return
   }
 
-  // ── @pin tools <t1,t2,...> ─────────────────────────────────────
-  const toolsM = q.match(/^tools\s+(.+)/i)
-  if (toolsM) {
-    const tools = toolsM[1].split(',').map(t => t.trim()).filter(Boolean)
+  // ── @pin tools [<t1,t2,...>] ───────────────────────────────────
+  if (/^tools$/i.test(q) || /^tools\s/i.test(q)) {
+    const toolsArg = q.replace(/^tools\s*/i, '').trim()
+
+    // Ohne Args → verfügbare Tools auflisten
+    if (!toolsArg) {
+      addMessage('user', '@pin tools')
+      const lines = [
+        '**Verfügbare Tools zur Freigabe:**',
+        '',
+        ...PIN_TOOLS.map(t => `\`${t.id}\` — **${t.name}**  ${t.desc}`),
+        '',
+        'Setzen mit: `@pin tools soul_read,verify_human,soul_maturity`',
+        '_(kommasepariert, aus der Liste oben wählen)_',
+      ]
+      addMessage('assistant', lines.join('\n'))
+      return
+    }
+
+    // Mit Args → setzen + Klarnamen in Bestätigung
+    const tools = toolsArg.split(',').map(t => t.trim()).filter(Boolean)
+    const unknown = tools.filter(t => !PIN_TOOLS.some(pt => pt.id === t))
     addMessage('user', `@pin tools ${tools.join(', ')}`)
     const msg = addMessage('assistant', 'Tools werden gesetzt…', { streaming: true })
     await scrollToBottom()
     try {
       await putAmort({ agent_tools: tools })
+      const named = tools.map(t => {
+        const meta = PIN_TOOLS.find(pt => pt.id === t)
+        return meta ? `\`${t}\` — ${meta.name}` : `\`${t}\``
+      })
+      const warnLine = unknown.length
+        ? `\n\n⚠ Unbekannte Tools (werden ignoriert): ${unknown.map(t => `\`${t}\``).join(', ')}`
+        : ''
       setMessageMetaById(msg.id, 'text', [
         'Tools gesetzt ✓',
         '',
-        tools.join(', '),
+        ...named,
         '',
         'Veröffentlichen: `@pin publish <name>`',
-      ].join('\n'))
+      ].join('\n') + warnLine)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
       setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
