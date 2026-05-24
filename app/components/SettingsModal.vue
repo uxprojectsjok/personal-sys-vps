@@ -279,10 +279,15 @@
                   style="width:100%;justify-content:center"
                 >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
                 <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:6px 0 0">
-                  Altes Cert sofort ungültig — sys.md wird automatisch heruntergeladen.
+                  Neues Cert wird sofort aktiv — du bleibst eingeloggt. sys.md wird heruntergeladen.
                 </p>
                 <Transition name="sys-modal-fade">
                   <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
+                    <!-- Fehler-Fall -->
+                    <div v-if="certRotationResult.error" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">
+                      Cert-Rotation fehlgeschlagen — bitte Seite neu laden und erneut versuchen.
+                    </div>
+                    <template v-else>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                       <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
@@ -308,6 +313,7 @@
                     <p v-else-if="certRotationResult.credsUpdateFailed" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-warn,#f59e0b);margin-top:4px">
                       Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
                     </p>
+                    </template>
                   </div>
                 </Transition>
               </div>
@@ -856,6 +862,12 @@ async function saveMaster() {
         emit('master-rotated')
         // Altes Cert ist während der Grace-Period noch gültig — sofort neues ausstellen.
         await handleRotateCert()
+        // Cert-Ergebnis im Admin-Tab kommunizieren (Result-Card ist im API-Tab).
+        if (certRotationResult.value && !certRotationResult.value.error) {
+          adminFeedback.value = { ok: true, message: 'Master-Key & Cert rotiert ✓ — sys.md heruntergeladen. Du bleibst eingeloggt.' }
+        } else {
+          adminFeedback.value = { ok: false, message: 'Master-Key rotiert — Cert-Rotation fehlgeschlagen. Manuell im API-Tab erneuern.' }
+        }
       }
     } else {
       adminFeedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
@@ -905,7 +917,7 @@ async function handleRotateCert() {
   certRotationResult.value = null
   try {
     const result = await rotateCert()
-    if (!result) { alert('Cert-Rotation fehlgeschlagen'); return }
+    if (!result) { certRotationResult.value = { error: true }; return }
 
     // Vault-Datei + Server + lokaler Download — alle drei aktualisieren
     if (vaultConnected.value && composableSoulContent.value) {
