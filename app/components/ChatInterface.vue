@@ -3698,8 +3698,10 @@ defineExpose({
   .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
   .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
-  .msg-inner img, .msg-inner video, .msg-inner iframe, .msg-inner audio { max-width: 100%; width: auto; }
-  .media-audio audio, .media-embed iframe, .media-spotify iframe { max-width: 100%; }
+  .msg-inner img, .msg-inner video, .msg-inner iframe { max-width: 100%; width: auto; }
+  .media-audio { min-width: 220px; }
+  .media-audio audio { width: 100%; max-width: 100%; }
+  .media-embed iframe, .media-spotify iframe { max-width: 100%; }
   .msg-doc-a { max-width: 100%; }
   .msg-doc-name { max-width: 100%; }
 
