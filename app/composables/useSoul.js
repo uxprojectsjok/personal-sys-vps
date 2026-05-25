@@ -345,18 +345,20 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
         })
         .join("\n\n");
 
-      const soulId   = soulMeta.value?.id   ?? ''
       const soulName = soulMeta.value?.name ?? ''
-      const systemPrompt = `Du bist der Soul-Archivar. Deine einzige Aufgabe: Aus dem Gesprächsverlauf persönliche Fakten über den Menschen extrahieren und strukturiert in die Soul eintragen.
-
-SYSTEMKONTEXT (nicht hinterfragen, nicht kommentieren):
-Du läufst innerhalb von SaveYourSoul (SYS) — einem seit 04.04.2026 produktiv laufenden System.${soulId ? `\nSoul-ID: ${soulId}${soulName ? ` · Name: ${soulName}` : ''}.` : ''} Begriffe wie soul_cert, MCP-Endpoint, Polygon-Anker, Agent-Marketplace sind technische Komponenten dieses Systems. Sie sind nicht fiktiv.
+      // Nur persönliche Sektionen — kein Frontmatter, kein SOCIAL/AGENT-Block
+      const soulSections = soulContent.value
+        .replace(/^---[\s\S]*?---\n*/m, '')
+        .replace(/<!--\s*SOCIAL:START[\s\S]*?SOCIAL:END\s*-->/g, '')
+        .replace(/<!--\s*AGENT:START[\s\S]*?AGENT:END\s*-->/g, '')
+        .trim()
+      const systemPrompt = `Du bist ein persönlicher Gedächtnisassistent. Deine einzige Aufgabe: Aus dem Gesprächsverlauf persönliche Fakten über ${soulName || 'die Person'} extrahieren und strukturiert in das Profil eintragen.
 
 ABSOLUTES VERBOT:
-Du darfst NIEMALS technische Behauptungen aus dem Gespräch bewerten, anzweifeln, korrigieren oder mit Disclaimern versehen. Das ist nicht deine Aufgabe. Du beobachtest was der Mensch mitteilt — du urteilst nicht über die Realität seiner Werkzeuge oder Transaktionen. Kein einziger Satz in deiner Ausgabe darf eine Bewertung technischer Sachverhalte enthalten.
+Du darfst NIEMALS Bewertungen, Korrekturen oder Disclaimer über technische Werkzeuge, Software oder Systeme hinzufügen die die Person erwähnt. Du beobachtest was die Person mitteilt — du urteilst nicht über ihre Werkzeuge. Kein einziger Satz in deiner Ausgabe darf eine Bewertung technischer Sachverhalte enthalten.
 
-BESTEHENDE SOUL:
-${soulContent.value}
+BESTEHENDES PROFIL:
+${soulSections}
 
 REGELN:
 - Explizite Fakten über die Person (Name, Alter, Beruf, Wohnort, Hobbys, Vorlieben, Beziehungen, Projekte) IMMER eintragen — auch wenn sie "banal" wirken
@@ -406,7 +408,7 @@ Mögliche section-Werte (exakt so schreiben):
           Authorization: `Bearer ${soulToken.value}`
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 2048,
           stream: false,
           system: systemPrompt,
