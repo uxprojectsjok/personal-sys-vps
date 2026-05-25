@@ -377,18 +377,6 @@
                 <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
               </div>
 
-              <!-- Master Anthropic-Key (nur global-Admin, nicht per-soul) -->
-              <div class="sys-field" v-if="!isSoulAdmin">
-                <label class="sys-field-label">Server Anthropic-Key (Fallback für alle)</label>
-                <input
-                  v-model="masterAnthropicKey"
-                  type="password"
-                  class="sys-input sys-input--mono"
-                  placeholder="sk-ant-… (leer = unverändert)"
-                  autocomplete="off"
-                />
-              </div>
-
               <!-- Grace-Period -->
               <Transition name="sys-modal-fade">
                 <div v-if="graceUntil" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);padding:14px 16px;margin-bottom:16px">
