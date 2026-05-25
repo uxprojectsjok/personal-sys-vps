@@ -74,9 +74,9 @@ end
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
   if text == "" then return nil end
-  local m = text:match("## " .. section .. "%s*\n([\0-\255]-)\n##")
+  local m = text:match("## " .. section .. "%s*\n([^\1]-)\n##")
   if not m then
-    m = text:match("## " .. section .. "%s*\n([\0-\255]-)$")
+    m = text:match("## " .. section .. "%s*\n([^\1]-)$")
   end
   if m then return m:match("^%s*(.-)%s*$") end
   return nil
@@ -357,7 +357,7 @@ end
 
 -- ── agent_id + voice_id in sys.md registrieren ────────────────────────────────
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
-  local fm_match = sys_text:match("^(---%s*\n[\0-\255]-)(\n---)")
+  local fm_match = sys_text:match("^(---%s*\n[^\1]-)(\n---)")
   if fm_match then
     local function patch_field(text, key, val)
       if text:match("\n" .. key .. ":") then
@@ -366,13 +366,13 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
         return text .. "\n" .. key .. ": " .. val
       end
     end
-    local fm = sys_text:match("^---\n([\0-\255]-)\n---")
+    local fm = sys_text:match("^---\n([^\1]-)\n---")
     if fm then
       fm = patch_field(fm, "elevenlabs_agent_id", agent_id)
       if voice_id then
         fm = patch_field(fm, "elevenlabs_voice_id", voice_id)
       end
-      local updated = sys_text:gsub("^---\n[\0-\255]-\n---", function() return "---\n" .. fm .. "\n---" end, 1)
+      local updated = sys_text:gsub("^---\n[^\1]-\n---", function() return "---\n" .. fm .. "\n---" end, 1)
       write_file(BASE_DIR .. "/sys.md", updated)
     end
   end
