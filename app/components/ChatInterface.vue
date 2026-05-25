@@ -162,21 +162,6 @@
           <MotionCaptureCard v-else :mode="item.captureMode" />
         </div>
 
-        <!-- Voice-Agent preview -->
-        <div v-else-if="item._type === 'voice-agent'" class="va-wrap">
-          <div class="va-header">
-            <span class="va-label">Sprachnachricht</span>
-            <button class="va-dismiss" @click="discardVoiceAgent(item.id)" aria-label="Verwerfen">✕</button>
-          </div>
-          <audio v-if="item.audioUrl && !item.agentDone" controls :src="item.audioUrl" class="va-audio"></audio>
-          <p v-if="item.statusText && item.agentRunning" class="va-status">{{ item.statusText }}</p>
-          <div v-if="item.agentRunning" class="dots va-dots"><span></span><span></span><span></span></div>
-          <p v-if="item.agentError" class="va-error">{{ item.agentError }}</p>
-          <div v-if="!item.agentRunning && !item.agentDone" class="va-actions">
-            <button class="va-send" @click="sendToAgent(item)">Senden an Agent</button>
-          </div>
-          <p v-if="item.agentDone" class="va-done">Fertig — Antwort im Chat</p>
-        </div>
 
       </template>
 
@@ -509,8 +494,7 @@ function preflightCheck(type) {
 }
 
 // ── Voice-Agent Aufnahme ───────────────────────────────────────────
-const voiceRecording   = ref(false)
-const voiceAgentBlobs  = new Map() // msgId → Blob
+const voiceRecording = ref(false)
 let _vaStream   = null
 let _vaRecorder = null
 let _vaChunks   = []
@@ -539,60 +523,44 @@ async function stopVoiceRecord() {
       const mime = _vaRecorder.mimeType || 'audio/webm'
       const blob = new Blob(_vaChunks, { type: mime })
       voiceRecording.value = false
+      _vaChunks = []
       if (blob.size < 2000) { resolve(); return } // zu kurz → verwerfen
-      const url  = URL.createObjectURL(blob)
-      const item = addMessage('voice-agent', '', { _type: 'voice-agent', audioUrl: url })
-      voiceAgentBlobs.set(item.id, blob)
+
+      // Aufnahme sofort als User-Bubble zeigen
+      const audioUrl = URL.createObjectURL(blob)
+      const userMsg  = addMessage('user', '', { mediaUrl: audioUrl, mediaType: 'audio' })
+      // Lade-Bubble für Agent-Antwort
+      const agentMsg = addMessage('assistant', '', { streaming: true })
       await scrollToBottom()
       resolve()
+
+      // Agent asynchron aufrufen
+      try {
+        const { userText, agentText, audioBlob } = await sendAudioToAgent(blob, {
+          soulCert: props.soulCert,
+        })
+        // Transkription in User-Bubble nachtragen
+        if (userText) setMessageMetaById(userMsg.id, 'text', userText)
+        // Agent-Antwort eintragen
+        const agentAudioUrl = audioBlob ? URL.createObjectURL(audioBlob) : null
+        setMessageMetaById(agentMsg.id, 'text', agentText || '')
+        setMessageMetaById(agentMsg.id, 'streaming', false)
+        if (agentAudioUrl) {
+          setMessageMetaById(agentMsg.id, 'mediaUrl', agentAudioUrl)
+          setMessageMetaById(agentMsg.id, 'mediaType', 'audio')
+        }
+      } catch (err) {
+        const msg = err.message === 'elevenlabs_key_missing' ? 'ElevenLabs API-Key fehlt.' :
+                    err.message === 'elevenlabs_agent_missing' ? 'Kein Agent gefunden — erstelle ihn mit @create-agent.' :
+                    `Agent-Fehler: ${err.message}`
+        setMessageMetaById(agentMsg.id, 'text', msg)
+        setMessageMetaById(agentMsg.id, 'streaming', false)
+      }
+      await scrollToBottom()
     }
     _vaRecorder.stop()
     _vaStream?.getTracks().forEach(t => t.stop())
   })
-}
-
-function discardVoiceAgent(msgId) {
-  const item = messages.value.find(m => m.id === msgId)
-  if (item?.audioUrl) URL.revokeObjectURL(item.audioUrl)
-  voiceAgentBlobs.delete(msgId)
-  removeMessage(msgId)
-}
-
-async function sendToAgent(item) {
-  const blob = voiceAgentBlobs.get(item.id)
-  if (!blob) return
-  setMessageMetaById(item.id, 'agentRunning', true)
-  await scrollToBottom()
-
-  try {
-    const { userText, agentText, audioBlob } = await sendAudioToAgent(blob, {
-      soulCert: props.soulCert,
-      onStatus: (s) => setMessageMetaById(item.id, 'statusText', s),
-    })
-
-    // Vorschau-Karte ausblenden
-    setMessageMetaById(item.id, 'agentDone', true)
-    setMessageMetaById(item.id, 'agentRunning', false)
-
-    // Erkannten Text als User-Bubble
-    if (userText) addMessage('user', userText)
-
-    // Agent-Antwort als Text-Bubble
-    if (agentText || audioBlob) {
-      const agentAudioUrl = audioBlob ? URL.createObjectURL(audioBlob) : null
-      addMessage('assistant', agentText || '', {
-        mediaUrl:  agentAudioUrl || undefined,
-        mediaType: agentAudioUrl ? 'audio' : undefined,
-      })
-    }
-  } catch (err) {
-    const msg = err.message === 'elevenlabs_key_missing' ? 'ElevenLabs API-Key fehlt.' :
-                err.message === 'elevenlabs_agent_missing' ? 'Kein Agent gefunden — erstelle ihn mit @create-agent.' :
-                `Agent-Fehler: ${err.message}`
-    setMessageMetaById(item.id, 'agentRunning', false)
-    setMessageMetaById(item.id, 'agentError', msg)
-  }
-  await scrollToBottom()
 }
 
 // ── Media drawer ────────────────────────────────────────────────────
@@ -3362,54 +3330,20 @@ defineExpose({
 }
 .capture-dismiss:active { transform: scale(0.92); }
 
-/* ── Voice-Agent preview ─────────────────────────────────────────── */
-.va-wrap {
-  margin: 0 clamp(10px, 4vw, 32px);
-  padding: 14px 16px;
-  border: 1px solid var(--rule-2);
-  border-radius: 14px;
-  background: rgba(139, 92, 246, 0.06);
-  display: flex; flex-direction: column; gap: 10px;
-}
-.va-header {
-  display: flex; align-items: center; justify-content: space-between;
-}
-.va-label {
-  font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--accent-bright); font-family: var(--sans);
-}
-.va-dismiss {
-  background: none; border: none; cursor: pointer;
-  color: var(--fg-4); font-size: 14px; padding: 2px 4px;
-  transition: color .15s;
-}
-.va-dismiss:hover { color: var(--fg); }
-.va-audio {
-  width: 100%; height: 36px; accent-color: var(--accent);
-  border-radius: 8px;
-}
-.va-status { font-size: 12px; color: var(--fg-3); font-family: var(--sans); }
-.va-dots { justify-content: flex-start; padding: 4px 0; }
-.va-error { font-size: 12px; color: #f0a3a3; font-family: var(--sans); }
-.va-done  { font-size: 12px; color: var(--fg-3); font-family: var(--sans); }
-.va-actions { display: flex; gap: 8px; }
-.va-send {
-  padding: 7px 18px; border-radius: 99px;
-  background: var(--accent); color: var(--on-accent);
-  border: none; cursor: pointer; font-size: 13px; font-family: var(--sans);
-  font-weight: 600; transition: opacity .15s;
-}
-.va-send:hover { opacity: .88; }
-
 /* ── Mic button ──────────────────────────────────────────────────── */
 .dock-mic {
   flex-shrink: 0;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, box-shadow .15s;
 }
 .dock-mic.recording {
-  background: rgba(239, 68, 68, 0.18);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.22);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.55);
+  animation: mic-pulse 1s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
 }
 
 /* ════════════════════════════════════════════════════════════════════
