@@ -589,6 +589,13 @@ export function useChainAnchor() {
         chainJson,
       );
     }
+    // chain_count im Frontmatter synchron halten
+    const chainCount = chain.length;
+    if (/chain_count:\s*\d+/m.test(soulContent.value)) {
+      soulContent.value = soulContent.value.replace(/chain_count:\s*\d+/m, `chain_count: ${chainCount}`);
+    } else {
+      soulContent.value = updateFrontmatterField(soulContent.value, "chain_count", chainCount);
+    }
     save();
   }
 
