@@ -153,14 +153,16 @@ if ctx.synced_files and type(ctx.synced_files.audio) == "table" then
   end
 end
 
--- Disk-Fallback: Verzeichnis direkt scannen wenn api_context.json keine Treffer hat
-if #candidates == 0 then
+-- Disk-Scan: immer zusätzlich scannen (dedup) damit veraltete api_context-Einträge keinen Treffer blockieren
+do
   local ls = io.popen("ls -1 " .. audio_dir .. " 2>/dev/null")
   if ls then
     for line in ls:lines() do
       if line:match("%.webm$") or line:match("%.mp3$")
          or line:match("%.wav$") or line:match("%.m4a$") then
-        table.insert(candidates, line)
+        local dup = false
+        for _, c in ipairs(candidates) do if c == line then dup = true; break end end
+        if not dup then table.insert(candidates, line) end
       end
     end
     ls:close()
