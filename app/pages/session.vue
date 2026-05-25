@@ -109,6 +109,7 @@
               role="soul"
               :growth-locked="isGrowingQuietly"
               @cert-error="handleCertError"
+            @session-end="forceSessionEnd"
             />
           </div>
 
@@ -250,6 +251,28 @@ async function runBackgroundSoulGrowth() {
       soulJustGrew.value = true
       setTimeout(() => { soulJustGrew.value = false }, 3000)
     }
+  } catch { /* silent */ } finally {
+    isGrowingQuietly.value = false
+  }
+}
+
+// Manueller Trigger via @session-end — bypassed Mindest-Checks
+async function forceSessionEnd() {
+  if (isGrowingQuietly.value) return
+  const aiMsgs    = toApiMessages(12)
+  const sphereCtx = buildLiveSphereContext()
+  isGrowingQuietly.value = true
+  try {
+    const result = await enrichFromSession(aiMsgs, sphereCtx)
+    if (result?.changed) {
+      _lastGrowthAiCount = aiMsgs.filter(m => m.role === 'user').length
+      await appendGrowthEntry().catch(() => {})
+      await pushToServer().catch(() => {})
+      if (vaultConnected.value) await writeSoulMd(soulContent.value, 'sys').catch(() => {})
+      soulJustGrew.value = true
+      setTimeout(() => { soulJustGrew.value = false }, 3000)
+    }
+    chatRef.value?.addAssistantMessage?.('Session eingetragen ✓')
   } catch { /* silent */ } finally {
     isGrowingQuietly.value = false
   }

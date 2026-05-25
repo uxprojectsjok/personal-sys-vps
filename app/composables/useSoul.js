@@ -346,11 +346,10 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
         .join("\n\n");
 
       const soulName = soulMeta.value?.name ?? ''
-      // Nur persönliche Sektionen — kein Frontmatter, kein SOCIAL/AGENT-Block
+      // Frontmatter raus (soul_id, soul_chain_anchor, soul_growth_chain etc. triggern Roleplay-Klassifikation)
+      // SOCIAL/AGENT-Blöcke bleiben — das ist der Lebensumfeld-Kontext
       const soulSections = soulContent.value
         .replace(/^---[\s\S]*?---\n*/m, '')
-        .replace(/<!--\s*SOCIAL:START[\s\S]*?SOCIAL:END\s*-->/g, '')
-        .replace(/<!--\s*AGENT:START[\s\S]*?AGENT:END\s*-->/g, '')
         .trim()
       const systemPrompt = `Du bist ein persönlicher Gedächtnisassistent. Deine einzige Aufgabe: Aus dem Gesprächsverlauf persönliche Fakten über ${soulName || 'die Person'} extrahieren und strukturiert in das Profil eintragen.
 
