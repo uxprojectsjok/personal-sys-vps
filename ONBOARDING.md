@@ -125,7 +125,7 @@ When a soul first imports their sys.md, the node generates fresh credentials and
 **Networking**
 - Soul connections: connect other SYS nodes as peers
 - MCP server: Claude Desktop and other AI clients connect via OAuth 2.0
-- WhatsApp bot with your soul as context (Twilio Serverless, optional)
+- Zapier integration: automate workflows and notifications via webhooks
 - Browser extension for automatic authentication (Chrome MV3)
 
 **Growth**
