@@ -2001,9 +2001,46 @@ const PIN_TOOLS = [
 ]
 
 async function handlePin(query) {
-  const q    = query.trim()
-  const auth = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
+  const auth  = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
   const authH = { Authorization: `Bearer ${props.soulCert}` }
+
+  // Intern aufgerufen nach Bestätigung: { _publishExec: { namePart, descPart, tagsArr } }
+  if (query && typeof query === 'object' && query._publishExec) {
+    const { namePart, descPart, tagsArr } = query._publishExec
+    const body = {}
+    if (namePart)       body.name_override = namePart
+    if (descPart)       body.description   = descPart
+    if (tagsArr.length) body.tags = tagsArr
+    const msg = addMessage('assistant', 'Soul wird auf IPFS veröffentlicht…', { streaming: true })
+    await scrollToBottom()
+    try {
+      const pinRes  = await fetch('/api/soul/pinata-config', { headers: authH })
+      const pinData = await pinRes.json().catch(() => ({}))
+      if (!pinData.configured) {
+        setMessageMetaById(msg.id, 'text', ['Pinata JWT fehlt.', '', '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys)', '2. Hinterlegen: `@pin <jwt>`', '3. Dann: `@pin publish <name>`'].join('\n'))
+        setMessageMetaById(msg.id, 'streaming', false)
+        return
+      }
+      const r = await fetch('/api/soul/register', { method: 'POST', headers: auth, body: JSON.stringify(body) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || d.message || `HTTP ${r.status}`}`); setMessageMetaById(msg.id, 'streaming', false); return }
+      const pubCid = d.cid || ''
+      if (pubCid) await putAmort({ agent_registry_cid: pubCid }).catch(() => {})
+      const lines = ['Soul veröffentlicht ✓', '']
+      if (namePart)       lines.push(`Name: **${namePart}**`)
+      if (descPart)       lines.push(`Beschreibung: ${descPart}`)
+      if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
+      if (pubCid) { lines.push('', `CID: \`${pubCid}\``, `[Gateway öffnen ↗](https://gateway.pinata.cloud/ipfs/${pubCid})`) }
+      else { lines.push('', 'IPFS: kein CID erhalten') }
+      lines.push('', 'Zugang & Status: `@pin status`')
+      setMessageMetaById(msg.id, 'text', lines.join('\n'))
+      setMessageMetaById(msg.id, 'streaming', false)
+    } catch (err) { setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`); setMessageMetaById(msg.id, 'streaming', false) }
+    await scrollToBottom()
+    return
+  }
+
+  const q    = query.trim()
   startJob(`@pin ${q.split(' ')[0] || 'status'}`)
 
   const PIN_HELP = [
@@ -2224,57 +2261,20 @@ async function handlePin(query) {
   if (/^publish/i.test(q)) {
     const rest = q.replace(/^publish\s*/i, '').trim()
     const [namePart = '', descPart = '', tagsPart = ''] = rest.split('|').map(s => s.trim())
-    const body = {}
-    if (namePart)  body.name_override = namePart
-    if (descPart)  body.description   = descPart
     const tagsArr = tagsPart ? tagsPart.split(',').map(t => t.trim()).filter(Boolean) : []
-    if (tagsArr.length) body.tags = tagsArr
 
     addMessage('user', namePart ? `@pin publish ${namePart}` : '@pin publish')
-    const msg = addMessage('assistant', 'Wird geprüft…', { streaming: true })
-    await scrollToBottom()
-    try {
-      const pinRes  = await fetch('/api/soul/pinata-config', { headers: authH })
-      const pinData = await pinRes.json().catch(() => ({}))
-      if (!pinData.configured) {
-        setMessageMetaById(msg.id, 'text', [
-          'Pinata JWT fehlt.',
-          '',
-          '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys)',
-          '2. Hinterlegen: `@pin <jwt>`',
-          '3. Dann: `@pin publish <name>`',
-        ].join('\n'))
-        setMessageMetaById(msg.id, 'streaming', false)
-        return
-      }
 
-      setMessageMetaById(msg.id, 'text', 'Soul wird auf IPFS veröffentlicht…')
-
-      const r = await fetch('/api/soul/register', { method: 'POST', headers: auth, body: JSON.stringify(body) })
-      const d = await r.json().catch(() => ({}))
-      if (!r.ok) {
-        setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || d.message || `HTTP ${r.status}`}`)
-        setMessageMetaById(msg.id, 'streaming', false)
-        return
-      }
-
-      // CID in Amortization speichern — Zugang zeigt veröffentlichten Stand
-      const pubCid = d.cid || ''
-      if (pubCid) {
-        await putAmort({ agent_registry_cid: pubCid }).catch(() => {})
-      }
-
-      const lines = ['Soul veröffentlicht ✓', '']
-      if (namePart)       lines.push(`Name: **${namePart}**`)
-      if (descPart)       lines.push(`Beschreibung: ${descPart}`)
-      if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
-      lines.push('', pubCid ? `IPFS: [${pubCid}](https://gateway.pinata.cloud/ipfs/${pubCid})` : 'IPFS: kein CID erhalten', '', 'Zugang & Status: `@pin status`')
-      setMessageMetaById(msg.id, 'text', lines.join('\n'))
-      setMessageMetaById(msg.id, 'streaming', false)
-    } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
-      setMessageMetaById(msg.id, 'streaming', false)
-    }
+    // Bestätigungsschritt — zeigt was veröffentlicht wird
+    const confirmLines = ['**Veröffentlichen bestätigen:**', '']
+    confirmLines.push(`Name: **${namePart || '(aus sys.md)'}**`)
+    if (descPart) confirmLines.push(`Beschreibung: ${descPart}`)
+    confirmLines.push(tagsArr.length ? `Tags: \`${tagsArr.join('`, `')}\`` : 'Tags: *(keine)* — für soul_discover wichtig: `@pin publish Name | Desc | Tag1,Tag2`')
+    const confirmMsg = addMessage('assistant', confirmLines.join('\n'))
+    setMessageMetaById(confirmMsg.id, 'actions', [
+      { label: 'Veröffentlichen ✓', primary: true, type: 'pin_publish_confirm', _publishData: { namePart, descPart, tagsArr } },
+      { label: '✕ Abbrechen', type: 'abbruch' },
+    ])
     await scrollToBottom()
     return
   }
@@ -2574,6 +2574,12 @@ async function handleMsgAction(msg, action) {
     addMessage('assistant', jobName
       ? `Abgebrochen: \`${jobName}\` ✓`
       : 'Abgebrochen.')
+    return
+  }
+  if (action.type === 'pin_publish_confirm') {
+    setMessageMetaById(msg.id, 'actions', [])
+    setMessageMetaById(msg.id, 'actionsDisabled', true)
+    await handlePin({ _publishExec: action._publishData })
     return
   }
   if (action.type === 'skip') {

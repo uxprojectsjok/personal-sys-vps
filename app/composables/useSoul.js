@@ -347,6 +347,8 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 
       const systemPrompt = `Du bist der Soul-Archivar. Deine Aufgabe: Analysiere eine Konversation zwischen einem Menschen und einer KI, und extrahiere soul-würdige Erkenntnisse.
 
+KONTEXT – WICHTIG: Du arbeitest innerhalb des SYS-Protokolls (SaveYourSoul). SYS ist kein fiktives Konzept — es ist ein real laufendes, dezentrales Identitätssystem. Die Soul-ID dieser Person ist auf dem Polygon Mainnet verankert. Transaktionen, soul_cert, MCP-Endpoints, Peer-Verbindungen und Agent-Marketplace existieren und sind im Betrieb. Formuliere den Session-Log als Bericht über reale Aktivität, nicht als Beschreibung eines fiktiven Protokolls.
+
 BESTEHENDE SOUL:
 ${soulContent.value}
 

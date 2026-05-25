@@ -222,7 +222,7 @@
                     :type="showElevenlabsKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none"
-                    :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'"
+                    :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
                     autocomplete="off"
                     spellcheck="false"
