@@ -73,28 +73,30 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
     let audioChunks = []
     let outputHz    = 16000
     let timer       = null
+    let audioSent   = false  // Erst nach conversation_initiation_metadata senden
 
     function finish() {
       clearTimeout(timer)
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close()
     }
 
-    ws.onopen = () => {
-      onStatus?.('Audio wird übertragen…')
-      const CHUNK = 8192
+    function sendPcm() {
+      const CHUNK = 4096
       for (let off = 0; off < pcmBytes.length; off += CHUNK) {
         const slice = pcmBytes.subarray(off, off + CHUNK)
         let bin = ''
         for (let i = 0; i < slice.length; i++) bin += String.fromCharCode(slice[i])
         ws.send(JSON.stringify({ user_audio_chunk: btoa(bin) }))
       }
-      // Kurze Stille → VAD erkennt Sprechende
-      const silence = new Uint8Array(3200) // 100 ms @ 16kHz, 2 bytes/sample
+      // ~800 ms Stille → VAD-Trigger sicher auslösen
+      const silenceBytes = new Uint8Array(25600) // 800 ms @ 16kHz × 2 bytes
       let silBin = ''
-      for (let i = 0; i < silence.length; i++) silBin += String.fromCharCode(silence[i])
+      for (let i = 0; i < silenceBytes.length; i++) silBin += String.fromCharCode(silenceBytes[i])
       ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
+    }
 
-      // Sicherheits-Timeout 45 s
+    // Sicherheits-Timeout 45 s
+    ws.onopen = () => {
       timer = setTimeout(() => {
         const audioBlob = audioChunks.length ? pcmToWavBlob(audioChunks, outputHz) : null
         resolve({ userText, agentText, audioBlob })
@@ -107,11 +109,21 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
         const msg = JSON.parse(e.data)
         if (msg.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', event_id: msg.ping_event?.event_id }))
-        } else if (msg.type === 'conversation_initiation_metadata') {
+          return
+        }
+        if (msg.type === 'conversation_initiation_metadata') {
           const fmt = msg.conversation_initiation_metadata_event?.agent_output_audio_format
           if (fmt) { const m = String(fmt).match(/(\d{4,6})/); if (m) outputHz = parseInt(m[1]) }
+          // Erst jetzt Audio senden — Server ist bereit
+          onStatus?.('Audio wird übertragen…')
+          audioSent = true
+          sendPcm()
           onStatus?.('Agent hört zu…')
-        } else if (msg.type === 'user_transcript') {
+          return
+        }
+        // Alles vor dem ersten eigenen Audio-Send ignorieren (Begrüßung des Agents)
+        if (!audioSent) return
+        if (msg.type === 'user_transcript') {
           userText = msg.user_transcription_event?.user_transcript || ''
           onStatus?.(`Erkannt: "${userText}"`)
         } else if (msg.type === 'agent_response') {
@@ -120,7 +132,6 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
         } else if (msg.type === 'audio') {
           if (msg.audio_event?.audio_base_64) {
             audioChunks.push(msg.audio_event.audio_base_64)
-            // Nach letztem Audio-Chunk Verbindung kurz halten dann schließen
             clearTimeout(timer)
             timer = setTimeout(finish, 3000)
           }

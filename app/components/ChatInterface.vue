@@ -2979,7 +2979,8 @@ defineExpose({
 /* ── Media embeds ────────────────────────────────────────────────── */
 .media-preview img { display: block; width: 100%; height: auto; border-radius: 10px; margin-bottom: 10px; }
 .media-video video { max-width: 100%; display: block; border-radius: 10px; margin-bottom: 10px; }
-.media-audio audio  { width: 100%; max-width: 280px; height: 36px; display: block; margin-bottom: 10px; }
+.media-audio { min-width: 240px; }
+.media-audio audio  { width: 100%; height: 36px; display: block; margin-bottom: 4px; }
 .media-embed iframe { width: 100%; max-width: 320px; aspect-ratio: 16/9; display: block; margin-bottom: 10px; border-radius: 10px; }
 .media-spotify iframe { width: 100%; max-width: 320px; height: 80px; display: block; margin-bottom: 10px; border-radius: 10px; }
 
