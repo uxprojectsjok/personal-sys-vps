@@ -4,9 +4,10 @@
 -- ElevenLabs-Key aus config.json, Prompt-Templates aus mind.md.
 -- Gibt { ok, agent_id, voice_id, soul_name, has_voice_clone, agent_url } zurueck.
 
-local cjson   = require("cjson.safe")
-local http    = require("resty.http")
-local soul_id = ngx.ctx.soul_id
+local cjson     = require("cjson.safe")
+local http      = require("resty.http")
+local resty_aes = require("resty.aes")
+local soul_id   = ngx.ctx.soul_id
 
 if ngx.req.get_method() ~= "POST" then
   ngx.status = 405
@@ -17,6 +18,38 @@ end
 
 local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
 local ELEVEN   = "https://api.elevenlabs.io/v1"
+
+-- ── Vault-Key aus Request-Body lesen (optional, für verschlüsselte Audio-Dateien) ─
+ngx.req.read_body()
+local vault_key_hex = ""
+do
+  local body_raw = ngx.req.get_body_data() or ""
+  if body_raw ~= "" then
+    local ok_b, body = pcall(cjson.decode, body_raw)
+    if ok_b and type(body) == "table" and type(body.vault_key) == "string"
+       and #body.vault_key == 64 then
+      vault_key_hex = body.vault_key
+    end
+  end
+end
+
+-- ── AES-Entschlüsselung für Vault-Dateien ──────────────────────────────────────
+-- Format: "SYS\x01" (4 Bytes) + IV (16 Bytes) + Ciphertext
+local VAULT_MAGIC = "SYS\1"  -- \1 = 0x01 (Lua-Dezimal-Escape)
+local function try_decrypt_vault(data, key_hex)
+  if #data < 21 then return nil end
+  if data:sub(1, 4) ~= VAULT_MAGIC then return nil end
+  if not key_hex or #key_hex ~= 64 then return nil end
+  local function hex2bin(h) return (h:gsub("..", function(c) return string.char(tonumber(c, 16)) end)) end
+  local iv         = data:sub(5, 20)
+  local ciphertext = data:sub(21)
+  local aes, err = resty_aes:new(hex2bin(key_hex), nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes then
+    ngx.log(ngx.WARN, "[create_agent] AES init failed: ", err)
+    return nil
+  end
+  return aes:decrypt(ciphertext)
+end
 
 -- ── ElevenLabs-Key ────────────────────────────────────────────────────────────
 local eleven_key = ""
@@ -169,13 +202,23 @@ do
   end
 end
 
--- Erste existierende, unverschluesselte Datei verwenden
+-- Erste existierende Datei verwenden — unverschluesselt direkt, verschluesselt via vault_key
 for _, fname in ipairs(candidates) do
   local fpath = audio_dir .. "/" .. fname
   local buf = read_file_bin(fpath)
   if buf and #buf > 100 then
-    -- SYS-Verschluesselungsheader pruefen (S=0x53, Y=0x59, S=0x53, 0x01)
-    if buf:sub(1, 4) ~= "SYS\x01" and buf:sub(1, 2) ~= "SY" then
+    if buf:sub(1, 4) == VAULT_MAGIC then
+      -- Verschluesselt: Entschluesseln falls vault_key_hex vorhanden
+      if vault_key_hex ~= "" then
+        local dec = try_decrypt_vault(buf, vault_key_hex)
+        if dec and #dec > 100 then
+          audio_data = dec
+          audio_filename = fname
+          break
+        end
+      end
+      -- Kein Key oder Entschluesselung fehlgeschlagen: naechste Datei versuchen
+    else
       audio_data = buf
       audio_filename = fname
       break
