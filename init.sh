@@ -600,9 +600,7 @@ if [ -n "$WC_PROJECT_ID" ]; then
 fi
 
 info "SOUL_MASTER_KEY und API_SIGNING_KEY eingetragen"
-[ -n "$ANTHROPIC_KEY" ] \
-  && info "ANTHROPIC_API_KEY eingetragen" \
-  || warn "Kein Anthropic Key — später im Admin-UI unter Einstellungen → Server-Admin eintragen."
+[ -n "$ANTHROPIC_KEY" ] && info "ANTHROPIC_API_KEY eingetragen (optional — auch später im UI möglich)"
 [ -n "$WC_PROJECT_ID" ] && info "WALLETCONNECT_PROJECT_ID eingetragen" || \
   warn "Kein WalletConnect Project ID — Blockchain-Anchoring deaktiviert."
 echo ""
