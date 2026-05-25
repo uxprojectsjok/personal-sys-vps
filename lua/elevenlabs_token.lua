@@ -75,16 +75,15 @@ if not agent_id then
   return
 end
 
--- Conversation Token bei ElevenLabs anfordern
+-- Signed WebSocket URL bei ElevenLabs anfordern
+-- GET /v1/convai/conversation/get-signed-url?agent_id=... → { signed_url: "wss://..." }
 local hc = http.new()
 hc:set_timeout(10000)
-local res, err = hc:request_uri(ELEVEN .. "/convai/conversations/create-conversation-token", {
-  method  = "POST",
+local res, err = hc:request_uri(ELEVEN .. "/convai/conversation/get-signed-url?agent_id=" .. agent_id, {
+  method  = "GET",
   headers = {
-    ["Content-Type"] = "application/json",
-    ["xi-api-key"]   = elabs_key,
+    ["xi-api-key"] = elabs_key,
   },
-  body = cjson.encode({ agent_id = agent_id }),
 })
 
 if not res then
@@ -98,12 +97,12 @@ if res.status ~= 200 then
   ngx.status = 502
   ngx.header["Content-Type"] = "application/json"
   ngx.say(cjson.encode({ error = "elevenlabs_error", status = res.status,
-    message = "ElevenLabs " .. res.status }))
+    message = "ElevenLabs " .. res.status, body = res.body }))
   return
 end
 
 local ok, data = pcall(cjson.decode, res.body or "")
-if not ok or type(data) ~= "table" or not data.token then
+if not ok or type(data) ~= "table" or not data.signed_url then
   ngx.status = 502
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"invalid_response"}')
@@ -112,4 +111,4 @@ end
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
-ngx.say(cjson.encode({ conversation_token = data.token, agent_id = agent_id }))
+ngx.say(cjson.encode({ signed_url = data.signed_url, agent_id = agent_id }))
