@@ -1806,14 +1806,15 @@ async function handleDiagnose() {
       return
     }
 
-    if (!data.lines || data.lines.length === 0) {
-      setMessageMetaById(statusMsg.id, 'text', `Keine Fehler im Log gefunden. ✓\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`)
+    const lines = Array.isArray(data.lines) ? data.lines : []
+    if (lines.length === 0) {
+      setMessageMetaById(statusMsg.id, 'text', `Keine Fehler im Log gefunden. ✓\n\n_Geprüft: \`${data.log_path || '/var/log/openresty/error.log'}\` — ${data.checked_at || '–'}_`)
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
 
-    const header = `**${data.total_found} Einträge** im OpenResty-Fehlerlog (neueste zuerst):\n\n`
-    const body = data.lines.map(l => `\`\`\`\n${l}\n\`\`\``).join('\n')
+    const header = `**${data.total_found || lines.length} Einträge** im OpenResty-Fehlerlog (neueste zuerst):\n\n`
+    const body = lines.map(l => `\`\`\`\n${l}\n\`\`\``).join('\n')
     const footer = `\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`
     setMessageMetaById(statusMsg.id, 'text', header + body + footer)
     setMessageMetaById(statusMsg.id, 'streaming', false)
@@ -2088,7 +2089,7 @@ async function handlePin(query) {
   }
 
   // ── @pin paid <pol> <wallet> [days] ────────────────────────────
-  const paidM = q.match(/^paid\s+(\S+)\s+(\S+?)(?:\s+(\d+))?$/i)
+  const paidM = q.match(/^paid\s+(\S+)\s+(\S+)(?:\s+(\d+)\w*)?$/i)
   if (paidM) {
     const pol    = paidM[1]
     const wallet = paidM[2]
@@ -2103,9 +2104,13 @@ async function handlePin(query) {
         'Bezahlter Zugang ✓',
         `Rate: ${pol} POL · Wallet: \`${wallet}\` · Gültigkeit: ${days} Tage`,
         '',
-        'Tools festlegen (optional): `@pin tools soul_read,verify_human,soul_maturity`',
-        'Dann veröffentlichen: `@pin publish <name>`',
+        'Welche Tools sollen freigegeben werden?',
       ].join('\n'))
+      setMessageMetaById(msg.id, 'actions', PIN_TOOLS.map(t => ({
+        label: t.name,
+        title: t.desc,
+        cmd:   `@pin tools ${t.id}`,
+      })))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
       setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
@@ -2119,18 +2124,19 @@ async function handlePin(query) {
   if (/^tools$/i.test(q) || /^tools\s/i.test(q)) {
     const toolsArg = q.replace(/^tools\s*/i, '').trim()
 
-    // Ohne Args → verfügbare Tools auflisten
+    // Ohne Args → verfügbare Tools als klickbare Buttons
     if (!toolsArg) {
       addMessage('user', '@pin tools')
-      const lines = [
-        '**Verfügbare Tools zur Freigabe:**',
+      const msg = addMessage('assistant', [
+        '**Verfügbare Tools zur Freigabe** — anklicken zum Hinzufügen:',
         '',
-        ...PIN_TOOLS.map(t => `\`${t.id}\` — **${t.name}**  ${t.desc}`),
-        '',
-        'Setzen mit: `@pin tools soul_read,verify_human,soul_maturity`',
-        '_(kommasepariert, aus der Liste oben wählen)_',
-      ]
-      addMessage('assistant', lines.join('\n'))
+        '_Mehrere Tools: `@pin tools soul_read,verify_human,soul_maturity`_',
+      ].join('\n'))
+      setMessageMetaById(msg.id, 'actions', PIN_TOOLS.map(t => ({
+        label: `${t.name}`,
+        title: t.desc,
+        cmd:   `@pin tools ${t.id}`,
+      })))
       return
     }
 
@@ -2476,6 +2482,12 @@ async function handleCameraCapture(capture) {
 async function handleMsgAction(msg, action) {
   if (action.url) {
     window.open(action.url, '_blank', 'noopener,noreferrer')
+    return
+  }
+  if (action.cmd) {
+    draft.value = action.cmd
+    await nextTick()
+    document.querySelector('.dock-textarea')?.focus()
     return
   }
   if (action.type === 'skip') {

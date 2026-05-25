@@ -132,11 +132,14 @@
               :class="selectedLocal.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('local', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0" :disabled="settingActive">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0"
+                :disabled="settingActive || type === 'context' || type === 'profiles'"
+                :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
+              >
+                <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name)" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
               </button>
               <button
                 @click.stop="openContextMenu('local', type, name, $event)"
@@ -244,11 +247,14 @@
               :class="selectedServer.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('server', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0" :disabled="settingActive">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0"
+                :disabled="settingActive || type === 'context' || type === 'profiles'"
+                :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
+              >
+                <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name)" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
               </button>
               <button
                 @click.stop="openContextMenu('server', type, name, $event)"
@@ -804,7 +810,7 @@ async function onSyncAll() {
 // ── Aktiv setzen ───────────────────────────────────────────────────────────
 
 async function onSetActive(type, name) {
-  if (!props.soulCert || settingActive.value || type === 'profiles') return;
+  if (!props.soulCert || settingActive.value || type === 'profiles' || type === 'context') return;
   settingActive.value = true;
   await setActive(props.soulCert, type, name);
   settingActive.value = false;
