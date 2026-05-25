@@ -62,7 +62,10 @@ end
 -- ── Soul-Name aus sys.md lesen ────────────────────────────────────────────────
 local soul_name = "Soul"
 local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
-if sys_text ~= "" then
+-- Verschlüsselte sys.md (SYSCRYPT01 beginnt mit "SY") nicht als Klartext lesen —
+-- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name liefern
+-- und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
+if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
   if m and m ~= '""' and m ~= "" then soul_name = m end
 end
@@ -369,7 +372,7 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
       if voice_id then
         fm = patch_field(fm, "elevenlabs_voice_id", voice_id)
       end
-      local updated = sys_text:gsub("^---\n[\0-\255]-\n---", "---\n" .. fm:gsub("%%", "%%%%") .. "\n---", 1)
+      local updated = sys_text:gsub("^---\n[\0-\255]-\n---", function() return "---\n" .. fm .. "\n---" end, 1)
       write_file(BASE_DIR .. "/sys.md", updated)
     end
   end
@@ -378,11 +381,17 @@ end
 -- ── Antwort ────────────────────────────────────────────────────────────────────
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
-ngx.say(cjson.encode({
+local resp_ok, resp_js = pcall(cjson.encode, {
   ok              = true,
   agent_id        = agent_id,
   voice_id        = voice_id or cjson.null,
   soul_name       = soul_name,
   has_voice_clone = voice_id ~= nil,
   agent_url       = "https://elevenlabs.io/app/conversational-ai/" .. agent_id,
-}))
+})
+if not resp_ok then
+  ngx.status = 500
+  ngx.say('{"error":"encode_failed","message":"' .. tostring(resp_js):gsub('"', '\\"'):sub(1, 200) .. '"}')
+  return
+end
+ngx.say(resp_js)
