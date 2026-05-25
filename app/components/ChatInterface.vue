@@ -72,7 +72,8 @@
             <div v-if="item.actions?.length" class="msg-actions">
               <button
                 v-for="a in item.actions" :key="a.label"
-                class="msg-action-btn" :class="a.primary ? 'primary' : 'secondary'"
+                class="msg-action-btn"
+                :class="[a.primary ? 'primary' : 'secondary', a.pin_tool_id && pinSelectedTools.includes(a.pin_tool_id) ? 'selected' : '']"
                 :disabled="item.actionsDisabled" @click="handleMsgAction(item, a)"
               >{{ a.label }}</button>
             </div>
@@ -608,6 +609,7 @@ const AT_COMMANDS = [
   { cmd: '@diagnose',      label: 'diagnose',     desc: 'Fehlerlog anzeigen',          direct: true  },
   { cmd: '@contact ',      label: 'contact',      desc: 'Peer hinzufügen',             direct: false },
   { cmd: '@pin ',          label: 'pin',          desc: 'Soul pinnen / Pinata JWT',    direct: false },
+  { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true  },
   { cmd: '@alle ',         label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
   { cmd: '@agent ',        label: 'agent',        desc: 'Agent Sandbox',               direct: false },
 ]
@@ -644,6 +646,9 @@ function toggleMobileComposer() {
 function closeMobileComposer() {
   mobileComposerOpen.value = false
 }
+
+// ── Pin tool multi-select state ────────────────────────────────────
+const pinSelectedTools = ref([])
 
 // ── Input state ────────────────────────────────────────────────────
 const draft      = ref('')
@@ -1536,6 +1541,8 @@ function detectIntent(text) {
   // @pin → Pinata JWT hinterlegen oder Soul auf IPFS registrieren
   const pinMatch = t.match(/^@pin\b\s*(.*)/is)
   if (pinMatch) return { type: 'pin', query: pinMatch[1].trim() }
+  // @abbruch → laufende Chat-Aktion abbrechen
+  if (/^@abbruch\b/i.test(t)) return { type: 'abbruch' }
   // @create-media → KI-Bildgenerierung via WaveSpeed
   const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
   if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
@@ -2065,6 +2072,13 @@ async function handlePin(query) {
     return
   }
 
+  // Wiederverwendbare Tool-Auswahl-Actions
+  const toolPickerActions = [
+    ...PIN_TOOLS.map(t => ({ label: t.name, title: t.desc, pin_tool_id: t.id })),
+    { label: 'Fertig →', primary: true, pin_tool_confirm: true },
+    { label: '✕ Abbrechen', type: 'abbruch' },
+  ]
+
   // ── @pin free ──────────────────────────────────────────────────
   if (/^free$/i.test(q)) {
     addMessage('user', '@pin free')
@@ -2076,8 +2090,9 @@ async function handlePin(query) {
         'Zugang: Frei ✓',
         '',
         'Jeder KI-Assistent kann deine Soul lesen.',
-        'Jetzt veröffentlichen: `@pin publish <dein-name>`',
+        'Welche Tools sollen freigegeben werden?',
       ].join('\n'))
+      setMessageMetaById(msg.id, 'actions', toolPickerActions)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
       setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
@@ -2105,11 +2120,7 @@ async function handlePin(query) {
         '',
         'Welche Tools sollen freigegeben werden?',
       ].join('\n'))
-      setMessageMetaById(msg.id, 'actions', PIN_TOOLS.map(t => ({
-        label: t.name,
-        title: t.desc,
-        cmd:   `@pin tools ${t.id}`,
-      })))
+      setMessageMetaById(msg.id, 'actions', toolPickerActions)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
       setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
@@ -2123,23 +2134,19 @@ async function handlePin(query) {
   if (/^tools$/i.test(q) || /^tools\s/i.test(q)) {
     const toolsArg = q.replace(/^tools\s*/i, '').trim()
 
-    // Ohne Args → verfügbare Tools als klickbare Buttons
+    // Ohne Args → verfügbare Tools als klickbare Buttons (additiv)
     if (!toolsArg) {
+      pinSelectedTools.value = []
       addMessage('user', '@pin tools')
       const msg = addMessage('assistant', [
-        '**Verfügbare Tools zur Freigabe** — anklicken zum Hinzufügen:',
-        '',
-        '_Mehrere Tools: `@pin tools soul_read,verify_human,soul_maturity`_',
+        '**Tools auswählen** — anklicken zum Auswählen, nochmal für Abwahl:',
       ].join('\n'))
-      setMessageMetaById(msg.id, 'actions', PIN_TOOLS.map(t => ({
-        label: `${t.name}`,
-        title: t.desc,
-        cmd:   `@pin tools ${t.id}`,
-      })))
+      setMessageMetaById(msg.id, 'actions', toolPickerActions)
       return
     }
 
     // Mit Args → setzen + Klarnamen in Bestätigung
+    pinSelectedTools.value = []
     const tools = toolsArg.split(',').map(t => t.trim()).filter(Boolean)
     const unknown = tools.filter(t => !PIN_TOOLS.some(pt => pt.id === t))
     addMessage('user', `@pin tools ${tools.join(', ')}`)
@@ -2160,6 +2167,7 @@ async function handlePin(query) {
         ...named,
         '',
         'Veröffentlichen: `@pin publish <name>`',
+        '_Dauert ca. 5–15 Sekunden._',
       ].join('\n') + warnLine)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
@@ -2208,12 +2216,17 @@ async function handlePin(query) {
         return
       }
 
+      // CID in Amortization speichern — Zugang zeigt veröffentlichten Stand
+      const pubCid = d.cid || ''
+      if (pubCid) {
+        await putAmort({ agent_registry_cid: pubCid }).catch(() => {})
+      }
+
       const lines = ['Soul veröffentlicht ✓', '']
       if (namePart)       lines.push(`Name: **${namePart}**`)
       if (descPart)       lines.push(`Beschreibung: ${descPart}`)
       if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
-      const pubCid = d.cid || ''
-      lines.push('', pubCid ? `IPFS: [${pubCid}](https://gateway.pinata.cloud/ipfs/${pubCid})` : 'IPFS: kein CID erhalten', '', 'Status: `@pin status`')
+      lines.push('', pubCid ? `IPFS: [${pubCid}](https://gateway.pinata.cloud/ipfs/${pubCid})` : 'IPFS: kein CID erhalten', '', 'Zugang & Status: `@pin status`')
       setMessageMetaById(msg.id, 'text', lines.join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
@@ -2243,8 +2256,10 @@ async function handlePin(query) {
         'Pinata JWT gespeichert ✓',
         '',
         'Nächste Schritte:',
-        '1. Zugang: `@pin free` oder `@pin paid 0.001 0xWallet`',
+        '1. Zugang: `@pin free` oder `@pin paid 0.001 0xWallet [7d]`',
+        '   → Zahl = Token-Gültigkeit in Tagen (1–30, Standard: 1)',
         '2. Veröffentlichen: `@pin publish <dein-name>`',
+        '   → Dauert ca. 5–15 Sekunden (IPFS-Upload)',
       ].join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
@@ -2489,6 +2504,30 @@ async function handleMsgAction(msg, action) {
     document.querySelector('.dock-textarea')?.focus()
     return
   }
+  if (action.pin_tool_id) {
+    const idx = pinSelectedTools.value.indexOf(action.pin_tool_id)
+    if (idx >= 0) pinSelectedTools.value.splice(idx, 1)
+    else pinSelectedTools.value.push(action.pin_tool_id)
+    draft.value = pinSelectedTools.value.length
+      ? '@pin tools ' + pinSelectedTools.value.join(',')
+      : ''
+    await nextTick()
+    document.querySelector('.dock-textarea')?.focus()
+    return
+  }
+  if (action.pin_tool_confirm) {
+    const tools = [...pinSelectedTools.value]
+    pinSelectedTools.value = []
+    draft.value = tools.length ? '@pin tools ' + tools.join(',') : '@pin tools'
+    await nextTick()
+    await handleSend()
+    return
+  }
+  if (action.type === 'abbruch') {
+    pinSelectedTools.value = []
+    draft.value = ''
+    return
+  }
   if (action.type === 'skip') {
     setMessageMetaById(msg.id, 'actions', [])
     return
@@ -2662,6 +2701,14 @@ async function handleSend() {
 
   if (intent.type === 'pin') {
     await handlePin(intent.query)
+    return
+  }
+
+  if (intent.type === 'abbruch') {
+    pinSelectedTools.value = []
+    draft.value = ''
+    addMessage('user', '@abbruch')
+    addMessage('assistant', 'Abgebrochen.')
     return
   }
 
@@ -3551,6 +3598,14 @@ defineExpose({
   background: rgba(255,255,255,0.03);
 }
 .msg-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.msg-action-btn.selected {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.5);
+  color: var(--accent);
+}
+.msg-action-btn.selected:hover:not(:disabled) {
+  background: rgba(139,92,246,0.22);
+}
 
 /* ── Web-Suche: Quellen-Chips ──────────────────────────────────── */
 .msg-sources {
