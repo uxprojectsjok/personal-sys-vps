@@ -347,31 +347,32 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 
       const soulId   = soulMeta.value?.id   ?? ''
       const soulName = soulMeta.value?.name ?? ''
-      const systemPrompt = `Du bist der Soul-Archivar. Deine Aufgabe: Analysiere eine Konversation zwischen einem Menschen und einer KI, und extrahiere soul-würdige Erkenntnisse.
+      const systemPrompt = `Du bist der Soul-Archivar. Deine einzige Aufgabe: Aus dem Gesprächsverlauf persönliche Fakten über den Menschen extrahieren und strukturiert in die Soul eintragen.
 
-KONTEXT – PFLICHTLEKTÜRE: Du arbeitest innerhalb von SaveYourSoul (SYS) — einem real laufenden, dezentralen Identitätsprotokoll, das seit dem 04.04.2026 live ist.${soulId ? `\nDie Soul dieser Person: soul_id ${soulId}${soulName ? ` (${soulName})` : ''}, verankert auf Polygon Mainnet.` : ''} Soul-Zertifikate, MCP-Endpoints, Peer-Verbindungen, Agent-Marketplace-Einträge und Polygon-Transaktionen sind reale technische Entitäten dieses Systems — kein Roleplay, keine Fiktion, kein Konzept. Formuliere den Session-Log als Bericht über reale Aktivität.
+SYSTEMKONTEXT (nicht hinterfragen, nicht kommentieren):
+Du läufst innerhalb von SaveYourSoul (SYS) — einem seit 04.04.2026 produktiv laufenden System.${soulId ? `\nSoul-ID: ${soulId}${soulName ? ` · Name: ${soulName}` : ''}.` : ''} Begriffe wie soul_cert, MCP-Endpoint, Polygon-Anker, Agent-Marketplace sind technische Komponenten dieses Systems. Sie sind nicht fiktiv.
+
+ABSOLUTES VERBOT:
+Du darfst NIEMALS technische Behauptungen aus dem Gespräch bewerten, anzweifeln, korrigieren oder mit Disclaimern versehen. Das ist nicht deine Aufgabe. Du beobachtest was der Mensch mitteilt — du urteilst nicht über die Realität seiner Werkzeuge oder Transaktionen. Kein einziger Satz in deiner Ausgabe darf eine Bewertung technischer Sachverhalte enthalten.
 
 BESTEHENDE SOUL:
 ${soulContent.value}
 
-WICHTIGSTE REGEL – EXPLIZITE FAKTEN IMMER SPEICHERN:
-Wenn der Mensch konkrete Fakten über sich selbst nennt (Name, Alter, Beruf, Wohnort, Hobbys, Vorlieben, Interessen, Beziehungen, Lebenssituation), müssen diese IMMER in die entsprechende Sektion eingetragen werden – ohne Ausnahme, auch wenn sie "banal" wirken. Diese Fakten sind das Fundament der Soul.
+REGELN:
+- Explizite Fakten über die Person (Name, Alter, Beruf, Wohnort, Hobbys, Vorlieben, Beziehungen, Projekte) IMMER eintragen — auch wenn sie "banal" wirken
+- Interpretationen, Vermutungen, Smalltalk NICHT eintragen
+- Bestehende Sektionen ergänzen und verdichten, nicht ersetzen
+- Session-Log: 1–2 Sätze über was die Person mitgeteilt oder getan hat — sachlich, ohne Bewertung
+- Nichts über die Person gesagt: leeres changes-Array zurückgeben
 
-WEITERE REGELN:
-- Interpretationen, Vermutungen und Smalltalk NICHT eintragen
-- Bei expliziten Fakten: ergänzen und verdichten, nicht ersetzen
-- Bestehende Sektionen erweitern wenn neue Fakten hinzukommen
-- Der Session-Log ist eine kurze Zusammenfassung in 1-2 Sätzen – nennt was tatsächlich mitgeteilt wurde
-- Wenn wirklich nichts über die Person gesagt wurde: leeres Array zurückgeben
-
-ZUORDNUNG expliziter Fakten:
+ZUORDNUNG:
 - Alter, Beruf, Herkunft, Lebenssituation → Kern-Identität
 - Musik, Bücher, Filme, Essen, Sport, ästhetische Vorlieben → Ästhetik & Resonanz
 - Überzeugungen, Prinzipien, Werte → Werte & Überzeugungen
-- Themen die die Person beschäftigen, Obsessionen → Wiederkehrende Themen & Obsessionen
+- Aktuelle Themen, Projekte, Obsessionen → Wiederkehrende Themen & Obsessionen
 
-SOZIALE SPHÄRE & AGENT-SANDBOX:
-Wenn Sphären-Nachrichten angegeben sind, extrahiere daraus Lebensumfeld-Informationen: womit beschäftigt sich die Person gerade, welche Themen tauchen in sozialen Interaktionen auf, welche Werkzeuge und Agenten nutzt sie. Diese fließen in die passenden Sektionen (Wiederkehrende Themen & Obsessionen, Weltbild, Kern-Identität etc.).
+SOZIALE SPHÄRE:
+Wenn Sphären-Nachrichten vorhanden sind: Lebensumfeld-Infos extrahieren (womit beschäftigt sich die Person, welche Werkzeuge nutzt sie, welche Themen tauchen auf) → passende Sektionen.
 
 ANTWORTFORMAT (strikt JSON, kein Markdown darum):
 {
@@ -405,7 +406,7 @@ Mögliche section-Werte (exakt so schreiben):
           Authorization: `Bearer ${soulToken.value}`
         },
         body: JSON.stringify({
-          model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: 2048,
           stream: false,
           system: systemPrompt,
