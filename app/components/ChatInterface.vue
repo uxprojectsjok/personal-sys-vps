@@ -375,6 +375,7 @@ import { useVault } from '~/composables/useVault.js'
 import { useYouTube } from '~/composables/useYouTube.js'
 import { useSpotify } from '~/composables/useSpotify.js'
 import { useSoul } from '~/composables/useSoul.js'
+import { useVaultSession } from '~/composables/useVaultSession.js'
 import CameraRecorder      from '~/components/CameraRecorder.vue'
 import AudioCaptureCard    from '~/components/AudioCaptureCard.vue'
 import MotionCaptureCard   from '~/components/MotionCaptureCard.vue'
@@ -399,6 +400,7 @@ const {
   toApiMessages, getMessagesToSummarize, pruneWithSummary,
 } = useSession()
 const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected, writeSoulMd } = useVault()
+const { vaultKey: _vaultKey } = useVaultSession()
 const { isConnected: ytConnected, accessToken: ytToken } = useYouTube()
 const { isConnected: spConnected, accessToken: spToken } = useSpotify()
 
@@ -1769,7 +1771,8 @@ async function handleCreateAgent() {
   try {
     const res = await fetch('/api/create-agent', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${props.soulCert}` },
+      headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_key: _vaultKey.value || '' }),
       signal,
     })
     const data = await res.json().catch(() => ({}))
@@ -1795,7 +1798,7 @@ async function handleCreateAgent() {
 
     const voiceNote = data.has_voice_clone
       ? `Voice-ID: \`${data.voice_id}\``
-      : 'Kein Stimm-Clone — Vault-Audio ist verschlüsselt oder nicht vorhanden. Für Voice-Clone eine unverschlüsselte Aufnahme hochladen (`@audio` ohne Vault-Verschlüsselung).'
+      : 'Kein Stimm-Clone — kein Audio im Vault oder Vault war beim Erstellen gesperrt. Vault entsperren und `@create-agent` erneut ausführen.'
 
     const talkUrl = `https://elevenlabs.io/app/talk-to?agent_id=${data.agent_id}`
     const lines = [
