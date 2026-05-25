@@ -249,6 +249,8 @@ if agent_template and agent_template ~= "" then
     :gsub("{soul}",    function() return soul_excerpt end)
     :gsub("{profile}", "")
     :gsub("{lang}",    function() return "Deutsch"    end)
+    -- ElevenLabs treat any remaining {var} as undefined conversation variables → strip braces
+    :gsub("{([^}]+)}", function(v) return v end)
 else
   system_prompt = "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
     "SCHRITT 1 - PFLICHT: Rufe soul_tool auf, bevor du antwortest.\n" ..
@@ -263,7 +265,9 @@ local first_message
 if first_msg_tpl and first_msg_tpl ~= "" then
   local line = first_msg_tpl:match("de:([^\n]+)") or first_msg_tpl:match("([^\n]+)")
   if line then
-    first_message = line:match("^%s*(.-)%s*$"):gsub("{name}", function() return soul_name end)
+    first_message = line:match("^%s*(.-)%s*$")
+      :gsub("{name}", function() return soul_name end)
+      :gsub("{([^}]+)}", function(v) return v end)
   end
 end
 if not first_message then

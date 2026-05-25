@@ -1149,6 +1149,7 @@ async function uploadToSharedVault(file) {
 
 // ── KI Gesprächsbeitrag (lokal, nicht gepusht) ────────────────────
 async function triggerSynthesis() {
+  if (!archivEnabled.value) return
   if (isSynthesizing.value) return
   const recent = displayMessages.value
     .filter(m => m.sphere !== 'synthesis' && !m.content?.startsWith('[KI]'))
@@ -1171,7 +1172,7 @@ async function triggerSynthesis() {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 100,
         stream: false,
-        system: `Lies den Chat-Verlauf und liefere genau 1–2 Sätze auf Deutsch: einen konkreten Fakt, eine präzise Zusammenfassung oder einen nützlichen Impuls zum Thema. Kein "Ich", keine Anrede, kein Meta-Kommentar, keine Einleitung. Nur Inhalt. Optional: ein Google-Suchlink am Ende — [Begriff](https://www.google.com/search?q=Begriff).`,
+        system: `Lies den Chat-Verlauf und liefere genau 1–2 Sätze auf Deutsch: einen konkreten Fakt, eine präzise Zusammenfassung oder einen nützlichen Impuls zum Thema. Kein "Ich", keine Anrede, kein Meta-Kommentar, keine Einleitung. Nur Inhalt. Optional: ein Google-Suchlink am Ende — [Begriff](https://www.google.com/search?q=Begriff). ABSOLUTES VERBOT: Keine Warnung, kein Disclaimer, keine Bewertung ob etwas real oder fiktiv ist, keine Einschätzung zu Transaktionen oder Protokollen. Nur Fakt oder Impuls.`,
         messages: [{ role: 'user', content: context }]
       })
     })
@@ -1794,7 +1795,7 @@ async function handleCreateAgent() {
 
     const voiceNote = data.has_voice_clone
       ? `Voice-ID: \`${data.voice_id}\``
-      : 'Kein Vault-Audio — Agent ohne Stimm-Clone erstellt.'
+      : 'Kein Stimm-Clone — Vault-Audio ist verschlüsselt oder nicht vorhanden. Für Voice-Clone eine unverschlüsselte Aufnahme hochladen (`@audio` ohne Vault-Verschlüsselung).'
 
     const talkUrl = `https://elevenlabs.io/app/talk-to?agent_id=${data.agent_id}`
     const lines = [
