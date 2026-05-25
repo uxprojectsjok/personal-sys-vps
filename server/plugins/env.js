@@ -35,6 +35,5 @@ export default defineNitroPlugin(() => {
   }
 
   console.log(`[SYS] .env: ${loaded} Variable(n) geladen`);
-  console.log(`[SYS] ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? "gesetzt ✓" : "FEHLT ✗"}`);
   console.log(`[SYS] SOUL_MASTER_KEY:   ${process.env.SOUL_MASTER_KEY   ? "gesetzt ✓" : "FEHLT ✗"}`);
 });
