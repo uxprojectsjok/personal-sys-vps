@@ -30,7 +30,7 @@ A SYS node is your personal endpoint on the internet — like an email address, 
 ```
 You  →  sys.md (your identity file)
      →  SYS node (your VPS, your domain)
-     →  AI systems (Claude, MCP tools, WhatsApp bot, …)
+     →  AI systems (Claude, MCP tools, Zapier automations, …)
      →  other SYS nodes (peer-to-peer, encrypted)
 ```
 
@@ -66,7 +66,7 @@ Three phases — nothing more:
 - AI image generation via WaveSpeed AI
 - Background synthesis KI: reads the social sphere, contributes facts and impulses into the conversation
 
-> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, Twilio, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
 
 **Peer Network (Social Sphere)**
 - Add trusted peers by soul_id + endpoint
@@ -85,7 +85,7 @@ Three phases — nothing more:
 **Networking**
 - MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
 - Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
-- WhatsApp integration via Twilio (personal bot with soul context)
+- Zapier integration — automate workflows and notifications via webhooks
 - Browser extension (Chrome MV3) for automatic soul_cert injection
 
 **Growth & Anchoring**
@@ -351,7 +351,7 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 - User data resides exclusively on users' own servers.
 - The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
 
-**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Twilio, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
+**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 

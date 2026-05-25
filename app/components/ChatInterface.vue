@@ -1774,7 +1774,6 @@ async function handleCreateAgent() {
       `${data.agent_url} → Security → "Publicly available" aktivieren`,
       '',
       `Öffentlicher Link nach Veröffentlichung: ${talkUrl}`,
-      'Telefon: elevenlabs.io → dein Agent → Twilio → Nummer verbinden.',
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
