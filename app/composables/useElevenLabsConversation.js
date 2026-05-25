@@ -68,19 +68,25 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
 
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(signed_url)
-    let userText    = ''
-    let agentText   = ''
-    let audioChunks = []
-    let outputHz    = 16000
-    let timer       = null
-    let audioSent   = false  // Erst nach conversation_initiation_metadata senden
+    let userText         = ''
+    let agentText        = ''
+    let audioChunks      = []
+    let outputHz         = 16000
+    let timer            = null
+    let greetingTimer    = null
+    let audioSent        = false  // wurde unser PCM bereits gesendet?
+    let transcriptReady  = false  // wurde user_transcript empfangen?
 
     function finish() {
       clearTimeout(timer)
+      clearTimeout(greetingTimer)
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close()
     }
 
     function sendPcm() {
+      if (audioSent) return
+      audioSent = true
+      onStatus?.('Audio wird übertragen…')
       const CHUNK = 4096
       for (let off = 0; off < pcmBytes.length; off += CHUNK) {
         const slice = pcmBytes.subarray(off, off + CHUNK)
@@ -88,11 +94,19 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
         for (let i = 0; i < slice.length; i++) bin += String.fromCharCode(slice[i])
         ws.send(JSON.stringify({ user_audio_chunk: btoa(bin) }))
       }
-      // ~800 ms Stille → VAD-Trigger sicher auslösen
-      const silenceBytes = new Uint8Array(25600) // 800 ms @ 16kHz × 2 bytes
+      // ~800 ms Stille → VAD sicher auslösen
+      const sil = new Uint8Array(25600)
       let silBin = ''
-      for (let i = 0; i < silenceBytes.length; i++) silBin += String.fromCharCode(silenceBytes[i])
+      for (let i = 0; i < sil.length; i++) silBin += String.fromCharCode(sil[i])
       ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
+      onStatus?.('Agent hört zu…')
+    }
+
+    // Greeting-Timer: feuert wenn der Agent nach der Begrüßung schweigt.
+    // 500 ms nach Metadata (kein Greeting), oder 1.5 s nach dem letzten Greeting-Audio-Chunk.
+    function scheduleAudioSend(ms) {
+      clearTimeout(greetingTimer)
+      greetingTimer = setTimeout(sendPcm, ms)
     }
 
     // Sicherheits-Timeout 45 s
@@ -107,29 +121,35 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data)
+
         if (msg.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', event_id: msg.ping_event?.event_id }))
           return
         }
+
         if (msg.type === 'conversation_initiation_metadata') {
           const fmt = msg.conversation_initiation_metadata_event?.agent_output_audio_format
           if (fmt) { const m = String(fmt).match(/(\d{4,6})/); if (m) outputHz = parseInt(m[1]) }
-          // Erst jetzt Audio senden — Server ist bereit
-          onStatus?.('Audio wird übertragen…')
-          audioSent = true
-          sendPcm()
-          onStatus?.('Agent hört zu…')
+          onStatus?.('Verbunden — warte auf Begrüßung…')
+          scheduleAudioSend(500) // kein Greeting → 500 ms reicht
           return
         }
-        // Alles vor dem ersten eigenen Audio-Send ignorieren (Begrüßung des Agents)
-        if (!audioSent) return
+
+        // Solange wir noch nicht gesendet haben: Greeting-Audio verlängert den Timer
+        if (msg.type === 'audio' && !audioSent) {
+          scheduleAudioSend(1500) // 1.5 s nach letztem Greeting-Chunk senden
+          return
+        }
+
+        // Ab hier nur noch Antworten auf UNSER Audio auswerten
         if (msg.type === 'user_transcript') {
           userText = msg.user_transcription_event?.user_transcript || ''
+          transcriptReady = true
           onStatus?.(`Erkannt: "${userText}"`)
-        } else if (msg.type === 'agent_response') {
+        } else if (msg.type === 'agent_response' && transcriptReady) {
           agentText = msg.agent_response_event?.agent_response || ''
           onStatus?.('Agent antwortet…')
-        } else if (msg.type === 'audio') {
+        } else if (msg.type === 'audio' && transcriptReady) {
           if (msg.audio_event?.audio_base_64) {
             audioChunks.push(msg.audio_event.audio_base_64)
             clearTimeout(timer)
@@ -143,6 +163,7 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
 
     ws.onclose = () => {
       clearTimeout(timer)
+      clearTimeout(greetingTimer)
       const audioBlob = audioChunks.length ? pcmToWavBlob(audioChunks, outputHz) : null
       resolve({ userText, agentText, audioBlob })
     }
