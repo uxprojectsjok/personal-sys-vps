@@ -2137,11 +2137,11 @@ async function handlePin(query) {
   if (/^paid\s+0x/i.test(q)) {
     addMessage('user', `@pin ${q.trim().split(/\s+/).slice(0, 3).join(' ')}…`)
     addMessage('assistant', [
-      'Wallet-Adresse an falscher Stelle.',
+      'POL-Rate fehlt.',
       'Format: `@pin paid 0.001 0xWallet [7d]`',
-      '· Erster Wert = POL-Rate (z.B. `0.001`)',
-      '· Zweiter Wert = Wallet-Adresse (`0x…`)',
-      '· Optionaler dritter Wert = Gültigkeit in Tagen (`7d`)',
+      '· `0.001` = POL-Betrag pro Zugriff',
+      '· `0xWallet` = deine Empfänger-Wallet',
+      '· `7d` = Token-Gültigkeit in Tagen (optional, Standard: 1)',
     ].join('\n'))
     return
   }
