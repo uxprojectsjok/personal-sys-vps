@@ -599,31 +599,37 @@ const mediaOpen = ref(false)
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = [
-  { cmd: '@suche ',        label: 'suche',        desc: 'KI-Websuche',                 direct: false },
-  { cmd: '@create-media ', label: 'create-media', desc: 'KI-Bild generieren',          direct: false },
-  { cmd: '@audio',         label: 'audio',        desc: 'Stimme aufnehmen',            direct: true  },
-  { cmd: '@gesicht',       label: 'gesicht',      desc: 'Gesicht aufnehmen',           direct: true  },
-  { cmd: '@bewegung',      label: 'bewegung',     desc: 'Bewegung aufnehmen',          direct: true  },
-  { cmd: '@create-agent',  label: 'create-agent', desc: 'ElevenLabs Agent erstellen',  direct: true  },
-  { cmd: '@sprechen',      label: 'sprechen',     desc: 'Mit Agent sprechen',          direct: true  },
-  { cmd: '@diagnose',      label: 'diagnose',     desc: 'Fehlerlog anzeigen',          direct: true  },
-  { cmd: '@contact ',      label: 'contact',      desc: 'Peer hinzufügen',             direct: false },
-  { cmd: '@pin ',          label: 'pin',          desc: 'Soul pinnen / Pinata JWT',    direct: false },
-  { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true  },
-  { cmd: '@alle ',         label: 'alle',         desc: 'Nachricht an alle senden',    direct: false },
-  { cmd: '@agent ',        label: 'agent',        desc: 'Agent Sandbox',               direct: false },
+  { cmd: '@suche ',       label: 'suche',        desc: 'KI-Websuche',                     direct: false, hint: 'Was ist …'                              },
+  { cmd: '@create-media ',label: 'create-media', desc: 'KI-Bild generieren',              direct: false, hint: 'Beschreibe das Bild …'                  },
+  { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',                direct: true                                                  },
+  { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',               direct: true                                                  },
+  { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',              direct: true                                                  },
+  { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: true                                                  },
+  { cmd: '@sprechen',     label: 'sprechen',     desc: 'Mit Agent sprechen',              direct: true                                                  },
+  { cmd: '@diagnose',     label: 'diagnose',     desc: 'Fehlerlog anzeigen',              direct: true                                                  },
+  { cmd: '@contact ',     label: 'contact',      desc: 'Peer hinzufügen',                 direct: false, hint: '<soul_id> <name> https://peer.domain'   },
+  { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | status'    },
+  { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
+  { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
+  { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',                   direct: false, hint: 'Frage an den Agent …'                  },
 ]
 
 function insertCommand(cmd) {
+  cmdsOpen.value = false
   if (cmd.direct) {
     draft.value = cmd.cmd
-    cmdsOpen.value = false
     handleSend()
-  } else {
-    draft.value = cmd.cmd
-    cmdsOpen.value = false
-    nextTick(() => textareaEl.value?.focus())
+    return
   }
+  // Non-direct: insert full placeholder, then select the hint part so typing replaces it
+  const full = cmd.hint ? cmd.cmd + cmd.hint : cmd.cmd
+  draft.value = full
+  nextTick(() => {
+    const el = textareaEl.value
+    if (!el) return
+    el.focus()
+    if (cmd.hint) el.setSelectionRange(cmd.cmd.length, full.length)
+  })
 }
 
 // ── Mobile composer FAB ─────────────────────────────────────────────
