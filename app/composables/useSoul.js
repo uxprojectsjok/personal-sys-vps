@@ -692,6 +692,14 @@ Mögliche section-Werte (exakt so schreiben):
     const certMatch       = soulContent.value.match(/soul_cert:\s*([a-f0-9]+)/i);
     const chainCountMatch = soulContent.value.match(/chain_count:\s*(\d+)/);
     const maturityMatch   = soulContent.value.match(/maturity:\s*(\d+)/);
+    // Fallback: chain_count aus soul_growth_chain-Array zählen (z.B. bei restored soul ohne chain_count)
+    let chainCount = chainCountMatch ? parseInt(chainCountMatch[1], 10) : 0;
+    if (!chainCountMatch) {
+      const gcMatch = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m);
+      if (gcMatch) {
+        try { const arr = JSON.parse(gcMatch[1]); chainCount = Array.isArray(arr) ? arr.length : 0; } catch {}
+      }
+    }
     return {
       id:          idMatch?.[1]?.trim()  ?? "unbekannt",
       name:        nameMatch?.[1]?.trim() ?? "",
@@ -700,7 +708,7 @@ Mögliche section-Werte (exakt so schreiben):
       version:     versionMatch?.[1]?.trim() ?? "1",
       storageTx:   storageTxMatch?.[1]?.trim() || null,
       cert:        certMatch?.[1]?.trim() ?? "",
-      chainCount:  chainCountMatch ? parseInt(chainCountMatch[1], 10) : 0,
+      chainCount,
       maturity:    maturityMatch   ? parseInt(maturityMatch[1], 10)   : 0,
     };
   });

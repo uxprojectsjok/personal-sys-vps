@@ -2080,6 +2080,8 @@ async function handlePin(query) {
     const r = await fetch('/api/soul/amortization', { method: 'PUT', headers: auth, body: JSON.stringify(body) })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) throw new Error(d.error || d.message || `HTTP ${r.status}`)
+    // Cache für VPS-Migration: amort-Config im Browser persistieren
+    try { localStorage.setItem('sys_amort_config', JSON.stringify(body)) } catch {}
     return d
   }
 

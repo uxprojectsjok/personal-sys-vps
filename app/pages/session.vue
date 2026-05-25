@@ -321,6 +321,28 @@ onMounted(async () => {
     .then(res => { if (res.status === 401) { clear(); router.replace('/') } })
     .catch(() => {})
 
+  // Amortization-Restore bei VPS-Migration: wenn Server keine Config hat aber Browser schon
+  try {
+    const cached = localStorage.getItem('sys_amort_config')
+    if (cached && soulToken.value) {
+      fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+        .then(r => r.json()).then(d => {
+          const serverAmort = d.amortization || {}
+          // Nur restore wenn Server kein Wallet eingetragen hat
+          if (!serverAmort.wallet) {
+            const local = JSON.parse(cached)
+            if (local.wallet) {
+              fetch('/api/soul/amortization', {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(local),
+              }).catch(() => {})
+            }
+          }
+        }).catch(() => {})
+    }
+  } catch {}
+
   if (!soulContent.value) router.replace('/')
 
   // Background soul growth — first at 3 min, then every 8 min
