@@ -2,7 +2,7 @@
 import fs from "fs";
 import path from "path";
 
-const distDir = "../.output/public"; // oder .output/public, je nach deinem Build
+const distDir = path.resolve(import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname), "../.output/public");
 const metaCspRegex = /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi;
 
 function cleanMetaCsp(filePath) {
