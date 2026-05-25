@@ -150,8 +150,8 @@ local function check_service_token(token)
         local ok, data = pcall(cjson.decode, raw)
         if ok and type(data) == "table" and data[token] then
           local svc = data[token]
-          -- Ablaufdatum prüfen
-          if type(svc.expires_at) ~= "number" or ngx.now() < svc.expires_at then
+          -- Ablaufdatum prüfen (0 = permanent, kein Ablauf)
+          if type(svc.expires_at) ~= "number" or svc.expires_at == 0 or ngx.now() < svc.expires_at then
             found_id    = dir
             found_perms = svc.permissions
             break

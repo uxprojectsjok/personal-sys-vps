@@ -1787,13 +1787,15 @@ async function handleCreateAgent() {
       return
     }
 
-    // agent_id sofort lokal in soul patchen → hasAgent-Check greift ohne Seiten-Reload
+    // agent_id lokal patchen + zum Server pushen (bei verschlüsselter sys.md schreibt das Lua nicht selbst)
     if (data.agent_id && soulContentAgent.value) {
       const lineRe = /^(elevenlabs_agent_id:\s*).*$/m
       const patched = lineRe.test(soulContentAgent.value)
         ? soulContentAgent.value.replace(lineRe, `$1${data.agent_id}`)
         : soulContentAgent.value.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_agent_id: ${data.agent_id}\n$2`)
       updateContent(patched)
+      pushToServer().catch(() => {})
+      if (vaultConnected.value) writeSoulMd(patched, 'sys').catch(() => {})
     }
 
     const voiceNote = data.has_voice_clone
