@@ -55,7 +55,8 @@ export function updateSection(markdown, sectionTitle, newContent) {
 }
 
 /**
- * Hängt eine neue Zeile an den Session-Log
+ * Schreibt den Session-Log-Eintrag für heute — ersetzt einen vorhandenen
+ * Eintrag desselben Datums statt einen neuen anzuhängen.
  * @param {string} markdown
  * @param {string} sessionText - Kurze Zusammenfassung
  * @returns {string}
@@ -63,8 +64,16 @@ export function updateSection(markdown, sectionTitle, newContent) {
 export function appendSessionLog(markdown, sessionText) {
   const today = new Date().toISOString().split("T")[0];
   const entry = `- **${today}:** ${sessionText}`;
+  // Escaped für RegExp: Punkte im Datum maskieren
+  const escapedDate = today.replace(/\./g, '\\.');
+  const todayRe = new RegExp(`^- \\*\\*${escapedDate}:\\*\\*[^\n]*`, 'm');
 
   if (markdown.includes("## Session-Log")) {
+    if (todayRe.test(markdown)) {
+      // Heute bereits vorhanden → ersetzen statt duplizieren
+      return markdown.replace(todayRe, entry);
+    }
+    // Neuer Tag → oben einfügen
     return markdown.replace(
       /## Session-Log \(komprimiert\)\n/,
       `## Session-Log (komprimiert)\n${entry}\n`
@@ -72,6 +81,33 @@ export function appendSessionLog(markdown, sessionText) {
   }
 
   return markdown + `\n\n## Session-Log (komprimiert)\n${entry}\n`;
+}
+
+/**
+ * Entfernt Duplikate im Session-Log: pro Datum nur den letzten Eintrag behalten.
+ * Einmaliger Cleanup für bestehende souls mit mehrfachen Tageseinträgen.
+ */
+export function deduplicateSessionLog(markdown) {
+  const logRe = /## Session-Log \(komprimiert\)\n([\s\S]*?)(?=\n##|\n---|\n<!-- |$)/;
+  const m = markdown.match(logRe);
+  if (!m) return markdown;
+
+  const lines = m[1].split('\n');
+  const seen = new Map(); // date → last line with that date
+  const order = [];      // preserve date order (most recent first)
+  for (const line of lines) {
+    const dm = line.match(/^- \*\*(\d{4}-\d{2}-\d{2}):/);
+    if (dm) {
+      const d = dm[1];
+      if (!seen.has(d)) order.push(d);
+      seen.set(d, line); // always keep latest occurrence
+    }
+  }
+  if (seen.size === lines.filter(l => l.match(/^- \*\*\d{4}-\d{2}-\d{2}:/)).length) {
+    return markdown; // no duplicates → nothing to do
+  }
+  const deduped = order.map(d => seen.get(d)).join('\n') + '\n';
+  return markdown.replace(logRe, `## Session-Log (komprimiert)\n${deduped}`);
 }
 
 /**

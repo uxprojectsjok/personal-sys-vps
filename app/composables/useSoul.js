@@ -1,7 +1,7 @@
 // app/composables/useSoul.js
 // Singleton-State: refs im Modul-Scope – alle Komponenten teilen dieselbe Soul
 import { ref, computed } from "vue";
-import { updateLastSession, updateSection, appendSessionLog, addOrUpdateVaultSection, updateFrontmatterField } from "#shared/utils/soulParser.js";
+import { updateLastSession, updateSection, appendSessionLog, deduplicateSessionLog, addOrUpdateVaultSection, updateFrontmatterField } from "#shared/utils/soulParser.js";
 
 const SOUL_KEY = "sys.soul";
 const CERT_KEY = "sys.soul_cert";
@@ -437,6 +437,9 @@ Mögliche section-Werte (exakt so schreiben):
           }
         }
       }
+
+      // Session-Log: Duplikate desselben Datums bereinigen (einmaliger Cleanup für bestehende souls)
+      updated = deduplicateSessionLog(updated);
 
       // Session-Log anhängen
       if (sessionLog) {
