@@ -650,6 +650,22 @@ function closeMobileComposer() {
 // ── Pin tool multi-select state ────────────────────────────────────
 const pinSelectedTools = ref([])
 
+// ── Global abort — shared across all async handlers ────────────────
+const currentAbort   = ref(null)   // AbortController | null
+const currentJobName = ref('')     // shown in @abbruch confirmation
+
+function startJob(name) {
+  currentAbort.value?.abort()
+  const ac = new AbortController()
+  currentAbort.value = ac
+  currentJobName.value = name
+  return ac.signal
+}
+function endJob() {
+  currentAbort.value = null
+  currentJobName.value = ''
+}
+
 // ── Input state ────────────────────────────────────────────────────
 const draft      = ref('')
 const textareaEl = ref(null)
@@ -1736,6 +1752,7 @@ async function handleWebSearch(query) {
 async function handleCreateAgent() {
   const preErr = preflightCheck('create-agent')
   if (preErr) { addMessage('user', '@create-agent'); addMessage('assistant', preErr); return }
+  const signal = startJob('@create-agent')
   addMessage('user', '@create-agent')
   const statusMsg = addMessage('assistant', 'ElevenLabs Agent wird erstellt…', { streaming: true })
   await scrollToBottom()
@@ -1744,6 +1761,7 @@ async function handleCreateAgent() {
     const res = await fetch('/api/create-agent', {
       method: 'POST',
       headers: { Authorization: `Bearer ${props.soulCert}` },
+      signal,
     })
     const data = await res.json().catch(() => ({}))
 
@@ -1788,14 +1806,17 @@ async function handleCreateAgent() {
       { label: 'Agent öffnen', primary: true, url: data.agent_url },
     ])
   } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-  }
+    if (err.name !== 'AbortError') {
+      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    }
+  } finally { endJob() }
   await scrollToBottom()
 }
 
 // ── @diagnose — OpenResty Fehlerlog ───────────────────────────────
 async function handleDiagnose() {
+  const signal = startJob('@diagnose')
   addMessage('user', '@diagnose')
   const statusMsg = addMessage('assistant', 'Fehlerlog wird gelesen…', { streaming: true })
   await scrollToBottom()
@@ -1803,6 +1824,7 @@ async function handleDiagnose() {
   try {
     const res = await fetch('/api/diagnose', {
       headers: { Authorization: `Bearer ${props.soulCert}` },
+      signal,
     })
     const data = await res.json().catch(() => ({}))
 
@@ -1825,9 +1847,11 @@ async function handleDiagnose() {
     setMessageMetaById(statusMsg.id, 'text', header + body + footer)
     setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-  }
+    if (err.name !== 'AbortError') {
+      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'streaming', false)
+    }
+  } finally { endJob() }
   await scrollToBottom()
 }
 
@@ -1974,6 +1998,7 @@ async function handlePin(query) {
   const q    = query.trim()
   const auth = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
   const authH = { Authorization: `Bearer ${props.soulCert}` }
+  startJob(`@pin ${q.split(' ')[0] || 'status'}`)
 
   const PIN_HELP = [
     '**@pin — Befehle**',
@@ -2524,8 +2549,14 @@ async function handleMsgAction(msg, action) {
     return
   }
   if (action.type === 'abbruch') {
+    const jobName = currentJobName.value
+    currentAbort.value?.abort()
+    endJob()
     pinSelectedTools.value = []
     draft.value = ''
+    addMessage('assistant', jobName
+      ? `Abgebrochen: \`${jobName}\` ✓`
+      : 'Abgebrochen.')
     return
   }
   if (action.type === 'skip') {
@@ -2705,10 +2736,15 @@ async function handleSend() {
   }
 
   if (intent.type === 'abbruch') {
+    const jobName = currentJobName.value
+    currentAbort.value?.abort()
+    endJob()
     pinSelectedTools.value = []
     draft.value = ''
     addMessage('user', '@abbruch')
-    addMessage('assistant', 'Abgebrochen.')
+    addMessage('assistant', jobName
+      ? `Abgebrochen: \`${jobName}\` ✓`
+      : 'Kein laufender Job — alles zurückgesetzt.')
     return
   }
 
@@ -3346,6 +3382,7 @@ defineExpose({
   display: flex; flex-direction: column;
   padding: 10px clamp(10px, 2vw, 18px) 12px;
   gap: 8px;
+  position: relative;
 }
 
 .dock-growth-lock {
@@ -3457,16 +3494,25 @@ defineExpose({
 .cmd-toggle.active { color: var(--accent); border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.08); }
 
 .cmd-strip {
-  display: flex; gap: 6px;
-  overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none;
-  padding: 0 2px;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: clamp(10px, 2vw, 18px);
+  right: clamp(10px, 2vw, 18px);
+  z-index: 20;
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px;
+  background: rgba(10, 6, 20, 0.96);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--rule-2);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
 }
-.cmd-strip::-webkit-scrollbar { display: none; }
 
 .cmd-chip {
-  display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0;
-  padding: 4px 11px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 1px;
+  padding: 5px 11px; border-radius: 999px;
   background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.15);
   color: var(--fg-3);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
@@ -3479,10 +3525,10 @@ defineExpose({
 }
 .cmd-at { color: var(--accent); font-size: 10px; }
 
-.cmd-strip-enter-active { transition: opacity 0.16s ease, max-height 0.18s ease; }
-.cmd-strip-leave-active { transition: opacity 0.12s ease, max-height 0.14s ease; }
-.cmd-strip-enter-from, .cmd-strip-leave-to { opacity: 0; max-height: 0; }
-.cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; max-height: 36px; }
+.cmd-strip-enter-active { transition: opacity 0.14s ease, transform 0.16s ease; }
+.cmd-strip-leave-active { transition: opacity 0.10s ease, transform 0.12s ease; }
+.cmd-strip-enter-from, .cmd-strip-leave-to { opacity: 0; transform: translateY(6px); }
+.cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; transform: translateY(0); }
 
 .dock-main {
   display: flex; align-items: stretch;
