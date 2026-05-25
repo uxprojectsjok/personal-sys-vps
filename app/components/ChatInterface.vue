@@ -1809,16 +1809,16 @@ async function handleCreateAgent() {
       `Agent-ID: \`${data.agent_id}\``,
       voiceNote,
       '',
-      '**Nächster Schritt:** Agent in ElevenLabs veröffentlichen damit @sprechen funktioniert:',
-      `${data.agent_url} → Security → "Publicly available" aktivieren`,
-      '',
-      `Öffentlicher Link nach Veröffentlichung: ${talkUrl}`,
+      data.published
+        ? `Öffentlich erreichbar: ${talkUrl}`
+        : `**Manuell veröffentlichen:** ${data.agent_url} → Security → "Publicly available"`,
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
-    setMessageMetaById(statusMsg.id, 'actions', [
-      { label: 'Agent öffnen', primary: true, url: data.agent_url },
-    ])
+    setMessageMetaById(statusMsg.id, 'actions', data.published
+      ? [{ label: 'Agent öffnen', primary: true, url: data.agent_url }, { label: 'Direkt anrufen', url: talkUrl }]
+      : [{ label: 'Agent öffnen', primary: true, url: data.agent_url }]
+    )
   } catch (err) {
     if (err.name !== 'AbortError') {
       setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
