@@ -494,7 +494,8 @@ function preflightCheck(type) {
       ].join('\n')
     }
     const hasAgent = /elevenlabs_agent_id:\s*\S+/.test(props.soulContent || '') ||
-                     /elevenlabs_agent_id:\s*\S+/.test(soulContentAgent.value || '')
+                     /elevenlabs_agent_id:\s*\S+/.test(soulContentAgent.value || '') ||
+                     !!localStorage.getItem('sys_elevenlabs_agent_id')
     if (!hasAgent) {
       return [
         '**Kein Agent vorhanden**',
@@ -1787,6 +1788,11 @@ async function handleCreateAgent() {
       return
     }
 
+    // agent_id in localStorage (zuverlässig für @sprechen, unabhängig vom Lade-Zustand der soul)
+    if (data.agent_id) {
+      localStorage.setItem('sys_elevenlabs_agent_id', data.agent_id)
+    }
+
     // agent_id lokal patchen + zum Server pushen (bei verschlüsselter sys.md schreibt das Lua nicht selbst)
     if (data.agent_id && soulContentAgent.value) {
       const lineRe = /^(elevenlabs_agent_id:\s*).*$/m
@@ -1815,10 +1821,6 @@ async function handleCreateAgent() {
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
-    setMessageMetaById(statusMsg.id, 'actions', data.published
-      ? [{ label: 'Agent öffnen', primary: true, url: data.agent_url }, { label: 'Direkt anrufen', url: talkUrl }]
-      : [{ label: 'Agent öffnen', primary: true, url: data.agent_url }]
-    )
   } catch (err) {
     if (err.name !== 'AbortError') {
       setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)

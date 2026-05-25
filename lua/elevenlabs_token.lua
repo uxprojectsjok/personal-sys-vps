@@ -3,18 +3,31 @@
 -- Erstellt ElevenLabs Conversation Token für den Soul-Agenten.
 -- Liest elevenlabs_key aus config.json und elevenlabs_agent_id aus sys.md-Frontmatter.
 
-local cjson   = require("cjson.safe")
-local http    = require("resty.http")
-local soul_id = ngx.ctx.soul_id
+local cjson     = require("cjson.safe")
+local http      = require("resty.http")
+local resty_aes = require("resty.aes")
+local soul_id   = ngx.ctx.soul_id
 
 local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
 local ELEVEN   = "https://api.elevenlabs.io/v1"
+local MAGIC    = "SYS\1"  -- Vault-Verschlüsselungs-Magic (0x53 0x59 0x53 0x01)
 
 local function read_file(path)
-  local f = io.open(path, "r")
+  local f = io.open(path, "rb")
   if not f then return nil end
   local c = f:read("*a"); f:close()
   return c
+end
+
+local function try_decrypt(data, key_hex)
+  if #data < 21 then return nil end
+  if data:sub(1, 4) ~= MAGIC then return nil end
+  local function hex2bin(h) return (h:gsub("..", function(c) return string.char(tonumber(c, 16)) end)) end
+  local iv   = data:sub(5, 20)
+  local ciph = data:sub(21)
+  local aes  = resty_aes:new(hex2bin(key_hex), nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes then return nil end
+  return aes:decrypt(ciph)
 end
 
 -- ElevenLabs Key aus config.json
@@ -33,12 +46,26 @@ if elabs_key == "" then
   return
 end
 
--- agent_id aus sys.md Frontmatter lesen
+-- agent_id aus sys.md Frontmatter lesen (entschlüsseln falls nötig)
 local agent_id = nil
-local sys_raw  = read_file(BASE_DIR .. "/sys.md")
-if sys_raw then
-  local m = sys_raw:match("elevenlabs_agent_id:%s*(%S+)")
-  if m and m ~= '""' and m ~= "" then agent_id = m end
+do
+  local sys_raw = read_file(BASE_DIR .. "/sys.md")
+  if sys_raw then
+    local content = sys_raw
+    -- Verschlüsselte sys.md → vault_key_hex aus api_context.json holen und entschlüsseln
+    if sys_raw:sub(1, 4) == MAGIC then
+      local ctx_raw = read_file(BASE_DIR .. "/api_context.json")
+      if ctx_raw then
+        local ok_c, ctx = pcall(cjson.decode, ctx_raw)
+        if ok_c and type(ctx) == "table" and type(ctx.vault_key_hex) == "string"
+           and #ctx.vault_key_hex == 64 then
+          content = try_decrypt(sys_raw, ctx.vault_key_hex) or sys_raw
+        end
+      end
+    end
+    local m = content:match("elevenlabs_agent_id:%s*(%S+)")
+    if m and m ~= '""' and m ~= "" then agent_id = m end
+  end
 end
 
 if not agent_id then
