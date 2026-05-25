@@ -36,62 +36,6 @@
 
     <!-- ── SYNC-VERGLEICH (inline) ──────────────────────────────────────── -->
     <Transition name="expand">
-      <div v-if="syncStatus === 'differs'"
-        class="px-4 py-3 border-b border-amber-500/20 bg-amber-500/[0.05] flex-none">
-
-        <div class="flex items-center justify-between gap-2 mb-1.5">
-          <div class="flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5 text-amber-400 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
-            </svg>
-            <p class="text-xs font-medium text-amber-400">Soul-Abgleich</p>
-          </div>
-          <button @click="dismissSync()" class="text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors text-xs px-1" aria-label="Schließen">✕</button>
-        </div>
-
-        <p class="text-[10px] text-[var(--sys-fg-muted)] mb-2">
-          {{ changedSections.length }} Abschnitt{{ changedSections.length !== 1 ? 'e' : '' }} unterschiedlich ·
-          <span class="font-mono">L {{ localLastSession || '—' }}</span>
-          <span class="opacity-40 mx-1">/</span>
-          <span class="font-mono">S {{ serverLastSession || '—' }}</span>
-        </p>
-
-        <div class="space-y-1 mb-2.5">
-          <button
-            v-for="s in changedSections" :key="s.name"
-            @click="openSyncSections[s.name] = !openSyncSections[s.name]"
-            class="w-full text-left px-2.5 py-2 rounded-lg bg-white/[0.04] border border-[var(--sys-border)] hover:bg-white/[0.07] transition-colors"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-medium text-[var(--sys-fg-muted)]">{{ s.name }}</span>
-              <span class="text-[10px] font-mono text-[var(--sys-fg-muted)]">L {{ s.localLen }} / S {{ s.serverLen }}</span>
-            </div>
-            <Transition name="expand">
-              <div v-if="openSyncSections[s.name]" class="mt-2 grid grid-cols-2 gap-1.5">
-                <div class="rounded bg-white/[0.03] px-2 py-1.5 border border-[var(--sys-border)]">
-                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-muted)] mb-0.5">Lokal</p>
-                  <p class="text-[10px] text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.localSnippet || '(leer)' }}</p>
-                </div>
-                <div class="rounded bg-white/[0.03] px-2 py-1.5 border border-[var(--sys-border)]">
-                  <p class="text-[9px] font-mono font-bold text-[var(--sys-fg-muted)] mb-0.5">Server</p>
-                  <p class="text-[10px] text-[var(--sys-fg-muted)] leading-relaxed whitespace-pre-wrap break-words">{{ s.serverSnippet || '(leer)' }}</p>
-                </div>
-              </div>
-            </Transition>
-          </button>
-        </div>
-
-        <div class="flex gap-1.5">
-          <button @click="handleAcceptServer" :disabled="syncSaving"
-            class="sync-action-btn flex-1 disabled:opacity-40">
-            Server übernehmen
-          </button>
-          <button @click="handlePushLocal" :disabled="syncSaving"
-            class="sync-action-btn flex-1 disabled:opacity-40">
-            <span v-if="syncSaving">Lädt…</span><span v-else>Hochladen</span>
-          </button>
-        </div>
-      </div>
     </Transition>
 
     <!-- ── SYNC-FEHLER ────────────────────────────────────────────────── -->

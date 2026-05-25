@@ -30,9 +30,6 @@
           <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
             {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
           </button>
-          <button class="tool" v-if="hasSoul" @click="handleCheckServer" :disabled="serverChecking">
-            {{ serverChecking ? '…' : 'Abgleich' }}
-          </button>
           <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
           <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
@@ -54,9 +51,6 @@
           <div v-if="burgerOpen" class="burger-menu">
             <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
               {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
-            </button>
-            <button class="tool" v-if="hasSoul" @click="handleCheckServer; burgerOpen = false" :disabled="serverChecking">
-              {{ serverChecking ? '…' : 'Abgleich' }}
             </button>
             <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
             <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
@@ -196,7 +190,6 @@ function handleEmergencyChange({ active, level }) {
 }
 const vaultStatus = ref(null)
 const burgerOpen         = ref(false)
-const serverChecking = ref(false)
 const mobileView = ref('chat')
 const anchorModalOpen = ref(false)
 const settingsOpen    = ref(false)
@@ -365,13 +358,6 @@ async function handleVaultConnect() {
   if (ok) { syncVaultSoul(); updateVaultInSoul(fileManifest.value); await refreshCert() }
 }
 
-async function handleCheckServer() {
-  if (serverChecking.value) return
-  serverChecking.value = true
-  const key = (vaultKey.value && vaultKey.value !== '__encrypted__') ? vaultKey.value : ''
-  await fetchFromServer(false, key).catch(() => {})
-  serverChecking.value = false
-}
 
 async function handleMasterRotated() {
   await refreshCert()
