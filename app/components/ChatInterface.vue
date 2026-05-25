@@ -387,7 +387,7 @@ const props = defineProps({
   role:         { type: String,  default: 'soul' },
   growthLocked: { type: Boolean, default: false },
 })
-const emit = defineEmits(['cert-error'])
+const emit = defineEmits(['cert-error', 'session-end'])
 
 // ── Composables ────────────────────────────────────────────────────
 const { chat, isLoading, error, certError } = useClaude()
@@ -610,6 +610,7 @@ const AT_COMMANDS = [
   { cmd: '@contact ',     label: 'contact',      desc: 'Peer hinzufügen',                 direct: false, hint: '<soul_id> <name> https://peer.domain'   },
   { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | publish Name | Beschreibung | Tags | status' },
   { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
+  { cmd: '@session-end',  label: 'session-end',  desc: 'Session jetzt analysieren & eintragen', direct: true                                              },
   { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
   { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',                   direct: false, hint: 'Frage an den Agent …'                  },
 ]
@@ -1565,6 +1566,7 @@ function detectIntent(text) {
   if (pinMatch) return { type: 'pin', query: pinMatch[1].trim() }
   // @abbruch → laufende Chat-Aktion abbrechen
   if (/^@abbruch\b/i.test(t)) return { type: 'abbruch' }
+  if (/^@session-end\b/i.test(t)) return { type: 'session-end' }
   // @create-media → KI-Bildgenerierung via WaveSpeed
   const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
   if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
@@ -2773,6 +2775,13 @@ async function handleSend() {
     return
   }
 
+  if (intent.type === 'session-end') {
+    addMessage('user', '@session-end')
+    addMessage('assistant', 'Archivar analysiert Session…')
+    emit('session-end')
+    return
+  }
+
   if (intent.type === 'create-media') {
     await handleCreateMedia(intent.query)
     return
@@ -2916,9 +2925,10 @@ onUnmounted(() => {
 })
 
 defineExpose({
-  focusInput:         () => textareaEl.value?.focus(),
-  sendExternal:       (text) => { if (text?.trim() && !isLoading.value) dispatchToChat(text, {}) },
-  getSocialMessages:  () => displayMessages.value,
+  focusInput:           () => textareaEl.value?.focus(),
+  sendExternal:         (text) => { if (text?.trim() && !isLoading.value) dispatchToChat(text, {}) },
+  getSocialMessages:    () => displayMessages.value,
+  addAssistantMessage:  (text) => addMessage('assistant', text),
 })
 </script>
 
