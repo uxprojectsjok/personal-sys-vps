@@ -135,6 +135,11 @@
 
       </div>
 
+      <!-- Kalender -->
+      <div class="px-4 pb-4">
+        <SoulCalendar />
+      </div>
+
     </div>
 
   </div>
@@ -147,6 +152,7 @@ import { computeMaturity } from "#shared/utils/soulMaturity.js";
 import { useSoul } from "~/composables/useSoul.js";
 import { useVault } from "~/composables/useVault.js";
 import SoulMaturityMeter from "~/components/SoulMaturityMeter.vue";
+import SoulCalendar from "~/components/SoulCalendar.vue";
 
 // ── Composables ──────────────────────────────────────────────────────────
 const {

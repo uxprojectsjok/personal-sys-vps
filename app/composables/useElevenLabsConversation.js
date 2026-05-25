@@ -8,19 +8,30 @@
 
 async function blobToPcm16k(blob) {
   const arrayBuffer = await blob.arrayBuffer()
-  const audioCtx = new AudioContext({ sampleRate: 16000 })
+  // Decode at the browser's native sample rate first (more reliable cross-browser)
+  const decodeCtx = new AudioContext()
+  let decoded
   try {
-    const decoded = await audioCtx.decodeAudioData(arrayBuffer)
-    const channelData = decoded.getChannelData(0)
-    const pcm = new Int16Array(channelData.length)
-    for (let i = 0; i < channelData.length; i++) {
-      const s = channelData[i]
-      pcm[i] = Math.max(-32768, Math.min(32767, Math.round(s * 32767)))
-    }
-    return new Uint8Array(pcm.buffer)
+    decoded = await decodeCtx.decodeAudioData(arrayBuffer)
   } finally {
-    audioCtx.close()
+    decodeCtx.close()
   }
+  // Resample to 16kHz via OfflineAudioContext — reliable on iOS/Safari too
+  const TARGET_HZ = 16000
+  const targetLen = Math.ceil(decoded.duration * TARGET_HZ)
+  const offCtx = new OfflineAudioContext(1, targetLen, TARGET_HZ)
+  const src = offCtx.createBufferSource()
+  src.buffer = decoded
+  src.connect(offCtx.destination)
+  src.start()
+  const resampled = await offCtx.startRendering()
+  const channelData = resampled.getChannelData(0)
+  const pcm = new Int16Array(channelData.length)
+  for (let i = 0; i < channelData.length; i++) {
+    const s = channelData[i]
+    pcm[i] = Math.max(-32768, Math.min(32767, Math.round(s * 32767)))
+  }
+  return new Uint8Array(pcm.buffer)
 }
 
 function pcmToWavBlob(base64Chunks, sampleRate = 16000) {
@@ -87,19 +98,29 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
       if (audioSent) return
       audioSent = true
       onStatus?.('Audio wird übertragen…')
+      // Send at real-time rate (128 ms per 4096-byte chunk at 16kHz 16-bit)
+      // so the server-side VAD sees a natural audio stream, not a burst.
       const CHUNK = 4096
-      for (let off = 0; off < pcmBytes.length; off += CHUNK) {
-        const slice = pcmBytes.subarray(off, off + CHUNK)
-        let bin = ''
-        for (let i = 0; i < slice.length; i++) bin += String.fromCharCode(slice[i])
-        ws.send(JSON.stringify({ user_audio_chunk: btoa(bin) }))
+      let off = 0
+      function sendNext() {
+        if (ws.readyState !== WebSocket.OPEN) return
+        if (off < pcmBytes.length) {
+          const slice = pcmBytes.subarray(off, off + CHUNK)
+          let bin = ''
+          for (let i = 0; i < slice.length; i++) bin += String.fromCharCode(slice[i])
+          ws.send(JSON.stringify({ user_audio_chunk: btoa(bin) }))
+          off += CHUNK
+          setTimeout(sendNext, 128)
+        } else {
+          // ~800 ms Stille → VAD sicher auslösen
+          const sil = new Uint8Array(25600)
+          let silBin = ''
+          for (let i = 0; i < sil.length; i++) silBin += String.fromCharCode(sil[i])
+          ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
+          onStatus?.('Agent hört zu…')
+        }
       }
-      // ~800 ms Stille → VAD sicher auslösen
-      const sil = new Uint8Array(25600)
-      let silBin = ''
-      for (let i = 0; i < sil.length; i++) silBin += String.fromCharCode(sil[i])
-      ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
-      onStatus?.('Agent hört zu…')
+      sendNext()
     }
 
     // Greeting-Timer: feuert wenn der Agent nach der Begrüßung schweigt.

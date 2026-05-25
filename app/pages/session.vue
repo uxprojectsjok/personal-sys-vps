@@ -30,7 +30,7 @@
           <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
             {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
           </button>
-          <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+          <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
           <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
           </button>
@@ -53,7 +53,7 @@
               {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
             </button>
             <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
-            <button class="tool tool--logout" v-if="isMultiHoster" @click="lockGate">Ausloggen</button>
+            <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
             <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
               {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
             </button>
@@ -121,6 +121,8 @@
       <nav class="mobile-tabs">
         <button :class="{ active: mobileView === 'chat' }" @click="mobileView = 'chat'">Chat</button>
         <button :class="{ active: mobileView === 'soul' }" @click="mobileView = 'soul'">Seele</button>
+        <button @click="settingsOpen = true">Einstellungen</button>
+        <button class="tab--logout" @click="lockGate">Ausloggen</button>
       </nav>
     </div>
 
@@ -578,6 +580,7 @@ function reloadPage() { location.reload() }
 }
 .mobile-tabs button { flex: 1; padding: 14px; background: transparent; border: 0; color: var(--fg-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .mobile-tabs button.active { color: var(--accent); }
+.mobile-tabs .tab--logout { color: var(--err, #f0a3a3); }
 
 /* Loading */
 .sys-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #12101a; color: rgba(236,231,245,0.70); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
