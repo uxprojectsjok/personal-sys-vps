@@ -41,52 +41,8 @@
 
         <!-- ═══════════ BODY ═══════════ -->
         <div class="amm-body">
-          <!-- ───── STEP 1 · PINATA ───── -->
-          <section v-if="step === 'pinata'" class="step">
-            <div class="step-head">
-              <h2 class="step-title">Pinata <em>verbinden</em></h2>
-              <a class="step-link" href="https://pinata.cloud" target="_blank" rel="noopener">
-                pinata.cloud <span class="arr">↗</span>
-              </a>
-            </div>
-
-            <p class="prose">
-              Pinata ist ein unabhängiger IPFS-Pinning-Dienst — keine Kooperation mit SaveYourSoul.
-              Andere Pinning-Dienste mit JWT-API funktionieren ebenfalls.
-            </p>
-
-            <ol class="how">
-              <li><span class="n">a</span> Kostenlosen Account anlegen</li>
-              <li><span class="n">b</span> API Keys / New Key (Admin)</li>
-              <li><span class="n">c</span> JWT kopieren und unten einfügen</li>
-            </ol>
-
-            <div v-if="pinataOk" class="state-ok">
-              <span class="state-mark">●</span>
-              <div class="state-text">
-                <span class="state-label">Verbunden</span>
-                <span class="state-value">{{ pinataPreview }}</span>
-              </div>
-              <button class="state-clear" @click="clearPinata">trennen</button>
-            </div>
-
-            <div v-else class="field">
-              <label class="field-label" for="pinata-jwt">JWT-Token</label>
-              <input
-                id="pinata-jwt"
-                v-model="pinataJwt"
-                type="password"
-                class="input mono"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
-                autocomplete="off"
-                @keyup.enter="savePinata"
-              />
-              <p v-if="pinataError" class="field-error">{{ pinataError }}</p>
-            </div>
-          </section>
-
-          <!-- ───── STEP 2 · ZUGANGSMODUS ───── -->
-          <section v-else-if="step === 'mode'" class="step">
+          <!-- ───── STEP 1 · ZUGANGSMODUS ───── -->
+          <section v-if="step === 'mode'" class="step">
             <div class="step-head">
               <h2 class="step-title">Zugang <em>festlegen</em></h2>
             </div>
@@ -260,7 +216,7 @@
             </div>
           </section>
 
-          <!-- ───── STEP 3 · IPFS REGISTRATION ───── -->
+          <!-- ───── STEP 2 · IPFS REGISTRATION ───── -->
           <section v-else-if="step === 'ipfs'" class="step">
             <div class="step-head">
               <h2 class="step-title">Auf IPFS <em>veröffentlichen</em></h2>
@@ -274,8 +230,7 @@
             <div v-if="!pinataOk" class="prereq">
               <span class="prereq-mark">!</span>
               <div>
-                <span class="prereq-label">Pinata-JWT fehlt</span>
-                <button class="prereq-back" @click="goTo('pinata')">→ zurück zu Schritt 1</button>
+                <span class="prereq-label">Pinata-JWT fehlt — bitte in den Einstellungen hinterlegen</span>
               </div>
             </div>
 
@@ -333,19 +288,10 @@
           </div>
 
           <div class="amm-foot-actions">
-            <button v-if="step !== 'pinata'" class="btn btn-ghost" @click="prevStep">← Zurück</button>
+            <button v-if="step !== 'mode'" class="btn btn-ghost" @click="prevStep">← Zurück</button>
 
             <button
-              v-if="step === 'pinata'"
-              class="btn btn-primary"
-              :disabled="!canAdvance"
-              @click="primaryAction"
-            >
-              {{ pinataOk ? 'Weiter →' : (savingPinata ? 'Speichern…' : 'JWT speichern') }}
-            </button>
-
-            <button
-              v-else-if="step === 'mode'"
+              v-if="step === 'mode'"
               class="btn btn-primary"
               :disabled="!canAdvance"
               @click="primaryAction"
@@ -378,10 +324,9 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 // ═══════════ STEP MACHINE ═══════════
-const step = ref('pinata') // 'pinata' | 'mode' | 'ipfs'
+const step = ref('mode') // 'mode' | 'ipfs'
 
 const steps = computed(() => [
-  { id: 'pinata', title: 'Pinata',   subtitle: 'IPFS-Pinning', done: pinataOk.value },
   { id: 'mode',   title: 'Zugang',   subtitle: 'Frei oder bezahlt', done: amortActive.value || (!amort.enabled && modeTouched.value) },
   { id: 'ipfs',   title: 'IPFS',     subtitle: 'Veröffentlichen',  done: registered.value },
 ])
@@ -397,23 +342,18 @@ function goTo(id) {
 }
 
 function prevStep() {
-  const order = ['pinata', 'mode', 'ipfs']
+  const order = ['mode', 'ipfs']
   const i = order.indexOf(step.value)
   if (i > 0) step.value = order[i - 1]
 }
 
 const canAdvance = computed(() => {
-  if (step.value === 'pinata') return pinataOk.value || !!pinataJwt.value.trim()
-  if (step.value === 'mode')   return !amort.enabled || (amort.wallet.trim() && amort.pol_per_request.trim())
+  if (step.value === 'mode') return !amort.enabled || (amort.wallet.trim() && amort.pol_per_request.trim())
   return true
 })
 
 async function primaryAction() {
-  if (step.value === 'pinata') {
-    if (pinataOk.value) { step.value = 'mode'; return }
-    await savePinata()
-    if (pinataOk.value) step.value = 'mode'
-  } else if (step.value === 'mode') {
+  if (step.value === 'mode') {
     if (amort.enabled) {
       await saveAmort()
       if (!amortError.value) step.value = 'ipfs'
@@ -425,8 +365,8 @@ async function primaryAction() {
 
 const overallStatus = computed(() => {
   const done = steps.value.filter(s => s.done).length
-  if (done === 3) return { kind: 'ok',   text: 'Marketplace · vollständig eingerichtet' }
-  if (done > 0)   return { kind: 'live', text: `${done} von 3 Schritten · in Arbeit` }
+  if (done === 2) return { kind: 'ok',   text: 'Marketplace · vollständig eingerichtet' }
+  if (done > 0)   return { kind: 'live', text: `${done} von 2 Schritten · in Arbeit` }
   return            { kind: 'idle', text: 'Setup · noch nicht begonnen' }
 })
 
@@ -620,9 +560,8 @@ function authHeader() {
 onMounted(async () => {
   if (!props.soulCert) return
   await Promise.all([loadPinata(), loadAmort()])
-  if (!pinataOk.value)               step.value = 'pinata'
-  else if (!amortActive.value && !modeTouched.value) step.value = 'mode'
-  else if (!registered.value)        step.value = 'ipfs'
+  if (!amortActive.value && !modeTouched.value) step.value = 'mode'
+  else if (!registered.value) step.value = 'ipfs'
   if (step.value === 'ipfs') loadPreview()
 })
 

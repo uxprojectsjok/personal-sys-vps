@@ -608,7 +608,7 @@ const AT_COMMANDS = [
   { cmd: '@sprechen',     label: 'sprechen',     desc: 'Mit Agent sprechen',              direct: true                                                  },
   { cmd: '@diagnose',     label: 'diagnose',     desc: 'Fehlerlog anzeigen',              direct: true                                                  },
   { cmd: '@contact ',     label: 'contact',      desc: 'Peer hinzufügen',                 direct: false, hint: '<soul_id> <name> https://peer.domain'   },
-  { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | status'    },
+  { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | publish Name | Beschreibung | Tags | status' },
   { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
   { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
   { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',                   direct: false, hint: 'Frage an den Agent …'                  },
@@ -2134,6 +2134,17 @@ async function handlePin(query) {
   }
 
   // ── @pin paid <pol> <wallet> [days] ────────────────────────────
+  if (/^paid\s+0x/i.test(q)) {
+    addMessage('user', `@pin ${q.trim().split(/\s+/).slice(0, 3).join(' ')}…`)
+    addMessage('assistant', [
+      'Wallet-Adresse an falscher Stelle.',
+      'Format: `@pin paid 0.001 0xWallet [7d]`',
+      '· Erster Wert = POL-Rate (z.B. `0.001`)',
+      '· Zweiter Wert = Wallet-Adresse (`0x…`)',
+      '· Optionaler dritter Wert = Gültigkeit in Tagen (`7d`)',
+    ].join('\n'))
+    return
+  }
   const paidM = q.match(/^paid\s+(\S+)\s+(\S+)(?:\s+(\d+)\w*)?$/i)
   if (paidM) {
     const pol    = paidM[1]
@@ -2147,7 +2158,7 @@ async function handlePin(query) {
       await putAmort({ enabled: true, pol_per_request: pol, wallet, token_duration_days: days })
       setMessageMetaById(msg.id, 'text', [
         'Bezahlter Zugang ✓',
-        `Rate: ${pol} POL · Wallet: \`${wallet}\` · Gültigkeit: ${days} Tage`,
+        `Rate: ${pol} POL · Wallet: \`${wallet}\` · Gültigkeit: ${days} ${days === 1 ? 'Tag' : 'Tage'}`,
         '',
         'Welche Tools sollen freigegeben werden?',
       ].join('\n'))
