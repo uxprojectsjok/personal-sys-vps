@@ -256,6 +256,57 @@
                 </p>
               </div>
 
+              <!-- Pinata JWT -->
+              <div class="sys-field" style="gap:12px;margin-top:24px">
+                <label class="sys-field-label">
+                  Pinata JWT
+                  <span v-if="pinataJwtSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ pinataPreview }}</span>
+                </label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="pinataJwt"
+                    :type="showPinataJwt ? 'text' : 'password'"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none"
+                    :style="pinataJwtSet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="pinataJwtSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @keyup.enter="savePinataJwt"
+                  />
+                  <button
+                    @click="showPinataJwt = !showPinataJwt"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none"
+                    :aria-label="showPinataJwt ? 'JWT verbergen' : 'JWT anzeigen'"
+                  >
+                    <i :class="showPinataJwt ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                  </button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button
+                    @click="savePinataJwt"
+                    :disabled="!pinataJwt"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >Speichern</button>
+                  <button
+                    v-if="pinataJwtSet"
+                    @click="deletePinataJwt"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em;color:var(--sys-err)"
+                  >Löschen</button>
+                  <span v-if="pinataFeedback" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ pinataFeedback.message }}
+                  </span>
+                </div>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
+                  Für IPFS-Veröffentlichung und Blockchain-Anchoring.
+                  <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">app.pinata.cloud</a>
+                </p>
+              </div>
+
               <!-- Feedback -->
               <Transition name="sys-modal-fade">
                 <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
@@ -571,6 +622,12 @@ const mcpUrlSet = ref(false)
 const mcpPreview = ref('')
 const mcpDirty  = ref(false)
 
+const pinataJwt      = ref('')
+const showPinataJwt  = ref(false)
+const pinataJwtSet   = ref(false)
+const pinataPreview  = ref('')
+const pinataFeedback = ref(null)
+
 const keySourceLabel = computed(() => ({
   soul:   'Eigener Key aktiv',
   master: 'Server-Key aktiv',
@@ -596,6 +653,51 @@ async function loadStatus() {
     mcpUrlSet.value  = !!d.mcp_url_set
     mcpPreview.value = d.mcp_preview || ''
     if (d.model) model.value = d.model
+  } catch {}
+  try {
+    const pr = await fetch('/api/soul/pinata-config', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (pr.ok) {
+      const pd = await pr.json()
+      pinataJwtSet.value  = pd.configured
+      pinataPreview.value = pd.preview || ''
+    }
+  } catch {}
+}
+
+async function savePinataJwt() {
+  if (!pinataJwt.value.trim()) return
+  try {
+    const res = await fetch('/api/soul/pinata-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ jwt: pinataJwt.value.trim() }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok) {
+      pinataJwt.value     = ''
+      pinataFeedback.value = { ok: true, message: 'Gespeichert ✓' }
+      pinataJwtSet.value   = true
+      pinataPreview.value  = d.preview || ''
+      await loadStatus()
+    } else {
+      pinataFeedback.value = { ok: false, message: d.error || `Fehler ${res.status}` }
+    }
+  } catch (e) {
+    pinataFeedback.value = { ok: false, message: e.message }
+  }
+  setTimeout(() => { pinataFeedback.value = null }, 5000)
+}
+
+async function deletePinataJwt() {
+  try {
+    await fetch('/api/soul/pinata-config', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    pinataJwtSet.value  = false
+    pinataPreview.value = ''
   } catch {}
 }
 
