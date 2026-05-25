@@ -2,7 +2,7 @@
 // Sendet aufgenommenes Audio an den ElevenLabs Conversational AI Agent
 // und liefert userText + agentText + audioBlob zurück.
 //
-// Protokoll: WSS wss://api.elevenlabs.io/v1/convai/conversation?conversation_token=…
+// Protokoll: WSS wss://api.elevenlabs.io/v1/convai/conversation?agent_id=…
 // Input:  PCM 16-bit 16kHz mono (base64-Chunks über user_audio_chunk)
 // Output: PCM base64-Chunks (audio_event) → WAV Blob
 
@@ -79,18 +79,16 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
 
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(signed_url)
-    let userText         = ''
-    let agentText        = ''
-    let audioChunks      = []
-    let outputHz         = 16000
-    let timer            = null
-    let greetingTimer    = null
-    let audioSent        = false  // wurde unser PCM bereits gesendet?
-    let transcriptReady  = false  // wurde user_transcript empfangen?
+    let userText        = ''
+    let agentText       = ''
+    let audioChunks     = []
+    let outputHz        = 16000
+    let timer           = null
+    let audioSent       = false
+    let transcriptReady = false
 
     function finish() {
       clearTimeout(timer)
-      clearTimeout(greetingTimer)
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close()
     }
 
@@ -98,10 +96,11 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
       if (audioSent) return
       audioSent = true
       onStatus?.('Audio wird übertragen…')
-      // Send at real-time rate (128 ms per 4096-byte chunk at 16kHz 16-bit)
-      // so the server-side VAD sees a natural audio stream, not a burst.
+      // Send at real-time rate: 4096 bytes = 128 ms at 16kHz 16-bit mono.
+      // Paced streaming lets the server-side VAD track the speech envelope.
       const CHUNK = 4096
       let off = 0
+
       function sendNext() {
         if (ws.readyState !== WebSocket.OPEN) return
         if (off < pcmBytes.length) {
@@ -111,26 +110,28 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
           ws.send(JSON.stringify({ user_audio_chunk: btoa(bin) }))
           off += CHUNK
           setTimeout(sendNext, 128)
-        } else {
-          // ~800 ms Stille → VAD sicher auslösen
-          const sil = new Uint8Array(25600)
-          let silBin = ''
-          for (let i = 0; i < sil.length; i++) silBin += String.fromCharCode(sil[i])
-          ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
-          onStatus?.('Agent hört zu…')
+          return
         }
+        // Follow with 2 s of silence at real-time rate so VAD detects end-of-speech.
+        let silOff = 0
+        const SIL_TOTAL = 64000  // 2 s at 16kHz 16-bit
+        function sendSil() {
+          if (ws.readyState !== WebSocket.OPEN) return
+          if (silOff >= SIL_TOTAL) { onStatus?.('Agent hört zu…'); return }
+          const len = Math.min(CHUNK, SIL_TOTAL - silOff)
+          const sil = new Uint8Array(len)  // zeros = silence
+          let silBin = ''
+          for (let i = 0; i < len; i++) silBin += String.fromCharCode(0)
+          ws.send(JSON.stringify({ user_audio_chunk: btoa(silBin) }))
+          silOff += len
+          setTimeout(sendSil, 128)
+        }
+        sendSil()
       }
       sendNext()
     }
 
-    // Greeting-Timer: feuert wenn der Agent nach der Begrüßung schweigt.
-    // 500 ms nach Metadata (kein Greeting), oder 1.5 s nach dem letzten Greeting-Audio-Chunk.
-    function scheduleAudioSend(ms) {
-      clearTimeout(greetingTimer)
-      greetingTimer = setTimeout(sendPcm, ms)
-    }
-
-    // Sicherheits-Timeout 45 s
+    // Safety timeout 45 s
     ws.onopen = () => {
       timer = setTimeout(() => {
         const audioBlob = audioChunks.length ? pcmToWavBlob(audioChunks, outputHz) : null
@@ -151,18 +152,13 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
         if (msg.type === 'conversation_initiation_metadata') {
           const fmt = msg.conversation_initiation_metadata_event?.agent_output_audio_format
           if (fmt) { const m = String(fmt).match(/(\d{4,6})/); if (m) outputHz = parseInt(m[1]) }
-          onStatus?.('Verbunden — warte auf Begrüßung…')
-          scheduleAudioSend(500) // kein Greeting → 500 ms reicht
+          onStatus?.('Verbunden — sende Audio…')
+          // Send immediately (barge-in). ElevenLabs VAD handles overlap with the
+          // greeting. Waiting for the greeting to finish risks an inactivity timeout.
+          sendPcm()
           return
         }
 
-        // Solange wir noch nicht gesendet haben: Greeting-Audio verlängert den Timer
-        if (msg.type === 'audio' && !audioSent) {
-          scheduleAudioSend(1500) // 1.5 s nach letztem Greeting-Chunk senden
-          return
-        }
-
-        // Ab hier nur noch Antworten auf UNSER Audio auswerten
         if (msg.type === 'user_transcript') {
           userText = msg.user_transcription_event?.user_transcript || ''
           transcriptReady = true
@@ -184,7 +180,6 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
 
     ws.onclose = () => {
       clearTimeout(timer)
-      clearTimeout(greetingTimer)
       const audioBlob = audioChunks.length ? pcmToWavBlob(audioChunks, outputHz) : null
       resolve({ userText, agentText, audioBlob })
     }

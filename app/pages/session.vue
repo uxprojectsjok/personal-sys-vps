@@ -90,6 +90,17 @@
           class="col-soul"
           :class="{ 'mobile-hidden': mobileView !== 'soul' }"
         >
+          <!-- Mobile-only tools strip — Vault / Einstellungen / Ausloggen / Notfall -->
+          <div class="soul-tools-strip">
+            <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
+              {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
+            </button>
+            <button class="tool" @click="settingsOpen = true">Einstellungen</button>
+            <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
+            <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
+              {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
+            </button>
+          </div>
           <div>
             <div class="cap">Lebendige Datei</div>
             <h3 class="ttl">sys<em>.</em>md</h3>
@@ -121,8 +132,6 @@
       <nav class="mobile-tabs">
         <button :class="{ active: mobileView === 'chat' }" @click="mobileView = 'chat'">Chat</button>
         <button :class="{ active: mobileView === 'soul' }" @click="mobileView = 'soul'">Seele</button>
-        <button @click="settingsOpen = true">Einstellungen</button>
-        <button class="tab--logout" @click="lockGate">Ausloggen</button>
       </nav>
     </div>
 
@@ -448,35 +457,29 @@ function reloadPage() { location.reload() }
   display: flex; align-items: center; gap: 12px;
   flex: 1; min-width: 0;
 }
-/* Burger button — mobile only */
-.burger-btn {
-  display: none;
-  align-items: center; justify-content: center;
-  width: 36px; height: 36px;
-  border: 0; background: transparent;
-  color: var(--fg-3); cursor: pointer;
-  flex-shrink: 0;
-}
-.burger-btn:hover { color: var(--fg); }
-/* Burger dropdown — overlays content, doesn't push grid rows */
-.burger-menu {
-  position: absolute;
-  top: 100%; left: 0; right: 0;
-  z-index: 200;
-  display: flex;
-  border-bottom: 1px solid var(--rule);
-  background: var(--paper-3);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-}
-.burger-menu .tool:first-child { border-left: 0; }
+/* Burger button — hidden; tools moved to soul panel on mobile */
+.burger-btn { display: none; }
+.burger-menu { display: none; }
 
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
-  .burger-btn { display: flex; }
   .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .soul-id-btn { display: none; }
   .pill-sep { display: none; }
+}
+
+/* Soul tools strip — mobile-only tool row at top of soul/dashboard panel */
+.soul-tools-strip { display: none; }
+@media (max-width: 900px) {
+  .soul-tools-strip {
+    display: flex; flex-shrink: 0;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-3);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .soul-tools-strip::-webkit-scrollbar { display: none; }
+  .soul-tools-strip .tool:first-child { border-left: 0; }
 }
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
 .sess-head .back:hover { color: var(--accent); }
@@ -580,7 +583,6 @@ function reloadPage() { location.reload() }
 }
 .mobile-tabs button { flex: 1; padding: 14px; background: transparent; border: 0; color: var(--fg-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .mobile-tabs button.active { color: var(--accent); }
-.mobile-tabs .tab--logout { color: var(--err, #f0a3a3); }
 
 /* Loading */
 .sys-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #12101a; color: rgba(236,231,245,0.70); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
