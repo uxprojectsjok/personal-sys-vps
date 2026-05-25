@@ -430,6 +430,30 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   end
 end
 
+-- ── Agent öffentlich schalten (enable_auth=false) ─────────────────────────────
+local published = false
+do
+  local pub_payload_ok, pub_payload = pcall(cjson.encode, {
+    platform_settings = { auth = { enable_auth = false } }
+  })
+  if pub_payload_ok then
+    local hc3 = http.new()
+    hc3:set_timeout(10000)
+    local pres = hc3:request_uri(ELEVEN .. "/convai/agents/" .. agent_id, {
+      method     = "PATCH",
+      ssl_verify = true,
+      headers    = {
+        ["Content-Type"] = "application/json",
+        ["xi-api-key"]   = eleven_key,
+      },
+      body = pub_payload,
+    })
+    if pres and pres.status == 200 then
+      published = true
+    end
+  end
+end
+
 -- ── Antwort ────────────────────────────────────────────────────────────────────
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -439,6 +463,7 @@ local resp_ok, resp_js = pcall(cjson.encode, {
   voice_id        = voice_id or cjson.null,
   soul_name       = soul_name,
   has_voice_clone = voice_id ~= nil,
+  published       = published,
   agent_url       = "https://elevenlabs.io/app/conversational-ai/" .. agent_id,
 })
 if not resp_ok then
