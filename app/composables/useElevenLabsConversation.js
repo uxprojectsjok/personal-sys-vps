@@ -59,7 +59,7 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
     const err = await tokenRes.json().catch(() => ({}))
     throw new Error(err.message || 'token_error')
   }
-  const { conversation_token } = await tokenRes.json()
+  const { signed_url } = await tokenRes.json()
 
   onStatus?.('Audio wird vorbereitet…')
   const pcmBytes = await blobToPcm16k(blob)
@@ -67,9 +67,7 @@ export async function sendAudioToAgent(blob, { soulCert, onStatus } = {}) {
   onStatus?.('Agent verbunden…')
 
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(
-      `wss://api.elevenlabs.io/v1/convai/conversation?conversation_token=${conversation_token}`
-    )
+    const ws = new WebSocket(signed_url)
     let userText    = ''
     let agentText   = ''
     let audioChunks = []
