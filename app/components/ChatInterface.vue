@@ -644,7 +644,7 @@ const AT_COMMANDS = [
   { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',               direct: true                                                  },
   { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',              direct: true                                                  },
   { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: true                                                  },
-  { cmd: '@sprechen',     label: 'sprechen',     desc: 'Mit Agent sprechen',              direct: true                                                  },
+  { cmd: '@sprechen',     label: 'sprechen',     desc: 'Sprachaufnahme starten',          direct: true                                                  },
   { cmd: '@diagnose',     label: 'diagnose',     desc: 'Fehlerlog anzeigen',              direct: true                                                  },
   { cmd: '@contact ',     label: 'contact',      desc: 'Peer hinzufügen',                 direct: false, hint: '<soul_id> <name> https://peer.domain'   },
   { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | publish Name | Beschreibung | Tags | status' },

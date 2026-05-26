@@ -225,6 +225,18 @@
                 :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
 
+            <!-- ElevenLabs Agent-URL -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                ElevenLabs Agent-URL
+                <span v-if="cfgAgentSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgAgentUrl" type="text" class="sys-input sys-input--mono"
+                placeholder="https://elevenlabs.io/app/talk-to?agent_id=…"
+                autocomplete="off" spellcheck="false"
+                :style="cfgAgentSet ? 'border-color:var(--sys-ok)' : ''" />
+            </div>
+
             <!-- Brave Search -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
@@ -456,9 +468,11 @@ const cfgLabsDirty = ref(false)
 const cfgBraveKey  = ref('')
 const cfgBraveSet  = ref(false)
 const cfgBraveDirty = ref(false)
-const cfgPinataJwt = ref('')
-const cfgPinataSet = ref(false)
-const cfgSaving    = ref(false)
+const cfgPinataJwt  = ref('')
+const cfgPinataSet  = ref(false)
+const cfgAgentUrl   = ref('')
+const cfgAgentSet   = ref(false)
+const cfgSaving     = ref(false)
 const cfgFeedback  = ref(null)
 
 async function loadCfgStep() {
@@ -474,6 +488,8 @@ async function loadCfgStep() {
     cfgWaveSet.value  = !!data.wavespeed_key_set
     cfgLabsSet.value  = !!data.elevenlabs_key_set
     cfgBraveSet.value = !!data.brave_key_set
+    cfgAgentUrl.value = data.elevenlabs_agent_url || ''
+    cfgAgentSet.value = !!data.elevenlabs_agent_url
   } catch {}
   try {
     const pr = await fetch('/api/soul/pinata-config', {
@@ -495,6 +511,7 @@ async function saveCfgStep() {
     if (cfgWaveKey.value)  body.wavespeed_key  = sanitizeKey(cfgWaveKey.value)
     if (cfgLabsKey.value)  body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
     if (cfgBraveKey.value) body.brave_key      = sanitizeKey(cfgBraveKey.value)
+    if (cfgAgentUrl.value !== undefined) body.elevenlabs_agent_url = cfgAgentUrl.value.trim()
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
@@ -506,6 +523,7 @@ async function saveCfgStep() {
     if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
     if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
     if (cfgBraveKey.value) { cfgBraveSet.value = true; cfgBraveKey.value = ''; cfgBraveDirty.value = false }
+    cfgAgentSet.value = !!cfgAgentUrl.value.trim()
     if (cfgPinataJwt.value) {
       try {
         const pr = await fetch('/api/soul/pinata-config', {

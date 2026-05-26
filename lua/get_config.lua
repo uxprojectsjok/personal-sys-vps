@@ -93,7 +93,8 @@ ngx.say(cjson.encode({
   wavespeed_preview    = wavespeed_preview,
   elevenlabs_key_set   = has_elevenlabs,
   elevenlabs_preview   = elevenlabs_preview,
-  brave_key_set        = has_brave,
-  brave_preview        = brave_preview,
-  model                = soul_cfg.model or cjson.null,
+  brave_key_set          = has_brave,
+  brave_preview          = brave_preview,
+  elevenlabs_agent_url   = soul_cfg.elevenlabs_agent_url or cjson.null,
+  model                  = soul_cfg.model or cjson.null,
 }))
