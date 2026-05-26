@@ -86,8 +86,8 @@
             <div class="action-card" @click="emitDownload">
               <div class="action-icon"><i class="ri-download-2-line" /></div>
               <div class="action-text">
-                <strong>Neue sys.md herunterladen</strong>
-                <span>Enthält den frischen Cert für diesen Server. Sichere die Datei lokal.</span>
+                <strong>Soul erstellen und sys.md herunterladen</strong>
+                <span>Erstellt deine Soul auf diesem Server und speichert die Datei mit dem neuen Cert lokal.</span>
               </div>
               <i class="ri-arrow-right-line action-arr" />
             </div>
