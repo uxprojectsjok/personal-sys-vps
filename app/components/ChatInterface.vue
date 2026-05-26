@@ -609,14 +609,19 @@ async function stopVoiceRecord() {
       if (!chatResult) updateLastMessage(error.value ? `_(Fehler: ${error.value})_` : '…')
       await scrollToBottom()
 
-      // Auto-TTS: Antwort vorlesen, kein Audio-Player im Chat
+      // Auto-TTS: Antwort vorlesen mit geklonter Stimme wenn vorhanden
       const responseText = messages.value.at(-1)?.text || ''
       if (responseText) {
         try {
+          const ttsVoiceId = (soulContentAgent.value || props.soulContent || '').match(/elevenlabs_voice_id:\s*(\S+)/)?.[1]
+            || localStorage.getItem('sys_elevenlabs_voice_id')
+            || undefined
+          const ttsBody = { text: responseText.slice(0, 500) }
+          if (ttsVoiceId) ttsBody.voiceId = ttsVoiceId
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-            body: JSON.stringify({ text: responseText.slice(0, 500) }),
+            body: JSON.stringify(ttsBody),
           })
           if (ttsRes.ok) {
             const url = URL.createObjectURL(await ttsRes.blob())
@@ -1824,17 +1829,23 @@ async function handleCreateAgent() {
       return
     }
 
-    // agent_id in localStorage (zuverlässig für @sprechen, unabhängig vom Lade-Zustand der soul)
-    if (data.agent_id) {
-      localStorage.setItem('sys_elevenlabs_agent_id', data.agent_id)
-    }
+    // agent_id + voice_id in localStorage (zuverlässig für @sprechen, unabhängig vom Lade-Zustand der soul)
+    if (data.agent_id) localStorage.setItem('sys_elevenlabs_agent_id', data.agent_id)
+    if (data.voice_id) localStorage.setItem('sys_elevenlabs_voice_id', data.voice_id)
 
-    // agent_id lokal patchen + zum Server pushen (bei verschlüsselter sys.md schreibt das Lua nicht selbst)
+    // agent_id + voice_id lokal patchen + zum Server pushen
     if (data.agent_id && soulContentAgent.value) {
-      const lineRe = /^(elevenlabs_agent_id:\s*).*$/m
-      const patched = lineRe.test(soulContentAgent.value)
-        ? soulContentAgent.value.replace(lineRe, `$1${data.agent_id}`)
-        : soulContentAgent.value.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_agent_id: ${data.agent_id}\n$2`)
+      let patched = soulContentAgent.value
+      const agentRe = /^(elevenlabs_agent_id:\s*).*$/m
+      patched = agentRe.test(patched)
+        ? patched.replace(agentRe, `$1${data.agent_id}`)
+        : patched.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_agent_id: ${data.agent_id}\n$2`)
+      if (data.voice_id) {
+        const voiceRe = /^(elevenlabs_voice_id:\s*).*$/m
+        patched = voiceRe.test(patched)
+          ? patched.replace(voiceRe, `$1${data.voice_id}`)
+          : patched.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_voice_id: ${data.voice_id}\n$2`)
+      }
       updateContent(patched)
       pushToServer().catch(() => {})
       if (vaultConnected.value) writeSoulMd(patched, 'sys').catch(() => {})
