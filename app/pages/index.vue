@@ -336,7 +336,7 @@
     <ConfirmModal />
 
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
-    <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; setupOpen = true" />
+    <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; setupOpen = true" @download-soul="onSetupDownload" @import-soul="onSetupImport" />
 
     <!-- ── PWA Install Banner ─────────────────────────────────────── -->
     <Teleport to="body">
@@ -470,9 +470,24 @@ async function confirmReset() {
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
   await pushToServer()
-  await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
+  // sys.md-Download erfolgt über FirstSetupModal Step 2 (firstSetupToken gesetzt)
+  // Falls Modal nicht triggert (z.B. '__single__' nicht gesetzt): direkter Fallback
+  if (!firstSetupToken.value) await exportAsBlob()
+}
+
+async function onSetupDownload() {
+  await exportAsBlob()
+  firstSetupToken.value = null
+  setupOpen.value = true
+}
+
+async function onSetupImport(markdown) {
+  const result = await importAndSetup(markdown)
+  if (result.ok) await exportAsBlob()
+  firstSetupToken.value = null
+  setupOpen.value = true
 }
 
 const pendingResetText  = ref('')   // sys.md-Inhalt der feststeckenden Soul
