@@ -539,6 +539,17 @@ async function handleLoginUpload(text) {
       }
       return
     }
+    // Single-Hoster: FirstSetupModal überspringen — Soul bereits importiert, kein Admin-Token nötig.
+    // sys.md mit neuem Cert sofort herunterladen, dann direkt zum Setup-Wizard.
+    if (firstSetupToken.value === '__single__') {
+      firstSetupToken.value = null
+      loginOpen.value = false
+      fetchNodeStatus()
+      await exportAsBlob()
+      setupOpen.value = true
+      return
+    }
+    // Multi-Hoster: Admin-Token muss angezeigt werden → FirstSetupModal öffnet automatisch
   } else {
     // Bestehende Soul auf diesem Server — normaler Login
     importFromText(text)
