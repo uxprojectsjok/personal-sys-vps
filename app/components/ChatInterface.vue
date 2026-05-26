@@ -3402,6 +3402,7 @@ defineExpose({
 /* ── Mic button ──────────────────────────────────────────────────── */
 .dock-mic {
   flex-shrink: 0;
+  touch-action: none; /* prevent scroll stealing the hold gesture on mobile */
   transition: background .15s, color .15s, box-shadow .15s;
 }
 .dock-mic.recording {
@@ -3820,10 +3821,12 @@ defineExpose({
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
   }
 
-  .dock-mode-bar { padding: 0 4px; gap: 6px; min-height: 20px; flex-wrap: wrap; }
-  .archivar-toggle { font-size: 9.5px; padding: 3px 7px; }
-  .model-btn { font-size: 9.5px; padding: 2px 8px; }
-  .dock-icon { width: 42px; }
+  .dock-mode-bar { padding: 0 4px; gap: 8px; min-height: 24px; flex-wrap: wrap; }
+  .archivar-toggle { font-size: 12px; padding: 4px 10px; }
+  .archivar-dot { width: 6px; height: 6px; }
+  .model-btn { font-size: 12px; padding: 3px 11px; }
+  .cmd-toggle { font-size: 13px; padding: 3px 9px; }
+  .dock-icon { width: 44px; }
   .input-wrap { padding: 0 14px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
   .input { padding: 13px 4px; font-size: 16px; }
