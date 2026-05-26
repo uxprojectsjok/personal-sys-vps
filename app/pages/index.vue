@@ -661,10 +661,6 @@ const journal = computed(() => {
   .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .sys-dash-head .head-actions { min-width: 0; }
 }
-@media (max-width: 900px) {
-  .ha-desktop { display: none !important; }
-  .dash-burger-btn { display: flex; }
-}
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s ease; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(6px); }
 /* Dash burger */
@@ -677,6 +673,10 @@ const journal = computed(() => {
   width: 36px; height: 36px;
   border: 0; background: transparent;
   color: var(--fg-3); cursor: pointer;
+}
+@media (max-width: 900px) {
+  .ha-desktop { display: none !important; }
+  .dash-burger-btn { display: flex; }
 }
 .dash-burger-btn:hover { color: var(--fg); }
 .dash-burger-menu {
