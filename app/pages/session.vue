@@ -141,7 +141,7 @@
 
     <SoulAnchorModal :is-open="anchorModalOpen" @close="anchorModalOpen = false" />
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" @master-rotated="handleMasterRotated" />
-    <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" />
+    <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" @download-soul="onSetupDownload" @import-soul="onSetupImport" />
     <ConfirmModal />
     <EmergencyModal v-if="emergencyOpen" :soul-cert="soulToken" @close="emergencyOpen = false" @status-change="handleEmergencyChange" />
   </ClientOnly>
@@ -173,7 +173,7 @@ import SettingsModal from '~/components/SettingsModal.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 
 const router = useRouter()
-const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer } = useSoul()
+const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer } = useSoul()
 const { messages, clearSession, addMessage, toApiMessages } = useSession()
 const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()
@@ -411,6 +411,21 @@ async function handleMasterRotated() {
 
 function handleCertError() { certErrorVisible.value = true }
 function reloadPage() { location.reload() }
+
+async function onSetupDownload() {
+  await exportAsBlob()
+  firstSetupToken.value = null
+  settingsOpen.value = true
+}
+
+async function onSetupImport(markdown) {
+  const result = await importAndSetup(markdown)
+  if (result.ok) {
+    await exportAsBlob()
+  }
+  firstSetupToken.value = null
+  settingsOpen.value = true
+}
 </script>
 
 <style scoped>
