@@ -262,7 +262,11 @@ function switchToForm() {
 }
 
 function doRedirect() {
-  window.location.href = nextUrl.value
+  // Cert war auto-gefüllt aus sessionStorage → Soul liegt bereits im Browser → direkt zur Session
+  const target = (certAutoFilled.value && nextUrl.value === '/')
+    ? '/session'
+    : nextUrl.value
+  window.location.href = target
 }
 </script>
 
