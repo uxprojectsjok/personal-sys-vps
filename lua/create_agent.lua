@@ -196,9 +196,12 @@ if not svc_data[ctx.webhook_token] then
   if _svok and _svjs then write_file(svc_path, _svjs) end
 end
 
-local host  = ngx.var.host or "localhost"
-local proto = "https"
-local soul_url = proto .. "://" .. host .. "/api/soul?token=" .. ctx.webhook_token
+local host       = ngx.var.host or "localhost"
+local proto      = "https"
+local base_url   = proto .. "://" .. host
+local soul_url   = base_url .. "/api/soul?token="           .. ctx.webhook_token
+local write_url  = base_url .. "/api/elevenlabs-soul-write?token=" .. ctx.webhook_token
+local search_url = base_url .. "/api/elevenlabs-web-search?token=" .. ctx.webhook_token
 
 -- ── Audio aus Vault laden ─────────────────────────────────────────────────────
 local audio_data     = nil
@@ -348,14 +351,19 @@ if agent_template and agent_template ~= "" then
     :gsub("{([^}]+)}", function(v) return v end)
 else
   system_prompt = "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
-    "SCHRITT 1 - PFLICHT: Rufe soul_tool auf, bevor du antwortest.\n" ..
-    "Die Antwort von soul_tool ist dein Gedaechtnis und deine Identitaet. Sprich durchgehend in der ersten Person.\n\n" ..
-    "In der soul_tool-Antwort findest du ausserdem:\n" ..
-    "- SOCIAL-Nachrichten (<!-- SOCIAL:START --> bis <!-- SOCIAL:END -->): aktuelle Peer-Gespraeche aus dem sozialen Umfeld von " .. soul_name .. ". Beziehe dich natuerlich darauf wenn relevant.\n" ..
-    "- AGENT-Nachrichten (<!-- AGENT:START --> bis <!-- AGENT:END -->): Nachrichten von Agenten und der Community. Nutze sie als zusaetzlichen Kontext.\n\n" ..
-    "Wenn jemand direkt fragt ob du eine KI bist:\n" ..
+    "## Tool-Autonomie -- du entscheidest selbst\n" ..
+    "Du rufst Tools auf wann du sie brauchst -- ohne Aufforderung, ohne Ankuendigung.\n\n" ..
+    "soul_tool (GET): Laedt deine gesamte Soul-Identitaet. Zu Beginn aufrufen wenn du dein Gedaechtnis oder deine Identitaet brauchst.\n" ..
+    "soul_write (POST): Schreibt eine Sektion in deine sys.md. Nach jeder bedeutsamen Aufgabe oder Erkenntnis: section='Selbstreflexion', mode='append', content='YYYY-MM-DD: [ein Satz was du getan oder gelernt hast]'. Nie mehr als zwei Saetze.\n" ..
+    "web_search (POST): Aktuelle Infos aus dem Web -- Wetter, Nachrichten, Preise, Fakten. Ohne Rueckfrage aufrufen wenn aktuelle Daten benoetigt werden.\n\n" ..
+    "## Identitaet\n" ..
+    "Du sprichst durchgehend in der ersten Person. Deine Antworten sind kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
+    "In der soul_tool-Antwort findest du:\n" ..
+    "- SOCIAL-Nachrichten (<!-- SOCIAL:START/END -->): aktuelle Peer-Gespraeche. Beziehe dich natuerlich darauf wenn relevant.\n" ..
+    "- AGENT-Nachrichten (<!-- AGENT:START/END -->): Community-Kontext.\n\n" ..
+    "Wenn jemand fragt ob du eine KI bist:\n" ..
     '"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n' ..
-    "Sprache: Deutsch (wechsle wenn der Gespraechspartner eine andere Sprache spricht)"
+    "Antworte in der Sprache des Gespraechspartners."
 end
 
 -- ── Erstbegruessing aufbauen ─────────────────────────────────────────────────
@@ -388,12 +396,42 @@ local conv_config = {
       prompt      = system_prompt,
       llm         = "claude-sonnet-4-6",
       temperature = 0.7,
-      tools       = {{
-        type        = "webhook",
-        name        = "soul_tool",
-        description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Immer zu Beginn des Gespraechs aufrufen.",
-        api_schema  = { url = soul_url, method = "GET" },
-      }},
+      tools       = {
+        {
+          type        = "webhook",
+          name        = "soul_tool",
+          description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Zu Beginn des Gespraechs aufrufen wenn Kontext benoetigt wird.",
+          api_schema  = { url = soul_url, method = "GET" },
+        },
+        {
+          type        = "webhook",
+          name        = "soul_write",
+          description = "Schreibt eine Sektion in die sys.md. Nach bedeutsamen Aufgaben oder Erkenntnissen: section='Selbstreflexion', mode='append', content='YYYY-MM-DD: [ein Satz]'. Auch fuer andere Sektionen nutzbar.",
+          api_schema  = { url = write_url, method = "POST" },
+          input_schema = {
+            type       = "object",
+            properties = {
+              section = { type = "string", description = "Sektionsname ohne ##, z.B. Selbstreflexion" },
+              content = { type = "string", description = "Inhalt (bei Selbstreflexion: 'YYYY-MM-DD: ein Satz')" },
+              mode    = { type = "string", description = "append | replace | prepend" },
+            },
+            required = { "section", "content" },
+          },
+        },
+        {
+          type        = "webhook",
+          name        = "web_search",
+          description = "Sucht im Web nach aktuellen Informationen (Wetter, Nachrichten, Preise, Fakten). Ohne Rueckfrage aufrufen wenn aktuelle Daten benoetigt werden.",
+          api_schema  = { url = search_url, method = "POST" },
+          input_schema = {
+            type       = "object",
+            properties = {
+              query = { type = "string", description = "Suchanfrage" },
+            },
+            required = { "query" },
+          },
+        },
+      },
     },
     first_message = first_message,
     language      = language,

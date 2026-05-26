@@ -861,6 +861,23 @@ server {
     content_by_lua_file /etc/openresty/lua/web_search.lua;
   }
 
+  # ── ElevenLabs Agent Webhooks: soul_write + web_search (vault_auth = token ok) ──
+  location = /api/elevenlabs-soul-write {
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/elevenlabs_soul_write.lua;
+  }
+
+  location = /api/elevenlabs-web-search {
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/web_search.lua;
+  }
+
   # ── ElevenLabs Voice Clone + Agent erstellen (POST) ──────────────────────────
   location = /api/create-agent {
     limit_except POST { deny all; }
