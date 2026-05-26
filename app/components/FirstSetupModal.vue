@@ -87,26 +87,10 @@
               <div class="action-icon"><i class="ri-download-2-line" /></div>
               <div class="action-text">
                 <strong>Soul erstellen und sys.md herunterladen</strong>
-                <span>Erstellt deine Soul auf diesem Server und speichert die Datei mit dem neuen Cert lokal.</span>
+                <span>Speichert die Datei mit dem neuen Cert lokal — bewahre sie sicher auf.</span>
               </div>
               <i class="ri-arrow-right-line action-arr" />
             </div>
-
-            <div class="sep-or">oder</div>
-
-            <!-- Import existing -->
-            <div class="action-card" @click="triggerFilePicker">
-              <div class="action-icon"><i class="ri-upload-2-line" /></div>
-              <div class="action-text">
-                <strong>Bestehende Soul einspielen</strong>
-                <span>sys.md vom alten Server hochladen — Cert wird automatisch auf diesen Server aktualisiert.</span>
-              </div>
-              <i class="ri-arrow-right-line action-arr" />
-            </div>
-            <input ref="fileInput" type="file" accept=".md,text/markdown,text/plain" style="display:none" @change="handleFile" />
-
-            <p v-if="importError" class="import-error">{{ importError }}</p>
-            <p v-if="importing" class="import-status">Soul wird eingerichtet…</p>
 
             <!-- Skip -->
             <button class="skip-link" @click="emitDismiss">Überspringen — später einrichten</button>
