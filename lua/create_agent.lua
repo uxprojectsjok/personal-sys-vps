@@ -407,28 +407,34 @@ local conv_config = {
           type        = "webhook",
           name        = "soul_write",
           description = "Schreibt eine Sektion in die sys.md. Nach bedeutsamen Aufgaben oder Erkenntnissen: section='Selbstreflexion', mode='append', content='YYYY-MM-DD: [ein Satz]'. Auch fuer andere Sektionen nutzbar.",
-          api_schema  = { url = write_url, method = "POST" },
-          input_schema = {
-            type       = "object",
-            properties = {
-              section = { type = "string", description = "Sektionsname ohne ##, z.B. Selbstreflexion" },
-              content = { type = "string", description = "Inhalt (bei Selbstreflexion: 'YYYY-MM-DD: ein Satz')" },
-              mode    = { type = "string", description = "append | replace | prepend" },
+          api_schema  = {
+            url    = write_url,
+            method = "POST",
+            request_body_schema = {
+              type       = "object",
+              properties = {
+                section = { type = "string", description = "Sektionsname ohne ##, z.B. Selbstreflexion" },
+                content = { type = "string", description = "Inhalt (bei Selbstreflexion: 'YYYY-MM-DD: ein Satz')" },
+                mode    = { type = "string", description = "append | replace | prepend" },
+              },
+              required = { "section", "content" },
             },
-            required = { "section", "content" },
           },
         },
         {
           type        = "webhook",
           name        = "web_search",
           description = "Sucht im Web nach aktuellen Informationen (Wetter, Nachrichten, Preise, Fakten). Ohne Rueckfrage aufrufen wenn aktuelle Daten benoetigt werden.",
-          api_schema  = { url = search_url, method = "POST" },
-          input_schema = {
-            type       = "object",
-            properties = {
-              query = { type = "string", description = "Suchanfrage" },
+          api_schema  = {
+            url    = search_url,
+            method = "POST",
+            request_body_schema = {
+              type       = "object",
+              properties = {
+                query = { type = "string", description = "Suchanfrage" },
+              },
+              required = { "query" },
             },
-            required = { "query" },
           },
         },
       },
