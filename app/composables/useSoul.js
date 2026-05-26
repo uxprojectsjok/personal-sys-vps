@@ -153,11 +153,15 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (res.ok) {
         const data = await res.json();
         cert = data.cert;
-        // First-Setup: admin_token nur bei Multi-Hoster anzeigen und speichern.
-        // Single-Hoster: soul_cert ist der Admin-Zugang — kein separates Token nötig.
-        if (data.first_setup && data.admin_token && data.is_soul_admin) {
-          firstSetupToken.value = data.admin_token;
-          localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
+        if (data.first_setup) {
+          if (data.admin_token && data.is_soul_admin) {
+            // Multi-Hoster: Admin-Token anzeigen und speichern.
+            firstSetupToken.value = data.admin_token;
+            localStorage.setItem(`sys_admin_token_${id}`, data.admin_token);
+          } else {
+            // Single-Hoster: Kein Admin-Token nötig, aber sys.md-Download/-Import anbieten.
+            firstSetupToken.value = '__single__';
+          }
         }
       }
     } catch {
