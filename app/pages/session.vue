@@ -36,6 +36,27 @@
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
           </button>
         </div>
+        <!-- Mobile burger -->
+        <div class="burger-wrap">
+          <button class="burger-btn" @click="burgerOpen = !burgerOpen" aria-label="Menü">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path v-if="!burgerOpen" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+              <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <Transition name="slide-up">
+            <div v-if="burgerOpen" class="burger-menu">
+              <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
+                {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
+              </button>
+              <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
+              <button class="tool tool--logout" @click="lockGate; burgerOpen = false">Ausloggen</button>
+              <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
+                {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
+              </button>
+            </div>
+          </Transition>
+        </div>
       </header>
 
       <!-- SUB-HEADER: status banners — wrapper collapses to 0 when all are hidden -->
@@ -190,6 +211,7 @@ async function copySoulId() {
 // Fires every 20 min when there's meaningful new content.
 let _soulGrowthTimer    = null
 let _lastGrowthAiCount  = 0
+const burgerOpen        = ref(false)
 const isGrowingQuietly  = ref(false)
 const soulJustGrew      = ref(false)   // brief flash indicator
 
@@ -477,7 +499,16 @@ async function onSetupImport(markdown) {
 .fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.5s; }
 .fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
 .sess-head .tools { display: flex; align-items: center; }
-@media (max-width: 900px) { .sess-head .tools--desktop { flex-wrap: wrap; gap: 4px; } }
+@media (max-width: 900px) { .sess-head .tools--desktop { display: none; } }
+.burger-wrap { position: relative; display: none; }
+@media (max-width: 900px) { .burger-wrap { display: block; } }
+.burger-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; background: transparent; color: var(--fg-3); cursor: pointer; }
+.burger-btn:hover { color: var(--fg); }
+.burger-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 200; background: var(--paper-3); border: 1px solid var(--rule); border-radius: 4px; display: flex; flex-direction: column; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.burger-menu .tool { border-left: 0; border-bottom: 1px solid var(--rule); text-align: left; padding: 14px 20px; }
+.burger-menu .tool:last-child { border-bottom: 0; }
+.slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s ease; }
+.slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(6px); }
 .tool { padding: 10px 16px; border-left: 1px solid var(--rule); border-top: 0; border-bottom: 0; border-right: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; background: transparent; white-space: nowrap; }
 .tool:hover:not(:disabled) { color: var(--fg); }
 .tool.active { color: var(--accent); }
