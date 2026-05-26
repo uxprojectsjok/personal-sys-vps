@@ -1811,10 +1811,57 @@ async function handleCreateAgent() {
   await scrollToBottom()
 
   try {
+    // Audio aus Server-Vault holen — Server entschlüsselt via vault_auth, Browser als Fallback
+    let audioBase64 = null
+    let audioFilename = null
+    try {
+      const listRes = await fetch('/api/vault/audio', {
+        headers: { Authorization: `Bearer ${props.soulCert}` },
+      })
+      if (listRes.ok) {
+        const listData = await listRes.json()
+        const files = Array.isArray(listData.files) ? listData.files : []
+        const target = files.find(f => f.active) || files[0]
+        if (target?.name) {
+          const fileRes = await fetch(`/api/vault/audio/${encodeURIComponent(target.name)}`, {
+            headers: { Authorization: `Bearer ${props.soulCert}` },
+          })
+          if (fileRes.ok) {
+            const buf = await fileRes.arrayBuffer()
+            let bytes = new Uint8Array(buf)
+            // Server konnte nicht entschlüsseln → Browser-seitig nachhelfen
+            if (bytes[0] === 0x53 && bytes[1] === 0x59 && bytes[2] === 0x53 && bytes[3] === 0x01) {
+              const key = _vaultKey.value
+              if (key && /^[0-9a-f]{64}$/i.test(key)) {
+                try {
+                  const iv = bytes.slice(4, 20)
+                  const cipher = bytes.slice(20)
+                  const kb = new Uint8Array(key.match(/../g).map(h => parseInt(h, 16)))
+                  const ck = await crypto.subtle.importKey('raw', kb, { name: 'AES-CBC' }, false, ['decrypt'])
+                  bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, ck, cipher))
+                } catch {}
+              }
+            }
+            if (!(bytes[0] === 0x53 && bytes[1] === 0x59 && bytes[2] === 0x53 && bytes[3] === 0x01)) {
+              let bin = ''
+              const chunk = 65536
+              for (let i = 0; i < bytes.length; i += chunk)
+                bin += String.fromCharCode(...bytes.subarray(i, i + chunk))
+              audioBase64 = btoa(bin)
+              audioFilename = target.name
+            }
+          }
+        }
+      }
+    } catch {}
+
     const res = await fetch('/api/create-agent', {
       method: 'POST',
       headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vault_key: _vaultKey.value || '' }),
+      body: JSON.stringify({
+        vault_key: _vaultKey.value || '',
+        ...(audioBase64 ? { audio_base64: audioBase64, audio_filename: audioFilename } : {}),
+      }),
       signal,
     })
     const data = await res.json().catch(() => ({}))
