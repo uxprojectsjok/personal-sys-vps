@@ -78,7 +78,7 @@
             <dl class="metrics">
               <div class="m">
                 <dt>Soul-Datei</dt>
-                <dd class="mono">sys.md</dd>
+                <dd class="mono">{{ soulFilename || 'sys.md' }}</dd>
                 <span class="status ok"><i></i>Aktiv</span>
               </div>
               <div class="m">
@@ -231,7 +231,7 @@
             </p>
             <div class="sys-field" style="margin-bottom:0">
               <span class="sys-field-label">Soul-Datei</span>
-              <SoulUpload @uploaded="handleLoginUpload" />
+              <SoulUpload @uploaded="(text, name) => handleLoginUpload(text, name)" />
             </div>
 
             <!-- Recovery: invalid_proof Deadlock -->
@@ -384,7 +384,7 @@ import SettingsModal from '~/components/SettingsModal.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken, refreshCert } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken, refreshCert, soulFilename, setSoulFilename } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
@@ -514,9 +514,10 @@ const pendingResetText  = ref('')   // sys.md-Inhalt der feststeckenden Soul
 const pendingResetSoulId = ref('')  // soul_id für den Reset-Button
 const resetBusy = ref(false)
 
-async function handleLoginUpload(text) {
+async function handleLoginUpload(text, filename) {
   pendingResetText.value   = ''
   pendingResetSoulId.value = ''
+  if (filename) setSoulFilename(filename)
 
   if (allowCreateSoul.value) {
     // Multi-Hoster oder frischer VPS — importieren und serverseitig registrieren

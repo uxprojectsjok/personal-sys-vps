@@ -52,7 +52,7 @@ async function readFile(file) {
       return;
     }
 
-    emit("uploaded", text);
+    emit("uploaded", text, file.name);
   } catch (e) {
     errorMsg.value = "Fehler beim Lesen der Datei.";
     console.error("[SoulUpload]", e);

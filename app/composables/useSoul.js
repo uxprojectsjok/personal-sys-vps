@@ -3,11 +3,13 @@
 import { ref, computed } from "vue";
 import { updateLastSession, updateSection, appendSessionLog, deduplicateSessionLog, addOrUpdateVaultSection, updateFrontmatterField } from "#shared/utils/soulParser.js";
 
-const SOUL_KEY = "sys.soul";
-const CERT_KEY = "sys.soul_cert";
+const SOUL_KEY     = "sys.soul";
+const CERT_KEY     = "sys.soul_cert";
+const FILENAME_KEY = "sys.soul_filename";
 
 // Singleton-State (Modul-Scope, nicht Component-Scope)
 const firstSetupToken      = ref(null);
+const soulFilename         = ref("");
 const soulContent          = ref("");
 const soulCert             = ref("");
 const isLoaded             = ref(false);
@@ -114,6 +116,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     try {
       sessionStorage.setItem(SOUL_KEY, soulContent.value);
       sessionStorage.setItem(CERT_KEY, soulCert.value);
+      if (soulFilename.value) sessionStorage.setItem(FILENAME_KEY, soulFilename.value);
     } catch (e) {
       console.error("[useSoul] save error:", e);
     }
@@ -127,9 +130,9 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       const stored = sessionStorage.getItem(SOUL_KEY);
       if (stored && stored.includes("soul_cert:")) {
         soulContent.value = stored;
-        // Cert immer aus dem Dateiinhalt lesen (nicht aus separatem sessionStorage-Schlüssel)
         const certFromContent = stored.match(/soul_cert:\s*(.+)/)?.[1]?.trim() || "";
         soulCert.value = certFromContent;
+        soulFilename.value = sessionStorage.getItem(FILENAME_KEY) || "";
         isLoaded.value = true;
         return true;
       }
@@ -137,6 +140,12 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       console.error("[useSoul] load error:", e);
     }
     return false;
+  }
+
+  function setSoulFilename(name) {
+    if (!isClient) return;
+    soulFilename.value = name || "";
+    try { sessionStorage.setItem(FILENAME_KEY, soulFilename.value); } catch {}
   }
 
   // ── CRUD ────────────────────────────────────────────────────────────────
@@ -765,6 +774,8 @@ Mögliche section-Werte (exakt so schreiben):
     pendingSoulFileWrite,
     serverVaultEncrypted,
     isLoginInProgress,
+    soulFilename,
+    setSoulFilename,
   };
 }
 
