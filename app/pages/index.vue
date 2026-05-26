@@ -640,7 +640,7 @@ const journal = computed(() => {
   .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .sys-dash-head .head-actions { min-width: 0; }
 }
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   .ha-desktop { display: none !important; }
   .dash-burger-btn { display: flex; }
 }
