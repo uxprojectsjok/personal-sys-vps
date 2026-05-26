@@ -419,6 +419,15 @@ async function onSetupDownload() {
 }
 
 async function onSetupImport(markdown) {
+  const lockedId = soulMeta.value?.id
+  if (lockedId) {
+    try {
+      await $fetch('/api/soul/reset-registration', {
+        method: 'POST',
+        body: { soul_id: lockedId, clear_lock: true },
+      })
+    } catch { /* ignore — may already be clean */ }
+  }
   const result = await importAndSetup(markdown)
   if (result.ok) {
     await exportAsBlob()

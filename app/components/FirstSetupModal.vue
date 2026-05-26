@@ -87,10 +87,25 @@
               <div class="action-icon"><i class="ri-download-2-line" /></div>
               <div class="action-text">
                 <strong>Soul erstellen und sys.md herunterladen</strong>
-                <span>Speichert die Datei mit dem neuen Cert lokal — bewahre sie sicher auf.</span>
+                <span>Neue Soul für diesen VPS — Cert wird automatisch eingetragen.</span>
               </div>
               <i class="ri-arrow-right-line action-arr" />
             </div>
+
+            <div class="sep-or">oder</div>
+
+            <!-- Import existing -->
+            <div class="action-card" @click="triggerFilePicker">
+              <div class="action-icon"><i class="ri-upload-2-line" /></div>
+              <div class="action-text">
+                <strong>Bestehende Soul einspielen</strong>
+                <span>sys.md von einem früheren VPS hochladen — Cert wird für diesen VPS neu ausgestellt.</span>
+              </div>
+              <i class="ri-arrow-right-line action-arr" />
+            </div>
+            <input ref="fileInput" type="file" accept=".md,text/plain" hidden @change="handleFile" />
+            <p v-if="importError" class="import-error">{{ importError }}</p>
+            <p v-if="importing" class="import-status">Importiert…</p>
 
             <!-- Skip -->
             <button class="skip-link" @click="emitDismiss">Überspringen — später einrichten</button>
