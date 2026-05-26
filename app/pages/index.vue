@@ -384,7 +384,7 @@ import SettingsModal from '~/components/SettingsModal.vue'
 
 const config = useRuntimeConfig()
 const { ask: confirmAsk } = useConfirm()
-const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken } = useSoul()
+const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken, refreshCert } = useSoul()
 const { isConnected: vaultConnected } = useVault()
 const { hasProfile, profileUrl, handleUpload: handleProfileUpload } = useProfile()
 const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
@@ -542,6 +542,7 @@ async function handleLoginUpload(text) {
   } else {
     // Bestehende Soul auf diesem Server — normaler Login
     importFromText(text)
+    await refreshCert()
   }
   loginOpen.value = false
   fetchNodeStatus()
