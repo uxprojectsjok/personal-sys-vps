@@ -79,6 +79,28 @@ local ctx_path = base .. "/api_context.json"
 local ctx_f = io.open(ctx_path, "r")
 if ctx_f then ctx_f:close(); os.remove(ctx_path) end
 
+-- Optional: node_soul_id Lock freigeben (Single-Hoster Import-Flow)
+-- Nur wenn clear_lock=true UND master.json.node_soul_id == soul_id
+if body.clear_lock == true then
+  local cfg      = require("config_reader")
+  local mpath    = cfg.get_master_path and cfg.get_master_path() or "/var/lib/sys/config/master.json"
+  local mf       = io.open(mpath, "r")
+  if mf then
+    local mr = mf:read("*a"); mf:close()
+    local cjson2 = require("cjson.safe")
+    local mok, mdata = pcall(cjson2.decode, mr)
+    if mok and type(mdata) == "table" and mdata.node_soul_id == soul_id then
+      mdata.node_soul_id = nil
+      local wf = io.open(mpath, "w")
+      if wf then
+        wf:write(cjson2.encode(mdata)); wf:close()
+        cfg.invalidate_master_cache()
+        ngx.log(ngx.INFO, "[soul_reset_registration] node_soul_id Lock freigegeben")
+      end
+    end
+  end
+end
+
 ngx.log(ngx.INFO, "[soul_reset_registration] soul_id=", soul_id, " — Neuregistrierung freigegeben")
 
 ngx.say('{"ok":true}')
