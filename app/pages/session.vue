@@ -428,9 +428,18 @@ async function onSetupImport(markdown) {
       })
     } catch { /* ignore — may already be clean */ }
   }
+  const tokenBefore = firstSetupToken.value
   const result = await importAndSetup(markdown)
-  if (result.ok) {
-    await exportAsBlob()
+  if (!result.ok) {
+    firstSetupToken.value = null
+    settingsOpen.value = true
+    return
+  }
+  await exportAsBlob()
+  const newToken = firstSetupToken.value
+  if (newToken && newToken !== '__single__' && newToken !== tokenBefore) {
+    // Neuer Admin-Token → Modal zeigt ihn; Einstellungen öffnen via dismiss-Handler
+    return
   }
   firstSetupToken.value = null
   settingsOpen.value = true

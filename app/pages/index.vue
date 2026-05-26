@@ -482,7 +482,6 @@ async function onSetupDownload() {
 }
 
 async function onSetupImport(markdown) {
-  // Unlock the server before importing: the newly created soul may be locked as node_soul_id
   const lockedId = soulMeta.value?.id
   if (lockedId) {
     try {
@@ -492,8 +491,22 @@ async function onSetupImport(markdown) {
       })
     } catch { /* ignore — may already be clean */ }
   }
+  const tokenBefore = firstSetupToken.value
   const result = await importAndSetup(markdown)
-  if (result.ok) await exportAsBlob()
+  if (!result.ok) {
+    firstSetupToken.value = null
+    setupOpen.value = true
+    return
+  }
+  await exportAsBlob()
+  // Multi-Hoster: importAndSetup setzt einen neuen Admin-Token für die importierte Soul.
+  // Nur dann nicht nullen — die Modal zeigt ihn in postImportConfirmOnly-Modus.
+  // Single-Hoster oder kein neuer Token: normal schließen.
+  const newToken = firstSetupToken.value
+  if (newToken && newToken !== '__single__' && newToken !== tokenBefore) {
+    // Neuer Admin-Token → Modal zeigt ihn; Einstellungen öffnen via dismiss-Handler
+    return
+  }
   firstSetupToken.value = null
   setupOpen.value = true
 }
