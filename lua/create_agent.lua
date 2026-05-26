@@ -51,14 +51,20 @@ local function try_decrypt_vault(data, key_hex)
   return aes:decrypt(ciphertext)
 end
 
--- ── ElevenLabs-Key ────────────────────────────────────────────────────────────
+-- ── ElevenLabs-Key + gespeicherte Voice-ID ────────────────────────────────────
 local eleven_key = ""
+local existing_voice_id = nil
 local f = io.open(BASE_DIR .. "/config.json", "r")
 if f then
   local raw = f:read("*a"); f:close()
   local ok, cfg = pcall(cjson.decode, raw)
-  if ok and type(cfg) == "table" and type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
-    eleven_key = cfg.elevenlabs_key
+  if ok and type(cfg) == "table" then
+    if type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
+      eleven_key = cfg.elevenlabs_key
+    end
+    if type(cfg.elevenlabs_voice_id) == "string" and cfg.elevenlabs_voice_id ~= "" then
+      existing_voice_id = cfg.elevenlabs_voice_id
+    end
   end
 end
 if eleven_key == "" then eleven_key = os.getenv("ELEVENLABS_API_KEY") or "" end
@@ -98,12 +104,14 @@ local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
 -- Verschlüsselte sys.md (SYSCRYPT01 beginnt mit "SY") nicht als Klartext lesen —
 -- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name liefern
 -- und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
-local existing_voice_id = nil
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
   if m and m ~= '""' and m ~= "" then soul_name = m end
-  local vm = sys_text:match("elevenlabs_voice_id:%s*([a-zA-Z0-9_%-]+)")
-  if vm and vm ~= "null" then existing_voice_id = vm end
+  -- Fallback: sys.md voice_id nur wenn config.json keinen Eintrag hat
+  if not existing_voice_id then
+    local vm = sys_text:match("elevenlabs_voice_id:%s*([a-zA-Z0-9_%-]+)")
+    if vm and vm ~= "null" then existing_voice_id = vm end
+  end
 end
 
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
@@ -129,6 +137,11 @@ local ctx_raw = read_file(ctx_path)
 if ctx_raw then
   local ok, d = pcall(cjson.decode, ctx_raw)
   if ok and type(d) == "table" then ctx = d end
+end
+
+-- Vault-Key Fallback aus api_context.json wenn kein Key im Request-Body
+if vault_key_hex == "" and type(ctx.vault_key_hex) == "string" and #ctx.vault_key_hex == 64 then
+  vault_key_hex = ctx.vault_key_hex
 end
 
 if not ctx.webhook_token or ctx.webhook_token == "" then
@@ -278,6 +291,18 @@ if not voice_id and audio_data then
     local vok, vdata = pcall(cjson.decode, vres.body)
     if vok and type(vdata) == "table" then
       voice_id = vdata.voice_id
+      -- voice_id in config.json persistieren für zukünftige @create-agent Aufrufe
+      if voice_id then
+        local cfg_r = read_file(BASE_DIR .. "/config.json")
+        if cfg_r then
+          local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+          if ok_c and type(cfg_d) == "table" then
+            cfg_d.elevenlabs_voice_id = voice_id
+            local wok, wjs = pcall(cjson.encode, cfg_d)
+            if wok then write_file(BASE_DIR .. "/config.json", wjs) end
+          end
+        end
+      end
     end
   else
     ngx.log(ngx.WARN, "[create_agent] voice clone failed: ",
