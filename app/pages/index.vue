@@ -669,9 +669,9 @@ const journal = computed(() => {
 .sys-dash-head .gate-lock { background: transparent; border: 0; padding: 10px 10px; cursor: pointer; color: var(--fg-3); font-size: 16px; line-height: 1; display: flex; align-items: center; border-left: 1px solid var(--rule-2); }
 .sys-dash-head .gate-lock:hover { color: var(--accent); }
 @media (max-width: 800px) {
-  .sys-dash-head { grid-template-columns: auto auto; grid-template-rows: auto auto; }
-  .sys-dash-head .id { grid-column: 1/-1; grid-row: 2; justify-self: start; padding-left: 0; border-left: 0; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .sys-dash-head .head-actions { min-width: 0; }
+  .sys-dash-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0; padding: 12px clamp(16px,3vw,32px); }
+  .sys-dash-head .head-actions { margin-left: auto; }
+  .sys-dash-head .id { flex: 0 0 100%; padding-left: 0; border-left: 0; border-right: 0; justify-self: unset; font-size: 12px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-top: 6px; }
 }
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s ease; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(6px); }

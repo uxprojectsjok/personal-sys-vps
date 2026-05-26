@@ -4,7 +4,7 @@ import { ref } from "vue";
 // ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
-  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write"
+  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search"
 ]);
 
 const SOUL_TOOLS = [
@@ -58,6 +58,17 @@ const SOUL_TOOLS = [
         mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang" }
       },
       required: ["section", "content"]
+    }
+  },
+  {
+    name: "web_search",
+    description: "Sucht im Web nach aktuellen Informationen — Wetter, Nachrichten, Fakten, Preise, Ereignisse. Nutzen wenn die Frage Echtzeit-Daten erfordert.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Suchanfrage auf Deutsch oder in der Sprache des Nutzers" }
+      },
+      required: ["query"]
     }
   }
 ];
@@ -128,7 +139,7 @@ export function useClaude() {
     return [{ role: "user", content: firstBlocks }, ...rest];
   }
 
-  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6", externalTools = [] }) {
+  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6", externalTools = [], voiceMode = false }) {
     if (typeof window === "undefined") return null;
 
     isLoading.value = true;
@@ -202,9 +213,21 @@ Vault-Dateien & Hinweise:
 - Dateien aus verbundenen Netzwerk-Vaults können direkt angezeigt werden – nutze die verfügbaren Tags.
 ${mediaSignalInstructions}
 
-## Deine Tools & Fähigkeiten
-Du kennst diese Fähigkeiten von Anfang an — nutze sie aktiv, wenn sie zum Gespräch passen. Nie als Liste aufzählen, immer beiläufig anbieten.
+## Tool-Autonomie — du entscheidest selbst
+Du rufst Tools auf wann du sie brauchst — ohne Aufforderung, ohne Ankündigung. Der User muss dir nicht sagen welches Tool zu nutzen ist.
 
+Wann welches Tool:
+- soul_read → wenn du deine eigene Geschichte, Werte, frühere Einträge oder konkrete Fakten aus der sys.md brauchst
+- soul_write (section: "Selbstreflexion", mode: "append") → nach jeder bedeutsamen Aufgabe, Erkenntnis oder Erfahrung: trage knapp ein was du getan hast und was du dabei beobachtet oder gelernt hast. Format: "YYYY-MM-DD: [ein Satz]". Nie mehr als zwei Sätze pro Eintrag.
+- web_search → bei Fragen die aktuelle Daten erfordern (Wetter, Nachrichten, Preise, Fakten)
+- vault_manifest → wenn der User Dateien erwähnt oder du Kontext aus dem Vault brauchst
+- context_get → für eine spezifische Kontext-Datei
+- mind_read → wenn du deine eigene Konfiguration prüfen willst
+- mind_write → wenn du aus dem Gespräch echte Erkenntnisse über dich selbst gewinnst
+
+Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
+
+## Weitere Fähigkeiten
 Kreation:
 - Bild generieren: Beschreibe was du dir vorstellst — ich erstelle es (WaveSpeed AI). Trigger: Kamera-Button → "Bild generieren" wählen.
 - Bild analysieren: Foto über Kamera-Button schicken → ich erkenne und beschreibe es.
@@ -223,14 +246,20 @@ Suche (direkt im Chat tippen):
 Profil-Aufnahmen (einmalig, im Vault gespeichert):
 - "@audio" oder "@stimme" → Stimmprobe aufnehmen
 - "@face" oder "@gesicht" → Gesicht aufnehmen
-- "@body" oder "@bewegung" → Bewegung aufnehmen
-
-Konfiguration (mind.md):
-- mind_read → deine aktuelle Konfiguration lesen
-- mind_write → Selbstreflexion, Kommunikationsstil oder Intellekt anpassen`;
+- "@body" oder "@bewegung" → Bewegung aufnehmen`;
 
       if (mindContent) {
         systemPrompt += `\n\n## Deine Konfiguration (mind.md)\n${mindContent}`;
+      }
+
+      if (voiceMode) {
+        systemPrompt += `\n\n---\nSPRACHMODUS — diese Regeln haben Vorrang:
+- Antworte in maximal 2-3 Sätzen. Nie mehr.
+- Kein Markdown: keine Sternchen, keine Listen, keine Klammern, keine Überschriften.
+- Antworte immer in der Sprache der letzten Nutzernachricht (Deutsch → Deutsch, Englisch → Englisch, Russisch → Russisch usw.).
+- Kurz, direkt, natürlich — wie Menschen wirklich sprechen. Kein Vortrag, kein Aufsatz.
+- Wenn du aktuelle Fakten brauchst (Wetter, Nachrichten, Preise, Ereignisse): nutze web_search, ohne zu fragen.
+---`;
       }
 
     } else {
@@ -381,8 +410,24 @@ ${mediaSignalInstructions}`;
         return { allBlocks, stopReason };
       }
 
-      // ── executeTool: soul-tools → /api/soul-tool | MCP-tools → /api/mcp-call ─
+      // ── executeTool: soul-tools → /api/soul-tool | web_search → /api/web-search | MCP-tools → /api/mcp-call ─
       async function executeTool(name, input) {
+        if (name === "web_search") {
+          try {
+            const r = await fetch("/api/web-search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${soulCert || "anonymous"}` },
+              body: JSON.stringify({ query: input.query || "" })
+            });
+            const j = await r.json().catch(() => ({ results: [] }));
+            if (j.error) return `Websuche nicht verfügbar: ${j.error}`;
+            const results = j.results || [];
+            if (!results.length) return "Keine Suchergebnisse gefunden.";
+            return results.slice(0, 4).map(r => `${r.title}\n${r.description || ""}`).join("\n\n");
+          } catch {
+            return "Websuche nicht erreichbar.";
+          }
+        }
         const isSoulTool = SOUL_TOOL_NAMES.has(name);
         const endpoint = isSoulTool ? "/api/soul-tool" : "/api/mcp-call";
         const body = isSoulTool
@@ -412,9 +457,9 @@ ${mediaSignalInstructions}`;
         fullSoul && role === "soul" ? networkImageBlocks : null
       );
 
-      for (let round = 0; round < 3; round++) {
+      for (let round = 0; round < 4; round++) {
         // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
-        const result = await streamRound(currentMsgs, round < 2 && hasSoulTools);
+        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools);
         if (!result) return null; // Cert-Fehler bereits gesetzt
 
         const { allBlocks, stopReason } = result;

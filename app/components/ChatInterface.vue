@@ -615,6 +615,7 @@ async function stopVoiceRecord() {
         role: localRole.value,
         model: selectedModel.value,
         externalTools: mcpTools.value,
+        voiceMode: true,
         onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
       })
 
