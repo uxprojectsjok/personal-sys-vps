@@ -881,7 +881,7 @@ server {
   # ── ElevenLabs Voice Clone + Agent erstellen (POST) ──────────────────────────
   location = /api/create-agent {
     limit_except POST { deny all; }
-    limit_req zone=chat burst=3 nodelay;
+    limit_req zone=chat burst=10 nodelay;
     client_max_body_size 50M;
     client_body_timeout 60s;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
