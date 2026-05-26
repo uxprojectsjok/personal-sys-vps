@@ -198,7 +198,7 @@
               </label>
               <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
                 placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
-                :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
+                :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
 
             <!-- WaveSpeed -->
@@ -210,7 +210,7 @@
               <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
                 autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true"
-                :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : 'border-color:var(--sys-err)'" />
+                :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
 
             <!-- ElevenLabs -->
@@ -235,6 +235,22 @@
                 :placeholder="cfgBraveSet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
                 autocomplete="off" spellcheck="false" @input="cfgBraveDirty = true"
                 :style="cfgBraveSet ? 'border-color:var(--sys-ok)' : ''" />
+            </div>
+
+            <!-- Pinata JWT -->
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <label class="sys-field-label">
+                Pinata JWT
+                <span v-if="cfgPinataSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+              </label>
+              <input v-model="cfgPinataJwt" type="password" class="sys-input sys-input--mono"
+                :placeholder="cfgPinataSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
+                autocomplete="off" spellcheck="false"
+                :style="cfgPinataSet ? 'border-color:var(--sys-ok)' : ''" />
+              <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em;margin:0">
+                Für IPFS-Veröffentlichung und Blockchain-Anchoring.
+                <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">app.pinata.cloud</a>
+              </p>
             </div>
 
             <!-- Speichern -->
@@ -440,6 +456,8 @@ const cfgLabsDirty = ref(false)
 const cfgBraveKey  = ref('')
 const cfgBraveSet  = ref(false)
 const cfgBraveDirty = ref(false)
+const cfgPinataJwt = ref('')
+const cfgPinataSet = ref(false)
 const cfgSaving    = ref(false)
 const cfgFeedback  = ref(null)
 
@@ -456,6 +474,12 @@ async function loadCfgStep() {
     cfgWaveSet.value  = !!data.wavespeed_key_set
     cfgLabsSet.value  = !!data.elevenlabs_key_set
     cfgBraveSet.value = !!data.brave_key_set
+  } catch {}
+  try {
+    const pr = await fetch('/api/soul/pinata-config', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (pr.ok) { const pd = await pr.json(); cfgPinataSet.value = pd.configured }
   } catch {}
 }
 
@@ -482,6 +506,16 @@ async function saveCfgStep() {
     if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
     if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
     if (cfgBraveKey.value) { cfgBraveSet.value = true; cfgBraveKey.value = ''; cfgBraveDirty.value = false }
+    if (cfgPinataJwt.value) {
+      try {
+        const pr = await fetch('/api/soul/pinata-config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+          body: JSON.stringify({ jwt: cfgPinataJwt.value.trim() })
+        })
+        if (pr.ok) { cfgPinataSet.value = true; cfgPinataJwt.value = '' }
+      } catch {}
+    }
 
     // Anthropic-Verbindung testen (immer wenn Key vorhanden)
     if (cfgAnthSet.value) {
