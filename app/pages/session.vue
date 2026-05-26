@@ -30,6 +30,7 @@
           <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
             {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
           </button>
+          <button class="tool" @click="settingsOpen = true">Einstellungen</button>
           <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
           <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
