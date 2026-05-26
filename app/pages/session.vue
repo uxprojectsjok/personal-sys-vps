@@ -36,30 +36,6 @@
             {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
           </button>
         </div>
-        <!-- Notfall — Mobile: direkt im Header sichtbar -->
-        <button class="tool tool--emerg tool--emerg-hdr" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
-          {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
-        </button>
-        <!-- Mobile burger -->
-        <button class="burger-btn" @click="burgerOpen = !burgerOpen" :aria-expanded="burgerOpen" aria-label="Menü">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path v-if="!burgerOpen" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-            <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-        <!-- Burger dropdown — absolute positioned, doesn't affect grid layout -->
-        <Transition name="slide-up">
-          <div v-if="burgerOpen" class="burger-menu">
-            <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
-              {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
-            </button>
-            <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
-            <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
-            <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
-              {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
-            </button>
-          </div>
-        </Transition>
       </header>
 
       <!-- SUB-HEADER: status banners — wrapper collapses to 0 when all are hidden -->
@@ -191,7 +167,6 @@ function handleEmergencyChange({ active, level }) {
   emergencyLevel.value = active ? level : 0
 }
 const vaultStatus = ref(null)
-const burgerOpen         = ref(false)
 const mobileView = ref('chat')
 const anchorModalOpen = ref(false)
 const settingsOpen    = ref(false)
@@ -481,8 +456,6 @@ async function onSetupImport(markdown) {
   flex: 1; min-width: 0;
 }
 /* Burger button — desktop hidden, mobile top-right */
-.burger-btn { display: none; }
-@media (max-width: 900px) { .burger-btn { display: flex; } }
 
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
@@ -504,7 +477,7 @@ async function onSetupImport(markdown) {
 .fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.5s; }
 .fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
 .sess-head .tools { display: flex; align-items: center; }
-@media (max-width: 900px) { .sess-head .tools--desktop { display: none; } }
+@media (max-width: 900px) { .sess-head .tools--desktop { flex-wrap: wrap; gap: 4px; } }
 .tool { padding: 10px 16px; border-left: 1px solid var(--rule); border-top: 0; border-bottom: 0; border-right: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; background: transparent; white-space: nowrap; }
 .tool:hover:not(:disabled) { color: var(--fg); }
 .tool.active { color: var(--accent); }
@@ -515,8 +488,6 @@ async function onSetupImport(markdown) {
 .tool--emerg:hover:not(:disabled) { color: #f87171; }
 .tool--emerg-on { color: #f87171 !important; }
 /* Notfall im Mobile-Header: auf Desktop versteckt, auf Mobile sichtbar */
-.tool--emerg-hdr { display: none; }
-@media (max-width: 900px) { .tool--emerg-hdr { display: block; } }
 
 
 /* Banners */
