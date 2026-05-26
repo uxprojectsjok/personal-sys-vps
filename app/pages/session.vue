@@ -46,11 +46,11 @@
           </button>
           <Transition name="slide-up">
             <div v-if="burgerOpen" class="burger-menu">
-              <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect; burgerOpen = false">
+              <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect(); burgerOpen = false">
                 {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
               </button>
               <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
-              <button class="tool tool--logout" @click="lockGate; burgerOpen = false">Ausloggen</button>
+              <button class="tool tool--logout" @click="lockGate(); burgerOpen = false">Ausloggen</button>
               <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
                 {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
               </button>
