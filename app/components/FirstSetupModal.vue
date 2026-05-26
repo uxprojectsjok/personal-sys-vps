@@ -72,7 +72,7 @@
             <div class="head-icon" aria-hidden="true">
               <i class="ri-user-heart-line" />
             </div>
-            <span class="sys-kicker">Neue VPS · Soul</span>
+            <span class="sys-kicker">{{ isSingle ? 'Neue Instanz' : 'Neue VPS · Soul' }}</span>
             <h1 class="sys-display">Soul <em>einrichten</em>.</h1>
             <p class="sys-lede">
               Deine neu generierte sys.md enthält den Cert für diesen Server.
@@ -119,16 +119,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   token: { type: String, default: null },
 })
 const emit = defineEmits(['dismiss', 'download-soul', 'import-soul'])
 
+const isSingle  = computed(() => props.token === '__single__')
 const step      = ref(1)
 const copied    = ref(false)
 const confirmed = ref(false)
+
+// Single-Hoster: direkt zu Step 2 (kein Admin-Token nötig)
+watch(() => props.token, (val) => {
+  if (val === '__single__') step.value = 2
+  else if (val) step.value = 1
+}, { immediate: true })
 const importing = ref(false)
 const importError = ref('')
 const fileInput = ref(null)
