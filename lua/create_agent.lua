@@ -98,9 +98,12 @@ local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
 -- Verschlüsselte sys.md (SYSCRYPT01 beginnt mit "SY") nicht als Klartext lesen —
 -- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name liefern
 -- und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
+local existing_voice_id = nil
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
   if m and m ~= '""' and m ~= "" then soul_name = m end
+  local vm = sys_text:match("elevenlabs_voice_id:%s*([a-zA-Z0-9_%-]+)")
+  if vm and vm ~= "null" then existing_voice_id = vm end
 end
 
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
@@ -226,10 +229,11 @@ for _, fname in ipairs(candidates) do
   end
 end
 
--- ── Voice Clone erstellen (wenn Audio verfuegbar) ─────────────────────────────
-local voice_id = nil
+-- ── Voice Clone: bestehende ID wiederverwenden oder neu klonen ───────────────
+-- Vorhandene voice_id aus sys.md → kein erneuter Clone nötig (Vault nicht erforderlich)
+local voice_id = existing_voice_id
 
-if audio_data then
+if not voice_id and audio_data then
   local mime = "audio/webm"
   if audio_filename:match("%.mp3$") then mime = "audio/mpeg"
   elseif audio_filename:match("%.wav$") then mime = "audio/wav"
@@ -275,8 +279,11 @@ if audio_data then
     if vok and type(vdata) == "table" then
       voice_id = vdata.voice_id
     end
+  else
+    ngx.log(ngx.WARN, "[create_agent] voice clone failed: ",
+      vres and vres.status or "no response", " ", verr or "",
+      vres and (" body=" .. (vres.body or ""):sub(1, 200)) or "")
   end
-  -- Kein Fehler bei Voice-Fehler: Agent wird ohne Voice Clone erstellt
 end
 
 -- ── System-Prompt aufbauen ────────────────────────────────────────────────────
