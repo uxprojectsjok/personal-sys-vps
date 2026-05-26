@@ -37,6 +37,13 @@ end
 
 ngx.req.read_body()
 local audio_data = ngx.req.get_body_data()
+if not audio_data then
+  local tmp = ngx.req.get_body_file()
+  if tmp then
+    local fh = io.open(tmp, "rb")
+    if fh then audio_data = fh:read("*a"); fh:close() end
+  end
+end
 if not audio_data or #audio_data == 0 then
   ngx.status = 400
   ngx.header["Content-Type"] = "application/json"
