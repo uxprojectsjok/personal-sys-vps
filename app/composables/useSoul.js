@@ -223,9 +223,13 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       isLoaded.value    = true;
       save();
 
-      if (data.first_setup && data.admin_token && data.is_soul_admin) {
-        firstSetupToken.value = data.admin_token;
-        localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
+      if (data.first_setup) {
+        if (data.admin_token && data.is_soul_admin) {
+          firstSetupToken.value = data.admin_token;
+          localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
+        } else {
+          firstSetupToken.value = '__single__';
+        }
       }
 
       await pushToServer();
