@@ -21,11 +21,17 @@
             <div class="head-icon" aria-hidden="true">
               <i class="ri-shield-keyhole-line" />
             </div>
-            <span class="sys-kicker">Erste Instanz · §00</span>
+            <span class="sys-kicker">{{ postImportConfirmOnly ? 'Soul importiert · §00' : 'Erste Instanz · §00' }}</span>
             <h1 id="first-setup-title" class="sys-display">Admin-Token <em>sichern</em>.</h1>
             <p class="sys-lede">
-              Diese Instanz wurde gerade initialisiert. Dein Admin-Token wurde generiert —
-              er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+              <template v-if="postImportConfirmOnly">
+                Deine importierte Soul hat einen neuen Admin-Token für diesen VPS erhalten —
+                er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+              </template>
+              <template v-else>
+                Diese Instanz wurde gerade initialisiert. Dein Admin-Token wurde generiert —
+                er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+              </template>
             </p>
           </header>
 
@@ -58,8 +64,8 @@
               {{ confirmed ? 'Token bestätigt' : 'Bestätigung erforderlich' }}
             </div>
             <div class="sys-foot-actions">
-              <button type="button" class="sys-btn-ed sys-btn-ed--primary" :disabled="!confirmed" @click="step = 2">
-                Weiter →
+              <button type="button" class="sys-btn-ed sys-btn-ed--primary" :disabled="!confirmed" @click="postImportConfirmOnly ? emitDismiss() : (step = 2)">
+                {{ postImportConfirmOnly ? 'Fertig' : 'Weiter →' }}
               </button>
             </div>
           </footer>
@@ -125,15 +131,25 @@ const props = defineProps({
 })
 const emit = defineEmits(['dismiss', 'download-soul', 'import-soul'])
 
-const isSingle  = computed(() => props.token === '__single__')
-const step      = ref(1)
-const copied    = ref(false)
-const confirmed = ref(false)
+const isSingle             = computed(() => props.token === '__single__')
+const step                 = ref(1)
+const copied               = ref(false)
+const confirmed            = ref(false)
+const postImportConfirmOnly = ref(false)
 
-// Single-Hoster: direkt zu Step 2 (kein Admin-Token nötig)
-watch(() => props.token, (val) => {
-  if (val === '__single__') step.value = 2
-  else if (val) step.value = 1
+watch(() => props.token, (val, oldVal) => {
+  if (val === '__single__') {
+    postImportConfirmOnly.value = false
+    step.value = 2
+  } else if (val && oldVal && val !== oldVal) {
+    // Token wechselte nach Import: neuer Admin-Token für importierte Soul anzeigen
+    postImportConfirmOnly.value = true
+    confirmed.value = false
+    step.value = 1
+  } else if (val && !oldVal) {
+    postImportConfirmOnly.value = false
+    step.value = 1
+  }
 }, { immediate: true })
 const importing = ref(false)
 const importError = ref('')
