@@ -470,11 +470,9 @@ async function confirmReset() {
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
   await pushToServer()
+  await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
-  // sys.md-Download erfolgt über FirstSetupModal Step 2 (firstSetupToken gesetzt)
-  // Falls Modal nicht triggert (z.B. '__single__' nicht gesetzt): direkter Fallback
-  if (!firstSetupToken.value) await exportAsBlob()
 }
 
 async function onSetupDownload() {
