@@ -290,6 +290,7 @@
           @pointerdown.prevent="startVoiceRecord"
           @pointerup="stopVoiceRecord"
           @pointercancel="stopVoiceRecord"
+          @contextmenu.prevent
           title="Gedrückt halten → sprechen → loslassen"
           aria-label="Mit Agent sprechen"
         >
@@ -513,25 +514,37 @@ async function startVoiceRecord() {
   const err = preflightCheck('voice-stt')
   if (err) { addMessage('assistant', err); await scrollToBottom(); return }
   _vaChunks = []
-  try {
-    // Unlock audio context for later auto-play (iOS requires gesture-time unlock)
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext
-      if (AC) { const ctx = new AC(); const buf = ctx.createBuffer(1,1,22050); const src = ctx.createBufferSource(); src.buffer=buf; src.connect(ctx.destination); src.start(0); await ctx.close() }
-    } catch {}
 
-    _vaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
-                 MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
-                 MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  : ''
-    _vaRecorder = new MediaRecorder(_vaStream, mime ? { mimeType: mime } : {})
-    _vaRecorder.ondataavailable = e => { if (e.data.size > 0) _vaChunks.push(e.data) }
-    _vaRecorder.start(100)
-    voiceRecording.value = true
-    // User-Bubble sofort mit Dots zeigen (wie KI-Bubble beim Streaming)
-    _vaMsgId = addMessage('user', '', { streaming: true }).id
+  // getUserMedia als erstes await — kein async-Code davor damit iOS Gesture-Kontext erhalten bleibt
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  } catch (e) {
+    const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
+      ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
+      : `Mikrofon nicht verfügbar (${e?.name || 'unbekannt'}).`
+    addMessage('assistant', msg)
     await scrollToBottom()
+    return
+  }
+
+  _vaStream = stream
+
+  // AudioContext für Auto-Play entsperren — NACH getUserMedia, kein await nötig
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext
+    if (AC) { const ctx = new AC(); const buf = ctx.createBuffer(1,1,22050); const src = ctx.createBufferSource(); src.buffer=buf; src.connect(ctx.destination); src.start(0); ctx.close() }
   } catch {}
+
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
+               MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+               MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  : ''
+  _vaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {})
+  _vaRecorder.ondataavailable = e => { if (e.data.size > 0) _vaChunks.push(e.data) }
+  _vaRecorder.start(100)
+  voiceRecording.value = true
+  _vaMsgId = addMessage('user', '', { streaming: true }).id
+  await scrollToBottom()
 }
 
 async function stopVoiceRecord() {
