@@ -33,11 +33,12 @@ if not ok or type(body) ~= "table" then
 end
 
 -- ── Validierung ────────────────────────────────────────────────────────────────
-local anthropic_key  = body.anthropic_key
-local wavespeed_key  = body.wavespeed_key
-local elevenlabs_key = body.elevenlabs_key
-local brave_key      = body.brave_key
-local model          = body.model
+local anthropic_key        = body.anthropic_key
+local wavespeed_key        = body.wavespeed_key
+local elevenlabs_key       = body.elevenlabs_key
+local elevenlabs_agent_url = body.elevenlabs_agent_url
+local brave_key            = body.brave_key
+local model                = body.model
 
 if anthropic_key ~= nil then
   if type(anthropic_key) ~= "string" then
@@ -76,6 +77,13 @@ if brave_key ~= nil and type(brave_key) ~= "string" then
   return
 end
 
+if elevenlabs_agent_url ~= nil and type(elevenlabs_agent_url) ~= "string" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid_agent_url"}')
+  return
+end
+
 local ALLOWED_MODELS = {
   ["claude-opus-4-6"]          = true,
   ["claude-sonnet-4-6"]        = true,
@@ -108,6 +116,9 @@ if elevenlabs_key ~= nil then
 end
 if brave_key ~= nil then
   existing.brave_key = (brave_key ~= "") and brave_key or nil
+end
+if elevenlabs_agent_url ~= nil then
+  existing.elevenlabs_agent_url = (elevenlabs_agent_url ~= "") and elevenlabs_agent_url or nil
 end
 if model ~= nil then
   existing.model = model
@@ -162,6 +173,7 @@ ngx.say(cjson.encode({
   has_own_key        = type(existing.anthropic_key) == "string" and existing.anthropic_key ~= "",
   wavespeed_key_set  = type(existing.wavespeed_key) == "string" and existing.wavespeed_key ~= "",
   elevenlabs_key_set = type(existing.elevenlabs_key) == "string" and existing.elevenlabs_key ~= "",
-  brave_key_set      = type(existing.brave_key) == "string" and existing.brave_key ~= "",
-  model              = existing.model or cjson.null,
+  brave_key_set        = type(existing.brave_key) == "string" and existing.brave_key ~= "",
+  elevenlabs_agent_url = existing.elevenlabs_agent_url or cjson.null,
+  model                = existing.model or cjson.null,
 }))
