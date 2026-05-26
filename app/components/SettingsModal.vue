@@ -307,6 +307,42 @@
                 </p>
               </div>
 
+              <!-- ElevenLabs Agent-URL -->
+              <div class="sys-field" style="gap:12px;margin-top:24px">
+                <label class="sys-field-label">
+                  ElevenLabs Agent-URL
+                  <span v-if="agentUrlSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                </label>
+                <input
+                  v-model="agentUrl"
+                  type="text"
+                  class="sys-input sys-input--mono"
+                  :style="agentUrlSet ? 'border-color:var(--sys-ok)' : ''"
+                  :placeholder="agentUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://elevenlabs.io/app/talk-to?agent_id=…'"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @keyup.enter="saveAgentUrl"
+                />
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button
+                    @click="saveAgentUrl"
+                    :disabled="!agentUrl"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >Speichern</button>
+                  <button
+                    v-if="agentUrlSet"
+                    @click="deleteAgentUrl"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em;color:var(--sys-err)"
+                  >Löschen</button>
+                  <span v-if="agentUrlFeedback" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="agentUrlFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ agentUrlFeedback.message }}
+                  </span>
+                </div>
+              </div>
+
               <!-- Feedback -->
               <Transition name="sys-modal-fade">
                 <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
@@ -627,6 +663,9 @@ const showPinataJwt  = ref(false)
 const pinataJwtSet   = ref(false)
 const pinataPreview  = ref('')
 const pinataFeedback = ref(null)
+const agentUrl       = ref('')
+const agentUrlSet    = ref(false)
+const agentUrlFeedback = ref(null)
 
 const keySourceLabel = computed(() => ({
   soul:   'Eigener Key aktiv',
@@ -648,6 +687,8 @@ async function loadStatus() {
     wavespeedPreview.value = d.wavespeed_preview || ''
     elevenlabsKeySet.value  = !!d.elevenlabs_key_set
     elevenlabsPreview.value = d.elevenlabs_preview || ''
+    agentUrlSet.value = !!d.elevenlabs_agent_url
+    agentUrl.value    = d.elevenlabs_agent_url || ''
     braveKeySet.value  = !!d.brave_key_set
     bravePreview.value = d.brave_preview || ''
     mcpUrlSet.value  = !!d.mcp_url_set
@@ -698,6 +739,38 @@ async function deletePinataJwt() {
     })
     pinataJwtSet.value  = false
     pinataPreview.value = ''
+  } catch {}
+}
+
+async function saveAgentUrl() {
+  agentUrlFeedback.value = null
+  try {
+    const res = await fetch('/api/set-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ elevenlabs_agent_url: agentUrl.value.trim() }),
+    })
+    if (res.ok) {
+      agentUrlSet.value = !!agentUrl.value.trim()
+      agentUrlFeedback.value = { ok: true, message: 'Gespeichert ✓' }
+    } else {
+      agentUrlFeedback.value = { ok: false, message: `Fehler ${res.status}` }
+    }
+  } catch (e) {
+    agentUrlFeedback.value = { ok: false, message: e.message }
+  }
+  setTimeout(() => { agentUrlFeedback.value = null }, 4000)
+}
+
+async function deleteAgentUrl() {
+  try {
+    await fetch('/api/set-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ elevenlabs_agent_url: '' }),
+    })
+    agentUrl.value    = ''
+    agentUrlSet.value = false
   } catch {}
 }
 
