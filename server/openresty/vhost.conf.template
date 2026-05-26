@@ -891,6 +891,19 @@ server {
     content_by_lua_file /etc/openresty/lua/diagnose.lua;
   }
 
+  # ── STT: ElevenLabs Speech-to-Text (POST) ─────────────────────────────────────
+  location = /api/elevenlabs-stt {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 10m;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/elevenlabs_stt.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }

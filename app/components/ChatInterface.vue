@@ -364,7 +364,6 @@ import { useVaultSession } from '~/composables/useVaultSession.js'
 import CameraRecorder      from '~/components/CameraRecorder.vue'
 import AudioCaptureCard    from '~/components/AudioCaptureCard.vue'
 import MotionCaptureCard   from '~/components/MotionCaptureCard.vue'
-import { sendAudioToAgent } from '~/composables/useElevenLabsConversation.js'
 
 // ── Props / Emits ──────────────────────────────────────────────────
 const props = defineProps({
@@ -467,6 +466,15 @@ function preflightCheck(type) {
     ].join('\n')
   }
 
+  if (type === 'voice-stt' && !s.elevenlabs_key_set) {
+    return [
+      '**ElevenLabs API-Key fehlt**',
+      '',
+      '1. elevenlabs.io → API-Key kopieren',
+      '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
+    ].join('\n')
+  }
+
   if (type === 'voice-agent') {
     if (!s.elevenlabs_key_set) {
       return [
@@ -498,13 +506,20 @@ const voiceRecording = ref(false)
 let _vaStream   = null
 let _vaRecorder = null
 let _vaChunks   = []
+let _vaMsgId    = null   // user-bubble ID während Aufnahme/Transkription
 
 async function startVoiceRecord() {
   if (voiceRecording.value) return
-  const err = preflightCheck('voice-agent')
+  const err = preflightCheck('voice-stt')
   if (err) { addMessage('assistant', err); await scrollToBottom(); return }
   _vaChunks = []
   try {
+    // Unlock audio context for later auto-play (iOS requires gesture-time unlock)
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext
+      if (AC) { const ctx = new AC(); const buf = ctx.createBuffer(1,1,22050); const src = ctx.createBufferSource(); src.buffer=buf; src.connect(ctx.destination); src.start(0); await ctx.close() }
+    } catch {}
+
     _vaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
                  MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
@@ -513,6 +528,9 @@ async function startVoiceRecord() {
     _vaRecorder.ondataavailable = e => { if (e.data.size > 0) _vaChunks.push(e.data) }
     _vaRecorder.start(100)
     voiceRecording.value = true
+    // User-Bubble sofort mit Dots zeigen (wie KI-Bubble beim Streaming)
+    _vaMsgId = addMessage('user', '', { streaming: true }).id
+    await scrollToBottom()
   } catch {}
 }
 
@@ -524,42 +542,92 @@ async function stopVoiceRecord() {
       const blob = new Blob(_vaChunks, { type: mime })
       voiceRecording.value = false
       _vaChunks = []
-      if (blob.size < 2000) { resolve(); return } // zu kurz → verwerfen
-
-      // Aufnahme sofort als User-Bubble zeigen
-      const audioUrl = URL.createObjectURL(blob)
-      const userMsg  = addMessage('user', '', { mediaUrl: audioUrl, mediaType: 'audio' })
-      // Lade-Bubble für Agent-Antwort
-      const agentMsg = addMessage('assistant', '', { streaming: true })
-      await scrollToBottom()
+      _vaStream?.getTracks().forEach(t => t.stop())
       resolve()
 
-      // Agent asynchron aufrufen
-      try {
-        const { userText, agentText, audioBlob } = await sendAudioToAgent(blob, {
-          soulCert: props.soulCert,
-        })
-        // Transkription in User-Bubble nachtragen
-        if (userText) setMessageMetaById(userMsg.id, 'text', userText)
-        // Agent-Antwort eintragen
-        const agentAudioUrl = audioBlob ? URL.createObjectURL(audioBlob) : null
-        setMessageMetaById(agentMsg.id, 'text', agentText || '')
-        setMessageMetaById(agentMsg.id, 'streaming', false)
-        if (agentAudioUrl) {
-          setMessageMetaById(agentMsg.id, 'mediaUrl', agentAudioUrl)
-          setMessageMetaById(agentMsg.id, 'mediaType', 'audio')
-        }
-      } catch (err) {
-        const msg = err.message === 'elevenlabs_key_missing' ? 'ElevenLabs API-Key fehlt.' :
-                    err.message === 'elevenlabs_agent_missing' ? 'Kein Agent gefunden — erstelle ihn mit @create-agent.' :
-                    `Agent-Fehler: ${err.message}`
-        setMessageMetaById(agentMsg.id, 'text', msg)
-        setMessageMetaById(agentMsg.id, 'streaming', false)
+      if (blob.size < 2000) {
+        if (_vaMsgId) { removeMessage(_vaMsgId); _vaMsgId = null }
+        return
       }
+
+      // STT: Audio → Transkript via ElevenLabs
+      let transcript = ''
+      try {
+        const sttRes = await fetch('/api/elevenlabs-stt', {
+          method: 'POST',
+          headers: { 'Content-Type': mime, Authorization: `Bearer ${props.soulCert}` },
+          body: blob,
+        })
+        if (sttRes.ok) transcript = ((await sttRes.json()).text || '').trim()
+      } catch {}
+
+      if (!transcript) {
+        if (_vaMsgId) {
+          setMessageMetaById(_vaMsgId, 'text', '_(Sprache nicht erkannt)_')
+          setMessageMetaById(_vaMsgId, 'streaming', false)
+        }
+        _vaMsgId = null
+        return
+      }
+
+      // Transkript in User-Bubble eintragen
+      if (_vaMsgId) {
+        setMessageMetaById(_vaMsgId, 'text', transcript)
+        setMessageMetaById(_vaMsgId, 'streaming', false)
+      }
+      _vaMsgId = null
+
+      // Transkript an KI senden — kein zweites addMessage('user'), Bubble schon da
       await scrollToBottom()
+      await maybeCompressHistory()
+      addMessage('assistant', '', { streaming: true })
+      await scrollToBottom()
+
+      const recentPeer = displayMessages.value
+        .filter(m => m.sphere === 'social' && m.ts).slice(-8)
+        .map(m => `${m.from === 'me' ? (soulMeta.value?.name || 'Ich') : resolveAuthor(m)}: ${cleanMsgContent(m).slice(0, 200)}`)
+        .join('\n')
+
+      const chatResult = await chat({
+        messages: toApiMessages(),
+        soulContent: props.soulContent,
+        soulCert: props.soulCert,
+        mindContent: mindContent.value || null,
+        vaultContext: null,
+        networkContext: recentPeer || null,
+        networkPdfBlocks: null,
+        networkImageBlocks: null,
+        conversationSummary: conversationSummary.value || null,
+        profileImageBase64: profileBase64.value,
+        role: localRole.value,
+        model: selectedModel.value,
+        externalTools: mcpTools.value,
+        onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
+      })
+
+      setLastMessageMeta('streaming', false)
+      if (!chatResult) updateLastMessage(error.value ? `_(Fehler: ${error.value})_` : '…')
+      await scrollToBottom()
+
+      // Auto-TTS: Antwort vorlesen, kein Audio-Player im Chat
+      const responseText = messages.value.at(-1)?.text || ''
+      if (responseText) {
+        try {
+          const ttsRes = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+            body: JSON.stringify({ text: responseText.slice(0, 500) }),
+          })
+          if (ttsRes.ok) {
+            const url = URL.createObjectURL(await ttsRes.blob())
+            const audio = new Audio(url)
+            audio.onended = () => URL.revokeObjectURL(url)
+            audio.play().catch(() => {})
+          }
+        } catch {}
+      }
     }
     _vaRecorder.stop()
-    _vaStream?.getTracks().forEach(t => t.stop())
   })
 }
 
