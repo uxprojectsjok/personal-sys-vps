@@ -470,7 +470,6 @@ async function confirmReset() {
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
   await pushToServer()
-  await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
 }
@@ -540,8 +539,6 @@ async function handleLoginUpload(text) {
       }
       return
     }
-    // Erstes Setup: aktualisierte sys.md sofort herunterladen — enthält den neuen Cert
-    if (firstSetupToken.value) await exportAsBlob()
   } else {
     // Bestehende Soul auf diesem Server — normaler Login
     importFromText(text)
