@@ -90,17 +90,6 @@
           class="col-soul"
           :class="{ 'mobile-hidden': mobileView !== 'soul' }"
         >
-          <!-- Mobile-only tools strip — Vault / Einstellungen / Ausloggen / Notfall -->
-          <div class="soul-tools-strip">
-            <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
-              {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
-            </button>
-            <button class="tool" @click="settingsOpen = true">Einstellungen</button>
-            <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
-            <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
-              {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
-            </button>
-          </div>
           <div>
             <div class="cap">Lebendige Datei</div>
             <h3 class="ttl">sys<em>.</em>md</h3>
@@ -457,9 +446,9 @@ function reloadPage() { location.reload() }
   display: flex; align-items: center; gap: 12px;
   flex: 1; min-width: 0;
 }
-/* Burger button — hidden; tools moved to soul panel on mobile */
+/* Burger button — desktop hidden, mobile top-right */
 .burger-btn { display: none; }
-.burger-menu { display: none; }
+@media (max-width: 900px) { .burger-btn { display: flex; } }
 
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
@@ -469,18 +458,6 @@ function reloadPage() { location.reload() }
   .pill-sep { display: none; }
 }
 
-/* Soul tools strip — mobile-only tool row at top of soul/dashboard panel */
-.soul-tools-strip { display: none; }
-@media (max-width: 900px) {
-  .soul-tools-strip {
-    display: flex; flex-shrink: 0;
-    border-bottom: 1px solid var(--rule);
-    background: var(--paper-3);
-    overflow-x: auto; scrollbar-width: none;
-  }
-  .soul-tools-strip::-webkit-scrollbar { display: none; }
-  .soul-tools-strip .tool:first-child { border-left: 0; }
-}
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
 .sess-head .back:hover { color: var(--accent); }
 .sess-head .pill { justify-self: center; display: flex; align-items: center; gap: 10px; padding: 8px 18px; border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); }
