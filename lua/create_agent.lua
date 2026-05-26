@@ -20,12 +20,22 @@ local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
 local ELEVEN   = "https://api.elevenlabs.io/v1"
 
 -- ── Request-Body lesen ────────────────────────────────────────────────────────
+-- Bei großen Bodies (audio_base64 > client_body_buffer_size) schreibt nginx in
+-- eine Temp-Datei und get_body_data() gibt nil zurück → Fallback auf get_body_file().
 ngx.req.read_body()
 local vault_key_hex       = ""
 local body_audio_base64   = nil
 local body_audio_filename = nil
 do
-  local body_raw = ngx.req.get_body_data() or ""
+  local body_raw = ngx.req.get_body_data()
+  if not body_raw then
+    local tmp = ngx.req.get_body_file()
+    if tmp then
+      local fh = io.open(tmp, "r")
+      if fh then body_raw = fh:read("*a"); fh:close() end
+    end
+  end
+  body_raw = body_raw or ""
   if body_raw ~= "" then
     local ok_b, body = pcall(cjson.decode, body_raw)
     if ok_b and type(body) == "table" then
