@@ -19,16 +19,25 @@ end
 local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
 local ELEVEN   = "https://api.elevenlabs.io/v1"
 
--- ── Vault-Key aus Request-Body lesen (optional, für verschlüsselte Audio-Dateien) ─
+-- ── Request-Body lesen ────────────────────────────────────────────────────────
 ngx.req.read_body()
-local vault_key_hex = ""
+local vault_key_hex       = ""
+local body_audio_base64   = nil
+local body_audio_filename = nil
 do
   local body_raw = ngx.req.get_body_data() or ""
   if body_raw ~= "" then
     local ok_b, body = pcall(cjson.decode, body_raw)
-    if ok_b and type(body) == "table" and type(body.vault_key) == "string"
-       and #body.vault_key == 64 then
-      vault_key_hex = body.vault_key
+    if ok_b and type(body) == "table" then
+      if type(body.vault_key) == "string" and #body.vault_key == 64 then
+        vault_key_hex = body.vault_key
+      end
+      if type(body.audio_base64) == "string" and #body.audio_base64 > 100 then
+        body_audio_base64 = body.audio_base64
+        if type(body.audio_filename) == "string" then
+          body_audio_filename = body.audio_filename
+        end
+      end
     end
   end
 end
@@ -181,63 +190,64 @@ local host  = ngx.var.host or "localhost"
 local proto = "https"
 local soul_url = proto .. "://" .. host .. "/api/soul?token=" .. ctx.webhook_token
 
--- ── Audio aus Vault laden (unverschluesselte Dateien) ─────────────────────────
+-- ── Audio aus Vault laden ─────────────────────────────────────────────────────
 local audio_data     = nil
 local audio_filename = nil
 
-local audio_dir = BASE_DIR .. "/vault/audio"
-
--- Kandidatenliste: active_files.audio bevorzugt, dann verbreitete Dateinamen
-local candidates = {}
-local active_audio = (type(ctx.active_files) == "table") and ctx.active_files.audio or nil
-if active_audio and active_audio ~= "" then
-  table.insert(candidates, active_audio)
-end
--- Synced-Files als weiteren Fallback (aus api_context.json)
-if ctx.synced_files and type(ctx.synced_files.audio) == "table" then
-  for _, fname in ipairs(ctx.synced_files.audio) do
-    local dup = false
-    for _, c in ipairs(candidates) do if c == fname then dup = true; break end end
-    if not dup then table.insert(candidates, fname) end
+-- Browser hat Audio bereits entschlüsselt und als base64 übermittelt (bevorzugter Pfad)
+if body_audio_base64 then
+  local dec = ngx.decode_base64(body_audio_base64)
+  if dec and #dec > 100 then
+    audio_data     = dec
+    audio_filename = body_audio_filename or "voice.webm"
   end
 end
 
--- Disk-Scan: immer zusätzlich scannen (dedup) damit veraltete api_context-Einträge keinen Treffer blockieren
-do
-  local ls = io.popen("ls -1 " .. audio_dir .. " 2>/dev/null")
-  if ls then
-    for line in ls:lines() do
-      if line:match("%.webm$") or line:match("%.mp3$")
-         or line:match("%.wav$") or line:match("%.m4a$") then
-        local dup = false
-        for _, c in ipairs(candidates) do if c == line then dup = true; break end end
-        if not dup then table.insert(candidates, line) end
-      end
+if not audio_data then
+  -- Fallback: Dateisystem + Server-seitige Entschlüsselung (vault_key aus Body oder api_context.json)
+  local audio_dir  = BASE_DIR .. "/vault/audio"
+  local candidates = {}
+  local active_audio = (type(ctx.active_files) == "table") and ctx.active_files.audio or nil
+  if active_audio and active_audio ~= "" then table.insert(candidates, active_audio) end
+  if ctx.synced_files and type(ctx.synced_files.audio) == "table" then
+    for _, fname in ipairs(ctx.synced_files.audio) do
+      local dup = false
+      for _, c in ipairs(candidates) do if c == fname then dup = true; break end end
+      if not dup then table.insert(candidates, fname) end
     end
-    ls:close()
   end
-end
-
--- Erste existierende Datei verwenden — unverschluesselt direkt, verschluesselt via vault_key
-for _, fname in ipairs(candidates) do
-  local fpath = audio_dir .. "/" .. fname
-  local buf = read_file_bin(fpath)
-  if buf and #buf > 100 then
-    if buf:sub(1, 4) == VAULT_MAGIC then
-      -- Verschluesselt: Entschluesseln falls vault_key_hex vorhanden
-      if vault_key_hex ~= "" then
-        local dec = try_decrypt_vault(buf, vault_key_hex)
-        if dec and #dec > 100 then
-          audio_data = dec
-          audio_filename = fname
-          break
+  do
+    local ls = io.popen("ls -1 " .. audio_dir .. " 2>/dev/null")
+    if ls then
+      for line in ls:lines() do
+        if line:match("%.webm$") or line:match("%.mp3$")
+           or line:match("%.wav$") or line:match("%.m4a$") then
+          local dup = false
+          for _, c in ipairs(candidates) do if c == line then dup = true; break end end
+          if not dup then table.insert(candidates, line) end
         end
       end
-      -- Kein Key oder Entschluesselung fehlgeschlagen: naechste Datei versuchen
-    else
-      audio_data = buf
-      audio_filename = fname
-      break
+      ls:close()
+    end
+  end
+  for _, fname in ipairs(candidates) do
+    local fpath = audio_dir .. "/" .. fname
+    local buf = read_file_bin(fpath)
+    if buf and #buf > 100 then
+      if buf:sub(1, 4) == VAULT_MAGIC then
+        if vault_key_hex ~= "" then
+          local dec = try_decrypt_vault(buf, vault_key_hex)
+          if dec and #dec > 100 then
+            audio_data = dec
+            audio_filename = fname
+            break
+          end
+        end
+      else
+        audio_data = buf
+        audio_filename = fname
+        break
+      end
     end
   end
 end
