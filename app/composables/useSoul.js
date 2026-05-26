@@ -66,6 +66,8 @@ version: 2
 soul_cert: ${cert}
 vault_hash: ""
 storage_tx: ""
+elevenlabs_agent_id: ""
+elevenlabs_voice_id: ""
 ---
 
 ## Kern-Identität
