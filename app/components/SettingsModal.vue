@@ -187,9 +187,47 @@
                 />
               </div>
 
-              <!-- Zapier MCP URL -->
+              <!-- Zapier -->
               <div class="sys-field" style="gap:12px">
-                <label class="sys-field-label">
+                <label class="sys-field-label" style="margin-bottom:4px">Zapier</label>
+
+                <!-- Zapier Webhook-URL -->
+                <div style="display:flex;gap:0;align-items:stretch">
+                  <input
+                    :value="zapierWebhookUrl || 'Webhook-Token in API-Einstellungen setzen…'"
+                    type="text"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none;font-size:10px;color:var(--sys-fg);cursor:default"
+                    :style="zapierWebhookUrl ? 'border-color:var(--sys-ok)' : 'opacity:0.5'"
+                    readonly
+                  />
+                  <button
+                    v-if="zapierWebhookUrl"
+                    @click="copyZapierUrl"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none;white-space:nowrap;font-size:10px"
+                    title="URL kopieren"
+                  >{{ zapierCopied ? '✓' : 'Kopieren' }}</button>
+                </div>
+                <div v-if="zapierWebhookUrl" style="display:flex;align-items:center;gap:8px">
+                  <button
+                    @click="testZapierWebhook"
+                    :disabled="zapierTest?.loading"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
+                  >{{ zapierTest?.loading ? 'Teste…' : 'Webhook testen' }}</button>
+                  <span v-if="zapierTest && !zapierTest.loading" style="font-family:var(--sys-mono);font-size:10px"
+                    :style="zapierTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ zapierTest.message }}
+                  </span>
+                </div>
+                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
+                  Webhook-URL für eingehende Zaps (neue E-Mail, Kalender-Event, …).<br>
+                  Token setzen: API-Kontext → Webhook-Token.
+                </p>
+
+                <!-- Zapier MCP URL -->
+                <label class="sys-field-label" style="margin-top:8px">
                   MCP Server URL
                   <span v-if="mcpUrlSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ mcpPreview }}</span>
                 </label>
@@ -658,6 +696,10 @@ const mcpUrlSet = ref(false)
 const mcpPreview = ref('')
 const mcpDirty  = ref(false)
 
+const zapierWebhookUrl = ref('')
+const zapierCopied     = ref(false)
+const zapierTest       = ref(null)
+
 const pinataJwt      = ref('')
 const showPinataJwt  = ref(false)
 const pinataJwtSet   = ref(false)
@@ -693,6 +735,7 @@ async function loadStatus() {
     bravePreview.value = d.brave_preview || ''
     mcpUrlSet.value  = !!d.mcp_url_set
     mcpPreview.value = d.mcp_preview || ''
+    zapierWebhookUrl.value = d.zapier_webhook_url || ''
     if (d.model) model.value = d.model
   } catch {}
   try {
@@ -740,6 +783,34 @@ async function deletePinataJwt() {
     pinataJwtSet.value  = false
     pinataPreview.value = ''
   } catch {}
+}
+
+async function copyZapierUrl() {
+  if (!zapierWebhookUrl.value) return
+  try {
+    await navigator.clipboard.writeText(zapierWebhookUrl.value)
+    zapierCopied.value = true
+    setTimeout(() => { zapierCopied.value = false }, 2000)
+  } catch {}
+}
+
+async function testZapierWebhook() {
+  if (!zapierWebhookUrl.value) return
+  zapierTest.value = { loading: true }
+  try {
+    const res = await fetch(zapierWebhookUrl.value, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'read' }),
+    })
+    const d = await res.json().catch(() => ({}))
+    zapierTest.value = res.ok && d.ok
+      ? { loading: false, ok: true,  message: `✓ ${d.soul_name || 'Soul'} erreichbar` }
+      : { loading: false, ok: false, message: d.error || `HTTP ${res.status}` }
+  } catch (e) {
+    zapierTest.value = { loading: false, ok: false, message: e.message }
+  }
+  setTimeout(() => { zapierTest.value = null }, 6000)
 }
 
 async function saveAgentUrl() {
