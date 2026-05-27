@@ -442,7 +442,11 @@ local conv_config = {
     first_message = first_message,
     language      = language,
   },
-  tts = tts_cfg,
+  tts  = tts_cfg,
+  turn = {
+    turn_timeout        = 15,
+    inactivity_timeout  = 180,
+  },
 }
 
 local agent_payload_ok, agent_payload = pcall(cjson.encode, {
