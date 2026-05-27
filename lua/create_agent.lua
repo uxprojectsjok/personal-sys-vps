@@ -387,6 +387,12 @@ end
 local tts_cfg = {
   model_id                   = "eleven_flash_v2_5",
   optimize_streaming_latency = 3,
+  voice_settings = {
+    stability         = 0.3,
+    similarity_boost  = 0.75,
+    style             = 0.35,
+    use_speaker_boost = true,
+  },
 }
 if voice_id then tts_cfg.voice_id = voice_id end
 
