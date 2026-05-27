@@ -577,7 +577,7 @@ const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer,
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
-const { clearMcpCache } = useMcpTools()
+const { clearMcpCache, loadMcpTools } = useMcpTools()
 
 // ── Admin-Erkennung ───────────────────────────────────────────────────────────
 const ADMIN_KEY    = 'sys_admin_token'
@@ -876,7 +876,7 @@ async function saveConfig() {
       braveDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
-      if (body.mcp_url !== undefined) clearMcpCache()
+      if (body.mcp_url !== undefined) { clearMcpCache(); loadMcpTools(soulToken.value) }
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }
