@@ -801,6 +801,30 @@ server {
     content_by_lua_file /etc/openresty/lua/webhook_mnemonic.lua;
   }
 
+  # ── Zapier MCP – Tool-Liste holen (GET) – soul-cert ──────────────────────────
+  location = /api/mcp-tools {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mcp_tools.lua;
+  }
+
+  # ── Zapier MCP – Tool aufrufen (POST) – soul-cert ────────────────────────────
+  location = /api/mcp-call {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 64K;
+    client_body_buffer_size 64K;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mcp_call.lua;
+  }
+
   ################################
   # Favicon
   ################################
