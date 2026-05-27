@@ -11,6 +11,7 @@ This document covers the three keys that protect a SYS node, what each one does,
 | `soul_master_key` | `sys_` + 64 hex | `master.json` (server) | Signs all soul_certs — the root of trust |
 | `soul_cert` | 32 hex | `sys.md` frontmatter + browser sessionStorage | Authenticates every API call from the browser |
 | `admin_token` | `adm_` + 64 hex | `master.json` (server) + browser localStorage | The only way to change the soul_master_key |
+| `webhook_token` | any string ≤ 256 chars | `api_context.json` (server) | Authenticates inbound Zapier webhooks and ElevenLabs agent |
 
 ---
 
@@ -88,6 +89,42 @@ t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
 
 ---
 
+## webhook_token Rotation
+
+**Trigger:** Vault-Einstellungen → API-Kontext → Webhook-Token Feld → neuen Wert eintragen und speichern
+
+### What happens
+
+1. New token is saved in `api_context.json` — old token is immediately invalid
+2. The Zapier webhook URL changes: `https://domain/api/zapier?token=NEW_TOKEN`
+3. ElevenLabs agent loses vault access (it authenticated via the old token)
+
+### Effect on connected services
+
+| Service | Effect | Action required |
+|---------|--------|----------------|
+| Zapier Zaps | Stop working — old URL invalid | Update webhook URL in every affected Zap |
+| ElevenLabs Agent | Stops accessing vault files | Run `@create-agent` in chat |
+| In-App Chat | None — uses soul_cert, not webhook_token | — |
+| MCP (Claude Desktop) | None — uses OAuth token | — |
+
+### What you must do
+
+- Update the webhook URL in all Zapier Zaps that POST to `/api/zapier`
+- Run `@create-agent` to re-register the ElevenLabs agent under the new token
+- The new webhook URL is shown immediately in Einstellungen → API → Zapier
+
+### When to rotate
+
+Rotate the webhook_token when:
+- You suspect it was leaked (e.g., the Zapier webhook URL was shared publicly)
+- A Zap or integration that had access is no longer trusted
+- Routine hygiene alongside a soul_cert rotation
+
+A leaked webhook_token allows writing into the **Agent Sandbox and Social Sphere only** — the private soul sections are never writable via webhook. Rolling caps (max 50 entries per block) prevent flooding even with a leaked token.
+
+---
+
 ## admin_token
 
 **soul_cert = Tür zum Node. admin_token = Schlüssel zum Schlüsselbund.**
@@ -118,6 +155,7 @@ You receive it once during `init.sh` setup, or after running `recover-password.s
 |-----------|--------|
 | Routine security hygiene | soul_cert (low impact) |
 | You suspect the soul_cert was leaked | soul_cert immediately |
+| You suspect the webhook_token was leaked | webhook_token — update Zaps + run `@create-agent` |
 | You suspect the soul_master_key was leaked | soul_master_key + admin_token |
 | You lost your sys.md | Use `recover-password.sh` (SSH access required) |
 | Admin-Token leaked | soul_master_key rotation → set new admin_token in the same call |

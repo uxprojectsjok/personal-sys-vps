@@ -121,26 +121,48 @@ if soul_text ~= "" then
   if m and m ~= '""' and m ~= "" then soul_name = m end
 end
 
--- ── Nachricht schreiben ───────────────────────────────────────────────────────
+-- ── Nachricht schreiben (mit Rolling-Cap) ────────────────────────────────────
+local CAP = 50   -- maximale @msg-Einträge pro Block
 local message_written = false
 
 local function write_to_block(text, start_tag, end_tag, fallback_header)
-  if soul_text == "" or formatted == "" then return false end
-  -- Zeilenumbrüche + --> escapen
+  if soul_text == "" or text == "" then return false end
   local safe = text:gsub("%-%-", "- -"):gsub("\n", " | "):sub(1, 2000)
   local timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
   local entry = "<!-- @msg " .. timestamp .. " " .. source .. " agent " .. safe .. " -->"
-  local updated
 
+  local updated
   if soul_text:find(start_tag, 1, true) and soul_text:find(end_tag, 1, true) then
-    local escaped_end = end_tag:gsub("%-", "%%-"):gsub("<!%-%- ", "<!%%-%%- "):gsub(" %%->", " %-%%->")
-    updated = soul_text:gsub("(" .. escaped_end .. ")", entry .. "\n%1", 1)
+    -- Block-Inhalt extrahieren, @msg-Zeilen zählen und bei Bedarf älteste kürzen
+    local block_inner = soul_text:match(start_tag .. "%s*(.-)%s*" .. end_tag:gsub("%-", "%%-"):gsub("<!%-%- ", "<!%%-%%- "):gsub(" %%->", " %-%%->"))
+    local msgs = {}
+    if block_inner then
+      for line in (block_inner .. "\n"):gmatch("([^\n]*)\n") do
+        if line:find("<!%-%- @msg ", 1, true) then
+          table.insert(msgs, line)
+        end
+      end
+    end
+    -- Rolling-Cap: älteste entfernen bis Platz für neuen Eintrag
+    while #msgs >= CAP do
+      table.remove(msgs, 1)
+    end
+    table.insert(msgs, entry)
+    local new_inner = table.concat(msgs, "\n")
+    -- Block ersetzen
+    local escaped_start = start_tag:gsub("%-", "%%-"):gsub("<!%-%- ", "<!%%-%%- "):gsub(" %%->", " %-%%->")
+    local escaped_end   = end_tag:gsub("%-", "%%-"):gsub("<!%-%- ", "<!%%-%%- "):gsub(" %%->", " %-%%->")
+    updated = soul_text:gsub(
+      escaped_start .. ".-" .. escaped_end,
+      start_tag .. "\n" .. new_inner .. "\n" .. end_tag,
+      1
+    )
   else
     updated = soul_text:gsub("%s*$", "") ..
       "\n\n" .. fallback_header .. "\n" .. start_tag .. "\n" .. entry .. "\n" .. end_tag .. "\n"
   end
 
-  if updated ~= soul_text then
+  if updated and updated ~= soul_text then
     local wf = io.open(base_dir .. "/sys.md", "w")
     if wf then wf:write(updated); wf:close(); soul_text = updated; return true end
   end
