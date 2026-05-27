@@ -62,8 +62,13 @@ if text == "" then
   return
 end
 
--- Text auf 500 Zeichen begrenzen (TTS-Kosten)
-if #text > 500 then text = text:sub(1, 500) end
+-- Text auf 1000 Zeichen begrenzen, am letzten Satzende schneiden
+local LIMIT = 1000
+if #text > LIMIT then
+  local cut = text:sub(1, LIMIT)
+  local last = cut:match(".*()[%.!%?]")
+  text = last and cut:sub(1, last) or cut
+end
 
 local ok2, payload = pcall(cjson.encode, {
   text        = text,
