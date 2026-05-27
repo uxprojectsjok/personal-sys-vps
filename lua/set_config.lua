@@ -39,6 +39,7 @@ local elevenlabs_key       = body.elevenlabs_key
 local elevenlabs_agent_url = body.elevenlabs_agent_url
 local brave_key            = body.brave_key
 local model                = body.model
+local mcp_url              = body.mcp_url
 
 if anthropic_key ~= nil then
   if type(anthropic_key) ~= "string" then
@@ -84,6 +85,21 @@ if elevenlabs_agent_url ~= nil and type(elevenlabs_agent_url) ~= "string" then
   return
 end
 
+if mcp_url ~= nil then
+  if type(mcp_url) ~= "string" then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_mcp_url"}')
+    return
+  end
+  if mcp_url ~= "" and not mcp_url:match("^https://") then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_mcp_url","message":"URL must start with https://"}')
+    return
+  end
+end
+
 local ALLOWED_MODELS = {
   ["claude-opus-4-6"]          = true,
   ["claude-sonnet-4-6"]        = true,
@@ -122,6 +138,9 @@ if elevenlabs_agent_url ~= nil then
 end
 if model ~= nil then
   existing.model = model
+end
+if mcp_url ~= nil then
+  existing.mcp_url = (mcp_url ~= "") and mcp_url or nil
 end
 
 -- ── Schreiben ──────────────────────────────────────────────────────────────────
