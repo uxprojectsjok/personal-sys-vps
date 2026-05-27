@@ -90,15 +90,25 @@ t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
 
 ## admin_token
 
-**Where to enter it:** Einstellungen → Admin (first time: enter `adm_...` token to unlock the admin panel)
-
 **soul_cert = Tür zum Node. admin_token = Schlüssel zum Schlüsselbund.**
 
 The admin_token has exactly one purpose: authenticating calls to `/api/set-master`. It is intentionally independent of the soul_cert — if the soul_master_key is lost or compromised, you still need a way in to replace it. That way is the admin_token.
 
-You receive it once during `init.sh` setup, or after running `recover-password.sh`. It is stored in browser localStorage and never sent to any external service.
+### When you need to enter it manually
 
-**You never need it during normal operation.** It exists for the moment you need to replace the soul_master_key.
+In practice you almost never type it yourself:
+
+| Node mode | How the admin panel unlocks |
+|-----------|----------------------------|
+| **Personal Node** | soul_cert Bearer auth is accepted directly — no admin_token needed at all |
+| **Multi-Hoster** | admin_token is returned during first registration and stored automatically in browser localStorage — the panel unlocks on its own |
+| **New browser / cleared storage** | Token is gone from localStorage → enter it manually once to restore access |
+
+The input field in Einstellungen → Admin only appears when the token is missing from localStorage. On your regular device it is invisible because the token is already there.
+
+You receive it once during `init.sh` setup, or after running `recover-password.sh`. Keep a copy somewhere safe for the new-device case. It is never sent to any external service.
+
+**You never need it during normal operation.** It exists for the moment you need to replace the soul_master_key — and even then, your browser usually handles it silently.
 
 ---
 
