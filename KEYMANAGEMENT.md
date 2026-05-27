@@ -36,7 +36,19 @@ This document covers the three keys that protect a SYS node, what each one does,
 
 ### What you must do
 
-Save the downloaded sys.md. It contains the new `soul_cert` in the frontmatter. If you lose it, use `recover-password.sh` to regain access.
+The rotation flow via Einstellungen → API → Cert rotieren is fully automated:
+
+| Step | Automatic |
+|------|-----------|
+| New cert issued, cert_version incremented | ✓ |
+| Browser stores new cert immediately | ✓ |
+| Local vault file updated (if vault connected) | ✓ |
+| sys.md pushed to server | ✓ |
+| sys.md offered as download | ✓ |
+| Server validation confirms new cert | ✓ |
+| Biometric credentials updated | ✓ |
+
+**Your only obligation:** Save the downloaded sys.md — it contains the new `soul_cert` in the frontmatter. If you lose it, use `recover-password.sh` (SSH access required).
 
 ---
 
@@ -79,6 +91,8 @@ t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
 ## admin_token
 
 **Where to enter it:** Einstellungen → Admin (first time: enter `adm_...` token to unlock the admin panel)
+
+**soul_cert = Tür zum Node. admin_token = Schlüssel zum Schlüsselbund.**
 
 The admin_token has exactly one purpose: authenticating calls to `/api/set-master`. It is intentionally independent of the soul_cert — if the soul_master_key is lost or compromised, you still need a way in to replace it. That way is the admin_token.
 
