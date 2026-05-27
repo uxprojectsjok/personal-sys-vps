@@ -226,7 +226,11 @@ Wann welches Tool:
 - mind_write → wenn du aus dem Gespräch echte Erkenntnisse über dich selbst gewinnst
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
-
+${externalTools.length > 0 ? `
+## Externe Tools (MCP)
+Zusätzlich stehen dir folgende externe Tools zur Verfügung — nutze sie wie die internen, ohne Ankündigung:
+${externalTools.map(t => `- ${t.name}${t.description ? ' — ' + t.description.split('.')[0] : ''}`).join('\n')}
+` : ''}
 ## Weitere Fähigkeiten
 Kreation:
 - Bild generieren: Beschreibe was du dir vorstellst — ich erstelle es (WaveSpeed AI). Trigger: Kamera-Button → "Bild generieren" wählen.
