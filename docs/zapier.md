@@ -1,51 +1,51 @@
 # Zapier Integration
 
-Die Zapier-Integration besteht aus zwei unabhängigen Teilen:
+The Zapier integration has two independent parts:
 
-| Teil | Richtung | Was es tut |
-|------|----------|-----------|
-| **Inbound Webhook** | Zapier → SYS | Zapier schreibt Ereignisse (Gmail, Kalender, …) in deine Soul |
-| **MCP-Verbindung** | SYS → Zapier | Deine KI ruft Zapier-Tools auf (E-Mails senden, Docs erstellen, …) |
+| Part | Direction | What it does |
+|------|-----------|-------------|
+| **Inbound Webhook** | Zapier → SYS | Zapier writes events (Gmail, Calendar, …) into your soul |
+| **MCP Connection** | SYS → Zapier | Your AI calls Zapier tools (send emails, create docs, …) |
 
-Beide Teile sind optional und unabhängig voneinander.
+Both parts are optional and independent of each other.
 
 ---
 
-## Teil 1 — Inbound Webhook
+## Part 1 — Inbound Webhook
 
-### Wie es funktioniert
+### How it works
 
-Zapier sendet einen POST-Request an deinen Node, wenn ein Trigger auslöst (neue E-Mail, Kalendertermin, Slack-Nachricht, …). Der Node schreibt den Inhalt strukturiert in deine `sys.md` — entweder in den **Agent Sandbox** (für die KI) oder die **Social Sphere** (für Peers sichtbar).
+Zapier sends a POST request to your node when a trigger fires (new email, calendar event, Slack message, …). The node writes the content into your `sys.md` — either into the **Agent Sandbox** (for the AI) or the **Social Sphere** (visible to peers).
 
-Schutz: Max. 50 Einträge pro Block — älteste werden beim Schreiben automatisch gelöscht.
+Protection: max. 50 entries per block — oldest entries are automatically removed when the cap is reached.
 
-### Webhook-URL finden
+### Finding your webhook URL
 
-1. Node öffnen → **Einstellungen → API**
-2. Im Zapier-Bereich: Webhook-URL kopieren
+1. Open your node → **Settings → API**
+2. In the Zapier section: copy the webhook URL
 
-Format: `https://deine-domain.de/api/zapier?token=DEIN_TOKEN`
+Format: `https://your-domain.com/api/zapier?token=YOUR_TOKEN`
 
-Das Token steht in `api_context.json` auf dem Server (`webhook_token`). Es wird beim ersten API-Setup automatisch generiert.
+The token is stored in `api_context.json` on the server (`webhook_token`). It is generated automatically during the first API setup.
 
-### Zap einrichten
+### Setting up a Zap
 
-**Schritt 1 — Trigger wählen**
+**Step 1 — Choose a trigger**
 
-Beispiele:
-- Gmail → „New Email" (jede neue E-Mail)
-- Google Calendar → „Event Start" (Termin beginnt)
-- Slack → „New Message in Channel"
-- Beliebiger anderer Trigger
+Examples:
+- Gmail → "New Email"
+- Google Calendar → "Event Start"
+- Slack → "New Message in Channel"
+- Any other trigger
 
-**Schritt 2 — Action: Webhooks by Zapier → POST**
+**Step 2 — Action: Webhooks by Zapier → POST**
 
-| Feld | Wert |
-|------|------|
-| URL | deine Webhook-URL aus den Einstellungen |
+| Field | Value |
+|-------|-------|
+| URL | your webhook URL from Settings |
 | Payload Type | `JSON` |
 
-**Schritt 3 — Body-Felder befüllen**
+**Step 3 — Configure the body fields**
 
 ```json
 {
@@ -57,55 +57,55 @@ Beispiele:
 }
 ```
 
-### Felder im Überblick
+### Body fields
 
-| Feld | Pflicht | Werte | Beschreibung |
-|------|---------|-------|-------------|
-| `source` | nein | `gmail`, `calendar`, beliebig | Bestimmt das Anzeigeformat |
-| `action` | nein | `write`, `notify`, `read` | Wohin geschrieben wird |
-| `message` | nein | freier Text | Hauptinhalt |
-| `subject` | nein | Text | Betreff / Terminname |
-| `from` | nein | E-Mail oder Name | Absender |
-| `reply_to` | nein | Message-ID o.ä. | Reply-Kontext |
+| Field | Required | Values | Description |
+|-------|----------|--------|-------------|
+| `source` | no | `gmail`, `calendar`, any string | Determines the display format |
+| `action` | no | `write`, `notify`, `read` | Where to write |
+| `message` | no | free text | Main content |
+| `subject` | no | text | Subject / event title |
+| `from` | no | email or name | Sender |
+| `reply_to` | no | message-id or similar | Reply context |
 
-### Actions erklärt
+### Actions
 
-| Action | Ziel in sys.md | Wer sieht es |
-|--------|---------------|-------------|
-| `write` (Standard) | `<!-- AGENT:START/END -->` | KI liest es in der nächsten Session |
-| `notify` | `<!-- SOCIAL:START/END -->` | KI + Peers |
-| `read` | — | Gibt `soul_name` + Core-Identity-Snippet zurück |
+| Action | Target in sys.md | Who sees it |
+|--------|-----------------|-------------|
+| `write` (default) | `<!-- AGENT:START/END -->` | AI reads it in the next session |
+| `notify` | `<!-- SOCIAL:START/END -->` | AI + peers |
+| `read` | — | Returns `soul_name` + Core Identity snippet |
 
-Wenn kein `action` angegeben wird: `write` wenn `message` vorhanden, sonst `read`.
+If no `action` is provided: `write` when `message` is present, otherwise `read`.
 
-### Formatierung je nach Source
+### Formatting by source
 
-Der Node formatiert die Nachricht automatisch passend:
+The node formats the message automatically:
 
 **Gmail:**
 ```
-Von: absender@mail.de | Betreff: Betreff der Mail | Inhalt der Nachricht
+Von: sender@mail.com | Betreff: Email subject | Message body
 ```
 
 **Calendar:**
 ```
-Termin: Meeting mit Alice | Von: kalender@domain.de | Beschreibung
+Termin: Meeting with Alice | Von: calendar@domain.com | Description
 ```
 
-**Generisch:**
+**Generic:**
 ```
-Betreff — Inhalt (von Absender)
+Subject — Content (von Sender)
 ```
 
-### Verbindung testen
+### Testing the connection
 
-In den Einstellungen → API → Zapier-Bereich gibt es einen **„Webhook testen"**-Button. Er sendet `{ "action": "read" }` und zeigt deinen `soul_name` wenn alles funktioniert.
+Settings → API → Zapier section → **"Test Webhook"** button. It sends `{ "action": "read" }` and displays your `soul_name` if everything works.
 
-Alternativ in Zapier selbst: „Test Action" im Webhook-Schritt — der Node antwortet mit:
+Or test directly in Zapier via "Test Action" — the node responds with:
 ```json
 {
   "ok": true,
-  "soul_name": "Dein Name",
+  "soul_name": "Your Name",
   "action": "read",
   "message_written": false
 }
@@ -113,60 +113,60 @@ Alternativ in Zapier selbst: „Test Action" im Webhook-Schritt — der Node ant
 
 ---
 
-## Teil 2 — MCP-Verbindung
+## Part 2 — MCP Connection
 
-### Wie es funktioniert
+### How it works
 
-Zapier stellt einen eigenen MCP-Server bereit. Dein Node verbindet sich damit — die KI im Chat kann dann Zapier-Actions direkt aufrufen: E-Mails senden, Google-Docs erstellen, Slack-Nachrichten schicken, …
+Zapier provides its own MCP server. Your node connects to it — the AI in chat can then call Zapier actions directly: send emails, create Google Docs, post Slack messages, …
 
-### Zapier MCP einrichten
+### Setting up Zapier MCP
 
-1. **Zapier öffnen** → [zapier.com/mcp](https://zapier.com/mcp)
-2. **Actions konfigurieren** — welche Tools die KI nutzen darf, z.B.:
+1. **Open Zapier** → [zapier.com/mcp](https://zapier.com/mcp)
+2. **Configure actions** — which tools the AI is allowed to use, e.g.:
    - Gmail: Send Email
    - Gmail: Find Email
    - Google Docs: Create Document from Text
    - Google Calendar: Create Event
-3. **MCP-URL kopieren** — Format: `https://mcp.zapier.com/api/mcp/s/DEINE_ID/mcp`
+3. **Copy the MCP URL** — format: `https://mcp.zapier.com/api/mcp/s/YOUR_ID/mcp`
 
-### MCP-URL im Node hinterlegen
+### Adding the MCP URL to your node
 
-1. Node öffnen → **Einstellungen → API**
-2. Feld „Zapier MCP URL" → URL einfügen → Speichern
+1. Open your node → **Settings → API**
+2. "Zapier MCP URL" field → paste the URL → Save
 
-Die KI hat die Tools ab der nächsten Chat-Session verfügbar.
+The AI has access to the tools from the next chat session onward.
 
-### KI im Chat nutzen
+### Using tools in chat
 
-Die KI sieht alle konfigurierten Zapier-Tools automatisch in ihrem Tool-Manifest. Du kannst sie direkt ansprechen:
+The AI sees all configured Zapier tools automatically in its tool manifest. You can address it directly:
 
-> „Schick eine E-Mail an alice@example.com: Betreff: Hallo, Inhalt: …"
-> „Erstell ein Google Doc mit dem Titel ‚Meeting-Protokoll' und folgendem Inhalt: …"
-> „Was steht morgen in meinem Kalender?"
+> "Send an email to alice@example.com — subject: Hello, body: …"
+> "Create a Google Doc titled 'Meeting Notes' with the following content: …"
+> "What's on my calendar tomorrow?"
 
-### Welche Tools verfügbar sind
+### Available tools
 
-Die KI ruft `/api/mcp-tools` auf — das gibt die aktuelle Tool-Liste von Zapier zurück. Wenn du in Zapier neue Actions hinzufügst oder entfernst, sind sie sofort wirksam ohne Node-Neustart.
-
----
-
-## Sicherheit
-
-- **webhook_token** schützt den Inbound-Webhook — nur Anfragen mit dem richtigen Token werden akzeptiert
-- Ein gestohlenes `webhook_token` gibt **keinen Zugriff auf private Soul-Bereiche** — nur Agent Sandbox und Social Sphere können beschrieben werden
-- Rolling-Cap (50 Einträge) verhindert Flooding auch bei einem geleakten Token
-- Rotation: Einstellungen → API-Kontext → Webhook-Token-Feld → neuen Wert eintragen → alle Zaps mit neuer URL aktualisieren
-
-Für vollständige Key-Management-Details: [KEYMANAGEMENT.md](../KEYMANAGEMENT.md)
+The AI calls `/api/mcp-tools` which returns the current tool list from Zapier. If you add or remove actions in Zapier, they take effect immediately without restarting the node.
 
 ---
 
-## Häufige Probleme
+## Security
 
-| Problem | Ursache | Lösung |
-|---------|---------|--------|
-| Webhook antwortet mit 403 | API nicht aktiviert | Einstellungen → API → API aktivieren |
-| Webhook antwortet mit 401 | Falsches Token in URL | Webhook-URL neu kopieren |
-| `message_written: false` | Soul-Datei leer oder verschlüsselt | Soul im Browser öffnen und einmal speichern |
-| MCP-Tools leer | MCP-URL nicht gesetzt | Einstellungen → API → MCP-URL eintragen |
-| KI findet Tools nicht | Falsche MCP-URL | Zapier MCP-Seite → URL neu kopieren |
+- **webhook_token** protects the inbound webhook — only requests with the correct token are accepted
+- A leaked `webhook_token` gives **no access to private soul sections** — only the Agent Sandbox and Social Sphere can be written to
+- Rolling cap (50 entries) prevents flooding even with a leaked token
+- Rotation: Settings → API Context → webhook token field → enter new value → update all Zaps with the new URL
+
+Full key management details: [KEYMANAGEMENT.md](../KEYMANAGEMENT.md)
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Webhook returns 403 | API not enabled | Settings → API → enable API |
+| Webhook returns 401 | Wrong token in URL | Re-copy webhook URL from Settings |
+| `message_written: false` | Soul file empty or encrypted | Open soul in browser and save once |
+| MCP tools empty | MCP URL not set | Settings → API → enter MCP URL |
+| AI cannot find tools | Wrong MCP URL | Zapier MCP page → re-copy URL |
