@@ -69,9 +69,9 @@ local ok2, payload = pcall(cjson.encode, {
   text        = text,
   model_id    = "eleven_flash_v2_5",
   voice_settings = {
-    stability         = 0.5,
-    similarity_boost  = 0.8,
-    style             = 0.0,
+    stability         = 0.3,
+    similarity_boost  = 0.75,
+    style             = 0.35,
     use_speaker_boost = true,
   },
 })
