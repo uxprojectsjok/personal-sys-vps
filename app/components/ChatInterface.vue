@@ -299,6 +299,20 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
           </svg>
         </button>
+
+        <!-- TTS Stop-Button — nur sichtbar wenn Audio läuft -->
+        <Transition name="tts-stop">
+          <button
+            v-if="ttsPlaying"
+            class="dock-icon tts-stop-btn"
+            @click="stopTts"
+            title="Audio stoppen"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" class="dock-icon-svg">
+              <rect x="5" y="5" width="14" height="14" rx="2"/>
+            </svg>
+          </button>
+        </Transition>
       </div>
 
       <!-- Attachment previews -->
@@ -547,6 +561,14 @@ async function startVoiceRecord() {
   await scrollToBottom()
 }
 
+function stopTts() {
+  if (ttsAudio.value) {
+    ttsAudio.value.pause()
+    ttsAudio.value = null
+    ttsPlaying.value = false
+  }
+}
+
 async function stopVoiceRecord() {
   if (!voiceRecording.value || !_vaRecorder) return
   return new Promise(resolve => {
@@ -630,7 +652,7 @@ async function stopVoiceRecord() {
           const ttsVoiceId = (soulContentAgent.value || props.soulContent || '').match(/elevenlabs_voice_id:\s*(\S+)/)?.[1]
             || localStorage.getItem('sys_elevenlabs_voice_id')
             || undefined
-          const ttsBody = { text: responseText.slice(0, 500) }
+          const ttsBody = { text: responseText }
           if (ttsVoiceId) ttsBody.voiceId = ttsVoiceId
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
@@ -640,8 +662,10 @@ async function stopVoiceRecord() {
           if (ttsRes.ok) {
             const url = URL.createObjectURL(await ttsRes.blob())
             const audio = new Audio(url)
-            audio.onended = () => URL.revokeObjectURL(url)
-            audio.play().catch(() => {})
+            ttsAudio.value = audio
+            ttsPlaying.value = true
+            audio.onended = () => { URL.revokeObjectURL(url); ttsAudio.value = null; ttsPlaying.value = false }
+            audio.play().catch(() => { ttsAudio.value = null; ttsPlaying.value = false })
           }
         } catch {}
       }
@@ -651,7 +675,9 @@ async function stopVoiceRecord() {
 }
 
 // ── Media drawer ────────────────────────────────────────────────────
-const mediaOpen = ref(false)
+const mediaOpen  = ref(false)
+const ttsAudio   = ref(null)
+const ttsPlaying = ref(false)
 
 // ── @-Command strip ─────────────────────────────────────────────────
 const cmdsOpen = ref(false)
@@ -3477,6 +3503,15 @@ defineExpose({
   touch-action: none; /* prevent scroll stealing the hold gesture on mobile */
   transition: background .15s, color .15s, box-shadow .15s;
 }
+.tts-stop-btn {
+  color: var(--sys-accent-bright);
+  border-color: rgba(var(--sys-accent-bright-rgb, 139,92,246), 0.4);
+}
+.tts-stop-btn:hover {
+  background: rgba(var(--sys-accent-bright-rgb, 139,92,246), 0.15);
+}
+.tts-stop-enter-active, .tts-stop-leave-active { transition: opacity .15s, transform .15s; }
+.tts-stop-enter-from, .tts-stop-leave-to { opacity: 0; transform: scale(0.7); }
 .dock-mic.recording {
   background: rgba(239, 68, 68, 0.22);
   color: #ef4444;
