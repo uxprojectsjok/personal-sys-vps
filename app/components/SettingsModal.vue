@@ -603,6 +603,7 @@ import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
+import { useMcpTools } from '~/composables/useMcpTools.js'
 
 const props = defineProps({ open: Boolean })
 const emit  = defineEmits(['close', 'master-rotated'])
@@ -611,6 +612,7 @@ const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer,
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
+const { clearMcpCache } = useMcpTools()
 
 // ── Admin-Erkennung ───────────────────────────────────────────────────────────
 const ADMIN_KEY    = 'sys_admin_token'
@@ -939,6 +941,7 @@ async function saveConfig() {
       braveDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
+      if (body.mcp_url !== undefined) clearMcpCache()
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }
