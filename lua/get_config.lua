@@ -68,19 +68,6 @@ if has_mcp then
   mcp_preview = u:sub(1, 28) .. "…"
 end
 
--- ── Zapier Webhook-URL (aus api_context.json) ─────────────────────────────────
-local zapier_webhook_url = cjson.null
-local ctx_path = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
-local ctf = io.open(ctx_path, "r")
-if ctf then
-  local ctx_raw = ctf:read("*a"); ctf:close()
-  local ctx_ok, ctx = pcall(cjson.decode, ctx_raw)
-  if ctx_ok and type(ctx) == "table" and type(ctx.webhook_token) == "string" and ctx.webhook_token ~= "" then
-    local base_url = ngx.var.scheme .. "://" .. ngx.var.host
-    zapier_webhook_url = base_url .. "/api/zapier?token=" .. ctx.webhook_token
-  end
-end
-
 -- ── Aktiver Key-Status (welche Ebene wird genutzt?) ───────────────────────────
 local key_source = "env"
 if has_own_key then
@@ -119,5 +106,4 @@ ngx.say(cjson.encode({
   model                  = soul_cfg.model or cjson.null,
   mcp_url_set            = has_mcp,
   mcp_preview            = mcp_preview,
-  zapier_webhook_url     = zapier_webhook_url,
 }))
