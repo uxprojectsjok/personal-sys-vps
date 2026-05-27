@@ -11,7 +11,7 @@
         <div class="gate-head">
           <span class="gate-kicker">SYS · Private Node</span>
           <h1 class="gate-display">Willkommen<em>.</em></h1>
-          <p class="gate-lede">{{ isPwa ? 'Entsperre mit deiner Biometrik' : 'Gespeicherte Zugangsdaten vorhanden' }}</p>
+          <p class="gate-lede">{{ isPwa ? 'Entsperre mit Face ID oder Fingerabdruck' : 'Gespeicherte Zugangsdaten vorhanden' }}</p>
         </div>
         <div class="gate-form">
           <p v-if="error" class="gate-error">{{ error }}</p>
@@ -19,7 +19,13 @@
             class="sys-btn-ed sys-btn-ed--primary gate-bio-btn"
             :disabled="loading"
             @click="biometricUnlock"
-          >{{ loading ? 'Entsperre…' : 'Entsperren' }}</button>
+          >
+            <span v-if="loading" style="display:flex;align-items:center;gap:8px;justify-content:center">
+              <span style="width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block"></span>
+              Lade Soul…
+            </span>
+            <span v-else>{{ isPwa ? '⬤ Entsperren' : 'Entsperren' }}</span>
+          </button>
           <button class="gate-link" @click="switchToForm">Manuell anmelden</button>
         </div>
       </template>
@@ -120,6 +126,8 @@ const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
 const hasSavedCreds  = ref(false)
 
+const PWA_SOUL_KEY = 'sys_pwa_soul_id'
+
 const route   = useRoute()
 const passkey = useSoulPasskey()
 const creds   = useSavedCreds()
@@ -178,7 +186,27 @@ async function biometricUnlock() {
 
     const body = { password: saved.password }
     if (saved.cert) body.cert = saved.cert
-    await $fetch('/api/gate-auth', { method: 'POST', body })
+    const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body })
+
+    // Soul_id aus Antwort oder localStorage — dann Soul direkt vom Server laden
+    const soulId = gateRes?.soul_id || localStorage.getItem(PWA_SOUL_KEY) || ''
+    if (soulId && saved.cert) {
+      try {
+        const bearer = `${soulId}.${saved.cert}`
+        const soulRes = await fetch('/api/soul', {
+          headers: { Authorization: `Bearer ${bearer}` }
+        })
+        if (soulRes.ok) {
+          const soulText = await soulRes.text()
+          if (soulText && soulText.includes('soul_cert:')) {
+            sessionStorage.setItem('sys.soul', soulText)
+            sessionStorage.setItem('sys.soul_cert', saved.cert)
+            return window.location.href = '/session'
+          }
+        }
+      } catch { /* silent — Fallback auf normalen Redirect */ }
+    }
+
     doRedirect()
   } catch (e) {
     const err = e?.data?.error || ''
@@ -204,7 +232,10 @@ async function submit() {
     const payload = { password: password.value }
     if (soulRegistered.value && cert.value) payload.cert = cert.value.trim()
 
-    await $fetch('/api/gate-auth', { method: 'POST', body: payload })
+    const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body: payload })
+
+    // soul_id für späteren PWA-Auto-Login merken
+    if (gateRes?.soul_id) localStorage.setItem(PWA_SOUL_KEY, gateRes.soul_id)
 
     const support = await passkey.checkPasskeySupport()
     if (support.supported && !creds.hasCreds.value) {
@@ -381,5 +412,9 @@ function doRedirect() {
 
 .gate-link:hover {
   color: var(--sys-fg);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

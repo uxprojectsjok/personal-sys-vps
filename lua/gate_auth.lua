@@ -139,4 +139,8 @@ ngx.header["Set-Cookie"] = "sys_gate=" .. gate_token
   .. "; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=" .. TTL
 
 ngx.status = 200
-ngx.say('{"ok":true}')
+if node_soul_id ~= "" then
+  ngx.say('{"ok":true,"soul_id":"' .. node_soul_id .. '"}')
+else
+  ngx.say('{"ok":true}')
+end
