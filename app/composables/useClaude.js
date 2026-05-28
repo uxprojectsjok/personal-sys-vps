@@ -221,7 +221,7 @@ export function useClaude() {
         const streamMsg = async (msg) => {
           for (const char of msg) {
             streamedResponse.value += char;
-            onDelta?.(char);
+            onDelta?.(char, streamedResponse.value);
             await new Promise(r => setTimeout(r, 18));
           }
         };
