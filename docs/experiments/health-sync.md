@@ -19,21 +19,27 @@ If yes, `health.md` is a meaningful building block of the SYS protocol. If not, 
 
 ## What It Does
 
-A sync script runs weekly on your VPS via cron. It fetches health data from your device's cloud, formats it into a standardized `health.md`, and writes it to your vault context folder. The `health_check` MCP tool reads it, applies evidence-based reference ranges, and gives the SoulKI a structured analysis — resting HR, sleep, steps, active days, trends and recommendations — ready to use in conversation.
+Two complementary data sources feed into a single `health.md` file in your vault context:
+
+**Body metrics** — a weekly cron job fetches resting HR, sleep, and steps from your wearable's cloud and writes the `## This Week` and `## Monthly Summary` sections.
+
+**Food log** — whenever you send a photo of a meal in chat, the SoulKI analyses it via Claude Vision, optionally enriches the result with a Brave Search web lookup for nutritional data, rates the meal A–E, and writes it to `## Food Log`. At the end of the month the food log is automatically archived into `## Annual Journal` — health.md stays lean, nothing is lost.
 
 ```
-Garmin Watch → Garmin Connect (cloud) → health_sync.py → health.md → vault/context/
-                                                                            ↓
-                                                                      health_check tool
-                                                                            ↓
-                                                                        SoulKI responds
+Garmin Watch → Garmin Connect → health_sync.py ──────┐
+                                                      ▼
+Food photo → SoulKI (Vision) → food_log tool → health.md → vault/context/
+                                                      ▼
+                                              health_check tool
+                                                      ▼
+                                               SoulKI responds
 ```
 
 ---
 
 ## health.md Format
 
-Device-agnostic. Every adapter writes the same structure:
+Device-agnostic. The sync script writes body metrics; the `food_log` tool appends meals; the month rollover compresses entries into the annual journal — all in one file.
 
 ```markdown
 ---
@@ -44,15 +50,26 @@ last_sync: 2026-05-28
 ## This Week (2026-W22)
 - Resting HR: 52 bpm (avg)
 - Sleep: 7h 12min (avg)
-- Steps: 8,432 (avg)
+- Steps: 8.432 (avg)
+- Active days: 5
 
 ## Monthly Summary (2026-05)
 - Resting HR: 54 bpm (avg)
 - Sleep: 6h 58min (avg)
 - Active days: 18 / 31
+
+## Food Log
+- 2026-05-28 | A | Grüner Smoothie — Spinat, Banane, Mandelmilch
+- 2026-05-28 | C | Pizza Margherita — Weißmehl, moderater Käse
+- 2026-05-27 | B | Avocado Toast mit Ei — Vollkorn, gesunde Fette
+
+## Annual Journal
+### 2026-04
+- Food: B (avg) — 8×A 15×B 14×C 5×D 1×E · 43 meals
+- Top: Lachsfilet mit Gemüse, Overnight Oats, Grüner Smoothie
 ```
 
-The AI sees this as plain context. No special handling required.
+The weekly sync preserves `## Food Log` and `## Annual Journal` — they are never overwritten by `health_sync.py`.
 
 ---
 
@@ -86,6 +103,54 @@ def get_data(config: dict) -> dict:
 ```
 
 New device? Write a new adapter, point `install.sh` to it. Nothing else changes.
+
+---
+
+## food_log Tool
+
+`food_log` is an MCP tool registered in the soul-mcp server and the in-app KI. It is triggered automatically — no command needed.
+
+### How it works
+
+1. User sends a food photo in chat
+2. SoulKI analyses the image via Claude Vision — identifies dish, ingredients, preparation method
+3. Optionally calls `web_search` for nutritional data on unfamiliar items
+4. Rates the meal A–E (see scale below)
+5. Calls `food_log(name, rating, notes)` — entry is written to `## Food Log` in `health.md`
+
+### Rating scale
+
+| Grade | Meaning | Examples |
+|-------|---------|---------|
+| **A** | Excellent | Salad, fruit, legumes, lean fish, smoothies, whole grains |
+| **B** | Good | Whole grain bread, low-fat dairy, eggs, balanced home cooking |
+| **C** | Moderate | Pasta, white rice, moderate cheese, light fast food |
+| **D** | Poor | Fried food, high-sugar snacks, heavy processed meals |
+| **E** | Very poor | Ultra-processed, high fat + sugar + salt (chips, soft drinks, fast food) |
+
+Inspired by the EU Nutri-Score and WHO food classification guidelines.
+
+### Monthly rollover
+
+The rollover happens automatically on the first food entry of a new month:
+
+1. All entries from the previous month are extracted from `## Food Log`
+2. A summary is calculated: average rating, count per grade, top A/B meals
+3. The summary is prepended to `## Annual Journal`
+4. `## Food Log` resets to current month only
+
+This keeps `health.md` lean. The annual journal grows by one entry per month — roughly 12 entries per year.
+
+### Entry format
+
+```
+- YYYY-MM-DD | X | Meal name — optional notes
+```
+
+```
+- 2026-05-28 | A | Grüner Smoothie — Spinat, Banane, Mandelmilch
+- 2026-05-28 | C | Pizza Margherita — Weißmehl, moderater Käse
+```
 
 ---
 
