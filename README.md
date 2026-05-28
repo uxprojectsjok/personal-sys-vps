@@ -287,6 +287,8 @@ If `init.sh` detects other active sites on the server (via `sites-enabled`), it 
 > `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
 > Forgot password: soul stays. Reset: tenant moves out. Uninstall: house is torn down.
 
+> **Note:** These scripts are not included in the public repository. They are distributed via the private installer repository alongside `init.sh`.
+
 ---
 
 ## Integrity
