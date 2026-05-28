@@ -6,7 +6,7 @@ import { ref } from "vue";
 const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
   "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
-  "health_check", "food_log"
+  "health_check", "food_log", "health_sync"
 ]);
 
 const SOUL_TOOLS = [
@@ -126,6 +126,11 @@ const SOUL_TOOLS = [
       },
       required: ["name", "rating"]
     }
+  },
+  {
+    name: "health_sync",
+    description: "Startet den Garmin Health Sync im Hintergrund — ruft aktuelle Daten (Ruhepuls, Schlaf, Schritte) von Garmin Connect ab und aktualisiert health.md. Dauert ca. 30 Sekunden. Danach health_check aufrufen.",
+    input_schema: { type: "object", properties: {}, required: [] }
   }
 ];
 
@@ -285,6 +290,7 @@ Wann welches Tool:
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
 - health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind — gibt eine vollständige Analyse mit Referenzwerten und Empfehlungen zurück
 - food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, ggf. web_search für Nährwertdaten, dann A–E bewerten (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk) und food_log aufrufen — ohne Ankündigung, direkt nach der Analyse
+- health_sync → wenn der User "sync health", "garmin sync", "health aktualisieren" o.ä. sagt — startet den Sync im Hintergrund (~30 Sek.), danach automatisch health_check aufrufen
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
