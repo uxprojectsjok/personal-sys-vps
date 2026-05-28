@@ -350,6 +350,110 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         return res.json({ content: [{ type: 'text', text: `Sektion "${section}" in mind.md ${verb}.` }] });
       }
 
+      case 'health_check': {
+        const healthPath = `${SOULS_DIR}${soulId}/vault/context/health.md`;
+        const rawText = await readFile(healthPath, 'utf8').catch(() => null);
+        if (!rawText) {
+          return res.json({ content: [{ type: 'text', text: JSON.stringify({
+            available: false,
+            message: 'health.md nicht gefunden. Aktivierung: bash /opt/sys/health-sync/install.sh',
+          }, null, 2) }] });
+        }
+        // ── Parse ──────────────────────────────────────────────────────────────
+        const parseBlock = (block, target) => {
+          if (!block) return;
+          for (const line of block.split('\n')) {
+            if (/Resting HR/i.test(line)) { const m = line.match(/(\d+)\s*bpm/); if (m) target.resting_hr = +m[1]; }
+            if (/Sleep/i.test(line)) { const h = line.match(/(\d+)h/); const mn = line.match(/(\d+)min/); if (h||mn) target.sleep_minutes = (h?+h[1]*60:0)+(mn?+mn[1]:0); }
+            if (/Steps/i.test(line)) { const m = line.match(/([\d.]+)\s*\(avg\)/); if (m) target.steps = +m[1].replace(/\./g,''); }
+            if (/Active days/i.test(line)) { const m = line.match(/(\d+)/); if (m) target.active_days = +m[1]; }
+          }
+        };
+        const parsed = { source: null, last_sync: null, weekly: {}, monthly: {} };
+        const sourceM = rawText.match(/^source:\s*(.+)$/m);
+        const syncM   = rawText.match(/^last_sync:\s*(.+)$/m);
+        if (sourceM) parsed.source    = sourceM[1].trim();
+        if (syncM)   parsed.last_sync = syncM[1].trim();
+        parseBlock(rawText.match(/## This Week[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1], parsed.weekly);
+        parseBlock(rawText.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1], parsed.monthly);
+        // ── Classify ───────────────────────────────────────────────────────────
+        const classify = (v, ranges) => { if (v==null) return null; for (const r of ranges) if (v<=r.max) return {status:r.status,label:r.label,tip:r.tip}; return null; };
+        const HR    = [{max:40,status:'very_low',label:'Sehr niedrig',tip:'Unter 40 bpm. Bei Schwindel ärztlich abklären.'},{max:60,status:'athletic',label:'Athletisch',tip:'Unter 60 bpm — gute kardiovaskuläre Fitness.'},{max:70,status:'good',label:'Gut',tip:'Guter Ruhepuls.'},{max:80,status:'normal',label:'Normal',tip:'Normaler Bereich.'},{max:100,status:'elevated',label:'Erhöht',tip:'Leicht erhöht. Ausdauertraining und Schlafhygiene helfen.'},{max:999,status:'high',label:'Hoch',tip:'Über 100 bpm — ärztliche Abklärung empfehlenswert.'}];
+        const SL    = [{max:300,status:'critical',label:'Kritisch',tip:'Unter 5h — schweres Schlafdefizit.'},{max:360,status:'too_low',label:'Zu wenig',tip:'Unter 6h — unter der Mindestempfehlung.'},{max:420,status:'borderline',label:'Knapp',tip:'6–7h — Ziel: 7h+ für optimale Erholung.'},{max:540,status:'optimal',label:'Optimal',tip:'7–9h — idealer Bereich.'},{max:999,status:'long',label:'Viel',tip:'Über 9h.'}];
+        const ST    = [{max:3000,status:'sedentary',label:'Sitzend',tip:'Unter 3.000 — sehr geringe Bewegung.'},{max:5000,status:'low',label:'Wenig aktiv',tip:'3.000–5.000 — unter dem Minimum.'},{max:7500,status:'moderate',label:'Mäßig aktiv',tip:'5.000–7.500 — Ziel: 7.500+/Tag.'},{max:10000,status:'active',label:'Aktiv',tip:'7.500–10.000 — empfohlener Bereich.'},{max:99999,status:'very_active',label:'Sehr aktiv',tip:'Über 10.000 — ausgezeichnet.'}];
+        const AD    = [{min:0,max:1,status:'low',label:'Kaum aktiv'},{min:2,max:3,status:'moderate',label:'Mäßig'},{min:4,max:5,status:'good',label:'Gut'},{min:6,max:7,status:'great',label:'Ausgezeichnet'}];
+        const SC    = {athletic:5,optimal:5,very_active:5,great:5,good:4,normal:3,active:3,moderate:3,borderline:2,low:2,elevated:1,too_low:1,sedentary:1,critical:0,high:0,very_low:0};
+        const w = parsed.weekly, m = parsed.monthly;
+        const hrCl = classify(w.resting_hr, HR), slCl = classify(w.sleep_minutes, SL), stCl = classify(w.steps, ST);
+        const adCl = w.active_days != null ? AD.find(r => w.active_days >= r.min && w.active_days <= r.max) : null;
+        const scores = [hrCl,slCl,stCl,adCl].filter(Boolean).map(c => SC[c.status]??2);
+        const avg = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : null;
+        const overall = avg==null ? null : avg>=4.2 ? {status:'excellent',label:'Sehr gut'} : avg>=3.2 ? {status:'good',label:'Gut'} : avg>=2.0 ? {status:'fair',label:'Verbesserungspotenzial'} : {status:'poor',label:'Aufmerksamkeit empfohlen'};
+        const ageDays = parsed.last_sync ? Math.floor((Date.now()-new Date(parsed.last_sync).getTime())/86400000) : null;
+        let hrTrend = null;
+        if (w.resting_hr!=null&&m.resting_hr!=null) { const d=w.resting_hr-m.resting_hr; hrTrend=d<=-3?'improving':d>=3?'worsening':'stable'; }
+        const fmtSleep = v => v==null?null:`${Math.floor(v/60)}h ${v%60}min`;
+        const fmtSteps = v => v==null?null:v.toLocaleString('de-DE');
+        const tips = [hrCl,slCl,stCl].filter(c=>c&&!['athletic','optimal','very_active','good','active'].includes(c.status)).map(c=>c.tip);
+        return res.json({ content: [{ type: 'text', text: JSON.stringify({
+          available: true, source: parsed.source, last_sync: parsed.last_sync, data_age_days: ageDays, data_stale: ageDays!=null&&ageDays>9,
+          weekly: { resting_hr:{value:w.resting_hr,unit:'bpm',formatted:w.resting_hr?`${w.resting_hr} bpm`:null,...(hrCl||{})}, sleep:{value:w.sleep_minutes,unit:'min',formatted:fmtSleep(w.sleep_minutes),...(slCl||{})}, steps:{value:w.steps,unit:'steps/day',formatted:fmtSteps(w.steps),...(stCl||{})}, active_days:{value:w.active_days,of:7,...(adCl||{})} },
+          monthly: { resting_hr:{value:m.resting_hr,formatted:m.resting_hr?`${m.resting_hr} bpm`:null}, sleep:{value:m.sleep_minutes,formatted:fmtSleep(m.sleep_minutes)}, active_days:{value:m.active_days} },
+          hr_trend: hrTrend, overall, tips,
+        }, null, 2) }] });
+      }
+
+      case 'food_log': {
+        const { name, rating, notes = '' } = input;
+        if (!name) return res.status(400).json({ error: 'name erforderlich' });
+        const r = (rating||'').toUpperCase().slice(0,1);
+        if (!['A','B','C','D','E'].includes(r)) return res.status(400).json({ error: 'rating muss A–E sein' });
+        const today        = new Date().toISOString().slice(0,10);
+        const currentMonth = today.slice(0,7);
+        const cleanNotes   = (notes||'').replace(/[\n\r]/g,' ').trim();
+        const newEntry     = cleanNotes ? `- ${today} | ${r} | ${name} — ${cleanNotes}` : `- ${today} | ${r} | ${name}`;
+        const healthPath   = `${SOULS_DIR}${soulId}/vault/context/health.md`;
+        await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+        const content = await readFile(healthPath, 'utf8').catch(() => '');
+        // Parse zones
+        let head = '', foodLines = [], annualLines = [], zone = 'head';
+        for (const line of (content+'\n').split('\n').slice(0,-1)) {
+          if      (line==='## Food Log')       zone='food';
+          else if (line==='## Annual Journal') zone='annual';
+          else if (zone==='head')    head       += line+'\n';
+          else if (zone==='food')    foodLines.push(line);
+          else                       annualLines.push(line);
+        }
+        head = head.trimEnd();
+        // Separate by month
+        const thisMonth = [], past = {};
+        for (const line of foodLines) {
+          const mm = line.match(/^- (\d{4}-\d{2})-\d{2} \| [ABCDE] \|/);
+          if (mm) { if (mm[1]===currentMonth) thisMonth.push(line); else { if(!past[mm[1]])past[mm[1]]=[]; past[mm[1]].push(line); } }
+        }
+        // Archive past months
+        const newSummaries = [];
+        for (const [month, lines] of Object.entries(past).sort().reverse()) {
+          const counts={A:0,B:0,C:0,D:0,E:0}; const topMeals=[];
+          for (const l of lines) { const rm=l.match(/\| ([ABCDE]) \|/); if(rm){counts[rm[1]]++; if('AB'.includes(rm[1])){const meal=l.replace(/^- \d{4}-\d{2}-\d{2} \| [ABCDE] \| /,'').split(' — ')[0].trim(); if(meal)topMeals.push(meal);}}}
+          const total=Object.values(counts).reduce((a,b)=>a+b,0);
+          if(total>0){const sc=(counts.A*5+counts.B*4+counts.C*3+counts.D*2+counts.E)/total; const avg=sc>=4.5?'A':sc>=3.5?'B':sc>=2.5?'C':sc>=1.5?'D':'E'; const seen=new Set(); const uniq=topMeals.filter(m=>seen.has(m)?false:seen.add(m)).slice(0,3); let hi=uniq.join(', ')||'–'; if(hi.length>70)hi=hi.slice(0,67)+'…'; newSummaries.push(`### ${month}\n- Food: ${avg} (avg) — ${counts.A}×A ${counts.B}×B ${counts.C}×C ${counts.D}×D ${counts.E}×E · ${total} meals\n- Top: ${hi}`);}
+        }
+        // Rebuild
+        thisMonth.unshift(newEntry);
+        let out = head+'\n\n## Food Log\n'+thisMonth.join('\n');
+        out += '\n\n## Annual Journal';
+        for (const s of newSummaries) out += '\n'+s;
+        const existingAnnual = annualLines.join('\n').trim();
+        if (existingAnnual) out += '\n'+existingAnnual;
+        out += '\n';
+        await writeFile(healthPath, out, 'utf8');
+        const msg = newSummaries.length>0
+          ? `Eingetragen: ${newEntry}\n\nMonatswechsel: Vormonat ins Annual Journal archiviert.`
+          : `Eingetragen: ${newEntry}`;
+        return res.json({ content: [{ type: 'text', text: msg }] });
+      }
+
       default:
         return res.status(400).json({ error: `Unbekanntes Tool: ${tool}` });
     }
