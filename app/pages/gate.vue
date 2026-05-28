@@ -24,7 +24,7 @@
               <span style="width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block"></span>
               Lade Soul…
             </span>
-            <span v-else>{{ isPwa ? '⬤ Entsperren' : 'Entsperren' }}</span>
+            <span v-else>Entsperren</span>
           </button>
           <button class="gate-link" @click="switchToForm">Manuell anmelden</button>
         </div>
