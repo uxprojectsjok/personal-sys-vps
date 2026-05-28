@@ -874,8 +874,9 @@ async function uploadToServer(type, name) {
     const file = await readVaultFile(name);
     if (!file) { showError("Datei nicht lesbar"); return; }
     const serverType = type === "images" ? "image" : type;
-    // mind.md ist unverschlüsselt — Key weglassen damit kein Ciphertext entsteht
-    const key = (serverType === "context" && name.toLowerCase() === "mind.md")
+    // mind.md und health.md sind unverschlüsselt — Key weglassen damit kein Ciphertext entsteht
+    const plainContextFiles = ["mind.md", "health.md"];
+    const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
       ? ""
       : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
     const res = await syncFile(props.soulCert, serverType, name, file, key);
