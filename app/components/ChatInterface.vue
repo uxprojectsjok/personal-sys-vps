@@ -2615,6 +2615,24 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
     })
     if (vRes.ok) {
       const vData  = await vRes.json()
+
+      // Lebensmittelbild → food_log direkt aufrufen, keine soulReaction
+      if (vData.isFoodPhoto && vData.foodName) {
+        try {
+          await fetch('/api/food-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeader },
+            body: JSON.stringify({ name: vData.foodName, rating: vData.foodRating || 'C', notes: vData.foodNotes || '' }),
+          })
+        } catch { /* gespeichert oder nicht – Anzeige trotzdem */ }
+        const rating = vData.foodRating || 'C'
+        updateLastMessage(`${vData.foodName} · ${rating} · gespeichert`)
+        setLastMessageMeta('streaming', false)
+        await scrollToBottom()
+        visionLoading.value = false
+        return
+      }
+
       soulReaction = vData.soulReaction ?? vData.analysis ?? ''
       genPrompt    = vData.genPrompt   ?? ''
       outputMode   = vData.outputMode  ?? 'skip'
