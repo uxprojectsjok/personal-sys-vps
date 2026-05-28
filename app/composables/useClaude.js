@@ -395,14 +395,15 @@ ${mediaSignalInstructions}`;
         system: systemPrompt,
       };
       if (hasSoulTools) baseBody.tools = allTools;
-      if (isSyncRequest) baseBody.tool_choice = { type: "tool", name: "health_sync" };
 
       let fullText = "";
 
       // ── streamRound: eine Streaming-Runde mit der API ──────────────────────
-      async function streamRound(apiMessages, includeTools) {
+      // firstRound: tool_choice nur in Runde 0 setzen, danach freie Tool-Wahl
+      async function streamRound(apiMessages, includeTools, firstRound = false) {
         const body = { ...baseBody, messages: apiMessages };
         if (!includeTools) delete body.tools;
+        if (isSyncRequest && firstRound) body.tool_choice = { type: "tool", name: "health_sync" };
 
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -543,7 +544,7 @@ ${mediaSignalInstructions}`;
 
       for (let round = 0; round < 4; round++) {
         // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
-        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools);
+        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0);
         if (!result) return null; // Cert-Fehler bereits gesetzt
 
         const { allBlocks, stopReason } = result;
