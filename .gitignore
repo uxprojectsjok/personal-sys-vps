@@ -1,3 +1,4 @@
+init.sh
 .env
 *.key
 *.pem

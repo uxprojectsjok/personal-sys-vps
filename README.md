@@ -243,10 +243,13 @@ The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Nod
 
 ```bash
 git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
-cd /opt/sys && bash init.sh
 ```
 
-The script prompts for domain, email, and optionally an Anthropic API key and WalletConnect Project ID — everything else runs automatically. Change the root password with `passwd` when done.
+> **Note:** `init.sh` is not included in the public repository during the testing phase.
+> It will be released together with full documentation at official launch.
+> If you are part of the testing group, you have received it separately.
+
+The setup script prompts for domain, email, and optionally an Anthropic API key and WalletConnect Project ID — everything else runs automatically. Change the root password with `passwd` when done.
 
 ### Node modes
 
