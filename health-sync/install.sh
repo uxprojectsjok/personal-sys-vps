@@ -5,7 +5,6 @@ set -euo pipefail
 
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="/var/lib/sys/config"
-CONFIG_FILE="$CONFIG_DIR/health_sync.json"
 SOULS_DIR="/var/lib/sys/souls"
 LOG_FILE="/var/log/sys_health_sync.log"
 
@@ -64,6 +63,9 @@ if [[ "$ADAPTER" == "garmin" ]]; then
   GARMIN_MODEL="${model_input:-garmin_fr235}"
 fi
 
+# ── Per-soul config path ──────────────────────────────────────────────────────
+CONFIG_FILE="$CONFIG_DIR/health_sync_${SOUL_ID}.json"
+
 # ── Credentials ───────────────────────────────────────────────────────────────
 echo ""
 if [[ "$ADAPTER" == "garmin" ]]; then
@@ -106,5 +108,6 @@ echo "=== Setup complete ==="
 echo ""
 echo "health.md → $SOULS_DIR/$SOUL_ID/vault/context/health.md"
 echo "Logs      → $LOG_FILE"
-echo "Remove    → crontab -e  (delete the health_sync.py line)"
+echo "Config    → $CONFIG_FILE"
+echo "Remove    → crontab -e  (delete the health_sync.py line) + rm $CONFIG_FILE"
 echo ""

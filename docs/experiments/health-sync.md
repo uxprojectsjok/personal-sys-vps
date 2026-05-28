@@ -239,11 +239,21 @@ cat /var/lib/sys/souls/<your-soul-id>/vault/context/health.md
 
 The file should contain your weekly and monthly stats. If you open a new chat session, the SoulKI will read it automatically — no further setup needed.
 
+### Multi-Hoster
+
+Run `install.sh` once per soul. Each soul gets a separate config file:
+
+```
+/var/lib/sys/config/health_sync_<soul_id>.json
+```
+
+The single weekly cron job loops through all configs automatically — no extra setup needed.
+
 ### Uninstall
 
 ```bash
-crontab -e                                                    # remove the health_sync.py line
-rm /var/lib/sys/config/health_sync.json
+crontab -e                                                         # remove the health_sync.py line
+rm /var/lib/sys/config/health_sync_*.json
 rm /var/lib/sys/souls/<your-soul-id>/vault/context/health.md
 ```
 
