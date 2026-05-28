@@ -95,8 +95,9 @@ cat > "$CONFIG_FILE" <<EOF
   "garmin_model": "$GARMIN_MODEL"
 }
 EOF
+chown www-data:www-data "$CONFIG_FILE"
 chmod 600 "$CONFIG_FILE"
-echo "Config written to $CONFIG_FILE (permissions: 600)"
+echo "Config written to $CONFIG_FILE (permissions: 600, owner: www-data)"
 
 # ── Cron job ──────────────────────────────────────────────────────────────────
 CRON_CMD="0 6 * * 1 $VENV/bin/python $INSTALL_DIR/health_sync.py >> $LOG_FILE 2>&1"
