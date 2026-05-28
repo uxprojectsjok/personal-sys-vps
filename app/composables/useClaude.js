@@ -4,7 +4,8 @@ import { ref } from "vue";
 // ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
-  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search"
+  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
+  "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get"
 ]);
 
 const SOUL_TOOLS = [
@@ -69,6 +70,42 @@ const SOUL_TOOLS = [
         query: { type: "string", description: "Suchanfrage auf Deutsch oder in der Sprache des Nutzers" }
       },
       required: ["query"]
+    }
+  },
+  {
+    name: "calendar_read",
+    description: "Liest den Kalender aus der sys.md und gibt strukturierte Termine zurück.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "audio_list",
+    description: "Listet alle Audio-Dateien im Vault auf: Sprachaufnahmen, Memos, Musik.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "image_list",
+    description: "Listet alle Bild-Dateien im Vault auf: Fotos, Aufnahmen, Illustrationen.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "video_list",
+    description: "Listet alle Video-Dateien im Vault auf: Bewegungsaufnahmen, Video-Memos.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "context_list",
+    description: "Listet alle Text-Kontext-Dateien im Vault auf: Notizen, Dokumente, Wissensbasis (.md, .txt).",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "profile_get",
+    description: "Liest ein gespeichertes Analyse-Profil: face (Gesicht), voice (Stimme), motion (Bewegung), expertise (Fachkompetenz).",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["face", "voice", "motion", "expertise"], description: "Profiltyp" }
+      },
+      required: ["type"]
     }
   }
 ];
@@ -224,6 +261,9 @@ Wann welches Tool:
 - context_get → für eine spezifische Kontext-Datei
 - mind_read → wenn du deine eigene Konfiguration prüfen willst
 - mind_write → wenn du aus dem Gespräch echte Erkenntnisse über dich selbst gewinnst
+- calendar_read → wenn Termine, Kalender oder zeitliche Planung relevant sind
+- audio_list / image_list / video_list / context_list → wenn du Vault-Inhalte eines bestimmten Typs brauchst
+- profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
