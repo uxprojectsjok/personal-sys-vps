@@ -56,24 +56,45 @@ Three phases — nothing more:
 - sys.md stored encrypted (AES-256-CBC, key stays in the browser)
 - HMAC-SHA256 soul_cert — stateless, no cookies, no OAuth
 - Gate password protects the entire interface
+- WebAuthn/Passkey biometric unlock (PRF extension — no stored password)
+- Per-soul master keys in Multi-Hoster mode — souls are cryptographically isolated
 
 **AI & Soul**
 - Chat with Claude — the KI embodies your soul in first person
 - **Soul-Archivar KI**: automatically observes every conversation and grows your sys.md — no button required. Runs after 3 min, then every 8 min and every 4th message.
+- **mind.md**: KI identity file — 7-section config the AI reads every session and can update itself (Selbstreflexion, Kommunikation, Intellekt). Write-protected sections: Identität, Grenzen.
 - Manual soul update available for on-demand deep analysis (Claude Sonnet)
-- Vision analysis: camera → Claude → description or image generation
+- Vision analysis: camera photo → Claude → soul reaction or AI image generation
+- Food photo → automatic food_log entry (AI identifies food, assigns A–E nutrition rating, no prompt needed)
+- Web search: KI can search the web mid-conversation and incorporate results
 - Text-to-speech via ElevenLabs (voice cloning supported)
+- Speech-to-text via ElevenLabs STT — voice input in chat
 - AI image generation via WaveSpeed AI
 - Background synthesis KI: reads the social sphere, contributes facts and impulses into the conversation
+- Full tool manifest injected into system prompt from first message — no multi-session onboarding
 
 > **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+
+**Health & Body**
+- **health.md**: structured health context file — weekly/monthly Garmin metrics (resting HR, sleep, steps, active days) with WHO/ESC/NSF reference classifications
+- **Food Log**: every food photo logged as dated entry (A–E nutrition rating, name, notes) — aggregated weekly and monthly, annual journal with KW breakdown
+- **Health Sync**: Garmin Connect adapter (FR235 and others) — weekly cron or on-demand via chat command. Adapters for Apple Health and Oura ring included.
+- Profile capture via chat: `@audio` / `@face` / `@body` — inline capture cards for voice, photo, and motion directly in the chat stream
+
+**Emergency Protocol**
+- 3-level AI lock activatable from the header: KI-Sperre → AI-Blackout → Isolierung
+- Lua-based guard blocks API endpoints per level
+- Level 3 stops the MCP server via systemctl
+- SSH-only Level 4 (full shutdown)
 
 **Peer Network (Social Sphere)**
 - Add trusted peers by soul_id + endpoint
 - @mention peers by name in chat to send messages into the Social Sphere
 - Attach images and files — uploaded to `vault/shared`, served cross-domain with peer auth
+- Peer media proxy: browser fetches peer media through own node (no direct cross-domain exposure)
 - KI synthesis: reads the live social stream, periodically contributes a brief — forwarded to peers with `[KI]` attribution
 - Peer reachability shown inline; detailed error shown on auth failure
+- Beme: community broadcast channel — short messages visible across the network
 
 **Vault**
 - Local vault (File System Access API, no upload needed)
@@ -81,17 +102,27 @@ Three phases — nothing more:
 - Vault Shared: peer-accessible file store (`/var/lib/sys/souls/{soul_id}/vault_shared/`)
 - Optional vault encryption (AES-256-CBC, magic header `SYSCRYPT01`)
 - File viewer, audio player, video player built in
+- Calendar view — vault-based event entries
 
 **Networking**
 - MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
 - Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
+- Soul Skills: declarable capabilities exposed via MCP for agent discovery
 - Zapier integration — automate workflows and notifications via webhooks
 - Browser extension (Chrome MV3) for automatic soul_cert injection
+- Twilio call config — voice call integration
+
+**Agent Marketplace**
+- Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
+- Paid agent access: Polygon (POL) micropayment → time-limited access token → Agent Sandbox read
+- Earnings ledger: track incoming agent payments on-chain
+- Trusted soul whitelist: grant read/write access to specific peer souls
 
 **Growth & Anchoring**
 - Soul Growth Chain: every session is cryptographically signed
 - Blockchain anchoring on Polygon (optional, user-initiated)
 - Maturity score 0–100 based on sys.md content depth
+- Cloud push: encrypted soul bundle exportable to external storage
 
 ### What the node does NOT do
 
@@ -116,26 +147,43 @@ Three phases — nothing more:
 
 ## Repository Structure
 
+> Installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are distributed via a private repository — see [Installation](#installation).
+
 ```
-├── init.sh                  Setup script — distributed via private installer repo
-├── reset.sh                 Delete soul(s) and release node — private installer repo
-├── recover-password.sh      Reset gate password — private installer repo
-├── deinstall.sh             Remove everything init.sh installed — private installer repo
-│
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
-│   ├── pages/               Routes: index, session, gate, api-docs, …
-│   ├── components/          UI components (SoulViewer, Vault, Chat, AgentMarketplacePanel, …)
-│   └── composables/         Shared state: useSoul, useVault, useChainAnchor, …
+│   ├── pages/               Routes: index, session, gate, …
+│   ├── components/          UI components — Chat, Vault, SoulViewer, AgentMarketplace,
+│   │                        EmergencyModal, SoulCalendar, LiveProfile, MotionCapture, …
+│   └── composables/         useSoul, useVault, useClaude, useChainAnchor, useSavedCreds, …
 │
-├── lua/                     OpenResty Lua scripts (production API layer)
+├── lua/                     OpenResty Lua scripts (production API layer, 80+ endpoints)
 │   ├── soul_cert.lua        Soul cert issuance — per-soul key on multi-hoster
 │   ├── soul_auth.lua        Request authentication (per-soul key aware)
-│   ├── vault_auth.lua       Vault endpoint auth (per-soul key aware)
+│   ├── vault_auth.lua       Vault endpoint auth
 │   ├── gate_auth.lua        Gate password protection
-│   ├── soul_reset_registration.lua  Recovery endpoint — clears stale registration (gate auth only)
+│   ├── emergency_guard.lua  Emergency protocol — blocks endpoints per lock level
+│   ├── food_log.lua         Food entry writer — health.md + monthly rollover + KW archive
+│   ├── health_sync_trigger.lua  Trigger Garmin sync from chat
+│   ├── mind.lua             mind.md read/write endpoint
+│   ├── vision_analyze.lua   Camera photo → Claude Haiku → soul reaction or food detection
+│   ├── web_search.lua       Web search proxy for KI mid-conversation
+│   ├── beme.lua             Community broadcast channel
 │   ├── soul_amortization.lua Agent Marketplace + trusted souls whitelist
-│   ├── vault_sync.lua       Vault file upload/sync
-│   └── …                   (40+ additional Lua endpoints)
+│   ├── soul_paid_*.lua      Agent payment flow — POL token, access control, earnings
+│   ├── vault_shared_*.lua   Peer-accessible file store — upload, serve, delete
+│   ├── vault_peer_*.lua     Peer media proxy + stream
+│   └── …                   (see lua/ directory for full list)
+│
+├── health-sync/             Garmin / Apple Health / Oura adapter (Python, optional experiment)
+│   ├── health_sync.py       Main sync runner
+│   ├── writer.py            Writes health.md — preserves Food Log + Annual Journal
+│   ├── install.sh           Interactive setup (credentials, soul selection, cron)
+│   └── adapters/            garmin.py, apple_health.py, oura.py
+│
+├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
+│   └── tools/               44 tools — soul_read/write, vault_manifest, health_check,
+│                            health_sync, food_log, mind_read/write, soul_discover,
+│                            soul_skills, beme_chat, calendar_read, verify_human, …
 │
 ├── server/
 │   ├── api/                 Nitro API routes (development server only)
@@ -143,9 +191,6 @@ Three phases — nothing more:
 │
 ├── shared/
 │   └── utils/               soulParser.js, soulMaturity.js — shared browser logic
-│
-├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
-│   └── tools/               soul_read, soul_write, vault_manifest, …
 │
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
@@ -373,15 +418,6 @@ Use of this software is at your own risk. The Apache 2.0 license excludes warran
 
 - **Open protocol** — Apache 2.0, compatible implementations welcome
 - **Smart contract** — live on Polygon Mainnet, verifiable on Polygonscan
-
-### Recent additions (2026-05)
-
-| Feature | Description |
-|---------|-------------|
-| **mind.md** | KI identity file — 7-section config the AI reads every session and can update itself (Selbstreflexion, Kommunikation, Intellekt). Write-protected: Identität, Grenzen. Readable/writable as a vault context file. |
-| **Emergency Protocol** | 3-level AI lock (KI-Sperre → AI-Blackout → Isolierung) activatable from the header. Lua-based guard blocks API endpoints per level; Level 3 stops the MCP server via systemctl. SSH-only Level 4 (full shutdown). |
-| **Profile capture via chat** | @audio/@stimme, @face/@gesicht, @body/@bewegung — inline capture cards in the chat stream instead of a separate modal menu. |
-| **Tool awareness** | KI receives a full tool manifest in its system prompt from the first message — no more multi-session onboarding needed. |
 
 ---
 
