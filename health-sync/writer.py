@@ -71,4 +71,9 @@ def write_health_md(data: dict, soul_id: str) -> None:
     )
 
     out_path.write_text(content, encoding="utf-8")
+    try:
+        import shutil
+        shutil.chown(out_path, user="www-data", group="www-data")
+    except Exception:
+        pass
     print(f"  Written: {out_path}")
