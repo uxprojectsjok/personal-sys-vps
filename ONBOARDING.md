@@ -33,8 +33,26 @@ ssh root@YOUR-SERVER-IP
 
 ## Step 3 — Run the setup script
 
+The installer scripts are distributed via a private repository. You need `gh` CLI to access them.
+
+**3a — Install gh CLI and authenticate:**
+
 ```bash
-git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
+curl -sS https://webi.sh/gh | sh && source ~/.config/envman/PATH.env
+```
+
+```bash
+gh auth login --hostname github.com --git-protocol https --web
+```
+
+The terminal shows a one-time code. Open `https://github.com/login/device` on your phone or laptop and enter the code — no browser needed on the VPS.
+
+**3b — Clone repos and run installer:**
+
+```bash
+gh repo clone uxprojectsjok/personal-sys-vps /opt/sys && \
+gh repo clone uxprojectsjok/sys-installer /tmp/sys-installer -- --depth=1 && \
+cp /tmp/sys-installer/*.sh /opt/sys/ && \
 cd /opt/sys && bash init.sh
 ```
 
