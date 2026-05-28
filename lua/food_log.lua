@@ -114,8 +114,10 @@ local new_summaries   = {}
 
 for month_str, lines in pairs(past) do
   table.insert(archived_months, month_str)
-  local counts  = { A=0, B=0, C=0, D=0, E=0 }
+  local counts    = { A=0, B=0, C=0, D=0, E=0 }
   local top_meals = {}
+  local week_groups = {}
+  local week_order  = {}
 
   for _, l in ipairs(lines) do
     local r = l:match("| ([ABCDE]) |")
@@ -129,6 +131,32 @@ for month_str, lines in pairs(past) do
         if meal ~= "" then table.insert(top_meals, meal) end
       end
     end
+    -- ISO week grouping
+    local dy, dm, dd = l:match("^%- (%d%d%d%d)-(%d%d)-(%d%d) |")
+    if dy then
+      local ts = os.time({ year=tonumber(dy), month=tonumber(dm), day=tonumber(dd), hour=12 })
+      local wk = os.date("%G-W%V", ts)
+      if not week_groups[wk] then
+        week_groups[wk] = { A=0, B=0, C=0, D=0, E=0, total=0 }
+        table.insert(week_order, wk)
+      end
+      if r then
+        week_groups[wk][r] = week_groups[wk][r] + 1
+        week_groups[wk].total = week_groups[wk].total + 1
+      end
+    end
+  end
+
+  table.sort(week_order)
+  local week_parts = {}
+  for _, wk in ipairs(week_order) do
+    local wg = week_groups[wk]
+    if wg.total > 0 then
+      local sc = (wg.A*5 + wg.B*4 + wg.C*3 + wg.D*2 + wg.E) / wg.total
+      local wa = sc >= 4.5 and "A" or sc >= 3.5 and "B" or sc >= 2.5 and "C" or sc >= 1.5 and "D" or "E"
+      local kw = wk:match("W(%d+)$") or wk
+      table.insert(week_parts, string.format("KW%s:%s(%d)", kw, wa, wg.total))
+    end
   end
 
   local total = counts.A + counts.B + counts.C + counts.D + counts.E
@@ -136,7 +164,6 @@ for month_str, lines in pairs(past) do
     local score = (counts.A*5 + counts.B*4 + counts.C*3 + counts.D*2 + counts.E) / total
     local avg_ltr = score >= 4.5 and "A" or score >= 3.5 and "B" or score >= 2.5 and "C" or score >= 1.5 and "D" or "E"
 
-    -- Deduplicate + cap highlights
     local seen = {}; local uniq = {}
     for _, m in ipairs(top_meals) do
       if not seen[m] then seen[m] = true; table.insert(uniq, m) end
@@ -144,11 +171,13 @@ for month_str, lines in pairs(past) do
     local highlights = #uniq > 0 and table.concat(uniq, ", ") or "–"
     if #highlights > 70 then highlights = highlights:sub(1, 67) .. "…" end
 
+    local week_line = #week_parts > 0 and ("\n- Weeks: " .. table.concat(week_parts, " · ")) or ""
+
     table.insert(new_summaries, {
       month = month_str,
       text  = string.format(
-        "### %s\n- Food: %s (avg) — %d×A %d×B %d×C %d×D %d×E · %d meals\n- Top: %s",
-        month_str, avg_ltr, counts.A, counts.B, counts.C, counts.D, counts.E, total, highlights
+        "### %s\n- Food: %s (avg) — %d×A %d×B %d×C %d×D %d×E · %d entries%s\n- Top: %s",
+        month_str, avg_ltr, counts.A, counts.B, counts.C, counts.D, counts.E, total, week_line, highlights
       )
     })
   end
