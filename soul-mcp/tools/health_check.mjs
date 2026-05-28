@@ -98,28 +98,64 @@ function parseFoodLog(text) {
     }
   }
 
-  // Current-month stats
-  const today        = new Date().toISOString().slice(0, 10);
-  const currentMonth = today.slice(0, 7);
-  const thisMonth    = entries.filter(e => e.date.startsWith(currentMonth));
-  const counts       = { A: 0, B: 0, C: 0, D: 0, E: 0 };
-  const topMeals     = [];
-  for (const e of thisMonth) {
-    counts[e.rating]++;
-    if ('AB'.includes(e.rating)) topMeals.push(e.label.split(' — ')[0].trim());
-  }
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  let avgGrade = null;
-  if (total > 0) {
-    const sc = (counts.A * 5 + counts.B * 4 + counts.C * 3 + counts.D * 2 + counts.E) / total;
-    avgGrade = sc >= 4.5 ? 'A' : sc >= 3.5 ? 'B' : sc >= 2.5 ? 'C' : sc >= 1.5 ? 'D' : 'E';
+  function isoWeek(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    const day = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+    const year = d.getUTCFullYear();
+    const startOfYear = new Date(Date.UTC(year, 0, 1));
+    const week = Math.ceil(((d - startOfYear) / 86400000 + 1) / 7);
+    return `${year}-W${String(week).padStart(2, '0')}`;
   }
 
-  // Annual journal — last 6 monthly summaries
+  function gradeFromScore(sc) {
+    return sc >= 4.5 ? 'A' : sc >= 3.5 ? 'B' : sc >= 2.5 ? 'C' : sc >= 1.5 ? 'D' : 'E';
+  }
+
+  function computeStats(subset) {
+    const counts = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    for (const e of subset) counts[e.rating]++;
+    const total = subset.length;
+    let avg_grade = null;
+    if (total > 0) {
+      const sc = (counts.A * 5 + counts.B * 4 + counts.C * 3 + counts.D * 2 + counts.E) / total;
+      avg_grade = gradeFromScore(sc);
+    }
+    return { total, counts, avg_grade };
+  }
+
+  const today        = new Date().toISOString().slice(0, 10);
+  const currentMonth = today.slice(0, 7);
+  const currentWeek  = isoWeek(today);
+
+  const thisMonth      = entries.filter(e => e.date.startsWith(currentMonth));
+  const thisWeekEntries = entries.filter(e => isoWeek(e.date) === currentWeek);
+
+  const monthStats = computeStats(thisMonth);
+  const topMeals   = [];
+  for (const e of thisMonth) {
+    if ('AB'.includes(e.rating)) topMeals.push(e.label.split(' — ')[0].trim());
+  }
+
+  // Weekly averages from raw entries (current month + any recent entries in Food Log)
+  const weekMap = {};
+  for (const e of entries) {
+    const w = isoWeek(e.date);
+    if (!weekMap[w]) weekMap[w] = [];
+    weekMap[w].push(e);
+  }
+  const weekly_averages = Object.keys(weekMap)
+    .sort((a, b) => b.localeCompare(a))
+    .map(week => {
+      const stats = computeStats(weekMap[week]);
+      return { week, ...stats };
+    });
+
+  // Annual journal — last 12 monthly summaries (include Weeks line)
   const annualEntries = [];
   if (annualBlock) {
     const monthBlocks = annualBlock[1].split(/(?=### \d{4}-\d{2})/);
-    for (const block of monthBlocks.slice(0, 6)) {
+    for (const block of monthBlocks.slice(0, 12)) {
       const head = block.match(/### (\d{4}-\d{2})/);
       if (!head) continue;
       annualEntries.push({ month: head[1], summary: block.trim() });
@@ -127,14 +163,18 @@ function parseFoodLog(text) {
   }
 
   return {
-    recent_entries:  entries.slice(0, 10),
+    recent_entries: entries.slice(0, 10),
+    this_week: {
+      week: currentWeek,
+      meals: thisWeekEntries.map(e => `${e.date} ${e.rating} ${e.label}`),
+      ...computeStats(thisWeekEntries),
+    },
     this_month: {
       month: currentMonth,
-      total,
-      counts,
-      avg_grade: avgGrade,
+      ...monthStats,
       top_meals: [...new Set(topMeals)].slice(0, 3),
     },
+    weekly_averages,
     annual: annualEntries,
   };
 }
