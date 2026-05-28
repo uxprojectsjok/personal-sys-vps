@@ -376,11 +376,26 @@ ${mediaSignalInstructions}`;
       const allTools = hasSoulTools
         ? [...SOUL_TOOLS, ...externalTools]
         : [];
+
+      // Sync-Intercept: wenn User explizit einen Garmin-Sync anfordert,
+      // System-Prompt für diese Runde mit einer zwingenden Anweisung erweitern
+      const lastUserText = (() => {
+        const last = [...messages].reverse().find(m => m.role === "user");
+        if (!last) return "";
+        if (typeof last.content === "string") return last.content.toLowerCase();
+        if (Array.isArray(last.content)) return last.content.map(b => b.text || "").join(" ").toLowerCase();
+        return "";
+      })();
+      const isSyncRequest = /\bsync\b|health.?sync|garmin.?sync|aktualisier|neu.?laden/.test(lastUserText);
+      const effectiveSystemPrompt = (hasSoulTools && isSyncRequest)
+        ? systemPrompt + "\n\n⚡ PFLICHT FÜR DIESE NACHRICHT: Rufe JETZT das Tool \"health_sync\" auf — nicht health_check. Antworte danach kurz dass der Sync gestartet ist und ~30 Sek. dauert."
+        : systemPrompt;
+
       const baseBody = {
         model,
         max_tokens: 4096,
         stream: true,
-        system: systemPrompt,
+        system: effectiveSystemPrompt,
       };
       if (hasSoulTools) baseBody.tools = allTools;
 
