@@ -129,7 +129,7 @@ const SOUL_TOOLS = [
   },
   {
     name: "health_sync",
-    description: "Startet den Garmin Health Sync im Hintergrund — ruft aktuelle Daten (Ruhepuls, Schlaf, Schritte) von Garmin Connect ab und aktualisiert health.md. Dauert ca. 30 Sekunden. Danach health_check aufrufen.",
+    description: "Startet den Garmin Health Sync im Hintergrund. Läuft ~30 Sekunden async — nach dem Aufruf dem User Bescheid geben und warten bis er bestätigt, DANN erst health_check aufrufen.",
     input_schema: { type: "object", properties: {}, required: [] }
   }
 ];
@@ -290,7 +290,7 @@ Wann welches Tool:
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
 - health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind — gibt eine vollständige Analyse mit Referenzwerten und Empfehlungen zurück
 - food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, ggf. web_search für Nährwertdaten, dann A–E bewerten (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk) und food_log aufrufen — ohne Ankündigung, direkt nach der Analyse
-- health_sync → wenn der User "sync health", "garmin sync", "health aktualisieren" o.ä. sagt — startet den Sync im Hintergrund (~30 Sek.), danach automatisch health_check aufrufen
+- health_sync → wenn der User explizit einen Sync anfordert: "sync", "health_sync", "garmin sync", "aktualisieren", "neu laden", "health sync durchführen" oder ähnliches — WICHTIG: zuerst health_sync aufrufen, dann dem User mitteilen dass der Sync ~30 Sekunden dauert und er danach fragen soll; health_check erst auf explizite Nachfrage aufrufen
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
