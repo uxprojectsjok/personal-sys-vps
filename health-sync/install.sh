@@ -23,6 +23,11 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
+if ! command -v pip3 &>/dev/null; then
+  echo "Installing pip3…"
+  apt-get install -y python3-pip -qq
+fi
+
 echo ""
 echo "Installing python-garminconnect…"
 pip3 install -q garminconnect
