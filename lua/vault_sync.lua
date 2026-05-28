@@ -202,8 +202,8 @@ if not decoded then
   return
 end
 
--- mind.md und sys.md müssen immer als Klartext vorliegen
-if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md") then
+-- mind.md, health.md und sys.md müssen immer als Klartext vorliegen
+if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md" or safe_name == "health.md") then
   if decoded:sub(1, 4) == "SYS\x01" then
     ngx.status = 400
     ngx.header["Content-Type"] = "application/json"

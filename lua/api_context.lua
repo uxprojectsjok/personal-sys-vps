@@ -117,26 +117,28 @@ if ngx.req.get_method() == "GET" then
   local ctx    = read_context()
   local synced = filter_existing_synced_files(ctx.synced_files)
 
-  -- mind.md immer zurückgeben wenn die Datei physisch existiert
-  local mind_path = base_dir .. "/vault/context/mind.md"
-  local mind_fh   = io.open(mind_path, "r")
-  if mind_fh then
-    mind_fh:close()
+  -- mind.md und health.md immer zurückgeben wenn die Datei physisch existiert
+  local function ensure_in_context(filename)
+    local fh = io.open(base_dir .. "/vault/context/" .. filename, "r")
+    if not fh then return end
+    fh:close()
     local existing_ctx = synced.context
-    local has_mind = false
+    local has_file = false
     if type(existing_ctx) == "table" then
       for _, n in ipairs(existing_ctx) do
-        if n == "mind.md" then has_mind = true; break end
+        if n == filename then has_file = true; break end
       end
     end
-    if not has_mind then
-      local new_ctx = { "mind.md" }
+    if not has_file then
+      local new_ctx = { filename }
       if type(existing_ctx) == "table" then
         for _, n in ipairs(existing_ctx) do new_ctx[#new_ctx + 1] = n end
       end
       synced.context = new_ctx
     end
   end
+  ensure_in_context("mind.md")
+  ensure_in_context("health.md")
 
   local safe = {
     enabled      = ctx.enabled      or false,
