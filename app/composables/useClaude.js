@@ -116,13 +116,13 @@ const SOUL_TOOLS = [
   },
   {
     name: "food_log",
-    description: "Trägt eine bewertete Mahlzeit in health.md ein (A–E). Aufruf nach Bildanalyse einer Mahlzeit. A = ausgezeichnet, B = gut, C = moderat, D = schlecht, E = sehr schlecht.",
+    description: "Trägt eine Mahlzeit in health.md ein. Du bestimmst name und rating SELBST aus der Bildanalyse — frag den User NICHT. name = Mahlzeitsname den du erkennst. rating = deine eigene Bewertung A–E (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk). notes = erkannte Zutaten. Direkt nach der Analyse aufrufen, ohne Rückfrage.",
     input_schema: {
       type: "object",
       properties: {
-        name:   { type: "string", description: "Name der Mahlzeit" },
-        rating: { type: "string", enum: ["A", "B", "C", "D", "E"], description: "Bewertung A–E" },
-        notes:  { type: "string", description: "Kurze Beschreibung: Zutaten, Besonderheiten" }
+        name:   { type: "string", description: "Name der Mahlzeit — du erkennst ihn selbst aus dem Bild" },
+        rating: { type: "string", enum: ["A", "B", "C", "D", "E"], description: "Deine eigene Bewertung A–E — nicht vom User fragen" },
+        notes:  { type: "string", description: "Erkannte Zutaten und Besonderheiten" }
       },
       required: ["name", "rating"]
     }
@@ -326,7 +326,7 @@ Wann welches Tool:
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
 - health_sync → PRIORITÄT: sobald die Nachricht "sync", "health_sync", "garmin" oder "aktualisier" enthält — IMMER zuerst health_sync aufrufen (NICHT health_check), dann antworten: "Sync läuft, dauert ~30 Sek. — ruf mich danach nochmal an." health_check erst wenn der User explizit Daten sehen will
 - health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind UND kein Sync angefordert wurde — gibt eine vollständige Analyse zurück
-- food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, ggf. web_search für Nährwertdaten, dann A–E bewerten (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk) und food_log aufrufen — ohne Ankündigung, direkt nach der Analyse
+- food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, Gericht und Zutaten selbst bestimmen, A–E selbst bewerten (A=Vollwert/frisch z.B. Joghurt+Obst, Salat; B=gut z.B. Vollkornbrot, Ei; C=moderat z.B. Pasta, weißer Reis; D=schlecht z.B. Frittiertes, Süßigkeiten; E=Junk), dann food_log(name, rating, notes) direkt aufrufen — OHNE den User nach Name oder Bewertung zu fragen, OHNE Rückfrage
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
