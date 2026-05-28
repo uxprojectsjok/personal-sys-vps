@@ -208,6 +208,38 @@ export function useClaude() {
     certError.value = false;
     streamedResponse.value = "";
 
+    // ── Sync-Intercept: health_sync direkt ausführen, Claude komplett umgehen ──
+    {
+      const lastMsg = [...messages].reverse().find(m => m.role === "user");
+      const lastText = (() => {
+        if (!lastMsg) return "";
+        if (typeof lastMsg.content === "string") return lastMsg.content.toLowerCase();
+        if (Array.isArray(lastMsg.content)) return lastMsg.content.map(b => b.text || "").join(" ").toLowerCase();
+        return "";
+      })();
+      if (soulCert && /\bsync\b|health.?sync|garmin.?sync|aktualisier|neu.?laden/.test(lastText)) {
+        try {
+          const r = await fetch("/api/health-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${soulCert}` },
+            body: "{}"
+          });
+          const j = await r.json().catch(() => ({}));
+          const msg = j.ok
+            ? "Health Sync gestartet — dauert ca. 30 Sekunden. Sag mir Bescheid, dann rufe ich die aktuellen Werte ab."
+            : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
+          onDelta?.(msg);
+          streamedResponse.value = msg;
+        } catch {
+          const msg = "Health Sync konnte nicht gestartet werden.";
+          onDelta?.(msg);
+          streamedResponse.value = msg;
+        }
+        isLoading.value = false;
+        return streamedResponse.value;
+      }
+    }
+
     // Vollständige sys.md verwenden (keine gefilterte Teilansicht)
     const fullSoul = soulContent || "";
 
@@ -377,17 +409,6 @@ ${mediaSignalInstructions}`;
         ? [...SOUL_TOOLS, ...externalTools]
         : [];
 
-      // Sync-Intercept: wenn User explizit einen Garmin-Sync anfordert,
-      // tool_choice erzwingen — kein Ermessen für Claude
-      const lastUserText = (() => {
-        const last = [...messages].reverse().find(m => m.role === "user");
-        if (!last) return "";
-        if (typeof last.content === "string") return last.content.toLowerCase();
-        if (Array.isArray(last.content)) return last.content.map(b => b.text || "").join(" ").toLowerCase();
-        return "";
-      })();
-      const isSyncRequest = hasSoulTools && /\bsync\b|health.?sync|garmin.?sync|aktualisier|neu.?laden/.test(lastUserText);
-
       const baseBody = {
         model,
         max_tokens: 4096,
@@ -399,11 +420,9 @@ ${mediaSignalInstructions}`;
       let fullText = "";
 
       // ── streamRound: eine Streaming-Runde mit der API ──────────────────────
-      // firstRound: tool_choice nur in Runde 0 setzen, danach freie Tool-Wahl
-      async function streamRound(apiMessages, includeTools, firstRound = false) {
+      async function streamRound(apiMessages, includeTools) {
         const body = { ...baseBody, messages: apiMessages };
         if (!includeTools) delete body.tools;
-        if (isSyncRequest && firstRound) body.tool_choice = { type: "tool", name: "health_sync" };
 
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -544,7 +563,7 @@ ${mediaSignalInstructions}`;
 
       for (let round = 0; round < 4; round++) {
         // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
-        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0);
+        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools);
         if (!result) return null; // Cert-Fehler bereits gesetzt
 
         const { allBlocks, stopReason } = result;
