@@ -117,10 +117,10 @@ Three phases — nothing more:
 ## Repository Structure
 
 ```
-├── init.sh                  Setup script — zero to running in one command
-├── reset.sh                 Delete soul(s) and release node — single or multi-hoster aware
-├── recover-password.sh      Reset gate password without losing soul data
-├── deinstall.sh             Remove everything init.sh installed
+├── init.sh                  Setup script — distributed via private installer repo
+├── reset.sh                 Delete soul(s) and release node — private installer repo
+├── recover-password.sh      Reset gate password — private installer repo
+├── deinstall.sh             Remove everything init.sh installed — private installer repo
 │
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
 │   ├── pages/               Routes: index, session, gate, api-docs, …
@@ -245,9 +245,9 @@ The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Nod
 git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 ```
 
-> **Note:** `init.sh` is not included in the public repository during the testing phase.
-> It will be released together with full documentation at official launch.
-> If you are part of the testing group, you have received it separately.
+> **Note:** The installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are not included in this public repository.
+> They are distributed via a private installer repository and will be released together with full documentation at official launch.
+> If you are part of the testing group, you have received access separately.
 
 The setup script prompts for domain, email, and optionally an Anthropic API key and WalletConnect Project ID — everything else runs automatically. Change the root password with `passwd` when done.
 
