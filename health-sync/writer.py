@@ -1,7 +1,19 @@
-"""Writes health.md to vault/context/ — device-agnostic."""
+"""Writes health.md to vault/context/ — device-agnostic.
 
+Preserves ## Food Log and ## Annual Journal sections so that
+the weekly health sync does not wipe manually logged meals.
+"""
+
+import re
 from datetime import date
 from pathlib import Path
+
+
+def _extract_section(text: str, header: str) -> str:
+    """Return the content of a ## section (without the header line), or ''."""
+    pattern = rf"## {re.escape(header)}\n([\s\S]*?)(?=\n## |\Z)"
+    m = re.search(pattern, text)
+    return m.group(1).rstrip() if m else ""
 
 
 def write_health_md(data: dict, soul_id: str) -> None:
@@ -23,24 +35,40 @@ def write_health_md(data: dict, soul_id: str) -> None:
 
     monthly = data.get("monthly", {})
 
-    content = f"""---
-source: {data.get("source", "unknown")}
-last_sync: {today.isoformat()}
----
-
-## This Week ({week_label})
-- Resting HR: {fmt_hr(data.get("resting_hr"))}
-- Sleep: {fmt_sleep(data.get("sleep_minutes"))}
-- Steps: {fmt_steps(data.get("steps"))}
-- Active days: {data.get("active_days", "–")}
-
-## Monthly Summary ({month_label})
-- Resting HR: {fmt_hr(monthly.get("resting_hr"))}
-- Sleep: {fmt_sleep(monthly.get("sleep_minutes"))}
-- Active days: {monthly.get("active_days", "–")} / {today.day}
-"""
-
     out_path = Path(f"/var/lib/sys/souls/{soul_id}/vault/context/health.md")
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Preserve Food Log and Annual Journal from previous write
+    food_log_block    = ""
+    annual_journal_block = ""
+    if out_path.exists():
+        existing = out_path.read_text(encoding="utf-8")
+        fl = _extract_section(existing, "Food Log")
+        aj = _extract_section(existing, "Annual Journal")
+        if fl:
+            food_log_block = f"\n\n## Food Log\n{fl}"
+        if aj:
+            annual_journal_block = f"\n\n## Annual Journal\n{aj}"
+
+    content = (
+        f"---\n"
+        f"source: {data.get('source', 'unknown')}\n"
+        f"last_sync: {today.isoformat()}\n"
+        f"---\n"
+        f"\n"
+        f"## This Week ({week_label})\n"
+        f"- Resting HR: {fmt_hr(data.get('resting_hr'))}\n"
+        f"- Sleep: {fmt_sleep(data.get('sleep_minutes'))}\n"
+        f"- Steps: {fmt_steps(data.get('steps'))}\n"
+        f"- Active days: {data.get('active_days', '–')}\n"
+        f"\n"
+        f"## Monthly Summary ({month_label})\n"
+        f"- Resting HR: {fmt_hr(monthly.get('resting_hr'))}\n"
+        f"- Sleep: {fmt_sleep(monthly.get('sleep_minutes'))}\n"
+        f"- Active days: {monthly.get('active_days', '–')} / {today.day}"
+        f"{food_log_block}"
+        f"{annual_journal_block}\n"
+    )
+
     out_path.write_text(content, encoding="utf-8")
     print(f"  Written: {out_path}")

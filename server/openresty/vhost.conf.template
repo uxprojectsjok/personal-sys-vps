@@ -453,6 +453,17 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_public.lua;
   }
 
+  # ── Food Log: Mahlzeit bewerten + in health.md eintragen ────────────────────
+  location = /api/food-log {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    client_max_body_size 64k;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/food_log.lua;
+  }
+
   # ── Vault Profile: Automatische Analyse via Claude Vision ───────────────────────
   location = /api/vault/profile/analyze {
     limit_except POST { deny all; }
