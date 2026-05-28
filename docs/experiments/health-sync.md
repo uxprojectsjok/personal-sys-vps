@@ -19,12 +19,14 @@ If yes, `health.md` is a meaningful building block of the SYS protocol. If not, 
 
 ## What It Does
 
-A sync script runs weekly on your VPS via cron. It fetches health data from your device's cloud, formats it into a standardized `health.md`, and writes it to your vault context folder. The AI reads it automatically via `context_get` — no new endpoints, no changes to the node.
+A sync script runs weekly on your VPS via cron. It fetches health data from your device's cloud, formats it into a standardized `health.md`, and writes it to your vault context folder. The `health_check` MCP tool reads it, applies evidence-based reference ranges, and gives the SoulKI a structured analysis — resting HR, sleep, steps, active days, trends and recommendations — ready to use in conversation.
 
 ```
 Garmin Watch → Garmin Connect (cloud) → health_sync.py → health.md → vault/context/
                                                                             ↓
-                                                                        SoulKI reads it
+                                                                      health_check tool
+                                                                            ↓
+                                                                        SoulKI responds
 ```
 
 ---
@@ -84,6 +86,55 @@ def get_data(config: dict) -> dict:
 ```
 
 New device? Write a new adapter, point `install.sh` to it. Nothing else changes.
+
+---
+
+## health_check Tool
+
+`health_check` is an MCP tool registered in the soul-mcp server and the in-app KI. It has no parameters — it always reads your own `health.md`.
+
+### What it returns
+
+```json
+{
+  "available": true,
+  "source": "garmin_fr235",
+  "last_sync": "2026-05-28",
+  "data_age_days": 0,
+  "data_stale": false,
+  "weekly": {
+    "resting_hr":  { "value": 52, "status": "athletic", "label": "Athletisch",  "tip": "Unter 60 bpm — Zeichen guter kardiovaskulärer Fitness." },
+    "sleep":       { "value": 432, "formatted": "7h 12min", "status": "optimal", "label": "Optimal", "tip": "7–9h — idealer Bereich." },
+    "steps":       { "value": 8432, "formatted": "8.432", "status": "active",   "label": "Aktiv",    "tip": "7.500–10.000 Schritte — im empfohlenen Bereich." },
+    "active_days": { "value": 5, "of": 7, "status": "good", "label": "Gut" }
+  },
+  "monthly": {
+    "resting_hr":  { "value": 54, "formatted": "54 bpm" },
+    "sleep":       { "value": 418, "formatted": "6h 58min" },
+    "active_days": { "value": 18 }
+  },
+  "hr_trend": "improving",
+  "overall":  { "status": "excellent", "label": "Sehr gut" },
+  "tips": []
+}
+```
+
+### Reference ranges
+
+| Metric | Source | Ranges |
+|--------|--------|--------|
+| **Resting HR** | ESC guidelines | < 40 very low · 40–60 athletic · 60–70 good · 70–80 normal · 80–100 elevated · > 100 high |
+| **Sleep** | National Sleep Foundation | < 5h critical · 5–6h too low · 6–7h borderline · 7–9h optimal · > 9h long |
+| **Steps/day** | WHO physical activity guidelines | < 3k sedentary · 3–5k low · 5–7.5k moderate · 7.5–10k active · > 10k very active |
+| **Active days** | — | 0–1 low · 2–3 moderate · 4–5 good · 6–7 great |
+
+`tips` only contains entries for metrics that need attention — no noise when everything is fine.
+
+### Trigger phrases
+
+The SoulKI calls `health_check` automatically when body, health, pulse, sleep, steps or wellbeing come up in conversation. No command needed.
+
+If `health.md` does not exist yet, the tool returns `"available": false` with setup instructions.
 
 ---
 
