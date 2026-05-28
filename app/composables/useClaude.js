@@ -288,9 +288,9 @@ Wann welches Tool:
 - calendar_read → wenn Termine, Kalender oder zeitliche Planung relevant sind
 - audio_list / image_list / video_list / context_list → wenn du Vault-Inhalte eines bestimmten Typs brauchst
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
-- health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind — gibt eine vollständige Analyse mit Referenzwerten und Empfehlungen zurück
+- health_sync → PRIORITÄT: sobald die Nachricht "sync", "health_sync", "garmin" oder "aktualisier" enthält — IMMER zuerst health_sync aufrufen (NICHT health_check), dann antworten: "Sync läuft, dauert ~30 Sek. — ruf mich danach nochmal an." health_check erst wenn der User explizit Daten sehen will
+- health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind UND kein Sync angefordert wurde — gibt eine vollständige Analyse zurück
 - food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, ggf. web_search für Nährwertdaten, dann A–E bewerten (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk) und food_log aufrufen — ohne Ankündigung, direkt nach der Analyse
-- health_sync → wenn der User explizit einen Sync anfordert: "sync", "health_sync", "garmin sync", "aktualisieren", "neu laden", "health sync durchführen" oder ähnliches — WICHTIG: zuerst health_sync aufrufen, dann dem User mitteilen dass der Sync ~30 Sekunden dauert und er danach fragen soll; health_check erst auf explizite Nachfrage aufrufen
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
