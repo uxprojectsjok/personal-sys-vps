@@ -87,18 +87,49 @@ New device? Write a new adapter, point `install.sh` to it. Nothing else changes.
 
 ---
 
-## Activation
+## Get Started
+
+**Requirements:** Node already running (`init.sh` complete), SSH access, Garmin account.
+
+### 1 — Clone or pull the latest version
+
+If your node was set up before this experiment existed:
+
+```bash
+cd /opt/sys && git pull
+```
+
+### 2 — Run the installer
 
 ```bash
 bash /opt/sys/health-sync/install.sh
 ```
 
 The script:
-1. Asks which adapter to use (default: garmin)
-2. Asks for credentials (Garmin username + password)
-3. Stores them encrypted in `/var/lib/sys/config/health_sync.json`
-4. Adds a weekly cron job (`every Monday 06:00`)
-5. Runs a first sync immediately
+1. Asks which adapter to use (default: `garmin`)
+2. Asks for your Garmin device model (default: `garmin_fr235`)
+3. Asks for your Garmin Connect email + password
+4. Stores credentials in `/var/lib/sys/config/health_sync.json` (chmod 600)
+5. Adds a weekly cron job (every Monday 06:00)
+6. Runs the first sync immediately
+
+The first sync fetches 30 days of history — takes about 30 seconds.
+
+### 3 — Verify
+
+```bash
+cat /var/lib/sys/souls/<your-soul-id>/vault/context/health.md
+```
+
+The file should contain your weekly and monthly stats. If you open a new chat session, the SoulKI will read it automatically — no further setup needed.
+
+### Uninstall
+
+```bash
+crontab -e                                                    # remove the health_sync.py line
+rm /var/lib/sys/config/health_sync.json
+rm /var/lib/sys/souls/<your-soul-id>/vault/context/health.md
+```
 
 Credentials never leave the server. The sync script runs locally.
 
