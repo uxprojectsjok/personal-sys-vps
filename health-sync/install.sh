@@ -23,14 +23,17 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
-if ! command -v pip3 &>/dev/null; then
-  echo "Installing pip3…"
-  apt-get install -y python3-pip -qq
+if ! python3 -m venv --help &>/dev/null; then
+  echo "Installing python3-venv…"
+  apt-get install -y python3-venv -qq
 fi
 
+VENV="$INSTALL_DIR/.venv"
 echo ""
-echo "Installing python-garminconnect…"
-pip3 install -q garminconnect
+echo "Setting up virtual environment…"
+python3 -m venv "$VENV"
+"$VENV/bin/pip" install -q garminconnect
+echo "python-garminconnect installed in $VENV"
 
 # ── Detect souls ──────────────────────────────────────────────────────────────
 souls=()
@@ -98,7 +101,7 @@ chmod 600 "$CONFIG_FILE"
 echo "Config written to $CONFIG_FILE (permissions: 600)"
 
 # ── Cron job ──────────────────────────────────────────────────────────────────
-CRON_CMD="0 6 * * 1 python3 $INSTALL_DIR/health_sync.py >> $LOG_FILE 2>&1"
+CRON_CMD="0 6 * * 1 $VENV/bin/python $INSTALL_DIR/health_sync.py >> $LOG_FILE 2>&1"
 (crontab -l 2>/dev/null | grep -v "health_sync.py"; echo "$CRON_CMD") | crontab -
 echo "Cron added: every Monday 06:00 → $LOG_FILE"
 
@@ -106,7 +109,7 @@ echo "Cron added: every Monday 06:00 → $LOG_FILE"
 echo ""
 echo "Running first sync (this may take ~30 seconds for 30 days of data)…"
 echo ""
-python3 "$INSTALL_DIR/health_sync.py"
+"$VENV/bin/python" "$INSTALL_DIR/health_sync.py"
 
 echo ""
 echo "=== Setup complete ==="
