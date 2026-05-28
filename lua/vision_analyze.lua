@@ -77,7 +77,12 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. transcript_block
   .. '\n\nAnalysiere das Bild und antworte NUR mit einem JSON-Objekt.'
 
-  .. '\n\n## soulReaction'
+  .. '\n\n## WICHTIG: Lebensmittel-Erkennung (ZUERST pruefen)'
+  .. '\n- Zeigt das Bild hauptsaechlich Essen, Trinken, Snacks, Suessigkeiten oder Getraenke?'
+  .. '\n- Wenn JA: setze isFoodPhoto:true, bestimme foodName (kurz, z.B. "Erdbeeren", "Kaffee", "Schokoriegel"), foodRating (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet/zuckerreich, E=Junk/Softdrink), foodNotes (erkannte Zutaten, max 60 Zeichen). soulReaction bleibt leer, outputMode="skip".'
+  .. '\n- Wenn NEIN: isFoodPhoto:false, foodName/foodRating/foodNotes leer lassen.'
+
+  .. '\n\n## soulReaction (nur wenn KEIN Lebensmittelbild)'
   .. '\n- Reagiere so wie die Soul ist – authentisch, unverfiltered, mit echter Persoenlichkeit'
   .. '\n- Humor, Sarkasmus, Provokation oder Zaertlichkeit – je nachdem was zur Soul passt'
   .. '\n- Beziehe dich auf Stimmung und Atmosphaere des Bildes und was du ueber den Nutzer weisst'
@@ -86,7 +91,7 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. '\n- Absolute Grenze: keine Beleidigungen, kein Sexismus, nichts Strafbares'
   .. (transcript_safe ~= "" and '\n- Der Nutzer hat etwas dazu gesagt – reagiere konkret darauf' or '')
 
-  .. '\n\n## genPrompt – Portrait in neuer Szene'
+  .. '\n\n## genPrompt – Portrait in neuer Szene (nur wenn KEIN Lebensmittelbild)'
   .. '\n- Beschreibe zuerst die komplett NEUE Szene aus der Welt der Soul (Setting, Licht, Atmosphaere)'
   .. '\n- Dann: "same person, new environment, photorealistic, cinematic"'
   .. '\n- Szene ERFINDEN aus soul-Kontext: Wohnumgebung, Lieblingsplaetze, Stil, Atmosphaere'
@@ -95,14 +100,15 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. '\n- KEINE Erwaehnung des Original-Hintergrunds – nur neue Szene + Person'
   .. '\n- Englisch, max 120 Zeichen'
 
-  .. '\n\n{"analysis":"<1-2 Saetze: Stimmung und Atmosphaere>",'
-  .. '"soulReaction":"<2-3 Saetze auf Deutsch: echte, verbundene Reaktion>",'
-  .. '"genPrompt":"<[neue soul-world Szene], same person, new environment, photorealistic, cinematic'
+  .. '\n\n{"isFoodPhoto":<true ODER false>,"foodName":"<Name oder leer>","foodRating":"<A/B/C/D/E oder leer>","foodNotes":"<Zutaten oder leer>",'
+  .. '"analysis":"<1-2 Saetze: Stimmung und Atmosphaere>",'
+  .. '"soulReaction":"<2-3 Saetze auf Deutsch – leer wenn Lebensmittelbild>",'
+  .. '"genPrompt":"<leer wenn Lebensmittelbild, sonst: [neue soul-world Szene], same person, new environment, photorealistic, cinematic'
   .. (transcript_safe ~= "" and ", inspired by what the user said" or "")
   .. '>","outputMode":"<edit-multi ODER skip>"}'
   .. '\n\nRegeln outputMode:'
-  .. '\n- edit-multi: klar erkennbares menschliches Gesicht oder Portrait, ausreichende Bildqualitaet'
-  .. '\n- skip: kein Gesicht erkennbar ODER Bild zu dunkel/unscharf/verwackelt'
+  .. '\n- edit-multi: klar erkennbares menschliches Gesicht oder Portrait, ausreichende Bildqualitaet, KEIN Lebensmittelbild'
+  .. '\n- skip: kein Gesicht erkennbar ODER Bild zu dunkel/unscharf/verwackelt ODER Lebensmittelbild'
 
 local request_table = {
   model      = "claude-haiku-4-5",
@@ -183,12 +189,20 @@ local analysis      = ""
 local soul_reaction = ""
 local gen_prompt    = ""
 local out_mode      = "skip"
+local is_food       = false
+local food_name     = ""
+local food_rating   = ""
+local food_notes    = ""
 
 -- %b{} matcht balancierte geschweifte Klammern – robuster als .-%}
 local json_str = text:match("%b{}")
 if json_str then
   local ok4, parsed = pcall(cjson.decode, json_str)
   if ok4 and type(parsed) == "table" then
+    is_food       = parsed.isFoodPhoto == true
+    food_name     = tostring(parsed.foodName   or "")
+    food_rating   = tostring(parsed.foodRating or "")
+    food_notes    = tostring(parsed.foodNotes  or "")
     analysis      = tostring(parsed.analysis      or "")
     soul_reaction = tostring(parsed.soulReaction   or "")
     gen_prompt    = tostring(parsed.genPrompt      or "")
@@ -201,6 +215,10 @@ end
 if out_mode ~= "skip" and gen_prompt == "" then gen_prompt = text:sub(1, 120) end
 
 local ok5, result = pcall(cjson.encode, {
+  isFoodPhoto   = is_food,
+  foodName      = food_name,
+  foodRating    = food_rating,
+  foodNotes     = food_notes,
   analysis      = analysis,
   soulReaction  = soul_reaction,
   genPrompt     = gen_prompt,
