@@ -5,7 +5,8 @@ import { ref } from "vue";
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
-  "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get"
+  "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
+  "health_check"
 ]);
 
 const SOUL_TOOLS = [
@@ -107,6 +108,11 @@ const SOUL_TOOLS = [
       },
       required: ["type"]
     }
+  },
+  {
+    name: "health_check",
+    description: "Analysiert health.md aus vault/context: Ruhepuls, Schlaf, Schritte, aktive Tage — verglichen mit WHO/ESC-Referenzwerten. Gibt Einschätzungen, Trends und Empfehlungen zurück. Setzt Health-Sync-Experiment voraus.",
+    input_schema: { type: "object", properties: {}, required: [] }
   }
 ];
 
@@ -264,6 +270,7 @@ Wann welches Tool:
 - calendar_read → wenn Termine, Kalender oder zeitliche Planung relevant sind
 - audio_list / image_list / video_list / context_list → wenn du Vault-Inhalte eines bestimmten Typs brauchst
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
+- health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind — gibt eine vollständige Analyse mit Referenzwerten und Empfehlungen zurück
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
