@@ -23,13 +23,11 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
-if ! python3 -m venv --help &>/dev/null; then
-  echo "Installing python3-venv…"
-  apt-get install -y python3-venv -qq
-fi
+echo ""
+echo "Installing python3-venv…"
+apt-get install -y python3-venv -qq
 
 VENV="$INSTALL_DIR/.venv"
-echo ""
 echo "Setting up virtual environment…"
 python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q garminconnect
