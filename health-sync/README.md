@@ -12,10 +12,12 @@ bash /opt/sys/health-sync/install.sh
 
 The script asks for your adapter (default: `garmin`), your Garmin credentials, and runs a first sync immediately. A cron job runs every Monday at 06:00.
 
+On **Multi-Hoster** nodes run the script once per soul — each soul gets their own config file (`health_sync_{soul_id}.json`) and independent credentials. The single cron job syncs all souls automatically.
+
 ## Uninstall
 
 1. Remove the cron entry: `crontab -e` → delete the `health_sync.py` line
-2. Delete the config: `rm /var/lib/sys/config/health_sync.json`
+2. Delete the config(s): `rm /var/lib/sys/config/health_sync_*.json`
 3. Optionally delete the output: `rm /var/lib/sys/souls/*/vault/context/health.md`
 
 ## Adapters
