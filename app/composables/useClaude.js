@@ -6,7 +6,7 @@ import { ref } from "vue";
 const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
   "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
-  "health_check"
+  "health_check", "food_log"
 ]);
 
 const SOUL_TOOLS = [
@@ -113,6 +113,19 @@ const SOUL_TOOLS = [
     name: "health_check",
     description: "Analysiert health.md aus vault/context: Ruhepuls, Schlaf, Schritte, aktive Tage — verglichen mit WHO/ESC-Referenzwerten. Gibt Einschätzungen, Trends und Empfehlungen zurück. Setzt Health-Sync-Experiment voraus.",
     input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "food_log",
+    description: "Trägt eine bewertete Mahlzeit in health.md ein (A–E). Aufruf nach Bildanalyse einer Mahlzeit. A = ausgezeichnet, B = gut, C = moderat, D = schlecht, E = sehr schlecht.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name:   { type: "string", description: "Name der Mahlzeit" },
+        rating: { type: "string", enum: ["A", "B", "C", "D", "E"], description: "Bewertung A–E" },
+        notes:  { type: "string", description: "Kurze Beschreibung: Zutaten, Besonderheiten" }
+      },
+      required: ["name", "rating"]
+    }
   }
 ];
 
@@ -271,6 +284,7 @@ Wann welches Tool:
 - audio_list / image_list / video_list / context_list → wenn du Vault-Inhalte eines bestimmten Typs brauchst
 - profile_get → wenn Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz) gefragt sind
 - health_check → wenn Körper, Gesundheit, Puls, Schlaf, Schritte oder Wohlbefinden Thema sind — gibt eine vollständige Analyse mit Referenzwerten und Empfehlungen zurück
+- food_log → wenn der User ein Foto von einer Mahlzeit schickt: Bild analysieren, ggf. web_search für Nährwertdaten, dann A–E bewerten (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet, E=Junk) und food_log aufrufen — ohne Ankündigung, direkt nach der Analyse
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
