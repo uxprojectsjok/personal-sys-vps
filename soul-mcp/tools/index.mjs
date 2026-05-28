@@ -26,6 +26,7 @@ import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 import { register as mindRead }              from './mind_read.mjs';
 import { register as mindWrite }             from './mind_write.mjs';
+import { register as healthCheck }           from './health_check.mjs';
 
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
@@ -73,6 +74,7 @@ export function registerTools(server, token) {
   soulPaidComment(server, token);
   mindRead(server, token);
   mindWrite(server, token);
+  healthCheck(server, token);
 }
 
 /**
