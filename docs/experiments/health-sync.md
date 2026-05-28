@@ -205,7 +205,27 @@ If `health.md` does not exist yet, the tool returns `"available": false` with se
 
 ## Get Started
 
-**Requirements:** Node already running (`init.sh` complete), SSH access, Garmin account.
+**Requirements:** Node already running (`init.sh` complete), SSH access.
+
+### Garmin prerequisites
+
+Before running the installer you need:
+
+1. **A Garmin Connect account** — the web/app account at [connect.garmin.com](https://connect.garmin.com), not the watch itself. This is the email + password you use to log in to the Garmin Connect app.
+2. **Your watch synced** — open the Garmin Connect app on your phone and make sure the watch has synced recently. The sync script reads from Garmin's cloud, not the watch directly.
+3. **Your device model name** — used as the `source` label in `health.md`. Common values:
+
+| Watch | Model string |
+|-------|-------------|
+| Forerunner 235 | `garmin_fr235` |
+| Forerunner 255 | `garmin_fr255` |
+| Forerunner 955 | `garmin_fr955` |
+| Fenix 7 | `garmin_fenix7` |
+| Venu 2 | `garmin_venu2` |
+
+Any string works — it is only a label, not validated. Use whatever identifies your watch.
+
+> **Note:** The `python-garminconnect` library uses Garmin's private web API (reverse-engineered). It can break without notice after Garmin app updates. See Limitations & Risks below.
 
 ### 1 — Clone or pull the latest version
 
@@ -222,12 +242,12 @@ bash /opt/sys/health-sync/install.sh
 ```
 
 The script:
-1. Asks which adapter to use (default: `garmin`)
-2. Asks for your Garmin device model (default: `garmin_fr235`)
-3. Asks for your Garmin Connect email + password
-4. Stores credentials in `/var/lib/sys/config/health_sync.json` (chmod 600)
+1. Asks which adapter to use → press Enter for `garmin`
+2. Asks for your device model → e.g. `garmin_fr235`, or press Enter for the default
+3. Asks for your **Garmin Connect email and password** (the app login, not the watch PIN)
+4. Stores credentials in `/var/lib/sys/config/health_sync_<soul_id>.json` (chmod 600)
 5. Adds a weekly cron job (every Monday 06:00)
-6. Runs the first sync immediately
+6. Runs the first sync immediately — fetches 30 days of history (~30 seconds)
 
 The first sync fetches 30 days of history — takes about 30 seconds.
 
