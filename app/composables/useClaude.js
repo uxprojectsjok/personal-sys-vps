@@ -218,6 +218,13 @@ export function useClaude() {
         return "";
       })();
       if (soulCert && /\bsync\b|health.?sync|garmin.?sync|aktualisier|neu.?laden/.test(lastText)) {
+        const streamMsg = async (msg) => {
+          for (const char of msg) {
+            streamedResponse.value += char;
+            onDelta?.(char);
+            await new Promise(r => setTimeout(r, 18));
+          }
+        };
         try {
           const r = await fetch("/api/health-sync", {
             method: "POST",
@@ -228,12 +235,9 @@ export function useClaude() {
           const msg = j.ok
             ? "Health Sync gestartet — dauert ca. 30 Sekunden. Sag mir Bescheid, dann rufe ich die aktuellen Werte ab."
             : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
-          onDelta?.(msg);
-          streamedResponse.value = msg;
+          await streamMsg(msg);
         } catch {
-          const msg = "Health Sync konnte nicht gestartet werden.";
-          onDelta?.(msg);
-          streamedResponse.value = msg;
+          await streamMsg("Health Sync konnte nicht gestartet werden.");
         }
         isLoading.value = false;
         return streamedResponse.value;
