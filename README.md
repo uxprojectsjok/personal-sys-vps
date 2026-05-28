@@ -345,6 +345,12 @@ Operators who want blockchain features need their own WalletConnect Project ID (
 
 I am the author of this software, not an operator.
 
+This software is published with the explicit intent to empower individuals.
+The author expressly distances himself from any use of this software for
+criminal purposes, surveillance, identity fraud, harassment, or any activity
+that violates applicable law. Operators are solely responsible for ensuring
+lawful use on their infrastructure.
+
 Anyone who clones this repository and runs `init.sh` operates their own fully independent server — under their own domain, on their own hardware, with their own data. I have no access to these servers and no knowledge of the data stored on them.
 
 - I do not provide hosting infrastructure, accounts, or managed servers.
