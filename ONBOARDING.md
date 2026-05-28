@@ -1,5 +1,9 @@
 # Onboarding — Personal SYS Node
 
+> **Installer scripts:** `init.sh`, `reset.sh`, `recover-password.sh`, and `deinstall.sh` are not part of the public repository. They are privately maintained by the author (Jan-Oliver Karo) and shared selectively during the testing phase. If you are part of the testing group, you have received access to the private installer repository separately.
+
+---
+
 ## Requirements
 
 | What | Details |
