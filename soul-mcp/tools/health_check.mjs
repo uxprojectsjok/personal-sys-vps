@@ -86,11 +86,65 @@ function parseIntLine(line) {
   return m ? parseInt(m[1], 10) : null;
 }
 
+function parseFoodLog(text) {
+  const foodBlock   = text.match(/## Food Log\n([\s\S]*?)(?=\n##|$)/);
+  const annualBlock = text.match(/## Annual Journal\n([\s\S]*?)(?=\n##|$)/);
+
+  const entries = [];
+  if (foodBlock) {
+    for (const line of foodBlock[1].split('\n')) {
+      const m = line.match(/^- (\d{4}-\d{2}-\d{2}) \| ([ABCDE]) \| (.+)$/);
+      if (m) entries.push({ date: m[1], rating: m[2], label: m[3] });
+    }
+  }
+
+  // Current-month stats
+  const today        = new Date().toISOString().slice(0, 10);
+  const currentMonth = today.slice(0, 7);
+  const thisMonth    = entries.filter(e => e.date.startsWith(currentMonth));
+  const counts       = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+  const topMeals     = [];
+  for (const e of thisMonth) {
+    counts[e.rating]++;
+    if ('AB'.includes(e.rating)) topMeals.push(e.label.split(' — ')[0].trim());
+  }
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  let avgGrade = null;
+  if (total > 0) {
+    const sc = (counts.A * 5 + counts.B * 4 + counts.C * 3 + counts.D * 2 + counts.E) / total;
+    avgGrade = sc >= 4.5 ? 'A' : sc >= 3.5 ? 'B' : sc >= 2.5 ? 'C' : sc >= 1.5 ? 'D' : 'E';
+  }
+
+  // Annual journal — last 6 monthly summaries
+  const annualEntries = [];
+  if (annualBlock) {
+    const monthBlocks = annualBlock[1].split(/(?=### \d{4}-\d{2})/);
+    for (const block of monthBlocks.slice(0, 6)) {
+      const head = block.match(/### (\d{4}-\d{2})/);
+      if (!head) continue;
+      annualEntries.push({ month: head[1], summary: block.trim() });
+    }
+  }
+
+  return {
+    recent_entries:  entries.slice(0, 10),
+    this_month: {
+      month: currentMonth,
+      total,
+      counts,
+      avg_grade: avgGrade,
+      top_meals: [...new Set(topMeals)].slice(0, 3),
+    },
+    annual: annualEntries,
+  };
+}
+
 function parseHealthMd(text) {
   const result = {
     source: null, last_sync: null,
     weekly: { resting_hr: null, sleep_minutes: null, steps: null, active_days: null },
     monthly: { resting_hr: null, sleep_minutes: null, active_days: null },
+    food: null,
   };
 
   const sourceM = text.match(/^source:\s*(.+)$/m);
@@ -98,8 +152,8 @@ function parseHealthMd(text) {
   if (sourceM) result.source    = sourceM[1].trim();
   if (syncM)   result.last_sync = syncM[1].trim();
 
-  const weeklyBlock   = text.match(/## This Week[^\n]*\n([\s\S]*?)(?=\n##|$)/);
-  const monthlyBlock  = text.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/);
+  const weeklyBlock  = text.match(/## This Week[^\n]*\n([\s\S]*?)(?=\n##|$)/);
+  const monthlyBlock = text.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/);
 
   function parseBlock(block, target) {
     if (!block) return;
@@ -113,6 +167,7 @@ function parseHealthMd(text) {
 
   parseBlock(weeklyBlock,  result.weekly);
   parseBlock(monthlyBlock, result.monthly);
+  result.food = parseFoodLog(text);
   return result;
 }
 
@@ -162,7 +217,7 @@ function fmtSteps(v) {
 export function register(server, token) {
   server.tool(
     'health_check',
-    'Liest health.md aus vault/context, analysiert Ruhepuls, Schlaf, Schritte und aktive Tage anhand evidenzbasierter Referenzwerte (WHO, ESC, Schlafforschung) und gibt eine strukturierte Gesundheitsübersicht mit Einschätzungen und Empfehlungen zurück. Setzt das Health-Sync-Experiment voraus (bash /opt/sys/health-sync/install.sh).',
+    'Liest health.md und gibt eine vollständige Gesundheitsübersicht zurück: Körpermetriken (Ruhepuls, Schlaf, Schritte, aktive Tage) mit evidenzbasierten Bewertungen (WHO/ESC/NSF) sowie Food-Log-Auswertung (aktuelle Mahlzeiten, Monatsstatistik, Annual Journal). Einziges Tool für alle Gesundheitsdaten. Setzt Health-Sync voraus (bash /opt/sys/health-sync/install.sh).',
     {},
     async () => {
       let rawText;
@@ -226,6 +281,7 @@ export function register(server, token) {
         hr_trend: hrTrend,
         overall,
         tips,
+        food: parsed.food,
       };
 
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
