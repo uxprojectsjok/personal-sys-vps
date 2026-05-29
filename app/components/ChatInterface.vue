@@ -2258,7 +2258,9 @@ const PIN_TOOLS = [
   { id: 'context_get',   name: 'Kontext-Datei lesen',   desc: 'mind.md oder andere Kontext-Dateien' },
   { id: 'context_list',  name: 'Kontext auflisten',     desc: 'Alle Kontext-Dateien im Vault' },
   { id: 'profile_get',   name: 'Profil abrufen',        desc: 'Profilfoto, biometrische Metadaten' },
-  { id: 'calendar_read', name: 'Kalender lesen',        desc: 'Kalender-Einträge der Soul' },
+  { id: 'calendar_read',       name: 'Kalender lesen',   desc: 'Kalender-Einträge der Soul' },
+  { id: 'health_check_payed', name: 'Gesundheit',        desc: 'Körpermetriken, Schlaf, Aktivität aus health.md' },
+  { id: 'shop_write_read',    name: 'Shopping',          desc: 'Wunschliste & Käufe aus shopping.md' },
 ]
 
 async function handlePin(query) {
