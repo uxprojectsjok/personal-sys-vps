@@ -139,6 +139,7 @@ if ngx.req.get_method() == "GET" then
   end
   ensure_in_context("mind.md")
   ensure_in_context("health.md")
+  ensure_in_context("prompts.md")
 
   local safe = {
     enabled      = ctx.enabled      or false,
