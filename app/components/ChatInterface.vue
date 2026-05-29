@@ -589,12 +589,19 @@ async function startVoiceRecord() {
 
   // getUserMedia als erstes await — kein async-Code davor damit iOS Gesture-Kontext erhalten bleibt
   let stream
+  if (!navigator.mediaDevices?.getUserMedia) {
+    addMessage('assistant', 'Mikrofon-Zugriff nicht verfügbar — HTTPS oder Browser-Unterstützung fehlt.')
+    await scrollToBottom()
+    return
+  }
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
   } catch (e) {
     const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
       ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
-      : `Mikrofon nicht verfügbar (${e?.name || 'unbekannt'}).`
+      : e?.name === 'NotFoundError'
+        ? 'Kein Mikrofon gefunden — bitte ein Audiogerät anschließen.'
+        : `Mikrofon nicht verfügbar (${e?.name || 'unbekannt'}).`
     addMessage('assistant', msg)
     await scrollToBottom()
     return
