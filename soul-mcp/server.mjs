@@ -473,6 +473,109 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         return res.json({ content: [{ type: 'text', text: msg }] });
       }
 
+      case 'shop_log': {
+        const { name, category = 'Sonstiges', price, status = 'purchased', notes = '' } = input;
+        if (!name) return res.status(400).json({ error: 'name erforderlich' });
+        const VALID_CATS = ['Electronics','Kleidung','Sport','Wohnen','Bücher','Lebensmittel','Sonstiges'];
+        const cat = VALID_CATS.includes(category) ? category : 'Sonstiges';
+        const st  = status === 'wishlist' ? 'wishlist' : 'purchased';
+        const today        = new Date().toISOString().slice(0,10);
+        const currentMonth = today.slice(0,7);
+        const currentYear  = today.slice(0,4);
+        const priceStr     = (price != null && price !== '') ? ` | €${Number(price).toFixed(2)}` : '';
+        const cleanNotes   = (notes||'').replace(/[\n\r]/g,' ').trim();
+        const newEntry     = cleanNotes
+          ? `- ${today} | ${st} | ${cat}${priceStr} | ${name} — ${cleanNotes}`
+          : `- ${today} | ${st} | ${cat}${priceStr} | ${name}`;
+
+        const shopPath = `${SOULS_DIR}${soulId}/vault/context/shopping.md`;
+        await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+        const content = await readFile(shopPath, 'utf8').catch(() => '');
+
+        let head='', wishlistLines=[], purchaseLines=[], annualLines=[], zone='head';
+        for (const line of (content+'\n').split('\n').slice(0,-1)) {
+          if      (line==='## Wishlist')                   zone='wishlist';
+          else if (line==='## Recent Purchases')           zone='purchases';
+          else if (line.startsWith('## Monthly Summary'))  zone='skip';
+          else if (line.startsWith('## Annual Categories'))zone='annual';
+          else if (zone==='head')      head+=line+'\n';
+          else if (zone==='wishlist')  wishlistLines.push(line);
+          else if (zone==='purchases') purchaseLines.push(line);
+          else if (zone==='annual')    annualLines.push(line);
+        }
+        head = head.replace(/last_updated:.*\n/, `last_updated: ${today}\n`);
+        if (!head.includes('last_updated')) head=head.trimEnd()+`\nlast_updated: ${today}\n`;
+
+        if (st==='wishlist') {
+          wishlistLines.unshift(newEntry);
+        } else {
+          wishlistLines = wishlistLines.filter(l => !l.toLowerCase().includes(name.toLowerCase()));
+          purchaseLines.unshift(newEntry);
+          purchaseLines = purchaseLines.filter(l=>l.trim()).slice(0,60);
+        }
+
+        const thisMoPurch = purchaseLines.filter(l=>l.match(new RegExp(`^- ${currentMonth}`))&&l.includes('| purchased |'));
+        let monthlyContent = '_Noch keine Einträge._';
+        if (thisMoPurch.length>0) {
+          const cc={}; let tot=0,pc=0;
+          for(const l of thisMoPurch){const cm=l.match(/\| purchased \| (\w+)/);if(cm)cc[cm[1]]=(cc[cm[1]]||0)+1;const pm=l.match(/€([\d.]+)/);if(pm){tot+=parseFloat(pm[1]);pc++;}}
+          monthlyContent=Object.entries(cc).map(([c,n])=>`- ${c}: ${n}`).join('\n');
+          if(pc>0)monthlyContent+=`\n- Gesamt: €${tot.toFixed(2)}`;
+        }
+        const yrPurch=purchaseLines.filter(l=>l.match(new RegExp(`^- ${currentYear}`))&&l.includes('| purchased |'));
+        let annualContent='_Noch keine Einträge._';
+        if(yrPurch.length>0){const yc={};for(const l of yrPurch){const cm=l.match(/\| purchased \| (\w+)/);if(cm)yc[cm[1]]=(yc[cm[1]]||0)+1;}annualContent=Object.entries(yc).map(([c,n])=>`- ${c}: ${n}`).join('\n');}
+
+        let out=head.trimEnd()+'\n\n## Wishlist\n'+(wishlistLines.filter(l=>l.trim()).join('\n')||'_Leer._');
+        out+='\n\n## Recent Purchases\n'+(purchaseLines.filter(l=>l.trim()).join('\n')||'_Noch keine Einträge._');
+        out+=`\n\n## Monthly Summary (${currentMonth})\n${monthlyContent}`;
+        out+=`\n\n## Annual Categories (${currentYear})\n${annualContent}\n`;
+        await writeFile(shopPath, out, 'utf8');
+        return res.json({ content: [{ type: 'text', text: `Eingetragen: ${newEntry}` }] });
+      }
+
+      case 'shop_check': {
+        const shopPath = `${SOULS_DIR}${soulId}/vault/context/shopping.md`;
+        const rawText  = await readFile(shopPath, 'utf8').catch(() => null);
+        if (!rawText) {
+          return res.json({ content: [{ type: 'text', text: JSON.stringify({
+            available: false,
+            message: 'shopping.md nicht gefunden. Noch kein Produkt erfasst.',
+            tip: 'Foto eines Produkts schicken oder "ich möchte [X] kaufen" sagen.',
+          }, null, 2) }] });
+        }
+        let location=null, locationFrom=null;
+        try {
+          const rawBuf  = await readFile(`${SOULS_DIR}${soulId}/sys.md`);
+          const sysText = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
+          const locM    = sysText.match(/(?:Wohnort|Stadt|Standort|Location|wohnt in|lebt in)[:\s]+([^\n,\.]{2,40})/i);
+          if (locM) { location=locM[1].trim(); locationFrom='sys.md'; }
+        } catch {}
+        function parseLine(l) {
+          const m=l.match(/^-\s+(\d{4}-\d{2}-\d{2})\s+\|\s+(\w+)\s+\|\s+(\w+)(?:\s+\|\s+€([\d.]+))?\s+\|\s+(.+)$/);
+          if(!m) return null;
+          return {date:m[1],status:m[2],category:m[3],price:m[4]?parseFloat(m[4]):null,name:m[5].split(' — ')[0].trim(),notes:m[5].includes(' — ')?m[5].split(' — ').slice(1).join(' — '):null};
+        }
+        const wishlist=[], purchases=[];
+        for(const l of (rawText.match(/## Wishlist\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').split('\n')){const p=parseLine(l);if(p)wishlist.push(p);}
+        for(const l of (rawText.match(/## Recent Purchases\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').split('\n').slice(0,15)){const p=parseLine(l);if(p)purchases.push(p);}
+        const syncM=rawText.match(/^last_updated:\s*(.+)$/m);
+        const lastUpdated=syncM?syncM[1].trim():null;
+        const ageDays=lastUpdated?Math.floor((Date.now()-new Date(lastUpdated).getTime())/86400000):null;
+        const searchTips=location
+          ?{local_stores:`"[Produkt] kaufen ${location}"`,price_compare:'"[Produkt] Preisvergleich"',online:'"[Produkt] günstig online kaufen"'}
+          :{price_compare:'"[Produkt] Preisvergleich"',online:'"[Produkt] günstig online kaufen"'};
+        return res.json({ content: [{ type: 'text', text: JSON.stringify({
+          available:true, last_updated:lastUpdated, data_age_days:ageDays,
+          location, location_from:locationFrom,
+          location_hint: location?null:'Wohnort in sys.md eintragen (z.B. "Wohnort: Marburg") für lokale Händler.',
+          wishlist, recent_purchases:purchases,
+          monthly_summary: (rawText.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').trim(),
+          annual_categories: (rawText.match(/## Annual Categories[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').trim(),
+          search_tips: searchTips,
+        }, null, 2) }] });
+      }
+
       default:
         return res.status(400).json({ error: `Unbekanntes Tool: ${tool}` });
     }
