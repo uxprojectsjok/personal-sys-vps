@@ -41,7 +41,7 @@
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
                   <span>Laden</span>
                 </button>
-                <button v-if="item.role === 'user'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
+                <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
                   <span>Löschen</span>
                 </button>
@@ -123,7 +123,7 @@
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
                     <span>Laden</span>
                   </button>
-                  <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
+                  <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
                     <span>Löschen</span>
                   </button>
@@ -154,7 +154,7 @@
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
                         <span>Laden</span>
                       </button>
-                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen">
+                      <button class="mia-btn mia-btn--del" @click="deleteVaultImg(item, getMsgVaultRef(item.content).filename)" title="Löschen">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
                         <span>Löschen</span>
                       </button>
@@ -1282,6 +1282,11 @@ function downloadImg(url, name) {
 function deleteLocalImg(item) {
   if (item.ts) msgMediaCache.delete(item.ts)
   if (item.id) removeMessage(item.id)
+}
+
+async function deleteVaultImg(item, filename) {
+  if (item.from === 'me') await deleteSharedFile(filename)
+  deleteLocalImg(item)
 }
 
 function openLightbox(url, name) {
