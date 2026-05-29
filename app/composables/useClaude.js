@@ -6,7 +6,8 @@ import { ref } from "vue";
 const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
   "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
-  "health_check", "food_log", "health_sync"
+  "health_check", "food_log", "health_sync",
+  "shop_log", "shop_check"
 ]);
 
 const SOUL_TOOLS = [
@@ -130,6 +131,26 @@ const SOUL_TOOLS = [
   {
     name: "health_sync",
     description: "Startet den Garmin Health Sync im Hintergrund. Läuft ~30 Sekunden async — nach dem Aufruf dem User Bescheid geben und warten bis er bestätigt, DANN erst health_check aufrufen.",
+    input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "shop_log",
+    description: "Erfasst ein Produkt in shopping.md — Kauf oder Wunschliste. Bei Produktfotos: name und category SELBST aus dem Bild bestimmen, price falls sichtbar, status je nach Kontext. Direkt aufrufen ohne Rückfrage.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name:     { type: "string", description: "Produktname — du erkennst ihn selbst" },
+        category: { type: "string", enum: ["Electronics","Kleidung","Sport","Wohnen","Bücher","Lebensmittel","Sonstiges"], description: "Produktkategorie" },
+        price:    { type: "number", description: "Preis in EUR (falls bekannt)" },
+        status:   { type: "string", enum: ["purchased","wishlist"], description: "purchased = gekauft, wishlist = Wunschliste" },
+        notes:    { type: "string", description: "Händler, URL, Anmerkungen" }
+      },
+      required: ["name", "category", "status"]
+    }
+  },
+  {
+    name: "shop_check",
+    description: "Liest shopping.md: Wunschliste, letzte Käufe, Monatszusammenfassung, Jahreskategorien. Gibt auch Standort aus sys.md zurück für lokale Händler-Suche. Danach web_search für Preisvergleich und lokale Quellen nutzen. Als Lifestyle-Berater: Passt das Produkt zu Stil, Alter und Persönlichkeit der Person?",
     input_schema: { type: "object", properties: {}, required: [] }
   }
 ];
@@ -314,6 +335,8 @@ Wann welches Tool:
 - health_sync → bei "sync", "garmin", "aktualisier" — zuerst synchen, dann: "Sync läuft, ~30 Sek. — ruf mich danach nochmal an." health_check erst wenn der User explizit Daten sehen will
 - health_check → bei Körper, Schlaf, Puls, Wohlbefinden — vollständige Analyse zurück
 - food_log → bei Foto von Essen, Trinken, Süßigkeiten oder Snacks: sofort loggen ohne Kommentar. name und rating SELBST bestimmen (A=Vollwert/frisch z.B. Joghurt+Obst, Salat, Wasser; B=gut z.B. Vollkornbrot, Ei, ungesüßter Tee; C=moderat z.B. Pasta, weißer Reis, Saft; D=schlecht z.B. Frittiertes, Schokolade, Energydrink; E=Junk z.B. Chips, Softdrinks, Fast Food). Danach maximal eine Zeile (z.B. "Erdbeeren · A · gespeichert").
+- shop_log → bei Foto eines Produkts (nicht Lebensmittel) oder wenn jemand etwas kauft/kaufen will: sofort erfassen. name + category SELBST bestimmen, price falls sichtbar/genannt, status=purchased wenn gekauft, wishlist wenn gewünscht. Danach eine Zeile (z.B. "Nike Laufschuhe · Kleidung · gespeichert").
+- shop_check → bei Fragen zu Produkten, Preisvergleich, Einkaufsberatung oder Wunschliste. Danach als Lifestyle-Berater: Preisvergleich via web_search("[Produktname] Preisvergleich"), lokale Händler via web_search("[Produktname] kaufen [Wohnort aus shop_check]"). Bewerte ob Produkt zu Stil, Alter und Persönlichkeit passt.
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
