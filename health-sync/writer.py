@@ -33,10 +33,27 @@ def write_health_md(data: dict, soul_id: str) -> None:
     def fmt_steps(v):
         return f"{v:,} (avg)".replace(",", ".") if v is not None else "–"
 
-    monthly = data.get("monthly", {})
+    monthly    = data.get("monthly", {})
+    activities = data.get("recent_activities", [])
 
     out_path = Path(f"/var/lib/sys/souls/{soul_id}/vault/context/health.md")
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if activities:
+        act_lines = []
+        for a in activities:
+            label = a.get("type", "unknown").replace("_", " ")
+            parts = [f"- {a.get('date', '?')}  {label}"]
+            dur = a.get("duration_min", 0)
+            dist = a.get("distance_km", 0)
+            hr = a.get("avg_hr")
+            if dur:   parts.append(f"{dur} min")
+            if dist:  parts.append(f"{dist} km")
+            if hr:    parts.append(f"♥ {hr} bpm")
+            act_lines.append("  ".join(parts))
+        activities_block = "\n## Recent Activities\n" + "\n".join(act_lines) + "\n"
+    else:
+        activities_block = ""
 
     # Preserve Food Log and Annual Journal from previous write
     food_log_block    = ""
@@ -61,6 +78,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
         f"- Sleep: {fmt_sleep(data.get('sleep_minutes'))}\n"
         f"- Steps: {fmt_steps(data.get('steps'))}\n"
         f"- Active days: {data.get('active_days', '–')}\n"
+        f"{activities_block}"
         f"\n"
         f"## Monthly Summary ({month_label})\n"
         f"- Resting HR: {fmt_hr(monthly.get('resting_hr'))}\n"
