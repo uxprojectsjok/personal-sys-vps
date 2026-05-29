@@ -22,33 +22,52 @@ def get_data(config: dict) -> dict:
 
     today = date.today()
 
-    def fetch_days(count, start_offset=1):
+    def fetch_sleep(d_str):
+        """Try dedicated sleep endpoint first, fall back to get_stats."""
+        try:
+            s = api.get_sleep_data(d_str)
+            daily = s.get("dailySleepDTO") or {}
+            sec = daily.get("sleepTimeSeconds") or daily.get("totalSleepTimeInSeconds")
+            if sec and sec > 0:
+                return sec // 60
+        except Exception:
+            pass
+        try:
+            stats = api.get_stats(d_str)
+            sec = stats.get("totalSleepTimeInSeconds")
+            if sec and sec > 0:
+                return sec // 60
+        except Exception:
+            pass
+        return None
+
+    def fetch_days(count, start_offset=0):
         hr_vals, sleep_vals, step_vals, active = [], [], [], 0
         for i in range(start_offset, start_offset + count):
             d = (today - timedelta(days=i)).isoformat()
             try:
                 stats = api.get_stats(d)
                 rhr = stats.get("restingHeartRate")
-                sleep_sec = stats.get("totalSleepTimeInSeconds")
                 steps = stats.get("totalSteps")
                 if rhr:
                     hr_vals.append(rhr)
-                if sleep_sec:
-                    sleep_vals.append(sleep_sec // 60)
                 if steps:
                     step_vals.append(steps)
                     if steps > 500:
                         active += 1
             except Exception:
                 pass
+            mins = fetch_sleep(d)
+            if mins:
+                sleep_vals.append(mins)
             time.sleep(0.3)
         return hr_vals, sleep_vals, step_vals, active
 
     print("  Fetching last 7 days…")
-    w_hr, w_sleep, w_steps, w_active = fetch_days(7, start_offset=1)
+    w_hr, w_sleep, w_steps, w_active = fetch_days(7, start_offset=0)
 
     print("  Fetching last 30 days…")
-    m_hr, m_sleep, _, m_active = fetch_days(30, start_offset=1)
+    m_hr, m_sleep, _, m_active = fetch_days(30, start_offset=0)
 
     return {
         "source": config.get("garmin_model", "garmin_fr235"),
