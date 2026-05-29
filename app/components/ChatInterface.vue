@@ -2750,6 +2750,39 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
         return
       }
 
+      // Produktbild → shop_log speichern, dann KI für shop_check + Preisvergleich
+      if (vData.isProductPhoto && vData.productName) {
+        try {
+          await fetch('/api/soul-tool', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeader },
+            body: JSON.stringify({ tool: 'shop_log', input: {
+              name: vData.productName,
+              category: vData.productCategory || 'Sonstiges',
+              price: vData.productPrice > 0 ? vData.productPrice : null,
+              status: 'wishlist',
+            }}),
+          })
+        } catch { /* gespeichert oder nicht */ }
+        const savedLine = `${vData.productName} · ${vData.productCategory || 'Sonstiges'} · gespeichert`
+        updateLastMessage(savedLine)
+        await scrollToBottom()
+        await chat({
+          messages: [...toApiMessages(), { role: 'user', content: `[Produkt erfasst: ${vData.productName}] shop_check aufrufen und Preisvergleich starten.` }],
+          soulContent: props.soulContent, soulCert: props.soulCert,
+          mindContent: mindContent.value || null, vaultContext: null, networkContext: null,
+          networkPdfBlocks: null, networkImageBlocks: null,
+          conversationSummary: conversationSummary.value || null,
+          profileImageBase64: profileBase64.value, role: localRole.value,
+          model: selectedModel.value, externalTools: mcpTools.value, voiceMode: false,
+          onDelta: (delta, fullText) => { updateLastMessage(savedLine + '\n\n' + fullText); scrollToBottom() },
+        })
+        setLastMessageMeta('streaming', false)
+        await scrollToBottom()
+        visionLoading.value = false
+        return
+      }
+
       soulReaction = vData.soulReaction ?? vData.analysis ?? ''
       genPrompt    = vData.genPrompt   ?? ''
       outputMode   = vData.outputMode  ?? 'skip'
