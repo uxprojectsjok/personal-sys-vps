@@ -135,6 +135,7 @@
                   <span class="msg-doc-icon">↓</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
                 </a>
+                <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
               </div>
               <!-- Vault-shared attachment -->
               <template v-if="getMsgVaultRef(item.content)">
@@ -173,8 +174,8 @@
                       <span class="msg-doc-icon">↓</span>
                       <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
                     </a>
-                    <button v-if="item.from === 'me'" class="msg-doc-del"
-                      @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
+                    <button class="msg-doc-del"
+                      @click="deleteVaultImg(item, getMsgVaultRef(item.content).filename)"
                       title="Datei löschen">×</button>
                   </template>
                   <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Datei nicht ladbar</span>
