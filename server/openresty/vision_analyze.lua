@@ -14,7 +14,8 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
-local api_key = os.getenv("ANTHROPIC_API_KEY") or ""
+local cfg = require("config_reader")
+local api_key = cfg.get_anthropic_key(ngx.ctx.soul_id)
 if api_key == "" then
   ngx.status = 503
   ngx.header["Content-Type"] = "application/json"
@@ -76,16 +77,24 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. transcript_block
   .. '\n\nAnalysiere das Bild und antworte NUR mit einem JSON-Objekt.'
 
-  .. '\n\n## soulReaction'
-  .. '\n- Reagiere so wie die Soul ist – authentisch, unverfiltered, mit echter Persoenlichkeit'
-  .. '\n- Humor, Sarkasmus, Provokation oder Zaertlichkeit – je nachdem was zur Soul passt'
-  .. '\n- Beziehe dich auf Stimmung und Atmosphaere des Bildes und was du ueber den Nutzer weisst'
-  .. '\n- Keine Assistenten-Floskeln, kein "Wie schoen", kein "Ich sehe..."'
-  .. '\n- Direkt ansprechen, als ob du tief verbunden bist – keine Emojis'
-  .. '\n- Absolute Grenze: keine Beleidigungen, kein Sexismus, nichts Strafbares'
+  .. '\n\n## WICHTIG: Lebensmittel-Erkennung (ZUERST pruefen)'
+  .. '\n- Zeigt das Bild hauptsaechlich Essen, Trinken, Snacks, Suessigkeiten oder Getraenke?'
+  .. '\n- Wenn JA: setze isFoodPhoto:true, bestimme foodName (kurz, z.B. "Erdbeeren", "Kaffee", "Schokoriegel"), foodRating (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet/zuckerreich, E=Junk/Softdrink), foodNotes (erkannte Zutaten, max 60 Zeichen). soulReaction bleibt leer, outputMode="skip".'
+  .. '\n- Wenn NEIN: isFoodPhoto:false, foodName/foodRating/foodNotes leer lassen.'
+
+  .. '\n\n## Produkt-Erkennung (pruefen wenn KEIN Lebensmittelbild)'
+  .. '\n- Zeigt das Bild ein klar erkennbares Produkt, Geraet, Gadget, Kabel, Kleidungsstueck, Schuh, Moebel, Buch, Spielzeug oder sonstigen Konsumgegenstand?'
+  .. '\n- Wenn JA: setze isProductPhoto:true, bestimme productName (konkreter Produktname, z.B. "SanDisk USB-Stick 64GB", "Nike Laufschuhe"), productCategory (eine von: Elektronik, Kleidung, Schuhe, Moebel, Buecher, Sport, Beauty, Haushalt, Sonstiges), productPrice (sichtbarer Preis als Zahl ohne Waehrungszeichen, z.B. 29.99 — oder 0 wenn nicht sichtbar). soulReaction normal berechnen, outputMode="skip".'
+  .. '\n- Wenn NEIN: isProductPhoto:false, productName/productCategory/productPrice leer lassen.'
+
+  .. '\n\n## soulReaction (nur wenn KEIN Lebensmittelbild)'
+  .. '\n- Du kennst diese Person. Reagiere wie jemand der sie wirklich kennt — ungefiltert, mit echter Persoenlichkeit'
+  .. '\n- Humor, Direktheit, Waerme — je nachdem was zur Soul passt und was das Bild ausloest'
+  .. '\n- Keine Assistenten-Floskeln. Kein "Wie schoen". Kein "Ich sehe..."'
+  .. '\n- Direkt ansprechen. Keine Emojis. Keine Beleidigungen.'
   .. (transcript_safe ~= "" and '\n- Der Nutzer hat etwas dazu gesagt – reagiere konkret darauf' or '')
 
-  .. '\n\n## genPrompt – Portrait in neuer Szene'
+  .. '\n\n## genPrompt – Portrait in neuer Szene (nur wenn KEIN Lebensmittelbild)'
   .. '\n- Beschreibe zuerst die komplett NEUE Szene aus der Welt der Soul (Setting, Licht, Atmosphaere)'
   .. '\n- Dann: "same person, new environment, photorealistic, cinematic"'
   .. '\n- Szene ERFINDEN aus soul-Kontext: Wohnumgebung, Lieblingsplaetze, Stil, Atmosphaere'
@@ -94,14 +103,16 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. '\n- KEINE Erwaehnung des Original-Hintergrunds – nur neue Szene + Person'
   .. '\n- Englisch, max 120 Zeichen'
 
-  .. '\n\n{"analysis":"<1-2 Saetze: Stimmung und Atmosphaere>",'
-  .. '"soulReaction":"<2-3 Saetze auf Deutsch: echte, verbundene Reaktion>",'
-  .. '"genPrompt":"<[neue soul-world Szene], same person, new environment, photorealistic, cinematic'
+  .. '\n\n{"isFoodPhoto":<true ODER false>,"foodName":"<Name oder leer>","foodRating":"<A/B/C/D/E oder leer>","foodNotes":"<Zutaten oder leer>",'
+  .. '"isProductPhoto":<true ODER false>,"productName":"<Produktname oder leer>","productCategory":"<Kategorie oder leer>","productPrice":<Preis als Zahl oder 0>,'
+  .. '"analysis":"<1-2 Saetze: Stimmung und Atmosphaere>",'
+  .. '"soulReaction":"<2-3 Saetze auf Deutsch – leer wenn Lebensmittelbild>",'
+  .. '"genPrompt":"<leer wenn Lebensmittelbild oder Produktbild, sonst: [neue soul-world Szene], same person, new environment, photorealistic, cinematic'
   .. (transcript_safe ~= "" and ", inspired by what the user said" or "")
   .. '>","outputMode":"<edit-multi ODER skip>"}'
   .. '\n\nRegeln outputMode:'
-  .. '\n- edit-multi: klar erkennbares menschliches Gesicht oder Portrait, ausreichende Bildqualitaet'
-  .. '\n- skip: kein Gesicht erkennbar ODER Bild zu dunkel/unscharf/verwackelt'
+  .. '\n- edit-multi: klar erkennbares menschliches Gesicht oder Portrait, ausreichende Bildqualitaet, KEIN Lebensmittelbild, KEIN Produktbild'
+  .. '\n- skip: kein Gesicht erkennbar ODER Bild zu dunkel/unscharf/verwackelt ODER Lebensmittelbild ODER Produktbild'
 
 local request_table = {
   model      = "claude-haiku-4-5",
@@ -178,20 +189,36 @@ if type(response.content) == "table" and response.content[1] then
   text = response.content[1].text or ""
 end
 
-local analysis      = ""
-local soul_reaction = ""
-local gen_prompt    = ""
-local out_mode      = "skip"
+local analysis        = ""
+local soul_reaction   = ""
+local gen_prompt      = ""
+local out_mode        = "skip"
+local is_food         = false
+local food_name       = ""
+local food_rating     = ""
+local food_notes      = ""
+local is_product      = false
+local product_name    = ""
+local product_cat     = ""
+local product_price   = 0
 
 -- %b{} matcht balancierte geschweifte Klammern – robuster als .-%}
 local json_str = text:match("%b{}")
 if json_str then
   local ok4, parsed = pcall(cjson.decode, json_str)
   if ok4 and type(parsed) == "table" then
-    analysis      = tostring(parsed.analysis      or "")
-    soul_reaction = tostring(parsed.soulReaction   or "")
-    gen_prompt    = tostring(parsed.genPrompt      or "")
-    local m       = parsed.outputMode or "skip"
+    is_food        = parsed.isFoodPhoto == true
+    food_name      = tostring(parsed.foodName   or "")
+    food_rating    = tostring(parsed.foodRating or "")
+    food_notes     = tostring(parsed.foodNotes  or "")
+    is_product     = parsed.isProductPhoto == true
+    product_name   = tostring(parsed.productName     or "")
+    product_cat    = tostring(parsed.productCategory or "")
+    product_price  = tonumber(parsed.productPrice)   or 0
+    analysis       = tostring(parsed.analysis      or "")
+    soul_reaction  = tostring(parsed.soulReaction   or "")
+    gen_prompt     = tostring(parsed.genPrompt      or "")
+    local m        = parsed.outputMode or "skip"
     if m == "edit-multi" or m == "skip" then out_mode = m end
   end
 end
@@ -200,10 +227,18 @@ end
 if out_mode ~= "skip" and gen_prompt == "" then gen_prompt = text:sub(1, 120) end
 
 local ok5, result = pcall(cjson.encode, {
-  analysis      = analysis,
-  soulReaction  = soul_reaction,
-  genPrompt     = gen_prompt,
-  outputMode    = out_mode,
+  isFoodPhoto      = is_food,
+  foodName         = food_name,
+  foodRating       = food_rating,
+  foodNotes        = food_notes,
+  isProductPhoto   = is_product,
+  productName      = product_name,
+  productCategory  = product_cat,
+  productPrice     = product_price,
+  analysis         = analysis,
+  soulReaction     = soul_reaction,
+  genPrompt        = gen_prompt,
+  outputMode       = out_mode,
 })
 
 ngx.header["Content-Type"]  = "application/json"
