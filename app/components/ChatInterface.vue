@@ -95,7 +95,8 @@
             :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
-              <img v-if="msgMediaCache.get(item.ts)" :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt="" />
+              <img v-if="msgMediaCache.get(item.ts)" :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
+                @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
                   <span class="msg-doc-icon">↓</span>
@@ -109,20 +110,25 @@
                     v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
                     :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
                     class="msg-media-img" alt="" loading="lazy"
+                    @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                   />
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
                 </template>
                 <div v-else class="msg-doc-link">
-                  <a
-                    v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
-                    :href="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
-                    :download="getMsgVaultRef(item.content).label"
-                    class="msg-doc-a"
-                  >
-                    <span class="msg-doc-icon">↓</span>
-                    <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
-                  </a>
+                  <template v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)">
+                    <a
+                      :href="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                      :download="getMsgVaultRef(item.content).label"
+                      class="msg-doc-a"
+                    >
+                      <span class="msg-doc-icon">↓</span>
+                      <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
+                    </a>
+                    <button v-if="item.from === 'me'" class="msg-doc-del"
+                      @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
+                      title="Datei löschen">×</button>
+                  </template>
                   <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Datei nicht ladbar</span>
                   <span v-else class="msg-media-loading">Wird geladen…</span>
                 </div>
@@ -143,10 +149,10 @@
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
             <button
-              v-if="item.from === 'me' && getMsgVaultRef(item.content)"
+              v-if="item.from === 'me' && getMsgVaultRef(item.content) && VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)"
               class="msg-vault-del"
               @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
-              title="Datei aus vault/shared löschen"
+              title="Bild aus vault/shared löschen"
             >×</button>
             <template v-if="item.sphere === 'synthesis' && item.local">
               <button v-if="!item.forwarded" class="msg-forward-btn" @click="forwardSynthesis(item)" title="An Peers weiterleiten">→ Peers</button>
@@ -337,6 +343,15 @@
       </div>
 
     </footer>
+    </Teleport>
+
+    <!-- Image Lightbox -->
+    <Teleport to="#teleports">
+      <div v-if="lightboxImg" class="lightbox-overlay" @click.self="closeLightbox">
+        <button class="lightbox-close" @click="closeLightbox" aria-label="Schließen">×</button>
+        <img :src="lightboxImg.url" class="lightbox-img" alt="" />
+        <button class="lightbox-download" @click="downloadLightboxImg" aria-label="Herunterladen">↓ Speichern</button>
+      </div>
     </Teleport>
 
     <!-- Camera Recorder Overlay -->
@@ -783,6 +798,7 @@ const msgMedia        = ref(null)    // { base64, mime, name? } — attached ima
 const msgDoc          = ref(null)    // { file, name } — attached doc in messaging mode
 const msgMediaCache   = reactive(new Map()) // ts → dataUrl — session-only image display
 const msgBlobCache    = reactive(new Map()) // ts → { url, name } — session blob URLs for docs
+const lightboxImg     = ref(null)           // { url, name } | null — fullscreen image viewer
 const msgExpiredCache = reactive(new Set()) // ts — evicted cache entries
 const CACHE_TTL_MS    = 30 * 60 * 1000
 const CACHE_MAX_ITEMS = 30
@@ -1209,6 +1225,22 @@ async function deleteAllSessionFiles() {
   for (const f of [...sessionSharedFiles.value]) {
     await deleteSharedFile(f.filename)
   }
+}
+
+function openLightbox(url, name) {
+  lightboxImg.value = { url, name: name || 'bild.jpg' }
+}
+function closeLightbox() {
+  lightboxImg.value = null
+}
+function downloadLightboxImg() {
+  if (!lightboxImg.value) return
+  const a = document.createElement('a')
+  a.href = lightboxImg.value.url
+  a.download = lightboxImg.value.name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 async function uploadToSharedVault(file) {
@@ -3030,10 +3062,13 @@ async function handleSend() {
 let _briefingTimer        = null
 let _lastBriefingMsgCount = 0
 
+function _onLightboxKey(e) { if (e.key === 'Escape') closeLightbox() }
+
 onMounted(async () => {
   _mqMobile = window.matchMedia('(max-width: 900px)')
   isMobile.value = _mqMobile.matches
   _mqMobile.addEventListener('change', _onMqMobile)
+  document.addEventListener('keydown', _onLightboxKey)
   nextTick(autoResize)
   loadMind(props.soulCert)
   loadMcpTools(props.soulCert)
@@ -3080,6 +3115,7 @@ onMounted(async () => {
 })
 onUnmounted(() => {
   if (_mqMobile) _mqMobile.removeEventListener('change', _onMqMobile)
+  document.removeEventListener('keydown', _onLightboxKey)
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
 })
@@ -3249,6 +3285,7 @@ defineExpose({
 .msg-media-img {
   display: block; width: 100%; max-width: 320px; height: auto;
   border-radius: 8px; margin: 2px 0 8px;
+  cursor: pointer;
 }
 
 .msg-doc-link { margin-bottom: 6px; }
@@ -3268,6 +3305,50 @@ defineExpose({
 .msg-doc-a:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.18); }
 .msg-doc-icon { flex-shrink: 0; font-size: 13px; opacity: 0.7; }
 .msg-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.msg-doc-link { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.msg-doc-del {
+  flex-shrink: 0; background: transparent;
+  border: 1px solid rgba(240,163,163,0.25); border-radius: 4px;
+  color: var(--fg-4); font-size: 14px; line-height: 1;
+  cursor: pointer; padding: 0; width: 26px; height: 26px; min-height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.msg-doc-del:hover { color: #f0a3a3; border-color: #f0a3a3; background: rgba(240,163,163,0.08); }
+
+/* ── Lightbox ────────────────────────────────────────────────────── */
+.lightbox-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.92);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  touch-action: none;
+}
+.lightbox-img {
+  max-width: 100%; max-height: calc(100dvh - 120px);
+  object-fit: contain; border-radius: 10px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+}
+.lightbox-close {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 50%; color: var(--fg-2);
+  font-size: 20px; line-height: 1; cursor: pointer;
+  width: 40px; height: 40px; min-height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+.lightbox-download {
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; padding: 8px 20px; min-height: 36px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lightbox-download:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); }
 
 .msg-media-loading {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
