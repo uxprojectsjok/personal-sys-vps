@@ -29,8 +29,14 @@
         >
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
-            <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview">
-              <img :src="item.mediaUrl" alt="" loading="lazy" />
+            <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap">
+              <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
+                @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
+              <div class="msg-img-actions">
+                <button class="mia-btn" @click="openLightbox(item.mediaUrl, 'bild.jpg')" title="Vergrößern" v-html="ICON_EXPAND"></button>
+                <button class="mia-btn" @click="downloadImg(item.mediaUrl, 'bild.jpg')" title="Speichern" v-html="ICON_DOWNLOAD"></button>
+                <button v-if="item.role === 'user'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen" v-html="ICON_TRASH"></button>
+              </div>
             </div>
             <div v-else-if="item.mediaType === 'audio' && item.mediaUrl" class="media-audio">
               <audio controls :src="item.mediaUrl" style="accent-color:var(--accent)"></audio>
@@ -100,8 +106,9 @@
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
                 <div class="msg-img-actions">
-                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">⤢</button>
-                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">↓</button>
+                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern" v-html="ICON_EXPAND"></button>
+                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern" v-html="ICON_DOWNLOAD"></button>
+                  <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen" v-html="ICON_TRASH"></button>
                 </div>
               </div>
               <!-- Local blob doc -->
@@ -121,9 +128,9 @@
                       @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     />
                     <div class="msg-img-actions">
-                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern">⤢</button>
-                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern">↓</button>
-                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen">×</button>
+                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern" v-html="ICON_EXPAND"></button>
+                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern" v-html="ICON_DOWNLOAD"></button>
+                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen" v-html="ICON_TRASH"></button>
                     </div>
                   </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
@@ -1235,6 +1242,10 @@ async function deleteAllSessionFiles() {
   }
 }
 
+const ICON_EXPAND   = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4.5V1h3.5M1 1l3.5 3.5M12 8.5V12H8.5M12 12L8.5 8.5"/></svg>`
+const ICON_DOWNLOAD = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1v7.5M4 6.5l2.5 2.5L9 6.5M1 11v.5A1.5 1.5 0 002.5 13h8A1.5 1.5 0 0012 11.5V11"/></svg>`
+const ICON_TRASH    = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.5h10M4.5 3.5V2h4v1.5M3.5 3.5l.8 7.3a1 1 0 001 .7h2.4a1 1 0 001-.7l.8-7.3"/></svg>`
+
 function downloadImg(url, name) {
   const a = document.createElement('a')
   a.href = url
@@ -1242,6 +1253,11 @@ function downloadImg(url, name) {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+}
+
+function deleteLocalImg(item) {
+  if (item.ts) msgMediaCache.delete(item.ts)
+  if (item.id) removeMessage(item.id)
 }
 
 function openLightbox(url, name) {
@@ -3214,7 +3230,8 @@ defineExpose({
 @keyframes sys-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
 
 /* ── Media embeds ────────────────────────────────────────────────── */
-.media-preview img { display: block; width: 100%; height: auto; border-radius: 10px; margin-bottom: 10px; }
+.media-preview.msg-img-wrap { margin-bottom: 10px; }
+.media-preview img { display: block; width: 100%; height: auto; border-radius: 0; margin: 0; }
 .media-video video { max-width: 100%; display: block; border-radius: 10px; margin-bottom: 10px; }
 .media-audio { min-width: 240px; }
 .media-audio audio  { width: 100%; height: 36px; display: block; margin-bottom: 4px; }
@@ -3300,32 +3317,34 @@ defineExpose({
 .msg-inner *          { overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 
 .msg-img-wrap {
-  position: relative; display: inline-block;
+  display: inline-block;
   max-width: 320px; width: 100%;
-  margin: 2px 0 4px;
+  margin: 2px 0 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
 }
 .msg-media-img {
   display: block; width: 100%; height: auto;
-  border-radius: 8px 8px 0 0; margin: 0;
-  cursor: pointer;
+  margin: 0; cursor: zoom-in;
 }
 .msg-img-actions {
-  display: flex; gap: 1px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  overflow: hidden;
+  display: flex;
+  background: rgba(18,18,30,0.72);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 .mia-btn {
   flex: 1; background: transparent; border: none;
-  color: var(--fg-3); font-size: 14px; line-height: 1;
-  cursor: pointer; padding: 6px 0; min-height: 30px;
+  color: var(--fg-3);
+  cursor: pointer; padding: 8px 0; min-height: 36px;
+  display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, color 0.12s;
 }
-.mia-btn:hover { background: rgba(255,255,255,0.08); color: var(--fg-1); }
-.mia-btn--del:hover { background: rgba(240,163,163,0.10); color: #f0a3a3; }
-.mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.08); }
+.mia-btn svg { display: block; }
+.mia-btn:hover { background: rgba(255,255,255,0.07); color: var(--fg-1); }
+.mia-btn--del:hover { background: rgba(240,163,163,0.08); color: #f0a3a3; }
+.mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.07); }
 
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
