@@ -28,7 +28,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
     def fmt_sleep(minutes):
         if minutes is None:
             return "–"
-        return f"{minutes // 60}h {minutes % 60:02d}min (avg)"
+        return f"{minutes // 60}h {minutes % 60:02d}min/Nacht (Ø)"
 
     def fmt_steps(v):
         return f"{v:,} (avg)".replace(",", ".") if v is not None else "–"
