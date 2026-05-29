@@ -62,7 +62,7 @@ def get_data(config: dict) -> dict:
             return []
 
     def fetch_days(count, start_offset=0):
-        hr_vals, sleep_vals, step_vals, active = [], [], [], 0
+        hr_vals, sleep_vals, step_vals = [], [], []
         for i in range(start_offset, start_offset + count):
             d = (today - timedelta(days=i)).isoformat()
             try:
@@ -73,24 +73,33 @@ def get_data(config: dict) -> dict:
                     hr_vals.append(rhr)
                 if steps:
                     step_vals.append(steps)
-                    if steps > 500:
-                        active += 1
             except Exception:
                 pass
             mins = fetch_sleep(d)
             if mins:
                 sleep_vals.append(mins)
             time.sleep(0.3)
-        return hr_vals, sleep_vals, step_vals, active
+        return hr_vals, sleep_vals, step_vals
+
+    def active_days_from_activities(acts, days, start_offset=0):
+        """Count days in window that have at least one recorded activity."""
+        window = {
+            (today - timedelta(days=i)).isoformat()
+            for i in range(start_offset, start_offset + days)
+        }
+        return len({a["date"] for a in acts if a["date"] in window})
 
     print("  Fetching last 7 days…")
-    w_hr, w_sleep, w_steps, w_active = fetch_days(7, start_offset=0)
+    w_hr, w_sleep, w_steps = fetch_days(7, start_offset=0)
 
     print("  Fetching last 30 days…")
-    m_hr, m_sleep, _, m_active = fetch_days(30, start_offset=0)
+    m_hr, m_sleep, _ = fetch_days(30, start_offset=0)
 
     print("  Fetching recent activities…")
-    activities = fetch_activities(15)
+    activities = fetch_activities(30)
+
+    w_active = active_days_from_activities(activities, 7)
+    m_active = active_days_from_activities(activities, 30)
 
     return {
         "source": config.get("garmin_model", "garmin_fr235"),
@@ -98,7 +107,7 @@ def get_data(config: dict) -> dict:
         "sleep_minutes": round(mean(w_sleep)) if w_sleep else None,
         "steps":         round(mean(w_steps)) if w_steps else None,
         "active_days":   w_active,
-        "recent_activities": activities,
+        "recent_activities": [a for a in activities if a["date"] >= (today - timedelta(days=14)).isoformat()],
         "monthly": {
             "resting_hr":    round(mean(m_hr))    if m_hr    else None,
             "sleep_minutes": round(mean(m_sleep)) if m_sleep else None,
