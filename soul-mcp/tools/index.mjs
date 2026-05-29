@@ -30,6 +30,10 @@ import { register as healthCheck }           from './health_check.mjs';
 import { register as foodLog }               from './food_log.mjs';
 import { register as healthSync }            from './health_sync.mjs';
 
+// ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
+import { register as healthCheckPayed }      from './health_check_payed.mjs';
+import { register as shopWriteRead }         from './shop_write_read.mjs';
+
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
 import { register as soulReadPeer }          from './soul_read_peer.mjs';
@@ -131,6 +135,12 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
 
   // soul_paid_comment: Immer verfügbar für zahlende Agenten (Token bereits vorhanden)
   soulPaidComment(server, polToken);
+
+  // health_check_payed: Gesundheitsdaten für bezahlte externe Agenten
+  if (allowed.has('health_check_payed') && soulId) healthCheckPayed(server, soulId);
+
+  // shop_write_read: Shopping-Daten für bezahlte externe Agenten
+  if (allowed.has('shop_write_read') && soulId) shopWriteRead(server, soulId);
 
   // soul_write: Zahlende externe Agenten dürfen nicht schreiben (Sicherheit)
   // soul_earnings: Private Einnahmen-Daten, nicht für externe Agenten
