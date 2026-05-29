@@ -95,8 +95,16 @@
             :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
-              <img v-if="msgMediaCache.get(item.ts)" :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
-                @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
+              <!-- Local cached image (encrypted messages) -->
+              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap">
+                <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
+                  @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
+                <div class="msg-img-actions">
+                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">⤢</button>
+                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">↓</button>
+                </div>
+              </div>
+              <!-- Local blob doc -->
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
                   <span class="msg-doc-icon">↓</span>
@@ -106,12 +114,18 @@
               <!-- Vault-shared attachment -->
               <template v-if="getMsgVaultRef(item.content)">
                 <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
-                  <img
-                    v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
-                    :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
-                    class="msg-media-img" alt="" loading="lazy"
-                    @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
-                  />
+                  <div v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-img-wrap">
+                    <img
+                      :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                      class="msg-media-img" alt="" loading="lazy"
+                      @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                    />
+                    <div class="msg-img-actions">
+                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern">⤢</button>
+                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern">↓</button>
+                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen">×</button>
+                    </div>
+                  </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
                 </template>
@@ -148,12 +162,6 @@
               :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
-            <button
-              v-if="item.from === 'me' && getMsgVaultRef(item.content) && VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)"
-              class="msg-vault-del"
-              @click="deleteSharedFile(getMsgVaultRef(item.content).filename)"
-              title="Bild aus vault/shared löschen"
-            >×</button>
             <template v-if="item.sphere === 'synthesis' && item.local">
               <button v-if="!item.forwarded" class="msg-forward-btn" @click="forwardSynthesis(item)" title="An Peers weiterleiten">→ Peers</button>
               <span v-else class="msg-forwarded">✓ gesendet</span>
@@ -1225,6 +1233,15 @@ async function deleteAllSessionFiles() {
   for (const f of [...sessionSharedFiles.value]) {
     await deleteSharedFile(f.filename)
   }
+}
+
+function downloadImg(url, name) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name || 'bild.jpg'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 function openLightbox(url, name) {
@@ -3282,11 +3299,33 @@ defineExpose({
 .msg-inner a          { color: var(--accent-bright); }
 .msg-inner *          { overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 
+.msg-img-wrap {
+  position: relative; display: inline-block;
+  max-width: 320px; width: 100%;
+  margin: 2px 0 4px;
+}
 .msg-media-img {
-  display: block; width: 100%; max-width: 320px; height: auto;
-  border-radius: 8px; margin: 2px 0 8px;
+  display: block; width: 100%; height: auto;
+  border-radius: 8px 8px 0 0; margin: 0;
   cursor: pointer;
 }
+.msg-img-actions {
+  display: flex; gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+.mia-btn {
+  flex: 1; background: transparent; border: none;
+  color: var(--fg-3); font-size: 14px; line-height: 1;
+  cursor: pointer; padding: 6px 0; min-height: 30px;
+  transition: background 0.12s, color 0.12s;
+}
+.mia-btn:hover { background: rgba(255,255,255,0.08); color: var(--fg-1); }
+.mia-btn--del:hover { background: rgba(240,163,163,0.10); color: #f0a3a3; }
+.mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.08); }
 
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
