@@ -33,9 +33,18 @@
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
               <div class="msg-img-actions">
-                <button class="mia-btn" @click="openLightbox(item.mediaUrl, 'bild.jpg')" title="Vergrößern" v-html="ICON_EXPAND"></button>
-                <button class="mia-btn" @click="downloadImg(item.mediaUrl, 'bild.jpg')" title="Speichern" v-html="ICON_DOWNLOAD"></button>
-                <button v-if="item.role === 'user'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen" v-html="ICON_TRASH"></button>
+                <button class="mia-btn" @click="openLightbox(item.mediaUrl, 'bild.jpg')" title="Vergrößern">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
+                  <span>Groß</span>
+                </button>
+                <button class="mia-btn" @click="downloadImg(item.mediaUrl, 'bild.jpg')" title="Speichern">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
+                  <span>Laden</span>
+                </button>
+                <button v-if="item.role === 'user'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
+                  <span>Löschen</span>
+                </button>
               </div>
             </div>
             <div v-else-if="item.mediaType === 'audio' && item.mediaUrl" class="media-audio">
@@ -106,9 +115,18 @@
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
                 <div class="msg-img-actions">
-                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern" v-html="ICON_EXPAND"></button>
-                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern" v-html="ICON_DOWNLOAD"></button>
-                  <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen" v-html="ICON_TRASH"></button>
+                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
+                    <span>Groß</span>
+                  </button>
+                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
+                    <span>Laden</span>
+                  </button>
+                  <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
+                    <span>Löschen</span>
+                  </button>
                 </div>
               </div>
               <!-- Local blob doc -->
@@ -128,9 +146,18 @@
                       @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     />
                     <div class="msg-img-actions">
-                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern" v-html="ICON_EXPAND"></button>
-                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern" v-html="ICON_DOWNLOAD"></button>
-                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen" v-html="ICON_TRASH"></button>
+                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
+                        <span>Groß</span>
+                      </button>
+                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
+                        <span>Laden</span>
+                      </button>
+                      <button v-if="item.from === 'me'" class="mia-btn mia-btn--del" @click="deleteSharedFile(getMsgVaultRef(item.content).filename)" title="Löschen">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
+                        <span>Löschen</span>
+                      </button>
                     </div>
                   </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
@@ -1242,9 +1269,6 @@ async function deleteAllSessionFiles() {
   }
 }
 
-const ICON_EXPAND   = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4.5V1h3.5M1 1l3.5 3.5M12 8.5V12H8.5M12 12L8.5 8.5"/></svg>`
-const ICON_DOWNLOAD = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1v7.5M4 6.5l2.5 2.5L9 6.5M1 11v.5A1.5 1.5 0 002.5 13h8A1.5 1.5 0 0012 11.5V11"/></svg>`
-const ICON_TRASH    = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3.5h10M4.5 3.5V2h4v1.5M3.5 3.5l.8 7.3a1 1 0 001 .7h2.4a1 1 0 001-.7l.8-7.3"/></svg>`
 
 function downloadImg(url, name) {
   const a = document.createElement('a')
@@ -3320,9 +3344,10 @@ defineExpose({
   display: inline-block;
   max-width: 320px; width: 100%;
   margin: 2px 0 6px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 .msg-media-img {
   display: block; width: 100%; height: auto;
@@ -3330,21 +3355,24 @@ defineExpose({
 }
 .msg-img-actions {
   display: flex;
-  background: rgba(18,18,30,0.72);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(10,10,20,0.82);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255,255,255,0.10);
 }
 .mia-btn {
   flex: 1; background: transparent; border: none;
-  color: var(--fg-3);
-  cursor: pointer; padding: 8px 0; min-height: 36px;
-  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer; padding: 9px 4px; min-height: 40px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
+  text-transform: uppercase;
   transition: background 0.12s, color 0.12s;
 }
-.mia-btn svg { display: block; }
-.mia-btn:hover { background: rgba(255,255,255,0.07); color: var(--fg-1); }
-.mia-btn--del:hover { background: rgba(240,163,163,0.08); color: #f0a3a3; }
-.mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.07); }
+.mia-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
+.mia-btn--del { color: rgba(248,113,113,0.55); }
+.mia-btn--del:hover { background: rgba(248,113,113,0.10); color: #f87171; }
+.mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.08); }
 
 .msg-doc-link { margin-bottom: 6px; }
 .msg-doc-a {
