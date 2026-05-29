@@ -12,9 +12,9 @@ const ROOT = new URL("..", import.meta.url).pathname;
 
 const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md"]);
 const EXCLUDE_DIRS = new Set([
-  "node_modules", ".output", ".nuxt", ".git",
+  "node_modules", ".output", ".nuxt", ".git", ".claude",
   "soul-whatsapp", "soul-voice-clone", "soul-mcp",
-  "browser-extension", "test",
+  "browser-extension", "test", "dist",
 ]);
 const EXCLUDE_FILES = new Set([
   ".env", ".env.example", "package-lock.json",
