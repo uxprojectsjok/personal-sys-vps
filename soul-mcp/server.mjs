@@ -376,6 +376,24 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         if (syncM)   parsed.last_sync = syncM[1].trim();
         parseBlock(rawText.match(/## This Week[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1], parsed.weekly);
         parseBlock(rawText.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1], parsed.monthly);
+        // ── Recent Activities ─────────────────────────────────────────────────
+        const actBlock = rawText.match(/## Recent Activities\n([\s\S]*?)(?=\n##|$)/)?.[1] || '';
+        const recent_activities = [];
+        for (const line of actBlock.split('\n')) {
+          const m = line.match(/^-\s+(\d{4}-\d{2}-\d{2})\s+(\S+)(.*)/);
+          if (!m) continue;
+          const rest = m[3];
+          const durM  = rest.match(/(\d+)\s*min/);
+          const distM = rest.match(/([\d.]+)\s*km/);
+          const hrM   = rest.match(/♥\s*([\d.]+)/);
+          recent_activities.push({
+            date:         m[1],
+            type:         m[2],
+            duration_min: durM  ? +durM[1]  : null,
+            distance_km:  distM ? +distM[1] : null,
+            avg_hr:       hrM   ? +hrM[1]   : null,
+          });
+        }
         // ── Classify ───────────────────────────────────────────────────────────
         const classify = (v, ranges) => { if (v==null) return null; for (const r of ranges) if (v<=r.max) return {status:r.status,label:r.label,tip:r.tip}; return null; };
         const HR    = [{max:40,status:'very_low',label:'Sehr niedrig',tip:'Unter 40 bpm. Bei Schwindel ärztlich abklären.'},{max:60,status:'athletic',label:'Athletisch',tip:'Unter 60 bpm — gute kardiovaskuläre Fitness.'},{max:70,status:'good',label:'Gut',tip:'Guter Ruhepuls.'},{max:80,status:'normal',label:'Normal',tip:'Normaler Bereich.'},{max:100,status:'elevated',label:'Erhöht',tip:'Leicht erhöht. Ausdauertraining und Schlafhygiene helfen.'},{max:999,status:'high',label:'Hoch',tip:'Über 100 bpm — ärztliche Abklärung empfehlenswert.'}];
@@ -400,6 +418,7 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
           weekly: { resting_hr:{value:w.resting_hr,unit:'bpm',formatted:w.resting_hr?`${w.resting_hr} bpm`:null,...(hrCl||{})}, sleep:{value:w.sleep_minutes,unit:'min',formatted:fmtSleep(w.sleep_minutes),...(slCl||{})}, steps:{value:w.steps,unit:'steps/day',formatted:fmtSteps(w.steps),...(stCl||{})}, active_days:{value:w.active_days,of:7,...(adCl||{})} },
           monthly: { resting_hr:{value:m.resting_hr,formatted:m.resting_hr?`${m.resting_hr} bpm`:null}, sleep:{value:m.sleep_minutes,formatted:fmtSleep(m.sleep_minutes)}, active_days:{value:m.active_days} },
           hr_trend: hrTrend, overall, tips,
+          recent_activities,
         }, null, 2) }] });
       }
 
