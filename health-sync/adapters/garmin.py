@@ -63,43 +63,38 @@ def get_data(config: dict) -> dict:
 
     def fetch_days(count, start_offset=0):
         hr_vals, sleep_vals, step_vals = [], [], []
+        active = 0
         for i in range(start_offset, start_offset + count):
             d = (today - timedelta(days=i)).isoformat()
             try:
                 stats = api.get_stats(d)
-                rhr = stats.get("restingHeartRate")
+                rhr   = stats.get("restingHeartRate")
                 steps = stats.get("totalSteps")
+                # highlyActiveSeconds: Garmin's own high-intensity movement sensor —
+                # ≥1800 s (30 min) counts as an active day
+                highly = stats.get("highlyActiveSeconds") or 0
                 if rhr:
                     hr_vals.append(rhr)
                 if steps:
                     step_vals.append(steps)
+                if highly >= 1800:
+                    active += 1
             except Exception:
                 pass
             mins = fetch_sleep(d)
             if mins:
                 sleep_vals.append(mins)
             time.sleep(0.3)
-        return hr_vals, sleep_vals, step_vals
-
-    def active_days_from_activities(acts, days, start_offset=0):
-        """Count days in window that have at least one recorded activity."""
-        window = {
-            (today - timedelta(days=i)).isoformat()
-            for i in range(start_offset, start_offset + days)
-        }
-        return len({a["date"] for a in acts if a["date"] in window})
+        return hr_vals, sleep_vals, step_vals, active
 
     print("  Fetching last 7 days…")
-    w_hr, w_sleep, w_steps = fetch_days(7, start_offset=0)
+    w_hr, w_sleep, w_steps, w_active = fetch_days(7, start_offset=0)
 
     print("  Fetching last 30 days…")
-    m_hr, m_sleep, _ = fetch_days(30, start_offset=0)
+    m_hr, m_sleep, _, m_active = fetch_days(30, start_offset=0)
 
     print("  Fetching recent activities…")
-    activities = fetch_activities(30)
-
-    w_active = active_days_from_activities(activities, 7)
-    m_active = active_days_from_activities(activities, 30)
+    activities = fetch_activities(20)
 
     return {
         "source": config.get("garmin_model", "garmin_fr235"),
