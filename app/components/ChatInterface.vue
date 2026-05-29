@@ -1281,8 +1281,23 @@ function downloadImg(url, name) {
 }
 
 function deleteLocalImg(item) {
+  // Clear media cache entries
   if (item.ts) msgMediaCache.delete(item.ts)
-  if (item.id) removeMessage(item.id)
+  // Clear vault blob URL/error so the bubble stops rendering the image
+  const ref = getMsgVaultRef(item.content)
+  if (ref) {
+    const key = `${ref.soul_id}:${ref.filename}`
+    const burl = vaultBlobUrls.get(key)
+    if (burl) URL.revokeObjectURL(burl)
+    vaultBlobUrls.delete(key)
+    vaultBlobErrors.delete(key)
+  }
+  // Remove message from correct store
+  if (item._type === 'bubble') {
+    peerSocialMsgs.value = peerSocialMsgs.value.filter(m => m.ts !== item.ts)
+  } else if (item.id) {
+    removeMessage(item.id)
+  }
 }
 
 async function deleteVaultImg(item, filename) {
