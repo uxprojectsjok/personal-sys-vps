@@ -189,6 +189,16 @@ function parseContractError(e, context = "") {
 let _appKit = null;
 let _recheckWallet = () => {};
 
+// Modul-level recheck: liest aktuellen AppKit-State direkt, unabhängig von onMounted
+function _syncFromAppKit() {
+  const caip = _appKit?.getCaipAddress?.();
+  if (caip) {
+    walletAddress.value = caip.split(":").pop() ?? "";
+    currentNetwork.value = readNetwork();
+    isConnected.value = true;
+  }
+}
+
 function getOrInitAppKit(projectId) {
   if (_appKit) return _appKit;
   if (typeof window === "undefined") return null;
@@ -210,12 +220,27 @@ function getOrInitAppKit(projectId) {
       onramp: false,
       swaps: false,
     },
-    // Eigene Font-Familie: verhindert, dass AppKit KHTeka von fonts.reown.com lädt
-    // (erspart 16 CSP-Violations + Abhängigkeit von externem CDN)
     themeVariables: {
       "--w3m-font-family": "Inter, system-ui, sans-serif",
     },
   });
+
+  // Subscriptions direkt bei Erstellung registrieren — unabhängig von onMounted.
+  // So sind sie aktiv egal welche Komponente connectWallet() aufruft.
+  _appKit.subscribeAccount((account) => {
+    const caip = account?.caipAddress;
+    if (caip) {
+      walletAddress.value = caip.split(":").pop() ?? "";
+      currentNetwork.value = readNetwork();
+      isConnected.value = true;
+    } else {
+      walletAddress.value = "";
+      currentNetwork.value = "";
+      isConnected.value = false;
+    }
+  });
+
+  _recheckWallet = _syncFromAppKit;
   return _appKit;
 }
 
@@ -254,85 +279,14 @@ const verifyError = ref("");
 export function useChainAnchor() {
   const { soulContent, soulMeta, soulToken, save } = useSoul();
 
-  // AppKit initialisieren + persistente State-Subscriptions (client-only via onMounted)
-  // Strategie: Alle State-Updates laufen über persistente Subscriptions – nicht über
-  // temporäre Promises in connectWallet(). Das macht Mobile-App-Switch robust.
+  // Initial-Sync beim Mount: liest bestehende AppKit-Session (z.B. nach Seiten-Reload).
+  // Subscriptions laufen über getOrInitAppKit — unabhängig davon ob hier ein kit existiert.
   onMounted(async () => {
-    const config = useRuntimeConfig();
-    const kit = getOrInitAppKit(config.public.reownProjectId);
-    if (!kit) return;
-
-    // Mobile braucht länger: Reown liest localStorage + Session-Restore
+    if (!_appKit) return; // AppKit noch nicht initialisiert — connectWallet() macht das
     const isMobileRestore = typeof navigator !== "undefined" &&
       /iPhone|iPad|Android/i.test(navigator.userAgent);
     await new Promise((r) => setTimeout(r, isMobileRestore ? 1_500 : 600));
-
-    // Initialen State setzen (z.B. nach Seiten-Reload mit bestehender Session)
-    function syncState() {
-      const addr = readAddress();
-      if (addr) {
-        walletAddress.value = addr;
-        currentNetwork.value = readNetwork();
-        isConnected.value = true;
-      }
-    }
-    syncState();
-
-    // Account-Subscription: connect / disconnect / wallet-switch
-    // caipAddress vorhanden = Wallet verbunden — Provider kann leicht verzögert folgen.
-    const unsubChain = kit.subscribeAccount((account) => {
-      const caip = account?.caipAddress;
-      if (caip) {
-        walletAddress.value = caip.split(":").pop() ?? "";
-        currentNetwork.value = readNetwork();
-        isConnected.value = true;
-      } else {
-        walletAddress.value = "";
-        currentNetwork.value = "";
-        isConnected.value = false;
-      }
-    });
-
-    // Provider-Subscription: EIP-1193 Provider erscheint/verschwindet
-    const unsubProvider = kit.subscribeProviders((providers) => {
-      const p = providers?.["eip155"];
-      if (!p) {
-        walletAddress.value = "";
-        currentNetwork.value = "";
-        isConnected.value = false;
-      } else {
-        syncState();
-      }
-    });
-
-    // visibilitychange: Mobile kehrt nach App-Switch (MetaMask) zurück
-    // Zuverlässiger als AppKit-Events, die während Background-Phase fehlen können.
-    function onVisibility() {
-      if (document.visibilityState === "visible") syncState();
-    }
-    document.addEventListener("visibilitychange", onVisibility);
-
-    // AppKit-Fehler abfangen und als anchorError surfacen
-    // Betrifft: ungültige Project ID, Provider-Init-Fehler, Relay-Verbindungsfehler
-    const unsubEvents = kit.subscribeEvents((evtState) => {
-      const d = evtState.data;
-      if (d?.type === "error") {
-        anchorError.value =
-          "Reown-Fehler: " +
-          (d.properties?.errorMessage || d.event) +
-          " — Bitte Reown Project ID prüfen: dashboard.reown.com";
-      }
-    });
-
-    onUnmounted(() => {
-      unsubChain?.();
-      unsubProvider?.();
-      unsubEvents?.();
-      document.removeEventListener("visibilitychange", onVisibility);
-    });
-
-    // Expose für externe Aufrufer (z.B. nach connectWallet())
-    _recheckWallet = syncState;
+    _syncFromAppKit();
   });
 
   // ── Provider-Helfer ────────────────────────────────────────────────────────
@@ -396,6 +350,8 @@ export function useChainAnchor() {
     } catch {
       // open() kann auf manchen Mobile-Browsern werfen – ignorieren
     }
+    // State sofort lesen — subscribeAccount feuert bei manchen Wallets leicht verzögert
+    _syncFromAppKit();
   }
 
   // ── Wallet disconnect ─────────────────────────────────────────────────────
