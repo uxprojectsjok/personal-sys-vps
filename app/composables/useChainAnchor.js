@@ -1,7 +1,7 @@
 // app/composables/useChainAnchor.js
 // Polygon-Blockchain-Anker für Soul-Echtheitszertifikate
 //
-// Wallet: Reown AppKit (WalletConnect v2) – Desktop + Mobile
+// Wallet: Reown AppKit – Desktop + Mobile
 // Kein window.ethereum nötig – funktioniert mit MetaMask Mobile, Rainbow, Coinbase, ...
 
 import { ref, computed, onMounted, onUnmounted } from "vue";
@@ -258,10 +258,10 @@ export function useChainAnchor() {
   // temporäre Promises in connectWallet(). Das macht Mobile-App-Switch robust.
   onMounted(async () => {
     const config = useRuntimeConfig();
-    const kit = getOrInitAppKit(config.public.walletConnectProjectId);
+    const kit = getOrInitAppKit(config.public.reownProjectId);
     if (!kit) return;
 
-    // Mobile braucht länger: WalletConnect liest localStorage + WC-Session-Restore
+    // Mobile braucht länger: Reown liest localStorage + Session-Restore
     const isMobileRestore = typeof navigator !== "undefined" &&
       /iPhone|iPad|Android/i.test(navigator.userAgent);
     await new Promise((r) => setTimeout(r, isMobileRestore ? 1_500 : 600));
@@ -319,9 +319,9 @@ export function useChainAnchor() {
       const d = evtState.data;
       if (d?.type === "error") {
         anchorError.value =
-          "WalletConnect-Fehler: " +
+          "Reown-Fehler: " +
           (d.properties?.errorMessage || d.event) +
-          " — Bitte WalletConnect Project ID prüfen: dashboard.reown.com";
+          " — Bitte Reown Project ID prüfen: dashboard.reown.com";
       }
     });
 
@@ -377,7 +377,7 @@ export function useChainAnchor() {
     } catch { /* ignore */ }
     if (!projectId) {
       const config = useRuntimeConfig();
-      projectId = config.public.walletConnectProjectId || "";
+      projectId = config.public.reownProjectId || "";
     }
 
     if (!projectId) {
@@ -513,7 +513,7 @@ export function useChainAnchor() {
   }
 
   // Polling-Fallback für tx.wait() – Mobile-sicher via öffentlichem RPC
-  // (WalletConnect-Verbindung kann nach App-Switch unterbrochen sein)
+  // (Reown-Verbindung kann nach App-Switch unterbrochen sein)
   async function pollTxReceipt(txHash, maxMs = 240_000, intervalMs = 2_000) {
     const rpcProvider = await getFastReadProvider();
     const deadline = Date.now() + maxMs;

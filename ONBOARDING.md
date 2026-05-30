@@ -11,7 +11,7 @@
 | VPS | Ubuntu 24.04 LTS, min. 2 GB RAM. No pre-installed control panels (Plesk, etc.). |
 | Domain | An A record pointing to your server's IP. |
 | Anthropic API Key | Optional — required for AI chat features. Can also be set via the Admin UI after installation. Get one at [console.anthropic.com](https://console.anthropic.com/). |
-| WalletConnect Project ID | Optional — required for Polygon blockchain anchoring. Free at [cloud.walletconnect.com](https://cloud.walletconnect.com). Must be set at install time (baked into the static build). |
+| Reown Project ID | Optional — required for Polygon blockchain anchoring. Free at [cloud.reown.com](https://cloud.reown.com). Must be set at install time (baked into the static build). |
 
 ---
 
@@ -66,10 +66,10 @@ The script will ask for:
 - **Domain** — e.g. `soul.yourname.com`
 - **Email** — for the SSL certificate (Let's Encrypt)
 - **Anthropic API Key** — optional, press Enter to skip and configure via the UI later
-- **WalletConnect Project ID** — optional, press Enter to skip; required for Polygon anchoring
+- **Reown Project ID** — optional, press Enter to skip; required for Polygon anchoring
 - **Gate password** — protects the entire interface *(input is hidden — this is normal)*
 
-> **Why WalletConnect must be set at install time:** The Project ID is baked into the static JavaScript bundle during `npm run generate`. It cannot be changed via the Admin UI after the build — a new install or rebuild is required.
+> **Why Reown must be set at install time:** The Project ID is baked into the static JavaScript bundle during `npm run generate`. It cannot be changed via the Admin UI after the build — a new install or rebuild is required.
 
 Everything else runs automatically:
 - Install and configure OpenResty
@@ -117,7 +117,7 @@ In Multi-Hoster mode, every soul has fully isolated data under `/var/lib/sys/sou
 
 When a soul first imports their sys.md, the node generates fresh credentials and immediately triggers a download of the updated sys.md (which contains the new cert). This updated file is required for all subsequent logins on this node.
 
-> **WalletConnect limitation in Multi-Hoster mode:** All souls on the node share the same WalletConnect Project ID. If the Project ID needs to change, the frontend must be rebuilt and redeployed.
+> **Reown limitation in Multi-Hoster mode:** All souls on the node share the same Reown Project ID. If the Project ID needs to change, the frontend must be rebuilt and redeployed.
 
 ---
 
@@ -156,14 +156,14 @@ When a soul first imports their sys.md, the node generates fresh credentials and
 
 ---
 
-## WalletConnect: registering your domain
+## Reown: registering your domain
 
-If you set a WalletConnect Project ID, you must register your domain in the WalletConnect dashboard:
+If you set a Reown Project ID, you must register your domain in the Reown dashboard:
 
-1. Go to [cloud.walletconnect.com](https://cloud.walletconnect.com) → your project → **Allowed Domains**
+1. Go to [cloud.reown.com](https://cloud.reown.com) → your project → **Allowed Domains**
 2. Add `https://YOUR-DOMAIN` to the allowlist
 
-Without this, WalletConnect will block connection attempts from your node.
+Without this, Reown will block connection attempts from your node.
 
 ---
 
