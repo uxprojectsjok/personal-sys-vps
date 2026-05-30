@@ -94,4 +94,22 @@ def write_health_md(data: dict, soul_id: str) -> None:
         shutil.chown(out_path, user="www-data", group="www-data")
     except Exception:
         pass
+    _ensure_context_registered(soul_id, "health.md")
     print(f"  Written: {out_path}")
+
+
+def _ensure_context_registered(soul_id: str, filename: str) -> None:
+    import json
+    ctx_path = Path(f"/var/lib/sys/souls/{soul_id}/api_context.json")
+    try:
+        ctx = json.loads(ctx_path.read_text(encoding="utf-8"))
+        sf  = ctx.setdefault("synced_files", {})
+        arr = sf.get("context", [])
+        if not isinstance(arr, list):
+            arr = []
+        if filename not in arr:
+            arr.append(filename)
+            sf["context"] = arr
+            ctx_path.write_text(json.dumps(ctx, separators=(",", ":")), encoding="utf-8")
+    except Exception:
+        pass
