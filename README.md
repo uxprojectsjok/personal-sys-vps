@@ -73,7 +73,7 @@ Three phases — nothing more:
 - Background synthesis KI: reads the social sphere, contributes facts and impulses into the conversation
 - Full tool manifest injected into system prompt from first message — no multi-session onboarding
 
-> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
 
 **Health & Body**
 - **health.md**: structured health context file — weekly/monthly Garmin metrics (resting HR, sleep, steps, active days) with WHO/ESC/NSF reference classifications
@@ -294,7 +294,7 @@ git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 > They are distributed via a private installer repository and will be released together with full documentation at official launch.
 > If you are part of the testing group, you have received access separately.
 
-The setup script prompts for domain, email, and optionally an Anthropic API key and WalletConnect Project ID — everything else runs automatically. Change the root password with `passwd` when done.
+The setup script prompts for domain, email, and optionally an Anthropic API key and Reown Project ID — everything else runs automatically. Change the root password with `passwd` when done.
 
 ### Node modes
 
@@ -344,7 +344,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: d90e9f419012dcd5
+Current release fingerprint: 8c7db5b42eabc1fd
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -381,7 +381,7 @@ Soul identity hash  →  anchor()  →  Polygon blockchain
 
 Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
 
-Operators who want blockchain features need their own WalletConnect Project ID (free: cloud.walletconnect.com).
+Operators who want blockchain features need their own Reown Project ID (free: cloud.reown.com).
 
 > **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
 >
@@ -408,7 +408,7 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 - User data resides exclusively on users' own servers.
 - The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
 
-**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, WalletConnect, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
+**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 

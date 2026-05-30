@@ -260,7 +260,7 @@ Soul hash → anchor() → Polygon Mainnet
 ```
 
 Smart contract: `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
-Requires own `WALLETCONNECT_PROJECT_ID` (free: cloud.walletconnect.com).
+Requires own `REOWN_PROJECT_ID` (free: cloud.reown.com).
 
 ---
 
@@ -325,7 +325,7 @@ Baked into the build (read from `.env` at build time):
 
 | Variable | Purpose |
 |----------|---------|
-| `WALLETCONNECT_PROJECT_ID` | WalletConnect v2 Project ID (optional, anchoring feature). Cannot be changed post-build. |
+| `REOWN_PROJECT_ID` | Reown Project ID (optional, anchoring feature). Cannot be changed post-build. |
 | `NODE_NAME` | Display name of the node on the landing page. |
 | `NODE_TAGLINE` | Node subtitle (optional). |
 

@@ -242,7 +242,7 @@
               <div class="card-body">
                 <div class="field">
                   <label class="field-label">Name</label>
-                  <input v-model="preview.name" type="text" class="input" />
+                  <input v-model="preview.name" type="text" class="input" @blur="persistMetaFields()" />
                 </div>
                 <div class="field">
                   <label class="field-label">Beschreibung <span class="field-hint">optional</span></label>
@@ -544,6 +544,7 @@ async function persistMetaFields() {
         agent_tools:         amort.agent_tools,
         trusted_souls:       peersToTrustedSouls(peers.value),
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
+        name:                preview.value.name || '',
         description:         preview.value.description || '',
         tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
       }),

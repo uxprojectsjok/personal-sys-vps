@@ -80,7 +80,7 @@ end
 
 local preview = {
   soul_id           = soul_id,
-  name              = name or "Unknown",
+  name              = (type(ctx.name) == "string" and #ctx.name > 0) and ctx.name or (name or "Unknown"),
   description       = (type(ctx.description) == "string" and #ctx.description > 0) and ctx.description or nil,
   tags              = (type(ctx.tags) == "table" and #ctx.tags > 0) and ctx.tags or nil,
   schema            = "saveyoursoul/soul/1.0",

@@ -206,6 +206,10 @@ if type(incoming.tags) == "table" then
   end
   if #clean > 0 then ctx.tags = clean end
 end
+if type(incoming.name) == "string" then
+  local n = incoming.name:match("^%s*(.-)%s*$"):sub(1, 128)
+  ctx.name = #n > 0 and n or cjson.null
+end
 
 if not write_ctx(ctx) then
   ngx.status = 500
