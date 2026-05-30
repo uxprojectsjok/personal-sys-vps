@@ -15,6 +15,7 @@
 
 import 'dotenv/config';
 import { readFile, readdir, mkdir } from 'fs/promises';
+import { spawn } from 'child_process';
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -853,6 +854,23 @@ app.get('/internal/discover-souls', (req, res) => {
     indexing: stats.scanning,
     indexed:  stats.souls,
   });
+});
+
+// POST /internal/generate-prompts — regeneriert prompts.md in allen Soul-Vaults
+// Wird vom Vault-Explorer nach dem Sync aufgerufen.
+app.post('/internal/generate-prompts', async (_req, res) => {
+  const PROJECT_ROOT = '/var/www/SaveYourSoul_init';
+  const script = `${PROJECT_ROOT}/utils/generate-prompts.mjs`;
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn('node', [script], { cwd: PROJECT_ROOT, stdio: 'pipe' });
+      proc.on('close', code => code === 0 ? resolve() : reject(new Error(`exit ${code}`)));
+      proc.on('error', reject);
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
