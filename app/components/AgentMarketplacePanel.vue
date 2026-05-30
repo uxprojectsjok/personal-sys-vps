@@ -804,7 +804,11 @@ async function register() {
       body: JSON.stringify(body),
     })
     const d = await r.json()
-    if (!r.ok) { registerError.value = d.error || d.message || 'Registrierung fehlgeschlagen'; return }
+    if (!r.ok) {
+      const detail = typeof d.detail === 'string' ? ` — ${d.detail.slice(0, 120)}` : (d.detail?.message ? ` — ${d.detail.message}` : '')
+      registerError.value = (d.error || d.message || 'Registrierung fehlgeschlagen') + detail
+      return
+    }
     newCid.value     = d.cid || ''
     currentCid.value = d.cid || ''
     registered.value = true
