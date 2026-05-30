@@ -123,12 +123,12 @@
           <!-- Identity proof -->
           <template v-if="hasAnchor">
             <div class="anc-rule"><span>Identität</span></div>
-            <button class="anc-btn ghost" @click="isProvingIdentity ? cancelProveIdentity() : handleProveIdentity()">
-              <svg v-if="isProvingIdentity" class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
+            <button class="anc-btn ghost" :class="{ busy: isProvingIdentity || isConnectingForProof }" @click="isProvingIdentity ? cancelProveIdentity() : handleProveIdentity()">
+              <svg v-if="isProvingIdentity || isConnectingForProof" class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
               <svg v-else class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
               </svg>
-              {{ isProvingIdentity ? 'Signiert… Abbrechen' : 'Identität nachweisen' }}
+              {{ isProvingIdentity ? 'Signiert… Abbrechen' : isConnectingForProof ? 'Wallet verbinden…' : isConnected ? 'Identität nachweisen' : 'Wallet verbinden · Identität nachweisen' }}
             </button>
             <Transition name="slide-up">
               <div v-if="identityProof" class="anc-proof">
@@ -211,6 +211,7 @@ const isCheckingRateLimit   = ref(false);
 const isCancelled           = ref(false);
 const identityProof         = ref(null);
 const proofCopied           = ref(false);
+const isConnectingForProof  = ref(false);
 
 // Mindestens 1 Growth-Chain-Eintrag erforderlich – schützt vor Ankerung von Fake-/Test-Souls
 const canAnchor = computed(() => sessionCount.value > 0);
@@ -330,6 +331,16 @@ async function handleAnchor() {
 
 async function handleProveIdentity() {
   identityProof.value = null;
+  if (!isConnected.value) {
+    isConnectingForProof.value = true;
+    try {
+      await connectWallet();
+      await new Promise(r => setTimeout(r, 600));
+    } finally {
+      isConnectingForProof.value = false;
+    }
+    if (!isConnected.value) return;
+  }
   identityProof.value = await proveIdentity();
 }
 
