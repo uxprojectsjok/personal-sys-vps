@@ -482,10 +482,20 @@ async function onSetupImport(markdown) {
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
-  .sess-head { background: transparent; }
+  .sess-head { background: transparent; border-bottom: 0; }
   .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .soul-id-btn { display: none; }
   .pill-sep { display: none; }
+  .mobile-tabs { border-top: 0; }
+  /* gradient fades — stream erscheint nach oben/unten endlos */
+  .col-chat { position: relative; }
+  .col-chat::before,
+  .col-chat::after {
+    content: ''; position: absolute; left: 0; right: 0;
+    height: 56px; pointer-events: none; z-index: 2;
+  }
+  .col-chat::before { top: 0; background: linear-gradient(to bottom, var(--paper), transparent); }
+  .col-chat::after  { bottom: 0; background: linear-gradient(to top,   var(--paper), transparent); }
 }
 
 .sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
