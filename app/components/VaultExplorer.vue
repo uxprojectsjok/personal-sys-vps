@@ -803,8 +803,10 @@ async function onSyncAll() {
     return;
   }
   await syncAll(props.soulCert, composableSoulContent.value || props.soulContent, vaultKey.value || "");
-  if (syncError.value) showError(syncError.value);
-  else showSuccess("sys.md + Vault-Dateien auf Server hochgeladen ✓");
+  if (syncError.value) { showError(syncError.value); return; }
+  showSuccess("sys.md + Vault-Dateien auf Server hochgeladen ✓");
+  // prompts.md nach Sync neu generieren (fire-and-forget)
+  fetch('/api/soul/generate-prompts', { method: 'POST', headers: { Authorization: `Bearer ${props.soulCert}` } }).catch(() => {});
 }
 
 // ── Aktiv setzen ───────────────────────────────────────────────────────────
