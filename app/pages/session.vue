@@ -482,6 +482,7 @@ async function onSetupImport(markdown) {
 /* Sub-header: banners wrapper — collapses to 0 height when empty */
 .sess-sub-head { display: flex; flex-direction: column; }
 @media (max-width: 900px) {
+  .sess-head { background: transparent; }
   .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; min-width: 0; flex-shrink: 1; overflow: hidden; }
   .soul-id-btn { display: none; }
   .pill-sep { display: none; }
@@ -590,7 +591,7 @@ async function onSetupImport(markdown) {
 }
 
 /* Mobile tabs / Desktop gutter */
-.mobile-tabs { display: none; border-top: 1px solid var(--rule); background: var(--paper-3); }
+.mobile-tabs { display: none; border-top: 1px solid var(--rule); background: transparent; }
 @media (max-width: 900px) {
   .mobile-tabs { display: flex; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
