@@ -7,6 +7,7 @@
 
 local cjson = require("cjson.safe")
 local http  = require("resty.http")
+local cfg   = require("config_reader")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -17,6 +18,7 @@ if not soul_id then
   ngx.say('{"error":"Unauthorized"}')
   return
 end
+local api_key = cfg.get_anthropic_key(soul_id)
 
 if ngx.req.get_method() ~= "POST" then
   ngx.status = 405
