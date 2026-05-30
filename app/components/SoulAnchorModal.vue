@@ -42,6 +42,12 @@
             </template>
           </div>
 
+          <!-- Mobile-Hinweis -->
+          <div class="anc-mobile-hint">
+            <svg class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+            <span>Wallet-Verbindung auf Mobile kann verzögert reagieren — wir arbeiten daran. Für die beste Erfahrung empfehlen wir einen Desktop-Browser.</span>
+          </div>
+
           <!-- Divider -->
           <div class="anc-rule"><span>Discovery-Tags</span></div>
 
@@ -570,9 +576,21 @@ function copyProof() {
   color: var(--sys-accent-bright);
 }
 
+/* ── Mobile-Hinweis ────────────────────────────────────── */
+.anc-mobile-hint {
+  display: none;
+  align-items: flex-start; gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  line-height: 1.6; color: var(--fg-4);
+}
+.anc-mobile-hint .anc-ico { flex-shrink: 0; margin-top: 1px; opacity: 0.5; }
+
 /* ── Mobile ────────────────────────────────────────────── */
 @media (max-width: 639px) {
   .anc-backdrop { padding: 12px; }
   .anc-panel { max-height: calc(100dvh - 24px); }
+  .anc-mobile-hint { display: flex; }
 }
 </style>
