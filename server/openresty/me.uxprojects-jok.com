@@ -1,0 +1,1109 @@
+# /etc/openresty/sites-available/me.uxprojects-jok.com
+# Rate-Limit-Zonen werden global in nginx.conf definiert (init.sh stellt das sicher).
+
+############################
+# HTTP → HTTPS
+############################
+server {
+  listen 80;
+  server_name me.uxprojects-jok.com www.me.uxprojects-jok.com;
+
+  # Certbot webroot validation — served before HTTPS redirect
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/me.uxprojects-jok.com;
+    default_type text/plain;
+    try_files $uri =404;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+############################
+# HTTPS
+############################
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name me.uxprojects-jok.com www.me.uxprojects-jok.com;
+
+  ################################
+  # TLS
+  ################################
+  ssl_certificate     /etc/openresty/ssl/uxprojects-jok.com/uxprojects-jok-fullchain.pem;
+  ssl_certificate_key /etc/openresty/ssl/uxprojects-jok.com/uxprojects-jok-key.pem;
+  ssl_protocols       TLSv1.2 TLSv1.3;
+  ssl_prefer_server_ciphers on;
+  ssl_session_cache   shared:SSL:10m;
+  ssl_session_timeout 10m;
+
+  ################################
+  # Nonce pro Request (CSPRNG)
+  ################################
+  set_by_lua_block $nonce {
+    local random = require("resty.random")
+    local str    = require("resty.string")
+    return str.to_hex(random.bytes(12))
+  }
+
+  ################################
+  # Security Headers
+  # more_set_headers vererbt sich in alle location-Blöcke
+  ################################
+  more_set_headers "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload";
+  more_set_headers "X-Content-Type-Options: nosniff";
+  more_set_headers "Referrer-Policy: no-referrer";
+  more_set_headers "Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=()";
+  more_set_headers "Cross-Origin-Opener-Policy: same-origin";
+
+  ################################
+  # Error Pages
+  ################################
+  error_page 400 =400 /400.html;
+  error_page 401 =401 /401.html;
+  error_page 403 =403 /403.html;
+  error_page 404 =404 /404.html;
+  error_page 500 =500 /500.html;
+  error_page 502 =502 /502.html;
+  error_page 504 =504 /504.html;
+
+  location ~ ^/(400|401|403|404|500|502|504)\.html$ {
+    root /var/www/me.uxprojects-jok.com;
+    internal;
+  }
+
+  ################################
+  # Sensitive Files blocken
+  ################################
+  location ~ /\.(svn|hg|DS_Store|htaccess|npmrc|yarnrc|lock) {
+    deny all;
+    access_log off;
+    log_not_found off;
+  }
+  location ^~ /.git/              { return 404; }
+  location ^~ /.env               { return 404; }
+  location ~ /\.(?!well-known/)   { return 404; }
+  location ~ ^/(assets|_nuxt|logo|fonts|img)/$ { return 404; }
+  location ~ ^/(assets|_nuxt|logo|fonts|img)$  { return 404; }
+
+  ################################
+  # Service Worker – never cache (must always be fresh)
+  ################################
+  location = /sw.js {
+    root /var/www/me.uxprojects-jok.com;
+    try_files $uri =404;
+    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    add_header Service-Worker-Allowed "/" always;
+  }
+
+  ################################
+  # Static Assets – Long Cache
+  ################################
+  location ~* ^(?!/api/).*\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
+    root /var/www/me.uxprojects-jok.com;
+    try_files $uri =404;
+    access_log off;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header Accept-Ranges "bytes" always;
+  }
+
+  ################################
+  # Gzip
+  ################################
+  gzip on;
+  gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+  gzip_min_length 256;
+  gzip_comp_level 6;
+
+  ################################
+  # Nuxt Payload
+  ################################
+  location = /_payload.json {
+    root /var/www/me.uxprojects-jok.com;
+    default_type application/json;
+    try_files /_payload.json =404;
+    add_header Cache-Control "no-store" always;
+  }
+  location ^~ /_payload/ {
+    root /var/www/me.uxprojects-jok.com;
+    default_type application/json;
+    try_files $uri =404;
+    add_header Cache-Control "no-store" always;
+  }
+
+  # ── Soul-API-Token (JWT) ausstellen ──────────────────────────────────────────
+  location = /api/soul/v1/token {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/soul_token_jwt.lua;
+  }
+
+  # ── Soul-Session signieren (kein Auth – HMAC ist die Absicherung) ────────────
+  location = /api/soul-sign-session {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/soul_sign_session.lua;
+  }
+
+  # ── Node-Status (kein Auth — öffentlich, CORS für Cross-Domain-Peer-Test) ─────
+  location = /api/node-status {
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    if ($request_method = 'OPTIONS') { return 204; }
+    content_by_lua_file /etc/openresty/lua/node_status.lua;
+  }
+
+  # ── Gate-Status (öffentlich – gibt nur soul_registered zurück) ───────────────
+  location = /api/gate-status {
+    limit_req zone=api burst=20 nodelay;
+    limit_except GET { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_status.lua;
+  }
+
+  # ── Gate-Auth (öffentlich – validiert Passwort + Cert, setzt sys_gate Cookie) ─
+  location = /api/gate-auth {
+    limit_req zone=gate burst=3 nodelay;
+    limit_except POST { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_auth.lua;
+  }
+
+  # ── Gate-Passwort ändern (soul_cert erforderlich) ─────────────────────────────
+  location = /api/gate-password {
+    limit_req zone=auth burst=3 nodelay;
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/gate_set_password.lua;
+  }
+
+  # ── Admin: Master-Key / Admin-Token / Anthropic-Key rotieren ─────────────────
+  # Auth via X-Admin-Token Header (kein soul_auth.lua — wird intern in Lua geprüft)
+  location = /api/set-master {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=2 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/set_master.lua;
+  }
+
+  # ── Config: Anthropic-Key pro Soul lesen ──────────────────────────────────────
+  location = /api/get-config {
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/get_config.lua;
+  }
+
+  # ── Config: Anthropic-Key / Modell pro Soul setzen ───────────────────────────
+  location = /api/set-config {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/set_config.lua;
+  }
+
+  # ── Config: Anthropic-Key testen ──────────────────────────────────────────────
+  location = /api/test-key {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/test_key.lua;
+  }
+
+
+  # ── Soul-Cert generieren (kein Auth – HMAC ist die Absicherung) ──────────────
+  location = /api/soul-cert {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/soul_cert.lua;
+  }
+
+  # ── Soul-Registrierung zurücksetzen (Gate-Auth reicht) ───────────────────────
+  # Recovery bei verlorenem Admin-Token oder veralteter sys.md (invalid_proof Deadlock).
+  # Löscht soul_admin.json + api_context.json — Vault-Daten bleiben erhalten.
+  location = /api/soul/reset-registration {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_reset_registration.lua;
+  }
+
+  # ── Cert rotieren – nur soul-cert, inkrementiert cert_version in sys.md ────────
+  location = /api/soul-rotate-cert {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/soul_rotate_cert.lua;
+  }
+
+  # ── Cert-Vorvalidierung ───────────────────────────────────────────────────────
+  location = /api/validate {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    return 200 '{"ok":true}';
+  }
+
+  # ── Soul-Update → Anthropic Proxy (kein Streaming, JSON-Antwort) ─────────────
+  location = /api/soul-update {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+
+    set $anthropic_key "";
+
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+
+    proxy_pass            https://api.anthropic.com/v1/messages;
+    proxy_ssl_server_name on;
+    proxy_ssl_name        api.anthropic.com;
+    proxy_ssl_verify      on;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
+    proxy_set_header Host              "api.anthropic.com";
+    proxy_set_header x-api-key         $anthropic_key;
+    proxy_set_header anthropic-version "2023-06-01";
+    proxy_set_header Origin            "";
+    proxy_set_header Referer           "";
+
+    proxy_http_version 1.1;
+    proxy_set_header   Connection "";
+
+    proxy_connect_timeout  10s;
+    proxy_send_timeout     30s;
+    proxy_read_timeout     60s;
+    client_max_body_size   5M;
+
+    add_header Cache-Control "no-store" always;
+  }
+
+  # ── In-App Soul-Tool-Execution (POST) – soul-cert ────────────────────────────
+  location = /api/soul-tool {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    proxy_pass         http://127.0.0.1:3098/internal/run-tool;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   Connection        "";
+    proxy_connect_timeout 5s;
+    proxy_send_timeout    30s;
+    proxy_read_timeout    30s;
+    client_max_body_size  2M;
+  }
+
+  # ── Chat → Anthropic Proxy (SSE Streaming) ───────────────────────────────────
+  location = /api/chat {
+    limit_except POST { deny all; }
+    limit_req zone=chat_api burst=5 nodelay;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+
+    set $anthropic_key "";
+
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+
+    proxy_pass            https://api.anthropic.com/v1/messages;
+    proxy_ssl_server_name on;
+    proxy_ssl_name        api.anthropic.com;
+    proxy_ssl_verify      on;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+
+    proxy_set_header Host              "api.anthropic.com";
+    proxy_set_header x-api-key         $anthropic_key;
+    proxy_set_header anthropic-version "2023-06-01";
+    proxy_set_header Origin            "";
+    proxy_set_header Referer           "";
+
+    proxy_buffering    off;
+    proxy_cache        off;
+    proxy_http_version 1.1;
+    proxy_set_header   Connection "";
+
+    proxy_connect_timeout  10s;
+    proxy_send_timeout     60s;
+    proxy_read_timeout    120s;
+    client_max_body_size  5M;
+
+    add_header Cache-Control "no-store" always;
+  }
+
+  # ── Beme: Als Soul antworten – soul-cert oder service-token (soul permission) ─
+  location = /api/beme {
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 64K;
+    client_body_buffer_size 64K;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/beme.lua;
+  }
+
+  # ── KI-Konfiguration mind.md (GET/PUT) – nur soul-cert ──────────────────────
+  location = /api/mind {
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mind.lua;
+  }
+
+  # ── Emergency-Protokoll (isolate / restore / status) – nur soul-cert ─────────
+  location ~ ^/api/emergency/(isolate|restore|status)$ {
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_emergency.lua;
+  }
+
+  # ── API-Context (GET/PUT) – soul-cert oder service-token ────────────────────
+  location = /api/context {
+    limit_req zone=chat burst=20 nodelay;
+    client_max_body_size 4M;
+    client_body_buffer_size 4M;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/api_context.lua;
+  }
+
+  # ── Vault komplett löschen – nur soul-cert, unwiderruflich ───────────────────
+  location = /api/vault {
+    limit_req zone=auth burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_delete.lua;
+  }
+
+  # ── Vault-Sync: Dateien hochladen (POST) – nur soul-cert ─────────────────────
+  # client_max_body_size: base64 +33% Overhead → 150M erlaubt ~112 MB Originaldatei
+  location = /api/vault/sync {
+    limit_req zone=vault_upload burst=10 nodelay;
+    client_max_body_size 150M;
+    client_body_timeout 120s;
+    client_body_buffer_size 150M;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_sync.lua;
+  }
+
+  # ── Vault entsperren / sperren / Session-Status – nur soul-cert ──────────────
+  location = /api/vault/unlock {
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_unlock.lua;
+  }
+
+  location = /api/vault/lock {
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_unlock.lua;
+  }
+
+  location = /api/vault/session {
+    limit_req zone=chat burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_unlock.lua;
+  }
+
+  # ── Public Vault: Owner-Endpunkte (soul-cert) ─────────────────────────────────
+  # Exact-Matches gewinnen immer über den ^~ /api/vault/ Catch-All darunter.
+
+  location = /api/vault/public/config {
+    limit_req zone=chat burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_public.lua;
+  }
+
+  location = /api/vault/public/sync {
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 270M;
+    client_body_timeout 180s;
+    client_body_buffer_size 270M;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_public.lua;
+  }
+
+  # ── Food Log: Mahlzeit bewerten + in health.md eintragen ────────────────────
+  location = /api/food-log {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    client_max_body_size 64k;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/food_log.lua;
+  }
+
+  # ── Health Sync: Garmin-Daten im Hintergrund abrufen ────────────────────────
+  location = /api/health-sync {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_sync_trigger.lua;
+  }
+
+  # ── Vault Profile: Automatische Analyse via Claude Vision ───────────────────────
+  location = /api/vault/profile/analyze {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=3 nodelay;
+    client_max_body_size 1M;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_profile_analyze.lua;
+  }
+
+  # ── Vault Profile: Analyse-Ergebnisse lesen/schreiben (face, voice, motion, expertise) ──
+  # ^~ statt ~ weil ^~ /api/vault/ (weiter unten) sonst Vorrang hätte (längster Prefix-Match gewinnt).
+  location ^~ /api/vault/profile/ {
+    limit_except GET PUT DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    client_max_body_size 1M;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_profile.lua;
+  }
+
+  # ── Public Vault: externe Zugriffe + Owner-Delete ─────────────────────────────
+  # ^~ verhindert dass Regex-Locations (z.B. ~* \.png|jpg) API-Pfade mit Dateiendung abfangen.
+  # Auth (API-Grant-Token oder Soul-Cert) wird in vault_public.lua selbst geprüft.
+  location ^~ /api/vault/public/ {
+    limit_req zone=chat burst=30 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    content_by_lua_file /etc/openresty/lua/vault_public.lua;
+  }
+
+
+  # ── Dienste verwalten (add / list / revoke) – nur soul-cert ──────────────────
+  # Längerer Prefix als ^~ /api/vault/ → gewinnt
+  location /api/vault/services {
+    limit_req zone=chat burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_services.lua;
+  }
+
+  # ── Agent Marketplace ────────────────────────────────────────────────────────
+  location = /api/soul/pinata-config {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_pinata_config.lua;
+  }
+
+  location = /api/soul/amortization {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_amortization.lua;
+  }
+
+  location = /api/soul/register-anchor {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_register_anchor.lua;
+  }
+
+  location = /api/soul/register-preview {
+    limit_req zone=chat burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_register_preview.lua;
+  }
+
+  location = /api/soul/register {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_register.lua;
+  }
+
+  location = /api/translate {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/translate.lua;
+  }
+
+  # ── Soul Earnings (soul_cert) ─────────────────────────────────────────────────
+  location = /api/soul/earnings {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_earnings.lua;
+  }
+
+  # ── Amortisierung: Zahlung (öffentlich, pol_access_token) ────────────────────
+  location = /api/soul/pay {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_pay.lua;
+  }
+
+  # ── Paid-Access für externe Agenten (pol_access_token) ───────────────────────
+  location = /api/soul/paid-read {
+    limit_req zone=chat burst=10 nodelay;
+    default_type text/plain;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_read.lua;
+  }
+
+  location = /api/soul/paid-beme {
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_beme.lua;
+  }
+
+  location = /api/soul/paid-context {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_context.lua;
+  }
+
+  location ^~ /api/soul/paid-profile/ {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_profile.lua;
+  }
+
+  location = /api/soul/paid-write {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_write.lua;
+  }
+
+  location = /api/soul/paid-comment {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_comment.lua;
+  }
+
+  location = /api/soul/paid-shop {
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_shop.lua;
+  }
+
+  location = /api/soul/paid-write-shop {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_write_shop.lua;
+  }
+
+  # ── SOCIAL-Block für Cross-Domain Peers (v2 2026-05-09) ─────────────────────
+  location = /api/soul/social-read {
+    add_header Access-Control-Allow-Origin  "*"             always;
+    add_header Access-Control-Allow-Headers "Authorization" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS"  always;
+    add_header Cache-Control                "no-store"      always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type text/plain;
+    content_by_lua_file /etc/openresty/lua/soul_social_read.lua;
+  }
+
+  # ── Vault Shared — Upload (owner only) ───────────────────────────────────────
+  location = /api/vault/shared {
+    limit_except POST { deny all; }
+    limit_req zone=vault_upload burst=5 nodelay;
+    client_max_body_size 15M;
+    client_body_buffer_size 15M;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_upload.lua;
+  }
+
+  # ── Vault Shared — Serve to authenticated peers ───────────────────────────────
+  location ~ ^/api/vault/shared/[^/]+/.+ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    default_type application/octet-stream;
+    content_by_lua_file /etc/openresty/lua/vault_shared_serve.lua;
+  }
+
+  # ── Vault Shared — Delete own file ────────────────────────────────────────────
+  location ~ ^/api/vault/shared/[^/]+$ {
+    limit_except DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_delete.lua;
+  }
+
+  # ── Vault Peer Media Proxy (browser → own node → peer's vault/shared) ─────────
+  location = /api/vault/peer-media {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/octet-stream;
+    content_by_lua_file /etc/openresty/lua/vault_peer_media_proxy.lua;
+  }
+
+  # ── Vault Peer Stream (binary Vault-Datei direkt, vault_auth) ────────────────
+  location = /api/vault/peer-stream {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/octet-stream;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_peer_stream.lua;
+  }
+
+  # ── Vault Connections — eigene Liste + Peer-Dateien (soul_auth) ──────────────
+  location = /api/vault/connections {
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location ~ ^/api/vault/connections/test/ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location = /api/vault/connections/network {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
+  location = /api/vault/connections/peer-files {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vault_connections_peer.lua;
+  }
+
+  # ── Peer-Handshake Eingang (öffentlich, CORS) ────────────────────────────────
+  location = /api/peer/connect {
+    add_header Access-Control-Allow-Origin  "*"                    always;
+    add_header Access-Control-Allow-Headers "Content-Type"         always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS"        always;
+    add_header Cache-Control                "no-store"             always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/peer_connect.lua;
+  }
+
+  # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
+  location = /api/peer/verify {
+    add_header Access-Control-Allow-Origin  "*"                    always;
+    add_header Access-Control-Allow-Headers "Content-Type"         always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS"         always;
+    add_header Cache-Control                "no-store"             always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/peer_verify.lua;
+  }
+
+  # ── Peer Social Read Proxy (server-side, avoids CSP cross-origin) ────────────
+  location = /api/soul/peer-social-read {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/soul_peer_proxy.lua;
+  }
+
+  # ── Peer-Cert Verifikation (öffentlich, für Cross-Domain Peer-Auth) ──────────
+  location = /api/soul/verify-peer-cert {
+    limit_except GET { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_verify_peer_cert.lua;
+  }
+
+  # ── POL-Token Validierung (intern, nur 127.0.0.1) ────────────────────────────
+  location = /internal/validate-pol-token {
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_pol_validate.lua;
+  }
+
+  # ── Soul-Inhalt servieren (GET) – soul-cert ODER webhook-token ───────────────
+  location = /api/soul {
+    limit_req zone=chat burst=30 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type text/plain;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/api_serve.lua;
+  }
+
+  # ── Vault-Dateien servieren (GET) – soul-cert ODER webhook-token ─────────────
+  # /api/vault/manifest, /api/vault/audio, /api/vault/video, /api/vault/images, /api/vault/context
+  # Kein ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) haben Vorrang.
+  # Statische Assets schließen /api/-Pfade bereits per negativem Lookahead aus.
+  location /api/vault/ {
+    limit_req zone=chat burst=30 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/api_serve.lua;
+  }
+
+  # ── Zapier Eingangs-Webhook (POST) – webhook-token ──────────────────────────
+  # ── Webhook (POST + OPTIONS) – service-token ODER soul-cert ──────────────────
+  location /api/webhook {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/webhook.lua;
+  }
+
+  # ── Webhook Mnemonic – ciphered-Mode Auth via 12 BIP39-Wörter ────────────────
+  # Kein vault_auth.lua: Auth wird intern via PBKDF2+HMAC berechnet.
+  location = /api/webhook/mnemonic {
+    limit_req zone=chat burst=2 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/webhook_mnemonic.lua;
+  }
+
+  # ── Zapier MCP – Tool-Liste holen (GET) – soul-cert ──────────────────────────
+  location = /api/mcp-tools {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mcp_tools.lua;
+  }
+
+  # ── Zapier MCP – Tool aufrufen (POST) – soul-cert ────────────────────────────
+  location = /api/mcp-call {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 64K;
+    client_body_buffer_size 64K;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/mcp_call.lua;
+  }
+
+  ################################
+  # Favicon
+  ################################
+  location = /favicon.ico {
+    log_not_found off;
+    alias /var/www/me.uxprojects-jok.com/logo/logo.ico;
+    default_type image/x-icon;
+  }
+
+  # ── Vision-Analyse (POST) – Kamerabild → Claude Haiku → Modell-Entscheidung ──
+  location = /api/vision-analyze {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=3 nodelay;
+    client_max_body_size 8M;
+    client_body_buffer_size 8M;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vision_analyze.lua;
+  }
+
+  # ── WaveSpeed Task einreichen (POST) ─────────────────────────────────────────
+  location = /api/wavespeed-submit {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=3 nodelay;
+    client_max_body_size 8M;
+    client_body_buffer_size 8M;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/wavespeed_submit.lua;
+  }
+
+  # ── WaveSpeed Ergebnis abfragen (GET, Polling) ────────────────────────────────
+  location = /api/wavespeed-result {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=30 nodelay;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/wavespeed_result.lua;
+  }
+
+  # ── Brave Search (POST) ──────────────────────────────────────────────────────
+  location = /api/web-search {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/web_search.lua;
+  }
+
+  # ── ElevenLabs Agent Webhooks: soul_write + web_search (vault_auth = token ok) ──
+  location = /api/elevenlabs-soul-write {
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/elevenlabs_soul_write.lua;
+  }
+
+  location = /api/elevenlabs-web-search {
+    limit_except POST { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/web_search.lua;
+  }
+
+  # ── ElevenLabs Voice Clone + Agent erstellen (POST) ──────────────────────────
+  location = /api/create-agent {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    client_max_body_size 50M;
+    client_body_timeout 60s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/create_agent.lua;
+  }
+
+  location = /api/elevenlabs-token {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/elevenlabs_token.lua;
+  }
+
+  location = /api/diagnose {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/diagnose.lua;
+  }
+
+  # ── STT: ElevenLabs Speech-to-Text (POST) ─────────────────────────────────────
+  location = /api/elevenlabs-stt {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    client_max_body_size 10m;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/elevenlabs_stt.lua;
+  }
+
+  # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
+  location = /api/tts {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
+    resolver_timeout 5s;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type audio/mpeg;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/tts.lua;
+  }
+
+  ################################
+  # Gate-Seite: kein Gate-Check (wäre rekursiv)
+  # Exact-match und Prefix-match haben Vorrang vor location /
+  ################################
+  location = /gate {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /gate/index.html /index.html;
+  }
+
+  location ^~ /gate/ {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /gate/index.html /index.html;
+  }
+
+  ################################
+  # SPA Root (Nuxt static)
+  ################################
+  location / {
+    root /var/www/me.uxprojects-jok.com;
+    index index.html;
+    # Gate-Check: prüft sys_gate Cookie, leitet zu /gate weiter wenn ungültig
+    access_by_lua_file /etc/openresty/lua/gate_check.lua;
+    try_files $uri $uri.html /index.html;
+
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma        "no-cache" always;
+    add_header Expires       "0" always;
+    add_header Vary          "Accept-Encoding" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net https://api.anthropic.com https://api.wavespeed.ai https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+
+    body_filter_by_lua_block {
+      local chunk, eof = ngx.arg[1], ngx.arg[2]
+      if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
+      if chunk ~= "" then
+        table.insert(ngx.ctx.buffer, chunk)
+        ngx.arg[1] = nil
+      end
+      if eof then
+        local ct = ngx.header["Content-Type"] or ""
+        if ct:find("text/html", 1, true) then
+          local data = table.concat(ngx.ctx.buffer)
+          data = data:gsub("<script(.-)>", "<script%1 nonce=\"" .. ngx.var.nonce .. "\">")
+          data = data:gsub("<style(.-)>",  "<style%1 nonce=\""  .. ngx.var.nonce .. "\">")
+          ngx.arg[1] = data
+        else
+          ngx.arg[1] = table.concat(ngx.ctx.buffer)
+        end
+      end
+    }
+  }
+
+  # ── soul-mcp: MCP Server + OAuth ──────────────────────────────────────
+  location /mcp {
+    limit_req          zone=mcp burst=10 nodelay;
+    limit_req_status   429;
+    proxy_pass         http://127.0.0.1:3098/mcp;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    proxy_set_header   Connection        '';
+    proxy_buffering    off;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+  }
+
+  location /oauth/ {
+    limit_req          zone=oauth burst=5 nodelay;
+    limit_req_status   429;
+    # COOP entfernen: OAuth-Popup muss mit Claude.ai kommunizieren können
+    more_clear_headers "Cross-Origin-Opener-Policy";
+    proxy_pass         http://127.0.0.1:3098/oauth/;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+  }
+
+  location /.well-known/oauth-authorization-server {
+    more_clear_headers "Cross-Origin-Opener-Policy";
+    proxy_pass         http://127.0.0.1:3098/.well-known/oauth-authorization-server;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+  }
+
+  # RFC 8707 Protected Resource Metadata – Claude.ai fetcht diese Endpoints vor OAuth
+  location /.well-known/oauth-protected-resource {
+    more_clear_headers "Cross-Origin-Opener-Policy";
+    proxy_pass         http://127.0.0.1:3098/.well-known/oauth-protected-resource;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+  }
+
+  location /mcp-health {
+    proxy_pass         http://127.0.0.1:3098/health;
+    proxy_http_version 1.1;
+    proxy_set_header   Host $host;
+  }
+
+}
