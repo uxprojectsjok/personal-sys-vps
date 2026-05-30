@@ -130,10 +130,78 @@ local meta = {
 if created_at   then meta.created      = created_at   end
 if version      then meta.version      = version      end
 if maturity     then meta.maturity     = maturity     end
-if description  then meta.description  = description  end
+
 -- Tags: Body hat Priorität, Fallback auf soul_chain_anchor
 local final_tags = body_tags or (#anchor_tags > 0 and anchor_tags or nil)
-if final_tags then meta.tags = final_tags end
+
+-- ── Übersetzung Description + Tags → Englisch (Claude Haiku) ─────────────────
+local translate_desc = description
+local translate_tags = final_tags
+
+local has_text = (type(description) == "string" and #description > 0)
+  or (type(final_tags) == "table" and #final_tags > 0)
+
+if has_text and api_key ~= "" then
+  local tags_str = ""
+  if type(final_tags) == "table" and #final_tags > 0 then
+    tags_str = table.concat(final_tags, ", ")
+  end
+
+  local translate_prompt = 'Translate the following fields to English. Reply ONLY with a JSON object, no explanation.\n\n'
+    .. '{"description":"' .. (description or ""):gsub('"', '\\"') .. '","tags":"' .. tags_str:gsub('"', '\\"') .. '"}\n\n'
+    .. 'Rules:\n'
+    .. '- Keep proper nouns (city names, brand names, person names) as-is\n'
+    .. '- If already English, return unchanged\n'
+    .. '- tags: comma-separated, concise English keywords\n'
+    .. '- Return exactly: {"description":"...","tags":"..."}'
+
+  local ok_tr, tr_body = pcall(cjson.encode, {
+    model      = "claude-haiku-4-5",
+    max_tokens = 200,
+    messages   = {{ role = "user", content = translate_prompt }},
+  })
+
+  if ok_tr then
+    local tr_httpc = http.new()
+    tr_httpc:set_timeout(10000)
+    local tr_res = tr_httpc:request_uri("https://api.anthropic.com/v1/messages", {
+      method  = "POST",
+      ssl_verify = true,
+      headers = {
+        ["Content-Type"]      = "application/json",
+        ["x-api-key"]         = api_key,
+        ["anthropic-version"] = "2023-06-01",
+      },
+      body = tr_body,
+    })
+    if tr_res and tr_res.status == 200 then
+      local ok_r, tr_resp = pcall(cjson.decode, tr_res.body)
+      if ok_r and type(tr_resp) == "table" and type(tr_resp.content) == "table" and tr_resp.content[1] then
+        local tr_text = tr_resp.content[1].text or ""
+        local json_str = tr_text:match("%b{}")
+        if json_str then
+          local ok_j, tr_data = pcall(cjson.decode, json_str)
+          if ok_j and type(tr_data) == "table" then
+            if type(tr_data.description) == "string" and #tr_data.description > 0 then
+              translate_desc = tr_data.description
+            end
+            if type(tr_data.tags) == "string" and #tr_data.tags > 0 then
+              local translated_tags = setmetatable({}, cjson.array_mt)
+              for tag in tr_data.tags:gmatch("[^,]+") do
+                local t = tag:match("^%s*(.-)%s*$")
+                if #t > 0 then translated_tags[#translated_tags + 1] = t end
+              end
+              if #translated_tags > 0 then translate_tags = translated_tags end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+if translate_desc then meta.description = translate_desc end
+if translate_tags then meta.tags        = translate_tags end
 if type(amort) == "table" then
   local no_tools = setmetatable({}, cjson.array_mt)
   local days     = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
