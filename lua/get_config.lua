@@ -115,4 +115,5 @@ ngx.say(cjson.encode({
   mcp_preview            = mcp_preview,
   reown_project_id_set   = has_reown,
   reown_preview          = reown_preview,
+  reown_project_id       = has_reown and soul_cfg.reown_project_id or cjson.null,
 }))
