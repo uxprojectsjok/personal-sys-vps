@@ -246,11 +246,17 @@
                 </div>
                 <div class="field">
                   <label class="field-label">Beschreibung <span class="field-hint">optional</span></label>
-                  <input v-model="preview.description" type="text" class="input" placeholder="Kurze Beschreibung der Soul…" />
+                  <div class="translate-wrap">
+                    <input v-model="preview.description" type="text" class="input" placeholder="Kurze Beschreibung der Soul…" @blur="translateField('description')" />
+                    <span v-if="translating.description" class="translate-spin">⟳</span>
+                  </div>
                 </div>
                 <div class="field">
                   <label class="field-label">Tags <span class="field-hint">kommasepariert · für soul_discover</span></label>
-                  <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, Philosophie, KI…" />
+                  <div class="translate-wrap">
+                    <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, Philosophie, KI…" @blur="translateField('tags')" />
+                    <span v-if="translating.tags" class="translate-spin">⟳</span>
+                  </div>
                 </div>
               </div>
 
@@ -521,6 +527,31 @@ const previewReadonly = computed(() => {
   if (p.maturity != null)  out.maturity          = p.maturity
   return out
 })
+
+// ═══════════ LIVE-ÜBERSETZUNG ═══════════
+const translating = reactive({ description: false, tags: false })
+
+async function translateField(field) {
+  const text = field === 'tags' ? preview.value.tags : preview.value.description
+  if (!text || !text.trim() || !props.soulCert) return
+  translating[field] = true
+  try {
+    const r = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({ text: text.trim(), type: field }),
+    })
+    if (r.ok) {
+      const d = await r.json()
+      if (d.translated && d.translated !== text.trim()) {
+        if (field === 'tags') preview.value.tags = d.translated
+        else preview.value.description = d.translated
+      }
+    }
+  } catch { /* silent */ } finally {
+    translating[field] = false
+  }
+}
 
 // ═══════════ TOOL PICKER ═══════════
 const showToolPicker = ref(false)
@@ -889,6 +920,10 @@ async function register() {
 .pay-form { padding-top: 8px; }
 .pay-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
 
+.translate-wrap { position: relative; display: flex; align-items: center; }
+.translate-wrap .input { flex: 1; padding-right: 28px; }
+.translate-spin { position: absolute; right: 8px; color: var(--fg-2); font-size: 14px; animation: spin 0.8s linear infinite; pointer-events: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .tools-row { display: flex; gap: 8px; align-items: stretch; position: relative; }
 .tools-row .input { flex: 1; }
 .tools-add { width: 44px; flex: none; border: 1px solid var(--rule-2); background: var(--paper-2); color: var(--fg-3); font-size: 22px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
