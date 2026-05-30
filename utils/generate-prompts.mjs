@@ -141,15 +141,8 @@ const chatVoice = extractBlock(
 const shopLogLine  = claudeJs.match(/- shop_log → .+/)?.[0]?.trim() ?? "";
 const shopCheckLine = claudeJs.match(/- shop_check → .+/)?.[0]?.trim() ?? "";
 
-// Translation: extract prompt lines from soul_register.lua
-const translateBatch = (() => {
-  const m = registerLua.match(/local translate_prompt = '([\s\S]+?)'\n\n/);
-  if (!m) return "";
-  return m[1]
-    .replace(/\\n/g, "\n")
-    .replace(/\\'/g, "'")
-    .trim();
-})();
+// Translation: extract via PROMPT_START: translate_batch marker in soul_register.lua
+const translateBatch = extractLuaMarker(registerLua, 'translate_batch') ?? "";
 
 // Translation single-field prompt from translate.lua
 const translateSingle = (() => {
@@ -172,15 +165,31 @@ const today = new Date().toISOString().slice(0, 10);
 
 const content = `# SYS Prompts — Dokumentation
 
-> **Automatisch generiert** von \`utils/generate-prompts.mjs\` — wird nach jedem Git-Commit neu geschrieben.
+> **Automatisch generiert** von \`utils/generate-prompts.mjs\` — wird nach jedem Vault-Sync neu geschrieben.
 > Manuelle Ausführung: \`node utils/generate-prompts.mjs\`
 >
 > Quelldateien: \`app/composables/useClaude.js\`, \`lua/beme.lua\`, \`lua/vision_analyze.lua\`,
 > \`lua/soul_register.lua\`, \`lua/translate.lua\`
 
+---
+
+## Empfehlung: Diese Datei mit einer KI bearbeiten
+
+Diese Datei ist technisch komplex. Viele Abschnitte enthalten Anweisungen, die eng miteinander verzahnt sind — eine unabsichtliche Änderung kann das Verhalten der KI unerwartet verändern.
+
+**Empfohlener Workflow:**
+1. Datei herunterladen und einer KI (z. B. Claude) zeigen
+2. Erklären, was geändert werden soll ("§1 soll direkter klingen", "§6 soll weniger Fragen stellen" etc.)
+3. Die KI schlägt eine überarbeitete Version vor
+4. Überarbeitete Datei auf den Server laden (\`vault/context/prompts.md\`)
+5. Claude Code auf dem VPS bitten, die Änderungen in die Quelldateien zu übertragen
+
+**Was sicher geändert werden darf:** Formulierungen, Ton, Stil, Regeln in §1–§9
+**Nicht anfassen:** JSON-Strukturen, Tool-Namen, technische Endpoints
+
+---
+
 Alle Systemprompts des SYS-Nodes mit Fundstelle im Code.
-Zur externen Überarbeitung herunterladen, verbessern, zurückladen.
-Claude Code auf dem VPS überträgt Änderungen in die Quelldateien.
 
 Stand: ${today}
 
