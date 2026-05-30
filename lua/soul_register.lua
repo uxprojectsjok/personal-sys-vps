@@ -263,11 +263,17 @@ if res.status ~= 200 or pdata.ok ~= true then
   return
 end
 
--- CID in api_context.json persistieren
+-- CID + übersetzte Metadaten in api_context.json persistieren
 ctx.agent_registry_cid    = pdata.cid
 ctx.agent_registry_url    = pdata.gateway_url
 ctx.agent_registered_at   = pdata.pinned_at
 ctx.updated_at            = ngx.now()
+if type(translate_desc) == "string" and #translate_desc > 0 then
+  ctx.description = translate_desc
+end
+if type(translate_tags) == "table" and #translate_tags > 0 then
+  ctx.tags = translate_tags
+end
 
 local wf = io.open(ctx_file, "w")
 if wf then wf:write(cjson.encode(ctx)); wf:close() end

@@ -191,6 +191,22 @@ end
 ctx.amortization = amort
 ctx.updated_at   = ngx.now()
 
+-- Optionale Meta-Felder (description, tags) — für Vorausfüllung im UI
+if type(incoming.description) == "string" then
+  local d = incoming.description:match("^%s*(.-)%s*$"):sub(1, 500)
+  ctx.description = #d > 0 and d or cjson.null
+end
+if type(incoming.tags) == "table" then
+  local clean = setmetatable({}, cjson.array_mt)
+  for _, t in ipairs(incoming.tags) do
+    if type(t) == "string" then
+      local trimmed = t:match("^%s*(.-)%s*$"):sub(1, 64)
+      if #trimmed > 0 then clean[#clean+1] = trimmed end
+    end
+  end
+  if #clean > 0 then ctx.tags = clean end
+end
+
 if not write_ctx(ctx) then
   ngx.status = 500
   ngx.say('{"error":"Storage error"}')

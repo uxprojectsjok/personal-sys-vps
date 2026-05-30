@@ -81,7 +81,8 @@ end
 local preview = {
   soul_id           = soul_id,
   name              = name or "Unknown",
-  description       = nil,  -- editierbar im UI
+  description       = (type(ctx.description) == "string" and #ctx.description > 0) and ctx.description or nil,
+  tags              = (type(ctx.tags) == "table" and #ctx.tags > 0) and ctx.tags or nil,
   schema            = "saveyoursoul/soul/1.0",
   encrypted         = (name == nil),
   mcp_endpoint      = base_url .. "/mcp?soul_id=" .. soul_id,
@@ -103,7 +104,7 @@ if type(amort) == "table" then
 end
 
 -- Editierbare Felder kennzeichnen
-local editable = { "name", "description" }
+local editable = { "name", "description", "tags" }
 local readonly  = { "soul_id", "schema", "mcp_endpoint", "soul_endpoint",
                     "verify_endpoint", "pay_endpoint", "earnings_endpoint",
                     "encrypted", "amortization", "created_at", "version", "maturity" }
