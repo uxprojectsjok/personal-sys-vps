@@ -187,6 +187,7 @@ function parseContractError(e, context = "") {
 // ── AppKit Singleton ───────────────────────────────────────────────────────
 // Wird beim ersten connectWallet()-Aufruf initialisiert (client-only)
 let _appKit = null;
+let _recheckWallet = () => {};
 
 function getOrInitAppKit(projectId) {
   if (_appKit) return _appKit;
@@ -269,8 +270,7 @@ export function useChainAnchor() {
     // Initialen State setzen (z.B. nach Seiten-Reload mit bestehender Session)
     function syncState() {
       const addr = readAddress();
-      const prov = readProvider();
-      if (addr && prov) {
+      if (addr) {
         walletAddress.value = addr;
         currentNetwork.value = readNetwork();
         isConnected.value = true;
@@ -279,14 +279,13 @@ export function useChainAnchor() {
     syncState();
 
     // Account-Subscription: connect / disconnect / wallet-switch
-    // walletAddress immer setzen sobald caip bekannt – auch wenn Provider noch nicht
-    // bereit ist (Provider-Subscription setzt isConnected wenn Provider folgt).
+    // caipAddress vorhanden = Wallet verbunden — Provider kann leicht verzögert folgen.
     const unsubChain = kit.subscribeAccount((account) => {
       const caip = account?.caipAddress;
       if (caip) {
         walletAddress.value = caip.split(":").pop() ?? "";
         currentNetwork.value = readNetwork();
-        if (readProvider()) isConnected.value = true;
+        isConnected.value = true;
       } else {
         walletAddress.value = "";
         currentNetwork.value = "";
@@ -331,6 +330,9 @@ export function useChainAnchor() {
       unsubEvents?.();
       document.removeEventListener("visibilitychange", onVisibility);
     });
+
+    // Expose für externe Aufrufer (z.B. nach connectWallet())
+    _recheckWallet = syncState;
   });
 
   // ── Provider-Helfer ────────────────────────────────────────────────────────
@@ -1204,5 +1206,6 @@ export function useChainAnchor() {
     syncAnchorFromChain,
     cancelAnchor,
     proveIdentity,
+    recheckWallet: () => _recheckWallet(),
   };
 }
