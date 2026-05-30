@@ -45,7 +45,7 @@ local name, created_at, version, maturity
 
 if sf then
   local raw = sf:read("*a"); sf:close()
-  if raw:sub(1, 4) ~= "SYS\x01" then
+  if raw:sub(1, 2) ~= "SY" then  -- fängt SYSCRYPT01 und SYS\x01 gleichermaßen ab
     local front = raw:match("^%-%-%-\n(.-)%-%-%-")
     if front then
       name       = front:match("soul_name:%s*(.-)%s*\n")
@@ -56,8 +56,27 @@ if sf then
   end
 end
 
-local base_url = "https://YOUR_DOMAIN"
+local host = ngx.var.host or "unknown"
+local base_url = "https://" .. host
 local amort = ctx.amortization
+
+-- Erlaubte Tools (muss mit AgentMarketplacePanel.AVAILABLE_TOOLS und registerPaidTools() übereinstimmen)
+-- soul_discover: immer frei. soul_write/soul_earnings: nur für Owner. soul_discover: nicht konfigurierbar.
+local ALLOWED_TOOLS = {
+  soul_read=true, soul_maturity=true, soul_skills=true,
+  audio_get=true, audio_list=true, image_get=true, image_list=true,
+  video_get=true, video_list=true, context_get=true, context_list=true,
+  profile_get=true, calendar_read=true, verify_human=true,
+  health_check_payed=true, shop_write_read=true,
+}
+local function filter_tools(tbl)
+  if type(tbl) ~= "table" then return setmetatable({}, cjson.array_mt) end
+  local out = setmetatable({}, cjson.array_mt)
+  for _, v in ipairs(tbl) do
+    if ALLOWED_TOOLS[v] then out[#out+1] = v end
+  end
+  return out
+end
 
 local preview = {
   soul_id           = soul_id,
@@ -65,7 +84,7 @@ local preview = {
   description       = nil,  -- editierbar im UI
   schema            = "saveyoursoul/soul/1.0",
   encrypted         = (name == nil),
-  mcp_endpoint      = base_url .. "/mcp",
+  mcp_endpoint      = base_url .. "/mcp?soul_id=" .. soul_id,
   soul_endpoint     = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
   verify_endpoint   = base_url .. "/api/soul/verify?soul_id=" .. soul_id,
   pay_endpoint      = base_url .. "/api/soul/pay",
@@ -79,7 +98,7 @@ if type(amort) == "table" then
     enabled         = amort.enabled == true,
     pol_per_request = amort.pol_per_request,
     wallet          = amort.wallet,
-    agent_tools     = amort.agent_tools or amort.free_tools,
+    agent_tools     = filter_tools(amort.agent_tools or amort.free_tools),
   }
 end
 

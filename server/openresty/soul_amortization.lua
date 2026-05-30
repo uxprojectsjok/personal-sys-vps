@@ -4,7 +4,6 @@
 -- Auth: vault_auth.lua (soul_cert)
 
 local cjson   = require("cjson.safe")
-local http    = require("resty.http")
 local soul_id = ngx.ctx.soul_id
 
 if not soul_id then
@@ -37,10 +36,14 @@ end
 
 local DEFAULTS = {
   enabled         = false,
+  private         = false,
   pol_per_request = "0.001",
   wallet          = "",
-  agent_tools     = { "soul_read", "verify_human", "soul_maturity" },
-  activated_at    = cjson.null,
+  agent_tools     = setmetatable({}, cjson.array_mt),
+  trusted_souls   = setmetatable({}, cjson.array_mt),
+  token_duration       = "1d",
+  token_duration_days  = 1,
+  activated_at         = cjson.null,
   verified_wallet = cjson.null,
 }
 
@@ -54,7 +57,12 @@ if ngx.req.get_method() == "GET" then
     return
   end
   local amort = type(ctx.amortization) == "table" and ctx.amortization or DEFAULTS
-  ngx.say(cjson.encode({ ok = true, amortization = amort }))
+  ngx.say(cjson.encode({
+    ok                = true,
+    amortization      = amort,
+    agent_registry_cid = ctx.agent_registry_cid or cjson.null,
+    agent_registry_url = ctx.agent_registry_url or cjson.null,
+  }))
   return
 end
 
@@ -93,60 +101,24 @@ for k, v in pairs(DEFAULTS) do
   if amort[k] == nil then amort[k] = v end
 end
 
--- Aktivieren: Verifikation prüfen
+-- Aktivieren
 if incoming.enabled == true and amort.enabled ~= true then
-  -- 1. Erst im shared-dict Cache nachschauen
-  local cache    = ngx.shared.verify_cache
-  local cached   = cache and cache:get("v1:" .. soul_id)
-  local verified = false
-  local wallet   = nil
-
-  if cached then
-    local ok_c, cd = pcall(cjson.decode, cached)
-    if ok_c and type(cd) == "table" then
-      verified = cd.verified == true
-      wallet   = cd.wallet
-    end
-  else
-    -- Cache kalt: live Abfrage via internem Endpoint
-    local httpc = http.new()
-    httpc:set_timeout(12000)
-    local res, err = httpc:request_uri(
-      "http://127.0.0.1:3098/internal/verify/" .. soul_id,
-      { method = "GET", headers = { ["Accept"] = "application/json" } }
-    )
-    if res and res.status == 200 then
-      local ok_v, vd = pcall(cjson.decode, res.body)
-      if ok_v and type(vd) == "table" then
-        verified = vd.verified == true
-        wallet   = vd.wallet
-        -- Im Cache speichern
-        if cache then
-          local ttl = verified and 86400 or 300
-          vd.cached_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
-          cache:set("v1:" .. soul_id, cjson.encode(vd), ttl)
-        end
-      end
-    end
+  amort.enabled      = true
+  amort.activated_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  -- Wallet aus Anfrage übernehmen wenn vorhanden
+  if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$") then
+    amort.verified_wallet = incoming.wallet
   end
-
-  if not verified then
-    ngx.status = 403
-    ngx.say(cjson.encode({
-      error   = "verification_required",
-      message = "Amortisation nur für Polygon-verifizierte Souls aktivierbar. Bitte erst auf der Blockchain verankern.",
-    }))
-    return
-  end
-
-  amort.enabled         = true
-  amort.activated_at    = os.date("!%Y-%m-%dT%H:%M:%SZ")
-  amort.verified_wallet = wallet
 end
 
 if incoming.enabled == false then
   amort.enabled      = false
   amort.activated_at = cjson.null
+end
+
+-- private: boolean
+if type(incoming.private) == "boolean" then
+  amort.private = incoming.private
 end
 
 -- pol_per_request: positive Zahl als String
@@ -162,12 +134,15 @@ if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$
   amort.wallet = incoming.wallet
 end
 
--- agent_tools: nur erlaubte Tools speichern (muss mit registerPaidTools() übereinstimmen)
+-- agent_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
+-- Muss mit AgentMarketplacePanel.AVAILABLE_TOOLS und registerPaidTools() übereinstimmen.
+-- soul_discover: immer frei, nicht konfigurierbar. soul_write/soul_earnings: nur für Owner.
 local ALLOWED_TOOLS = {
   soul_read=true, soul_maturity=true, soul_skills=true,
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
   profile_get=true, calendar_read=true, verify_human=true,
+  health_check_payed=true, shop_write_read=true,
 }
 local incoming_tools = incoming.agent_tools or incoming.free_tools  -- backward compat
 if type(incoming_tools) == "table" then
@@ -177,7 +152,40 @@ if type(incoming_tools) == "table" then
       clean[#clean + 1] = t
     end
   end
-  amort.agent_tools = clean
+  amort.agent_tools = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
+end
+
+-- trusted_souls: Array von soul_ids (same-server) oder {soul_id,endpoint} (cross-domain)
+local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+if type(incoming.trusted_souls) == "table" then
+  local clean = {}
+  for _, entry in ipairs(incoming.trusted_souls) do
+    if type(entry) == "string" and entry:match(UUID_PAT) then
+      -- Same-Server: plain UUID
+      clean[#clean + 1] = entry
+    elseif type(entry) == "table" then
+      -- Cross-Domain: {soul_id, endpoint}
+      local sid = entry.soul_id
+      local ep  = entry.endpoint
+      if type(sid) == "string" and sid:match(UUID_PAT)
+         and type(ep) == "string" and ep:match("^https?://") and #ep <= 256 then
+        clean[#clean + 1] = { soul_id = sid, endpoint = ep }
+      end
+    end
+  end
+  amort.trusted_souls = #clean > 0 and clean or setmetatable({}, cjson.array_mt)
+end
+
+-- token_duration: erlaubte Werte (Legacy-Feld, bleibt für Kompatibilität)
+local valid_dur = { ["1h"]=true, ["12h"]=true, ["1d"]=true, ["30d"]=true, ["182d"]=true, ["365d"]=true, ["unlimited"]=true }
+if type(incoming.token_duration) == "string" and valid_dur[incoming.token_duration] then
+  amort.token_duration = incoming.token_duration
+end
+
+-- token_duration_days: 1–30 Tage (neues numerisches Feld, überschreibt token_duration)
+if incoming.token_duration_days ~= nil then
+  local d = tonumber(incoming.token_duration_days) or 1
+  amort.token_duration_days = math.max(1, math.min(30, math.floor(d)))
 end
 
 ctx.amortization = amort

@@ -3,7 +3,7 @@
 -- Auth: vault_auth.lua (soul_cert)
 -- Pinnt soul_meta JSON zu IPFS via Pinata (ERC-8004 Agent-Discovery).
 -- Speichert CID in api_context.json als agent_registry_cid.
--- Voraussetzung: Amortisation aktiviert (soul ist polygon-verifiziert).
+-- Kein Anker erforderlich — Registrierung ist unabhängig vom Blockchain-Status.
 
 local cjson = require("cjson.safe")
 local http  = require("resty.http")
@@ -24,7 +24,7 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
--- Optionaler Body: name_override, description
+-- Optionaler Body: name_override, description, tags
 ngx.req.read_body()
 local body_raw = ngx.req.get_body_data() or "{}"
 local ok_b, body_in = pcall(cjson.decode, body_raw)
@@ -33,6 +33,15 @@ local name_override = (type(body_in.name_override) == "string" and #body_in.name
   and body_in.name_override or nil
 local description = (type(body_in.description) == "string" and #body_in.description > 0)
   and body_in.description or nil
+-- Tags aus Body (Priorität) — Fallback auf soul_chain_anchor (wird weiter unten gesetzt)
+local body_tags = nil
+if type(body_in.tags) == "table" then
+  local clean = setmetatable({}, cjson.array_mt)
+  for _, t in ipairs(body_in.tags) do
+    if type(t) == "string" and #t > 0 and #t <= 60 then clean[#clean + 1] = t end
+  end
+  if #clean > 0 then body_tags = clean end
+end
 
 local SOULS_DIR = "/var/lib/sys/souls/"
 local ctx_file  = SOULS_DIR .. soul_id .. "/api_context.json"
@@ -52,52 +61,59 @@ if not ok_c or type(ctx) ~= "table" then
   return
 end
 
--- Voraussetzung: Polygon-verifiziert (amortization.verified_wallet gesetzt)
 local amort = ctx.amortization
-local is_verified = type(amort) == "table"
-  and type(amort.verified_wallet) == "string"
-  and #amort.verified_wallet > 0
-
-if not is_verified then
-  -- Fallback: verify_cache prüfen
-  local cache   = ngx.shared.verify_cache
-  local cached  = cache and cache:get("v1:" .. soul_id)
-  if cached then
-    local ok_v, cd = pcall(cjson.decode, cached)
-    if ok_v and type(cd) == "table" then
-      is_verified = cd.verified == true
-    end
-  end
-end
-
-if not is_verified then
-  ngx.status = 403
-  ngx.say(cjson.encode({
-    error   = "verification_required",
-    message = "Nur Polygon-verifizierte Souls können registriert werden. Bitte erst auf der Blockchain verankern.",
-  }))
-  return
-end
 
 -- soul_meta direkt hier zusammenbauen (wie soul_meta.lua)
 local sys_path = SOULS_DIR .. soul_id .. "/sys.md"
 local sf = io.open(sys_path, "r")
 local name, created_at, version, maturity
+local anchor_tags = setmetatable({}, cjson.array_mt)
 
 if sf then
   local raw = sf:read("*a"); sf:close()
-  if raw:sub(1, 4) ~= "SYS\x01" then
+  if raw:sub(1, 2) ~= "SY" then  -- fängt SYSCRYPT01 und SYS\x01 gleichermaßen ab
     local front = raw:match("^%-%-%-\n(.-)%-%-%-")
     if front then
       name       = front:match("soul_name:%s*(.-)%s*\n")
-      created_at = front:match("created_at:%s*(.-)%s*\n")
+      created_at = front:match("created:%s*(.-)%s*\n") or front:match("created_at:%s*(.-)%s*\n")
       version    = front:match("version:%s*(.-)%s*\n")
       maturity   = tonumber(front:match("maturity:%s*(.-)%s*\n"))
+      -- Kanonische Tags aus soul_chain_anchor lesen (gesetzt beim Blockchain-Anker)
+      local anchor_raw = front:match("soul_chain_anchor:%s*(.-)%s*\n")
+      if anchor_raw then
+        local ok_a, anchor_obj = pcall(cjson.decode, anchor_raw)
+        if ok_a and type(anchor_obj) == "table" and type(anchor_obj.tags) == "table" then
+          for _, t in ipairs(anchor_obj.tags) do
+            if type(t) == "string" and #t > 0 then
+              anchor_tags[#anchor_tags + 1] = t
+            end
+          end
+        end
+      end
     end
   end
 end
 
-local base_url = "https://YOUR_DOMAIN"
+-- Erlaubte Tools (muss mit AgentMarketplacePanel.AVAILABLE_TOOLS und registerPaidTools() übereinstimmen)
+-- soul_discover: immer frei. soul_write/soul_earnings: nur für Owner, nicht für externe Agenten.
+local ALLOWED_TOOLS = {
+  soul_read=true, soul_maturity=true, soul_skills=true,
+  audio_get=true, audio_list=true, image_get=true, image_list=true,
+  video_get=true, video_list=true, context_get=true, context_list=true,
+  profile_get=true, calendar_read=true, verify_human=true,
+  health_check_payed=true, shop_write_read=true,
+}
+local function filter_tools(tbl)
+  if type(tbl) ~= "table" then return setmetatable({}, cjson.array_mt) end
+  local out = setmetatable({}, cjson.array_mt)
+  for _, v in ipairs(tbl) do
+    if ALLOWED_TOOLS[v] then out[#out+1] = v end
+  end
+  return out
+end
+
+local host = ngx.var.host or "unknown"
+local base_url = "https://" .. host
 local meta = {
   soul_id        = soul_id,
   name           = name_override or name or "Unknown",
@@ -105,22 +121,31 @@ local meta = {
   encrypted      = (name == nil),
   api_enabled    = ctx.enabled == true,
   public_vault   = false,
-  mcp_endpoint   = base_url .. "/mcp",
+  mcp_endpoint   = base_url .. "/mcp?soul_id=" .. soul_id,
   soul_endpoint  = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
   verify_endpoint = base_url .. "/api/soul/verify?soul_id=" .. soul_id,
   pay_endpoint   = base_url .. "/api/soul/pay",
   earnings_endpoint = base_url .. "/api/soul/earnings",
 }
-if created_at   then meta.created_at   = created_at   end
+if created_at   then meta.created      = created_at   end
 if version      then meta.version      = version      end
 if maturity     then meta.maturity     = maturity     end
 if description  then meta.description  = description  end
+-- Tags: Body hat Priorität, Fallback auf soul_chain_anchor
+local final_tags = body_tags or (#anchor_tags > 0 and anchor_tags or nil)
+if final_tags then meta.tags = final_tags end
 if type(amort) == "table" then
+  local no_tools = setmetatable({}, cjson.array_mt)
+  local days     = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
   meta.amortization = {
-    enabled         = amort.enabled == true,
-    pol_per_request = amort.pol_per_request,
-    wallet          = amort.wallet,
-    agent_tools     = amort.agent_tools or amort.free_tools,
+    enabled              = amort.enabled == true,
+    private              = amort.private == true,
+    pol_per_request      = amort.pol_per_request,
+    wallet               = amort.wallet,
+    -- agent_tools nur im Bezahlt-Modus relevant (gefiltert auf erlaubte Tools)
+    agent_tools          = (amort.enabled == true)
+                           and filter_tools(amort.agent_tools or amort.free_tools) or no_tools,
+    token_duration_days  = days,
   }
 end
 
