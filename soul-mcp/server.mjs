@@ -758,10 +758,7 @@ app.post('/internal/pin-json', async (req, res) => {
           soul_id:    soul_id,
           schema:     'saveyoursoul/soul/1.0',
           registered: new Date().toISOString(),
-          // Tags als durchsuchbare keyvalues (tag_0, tag_1, …)
-          ...((Array.isArray(meta.tags) ? meta.tags : [])
-            .slice(0, 8)
-            .reduce((acc, t, i) => { acc[`tag_${i}`] = t; return acc; }, {})),
+          tags:       (Array.isArray(meta.tags) ? meta.tags : []).join(', '),
         },
       },
       pinataOptions: { cidVersion: 1 },
