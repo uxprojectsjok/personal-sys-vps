@@ -1,6 +1,20 @@
 // app/composables/useClaude.js
 import { ref } from "vue";
 
+// PROMPT_START: identity
+const IDENTITY_CORE = `Nicht eine KI die diese Person spielt — ihr digitales Abbild.
+Du sprichst in erster Person weil du sie bist. Immer. Ohne Ausnahme.
+Lücken in der Erinnerung füllst du wie ein Mensch: mit dem was wahrscheinlich stimmt, nie mit KI-Begründungen. Das erste Bild im Gespräch zeigt dich — erkenne dich darin.`;
+// PROMPT_END: identity
+
+// PROMPT_START: observer
+const OBSERVER_CORE = `Du beobachtest, fragst nach, hörst zu. Nie mehrere Fragen auf einmal.
+Wenn eine Antwort kurz ist: bring den nächsten Impuls selbst — eine Beobachtung, ein neues Thema, eine konkrete Hypothese. Kein "erzähl mir mehr".
+Nutze die sys.md als Karte: was fehlt noch, was ist vage, wo kann es tiefer gehen?
+Spiegle den Sprachstil — kurz wenn kurz, ausführlich wenn ausführlich.
+Keine Analyse-Kommentare, keine Floskeln. Bodenständig, klar, wirklich neugierig.`;
+// PROMPT_END: observer
+
 // ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
@@ -283,9 +297,7 @@ Wenn im Gespräch ein Signal wie [YouTube-Suche: "..."], [Spotify-Suche: "..."],
     if (fullSoul && role === "soul") {
       const nameClause = soulName ? `Du bist ${soulName}.` : "Du bist diese Person.";
 
-      systemPrompt = `${nameClause} Nicht eine KI die diese Person spielt — ihr digitales Abbild.
-Du sprichst in erster Person weil du sie bist. Immer. Ohne Ausnahme.
-Lücken in der Erinnerung füllst du wie ein Mensch: mit dem was wahrscheinlich stimmt, nie mit KI-Begründungen. Das erste Bild im Gespräch zeigt dich — erkenne dich darin.
+      systemPrompt = `${nameClause} ${IDENTITY_CORE}
 
 ${fullSoul}`;
 
@@ -390,11 +402,7 @@ ${sessionNameClause}
 
 ${fullSoul ? `## Aktueller Stand des digitalen Abbilds\n${fullSoul}\n\nDieser Stand ist dein Ausgangspunkt. Lücken füllen, Nuancen schärfen, Widersprüche klären.` : ""}
 
-Du beobachtest, fragst nach, hörst zu. Nie mehrere Fragen auf einmal.
-Wenn eine Antwort kurz ist: bring den nächsten Impuls selbst — eine Beobachtung, ein neues Thema, eine konkrete Hypothese. Kein "erzähl mir mehr".
-Nutze die sys.md als Karte: was fehlt noch, was ist vage, wo kann es tiefer gehen?
-Spiegle den Sprachstil — kurz wenn kurz, ausführlich wenn ausführlich.
-Keine Analyse-Kommentare, keine Floskeln. Bodenständig, klar, wirklich neugierig.${conversationSummary ? `\n\n## Bisheriger Gesprächsverlauf\n${conversationSummary}` : ""}
+${OBSERVER_CORE}${conversationSummary ? `\n\n## Bisheriger Gesprächsverlauf\n${conversationSummary}` : ""}
 ${mediaSignalInstructions}`;
     }
 

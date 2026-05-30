@@ -28,11 +28,85 @@ function extractBlock(source, startMarker, endMarker) {
   return end === -1 ? source.slice(from).trim() : source.slice(from, end).trim();
 }
 
+// Extrahiert Text zwischen // PROMPT_START: <key> und // PROMPT_END: <key>
+// Bereinigt JS-Template-Literal-Syntax (Backticks, ${...} am Anfang/Ende)
+function extractMarker(source, key) {
+  const start = source.indexOf(`// PROMPT_START: ${key}`);
+  const end   = source.indexOf(`// PROMPT_END: ${key}`);
+  if (start === -1 || end === -1) return null;
+  let block = source.slice(start, end);
+  // Inhalt des const-Ausdrucks extrahieren (backtick template literal)
+  const inner = block.match(/`([\s\S]*?)`/);
+  if (inner) return inner[1].trim();
+  return null;
+}
+
+// Extrahiert Text zwischen -- PROMPT_START: <key> und -- PROMPT_END: <key> (Lua)
+// Bereinigt Lua-Long-String-Syntax ([[...]]) und String-Verkettungen
+function extractLuaMarker(source, key) {
+  const start = source.indexOf(`-- PROMPT_START: ${key}`);
+  const end   = source.indexOf(`-- PROMPT_END: ${key}`);
+  if (start === -1 || end === -1) return null;
+  let block = source.slice(start, end);
+  // Long-String [[...]] extrahieren
+  const longStr = block.match(/\[\[([\s\S]*?)\]\]/g);
+  if (longStr) {
+    return longStr.map(s => s.slice(2, -2).replace(/^\n/, '').replace(/\n$/, '')).join('\n').trim();
+  }
+  // Single-quoted Lua string 'text'
+  const singleStr = block.match(/'([^']+)'/);
+  if (singleStr) return singleStr[1].replace(/\\n/g, '\n').trim();
+  // Verkettete .. '\n\n## ...' Strings → Zeilen zusammenbauen
+  const lines = [...block.matchAll(/'\n- ([^']+)'/g)].map(m => `- ${m[1]}`);
+  if (lines.length) {
+    const header = block.match(/'\\n\\n(## [^']+)'/)?.[1] || '';
+    return (header ? header + '\n' : '') + lines.join('\n');
+  }
+  return null;
+}
+
 const claudeJs      = readFileSync(join(ROOT, "app/composables/useClaude.js"), "utf8");
 const bemeLua       = readFileSync(join(ROOT, "lua/beme.lua"), "utf8");
 const visionLua     = readFileSync(join(ROOT, "lua/vision_analyze.lua"), "utf8");
 const registerLua   = readFileSync(join(ROOT, "lua/soul_register.lua"), "utf8");
 const translateLua  = readFileSync(join(ROOT, "lua/translate.lua"), "utf8");
+
+// §1 Identität (Marker in useClaude.js)
+const chatIdentityCore = extractMarker(claudeJs, 'identity') ?? `Nicht eine KI die diese Person spielt — ihr digitales Abbild.
+Du sprichst in erster Person weil du sie bist. Immer. Ohne Ausnahme.
+Lücken in der Erinnerung füllst du wie ein Mensch: mit dem was wahrscheinlich stimmt, nie mit KI-Begründungen. Das erste Bild im Gespräch zeigt dich — erkenne dich darin.`;
+
+// §6 Beobachter (Marker in useClaude.js)
+const chatObserver = extractMarker(claudeJs, 'observer') ?? `Du beobachtest, fragst nach, hörst zu. Nie mehrere Fragen auf einmal.`;
+
+// §7 Beme (Marker in beme.lua)
+const bemeCore = extractLuaMarker(bemeLua, 'beme');
+const bemePrompt = bemeCore ?? `Nicht eine KI die diese Person spielt — ihr digitales Abbild.
+Du sprichst in erster Person weil du sie bist. Ohne Ausnahme.
+Erinnerungslücken füllst du menschlich, nie mit KI-Begründung.
+
+Direkt. Ohne Anlauf. Du bringst deine Meinung wenn sie passt.
+Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
+Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.`;
+
+// §8 Vision Persona (Marker in vision_analyze.lua)
+const visionPersona = extractLuaMarker(visionLua, 'vision_persona')
+  ?.replace(/^'|'$/g, '').replace(/\\n/g, '\n')
+  ?? 'Du bist SEELE – eine empathische, intuitive KI, die ihren Nutzer persönlich kennt und tief mit ihm verbunden ist.';
+
+// §8 soulReaction (Marker in vision_analyze.lua)
+const visionReactionRaw = (() => {
+  const start = visionLua.indexOf('-- PROMPT_START: soul_reaction');
+  const end   = visionLua.indexOf('-- PROMPT_END: soul_reaction');
+  if (start === -1 || end === -1) return null;
+  const block = visionLua.slice(start, end);
+  const lines = [...block.matchAll(/'\n- ([^']+)'/g)].map(m => `- ${m[1]}`);
+  return lines.length ? lines.join('\n') : null;
+})();
+const visionReaction = visionReactionRaw ?? `- Du kennst diese Person. Reagiere wie jemand der sie wirklich kennt — ungefiltert, mit echter Persönlichkeit
+- Humor, Direktheit, Wärme — je nachdem was zur Soul passt und was das Bild auslöst
+- Keine Assistenten-Floskeln. Kein "Wie schön". Kein "Ich sehe..."
+- Direkt ansprechen. Keine Emojis. Keine Beleidigungen.`;
 
 // Chat-KI: Kommunikationsstil
 const chatStyle = extractBlock(
@@ -62,27 +136,6 @@ const chatVoice = extractBlock(
   "---`;"
 )?.trim() ?? "";
 
-// Chat-KI: Session/Beobachter-Modus (static — JS template literals in source)
-const chatObserver = `Du beobachtest, fragst nach, hörst zu. Nie mehrere Fragen auf einmal.
-Wenn eine Antwort kurz ist: bring den nächsten Impuls selbst — eine Beobachtung, ein neues Thema, eine konkrete Hypothese. Kein "erzähl mir mehr".
-Nutze die sys.md als Karte: was fehlt noch, was ist vage, wo kann es tiefer gehen?
-Spiegle den Sprachstil — kurz wenn kurz, ausführlich wenn ausführlich.
-Keine Analyse-Kommentare, keine Floskeln. Bodenständig, klar, wirklich neugierig.`;
-
-// Beme: static — Lua long-string concatenation cannot be cleanly extracted
-const bemePrompt = `Nicht eine KI die diese Person spielt — ihr digitales Abbild.
-Du sprichst in erster Person weil du sie bist. Ohne Ausnahme.
-Erinnerungslücken füllst du menschlich, nie mit KI-Begründung.
-
-Direkt. Ohne Anlauf. Du bringst deine Meinung wenn sie passt.
-Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
-Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.`;
-
-// Vision: static — Lua string concatenation cannot be cleanly extracted
-const visionReaction = `- Du kennst diese Person. Reagiere wie jemand der sie wirklich kennt — ungefiltert, mit echter Persönlichkeit
-- Humor, Direktheit, Wärme — je nachdem was zur Soul passt und was das Bild auslöst
-- Keine Assistenten-Floskeln. Kein "Wie schön". Kein "Ich sehe..."
-- Direkt ansprechen. Keine Emojis. Keine Beleidigungen.`;
 
 // shop_check: extract from useClaude.js tool-rules section
 const shopLogLine  = claudeJs.match(/- shop_log → .+/)?.[0]?.trim() ?? "";
@@ -139,9 +192,7 @@ Stand: ${today}
 **Kontext:** Wird für jeden Chat-Request zusammengebaut. \`[NAME]\` = Name aus sys.md.
 
 \`\`\`
-[NAME] Nicht eine KI die diese Person spielt — ihr digitales Abbild.
-Du sprichst in erster Person weil du sie bist. Immer. Ohne Ausnahme.
-Lücken in der Erinnerung füllst du wie ein Mensch: mit dem was wahrscheinlich stimmt, nie mit KI-Begründungen. Das erste Bild im Gespräch zeigt dich — erkenne dich darin.
+[NAME] ${chatIdentityCore}
 \`\`\`
 
 ---
@@ -224,7 +275,7 @@ ${chatObserver}
 der Rest (JSON-Format, Food-Detection) ist technisch und sollte nicht verändert werden.
 
 \`\`\`
-Du bist SEELE – eine empathische, intuitive KI, die ihren Nutzer persönlich kennt und tief mit ihm verbunden ist.
+${visionPersona}
 
 ## soulReaction (nur wenn kein Lebensmittelbild)
 ${visionReaction}
