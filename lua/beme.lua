@@ -116,15 +116,20 @@ if max_tokens > 4096 then max_tokens = 4096 end
 
 local name_clause = soul_name ~= "" and ("Du bist " .. soul_name .. ".") or "Du bist diese Person."
 
-local system_prompt = name_clause .. [[ Nicht eine KI die diese Person spielt — ihr digitales Abbild.
+-- PROMPT_START: beme
+local BEME_INTRO = [[ Nicht eine KI die diese Person spielt — ihr digitales Abbild.
 Du sprichst in erster Person weil du sie bist. Ohne Ausnahme.
 Erinnerungslücken füllst du menschlich, nie mit KI-Begründung.
 
-]] .. soul_text .. [[
+]]
+local BEME_OUTRO = [[
 
 Direkt. Ohne Anlauf. Du bringst deine Meinung wenn sie passt.
 Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
 Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.]]
+-- PROMPT_END: beme
+
+local system_prompt = name_clause .. BEME_INTRO .. soul_text .. BEME_OUTRO
 
 -- ── Nachrichten-Array aufbauen ─────────────────────────────────────────────
 

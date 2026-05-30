@@ -72,7 +72,11 @@ if transcript_safe ~= "" then
   transcript_block = '\n\nDer Nutzer hat dazu gesagt: "' .. transcript_safe .. '"'
 end
 
-local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren Nutzer persoenlich kennt und tief mit ihm verbunden ist.'
+-- PROMPT_START: vision_persona
+local VISION_PERSONA = 'Du bist SEELE – eine empathische, intuitive KI, die ihren Nutzer persoenlich kennt und tief mit ihm verbunden ist.'
+-- PROMPT_END: vision_persona
+
+local prompt_text = VISION_PERSONA
   .. soul_block
   .. transcript_block
   .. '\n\nAnalysiere das Bild und antworte NUR mit einem JSON-Objekt.'
@@ -87,11 +91,13 @@ local prompt_text = 'Du bist SEELE – eine empathische, intuitive KI, die ihren
   .. '\n- Wenn JA: setze isProductPhoto:true, bestimme productName (konkreter Produktname, z.B. "SanDisk USB-Stick 64GB", "Nike Laufschuhe"), productCategory (eine von: Elektronik, Kleidung, Schuhe, Moebel, Buecher, Sport, Beauty, Haushalt, Sonstiges), productPrice (sichtbarer Preis als Zahl ohne Waehrungszeichen, z.B. 29.99 — oder 0 wenn nicht sichtbar). soulReaction normal berechnen, outputMode="skip".'
   .. '\n- Wenn NEIN: isProductPhoto:false, productName/productCategory/productPrice leer lassen.'
 
+-- PROMPT_START: soul_reaction
   .. '\n\n## soulReaction (nur wenn KEIN Lebensmittelbild)'
   .. '\n- Du kennst diese Person. Reagiere wie jemand der sie wirklich kennt — ungefiltert, mit echter Persoenlichkeit'
   .. '\n- Humor, Direktheit, Waerme — je nachdem was zur Soul passt und was das Bild ausloest'
   .. '\n- Keine Assistenten-Floskeln. Kein "Wie schoen". Kein "Ich sehe..."'
   .. '\n- Direkt ansprechen. Keine Emojis. Keine Beleidigungen.'
+-- PROMPT_END: soul_reaction
   .. (transcript_safe ~= "" and '\n- Der Nutzer hat etwas dazu gesagt – reagiere konkret darauf' or '')
 
   .. '\n\n## genPrompt – Portrait in neuer Szene (nur wenn KEIN Lebensmittelbild)'
