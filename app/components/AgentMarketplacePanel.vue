@@ -182,10 +182,11 @@
                       type="button"
                       class="tool-chip"
                       :class="{ active: amort.agent_tools.includes(tool) }"
+                      :title="tool"
                       @click="toggleTool(tool)"
                     >
                       <span class="chip-check">{{ amort.agent_tools.includes(tool) ? '✓' : '+' }}</span>
-                      {{ tool }}
+                      {{ TOOL_LABELS[tool] || tool }}
                     </button>
                     <button
                       v-for="tool in BETA_TOOLS"
@@ -538,6 +539,25 @@ const AVAILABLE_TOOLS = [
   'verify_human',
   'video_get', 'video_list',
 ]
+
+const TOOL_LABELS = {
+  audio_get:          'Audio abrufen',
+  audio_list:         'Audio auflisten',
+  calendar_read:      'Kalender lesen',
+  context_get:        'Kontext lesen',
+  context_list:       'Kontext auflisten',
+  health_check_payed: 'Gesundheit',
+  image_get:          'Bild abrufen',
+  image_list:         'Bilder auflisten',
+  profile_get:        'Profil abrufen',
+  shop_write_read:    'Shopping',
+  soul_maturity:      'Reifegrad',
+  soul_read:          'Soul lesen',
+  soul_skills:        'Skills',
+  verify_human:       'Menschlichkeit',
+  video_get:          'Video abrufen',
+  video_list:         'Videos auflisten',
+}
 
 // Beta tools — sichtbar aber nicht interaktiv (developer opt-in)
 const BETA_TOOLS = ['elevenlabs_agent_update']
