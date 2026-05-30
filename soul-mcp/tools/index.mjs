@@ -30,9 +30,12 @@ import { register as healthCheck }           from './health_check.mjs';
 import { register as foodLog }               from './food_log.mjs';
 import { register as healthSync }            from './health_sync.mjs';
 
+// ── Owner Filesystem-Tools ────────────────────────────────────────────────────
+import { register as shopWriteRead }         from './shop_write_read.mjs';
+import { register as twilioCallConfig }      from './twilio_call_config.mjs';
+
 // ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
 import { register as healthCheckPayed }      from './health_check_payed.mjs';
-import { register as shopWriteRead }         from './shop_write_read.mjs';
 
 // ── Paid-Agent / Peer – Filesystem-basierte Varianten ────────────────────────
 import { register as soulReadPaid }          from './soul_read_paid.mjs';
@@ -51,8 +54,9 @@ import { register as soulCommentPeer }       from './soul_comment_peer.mjs';
 
 /**
  * Registriert alle MCP-Tools für den Soul-Inhaber (service_token / OAuth).
+ * @param {string} soulId  — owner soul_id (für Filesystem-basierte Tools); optional
  */
-export function registerTools(server, token) {
+export function registerTools(server, token, soulId = null) {
   soulRead(server, token);
   soulWrite(server, token);
   bemeChat(server, token);
@@ -83,6 +87,8 @@ export function registerTools(server, token) {
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
+  twilioCallConfig(server, token);
+  if (soulId) shopWriteRead(server, soulId);
 }
 
 /**

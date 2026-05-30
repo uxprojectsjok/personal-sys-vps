@@ -139,7 +139,9 @@ async function handleMcp(req, res) {
     const resolvedTargetId = trusted.soul_id;
     registerPeerTools(server, token, [], resolvedTargetId);
   } else {
-    registerTools(server, token);
+    const dirs = await readdir(SOULS_DIR).catch(() => []);
+    const ownerSoulId = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) ?? null;
+    registerTools(server, token, ownerSoulId);
   }
 
   registerPrompts(server);
