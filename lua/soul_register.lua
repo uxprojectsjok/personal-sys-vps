@@ -147,6 +147,18 @@ if has_text and api_key ~= "" then
     tags_str = table.concat(final_tags, ", ")
   end
 
+-- PROMPT_START: translate_batch
+  local TRANSLATE_BATCH_TEMPLATE = [[Translate the following fields to English. Reply ONLY with a JSON object, no explanation.
+
+{"description":"...","tags":"..."}
+
+Rules:
+- Keep proper nouns (city names, brand names, person names) as-is
+- If already English, return unchanged
+- tags: comma-separated, concise English keywords
+- Return exactly: {"description":"...","tags":"..."}]]
+-- PROMPT_END: translate_batch
+
   local translate_prompt = 'Translate the following fields to English. Reply ONLY with a JSON object, no explanation.\n\n'
     .. '{"description":"' .. (description or ""):gsub('"', '\\"') .. '","tags":"' .. tags_str:gsub('"', '\\"') .. '"}\n\n'
     .. 'Rules:\n'
