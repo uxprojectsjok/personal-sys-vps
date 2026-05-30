@@ -179,11 +179,26 @@ app.get('/health', (_req, res) => {
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
 import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul } from './lib/soul_indexer.mjs';
-import { writeFile }   from 'fs/promises';
+import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+async function ensureContextRegistered(soulId, filename) {
+  const ctxPath = `${SOULS_DIR}${soulId}/api_context.json`;
+  try {
+    const raw = await readFileFs(ctxPath, 'utf8');
+    const ctx = JSON.parse(raw);
+    const sf  = ctx.synced_files = ctx.synced_files || {};
+    const arr = Array.isArray(sf.context) ? sf.context : [];
+    if (!arr.includes(filename)) {
+      arr.push(filename);
+      sf.context = arr;
+      await writeFile(ctxPath, JSON.stringify(ctx), 'utf8');
+    }
+  } catch { /* nicht kritisch — Hauptaktion bereits abgeschlossen */ }
+}
 
 const MIND_WRITE_PROTECTED = new Set(['Identität', 'Grenzen']);
 
@@ -468,6 +483,7 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         if (existingAnnual) out += '\n'+existingAnnual;
         out += '\n';
         await writeFile(healthPath, out, 'utf8');
+        await ensureContextRegistered(soulId, 'health.md');
         const msg = newSummaries.length>0
           ? `Eingetragen: ${newEntry}\n\nMonatswechsel: Vormonat ins Annual Journal archiviert.`
           : `Eingetragen: ${newEntry}`;
@@ -532,6 +548,7 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         out+=`\n\n## Monthly Summary (${currentMonth})\n${monthlyContent}`;
         out+=`\n\n## Annual Categories (${currentYear})\n${annualContent}\n`;
         await writeFile(shopPath, out, 'utf8');
+        await ensureContextRegistered(soulId, 'shopping.md');
         return res.json({ content: [{ type: 'text', text: `Eingetragen: ${newEntry}` }] });
       }
 
@@ -760,8 +777,10 @@ app.post('/internal/pin-json', async (req, res) => {
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      return res.status(response.status).json({ error: 'Pinata-Fehler', detail: text });
+      let detail = await response.text();
+      try { detail = JSON.parse(detail); } catch { /* keep as string */ }
+      const msg = typeof detail === 'object' ? (detail.error?.details || detail.error?.reason || JSON.stringify(detail)) : detail;
+      return res.status(response.status).json({ error: 'Pinata-Fehler', message: msg, detail });
     }
 
     const data = await response.json();
