@@ -142,6 +142,7 @@ local ALLOWED_TOOLS = {
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
   profile_get=true, calendar_read=true, verify_human=true,
+  health_check_payed=true, shop_write_read=true,
 }
 local incoming_tools = incoming.agent_tools or incoming.free_tools  -- backward compat
 if type(incoming_tools) == "table" then
