@@ -252,9 +252,9 @@
                   </div>
                 </div>
                 <div class="field">
-                  <label class="field-label">Tags <span class="field-hint">kommasepariert · für soul_discover</span></label>
+                  <label class="field-label">Discovery-Tags <span class="field-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</span></label>
                   <div class="translate-wrap">
-                    <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, Philosophie, KI…" @blur="translateField('tags')" />
+                    <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, AI, Design, Musik…" @blur="translateField('tags')" />
                     <span v-if="translating.tags" class="translate-spin">⟳</span>
                   </div>
                 </div>
@@ -531,6 +531,26 @@ const previewReadonly = computed(() => {
 // ═══════════ LIVE-ÜBERSETZUNG ═══════════
 const translating = reactive({ description: false, tags: false })
 
+async function persistMetaFields() {
+  if (!props.soulCert) return
+  try {
+    await fetch('/api/soul/amortization', {
+      method: 'PUT',
+      headers: authHeader(),
+      body: JSON.stringify({
+        enabled:             amort.enabled,
+        pol_per_request:     amort.pol_per_request,
+        wallet:              amort.wallet,
+        agent_tools:         amort.agent_tools,
+        trusted_souls:       peersToTrustedSouls(peers.value),
+        token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
+        description:         preview.value.description || '',
+        tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
+      }),
+    })
+  } catch { /* silent */ }
+}
+
 async function translateField(field) {
   const text = field === 'tags' ? preview.value.tags : preview.value.description
   if (!text || !text.trim() || !props.soulCert) return
@@ -548,6 +568,7 @@ async function translateField(field) {
         else preview.value.description = d.translated
       }
     }
+    await persistMetaFields()
   } catch { /* silent */ } finally {
     translating[field] = false
   }
@@ -787,6 +808,7 @@ async function register() {
     newCid.value     = d.cid || ''
     currentCid.value = d.cid || ''
     registered.value = true
+    await loadPreview()
   } catch (e) {
     registerError.value = e.message
   } finally {
