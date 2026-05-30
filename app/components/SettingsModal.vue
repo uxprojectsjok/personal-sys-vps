@@ -187,6 +187,29 @@
                 />
               </div>
 
+              <!-- Reown Project ID -->
+              <div class="sys-field" style="gap:12px">
+                <label class="sys-field-label">
+                  Reown Project ID
+                  <span v-if="reownSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ reownPreview }}</span>
+                </label>
+                <input
+                  v-model="reownProjectId"
+                  type="password"
+                  class="sys-input sys-input--mono"
+                  :style="reownSet ? 'border-color:var(--sys-ok)' : ''"
+                  :placeholder="reownSet ? 'Neu eingeben zum Überschreiben…' : 'a1b2c3d4…'"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @input="reownDirty = true"
+                  @keyup.enter="saveConfig"
+                />
+                <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-3)">
+                  Für Wallet-Connect (Blockchain-Anker) ·
+                  <a href="https://dashboard.reown.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">dashboard.reown.com</a>
+                </span>
+              </div>
+
               <!-- Zapier MCP -->
               <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label" style="margin-bottom:4px">Zapier MCP</label>
@@ -658,6 +681,11 @@ const braveKeySet  = ref(false)
 const bravePreview = ref('')
 const braveDirty   = ref(false)
 
+const reownProjectId = ref('')
+const reownSet       = ref(false)
+const reownPreview   = ref('')
+const reownDirty     = ref(false)
+
 const mcpUrl    = ref('')
 const mcpUrlSet = ref(false)
 const mcpPreview = ref('')
@@ -699,6 +727,8 @@ async function loadStatus() {
     bravePreview.value = d.brave_preview || ''
     mcpUrlSet.value  = !!d.mcp_url_set
     mcpPreview.value = d.mcp_preview || ''
+    reownSet.value     = !!d.reown_project_id_set
+    reownPreview.value = d.reown_preview || ''
 
     if (d.model) model.value = d.model
   } catch {}
@@ -855,6 +885,7 @@ async function saveConfig() {
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
     if (braveDirty.value) body.brave_key = sanitizeKey(braveKey.value)
     if (mcpDirty.value) body.mcp_url = sanitizeKey(mcpUrl.value)
+    if (reownDirty.value) body.reown_project_id = reownProjectId.value.trim()
     const res = await fetch('/api/set-config', {
       method:  'POST',
       headers: {
@@ -876,6 +907,8 @@ async function saveConfig() {
       braveDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
+      reownProjectId.value = ''
+      reownDirty.value = false
       if (body.mcp_url !== undefined) { clearMcpCache(); loadMcpTools(soulToken.value) }
     } else {
       feedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }

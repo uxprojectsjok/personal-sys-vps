@@ -40,6 +40,7 @@ local elevenlabs_agent_url = body.elevenlabs_agent_url
 local brave_key            = body.brave_key
 local model                = body.model
 local mcp_url              = body.mcp_url
+local reown_project_id     = body.reown_project_id
 
 if anthropic_key ~= nil then
   if type(anthropic_key) ~= "string" then
@@ -76,6 +77,21 @@ if brave_key ~= nil and type(brave_key) ~= "string" then
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"invalid_brave_key"}')
   return
+end
+
+if reown_project_id ~= nil then
+  if type(reown_project_id) ~= "string" then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_reown_project_id"}')
+    return
+  end
+  if reown_project_id ~= "" and not reown_project_id:match("^[a-f0-9]+$") then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_reown_project_id","message":"Nur Hex-Zeichen erlaubt (a-f, 0-9)"}')
+    return
+  end
 end
 
 if elevenlabs_agent_url ~= nil and type(elevenlabs_agent_url) ~= "string" then
@@ -142,6 +158,9 @@ end
 if mcp_url ~= nil then
   existing.mcp_url = (mcp_url ~= "") and mcp_url or nil
 end
+if reown_project_id ~= nil then
+  existing.reown_project_id = (reown_project_id ~= "") and reown_project_id or nil
+end
 
 -- ── Schreiben ──────────────────────────────────────────────────────────────────
 os.execute("mkdir -p /var/lib/sys/souls/" .. soul_id)
@@ -192,7 +211,8 @@ ngx.say(cjson.encode({
   has_own_key        = type(existing.anthropic_key) == "string" and existing.anthropic_key ~= "",
   wavespeed_key_set  = type(existing.wavespeed_key) == "string" and existing.wavespeed_key ~= "",
   elevenlabs_key_set = type(existing.elevenlabs_key) == "string" and existing.elevenlabs_key ~= "",
-  brave_key_set        = type(existing.brave_key) == "string" and existing.brave_key ~= "",
-  elevenlabs_agent_url = existing.elevenlabs_agent_url or cjson.null,
-  model                = existing.model or cjson.null,
+  brave_key_set          = type(existing.brave_key) == "string" and existing.brave_key ~= "",
+  elevenlabs_agent_url   = existing.elevenlabs_agent_url or cjson.null,
+  model                  = existing.model or cjson.null,
+  reown_project_id_set   = type(existing.reown_project_id) == "string" and existing.reown_project_id ~= "",
 }))

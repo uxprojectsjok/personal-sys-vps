@@ -68,6 +68,13 @@ if has_mcp then
   mcp_preview = u:sub(1, 28) .. "…"
 end
 
+local has_reown = type(soul_cfg.reown_project_id) == "string" and soul_cfg.reown_project_id ~= ""
+local reown_preview = ""
+if has_reown then
+  local k = soul_cfg.reown_project_id
+  reown_preview = k:sub(1, 8) .. "..." .. k:sub(-4)
+end
+
 -- ── Aktiver Key-Status (welche Ebene wird genutzt?) ───────────────────────────
 local key_source = "env"
 if has_own_key then
@@ -106,4 +113,6 @@ ngx.say(cjson.encode({
   model                  = soul_cfg.model or cjson.null,
   mcp_url_set            = has_mcp,
   mcp_preview            = mcp_preview,
+  reown_project_id_set   = has_reown,
+  reown_preview          = reown_preview,
 }))

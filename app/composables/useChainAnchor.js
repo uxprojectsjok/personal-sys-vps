@@ -363,10 +363,25 @@ export function useChainAnchor() {
     if (typeof window === "undefined") return;
     if (isConnected.value) return;
     anchorError.value = "";
-    const config = useRuntimeConfig();
-    const projectId = config.public.walletConnectProjectId;
+
+    // Project ID: Runtime (config.json) hat Priorität, dann Build-Time-Env-Fallback
+    let projectId = "";
+    try {
+      const r = await fetch("/api/get-config", {
+        headers: { Authorization: `Bearer ${soulToken.value}` },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        projectId = d.reown_project_id || "";
+      }
+    } catch { /* ignore */ }
     if (!projectId) {
-      anchorError.value = "Kein WalletConnect Project ID konfiguriert. Bitte WALLETCONNECT_PROJECT_ID in .env eintragen (kostenlos: cloud.walletconnect.com).";
+      const config = useRuntimeConfig();
+      projectId = config.public.walletConnectProjectId || "";
+    }
+
+    if (!projectId) {
+      anchorError.value = "Kein Reown Project ID konfiguriert. Bitte in den Einstellungen eintragen (dashboard.reown.com).";
       return;
     }
     const kit = getOrInitAppKit(projectId);
