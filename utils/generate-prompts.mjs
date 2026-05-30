@@ -3,8 +3,13 @@
  * Generates prompts.md in vault/context/ for all registered souls.
  * Run from the project root: node utils/generate-prompts.mjs
  *
- * IMPORTANT: Re-run this script after changing any system prompt in the source code.
- * Affected files: app/composables/useClaude.js, lua/beme.lua, lua/vision_analyze.lua
+ * Auto-executed via .git/hooks/post-commit after every commit.
+ * Affected source files:
+ *   app/composables/useClaude.js
+ *   lua/beme.lua
+ *   lua/vision_analyze.lua
+ *   lua/soul_register.lua
+ *   lua/translate.lua
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
@@ -23,12 +28,11 @@ function extractBlock(source, startMarker, endMarker) {
   return end === -1 ? source.slice(from).trim() : source.slice(from, end).trim();
 }
 
-const claudeJs = readFileSync(join(ROOT, "app/composables/useClaude.js"), "utf8");
-const bemeLua  = readFileSync(join(ROOT, "lua/beme.lua"), "utf8");
-const visionLua = readFileSync(join(ROOT, "lua/vision_analyze.lua"), "utf8");
-
-// Chat-KI: Identität (static — template literal variables in source)
-const chatIdentity = null; // unused — hardcoded in output template below
+const claudeJs      = readFileSync(join(ROOT, "app/composables/useClaude.js"), "utf8");
+const bemeLua       = readFileSync(join(ROOT, "lua/beme.lua"), "utf8");
+const visionLua     = readFileSync(join(ROOT, "lua/vision_analyze.lua"), "utf8");
+const registerLua   = readFileSync(join(ROOT, "lua/soul_register.lua"), "utf8");
+const translateLua  = readFileSync(join(ROOT, "lua/translate.lua"), "utf8");
 
 // Chat-KI: Kommunikationsstil
 const chatStyle = extractBlock(
@@ -45,11 +49,11 @@ const chatIntellect = extractBlock(
 )?.trim() ?? "";
 
 // Chat-KI: Tool-Regeln
-const chatTools = extractBlock(
+const chatTools = (extractBlock(
   claudeJs,
   "## Tool-Autonomie — du entscheidest selbst\n",
   "Tools rufst du auf ohne es anzusagen."
-)?.trim() + "\n\nTools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt." ?? "";
+)?.trim() ?? "") + "\n\nTools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.";
 
 // Chat-KI: Sprachmodus
 const chatVoice = extractBlock(
@@ -58,7 +62,7 @@ const chatVoice = extractBlock(
   "---`;"
 )?.trim() ?? "";
 
-// Chat-KI: Session/Beobachter-Modus (static — contains JS template literals in source)
+// Chat-KI: Session/Beobachter-Modus (static — JS template literals in source)
 const chatObserver = `Du beobachtest, fragst nach, hörst zu. Nie mehrere Fragen auf einmal.
 Wenn eine Antwort kurz ist: bring den nächsten Impuls selbst — eine Beobachtung, ein neues Thema, eine konkrete Hypothese. Kein "erzähl mir mehr".
 Nutze die sys.md als Karte: was fehlt noch, was ist vage, wo kann es tiefer gehen?
@@ -80,20 +84,46 @@ const visionReaction = `- Du kennst diese Person. Reagiere wie jemand der sie wi
 - Keine Assistenten-Floskeln. Kein "Wie schön". Kein "Ich sehe..."
 - Direkt ansprechen. Keine Emojis. Keine Beleidigungen.`;
 
+// shop_check: extract from useClaude.js tool-rules section
+const shopLogLine  = claudeJs.match(/- shop_log → .+/)?.[0]?.trim() ?? "";
+const shopCheckLine = claudeJs.match(/- shop_check → .+/)?.[0]?.trim() ?? "";
+
+// Translation: extract prompt lines from soul_register.lua
+const translateBatch = (() => {
+  const m = registerLua.match(/local translate_prompt = '([\s\S]+?)'\n\n/);
+  if (!m) return "";
+  return m[1]
+    .replace(/\\n/g, "\n")
+    .replace(/\\'/g, "'")
+    .trim();
+})();
+
+// Translation single-field prompt from translate.lua
+const translateSingle = (() => {
+  const desc = translateLua.match(/prompt = 'Translate this soul description[\s\S]+?'\n/)?.[0]
+    ?.replace(/^  prompt = '/, "")
+    ?.replace(/'\n$/, "")
+    ?.replace(/\\n/g, "\n")
+    ?.trim() ?? "";
+  const tags = translateLua.match(/prompt = 'Translate these comma-separated[\s\S]+?'\n/)?.[0]
+    ?.replace(/^  prompt = '/, "")
+    ?.replace(/'\n$/, "")
+    ?.replace(/\\n/g, "\n")
+    ?.trim() ?? "";
+  return { desc, tags };
+})();
+
 // ── Build prompts.md content ──────────────────────────────────────────────────
 
 const today = new Date().toISOString().slice(0, 10);
 
 const content = `# SYS Prompts — Dokumentation
 
-> **Hinweis für bestehende Instanzen:** Diese Datei wird nicht automatisch aktualisiert.
-> Nach jeder Änderung an einem Systemprompt im Quellcode muss das Script neu ausgeführt werden:
+> **Automatisch generiert** von \`utils/generate-prompts.mjs\` — wird nach jedem Git-Commit neu geschrieben.
+> Manuelle Ausführung: \`node utils/generate-prompts.mjs\`
 >
-> \`\`\`bash
-> node utils/generate-prompts.mjs
-> \`\`\`
->
-> Betroffene Quelldateien: \`app/composables/useClaude.js\`, \`lua/beme.lua\`, \`lua/vision_analyze.lua\`
+> Quelldateien: \`app/composables/useClaude.js\`, \`lua/beme.lua\`, \`lua/vision_analyze.lua\`,
+> \`lua/soul_register.lua\`, \`lua/translate.lua\`
 
 Alle Systemprompts des SYS-Nodes mit Fundstelle im Code.
 Zur externen Überarbeitung herunterladen, verbessern, zurückladen.
@@ -202,6 +232,40 @@ ${visionReaction}
 
 ---
 
+## 9. Lifestyle-Berater — shop_check
+
+**Fundstelle:** \`app/composables/useClaude.js\` · Tool-Regeln
+**Kontext:** Aktiv wenn shop_log oder shop_check aufgerufen wird.
+
+\`\`\`
+${shopLogLine}
+${shopCheckLine}
+\`\`\`
+
+---
+
+## 10. IPFS-Veröffentlichung — Übersetzungsprompt
+
+**Fundstelle:** \`lua/soul_register.lua\` (Batch) · \`lua/translate.lua\` (Einzel-Feld)
+**Kontext:** Übersetzt Description und Tags ins Englische vor dem IPFS-Pinning und live im Agent-Marketplace-UI.
+
+**Batch (beim @pin publish):**
+\`\`\`
+${translateBatch || "Translate the following fields to English. Reply ONLY with a JSON object, no explanation.\n\n{\"description\":\"...\",\"tags\":\"...\"}\n\nRules:\n- Keep proper nouns (city names, brand names, person names) as-is\n- If already English, return unchanged\n- tags: comma-separated, concise English keywords\n- Return exactly: {\"description\":\"...\",\"tags\":\"...\"}"}
+\`\`\`
+
+**Einzel-Feld Description (/api/translate):**
+\`\`\`
+${translateSingle.desc || "Translate this soul description to English. Keep proper nouns as-is. If already English, return unchanged. Return ONLY the translated text, nothing else."}
+\`\`\`
+
+**Einzel-Feld Tags (/api/translate):**
+\`\`\`
+${translateSingle.tags || "Translate these comma-separated tags to English. Keep proper nouns as-is. If already English, return unchanged. Return ONLY the translated comma-separated tags, nothing else."}
+\`\`\`
+
+---
+
 ## Hinweise für die Überarbeitung
 
 **Darf geändert werden:** Alle Texte in diesem Dokument — Formulierungen, Ton, Stil, Regeln.
@@ -210,6 +274,7 @@ ${visionReaction}
 - JSON-Format in Abschnitt 8 (\`vision_analyze.lua\`)
 - Food-Detection-Regeln in \`vision_analyze.lua\`
 - Tool-Namen in Abschnitt 4 (nur Beschreibungen verbessern, nicht die Namen)
+- Endpoint-Struktur in Abschnitt 10
 
 **Nach der Überarbeitung:** Datei auf den VPS hochladen (\`vault/context/prompts.md\`),
 dann Claude Code bitten die Änderungen zu übertragen.
@@ -223,14 +288,9 @@ try {
     const soulPath = join(SOULS_DIR, entry);
     if (!statSync(soulPath).isDirectory()) continue;
     const contextDir = join(soulPath, "vault/context");
-    try {
-      statSync(contextDir);
-    } catch {
-      continue;
-    }
+    try { statSync(contextDir); } catch { continue; }
     const outPath = join(contextDir, "prompts.md");
     writeFileSync(outPath, content, "utf8");
-    // ensure www-data can write
     try {
       const { execSync } = await import("child_process");
       execSync(`chown www-data:www-data "${outPath}"`);
@@ -240,7 +300,6 @@ try {
   }
 } catch (e) {
   console.error(`  [error] ${e.message}`);
-  console.log("  Fallback: writing to current directory...");
   writeFileSync("prompts.md", content, "utf8");
   count++;
 }
