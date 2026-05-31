@@ -14,7 +14,7 @@
         <span>{{ peerPollErrors.length === 1 ? 'Peer nicht erreichbar' : `${peerPollErrors.length} Peers nicht erreichbar` }} · {{ peerPollErrors.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
       </div>
 
-      <template v-for="(item, idx) in unifiedStream" :key="item.id || `${item._type}-${item.ts ?? item._ts}-${idx}`">
+      <template v-for="(item, idx) in filteredStream" :key="item.id || `${item._type}-${item.ts ?? item._ts}-${idx}`">
 
         <!-- Day separator (bubbles only) -->
         <div v-if="item._type === 'bubble' && item._showDaySep" class="msg-day-sep">
@@ -103,7 +103,7 @@
           :class="[item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other', item.sphere === 'synthesis' ? 'msg-bubble--archivar' : '']"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
+            :style="{ color: item.sphere === 'synthesis' ? '#7099b8' : item.sphere === 'social' ? '#5baa87' : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
@@ -187,7 +187,7 @@
           </div>
           <div class="msg-foot">
             <span v-if="item.from === 'me'" class="msg-to"
-              :style="item.to === 'agent' ? 'color:var(--accent-bright)' : item.to === 'community' ? 'color:#60a5fa' : 'color:#34d399'">
+              :style="item.to === 'agent' ? 'color:var(--accent-bright)' : item.to === 'community' ? 'color:#7099b8' : 'color:#5baa87'">
               → {{ peerLabelForTo(item.to) }}
             </span>
             <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
@@ -216,7 +216,7 @@
 
       <!-- Synthesis typing indicator -->
       <div v-if="isSynthesizing" class="msg-bubble msg-bubble--other briefing-bubble">
-        <div class="msg-sender" style="color:#60a5fa">Briefing</div>
+        <div class="msg-sender" style="color:#7099b8">Briefing</div>
         <div class="msg-inner msg-inner--agent">
           <div class="dots"><span></span><span></span><span></span></div>
         </div>
@@ -243,45 +243,15 @@
         </div>
       </Transition>
 
-      <!-- Mode bar -->
-      <div class="dock-mode-bar">
-        <span class="mode-dot soul"></span>
-        <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity">
-          <span></span><span></span><span></span>
-        </span>
+      <!-- @-Command chip strip — always visible, scrollable -->
+      <div class="cmd-strip">
         <button
-          class="archivar-toggle"
-          :class="{ active: archivEnabled }"
-          @click="archivEnabled = !archivEnabled"
-          :title="archivEnabled ? 'Archivar aktiv' : 'Archivar aus'"
-        >
-          <span class="archivar-dot"></span>Archivar
-        </button>
-        <button
-          class="archivar-toggle"
-          :class="{ active: autonomousKi }"
-          @click="autonomousKi = !autonomousKi"
-          :title="autonomousKi ? `KI-Auto aktiv (${soulMeta?.name || 'Soul'})` : 'KI-Auto aus'"
-        >
-          <span class="archivar-dot"></span>KI-Auto
-        </button>
-        <button class="model-btn" @click="cycleModel" :title="MODELS.find(m=>m.id===selectedModel)?.hint">
-          {{ MODELS.find(m=>m.id===selectedModel)?.label }}
-        </button>
-        <button class="cmd-toggle" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen" title="@-Befehle">@</button>
+          v-for="c in AT_COMMANDS" :key="c.cmd"
+          class="cmd-chip"
+          @click="insertCommand(c)"
+          :title="c.desc"
+        ><span class="cmd-at">@</span>{{ c.label }}</button>
       </div>
-
-      <!-- @-Command chip strip -->
-      <Transition name="cmd-strip">
-        <div v-if="cmdsOpen" class="cmd-strip">
-          <button
-            v-for="c in AT_COMMANDS" :key="c.cmd"
-            class="cmd-chip"
-            @click="insertCommand(c)"
-            :title="c.desc"
-          ><span class="cmd-at">@</span>{{ c.label }}</button>
-        </div>
-      </Transition>
 
       <!-- Input row -->
       <div class="dock-main">
@@ -364,6 +334,19 @@
         </Transition>
       </div>
 
+      <!-- Compact mode bar — below input -->
+      <div class="dock-mode-bar">
+        <span class="mode-dot soul"></span>
+        <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
+        <button class="archivar-toggle" :class="{ active: archivEnabled }" @click="archivEnabled = !archivEnabled">
+          <span class="archivar-dot"></span>Archivar
+        </button>
+        <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
+          <span class="archivar-dot"></span>KI-Auto
+        </button>
+        <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
+      </div>
+
       <!-- Attachment previews -->
       <div v-if="msgMedia" class="dock-media-preview">
         <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
@@ -444,6 +427,7 @@ const props = defineProps({
   soulCert:     { type: String,  default: '' },
   role:         { type: String,  default: 'soul' },
   growthLocked: { type: Boolean, default: false },
+  filter:       { type: String,  default: 'all' },
 })
 const emit = defineEmits(['cert-error', 'session-end'])
 
@@ -1120,6 +1104,15 @@ const unifiedStream = computed(() => {
     }
   }
   return sorted
+})
+
+const filteredStream = computed(() => {
+  const s = unifiedStream.value
+  if (props.filter === 'all')    return s
+  if (props.filter === 'soul')   return s.filter(i => i._type === 'ai')
+  if (props.filter === 'peers')  return s.filter(i => i._type === 'bubble' && i.sphere !== 'synthesis')
+  if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'synthesis' || i.sphere === 'agent' || i.sphere === 'agent_reply'))
+  return s
 })
 
 function resolveAuthor(msg) {
@@ -3537,7 +3530,7 @@ defineExpose({
 .msg-inner--social {
   background: rgba(255,255,255,0.05);
   border-radius: 16px 16px 16px 4px;
-  border-left: 2px solid #34d399;
+  border-left: 2px solid #5baa87;
   color: var(--fg-2);
 }
 .msg-inner--agent {
@@ -3547,9 +3540,9 @@ defineExpose({
   color: var(--fg-2);
 }
 .msg-inner--synthesis {
-  background: rgba(96,165,250,0.07);
+  background: rgba(112,153,184,0.07);
   border-radius: 16px 16px 16px 4px;
-  border-left: 2px solid #60a5fa;
+  border-left: 2px solid #7099b8;
   color: var(--fg-2);
   font-style: italic;
 }
@@ -3578,7 +3571,7 @@ defineExpose({
   background: transparent;
   border-radius: 0;
   border-left: none;
-  border-top: 1px solid rgba(96,165,250,0.18);
+  border-top: 1px solid rgba(112,153,184,0.18);
   padding: 10px 4px 8px;
   font-size: 13px; line-height: 1.55;
   font-style: italic;
@@ -3615,7 +3608,7 @@ defineExpose({
 }
 .msg-delivery--saving    { color: var(--fg-4); opacity: 0.5; }
 .msg-delivery--saved     { color: var(--fg-4); }
-.msg-delivery--delivered { color: #34d399; }
+.msg-delivery--delivered { color: #5baa87; }
 .msg-delivery--error     { color: #fbbf24; }
 
 .msg-vault-del {
@@ -3668,8 +3661,8 @@ defineExpose({
 .msg-forward-btn {
   margin-left: 6px;
   background: transparent;
-  border: 1px solid rgba(96,165,250,0.3);
-  color: #60a5fa;
+  border: 1px solid rgba(112,153,184,0.3);
+  color: #7099b8;
   font-family: var(--mono);
   font-size: 10px; letter-spacing: 0.08em;
   cursor: pointer;
@@ -3678,11 +3671,11 @@ defineExpose({
   min-height: 22px;
   transition: all 0.15s;
 }
-.msg-forward-btn:hover { background: rgba(96,165,250,0.10); border-color: #60a5fa; }
+.msg-forward-btn:hover { background: rgba(112,153,184,0.10); border-color: #7099b8; }
 .msg-forwarded {
   margin-left: 6px;
   font-family: var(--mono);
-  font-size: 10px; color: #34d399;
+  font-size: 10px; color: #5baa87;
   letter-spacing: 0.06em;
 }
 
@@ -3896,21 +3889,11 @@ defineExpose({
 .cmd-toggle.active { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .cmd-strip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: clamp(10px, 2vw, 18px);
-  right: clamp(10px, 2vw, 18px);
-  z-index: 20;
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 10px 12px;
-  background: rgba(22,21,19,0.96);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--rule-2);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+  padding: 8px 2px;
+  scrollbar-width: none;
 }
+.cmd-strip::-webkit-scrollbar { display: none; }
 
 .cmd-chip {
   display: inline-flex; align-items: center; gap: 1px;
@@ -3942,8 +3925,8 @@ defineExpose({
   transition: border-color 0.15s, background 0.15s;
 }
 .dock-main:focus-within {
-  border-color: rgba(139, 92, 246, 0.75);
-  background: rgba(139, 92, 246, 0.05);
+  border-color: rgba(109, 184, 154, 0.55);
+  background: rgba(109, 184, 154, 0.04);
 }
 
 .dock-icon {
