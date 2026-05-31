@@ -10,29 +10,10 @@
       <span v-if="syncStatus === 'in_sync'" class="meta-sync ok">✓</span>
       <span v-else-if="syncStatus === 'differs'" class="meta-sync warn">≠</span>
       <span v-else-if="syncStatus === 'checking'" class="meta-sync" style="animation: pulse 1s infinite">…</span>
-      <!-- Maturity collapsible pill -->
-      <button class="maturity-pill" @click="maturityOpen = !maturityOpen" :aria-expanded="maturityOpen">
-        {{ maturity.score }}/100
-        <svg class="maturity-chevron" :class="{ 'rotate-180': maturityOpen }"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
-        </svg>
-      </button>
       <Transition name="fade-quick">
         <span v-if="saveFlash" class="meta-saved">Gespeichert</span>
       </Transition>
     </div>
-    <!-- Collapsible maturity meter -->
-    <Transition name="expand">
-      <div v-if="maturityOpen" class="px-3 pt-2 pb-3 border-b border-[var(--sys-border)] flex-none">
-        <SoulMaturityMeter
-          :score="maturity.score"
-          :level="maturity.level"
-          :is-mature="maturity.isMature"
-          :breakdown="maturity.breakdown"
-        />
-      </div>
-    </Transition>
 
     <!-- ── SYNC-VERGLEICH (inline) ──────────────────────────────────────── -->
     <Transition name="expand">

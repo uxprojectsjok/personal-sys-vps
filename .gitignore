@@ -22,3 +22,6 @@ server/openresty/INDEX.md
 *.local.json
 soul-voice-clone/
 soul-whatsapp/
+screen_shot_Ui/
+public/dock_in.png
+public/dock_out.png
