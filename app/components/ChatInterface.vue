@@ -394,7 +394,7 @@
     <button
       class="mobile-fab"
       :class="{ open: mobileComposerOpen }"
-      :style="mobileComposerOpen ? { bottom: `${dockHeight + 12}px` } : {}"
+      :style="mobileComposerOpen ? { bottom: `${dockHeight + 56 + 12}px` } : {}"
       @click="toggleMobileComposer"
       aria-label="Eingabe öffnen"
     >
@@ -4090,8 +4090,8 @@ defineExpose({
 
 @media (max-width: 900px) {
   /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
-  .stream { padding: 16px 16px 80px; box-sizing: border-box; overflow-x: hidden; width: 100%; }
-  .mob-composer-open .stream { padding-bottom: 220px; }
+  .stream { padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px) + 80px); box-sizing: border-box; overflow-x: hidden; width: 100%; }
+  .mob-composer-open .stream { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 260px); }
   /* No margin:auto or max-width on desktop → no overrides needed here. Just tighten gap. */
   .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; }
 
@@ -4132,7 +4132,7 @@ defineExpose({
   .dock {
     padding: 10px 14px 14px; gap: 8px;
     position: fixed;
-    bottom: 0; left: 0; right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0;
     z-index: 200;
     opacity: 0;
     visibility: hidden;
@@ -4144,18 +4144,19 @@ defineExpose({
     -webkit-backdrop-filter: none;
     border-top: 0;
     box-shadow: none;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 14px;
   }
+  .cmd-strip { flex-wrap: wrap; overflow-x: visible; }
   .dock.mobile-open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
     /* visibility sofort sichtbar beim Öffnen, opacity faded rein */
     transition: opacity 0.22s ease, visibility 0s linear 0s;
-    background: rgba(22, 21, 19, 0.22);
+    background: rgba(22, 21, 19, 0.92);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
-    border-top: 1px solid rgba(139, 92, 246, 0.28);
+    border-top: 1px solid rgba(109, 184, 154, 0.20);
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
   }
 
@@ -4173,19 +4174,19 @@ defineExpose({
   .mobile-fab {
     display: flex; align-items: center; justify-content: center;
     position: fixed;
-    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
     right: 18px;
     width: 54px; height: 54px;
     border-radius: 50%;
-    border: 1.5px solid rgba(167, 139, 250, 0.60);
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    border: 1.5px solid rgba(109, 184, 154, 0.55);
+    background: rgba(22, 21, 19, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     box-shadow:
       0 4px 20px rgba(0, 0, 0, 0.32),
-      0 0 18px rgba(139, 92, 246, 0.14);
+      0 0 18px rgba(109, 184, 154, 0.10);
     cursor: pointer;
-    color: rgba(167, 139, 250, 0.92);
+    color: rgba(109, 184, 154, 0.90);
     z-index: 201;
     transition:
       bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -4193,11 +4194,9 @@ defineExpose({
   }
   .mobile-fab:active { opacity: 0.65; }
   .mobile-fab.open {
-    color: rgba(248, 113, 113, 0.92);
-    border-color: rgba(248, 113, 113, 0.50);
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.32),
-      0 0 18px rgba(248, 113, 113, 0.12);
+    color: rgba(244, 241, 234, 0.72);
+    border-color: rgba(244, 241, 234, 0.20);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.32);
   }
   .mobile-fab-icon { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
   .mobile-fab.open .mobile-fab-icon { transform: rotate(45deg); }
