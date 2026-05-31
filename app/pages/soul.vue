@@ -188,8 +188,9 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'soul')     return
-  if (id === 'chat')     { router.push('/session'); return }
-  if (id === 'maturity') { router.push('/reife');   return }
+  if (id === 'chat')     { router.push('/session');  return }
+  if (id === 'chronik')  { router.push('/chronik');  return }
+  if (id === 'maturity') { router.push('/reife');    return }
   if (id === 'calendar') { router.push('/kalender'); return }
   if (id === 'settings') { router.push('/'); return }
   if (id === 'anchor')   { router.push('/'); return }
