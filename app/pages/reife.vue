@@ -104,11 +104,12 @@ function onNav(id) {
 }
 
 const syncedFiles = computed(() => {
-  if (!allFiles.value) return {}
+  if (!allFiles.value?.length) return {}
+  const AUDIO_EXTS = ['mp3', 'ogg', 'wav', 'flac', 'aac', 'm4a', 'opus', 'webm', 'weba']
   return {
-    audio:   allFiles.value.filter(f => f.type?.startsWith('audio')),
-    images:  allFiles.value.filter(f => f.type?.startsWith('image')),
-    context: allFiles.value.filter(f => f.path?.includes('context')),
+    audio:   allFiles.value.filter(f => AUDIO_EXTS.includes(f.kind)),
+    images:  allFiles.value.filter(f => f.kind === 'image' || f.kind === 'profile'),
+    context: allFiles.value.filter(f => f.name?.includes('context')),
   }
 })
 

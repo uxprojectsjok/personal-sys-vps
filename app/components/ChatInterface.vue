@@ -243,45 +243,47 @@
         </div>
       </Transition>
 
-      <!-- @-Command chip strip — toggled via + button on desktop and mobile -->
+      <!-- Media picker — shown when + is tapped -->
       <Transition name="cmd-strip">
-        <div v-show="cmdsOpen" class="cmd-strip">
+        <div v-show="mediaPickerOpen" class="media-picker">
           <button
-            v-for="c in AT_COMMANDS" :key="c.cmd"
-            class="cmd-chip"
-            @click="insertCommand(c)"
-            :title="c.desc"
-          ><span class="cmd-at">@</span>{{ c.label }}</button>
+            class="mp-btn"
+            @click="mediaPickerOpen = false; cameraOpen = true"
+            :disabled="visionLoading || props.growthLocked"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
+            </svg>
+            <span>Foto</span>
+          </button>
+          <button
+            class="mp-btn"
+            @click="mediaPickerOpen = false; onFileIconClick()"
+            :disabled="props.growthLocked"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+            </svg>
+            <span>Datei</span>
+          </button>
         </div>
       </Transition>
 
       <!-- Input row -->
       <div class="dock-main">
-        <!-- Toggle chip strip -->
+        <!-- Open media picker -->
         <button
           class="dock-icon dock-plus"
-          :class="{ active: cmdsOpen }"
-          @click="cmdsOpen = !cmdsOpen"
+          :class="{ active: mediaPickerOpen }"
+          @click="mediaPickerOpen = !mediaPickerOpen"
           :disabled="props.growthLocked"
-          :title="cmdsOpen ? 'Befehle schließen' : '@ Befehle öffnen'"
+          :title="mediaPickerOpen ? 'Schließen' : 'Foto oder Datei'"
         >
-          <svg v-if="!cmdsOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+          <svg v-if="!mediaPickerOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-        <!-- Camera button -->
-        <button class="dock-icon" @click="cameraOpen = true" :disabled="visionLoading || props.growthLocked" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="dock-icon-svg" :class="{ pulse: visionLoading }">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
-          </svg>
-        </button>
-        <!-- File attach button -->
-        <button class="dock-icon" @click="onFileIconClick" :disabled="props.growthLocked" title="Datei anhängen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="dock-icon-svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
           </svg>
         </button>
         <div class="input-wrap">
@@ -337,10 +339,6 @@
 
       <!-- Mode bar — always below input -->
       <div class="dock-mode-bar">
-        <button class="mode-cmd-toggle" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen" title="@ Befehle">
-          <span class="mode-at">@</span> Befehle
-        </button>
-        <span class="mode-sep"></span>
         <button class="archivar-toggle" :class="{ active: archivEnabled }" @click="archivEnabled = !archivEnabled">
           <span class="archivar-dot"></span>Archivar
         </button>
@@ -1552,9 +1550,10 @@ function cleanMsgContent(msg) {
 }
 
 // ── Camera / Vision ────────────────────────────────────────────────
-const cameraOpen    = ref(false)
-const visionLoading = ref(false)
-const fileInputEl   = ref(null)
+const cameraOpen       = ref(false)
+const mediaPickerOpen  = ref(false)
+const visionLoading    = ref(false)
+const fileInputEl      = ref(null)
 
 // ── Blob URL management ────────────────────────────────────────────
 const mediaBlobUrls = []
@@ -3909,6 +3908,24 @@ defineExpose({
 .cmd-strip-leave-active { transition: opacity 0.10s ease, transform 0.12s ease; }
 .cmd-strip-enter-from, .cmd-strip-leave-to { opacity: 0; transform: translateY(6px); }
 .cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; transform: translateY(0); }
+
+/* ── Media picker ── */
+.media-picker {
+  display: flex; gap: 8px; padding: 8px 0 4px;
+}
+.mp-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 14px 8px;
+  border: 1px solid var(--rule-2); background: rgba(255,255,255,0.03);
+  color: var(--fg-3); cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mp-btn svg { width: 20px; height: 20px; }
+.mp-btn:hover:not(:disabled) {
+  background: rgba(109,184,154,0.08); border-color: rgba(109,184,154,0.28); color: var(--fg);
+}
+.mp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .dock-main {
   display: flex; align-items: center;
