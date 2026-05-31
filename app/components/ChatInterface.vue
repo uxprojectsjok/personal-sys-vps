@@ -797,7 +797,7 @@ function setFilter(val) {
 // ── Dynamic stream padding (tracks real dock height) ─────────────────
 const streamPadStyle = computed(() => {
   if (!isMobile.value) return {}
-  return { paddingBottom: `calc(${dockHeight.value}px + 56px + env(safe-area-inset-bottom, 0px) + 10px)` }
+  return { paddingBottom: `calc(${dockHeight.value}px + env(safe-area-inset-bottom, 0px) + 8px)` }
 })
 let _dockRO = null
 
@@ -4058,7 +4058,7 @@ defineExpose({
   resize: none; overflow-y: auto;
   min-height: 48px; max-height: 140px;
 }
-.input::placeholder { color: var(--fg-3); font-style: italic; opacity: 0.7; }
+.input::placeholder { color: var(--fg-2); }
 
 .send {
   width: 36px; height: 36px; flex-shrink: 0;
