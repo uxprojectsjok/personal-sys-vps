@@ -155,7 +155,7 @@ function onNav(id) {
 .mk-panel :deep(.sys-amm) {
   position: static !important;
   inset: auto !important;
-  max-width: none !important;
+  max-width: 100% !important;
   width: 100% !important;
   max-height: none !important;
   height: auto !important;
@@ -163,27 +163,31 @@ function onNav(id) {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  grid-template-rows: auto auto auto auto !important;
-  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 /* 3. Hide close button and drag handle */
 .mk-panel :deep(.amm-head) { display: none !important; }
 
-/* 4. Step rail — horizontal, matches design */
+/* 4. Step rail — 2 cols (2 steps), no overflow */
 .mk-panel :deep(.amm-rail) {
   border: 1px solid var(--rule) !important;
   background: var(--paper-2) !important;
   border-radius: 0 !important;
   margin-bottom: 32px;
   display: grid !important;
-  grid-template-columns: 1fr auto 1fr !important;
-  overflow: visible !important;
+  grid-template-columns: 1fr 1fr !important;
+  overflow: hidden !important;
+  width: 100% !important;
 }
 .mk-panel :deep(.amm-rail-item) {
   background: transparent !important;
   border-right: none !important;
-  padding: 14px 20px !important;
+  padding: 14px 16px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
 }
 .mk-panel :deep(.amm-rail-item:first-child) {
   border-right: 1px solid var(--rule) !important;
@@ -191,12 +195,31 @@ function onNav(id) {
 .mk-panel :deep(.amm-rail-item.on) {
   background: var(--paper) !important;
 }
+.mk-panel :deep(.amm-rail-item .t) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.mk-panel :deep(.amm-rail-item .sub) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
 
-/* 5. Body — no overflow hidden, no fixed height */
+/* 5. Body — scroll within, no fixed height */
 .mk-panel :deep(.amm-body) {
-  overflow: visible !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
   padding: 0 0 32px !important;
   min-height: auto !important;
+  width: 100% !important;
+}
+
+/* 5a. Step content container */
+.mk-panel :deep(.step) {
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
 }
 
 /* 6. Footer */
@@ -228,13 +251,19 @@ function onNav(id) {
 @media (max-width: 900px) {
   .mk-title { font-size: clamp(24px, 7vw, 32px); }
 
-  /* Step rail: vertical on mobile */
+  /* Step rail: stack vertically on mobile */
   .mk-panel :deep(.amm-rail) {
     grid-template-columns: 1fr !important;
+  }
+  .mk-panel :deep(.amm-rail-item) {
+    padding: 10px 14px !important;
   }
   .mk-panel :deep(.amm-rail-item:first-child) {
     border-right: none !important;
     border-bottom: 1px solid var(--rule) !important;
+  }
+  .mk-panel :deep(.amm-rail-item .t) {
+    white-space: normal !important;
   }
 
   /* 2-col grids → single col */
