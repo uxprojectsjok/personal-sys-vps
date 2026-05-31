@@ -269,7 +269,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .page { max-width: 1080px; margin: 0 auto; padding: 4px clamp(18px, 3vw, 34px) 56px; }
 
 .hero { padding: 22px 0 30px; }
-.hero .greet { color: var(--fg-3); font-size: 14px; margin-bottom: 10px; }
+.hero .greet { color: var(--fg-2); font-size: 14px; margin-bottom: 10px; }
 .hero h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.02; color: var(--fg); }
 .hero h1 em { font-style: italic; color: var(--accent); }
 .hero-sub { color: var(--fg-2); font-size: 16px; margin-top: 14px; max-width: 56ch; line-height: 1.6; }
@@ -315,7 +315,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .action .act-ic svg { width: 20px; height: 20px; }
 .action .act-body { min-width: 0; }
 .action .act-title { font-weight: 600; font-size: 14.5px; color: var(--fg); }
-.action .act-sub { font-size: 12.5px; color: var(--fg-3); margin-top: 1px; }
+.action .act-sub { font-size: 12.5px; color: var(--fg-2); margin-top: 1px; }
 .action .act-arr { margin-left: auto; color: var(--fg-4); transition: color .15s, transform .15s var(--ease); }
 .action:hover .act-arr { color: var(--accent-bright); transform: translateX(2px); }
 
@@ -590,7 +590,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .view-head .lede { color: var(--fg-2); font-size: 16px; line-height: 1.6; margin-top: 14px; max-width: 58ch; }
 .view-toolbar { display: flex; align-items: center; gap: 10px; margin: 22px 0 6px; flex-wrap: wrap; }
 .view-toolbar .spacer { flex: 1; }
-.src-note { font-size: 12.5px; color: var(--fg-3); }
+.src-note { font-size: 12.5px; color: var(--fg-2); }
 .sync-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--c-ok); margin-left: auto; }
 
 /* generic card */
