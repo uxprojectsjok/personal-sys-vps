@@ -553,6 +553,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .app.drawer-open .scrim-mob { opacity: 1; pointer-events: auto; }
 
   .mob-only { display: grid; }
+  .sb-collapse { display: none; }
   .searchbtn { min-width: 0; flex: 1; }
   .searchbtn .label-txt, .searchbtn .kbd { display: none; }
   .searchbtn { width: 38px; flex: none; padding: 0; justify-content: center; }
