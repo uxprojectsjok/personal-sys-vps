@@ -3862,7 +3862,7 @@ defineExpose({
   background: transparent;
   border: 1px solid var(--rule-2);
   border-radius: 999px;
-  color: var(--fg-3);
+  color: var(--fg-2);
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.08em; text-transform: uppercase;
   padding: 3px 10px;
@@ -3879,7 +3879,7 @@ defineExpose({
   background: transparent; cursor: pointer;
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--fg-4); padding: 3px 8px;
+  color: var(--fg-2); padding: 3px 8px;
   border-radius: 999px;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
