@@ -222,6 +222,7 @@ function lockGate() {
 function onNav(id) {
   if (id === 'chronik')  return
   if (id === 'chat')     { router.push('/session');  return }
+  if (id === 'setup')    { router.push('/soul');     return }
   if (id === 'soul')     { router.push('/soul');     return }
   if (id === 'files')    { router.push('/dateien');    return }
   if (id === 'market')   { router.push('/marketplace'); return }

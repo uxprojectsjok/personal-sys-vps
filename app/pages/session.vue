@@ -405,6 +405,7 @@ const maturity         = computed(() => computeMaturity(soulContent.value).score
 
 function onNav(id) {
   if (id === 'chat')     return
+  if (id === 'setup')    { router.push('/soul');    return }
   if (id === 'soul')     { router.push('/soul');    return }
   if (id === 'chronik')  { router.push('/chronik'); return }
   if (id === 'files')    { router.push('/dateien');    return }
