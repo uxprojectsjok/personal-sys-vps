@@ -339,7 +339,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .seg { display: inline-flex; background: var(--surface-2); border-radius: var(--r-sm); padding: 3px; gap: 2px; }
 .seg button {
   height: 30px; padding: 0 13px; border-radius: var(--r-xs); font-size: 12.5px; font-weight: 500;
-  color: var(--fg-3); display: inline-flex; align-items: center; gap: 7px; transition: background .15s, color .15s;
+  color: var(--fg-2); display: inline-flex; align-items: center; gap: 7px; transition: background .15s, color .15s;
 }
 .seg button .sd { width: 7px; height: 7px; border-radius: 50%; }
 .seg button:hover { color: var(--fg); }
@@ -424,7 +424,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   font-family: var(--sans); font-size: 15px; line-height: 1.5; padding: 10px 4px; max-height: 160px;
   overflow-y: auto;
 }
-.dock-input::placeholder { color: var(--fg-3); }
+.dock-input::placeholder { color: var(--fg-2); }
 .dock-input:focus { outline: none; }
 .send {
   width: 40px; height: 40px; border-radius: var(--r-sm); flex: none; display: grid; place-items: center;
