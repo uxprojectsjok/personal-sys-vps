@@ -59,7 +59,7 @@
           v-for="section in SOUL_SECTIONS" :key="section.key"
           class="rounded-xl border overflow-hidden transition-all duration-200"
           :class="editingSection === section.key
-            ? 'border-[var(--sys-violet)]/40 bg-[var(--sys-bg-elevated)]'
+            ? 'border-[var(--accent)]/40 bg-[var(--sys-bg-elevated)]'
             : 'border-[var(--sys-border)] bg-[var(--sys-bg-elevated)]'"
         >
           <!-- Section header -->
@@ -109,7 +109,7 @@
                 <textarea
                   ref="editTextareaRef"
                   v-model="editText"
-                  class="w-full min-h-[100px] bg-white/[0.04] border border-[var(--sys-border)] rounded-lg px-2.5 py-2 text-xs text-[var(--sys-fg)] leading-relaxed resize-y focus:outline-none focus:border-[var(--sys-violet)]/50 placeholder-[var(--sys-fg-muted)] transition-colors"
+                  class="w-full min-h-[100px] bg-white/[0.04] border border-[var(--sys-border)] rounded-lg px-2.5 py-2 text-xs text-[var(--sys-fg)] leading-relaxed resize-y focus:outline-none focus:border-[var(--accent)]/50 placeholder-[var(--sys-fg-muted)] transition-colors"
                   :placeholder="section.label + ' …'"
                   @keydown.ctrl.enter="saveEdit(section.key)"
                   @keydown.meta.enter="saveEdit(section.key)"
@@ -122,7 +122,7 @@
                   </button>
                   <button @click="saveEdit(section.key)"
                     class="text-[10px] font-semibold text-white px-2.5 py-1 rounded transition-colors"
-                    style="background: var(--sys-violet)">
+                    style="background: var(--accent)">
                     Speichern
                   </button>
                 </div>
@@ -187,7 +187,7 @@ watch(syncStatus, (val) => {
 // Private Sphere sections
 const SOUL_SECTIONS = [
   { key: "Kern-Identität",                       label: "Kern-Identität",         icon: "ri-user-line",      color: "var(--chart-1)" },
-  { key: "Werte & Überzeugungen",                label: "Werte & Überzeugungen",  icon: "ri-scales-3-line",  color: "var(--sys-violet)" },
+  { key: "Werte & Überzeugungen",                label: "Werte & Überzeugungen",  icon: "ri-scales-3-line",  color: "var(--accent)" },
   { key: "Ästhetik & Resonanz",                  label: "Ästhetik & Resonanz",    icon: "ri-palette-line",   color: "#f472b6" },
   { key: "Sprachmuster & Ausdruck",              label: "Sprachmuster & Ausdruck",icon: "ri-chat-1-line",    color: "var(--sys-fg-muted)" },
   { key: "Wiederkehrende Themen & Obsessionen",  label: "Themen & Obsessionen",   icon: "ri-fire-line",      color: "var(--sys-orange)" },
@@ -350,7 +350,7 @@ async function handlePushLocal() {
   background: rgba(255,255,255,0.18);
   transition: background 0.2s;
 }
-.meta-indicator.on { background: #a78bfa; box-shadow: 0 0 6px rgba(167,139,250,0.5); }
+.meta-indicator.on { background: #6db89a; box-shadow: 0 0 6px rgba(109,184,154,0.5); }
 .meta-id { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); white-space: nowrap; }
 .meta-sep { color: var(--sys-fg-dim, rgba(236,231,245,0.30)); opacity: 0.4; }
 @media (max-width: 500px) { .meta-id, .meta-sep { display: none; } }
@@ -361,12 +361,12 @@ async function handlePushLocal() {
 .maturity-pill {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 7px; margin-left: auto; flex: none;
-  background: rgba(139,92,246,0.10); border: 1px solid rgba(139,92,246,0.22);
+  background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.22);
   cursor: pointer; color: var(--sys-fg-muted, rgba(236,231,245,0.48));
   font-family: ui-monospace; font-size: 12px; letter-spacing: 0.12em;
   white-space: nowrap; transition: background 0.15s;
 }
-.maturity-pill:hover { background: rgba(139,92,246,0.18); }
+.maturity-pill:hover { background: rgba(109,184,154,0.18); }
 .maturity-chevron {
   width: 10px; height: 10px; flex: none;
   color: currentColor; transition: transform 0.2s ease;

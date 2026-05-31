@@ -46,6 +46,7 @@
               :soul-cert="soulToken"
               role="soul"
               :growth-locked="isGrowingQuietly"
+              :filter="filter"
               @cert-error="handleCertError"
               @session-end="forceSessionEnd"
             />
