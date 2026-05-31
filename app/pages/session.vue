@@ -5,12 +5,22 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
-          <div class="sess-seg seg">
-            <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
-            <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
-            <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
-            <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
-          </div>
+          <!-- Filter toggle -->
+          <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, 'has-filter': filter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
+            </svg>
+            <span v-if="filter !== 'all'" class="sess-filter-dot" />
+          </button>
+          <!-- Filter pills — shown when toggle is open -->
+          <Transition name="seg-reveal">
+            <div v-show="filterOpen" class="sess-seg seg">
+              <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
+              <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
+              <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
+              <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+            </div>
+          </Transition>
           <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
             <SysIcon name="soul" style="width:18px;height:18px" />
           </button>
@@ -389,6 +399,7 @@ async function onSetupImport(markdown) {
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const soulPanelOpen    = ref(false)
+const filterOpen       = ref(false)
 const filter           = ref('all')
 const maturity         = computed(() => computeMaturity(soulContent.value).score)
 
@@ -411,7 +422,16 @@ function onNav(id) {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-/* ── Filter seg — wraps to second topbar row on mobile ── */
+/* ── Filter toggle button ── */
+.sess-filter-toggle { position: relative; }
+.sess-filter-toggle.has-filter { color: var(--accent); }
+.sess-filter-dot {
+  position: absolute; top: 5px; right: 5px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ── Filter seg — inline on desktop, wraps to full row on mobile ── */
 @media (max-width: 900px) {
   .sess-seg {
     order: 10;
@@ -422,6 +442,10 @@ function onNav(id) {
   }
   .sess-seg button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; }
 }
+
+/* ── Transition ── */
+.seg-reveal-enter-active, .seg-reveal-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.seg-reveal-enter-from, .seg-reveal-leave-to { opacity: 0; transform: scale(0.95); }
 
 .sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
 .banner {
