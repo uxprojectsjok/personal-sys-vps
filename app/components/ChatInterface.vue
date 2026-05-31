@@ -3922,14 +3922,14 @@ defineExpose({
   display: inline-flex; align-items: center; gap: 1px;
   padding: 5px 11px; border-radius: 999px;
   background: rgba(109,184,154,0.07); border: 1px solid rgba(109,184,154,0.15);
-  color: var(--fg-3);
+  color: var(--fg-2);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
   cursor: pointer; white-space: nowrap;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .cmd-chip:hover {
   background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38);
-  color: var(--fg-1);
+  color: var(--fg);
 }
 
 /* ── Filter strip (mobile dock) ── */
