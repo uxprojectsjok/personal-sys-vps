@@ -206,19 +206,38 @@ function onNav(id) {
   white-space: nowrap !important;
 }
 
-/* 5. Body — scroll within, no fixed height */
+/* 5. Body */
 .mk-panel :deep(.amm-body) {
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
+  overflow: hidden !important;
   padding: 0 0 32px !important;
   min-height: auto !important;
   width: 100% !important;
+  min-width: 0 !important;
 }
 
-/* 5a. Step content container */
-.mk-panel :deep(.step) {
+/* 5a. Step + every direct layout container: can't bleed wider than body */
+.mk-panel :deep(.step),
+.mk-panel :deep(.step-head),
+.mk-panel :deep(.node-list),
+.mk-panel :deep(.node-row),
+.mk-panel :deep(.node-info),
+.mk-panel :deep(.own-endpoint-row),
+.mk-panel :deep(.peer-form),
+.mk-panel :deep(.peer-form-inputs),
+.mk-panel :deep(.peer-form-row),
+.mk-panel :deep(.bearer-row),
+.mk-panel :deep(.mode-grid),
+.mk-panel :deep(.mode-card),
+.mk-panel :deep(.pay-form),
+.mk-panel :deep(.pay-fields),
+.mk-panel :deep(.state-ok),
+.mk-panel :deep(.field),
+.mk-panel :deep(.card),
+.mk-panel :deep(.card-body) {
   width: 100% !important;
+  max-width: 100% !important;
   min-width: 0 !important;
+  box-sizing: border-box !important;
   overflow: hidden !important;
 }
 
