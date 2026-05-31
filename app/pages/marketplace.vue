@@ -98,6 +98,13 @@ function onNav(id) {
   max-width: 560px; margin: 0;
 }
 
+/* ── Panel wrapper — prevent horizontal overflow ── */
+.mk-panel {
+  overflow-x: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
 /* ════════════════════════════════════════════════
    PANEL OVERRIDES
    Override the violet design system inside
@@ -199,14 +206,77 @@ function onNav(id) {
   padding: 20px 0 !important;
 }
 
+/* 7. Global overflow guard on all deep children */
+.mk-panel :deep(*) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.mk-panel :deep(input),
+.mk-panel :deep(textarea),
+.mk-panel :deep(code),
+.mk-panel :deep(.bearer-val),
+.mk-panel :deep(.oe-val) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mk-panel :deep(textarea) {
+  white-space: pre-wrap;
+}
+
 @media (max-width: 900px) {
   .mk-title { font-size: clamp(24px, 7vw, 32px); }
+
+  /* Step rail: vertical on mobile */
   .mk-panel :deep(.amm-rail) {
     grid-template-columns: 1fr !important;
   }
   .mk-panel :deep(.amm-rail-item:first-child) {
     border-right: none !important;
     border-bottom: 1px solid var(--rule) !important;
+  }
+
+  /* 2-col grids → single col */
+  .mk-panel :deep(.mode-grid),
+  .mk-panel :deep(.pay-fields),
+  .mk-panel :deep(.peer-form-inputs) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Peer form row stacks */
+  .mk-panel :deep(.peer-form-row) {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Bearer row: wrap */
+  .mk-panel :deep(.bearer-row) {
+    flex-wrap: wrap !important;
+  }
+  .mk-panel :deep(.bearer-copy) {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Footer stacks */
+  .mk-panel :deep(.amm-foot) {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .mk-panel :deep(.amm-foot-actions) {
+    justify-content: flex-end !important;
+  }
+
+  /* Own endpoint row: wrap */
+  .mk-panel :deep(.own-endpoint-row) {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .mk-panel :deep(.oe-val) {
+    width: 100% !important;
+    white-space: normal !important;
+    word-break: break-all !important;
   }
 }
 </style>
