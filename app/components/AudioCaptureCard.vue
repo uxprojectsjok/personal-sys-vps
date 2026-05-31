@@ -255,7 +255,7 @@ async function handleSave() {
 .cc {
   background: rgba(255,255,255,0.04);
   border-radius: 14px 14px 14px 4px;
-  border-left: 2px solid rgba(139,92,246,0.45);
+  border-left: 2px solid rgba(109,184,154,0.40);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -277,7 +277,7 @@ async function handleSave() {
 .cc-dot--idle    { background: rgba(255,255,255,0.25); }
 .cc-dot--rec     { background: #ef4444; }
 .cc-dot--preview { background: rgba(255,255,255,0.6); }
-.cc-dot--saved   { background: #22c55e; }
+.cc-dot--saved   { background: var(--accent); }
 
 .cc-label {
   font-family: var(--mono);
@@ -425,11 +425,11 @@ async function handleSave() {
 .cc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .cc-btn--primary {
-  background: var(--sys-accent);
+  background: var(--accent);
   border-color: var(--sys-accent);
   color: #fff;
 }
-.cc-btn--primary:hover:not(:disabled) { background: #7c3aed; }
+.cc-btn--primary:hover:not(:disabled) { background: var(--accent-bright); }
 
 .cc-btn--record {
   margin: 0 auto;
@@ -467,9 +467,9 @@ async function handleSave() {
 
 .cc-btn--save { flex: 1; }
 .cc-btn--saved {
-  border-color: rgba(34,197,94,0.3);
-  background: rgba(34,197,94,0.08);
-  color: #86efac;
+  border-color: rgba(109,184,154,0.30);
+  background: rgba(109,184,154,0.08);
+  color: var(--accent-bright);
   flex: 1;
 }
 
