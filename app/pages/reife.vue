@@ -100,8 +100,12 @@ function lockSoul() {
 
 function onNav(id) {
   if (id === 'maturity') return
-  if (id === 'chat') { router.push('/session'); return }
-  if (id === 'home') { router.push('/'); return }
+  if (id === 'chat')     { router.push('/session');     return }
+  if (id === 'soul')     { router.push('/soul');        return }
+  if (id === 'chronik')  { router.push('/chronik');     return }
+  if (id === 'files')    { router.push('/dateien');     return }
+  if (id === 'market')   { router.push('/marketplace'); return }
+  if (id === 'calendar') { router.push('/kalender');    return }
   router.push('/')
 }
 
