@@ -12,7 +12,7 @@
           <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">&#x2726;</span></Transition>
         </SysTopbar>
 
-        <!-- Filter tabs row (below topbar, full width) -->
+        <!-- Filter tabs row (desktop only — mobile filter lives inside the dock) -->
         <div class="sess-filter-row">
           <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
           <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
@@ -48,7 +48,7 @@
               :soul-cert="soulToken"
               role="soul"
               :growth-locked="isGrowingQuietly"
-              :filter="filter"
+              v-model:filter="filter"
               @cert-error="handleCertError"
               @session-end="forceSessionEnd"
             />
@@ -414,7 +414,7 @@ function onNav(id) {
 }
 
 /* ── Status banners ── */
-/* ── Filter tabs row ── */
+/* ── Filter tabs row (desktop only) ── */
 .sess-filter-row {
   display: flex; align-items: center; flex-shrink: 0;
   gap: 2px; padding: 4px clamp(10px,2vw,18px);
@@ -432,6 +432,7 @@ function onNav(id) {
   background: rgba(109,184,154,0.07);
 }
 .sess-filter-row button:hover:not(.on) { color: var(--fg-2); }
+@media (max-width: 900px) { .sess-filter-row { display: none; } }
 
 .sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
 .banner {
