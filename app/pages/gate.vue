@@ -1,115 +1,83 @@
 <template>
-  <div class="gate-root">
-    <main class="gate-col">
+  <div class="gate">
+    <div class="gate-card">
+      <div class="gate-mark">SYS<span class="dot">.</span></div>
+      <div class="gate-sub">Save Your Soul · Private Node</div>
 
-      <div class="gate-logo">
-        <img src="~/assets/logo.png" alt="SYS" class="gate-logo-img" />
+      <div class="gate-orb">
+        <SysIcon name="soul" class="go-inner" />
       </div>
 
       <!-- ── Biometric unlock ── -->
       <template v-if="mode === 'biometric'">
-        <div class="gate-head">
-          <span class="gate-kicker">SYS · Private Node</span>
-          <h1 class="gate-display">Willkommen<em>.</em></h1>
-          <p class="gate-lede">{{ isPwa ? 'Entsperre mit Face ID oder Fingerabdruck' : 'Gespeicherte Zugangsdaten vorhanden' }}</p>
-        </div>
-        <div class="gate-form">
-          <p v-if="error" class="gate-error">{{ error }}</p>
-          <button
-            class="sys-btn-ed sys-btn-ed--primary gate-bio-btn"
-            :disabled="loading"
-            @click="biometricUnlock"
-          >
-            <span v-if="loading" style="display:flex;align-items:center;gap:8px;justify-content:center">
-              <span style="width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block"></span>
-              Lade Soul…
-            </span>
-            <span v-else>Entsperren</span>
-          </button>
-          <button class="gate-link" @click="switchToForm">Manuell anmelden</button>
-        </div>
+        <h1>Willkommen zurück<em>.</em></h1>
+        <p class="welcome">{{ isPwa ? 'Entsperre mit Face ID oder Fingerabdruck.' : 'Gespeicherte Zugangsdaten vorhanden.' }}</p>
+        <p v-if="error" class="gate-error">{{ error }}</p>
+        <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock">
+          <span v-if="loading" class="gate-spinner" />
+          {{ loading ? 'Lade Soul…' : 'Entsperren' }}
+          <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
+        </button>
+        <button class="gate-link" @click="switchToForm">Manuell anmelden</button>
       </template>
 
       <!-- ── Save creds prompt ── -->
       <template v-else-if="mode === 'saving'">
-        <div class="gate-head">
-          <span class="gate-kicker">SYS · Private Node</span>
-          <h1 class="gate-display">Angemeldet<em>.</em></h1>
-          <p class="gate-lede">Zugangsdaten merken?</p>
-        </div>
-        <div class="gate-form">
-          <p class="gate-hint">Passwort und Soul-Cert werden verschlüsselt auf diesem Gerät gespeichert – entsperrbar nur mit deiner Biometrik (Face ID, Fingerabdruck, Windows Hello).</p>
-          <p v-if="error" class="gate-error">{{ error }}</p>
-          <button
-            class="sys-btn-ed sys-btn-ed--primary"
-            style="width:100%;justify-content:center"
-            :disabled="loading"
-            @click="doSaveCreds"
-          >{{ loading ? 'Speichert…' : 'Mit Biometrik speichern' }}</button>
-          <button class="gate-link" @click="doRedirect">Überspringen</button>
-        </div>
+        <h1>Angemeldet<em>.</em></h1>
+        <p class="welcome">Zugangsdaten merken?</p>
+        <p class="gate-hint">Passwort und Soul-Cert werden verschlüsselt auf diesem Gerät gespeichert – entsperrbar nur mit deiner Biometrik.</p>
+        <p v-if="error" class="gate-error">{{ error }}</p>
+        <button class="btn btn-primary btn-lg" :disabled="loading" @click="doSaveCreds">
+          <span v-if="loading" class="gate-spinner" />
+          {{ loading ? 'Speichert…' : 'Mit Biometrik speichern' }}
+        </button>
+        <button class="gate-link" @click="doRedirect">Überspringen</button>
       </template>
 
       <!-- ── Standard form ── -->
       <template v-else>
-        <div class="gate-head">
-          <span class="gate-kicker">SYS · Private Node</span>
-          <h1 class="gate-display">Zugang<em>.</em></h1>
-          <p class="gate-lede">Persönlicher SYS-Node</p>
-        </div>
-
-        <form class="gate-form" @submit.prevent="submit">
-          <p v-if="error" class="gate-error">{{ error }}</p>
-
-          <div class="sys-field">
-            <span class="sys-field-label">Passwort</span>
+        <h1>Willkommen zurück<em>.</em></h1>
+        <p class="welcome">Entsperre deinen Knoten, um mit deiner Seele zu sprechen.</p>
+        <p v-if="error" class="gate-error">{{ error }}</p>
+        <form @submit.prevent="submit" style="width:100%">
+          <div class="gate-field">
             <input
-              id="gate-password"
               v-model="password"
               type="password"
               autocomplete="current-password"
-              class="sys-input"
-              placeholder="Node-Zugangspasswort"
+              placeholder="Node-Passwort"
+              aria-label="Node-Passwort"
               :disabled="loading"
               required
             />
           </div>
-
-          <div v-if="soulRegistered" class="sys-field">
-            <span class="sys-field-label">
-              Soul-Cert
-              <span class="sys-field-hint">32-stelliger Hex-Code aus deiner Session</span>
-            </span>
+          <div v-if="soulRegistered" class="gate-field" style="margin-bottom:14px">
             <input
-              id="gate-cert"
               v-model="cert"
               type="text"
               autocomplete="off"
               spellcheck="false"
-              class="sys-input sys-input--mono"
-              placeholder="a1b2c3d4…"
+              placeholder="Soul-Cert (a1b2c3d4…)"
+              aria-label="Soul-Cert"
               :disabled="loading"
+              style="font-family:var(--mono);font-size:13px"
             />
-            <p v-if="certAutoFilled" class="sys-field-ok">✓ Automatisch aus aktiver Session geladen</p>
           </div>
-
-          <button
-            type="submit"
-            class="sys-btn-ed sys-btn-ed--primary"
-            style="width:100%;justify-content:center"
-            :disabled="loading"
-          >{{ loading ? 'Lädt…' : 'Eintreten' }}</button>
-
-          <button
-            v-if="hasSavedCreds"
-            type="button"
-            class="gate-link"
-            @click="mode = 'biometric'"
-          >Mit Biometrik entsperren</button>
+          <p v-if="certAutoFilled" class="gate-autofill">✓ Cert aus aktiver Session geladen</p>
+          <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
+            <span v-if="loading" class="gate-spinner" />
+            {{ loading ? 'Lädt…' : 'Knoten entsperren' }}
+            <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
+          </button>
         </form>
+        <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">Mit Biometrik entsperren</button>
       </template>
 
-    </main>
+      <div class="gate-foot">
+        <span class="live-dot" />
+        Lokaler Knoten · alles bleibt auf diesem Gerät
+      </div>
+    </div>
   </div>
 </template>
 
@@ -298,123 +266,12 @@ function doRedirect() {
 </script>
 
 <style scoped>
-.gate-root {
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--sys-paper-3, #0d0b14);
-  padding: clamp(24px, 5vw, 48px) 24px;
-}
-
-.gate-col {
-  width: 100%;
-  max-width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.gate-logo {
-  display: flex;
-  justify-content: center;
-}
-
-.gate-logo-img {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-}
-
-.gate-head {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-bottom: 1px solid var(--sys-rule);
-  padding-bottom: 24px;
-}
-
-.gate-kicker {
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--sys-fg-muted);
-}
-
-.gate-display {
-  font-family: var(--sys-serif);
-  font-size: clamp(36px, 7vw, 52px);
-  font-weight: 400;
-  letter-spacing: -0.03em;
-  color: var(--sys-fg);
-  margin: 0;
-  line-height: 0.95;
-}
-
-.gate-display em {
-  font-style: italic;
-  color: var(--sys-accent-bright);
-}
-
-.gate-lede {
-  font-family: var(--sys-serif);
-  font-size: 15px;
-  color: var(--sys-fg-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.gate-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.gate-error {
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  color: var(--sys-err);
-  border-left: 2px solid var(--sys-err);
-  padding-left: 10px;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.gate-hint {
-  font-family: var(--sys-sans, sans-serif);
-  font-size: 13px;
-  color: var(--sys-fg-muted);
-  line-height: 1.6;
-  margin: 0;
-}
-
-.gate-bio-btn {
-  width: 100%;
-  justify-content: center;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  font-size: 16px;
-}
-
-.gate-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  color: var(--sys-fg-muted);
-  cursor: pointer;
-  text-align: center;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.gate-link:hover {
-  color: var(--sys-fg);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.gate h1 em { font-style: italic; color: var(--accent-bright); }
+.gate-error { font-size: 12px; color: var(--c-err, #e06c75); border-left: 2px solid currentColor; padding-left: 10px; line-height: 1.6; margin: 0 0 14px; text-align: left; }
+.gate-hint { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0 0 14px; }
+.gate-autofill { font-size: 12px; color: var(--accent); margin: -8px 0 12px; text-align: left; }
+.gate-link { background: none; border: none; padding: 0; font-size: 12px; color: var(--fg-3); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; margin-top: 12px; }
+.gate-link:hover { color: var(--fg); }
+.gate-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: gate-spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+@keyframes gate-spin { to { transform: rotate(360deg); } }
 </style>
