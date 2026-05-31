@@ -672,7 +672,8 @@ const MODAL_MAP = {
 }
 
 function onNav(id) {
-  if (id === 'chat') { navigateTo('/session'); return }
+  if (id === 'chat')     { navigateTo('/session'); return }
+  if (id === 'maturity') { navigateTo('/reife');   return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
