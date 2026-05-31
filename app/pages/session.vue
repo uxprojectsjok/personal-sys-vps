@@ -423,8 +423,10 @@ function onNav(id) {
 }
 
 /* ── Filter toggle button ── */
-.sess-filter-toggle { position: relative; }
+.sess-filter-toggle { position: relative; color: var(--fg-2); }
+.sess-filter-toggle.on { background: var(--accent-dim) !important; color: var(--accent-bright) !important; }
 .sess-filter-toggle.has-filter { color: var(--accent); }
+.sess-filter-toggle.on.has-filter { color: var(--accent-bright) !important; }
 .sess-filter-dot {
   position: absolute; top: 5px; right: 5px;
   width: 5px; height: 5px; border-radius: 50%;
