@@ -10,12 +10,17 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14" class="dt-search-icon">
               <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/>
             </svg>
-            <input v-model="searchQuery" class="dt-search" type="search" placeholder="Suchen oder Befehl…" autocomplete="off" spellcheck="false" />
+            <input v-model="searchQuery" class="dt-search" type="search" placeholder="Suchen…" autocomplete="off" spellcheck="false" />
           </div>
         </SysTopbar>
 
         <div class="scroll">
           <div class="dateien-page">
+
+            <!-- ── Toast ── -->
+            <Transition name="toast">
+              <div v-if="toast" class="dt-toast" :class="`dt-toast-${toast.type}`">{{ toast.msg }}</div>
+            </Transition>
 
             <!-- ── Hero ── -->
             <div class="dt-hero">
@@ -28,15 +33,16 @@
               <div class="dt-tabs">
                 <button class="dt-tab" :class="{ on: tab === 'lokal' }" @click="tab = 'lokal'">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
-                    <rect x="3" y="4" width="14" height="11" rx="1.5"/>
-                    <path stroke-linecap="round" d="M7 4V3M13 4V3"/>
+                    <rect x="2" y="3" width="16" height="12" rx="1.5"/>
+                    <path stroke-linecap="round" d="M6 18h8M10 15v3"/>
                   </svg>
                   Lokal
                 </button>
                 <button class="dt-tab" :class="{ on: tab === 'server' }" @click="switchToServer">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7Z"/>
-                    <path stroke-linecap="round" d="M3 12v1a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-1"/>
+                    <rect x="2" y="3" width="16" height="5" rx="1.5"/>
+                    <rect x="2" y="12" width="16" height="5" rx="1.5"/>
+                    <circle cx="5.5" cy="5.5" r="1"/><circle cx="5.5" cy="14.5" r="1"/>
                   </svg>
                   Server
                 </button>
@@ -46,31 +52,14 @@
 
             <!-- ── Storage bar ── -->
             <div class="dt-storage">
-              <template v-if="tab === 'lokal'">
-                <div class="dt-storage-info">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14" class="dt-storage-icon">
-                    <rect x="2" y="6" width="16" height="10" rx="1.5"/>
-                    <path stroke-linecap="round" d="M5 11h2M5 9h4"/>
-                  </svg>
-                  <span class="dt-storage-label">Lokaler Speicher · AES-256</span>
-                </div>
-                <div v-if="vaultConnected" class="dt-storage-bar-wrap">
-                  <div class="dt-storage-bar">
-                    <div class="dt-storage-fill" :style="{ width: '4%' }" />
-                  </div>
-                </div>
-                <span class="dt-storage-size">{{ localFileCount }} Dateien</span>
-              </template>
-              <template v-else>
-                <div class="dt-storage-info">
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14" class="dt-storage-icon">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.5 10a5 5 0 0 1 5-5h5a5 5 0 0 1 0 10h-5a5 5 0 0 1-5-5Z"/>
-                  </svg>
-                  <span class="dt-storage-label">Verschlüsselter Server</span>
-                  <span v-if="serverLoaded" class="dt-storage-sync">· Sync aktiv</span>
-                </div>
-                <span class="dt-storage-size">{{ serverFileCount }} Dateien</span>
-              </template>
+              <div class="dt-storage-info">
+                <span class="dt-storage-label">{{ tab === 'lokal' ? 'Lokaler Speicher · AES-256' : 'Verschlüsselter Server' }}</span>
+                <span v-if="tab === 'server' && serverLoaded" class="dt-storage-sync">· Sync aktiv</span>
+              </div>
+              <div v-if="tab === 'lokal' && vaultConnected" class="dt-storage-bar-wrap">
+                <div class="dt-storage-bar"><div class="dt-storage-fill" :style="{ width: '4%' }" /></div>
+              </div>
+              <span class="dt-storage-size">{{ tab === 'lokal' ? `${localFileCount} Dateien` : `${serverFileCount} Dateien` }}</span>
             </div>
 
             <!-- ── Stats chips ── -->
@@ -84,69 +73,78 @@
               <span class="dt-stat"><span class="dt-stat-dot dt-stat-doc" />Kontext {{ statsCount('doc') }}</span>
             </div>
 
-            <!-- ── Filter + Upload ── -->
+            <!-- ── Toolbar ── -->
             <div class="dt-toolbar">
               <div class="dt-filters seg">
                 <button v-for="f in FILTERS" :key="f.key" :class="{ on: typeFilter === f.key }" @click="typeFilter = f.key">{{ f.label }}</button>
               </div>
+              <!-- Refresh -->
+              <button class="icon-btn" :class="{ on: refreshing }" @click="refresh" :disabled="refreshing" title="Aktualisieren">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" :class="{ 'spin': refreshing }">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4a8 8 0 1 1 0 12"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
+                </svg>
+              </button>
+              <!-- Upload from device -->
               <button class="dt-upload-btn" @click="triggerUpload">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 14V4m0 0L6 8m4-4 4 4"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 13V3m0 0L6 7m4-4 4 4"/>
                   <path stroke-linecap="round" d="M3 16h14"/>
                 </svg>
                 Hochladen
               </button>
               <input ref="fileInput" type="file" multiple class="dt-file-input" @change="handleFileUpload" />
+              <!-- sys.md overwrite input -->
+              <input ref="soulInput" type="file" accept=".md" class="dt-file-input" @change="handleSoulImport" />
             </div>
 
             <!-- ── File table ── -->
             <div class="dt-table">
               <div class="dt-table-head">
                 <span class="dt-col-name">Name</span>
-                <span class="dt-col-size">Größe</span>
                 <span class="dt-col-date">Hinzugefügt</span>
-                <span class="dt-col-status">{{ tab === 'server' ? 'Sync' : 'Status' }}</span>
+                <span class="dt-col-actions"></span>
               </div>
 
               <!-- Local: not connected -->
               <div v-if="tab === 'lokal' && !vaultConnected" class="dt-empty">
                 <p class="dt-empty-text">Vault nicht verbunden.</p>
-                <button class="dt-connect-btn" @click="connectVault">Vault verbinden</button>
+                <button class="dt-connect-btn" @click="connectVaultFn">Vault verbinden</button>
               </div>
-
               <!-- Server: loading -->
               <div v-else-if="tab === 'server' && !serverLoaded" class="dt-empty">
                 <p class="dt-empty-text">Server-Dateien werden geladen…</p>
               </div>
-
-              <!-- Empty state -->
+              <!-- Empty -->
               <div v-else-if="filteredFiles.length === 0" class="dt-empty">
                 <p class="dt-empty-text">{{ searchQuery ? 'Keine Ergebnisse.' : 'Keine Dateien vorhanden.' }}</p>
               </div>
 
-              <!-- File rows -->
+              <!-- Rows -->
               <div v-else>
-                <div v-for="file in filteredFiles" :key="file.name" class="dt-row">
+                <div v-for="file in filteredFiles" :key="file.id" class="dt-row" :class="{ busy: busy[file.id] }">
+                  <!-- Icon + Name -->
                   <div class="dt-col-name dt-name-cell">
                     <div class="dt-file-icon" :class="`dt-icon-${file.type}`">
-                      <!-- audio -->
-                      <svg v-if="file.type === 'audio'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
-                        <path stroke-linecap="round" d="M6 12V4l7-1.5V11"/>
-                        <circle cx="4.5" cy="12" r="1.5"/><circle cx="11.5" cy="11" r="1.5"/>
+                      <svg v-if="file.type === 'soul'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
+                        <circle cx="8" cy="8" r="5.5"/><path stroke-linecap="round" d="M8 5v3l2 1.5"/>
                       </svg>
-                      <!-- video -->
+                      <svg v-else-if="file.type === 'audio'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
+                        <path stroke-linecap="round" d="M5 12V4l7-1.5V11"/>
+                        <circle cx="3.5" cy="12" r="1.5"/><circle cx="10.5" cy="11" r="1.5"/>
+                      </svg>
                       <svg v-else-if="file.type === 'video'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
-                        <rect x="1" y="3" width="10" height="10" rx="1"/><path stroke-linecap="round" stroke-linejoin="round" d="m11 6 4-2v8l-4-2"/>
+                        <rect x="1" y="3" width="10" height="10" rx="1"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m11 6 4-2v8l-4-2"/>
                       </svg>
-                      <!-- image -->
                       <svg v-else-if="file.type === 'image'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
                         <rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/>
-                        <circle cx="5.5" cy="6" r="1.2"/><path stroke-linecap="round" stroke-linejoin="round" d="m1.5 10.5 4-3 3 3 2-2 3.5 3.5"/>
+                        <circle cx="5.5" cy="6" r="1.2"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m1.5 10.5 4-3 3 3 2-2 3.5 3.5"/>
                       </svg>
-                      <!-- doc / default -->
                       <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
-                        <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
                         <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+                        <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
                       </svg>
                     </div>
                     <div class="dt-name-info">
@@ -154,22 +152,41 @@
                       <span class="dt-filetype">{{ file.typeLabel }}</span>
                     </div>
                   </div>
-                  <span class="dt-col-size dt-meta">{{ file.size || '—' }}</span>
-                  <span class="dt-col-date dt-meta">{{ file.date || '—' }}</span>
-                  <span class="dt-col-status">
-                    <span v-if="tab === 'server'" class="dt-status-sync">
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.5 9 3.5 3.5 7.5-8"/>
-                      </svg>
-                      synchron
-                    </span>
-                    <span v-else class="dt-status-local">
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11">
-                        <rect x="2" y="7" width="12" height="8" rx="1"/><path stroke-linecap="round" d="M5 7V5a3 3 0 0 1 6 0v2"/>
-                      </svg>
-                      versch.
-                    </span>
-                  </span>
+
+                  <!-- Date -->
+                  <span class="dt-col-date dt-meta">—</span>
+
+                  <!-- Actions -->
+                  <div class="dt-col-actions dt-actions">
+                    <!-- sys.md specific -->
+                    <template v-if="file.type === 'soul'">
+                      <button class="dt-act-btn" @click="downloadSoul(file)" title="Herunterladen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                      </button>
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="Überschreiben">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 14V6m0 0 3 3M8 6 5 9"/><path stroke-linecap="round" d="M2 3h12"/></svg>
+                      </button>
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="pushSoulToServer" :disabled="busy['soul']" title="Auf Server hochladen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
+                      </button>
+                    </template>
+
+                    <!-- Regular files -->
+                    <template v-else>
+                      <!-- Download -->
+                      <button class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                      </button>
+                      <!-- Upload to server (lokal only) -->
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" title="Auf Server hochladen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
+                      </button>
+                      <!-- Delete -->
+                      <button class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" title="Löschen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                      </button>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -186,36 +203,50 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useApiContext } from '~/composables/useApiContext.js'
+import { useVaultSession } from '~/composables/useVaultSession.js'
 
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken } = useSoul()
-const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn } = useVault()
-const { syncedFiles, loaded: serverLoaded, loadContext } = useApiContext()
+const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText } = useSoul()
+const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, writeFile, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
+const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
+const { vaultKey } = useVaultSession()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const tab              = ref('lokal')
 const typeFilter       = ref('all')
 const searchQuery      = ref('')
+const refreshing       = ref(false)
 const fileInput        = ref(null)
+const soulInput        = ref(null)
+const busy             = reactive({})
+const toast            = ref(null)
+let   toastTimer       = null
 
 const FILTERS = [
-  { key: 'all',    label: 'Alle' },
-  { key: 'audio',  label: 'Audio' },
-  { key: 'video',  label: 'Video' },
-  { key: 'image',  label: 'Bilder' },
-  { key: 'face',   label: 'Gesicht' },
-  { key: 'doc',    label: 'Kontext' },
+  { key: 'all',   label: 'Alle' },
+  { key: 'soul',  label: 'sys.md' },
+  { key: 'audio', label: 'Audio' },
+  { key: 'video', label: 'Video' },
+  { key: 'image', label: 'Bilder' },
+  { key: 'doc',   label: 'Kontext' },
 ]
 
-// ── File type helpers ─────────────────────────────────────────────────────
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'ok') {
+  clearTimeout(toastTimer)
+  toast.value = { msg, type }
+  toastTimer = setTimeout(() => { toast.value = null }, 3000)
+}
+
+// ── Type helpers ───────────────────────────────────────────────────────────
 function kindToType(kind) {
   if (!kind) return 'doc'
   const k = kind.toLowerCase()
@@ -224,37 +255,48 @@ function kindToType(kind) {
   if (/^(jpg|jpeg|png|webp|gif|avif|heic|image|profile|profile-archive)$/.test(k)) return 'image'
   return 'doc'
 }
-function nameToType(name) {
+function nameToApiType(name) {
   const ext = (name || '').split('.').pop().toLowerCase()
-  if (/^(mp3|wav|ogg|flac|aac|m4a|opus)$/.test(ext)) return 'audio'
-  if (/^(mp4|webm|mov|avi|mkv|m4v)$/.test(ext)) return 'video'
+  if (/^(mp3|wav|ogg|flac|aac|m4a|opus|weba|webm)$/.test(ext)) return 'audio'
+  if (/^(mp4|mov|avi|mkv|m4v)$/.test(ext)) return 'video'
   if (/^(jpg|jpeg|png|webp|gif|avif|heic)$/.test(ext)) return 'image'
-  return 'doc'
+  return 'context'
 }
-const TYPE_LABELS = { audio: 'audio', video: 'video', image: 'image', doc: 'doc', face: 'image' }
-const TYPE_DISPLAY = { audio: 'Audio', video: 'Video', image: 'Bild', doc: 'Dokument', face: 'Gesicht' }
+const TYPE_DISPLAY = { soul: 'sys.md', audio: 'Audio', video: 'Video', image: 'Bild', doc: 'Dokument' }
 
-// ── Flat file lists ───────────────────────────────────────────────────────
-const localFileList = computed(() =>
-  allFiles.value
-    .filter(f => !['soul', 'profile-json'].includes(f.kind))
-    .map(f => ({
-      name: f.name,
+// ── File lists ─────────────────────────────────────────────────────────────
+const soulEntry = computed(() => ({
+  id: 'soul', name: 'soul', displayName: soulFilename?.value || 'sys.md',
+  type: 'soul', typeLabel: 'sys.md', apiType: 'soul',
+}))
+
+const localFileList = computed(() => {
+  const items = [soulEntry.value]
+  for (const f of allFiles.value) {
+    if (['soul', 'profile-json'].includes(f.kind)) continue
+    const type = kindToType(f.kind)
+    items.push({
+      id: f.name, name: f.name,
       displayName: f.name.split('/').pop(),
-      type: kindToType(f.kind),
-      typeLabel: TYPE_DISPLAY[kindToType(f.kind)] || f.kind,
-      size: null,
-      date: null,
-    }))
-)
+      type, typeLabel: TYPE_DISPLAY[type] || f.kind,
+      apiType: nameToApiType(f.name),
+    })
+  }
+  return items
+})
 
 const serverFileList = computed(() => {
+  const items = [soulEntry.value]
   const sf = syncedFiles.value || {}
-  const items = []
-  for (const name of (sf.audio  || [])) items.push({ name, displayName: name.split('/').pop(), type: 'audio',  typeLabel: 'Audio', size: null, date: null })
-  for (const name of (sf.video  || [])) items.push({ name, displayName: name.split('/').pop(), type: 'video',  typeLabel: 'Video', size: null, date: null })
-  for (const name of (sf.images || [])) items.push({ name, displayName: name.split('/').pop(), type: 'image',  typeLabel: 'Bild',  size: null, date: null })
-  for (const name of (sf.context|| [])) items.push({ name, displayName: name.split('/').pop(), type: 'doc',    typeLabel: 'Dokument', size: null, date: null })
+  const add = (arr, type, apiType) => {
+    for (const name of (arr || [])) {
+      items.push({ id: `srv:${name}`, name, displayName: name.split('/').pop(), type, typeLabel: TYPE_DISPLAY[type], apiType })
+    }
+  }
+  add(sf.audio,   'audio', 'audio')
+  add(sf.video,   'video', 'video')
+  add(sf.images,  'image', 'image')
+  add(sf.context, 'doc',   'context')
   return items
 })
 
@@ -262,10 +304,7 @@ const activeList = computed(() => tab.value === 'lokal' ? localFileList.value : 
 
 const filteredFiles = computed(() => {
   let list = activeList.value
-  if (typeFilter.value !== 'all') {
-    const t = typeFilter.value === 'face' ? 'image' : typeFilter.value
-    list = list.filter(f => f.type === t)
-  }
+  if (typeFilter.value !== 'all') list = list.filter(f => f.type === typeFilter.value)
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter(f => f.displayName.toLowerCase().includes(q))
@@ -273,43 +312,133 @@ const filteredFiles = computed(() => {
   return list
 })
 
-// ── Stats ─────────────────────────────────────────────────────────────────
 const localFileCount  = computed(() => localFileList.value.length)
 const serverFileCount = computed(() => serverFileList.value.length)
-
 function statsCount(type) {
-  const list = activeList.value
-  const count = list.filter(f => f.type === type).length
-  return count > 0 ? count : '—'
+  const n = activeList.value.filter(f => f.type === type).length
+  return n > 0 ? n : '—'
 }
 
-// ── Actions ───────────────────────────────────────────────────────────────
-async function connectVault() {
-  await connectVaultFn()
+// ── Refresh ────────────────────────────────────────────────────────────────
+async function refresh() {
+  refreshing.value = true
+  try {
+    if (tab.value === 'lokal') await scanLocalVault()
+    else await loadContext(soulToken.value)
+  } finally { refreshing.value = false }
 }
 
+// ── Server switch ──────────────────────────────────────────────────────────
 async function switchToServer() {
   tab.value = 'server'
-  if (!serverLoaded.value && soulToken.value) {
-    await loadContext(soulToken.value)
-  }
+  if (!serverLoaded.value && soulToken.value) await loadContext(soulToken.value)
 }
 
+// ── Blob download helper ───────────────────────────────────────────────────
+function triggerDownload(buf, filename) {
+  const url = URL.createObjectURL(new Blob([buf]))
+  const a = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+// ── sys.md actions ─────────────────────────────────────────────────────────
+function downloadSoul() {
+  const blob = new Blob([soulContent.value || ''], { type: 'text/markdown' })
+  triggerDownload(blob.arrayBuffer ? blob : new Uint8Array(new TextEncoder().encode(soulContent.value)), soulFilename?.value || 'sys.md')
+}
+
+async function handleSoulImport(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  const text = await file.text()
+  importFromText(text)
+  saveSoul()
+  showToast('sys.md überschrieben ✓')
+  e.target.value = ''
+}
+
+async function pushSoulToServer() {
+  busy['soul'] = true
+  try { await pushToServer(); showToast('sys.md auf Server hochgeladen ✓') }
+  catch { showToast('Upload fehlgeschlagen', 'err') }
+  finally { busy['soul'] = false }
+}
+
+// ── Download file ──────────────────────────────────────────────────────────
+async function downloadFile(file) {
+  busy[file.id] = true
+  try {
+    if (tab.value === 'lokal') {
+      const buf = await readVaultFile(file.name)
+      if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
+      triggerDownload(buf, file.displayName)
+    } else {
+      const res = await fetch(`/api/vault/${file.apiType}/${encodeURIComponent(file.name)}`, {
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      if (!res.ok) { showToast('Download fehlgeschlagen', 'err'); return }
+      triggerDownload(await res.arrayBuffer(), file.displayName)
+    }
+    showToast(`${file.displayName} heruntergeladen ✓`)
+  } catch { showToast('Fehler beim Herunterladen', 'err') }
+  finally { busy[file.id] = false }
+}
+
+// ── Upload local → server ──────────────────────────────────────────────────
+async function uploadToServer(file) {
+  busy[file.id] = true
+  try {
+    const buf = await readVaultFile(file.name)
+    if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
+    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+    const res = await syncFile(soulToken.value, file.apiType, file.name, buf, key)
+    if (res.ok) { showToast(`${file.displayName} hochgeladen ✓`); await loadContext(soulToken.value) }
+    else showToast(res.error || 'Upload fehlgeschlagen', 'err')
+  } catch { showToast('Fehler beim Hochladen', 'err') }
+  finally { busy[file.id] = false }
+}
+
+// ── Delete file ────────────────────────────────────────────────────────────
+async function deleteFile(file) {
+  if (!confirm(`„${file.displayName}" wirklich löschen?`)) return
+  busy[file.id] = true
+  try {
+    if (tab.value === 'lokal') {
+      const ok = await deleteLocalFile(file.name)
+      if (ok) showToast(`${file.displayName} gelöscht ✓`)
+      else showToast('Löschen fehlgeschlagen', 'err')
+    } else {
+      const res = await deleteVaultFile(soulToken.value, file.apiType, file.name)
+      if (res?.ok !== false) { showToast(`${file.displayName} gelöscht ✓`); await loadContext(soulToken.value) }
+      else showToast('Löschen fehlgeschlagen', 'err')
+    }
+  } catch { showToast('Fehler beim Löschen', 'err') }
+  finally { busy[file.id] = false }
+}
+
+// ── Upload from device ─────────────────────────────────────────────────────
 function triggerUpload() { fileInput.value?.click() }
-function handleFileUpload() { /* handled by VaultExplorer / parent flow */ }
 
-onMounted(() => {
-  if (soulToken.value && !serverLoaded.value) {
-    loadContext(soulToken.value).catch(() => {})
+async function handleFileUpload(e) {
+  const files = Array.from(e.target.files || []); if (!files.length) return
+  let ok = 0
+  for (const file of files) {
+    const buf = await file.arrayBuffer()
+    const saved = await writeFile(file.name, buf)
+    if (saved) ok++
   }
-})
+  await scanLocalVault()
+  showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} hinzugefügt ✓`)
+  e.target.value = ''
+}
 
-// ── Navigation ────────────────────────────────────────────────────────────
+// ── Navigation ─────────────────────────────────────────────────────────────
 function lockGate() {
   document.cookie = 'sys_token=; Max-Age=0; path=/'
   window.location.href = '/gate'
 }
-
 function onNav(id) {
   if (id === 'files')    return
   if (id === 'chat')     { router.push('/session');    return }
@@ -321,6 +450,10 @@ function onNav(id) {
   drawerOpen.value = false
   router.push('/')
 }
+
+onMounted(() => {
+  if (soulToken.value && !serverLoaded.value) loadContext(soulToken.value).catch(() => {})
+})
 </script>
 
 <style scoped>
@@ -330,10 +463,20 @@ function onNav(id) {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-.dateien-page {
-  max-width: 900px;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+.dateien-page { max-width: 900px; padding: 32px clamp(16px, 3vw, 32px) 80px; }
+
+/* ── Toast ── */
+.dt-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  padding: 9px 18px; border-radius: var(--r-xs); z-index: 200;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--fg-2);
+  white-space: nowrap; pointer-events: none;
 }
+.dt-toast-ok    { border-color: rgba(109,184,154,0.4); color: var(--accent); }
+.dt-toast-err   { border-color: rgba(224,108,117,0.4); color: #e06c75; }
+.toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
 
 /* ── Search ── */
 .dt-search-wrap {
@@ -342,200 +485,107 @@ function onNav(id) {
   padding: 0 10px; height: 30px; background: var(--surface-2);
 }
 .dt-search-icon { color: var(--fg-3); flex: none; }
-.dt-search {
-  background: transparent; border: none; outline: none;
-  color: var(--fg); font-family: var(--sans); font-size: 13px; width: 160px;
-}
+.dt-search { background: transparent; border: none; outline: none; color: var(--fg); font-family: var(--sans); font-size: 13px; width: 140px; }
 .dt-search::placeholder { color: var(--fg-3); }
 
 /* ── Hero ── */
-.dt-hero {
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 24px;
-}
-.dt-eyebrow {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
-  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
-}
-.dt-title {
-  font-family: var(--serif); font-size: clamp(28px, 4vw, 42px);
-  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
-  line-height: 1.05; margin: 0;
-}
+.dt-hero { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.dt-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
+.dt-title { font-family: var(--serif); font-size: clamp(28px, 4vw, 42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
 .dt-title em { font-style: italic; color: var(--fg-2); }
 
 /* ── Tabs ── */
-.dt-tabs-row {
-  display: flex; align-items: center; gap: 16px;
-  margin-bottom: 16px; flex-wrap: wrap;
-}
-.dt-tabs {
-  display: flex; gap: 0;
-  border: 1px solid var(--line); border-radius: var(--r-xs);
-  overflow: hidden; flex: none;
-}
-.dt-tab {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 16px; font-family: var(--sans); font-size: 13px;
-  color: var(--fg-3); background: transparent; border: none; cursor: pointer;
-  border-right: 1px solid var(--line); transition: all 0.15s;
-}
+.dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; flex: none; }
+.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 13px; color: var(--fg-3); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
 .dt-tab:last-child { border-right: none; }
 .dt-tab.on { background: var(--surface); color: var(--fg); }
 .dt-tab:hover:not(.on) { color: var(--fg-2); }
-.dt-tab-desc {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
-  letter-spacing: 0.04em;
-}
+.dt-tab-desc { font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
 
 /* ── Storage ── */
-.dt-storage {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px; margin-bottom: 14px;
-  border: 1px solid var(--line); background: var(--surface-2);
-  border-radius: var(--r-xs); flex-wrap: wrap; gap: 10px;
-}
-.dt-storage-info {
-  display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
-}
-.dt-storage-icon { color: var(--accent); flex: none; }
-.dt-storage-label {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-2);
-  letter-spacing: 0.04em; white-space: nowrap;
-}
-.dt-storage-sync {
-  font-family: var(--mono); font-size: 11px; color: var(--accent);
-  letter-spacing: 0.04em;
-}
-.dt-storage-bar-wrap { flex: 1; min-width: 80px; max-width: 200px; }
-.dt-storage-bar {
-  height: 3px; background: var(--line); border-radius: 2px; overflow: hidden;
-}
-.dt-storage-fill {
-  height: 100%; background: var(--accent); border-radius: 2px;
-  transition: width 0.4s ease;
-}
-.dt-storage-size {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-2);
-  letter-spacing: 0.04em; flex: none;
-}
+.dt-storage { display: flex; align-items: center; gap: 10px; padding: 9px 14px; margin-bottom: 14px; border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--r-xs); flex-wrap: wrap; }
+.dt-storage-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.dt-storage-label { font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; }
+.dt-storage-sync { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
+.dt-storage-bar-wrap { flex: 1; min-width: 80px; max-width: 180px; }
+.dt-storage-bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.dt-storage-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.dt-storage-size { font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; flex: none; }
 
-/* ── Stats chips ── */
-.dt-stats {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-2);
-  letter-spacing: 0.04em; margin-bottom: 20px;
-  flex-wrap: wrap;
-}
+/* ── Stats ── */
+.dt-stats { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; margin-bottom: 18px; flex-wrap: wrap; }
 .dt-stat { display: flex; align-items: center; gap: 5px; }
 .dt-stat-sep { color: var(--fg-4); }
-.dt-stat-dot {
-  width: 6px; height: 6px; border-radius: 50%; flex: none;
-}
+.dt-stat-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
 .dt-stat-audio { background: var(--accent); }
 .dt-stat-video { background: #7ab8d4; }
 .dt-stat-image { background: #c4a96e; }
 .dt-stat-doc   { background: var(--fg-4); }
 
 /* ── Toolbar ── */
-.dt-toolbar {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 0; flex-wrap: wrap;
-}
+.dt-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 0; flex-wrap: wrap; }
 .dt-filters { display: flex; flex-wrap: wrap; flex: 1; }
+.spin { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .dt-upload-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 16px; border: none; border-radius: var(--r-xs);
-  background: var(--accent); color: var(--on-accent);
-  font-family: var(--sans); font-size: 13px; font-weight: 500;
-  cursor: pointer; transition: background 0.15s; flex: none; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border: none; border-radius: var(--r-xs); background: var(--accent); color: var(--on-accent);
+  font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background 0.15s; flex: none; white-space: nowrap;
 }
 .dt-upload-btn:hover { background: var(--accent-bright); }
 .dt-file-input { display: none; }
 
 /* ── Table ── */
-.dt-table {
-  border: 1px solid var(--line); border-radius: var(--r-xs);
-  overflow: hidden; margin-top: 16px;
-}
+.dt-table { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; margin-top: 14px; }
 .dt-table-head {
-  display: grid;
-  grid-template-columns: 1fr 90px 110px 110px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  display: grid; grid-template-columns: 1fr 110px 100px;
+  padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
-.dt-table-head span {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-4);
-}
+.dt-table-head span { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }
 .dt-row {
-  display: grid;
-  grid-template-columns: 1fr 90px 110px 110px;
-  padding: 10px 16px; align-items: center;
-  border-bottom: 1px solid var(--line);
-  transition: background 0.12s;
+  display: grid; grid-template-columns: 1fr 110px 100px;
+  padding: 9px 14px; align-items: center;
+  border-bottom: 1px solid var(--line); transition: background 0.12s;
 }
 .dt-row:last-child { border-bottom: none; }
 .dt-row:hover { background: var(--surface-2); }
+.dt-row.busy { opacity: 0.5; pointer-events: none; }
 
-/* ── File icon ── */
-.dt-name-cell {
-  display: flex; align-items: center; gap: 10px; min-width: 0;
-}
-.dt-file-icon {
-  width: 30px; height: 30px; border-radius: 50%; flex: none;
-  display: flex; align-items: center; justify-content: center;
-}
-.dt-icon-audio { background: rgba(109,184,154,0.18); color: var(--accent); }
-.dt-icon-video { background: rgba(122,184,212,0.18); color: #7ab8d4; }
-.dt-icon-image { background: rgba(196,169,110,0.18); color: #c4a96e; }
-.dt-icon-doc   { background: rgba(244,241,234,0.08); color: var(--fg-3); }
-
-/* ── File name info ── */
+/* ── File icon + name ── */
+.dt-name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dt-file-icon { width: 28px; height: 28px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; }
+.dt-icon-soul  { background: rgba(109,184,154,0.22); color: var(--accent); }
+.dt-icon-audio { background: rgba(109,184,154,0.15); color: var(--accent); }
+.dt-icon-video { background: rgba(122,184,212,0.15); color: #7ab8d4; }
+.dt-icon-image { background: rgba(196,169,110,0.15); color: #c4a96e; }
+.dt-icon-doc   { background: rgba(244,241,234,0.07); color: var(--fg-3); }
 .dt-name-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.dt-filename {
-  font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--fg);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.dt-filetype {
-  font-family: var(--mono); font-size: 10px; color: var(--fg-4);
-  letter-spacing: 0.06em; text-transform: lowercase;
-}
+.dt-filename { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dt-filetype { font-family: var(--mono); font-size: 10px; color: var(--fg-4); letter-spacing: 0.06em; }
 
-/* ── Meta columns ── */
-.dt-meta {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
-  letter-spacing: 0.02em;
-}
+/* ── Meta / status ── */
+.dt-meta { font-family: var(--mono); font-size: 12px; color: var(--fg-4); }
+.dt-status-sync { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
+.dt-status-local { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
 
-/* ── Status ── */
-.dt-status-sync {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-family: var(--mono); font-size: 11px; color: var(--accent);
-  letter-spacing: 0.04em;
+/* ── Row actions ── */
+.dt-actions { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
+.dt-act-btn {
+  width: 28px; height: 28px; border: none; background: transparent;
+  color: var(--fg-3); cursor: pointer; border-radius: var(--r-xs);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s;
 }
-.dt-status-local {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
-  letter-spacing: 0.04em;
-}
+.dt-act-btn:hover { background: var(--surface-2); color: var(--fg); }
+.dt-act-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.dt-act-del:hover { color: #e06c75 !important; background: rgba(224,108,117,0.10) !important; }
 
 /* ── Empty ── */
-.dt-empty {
-  padding: 40px 24px;
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-}
-.dt-empty-text {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
-  letter-spacing: 0.06em; margin: 0;
-}
-.dt-connect-btn {
-  padding: 7px 18px; border: 1px solid var(--line-2); border-radius: var(--r-xs);
-  background: transparent; color: var(--fg-2); font-family: var(--sans);
-  font-size: 13px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
-}
+.dt-empty { padding: 40px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.dt-empty-text { font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.06em; margin: 0; }
+.dt-connect-btn { padding: 7px 18px; border: 1px solid var(--line-2); border-radius: var(--r-xs); background: transparent; color: var(--fg-2); font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all 0.15s; }
 .dt-connect-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── Mobile ── */
@@ -543,11 +593,8 @@ function onNav(id) {
   .dt-search-wrap { display: none; }
   .dt-title { font-size: clamp(24px, 7vw, 32px); }
   .dt-table-head,
-  .dt-row {
-    grid-template-columns: 1fr 70px 80px !important;
-  }
+  .dt-row { grid-template-columns: 1fr 90px !important; }
   .dt-col-date { display: none; }
-  .dt-tab-desc { display: none; }
-  .dt-filters { gap: 4px; }
+  .dt-tab-desc { font-size: 10px; }
 }
 </style>
