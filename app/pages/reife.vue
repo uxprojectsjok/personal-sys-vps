@@ -5,6 +5,7 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'Reife']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}" />
+        <div class="scroll">
         <div class="page rf-page">
 
           <!-- Header -->
@@ -68,6 +69,7 @@
           </div>
 
         </div>
+        </div><!-- /scroll -->
       </div>
     </div>
     <div v-else class="sys-loading"><span>SYS · wird geladen</span></div>
@@ -200,7 +202,7 @@ function cardDesc(card) {
 .rf-page {
   max-width: 900px;
   padding-top: 32px;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 /* ── Header ── */
 .rf-head { margin-bottom: 40px; }
