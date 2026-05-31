@@ -233,7 +233,7 @@
     <!-- ── Dock — Teleport auf mobile heraus aus overflow:hidden Containern
          damit backdrop-filter auf Android Chrome funktioniert ──────── -->
     <Teleport to="#teleports" :disabled="!isMobile">
-    <footer ref="dockEl" class="dock" :class="{ 'mobile-open': mobileComposerOpen }">
+    <footer ref="dockEl" class="dock">
 
       <!-- Soul-Archivar läuft -->
       <Transition name="fade-quick">
@@ -243,46 +243,35 @@
         </div>
       </Transition>
 
-      <!-- @-Command chip strip — always visible, scrollable -->
-      <div class="cmd-strip">
-        <button
-          v-for="c in AT_COMMANDS" :key="c.cmd"
-          class="cmd-chip"
-          @click="insertCommand(c)"
-          :title="c.desc"
-        ><span class="cmd-at">@</span>{{ c.label }}</button>
-      </div>
+      <!-- @-Command chip strip — toggled on desktop, always visible on mobile -->
+      <Transition name="cmd-strip">
+        <div v-if="cmdsOpen || isMobile" class="cmd-strip">
+          <button
+            v-for="c in AT_COMMANDS" :key="c.cmd"
+            class="cmd-chip"
+            @click="insertCommand(c)"
+            :title="c.desc"
+          ><span class="cmd-at">@</span>{{ c.label }}</button>
+        </div>
+      </Transition>
 
       <!-- Input row -->
       <div class="dock-main">
-        <!-- "+" media drawer toggle -->
+        <!-- Toggle chip strip / close -->
         <button
           class="dock-icon dock-plus"
-          :class="{ active: mediaOpen }"
-          @click="mediaOpen = !mediaOpen"
+          :class="{ active: cmdsOpen }"
+          @click="cmdsOpen = !cmdsOpen"
           :disabled="props.growthLocked"
-          title="Medien anhängen"
+          :title="cmdsOpen ? 'Befehle schließen' : '@ Befehle öffnen'"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+          <svg v-if="!cmdsOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
-        <!-- Expandable media buttons -->
-        <Transition name="media-drawer">
-          <div v-if="mediaOpen" class="media-drawer">
-            <button class="dock-icon" @click="cameraOpen = true; mediaOpen = false" :disabled="visionLoading || props.growthLocked" :title="visionLoading ? 'Analyse läuft…' : 'Kamera'">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg" :class="{ pulse: visionLoading }">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
-              </svg>
-            </button>
-            <button class="dock-icon" @click="onFileIconClick" title="Datei anhängen" :disabled="props.growthLocked">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="dock-icon-svg">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-              </svg>
-            </button>
-          </div>
-        </Transition>
         <div class="input-wrap">
           <textarea
             ref="textareaEl"
@@ -334,17 +323,22 @@
         </Transition>
       </div>
 
-      <!-- Compact mode bar — below input -->
+      <!-- Mode bar — always below input -->
       <div class="dock-mode-bar">
-        <span class="mode-dot soul"></span>
-        <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
+        <button class="mode-cmd-toggle" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen" title="@ Befehle">
+          <span class="mode-at">@</span> Befehle
+        </button>
+        <span class="mode-sep"></span>
         <button class="archivar-toggle" :class="{ active: archivEnabled }" @click="archivEnabled = !archivEnabled">
           <span class="archivar-dot"></span>Archivar
         </button>
         <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
           <span class="archivar-dot"></span>KI-Auto
         </button>
+        <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
+        <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
+        <span v-else class="mode-status">Standard</span>
       </div>
 
       <!-- Attachment previews -->
@@ -389,20 +383,6 @@
     <!-- Hidden file input — must be in DOM for mobile to work -->
     <input ref="fileInputEl" type="file" style="display:none;position:fixed" @change="onFileInputChange" />
 
-    <!-- Mobile floating composer button -->
-    <Teleport to="#teleports" :disabled="!isMobile">
-    <button
-      class="mobile-fab"
-      :class="{ open: mobileComposerOpen }"
-      :style="mobileComposerOpen ? { bottom: `${dockHeight + 56 + 12}px` } : {}"
-      @click="toggleMobileComposer"
-      aria-label="Eingabe öffnen"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mobile-fab-icon" width="20" height="20">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-      </svg>
-    </button>
-    </Teleport>
   </div>
 </template>
 
@@ -3799,32 +3779,36 @@ defineExpose({
 @keyframes dock-spin { to { transform: rotate(360deg); } }
 
 .dock-mode-bar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 6px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 4px;
   min-height: 22px;
-  border-bottom: 0;
 }
-.mode-dot {
-  width: 5px; height: 5px; border-radius: 50%; flex: none;
-  background: var(--fg-4);
-  transition: background 0.15s, box-shadow 0.15s;
+.mode-cmd-toggle {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: transparent; border: 1px solid transparent; cursor: pointer;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: var(--fg-4); padding: 3px 8px;
+  border-radius: 999px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
-.mode-dot.soul {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
+.mode-cmd-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
+.mode-cmd-toggle.active {
+  color: var(--accent); border-color: rgba(109,184,154,0.30);
+  background: rgba(109,184,154,0.08);
 }
-.mode-label-btn {
-  font-family: var(--mono); font-size: 11px;
-  letter-spacing: 0.12em; text-transform: uppercase;
+.mode-at { color: var(--accent); font-weight: 700; }
+.mode-sep {
+  width: 1px; height: 12px; flex: none;
+  background: var(--rule-2);
+}
+.mode-status {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.10em; text-transform: uppercase;
   color: var(--fg-4);
-  background: transparent; border: 0; cursor: pointer;
-  padding: 0; transition: color 0.15s;
 }
-.mode-label-btn:hover { color: var(--fg-3); }
-
 .mode-activity {
   display: flex; align-items: center; gap: 3px;
-  margin-left: auto;
 }
 .mode-activity span {
   display: inline-block; width: 4px; height: 4px; border-radius: 50%;
@@ -3835,7 +3819,6 @@ defineExpose({
 .mode-activity span:nth-child(3) { animation-delay: 0.4s; }
 
 .model-btn {
-  margin-left: auto;
   background: transparent;
   border: 1px solid var(--rule-2);
   border-radius: 999px;
@@ -4126,80 +4109,34 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: visibility:hidden entfernt das Element komplett aus dem GPU-Compositing-Baum.
-     opacity:0 alleine reicht nicht — der transition erzeugt trotzdem eine Compositing-Ebene
-     die Android Chrome als schwarze Fläche rendert und auf den FAB durchschlägt. */
+  /* Dock: always visible on mobile, fixed above tab bar */
   .dock {
-    padding: 10px 14px 14px; gap: 8px;
     position: fixed;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    left: 0; right: 0;
     z-index: 200;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    /* visibility springt erst nach dem fade-out auf hidden */
-    transition: opacity 0.22s ease, visibility 0s linear 0.22s;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-top: 0;
-    box-shadow: none;
-    padding-bottom: 14px;
-  }
-  .cmd-strip { flex-wrap: wrap; overflow-x: visible; }
-  .dock.mobile-open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    /* visibility sofort sichtbar beim Öffnen, opacity faded rein */
-    transition: opacity 0.22s ease, visibility 0s linear 0s;
-    background: rgba(22, 21, 19, 0.92);
+    padding: 10px 14px 12px; gap: 7px;
+    background: rgba(22, 21, 19, 0.96);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
-    border-top: 1px solid rgba(109, 184, 154, 0.20);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.20);
+    border-top: 1px solid rgba(109, 184, 154, 0.14);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
   }
-
-  .dock-mode-bar { padding: 0 4px; gap: 8px; min-height: 24px; flex-wrap: wrap; }
-  .archivar-toggle { font-size: 12px; padding: 4px 10px; }
-  .archivar-dot { width: 6px; height: 6px; }
-  .model-btn { font-size: 12px; padding: 3px 11px; }
-  .cmd-toggle { font-size: 13px; padding: 3px 9px; }
-  .dock-icon { width: 44px; }
-  .input-wrap { padding: 0 14px; }
+  /* chip strip wraps on mobile */
+  .cmd-strip { flex-wrap: wrap; overflow-x: visible; padding: 4px 0 2px; }
+  .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
+  .archivar-toggle { font-size: 11px; padding: 3px 8px; }
+  .archivar-dot { width: 5px; height: 5px; }
+  .model-btn { font-size: 11px; padding: 2px 9px; }
+  .mode-cmd-toggle { font-size: 11px; padding: 2px 8px; }
+  .dock-icon { width: 40px; }
+  .input-wrap { padding: 0 10px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
-  .input { padding: 13px 4px; font-size: 16px; }
-
-  /* FAB: schwebt über dem Chat, kein Hintergrundcontainer sichtbar */
-  .mobile-fab {
-    display: flex; align-items: center; justify-content: center;
-    position: fixed;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
-    right: 18px;
-    width: 54px; height: 54px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(109, 184, 154, 0.55);
-    background: rgba(22, 21, 19, 0.88);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.32),
-      0 0 18px rgba(109, 184, 154, 0.10);
-    cursor: pointer;
-    color: rgba(109, 184, 154, 0.90);
-    z-index: 201;
-    transition:
-      bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.1s;
-  }
-  .mobile-fab:active { opacity: 0.65; }
-  .mobile-fab.open {
-    color: rgba(244, 241, 234, 0.72);
-    border-color: rgba(244, 241, 234, 0.20);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.32);
-  }
-  .mobile-fab-icon { transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
-  .mobile-fab.open .mobile-fab-icon { transform: rotate(45deg); }
+  .input { padding: 11px 4px; font-size: 16px; }
+  /* stream padding: dock height (≈130px) + tab bar (56px) + safe-area */
+  .stream { padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px) + 150px); }
+  .mob-composer-open .stream { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 150px); }
+  .mobile-fab { display: none; }
 }
 
 /* ── Empty state ─────────────────────────────────────────────────── */
