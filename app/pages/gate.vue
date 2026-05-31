@@ -43,13 +43,16 @@
           <div class="gate-field">
             <input
               v-model="password"
-              type="password"
+              :type="showPw ? 'text' : 'password'"
               autocomplete="current-password"
               placeholder="Node-Passwort"
               aria-label="Node-Passwort"
               :disabled="loading"
               required
             />
+            <button type="button" class="reveal" @click="showPw = !showPw" aria-label="Passwort anzeigen">
+              <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
+            </button>
           </div>
           <div v-if="soulRegistered" class="gate-field" style="margin-bottom:14px">
             <input
@@ -263,6 +266,8 @@ function switchToForm() {
 function doRedirect() {
   window.location.href = nextUrl.value
 }
+
+const showPw = ref(false)
 </script>
 
 <style scoped>
