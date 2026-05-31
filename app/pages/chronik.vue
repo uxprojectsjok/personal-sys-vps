@@ -221,9 +221,10 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'chronik')  return
-  if (id === 'chat')     { router.push('/session'); return }
-  if (id === 'soul')     { router.push('/soul');    return }
-  if (id === 'maturity') { router.push('/reife');   return }
+  if (id === 'chat')     { router.push('/session');  return }
+  if (id === 'soul')     { router.push('/soul');     return }
+  if (id === 'files')    { router.push('/dateien');  return }
+  if (id === 'maturity') { router.push('/reife');    return }
   if (id === 'calendar') { router.push('/kalender'); return }
   drawerOpen.value = false
   router.push('/')

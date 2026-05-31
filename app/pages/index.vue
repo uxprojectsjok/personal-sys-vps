@@ -677,6 +677,7 @@ function onNav(id) {
   if (id === 'chronik')  { navigateTo('/chronik');  return }
   if (id === 'maturity') { navigateTo('/reife');    return }
   if (id === 'calendar') { navigateTo('/kalender'); return }
+  if (id === 'files')    { navigateTo('/dateien');  return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
