@@ -3360,9 +3360,9 @@ defineExpose({
 
 .msg-inner {
   padding: 12px 16px;
-  font-family: var(--serif);
-  font-size: clamp(14.5px, 1.4vw, 16px);
-  line-height: 1.55;
+  font-family: var(--sans);
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  line-height: 1.58;
   color: var(--fg);
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -3498,8 +3498,8 @@ defineExpose({
   border: 1px solid rgba(109,184,154,0.20);
   border-radius: 16px 16px 16px 4px;
   color: var(--fg);
-  font-size: clamp(15px, 1.5vw, 16px);
-  line-height: 1.62;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  line-height: 1.58;
 }
 .msg-inner--ki em { color: var(--accent-bright); font-style: italic; }
 .msg-inner--ki code {
@@ -3899,17 +3899,16 @@ defineExpose({
 .cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; transform: translateY(0); }
 
 .dock-main {
-  display: flex; align-items: stretch;
-  min-height: 52px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--rule-2);
-  border-radius: 14px;
-  overflow: hidden;
-  transition: border-color 0.15s, background 0.15s;
+  display: flex; align-items: center;
+  min-height: 48px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--rule);
+  padding: 4px 0;
+  gap: 4px;
 }
 .dock-main:focus-within {
-  border-color: rgba(109, 184, 154, 0.55);
-  background: rgba(109, 184, 154, 0.04);
+  border-top-color: rgba(109, 184, 154, 0.30);
 }
 
 .dock-icon {
@@ -3942,12 +3941,12 @@ defineExpose({
 .input-wrap {
   flex: 1;
   display: flex; align-items: center;
-  padding: 0 16px;
+  padding: 0 8px;
   min-width: 0;
 }
 .input {
-  font-family: var(--serif);
-  font-size: clamp(16px, 1.5vw, 18px);
+  font-family: var(--sans);
+  font-size: clamp(16px, 1.5vw, 17px);
   color: var(--fg); border: 0; outline: 0;
   background: transparent;
   padding: 13px 6px;
@@ -3959,26 +3958,17 @@ defineExpose({
 .input::placeholder { color: var(--fg-3); font-style: italic; opacity: 0.7; }
 
 .send {
-  width: 56px; border: 0;
+  width: 36px; height: 36px; flex-shrink: 0;
+  border: 0; border-radius: 50%;
   background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-  color: var(--fg-3);
-  position: relative;
+  transition: background 0.15s, color 0.15s;
+  color: var(--fg-4);
 }
-.send::before {
-  content: "";
-  position: absolute; inset: 8px 8px 8px 0;
-  border-radius: 10px;
-  background: transparent;
-  transition: background 0.15s;
-}
-.send svg { position: relative; z-index: 1; }
-.send:not(:disabled) { color: var(--on-accent); }
-.send:not(:disabled)::before { background: var(--accent); }
-.send:hover:not(:disabled)::before { background: var(--accent-bright); }
-.send:disabled { opacity: 0.45; cursor: not-allowed; }
-.arr-icon { width: 16px; height: 16px; }
+.send:not(:disabled) { color: var(--accent); }
+.send:not(:disabled):hover { background: rgba(109,184,154,0.12); color: var(--accent-bright); }
+.send:disabled { opacity: 0.35; cursor: not-allowed; }
+.arr-icon { width: 17px; height: 17px; }
 
 .pulse { animation: sys-blink 1.2s infinite; }
 
@@ -4219,15 +4209,7 @@ defineExpose({
 }
 
 /* ── KI-Disclaimer ──────────────────────────────────────────────── */
-.dock-disclaimer {
-  margin: 0;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--fg-4);
-  padding: 0 8px 2px;
-}
+.dock-disclaimer { display: none; }
 
 /* ── Peer error notice ──────────────────────────────────────────── */
 .peer-error-notice {
