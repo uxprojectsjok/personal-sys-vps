@@ -270,23 +270,13 @@
         </div>
       </Transition>
 
-      <!-- Filter strip — mobile only, toggled via ≡ button -->
-      <Transition name="cmd-strip">
-        <div v-show="filterOpen" class="filter-strip">
-          <button :class="{ on: props.filter === 'all' }"    @click="setFilter('all')">Alle</button>
-          <button :class="{ on: props.filter === 'soul' }"   @click="setFilter('soul')">SoulKI</button>
-          <button :class="{ on: props.filter === 'peers' }"  @click="setFilter('peers')">Peers</button>
-          <button :class="{ on: props.filter === 'agents' }" @click="setFilter('agents')">Agent</button>
-        </div>
-      </Transition>
-
       <!-- Input row -->
       <div class="dock-main">
         <!-- Open media picker -->
         <button
           class="dock-icon dock-plus"
           :class="{ active: mediaPickerOpen }"
-          @click="mediaPickerOpen = !mediaPickerOpen; filterOpen = false; cmdsOpen = false"
+          @click="mediaPickerOpen = !mediaPickerOpen; cmdsOpen = false"
           :disabled="props.growthLocked"
           :title="mediaPickerOpen ? 'Schließen' : 'Foto oder Datei'"
         >
@@ -298,14 +288,8 @@
           </svg>
         </button>
         <!-- @ button toggles command strip -->
-        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false; filterOpen = false" :disabled="props.growthLocked" title="@ Befehle">
+        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false" :disabled="props.growthLocked" title="@ Befehle">
           <span class="dock-at-sym">@</span>
-        </button>
-        <!-- Filter toggle — mobile only -->
-        <button class="dock-icon dock-filter-btn" :class="{ active: filterOpen, 'filter-on': props.filter !== 'all' }" @click="filterOpen = !filterOpen; cmdsOpen = false; mediaPickerOpen = false" title="Filter">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
-          </svg>
         </button>
         <div class="input-wrap">
           <textarea
@@ -780,7 +764,7 @@ function insertCommand(cmd) {
 // ── Mobile composer FAB ─────────────────────────────────────────────
 const mobileComposerOpen = ref(false)
 const dockEl             = ref(null)
-const dockHeight         = ref(110)
+const dockHeight         = ref(80)
 // isMobile: Teleport dock+FAB aus overflow:hidden-Containern heraus
 // damit backdrop-filter auf Android Chrome funktioniert
 const isMobile = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches)
@@ -797,7 +781,7 @@ function setFilter(val) {
 // ── Dynamic stream padding (tracks real dock height) ─────────────────
 const streamPadStyle = computed(() => {
   if (!isMobile.value) return {}
-  return { paddingBottom: `calc(${dockHeight.value}px + env(safe-area-inset-bottom, 0px) + 8px)` }
+  return { paddingBottom: `calc(${dockHeight.value}px + max(12px, env(safe-area-inset-bottom, 0px)) + 8px)` }
 })
 let _dockRO = null
 
@@ -4207,7 +4191,7 @@ defineExpose({
     bottom: 0;
     left: 0; right: 0;
     z-index: 200;
-    padding: 10px 14px 12px; gap: 7px;
+    padding: 10px 14px max(12px, env(safe-area-inset-bottom, 12px)); gap: 7px;
     background: rgba(22, 21, 19, 0.96);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
@@ -4225,9 +4209,9 @@ defineExpose({
   .input-wrap { padding: 0 10px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
   .input { padding: 11px 4px; font-size: 16px; }
-  /* stream padding: dock height (≈130px) + safe-area */
-  .stream { padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 150px); }
-  .mob-composer-open .stream { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); }
+  /* stream padding: dock height (≈80px) + safe-area */
+  .stream { padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 90px); }
+  .mob-composer-open .stream { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px); }
   .mobile-fab { display: none; }
 }
 
