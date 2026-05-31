@@ -5,18 +5,20 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
-          <div class="seg">
-            <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
-            <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
-            <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
-            <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
-          </div>
           <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
             <SysIcon name="soul" style="width:18px;height:18px" />
           </button>
           <span v-if="isGrowingQuietly" class="soul-growing" title="Seele waechst">&#x25CC;</span>
           <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">&#x2726;</span></Transition>
         </SysTopbar>
+
+        <!-- Filter tabs row (below topbar, full width) -->
+        <div class="sess-filter-row">
+          <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
+          <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
+          <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
+          <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+        </div>
 
         <div class="sess-banners">
           <Transition name="slide-up">
@@ -393,9 +395,10 @@ const filter           = ref('all')
 const maturity         = computed(() => computeMaturity(soulContent.value).score)
 
 function onNav(id) {
-  if (id === 'chat') return
+  if (id === 'chat')     return
   if (id === 'settings') { settingsOpen.value = true; return }
   if (id === 'anchor')   { anchorModalOpen.value = true; return }
+  if (id === 'maturity') { router.push('/reife'); return }
   drawerOpen.value = false
   router.push('/')
 }
@@ -410,6 +413,25 @@ function onNav(id) {
 }
 
 /* ── Status banners ── */
+/* ── Filter tabs row ── */
+.sess-filter-row {
+  display: flex; align-items: center; flex-shrink: 0;
+  gap: 2px; padding: 4px clamp(10px,2vw,18px);
+  border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none;
+}
+.sess-filter-row::-webkit-scrollbar { display: none; }
+.sess-filter-row button {
+  padding: 4px 12px; border: 1px solid transparent;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-3); cursor: pointer; white-space: nowrap;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.sess-filter-row button.on {
+  color: var(--accent); border-color: rgba(109,184,154,0.30);
+  background: rgba(109,184,154,0.07);
+}
+.sess-filter-row button:hover:not(.on) { color: var(--fg-2); }
+
 .sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
 .banner {
   padding: 10px clamp(16px,3vw,32px); border-bottom: 1px solid var(--line);

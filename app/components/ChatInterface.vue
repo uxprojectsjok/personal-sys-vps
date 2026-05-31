@@ -243,28 +243,29 @@
         </div>
       </Transition>
 
-      <!-- Media picker — shown when + is tapped -->
+      <!-- Media picker (compact pills) — shown when + is tapped -->
       <Transition name="cmd-strip">
         <div v-show="mediaPickerOpen" class="media-picker">
-          <button
-            class="mp-btn"
-            @click="mediaPickerOpen = false; cameraOpen = true"
-            :disabled="visionLoading || props.growthLocked"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <button class="mp-btn" @click="mediaPickerOpen = false; cameraOpen = true" :disabled="visionLoading || props.growthLocked">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
             </svg>
-            <span>Foto</span>
+            Foto
           </button>
-          <button
-            class="mp-btn"
-            @click="mediaPickerOpen = false; onFileIconClick()"
-            :disabled="props.growthLocked"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <button class="mp-btn" @click="mediaPickerOpen = false; onFileIconClick()" :disabled="props.growthLocked">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
             </svg>
-            <span>Datei</span>
+            Datei
+          </button>
+        </div>
+      </Transition>
+
+      <!-- @-Command chip strip — toggled via @ button -->
+      <Transition name="cmd-strip">
+        <div v-show="cmdsOpen" class="cmd-strip">
+          <button v-for="c in AT_COMMANDS" :key="c.cmd" class="cmd-chip" @click="insertCommand(c)" :title="c.desc">
+            <span class="cmd-at">@</span>{{ c.label }}
           </button>
         </div>
       </Transition>
@@ -285,6 +286,10 @@
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
+        </button>
+        <!-- @ button toggles command strip -->
+        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false" :disabled="props.growthLocked" title="@ Befehle">
+          <span class="dock-at-sym">@</span>
         </button>
         <div class="input-wrap">
           <textarea
@@ -3522,19 +3527,19 @@ defineExpose({
   background: rgba(255,255,255,0.05);
   border-radius: 16px 16px 16px 4px;
   border-left: 2px solid #5baa87;
-  color: var(--fg-2);
+  color: var(--fg);
 }
 .msg-inner--agent {
   background: rgba(255,255,255,0.05);
   border-radius: 16px 16px 16px 4px;
   border-left: 2px solid var(--accent-bright);
-  color: var(--fg-2);
+  color: var(--fg);
 }
 .msg-inner--synthesis {
   background: rgba(112,153,184,0.07);
   border-radius: 16px 16px 16px 4px;
   border-left: 2px solid #7099b8;
-  color: var(--fg-2);
+  color: var(--fg);
   font-style: italic;
 }
 
@@ -3542,7 +3547,7 @@ defineExpose({
   background: rgba(109,184,154,0.09);
   border-radius: 16px 16px 4px 16px;
   border: 1px dashed rgba(109,184,154,0.32);
-  color: var(--fg-2);
+  color: var(--fg);
   font-size: 0.94em;
 }
 
@@ -3909,23 +3914,27 @@ defineExpose({
 .cmd-strip-enter-from, .cmd-strip-leave-to { opacity: 0; transform: translateY(6px); }
 .cmd-strip-enter-to, .cmd-strip-leave-from { opacity: 1; transform: translateY(0); }
 
-/* ── Media picker ── */
+/* ── Media picker (compact chip row) ── */
 .media-picker {
-  display: flex; gap: 8px; padding: 8px 0 4px;
+  display: flex; flex-wrap: nowrap; gap: 6px; padding: 6px 2px 2px;
 }
 .mp-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 14px 8px;
-  border: 1px solid var(--rule-2); background: rgba(255,255,255,0.03);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px;
+  background: rgba(109,184,154,0.07); border: 1px solid rgba(109,184,154,0.15);
   color: var(--fg-3); cursor: pointer;
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.mp-btn svg { width: 20px; height: 20px; }
 .mp-btn:hover:not(:disabled) {
-  background: rgba(109,184,154,0.08); border-color: rgba(109,184,154,0.28); color: var(--fg);
+  background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38); color: var(--fg-1);
 }
 .mp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── @ dock button ── */
+.dock-at { font-size: 15px; font-weight: 600; }
+.dock-at-sym { font-family: var(--mono); font-size: 14px; color: var(--fg-3); transition: color 0.12s; }
+.dock-at.active .dock-at-sym { color: var(--accent); }
 
 .dock-main {
   display: flex; align-items: center;
