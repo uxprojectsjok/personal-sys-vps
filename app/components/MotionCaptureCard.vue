@@ -325,7 +325,7 @@ async function handleSave() {
 .mcc {
   background: rgba(255,255,255,0.04);
   border-radius: 14px 14px 14px 4px;
-  border-left: 2px solid rgba(139,92,246,0.45);
+  border-left: 2px solid rgba(109,184,154,0.40);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -347,7 +347,7 @@ async function handleSave() {
 .mcc-dot--idle    { background: rgba(255,255,255,0.25); }
 .mcc-dot--rec     { background: #ef4444; }
 .mcc-dot--preview { background: rgba(255,255,255,0.6); }
-.mcc-dot--saved   { background: #22c55e; }
+.mcc-dot--saved   { background: var(--accent); }
 
 .mcc-label {
   font-family: var(--mono);
@@ -393,7 +393,7 @@ async function handleSave() {
   margin-top: 2px;
   flex: none;
   width: 14px; height: 14px;
-  accent-color: var(--sys-accent);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 .mcc-check-label {
@@ -539,11 +539,11 @@ async function handleSave() {
 .mcc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .mcc-btn--primary {
-  background: var(--sys-accent);
-  border-color: var(--sys-accent);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
-.mcc-btn--primary:hover:not(:disabled) { background: #7c3aed; }
+.mcc-btn--primary:hover:not(:disabled) { background: var(--accent-bright); }
 
 .mcc-btn--record { margin: 0 auto; }
 .mcc-rec-dot {
@@ -578,9 +578,9 @@ async function handleSave() {
 
 .mcc-btn--save { flex: 1; }
 .mcc-btn--saved {
-  border-color: rgba(34,197,94,0.3);
-  background: rgba(34,197,94,0.08);
-  color: #86efac;
+  border-color: rgba(109,184,154,0.30);
+  background: rgba(109,184,154,0.08);
+  color: var(--accent-bright);
   flex: 1;
 }
 
