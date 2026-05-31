@@ -74,17 +74,17 @@ export default defineNuxtConfig({
         { name: "apple-mobile-web-app-title", content: "SYS" },
       ],
       link: [
-        { rel: "manifest", href: "/manifest.json?v=4" },
-        { rel: "icon", type: "image/x-icon", href: "/logo.ico?v=4" },
+        { rel: "manifest", href: "/manifest.json?v=5" },
+        { rel: "icon", type: "image/x-icon", href: "/logo.ico?v=5" },
         {
           rel: "apple-touch-icon",
           sizes: "192x192",
-          href: "/icons/icon-192.png?v=4",
+          href: "/icons/icon-192.png?v=5",
         },
         {
           rel: "apple-touch-icon",
           sizes: "512x512",
-          href: "/icons/icon-512.png?v=4",
+          href: "/icons/icon-512.png?v=5",
         },
         // Font Preloads – lokale Auslieferung, keine externen CDNs
         { rel: "preload", as: "font", type: "font/woff2", href: "/fonts/oxanium/Oxanium-Regular.woff2", crossorigin: "anonymous" },
