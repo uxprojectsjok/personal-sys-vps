@@ -325,6 +325,7 @@ function onNav(id) {
 .kal-page {
   padding: clamp(24px, 4vw, 48px) clamp(20px, 5vw, 56px);
   max-width: 1000px;
+  margin: 0 auto;
   padding-bottom: 80px;
 }
 

@@ -463,7 +463,7 @@ onMounted(() => {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-.dateien-page { max-width: 900px; padding: 32px clamp(16px, 3vw, 32px) 80px; }
+.dateien-page { max-width: 900px; margin: 0 auto; padding: 32px clamp(16px, 3vw, 32px) 80px; }
 
 /* ── Toast ── */
 .dt-toast {

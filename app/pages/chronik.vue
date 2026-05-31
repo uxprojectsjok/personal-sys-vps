@@ -241,6 +241,7 @@ function onNav(id) {
 
 .chronik-page {
   max-width: 720px;
+  margin: 0 auto;
   padding: 32px clamp(16px, 3vw, 32px) 80px;
 }
 

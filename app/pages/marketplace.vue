@@ -74,6 +74,7 @@ function onNav(id) {
 
 .market-page {
   max-width: 860px;
+  margin: 0 auto;
   padding: 32px clamp(16px, 3vw, 32px) 80px;
 }
 
