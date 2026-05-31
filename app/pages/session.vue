@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
-    <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen }">
-      <SysSidebar route="chat" :soul-meta="soulMeta" @go="onNav" @lock="lockGate" @collapse="() => {}" />
+    <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
@@ -109,6 +109,7 @@ import SoulViewer from '~/components/SoulViewer.vue'
 import ConfirmModal from '~/components/ConfirmModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
+import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
 const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer } = useSoul()
@@ -384,9 +385,11 @@ async function onSetupImport(markdown) {
 }
 
 // ── Shell nav state (UI only, no business logic)
-const drawerOpen    = ref(false)
-const soulPanelOpen = ref(false)
-const filter        = ref('all')
+const drawerOpen       = ref(false)
+const sidebarCollapsed = ref(false)
+const soulPanelOpen    = ref(false)
+const filter           = ref('all')
+const maturity         = computed(() => computeMaturity(soulContent.value).score)
 
 function onNav(id) {
   if (id === 'chat') return

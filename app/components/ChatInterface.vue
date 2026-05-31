@@ -103,7 +103,7 @@
           :class="[item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other', item.sphere === 'synthesis' ? 'msg-bubble--archivar' : '']"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : item.content?.startsWith('[KI]') ? 'var(--accent)' : '#a78bfa' }">
+            :style="{ color: item.sphere === 'synthesis' ? '#60a5fa' : item.sphere === 'social' ? '#34d399' : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
@@ -187,7 +187,7 @@
           </div>
           <div class="msg-foot">
             <span v-if="item.from === 'me'" class="msg-to"
-              :style="item.to === 'agent' ? 'color:#a78bfa' : item.to === 'community' ? 'color:#60a5fa' : 'color:#34d399'">
+              :style="item.to === 'agent' ? 'color:var(--accent-bright)' : item.to === 'community' ? 'color:#60a5fa' : 'color:#34d399'">
               → {{ peerLabelForTo(item.to) }}
             </span>
             <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
@@ -3257,17 +3257,17 @@ defineExpose({
 
 /* ── Design tokens ───────────────────────────────────────────────── */
 .sys-chat {
-  --rule:    rgba(226,220,240,0.10);
-  --rule-2:  rgba(226,220,240,0.20);
-  --fg:      #ece7f5;
-  --fg-2:    rgba(236,231,245,0.88);
-  --fg-3:    rgba(236,231,245,0.70);
-  --fg-4:    rgba(236,231,245,0.55);
-  --accent:  #8b5cf6;
-  --accent-bright: #a78bfa;
-  --accent-dim:    rgba(139,92,246,0.12);
-  --on-accent: #0a0810;
-  --paper-3: #0d0b14;
+  --rule:    rgba(245,241,234,0.07);
+  --rule-2:  rgba(245,241,234,0.12);
+  --fg:      #f4f1ea;
+  --fg-2:    rgba(244,241,234,0.72);
+  --fg-3:    rgba(244,241,234,0.48);
+  --fg-4:    rgba(244,241,234,0.30);
+  --accent:  #6db89a;
+  --accent-bright: #8ad0b3;
+  --accent-dim:    rgba(109,184,154,0.14);
+  --on-accent: #0c1410;
+  --paper-3: #161513;
   --serif:   'Noto Serif', Georgia, serif;
   --mono:    'JetBrains Mono', ui-monospace, monospace;
 
@@ -3283,7 +3283,7 @@ defineExpose({
 }
 .stream::before {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at 85% 8%, rgba(139,92,246,0.06), transparent 55%);
+  background: radial-gradient(circle at 85% 8%, rgba(109,184,154,0.05), transparent 55%);
   pointer-events: none; z-index: 0;
 }
 .stream > * { position: relative; z-index: 1; }
@@ -3298,7 +3298,7 @@ defineExpose({
 .anchor { height: 1px; }
 
 /* ── Inline link ─────────────────────────────────────────────────── */
-.inline-link { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(167,139,250,0.4); transition: text-decoration-color 0.15s; }
+.inline-link { color: var(--accent-bright); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(109,184,154,0.4); transition: text-decoration-color 0.15s; }
 .inline-link:hover { text-decoration-color: var(--accent-bright); }
 
 /* ── AI message timestamp ────────────────────────────────────────── */
@@ -3516,13 +3516,13 @@ defineExpose({
 
 /* ── Bubble variants — consistent asymmetric tails ─────────────── */
 .msg-inner--me {
-  background: rgba(139,92,246,0.10);
-  border: 1px solid rgba(139,92,246,0.30);
+  background: rgba(109,184,154,0.10);
+  border: 1px solid rgba(109,184,154,0.30);
   border-radius: 16px 4px 16px 16px;
 }
 .msg-inner--ki {
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(139,92,246,0.20);
+  border: 1px solid rgba(109,184,154,0.20);
   border-radius: 16px 16px 16px 4px;
   color: var(--fg);
   font-size: clamp(15px, 1.5vw, 16px);
@@ -3543,7 +3543,7 @@ defineExpose({
 .msg-inner--agent {
   background: rgba(255,255,255,0.05);
   border-radius: 16px 16px 16px 4px;
-  border-left: 2px solid #a78bfa;
+  border-left: 2px solid var(--accent-bright);
   color: var(--fg-2);
 }
 .msg-inner--synthesis {
@@ -3555,9 +3555,9 @@ defineExpose({
 }
 
 .msg-inner--ki-out {
-  background: rgba(139,92,246,0.09);
+  background: rgba(109,184,154,0.09);
   border-radius: 16px 16px 4px 16px;
-  border: 1px dashed rgba(139,92,246,0.32);
+  border: 1px dashed rgba(109,184,154,0.32);
   color: var(--fg-2);
   font-size: 0.94em;
 }
@@ -3753,10 +3753,10 @@ defineExpose({
 }
 .tts-stop-btn {
   color: var(--sys-accent-bright);
-  border-color: rgba(var(--sys-accent-bright-rgb, 139,92,246), 0.4);
+  border-color: rgba(var(--sys-accent-bright-rgb, 109,184,154), 0.4);
 }
 .tts-stop-btn:hover {
-  background: rgba(var(--sys-accent-bright-rgb, 139,92,246), 0.15);
+  background: rgba(var(--sys-accent-bright-rgb, 109,184,154), 0.15);
 }
 .tts-stop-enter-active, .tts-stop-leave-active { transition: opacity .15s, transform .15s; }
 .tts-stop-enter-from, .tts-stop-leave-to { opacity: 0; transform: scale(0.7); }
@@ -3777,7 +3777,7 @@ defineExpose({
 
 .dock {
   border-top: 1px solid var(--rule);
-  background: rgba(10, 6, 20, 0.82);
+  background: rgba(22,21,19,0.88);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   flex-shrink: 0;
@@ -3790,8 +3790,8 @@ defineExpose({
 .dock-growth-lock {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 12px;
-  background: rgba(139, 92, 246, 0.07);
-  border: 1px solid rgba(139, 92, 246, 0.18);
+  background: rgba(109, 184, 154, 0.07);
+  border: 1px solid rgba(109, 184, 154, 0.18);
   border-radius: 10px;
   font-family: var(--mono); font-size: 11px;
   letter-spacing: 0.10em; text-transform: uppercase;
@@ -3799,7 +3799,7 @@ defineExpose({
 }
 .dock-growth-spinner {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid rgba(139, 92, 246, 0.3);
+  border: 1.5px solid rgba(109, 184, 154, 0.3);
   border-top-color: var(--accent);
   animation: dock-spin 0.9s linear infinite;
 }
@@ -3870,8 +3870,8 @@ defineExpose({
 .archivar-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
 .archivar-toggle.active {
   color: var(--accent);
-  border-color: rgba(139, 92, 246, 0.30);
-  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(109, 184, 154, 0.30);
+  background: rgba(109, 184, 154, 0.08);
 }
 .archivar-dot {
   width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
@@ -3893,7 +3893,7 @@ defineExpose({
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .cmd-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
-.cmd-toggle.active { color: var(--accent); border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.08); }
+.cmd-toggle.active { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .cmd-strip {
   position: absolute;
@@ -3903,7 +3903,7 @@ defineExpose({
   z-index: 20;
   display: flex; flex-wrap: wrap; gap: 6px;
   padding: 10px 12px;
-  background: rgba(10, 6, 20, 0.96);
+  background: rgba(22,21,19,0.96);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--rule-2);
@@ -3915,14 +3915,14 @@ defineExpose({
 .cmd-chip {
   display: inline-flex; align-items: center; gap: 1px;
   padding: 5px 11px; border-radius: 999px;
-  background: rgba(139,92,246,0.07); border: 1px solid rgba(139,92,246,0.15);
+  background: rgba(109,184,154,0.07); border: 1px solid rgba(109,184,154,0.15);
   color: var(--fg-3);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
   cursor: pointer; white-space: nowrap;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .cmd-chip:hover {
-  background: rgba(139,92,246,0.16); border-color: rgba(139,92,246,0.38);
+  background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38);
   color: var(--fg-1);
 }
 .cmd-at { color: var(--accent); font-size: 10px; }
@@ -4047,12 +4047,12 @@ defineExpose({
 }
 .msg-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .msg-action-btn.selected {
-  background: rgba(139,92,246,0.15);
-  border-color: rgba(139,92,246,0.5);
+  background: rgba(109,184,154,0.15);
+  border-color: rgba(109,184,154,0.5);
   color: var(--accent);
 }
 .msg-action-btn.selected:hover:not(:disabled) {
-  background: rgba(139,92,246,0.22);
+  background: rgba(109,184,154,0.22);
 }
 
 /* ── Web-Suche: Quellen-Chips ──────────────────────────────────── */
@@ -4074,7 +4074,7 @@ defineExpose({
   transition: background 0.12s, border-color 0.12s;
   min-width: 0;
 }
-.source-chip:hover { background: rgba(139,92,246,0.07); border-color: rgba(139,92,246,0.25); }
+.source-chip:hover { background: rgba(109,184,154,0.07); border-color: rgba(109,184,154,0.25); }
 .src-n {
   font-family: var(--mono); font-size: 10px; color: var(--accent);
   letter-spacing: 0.05em; flex-shrink: 0;
@@ -4169,7 +4169,7 @@ defineExpose({
     pointer-events: auto;
     /* visibility sofort sichtbar beim Öffnen, opacity faded rein */
     transition: opacity 0.22s ease, visibility 0s linear 0s;
-    background: rgba(10, 6, 20, 0.22);
+    background: rgba(22, 21, 19, 0.22);
     backdrop-filter: blur(32px) saturate(220%);
     -webkit-backdrop-filter: blur(32px) saturate(220%);
     border-top: 1px solid rgba(139, 92, 246, 0.28);
@@ -4264,7 +4264,7 @@ defineExpose({
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px;
   background: rgba(139, 92, 246, 0.05);
-  border: 1px solid rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(109, 184, 154, 0.18);
   border-radius: 10px;
   order: -1;
 }
@@ -4331,7 +4331,7 @@ defineExpose({
   gap: 10px;
   padding: 7px 12px;
   background: rgba(139, 92, 246, 0.05);
-  border: 1px solid rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(109, 184, 154, 0.18);
   border-radius: 10px;
   flex-shrink: 0;
 }
