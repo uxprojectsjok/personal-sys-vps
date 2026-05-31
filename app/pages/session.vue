@@ -411,9 +411,17 @@ function onNav(id) {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-/* ── Status banners ── */
-/* ── Filter seg in topbar — hidden on small mobile ── */
-@media (max-width: 540px) { .sess-seg { display: none; } }
+/* ── Filter seg — wraps to second topbar row on mobile ── */
+@media (max-width: 900px) {
+  .sess-seg {
+    order: 10;
+    width: 100%;
+    padding: 6px 0 8px;
+    border-top: 1px solid var(--line);
+    gap: 4px;
+  }
+  .sess-seg button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; }
+}
 
 .sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
 .banner {
