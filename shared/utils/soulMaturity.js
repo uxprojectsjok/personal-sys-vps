@@ -127,6 +127,7 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
       growthChain:     chainPts,
       sectionScores,
       sessionLog:      sessionPts,
+      sessionCount:    logEntries,
       voice:           voicePts,
       motion:          motionPts,
       vaultAudio:      audioPts,
@@ -207,7 +208,8 @@ function scoreSignature(count) {
 
 function countSessionEntries(content) {
   if (!content) return 0;
-  return (content.match(/^- \*\*\d{4}-\d{2}-\d{2}\*\*/gm) ?? []).length;
+  // Matches both "- **DATE**" and "- **DATE:**" (the colon-before-closing-bold variant)
+  return (content.match(/^- \*\*\d{4}-\d{2}-\d{2}/gm) ?? []).length;
 }
 
 function countWords(text) {

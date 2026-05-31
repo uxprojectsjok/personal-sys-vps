@@ -442,6 +442,7 @@ function lockGate() {
 function onNav(id) {
   if (id === 'files')    return
   if (id === 'chat')     { router.push('/session');    return }
+  if (id === 'setup')    { router.push('/soul');       return }
   if (id === 'soul')     { router.push('/soul');       return }
   if (id === 'chronik')  { router.push('/chronik');    return }
   if (id === 'market')   { router.push('/marketplace'); return }

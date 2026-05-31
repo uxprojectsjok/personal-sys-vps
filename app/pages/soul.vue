@@ -25,7 +25,7 @@
                 <div class="sp-stats">
                   <span>{{ soulMeta?.chainCount ?? 0 }} Sessions</span>
                   <span class="sp-dot-sep">·</span>
-                  <span>{{ soulMeta?.maturity ?? 0 }}% Reife</span>
+                  <span>{{ liveMaturity }}% Reife</span>
                   <span class="sp-dot-sep">·</span>
                   <span>seit {{ soulMeta?.created || '—' }}</span>
                 </div>
@@ -103,12 +103,26 @@
 import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
+import { useVault } from '~/composables/useVault.js'
 import { parseSoul, updateSection } from '#shared/utils/soulParser.js'
+import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 definePageMeta({ layout: false })
 
 const router = useRouter()
 const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer } = useSoul()
+const { allFiles } = useVault()
+
+const syncedFiles = computed(() => {
+  if (!allFiles.value?.length) return {}
+  const AUDIO_EXTS = ['mp3', 'ogg', 'wav', 'flac', 'aac', 'm4a', 'opus', 'webm', 'weba']
+  return {
+    audio:   allFiles.value.filter(f => AUDIO_EXTS.includes(f.kind)),
+    images:  allFiles.value.filter(f => f.kind === 'image' || f.kind === 'profile'),
+    context: allFiles.value.filter(f => f.name?.includes('context')),
+  }
+})
+const liveMaturity = computed(() => soulContent.value ? computeMaturity(soulContent.value, syncedFiles.value).score : (soulMeta.value?.maturity ?? 0))
 
 // ── Shell state ──────────────────────────────────────────────────────────────
 const drawerOpen       = ref(false)
@@ -188,6 +202,7 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'soul')     return
+  if (id === 'setup')    return
   if (id === 'chat')     { router.push('/session');  return }
   if (id === 'chronik')  { router.push('/chronik');  return }
   if (id === 'files')    { router.push('/dateien');    return }

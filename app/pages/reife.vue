@@ -101,6 +101,7 @@ function lockSoul() {
 function onNav(id) {
   if (id === 'maturity') return
   if (id === 'chat')     { router.push('/session');     return }
+  if (id === 'setup')    { router.push('/soul');        return }
   if (id === 'soul')     { router.push('/soul');        return }
   if (id === 'chronik')  { router.push('/chronik');     return }
   if (id === 'files')    { router.push('/dateien');     return }
@@ -175,8 +176,8 @@ function cardDesc(card) {
   const b = data.value.breakdown
   if (!b) return '—'
   switch (card.key) {
-    case 'session': return b.sessionLog
-      ? `${b.sessionLog * 2} Sessions · konsistenter Dialog`
+    case 'session': return b.sessionCount > 0
+      ? `${b.sessionCount} Sessions · konsistenter Dialog`
       : 'Noch keine Session-Einträge'
     case 'sysmd': {
       const filled = Object.values(b.sectionScores ?? {}).filter(v => v > 0).length
