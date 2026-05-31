@@ -342,7 +342,7 @@ function onNav(id) {
 .kal-title em { font-style: italic; color: var(--accent); }
 .kal-sub {
   font-size: 13px;
-  color: var(--fg-3);
+  color: var(--fg-2);
   line-height: 1.6;
   max-width: 480px;
 }
@@ -491,7 +491,7 @@ function onNav(id) {
 .kd-empty {
   padding: 12px 16px;
   font-size: 12px;
-  color: var(--fg-4);
+  color: var(--fg-2);
   font-family: var(--mono);
 }
 .kd-entry {
@@ -512,7 +512,7 @@ function onNav(id) {
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--fg-4);
+  color: var(--fg-3);
   margin-top: 3px;
 }
 .kd-del {

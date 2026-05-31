@@ -92,7 +92,7 @@ const allEmpty = computed(() =>
 .sv-empty {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--fg-4);
+  color: var(--fg-2);
   padding: 24px 0;
   text-align: center;
   letter-spacing: 0.08em;

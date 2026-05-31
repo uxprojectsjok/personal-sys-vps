@@ -703,8 +703,8 @@ onMounted(() => {
 /* ── Inline page layouts ─────────────────────────────────────────────── */
 .page-hero { display: flex; align-items: baseline; gap: 16px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
 .page-hero h2 em { font-style: italic; color: var(--accent); }
-.page-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.08em; }
-.empty-hint { color: var(--fg-3); font-size: 14px; padding: 40px 0; text-align: center; }
+.page-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.08em; }
+.empty-hint { color: var(--fg-2); font-size: 14px; padding: 40px 0; text-align: center; }
 
 /* ── Maturity view ────────────────────────────────────────────────────── */
 .mat-view { display: flex; align-items: center; gap: 40px; padding: 24px 0; flex-wrap: wrap; }
@@ -736,7 +736,7 @@ onMounted(() => {
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: clamp(28px,4vw,36px); letter-spacing: -0.025em; margin: 0 0 10px; color: var(--fg); line-height: 1; }
 .login-title em { font-style: italic; color: var(--accent); }
-.login-sub { font-size: 15px; color: var(--fg-3); line-height: 1.5; margin: 0 0 20px; }
+.login-sub { font-size: 15px; color: var(--fg-2); line-height: 1.5; margin: 0 0 20px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .login-divider span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }
@@ -749,7 +749,7 @@ onMounted(() => {
 .login-sheet-enter-active, .login-sheet-leave-active { transition: transform 0.3s cubic-bezier(0.32,0.72,0,1), opacity 0.25s ease; }
 .login-sheet-enter-from, .login-sheet-leave-to { transform: translateY(100%); opacity: 0; }
 .login-recovery { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(223,144,144,0.35); background: rgba(223,144,144,0.06); border-radius: var(--r-sm); }
-.login-recovery-msg { font-size: 14px; color: var(--fg-3); line-height: 1.5; margin: 0 0 12px; }
+.login-recovery-msg { font-size: 14px; color: var(--fg-2); line-height: 1.5; margin: 0 0 12px; }
 .login-recovery-btn { width: 100%; padding: 11px 16px; background: transparent; border: 1px solid rgba(223,144,144,0.5); color: var(--c-danger); font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: var(--r-sm); transition: all 0.15s; }
 .login-recovery-btn:hover:not(:disabled) { background: rgba(223,144,144,0.12); }
 .login-recovery-btn:disabled { opacity: 0.5; cursor: not-allowed; }
