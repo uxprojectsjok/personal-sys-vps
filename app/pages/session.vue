@@ -1,105 +1,45 @@
 <template>
   <ClientOnly>
-    <!-- ═══════════════════════════════════════════════════════════════
-         SYS · session.vue — Editorial working surface
-         Two-column: soul sidebar · chat reading column
-         ═══════════════════════════════════════════════════════════════ -->
-    <div class="sys-session" v-if="!certValidating">
-
-      <!-- HEADER -->
-      <header class="sess-head">
-        <div class="head-left">
-          <button class="back" @click="$router.push('/')" aria-label="Zurück">
-            <span class="arr">←</span> Zurück
-          </button>
-          <div class="pill">
-            <span class="live"></span>
-            #{{ soulMeta?.name || '------' }} · aktiv
-            <template v-if="soulMeta?.id">
-              <span class="pill-sep">·</span>
-              <button class="soul-id-btn" @click="copySoulId" :title="soulMeta.id">
-                {{ soulIdCopied ? '✓' : soulMeta.id.slice(0, 8) + '…' }}
-              </button>
-            </template>
-            <span v-if="isGrowingQuietly" class="soul-growing" title="Seele wächst…">◌</span>
-            <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">✦</span></Transition>
+    <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen }">
+      <SysSidebar route="chat" :soul-meta="soulMeta" @go="onNav" @lock="lockGate" @collapse="() => {}" />
+      <div class="scrim-mob" @click="drawerOpen = false" />
+      <div class="main">
+        <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
+          <div class="seg">
+            <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
+            <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
+            <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
+            <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
           </div>
-        </div>
-        <!-- Desktop tools -->
-        <div class="tools tools--desktop">
-          <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect">
-            {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
+          <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
+            <SysIcon name="soul" style="width:18px;height:18px" />
           </button>
-          <button class="tool" @click="settingsOpen = true">Einstellungen</button>
-          <button class="tool tool--logout" @click="lockGate">Ausloggen</button>
-          <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true">
-            {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
-          </button>
-        </div>
-        <!-- Mobile burger -->
-        <div class="burger-wrap">
-          <button class="burger-btn" @click="burgerOpen = !burgerOpen" aria-label="Menü">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path v-if="!burgerOpen" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-              <path v-else stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+          <span v-if="isGrowingQuietly" class="soul-growing" title="Seele waechst">&#x25CC;</span>
+          <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">&#x2726;</span></Transition>
+        </SysTopbar>
+
+        <div class="sess-banners">
           <Transition name="slide-up">
-            <div v-if="burgerOpen" class="burger-menu">
-              <button class="tool" :disabled="!vaultSupported" @click="handleVaultConnect(); burgerOpen = false">
-                {{ vaultScanning ? 'Scan…' : vaultConnected ? 'Vault ●' : 'Vault' }}
-              </button>
-              <button class="tool" @click="settingsOpen = true; burgerOpen = false">Einstellungen</button>
-              <button class="tool tool--logout" @click="lockGate(); burgerOpen = false">Ausloggen</button>
-              <button class="tool tool--emerg" :class="{ 'tool--emerg-on': emergencyActive }" @click="emergencyOpen = true; burgerOpen = false">
-                {{ emergencyActive ? `● L${emergencyLevel}` : 'Notfall' }}
-              </button>
+            <div v-if="enrichStatus" class="banner" :class="`b-${enrichStatus.type}`">
+              <span>{{ enrichStatus.message }}</span>
+              <button v-if="enrichStatus.type !== 'loading'" @click="enrichStatus = null" class="banner-close">&#x2715;</button>
+            </div>
+          </Transition>
+          <Transition name="slide-up">
+            <div v-if="vaultStatus" class="banner b-success">
+              <span>Vault neu geladen &middot; Soul aktiv</span>
+            </div>
+          </Transition>
+          <Transition name="slide-up">
+            <div v-if="serverVaultEncrypted" class="banner b-warn">
+              <span>Soul am Server verschluesselt &middot; Vault mit Schlusselwoertern entsperren</span>
+              <button @click="serverVaultEncrypted = false" class="banner-close">&#x2715;</button>
             </div>
           </Transition>
         </div>
-      </header>
 
-      <!-- SUB-HEADER: status banners — wrapper collapses to 0 when all are hidden -->
-      <div class="sess-sub-head">
-        <Transition name="slide-up">
-          <div v-if="enrichStatus" class="banner" :class="`b-${enrichStatus.type}`">
-            <span>{{ enrichStatus.message }}</span>
-            <button v-if="enrichStatus.type !== 'loading'" @click="enrichStatus = null" class="close">✕</button>
-          </div>
-        </Transition>
-        <Transition name="slide-up">
-          <div v-if="vaultStatus" class="banner">
-            <span>Vault neu geladen · Soul aktiv</span>
-          </div>
-        </Transition>
-        <Transition name="slide-up">
-          <div v-if="serverVaultEncrypted" class="banner b-warn">
-            <span>Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren</span>
-            <button @click="serverVaultEncrypted = false" class="close">✕</button>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- BODY -->
-      <main class="sess-body">
-
-        <!-- Soul sidebar (desktop) / full panel (mobile when active) -->
-        <aside
-          class="col-soul"
-          :class="{ 'mobile-hidden': mobileView !== 'soul' }"
-        >
-          <div>
-            <div class="cap">Lebendige Datei</div>
-            <h3 class="ttl">sys<em>.</em>md</h3>
-          </div>
-          <SoulViewer />
-        </aside>
-
-        <!-- Chat column -->
-        <div class="col-chat" :class="{ 'mobile-hidden': mobileView !== 'chat' }">
-
-          <!-- Chat stream -->
-          <div class="chat-wrap">
+        <div :class="['chat-shell', { 'with-panel': soulPanelOpen }]">
+          <div class="chat-col">
             <ChatInterface
               ref="chatRef"
               :soul-content="soulContent"
@@ -107,36 +47,36 @@
               role="soul"
               :growth-locked="isGrowingQuietly"
               @cert-error="handleCertError"
-            @session-end="forceSessionEnd"
+              @session-end="forceSessionEnd"
             />
           </div>
-
+          <aside v-if="soulPanelOpen" class="soulpanel">
+            <div class="sp-head">
+              <div>
+                <div class="eyebrow">Lebendige Datei</div>
+                <h3>sys<em>.</em>md</h3>
+              </div>
+              <button class="icon-btn sp-close" @click="soulPanelOpen = false" aria-label="Panel schliessen">
+                <SysIcon name="close" style="width:16px;height:16px" />
+              </button>
+            </div>
+            <div class="sp-grow">
+              <span class="live-dot" />
+              {{ isGrowingQuietly ? 'Seele waechst...' : 'Lebendige Seele aktiv' }}
+            </div>
+            <div class="sp-scroll"><SoulViewer /></div>
+          </aside>
         </div>
-      </main>
-
-
-      <!-- Mobile tab bar -->
-      <nav class="mobile-tabs">
-        <button :class="{ active: mobileView === 'chat' }" @click="mobileView = 'chat'">Chat</button>
-        <button :class="{ active: mobileView === 'soul' }" @click="mobileView = 'soul'">Seele</button>
-      </nav>
+      </div>
     </div>
 
-    <!-- Loading state -->
     <div v-else class="sys-loading">
-      <span>SYS · cert validating</span>
+      <span>SYS &middot; cert validating</span>
     </div>
 
-    <Modal
-      :open="certErrorVisible"
-      title="Zertifikat ungültig"
-      confirm-text="Seite neu laden"
-      :hide-cancel="true"
-      @confirm="reloadPage"
-    >
+    <Modal :open="certErrorVisible" title="Zertifikat ungueltig" confirm-text="Seite neu laden" :hide-cancel="true" @confirm="reloadPage">
       Das Soul-Zertifikat konnte nicht validiert werden. Die Seite wird neu geladen.
     </Modal>
-
     <SoulAnchorModal :is-open="anchorModalOpen" @close="anchorModalOpen = false" />
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" @master-rotated="handleMasterRotated" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" @download-soul="onSetupDownload" @import-soul="onSetupImport" />
@@ -320,8 +260,8 @@ onMounted(async () => {
 
   fetchFromServer(true).then(() => {
     // Nur auto-akzeptieren wenn der Server NEUER ist (last_session-Datum vergleichen).
-    // Ist der Server älter oder gleich, bleibt der 'differs'-Banner sichtbar damit
-    // der Nutzer selbst entscheiden kann — verhindert den Verlust lokaler Änderungen.
+    // Ist der Server alter oder gleich, bleibt der 'differs'-Banner sichtbar damit
+    // der Nutzer selbst entscheiden kann — verhindert den Verlust lokaler Anderungen.
     if (syncStatus.value === 'differs' && serverContent.value) {
       const localDate  = soulContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? '';
       const serverDate = serverContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? '';
@@ -436,276 +376,74 @@ async function onSetupImport(markdown) {
   await exportAsBlob()
   const newToken = firstSetupToken.value
   if (newToken && newToken !== '__single__' && newToken !== tokenBefore) {
-    // Neuer Admin-Token → Modal zeigt ihn; Einstellungen öffnen via dismiss-Handler
+    // Neuer Admin-Token → Modal zeigt ihn; Einstellungen oeffnen via dismiss-Handler
     return
   }
   firstSetupToken.value = null
   settingsOpen.value = true
 }
+
+// ── Shell nav state (UI only, no business logic)
+const drawerOpen    = ref(false)
+const soulPanelOpen = ref(false)
+const filter        = ref('all')
+
+function onNav(id) {
+  if (id === 'chat') return
+  if (id === 'settings') { settingsOpen.value = true; return }
+  if (id === 'anchor')   { anchorModalOpen.value = true; return }
+  drawerOpen.value = false
+  router.push('/')
+}
 </script>
 
 <style scoped>
-.sys-session {
-  --ink:#08070c; --paper:#12101a; --paper-2:#1a1726; --paper-3:#0d0b14;
-  --rule:rgba(226,220,240,0.10); --rule-2:rgba(226,220,240,0.20);
-  --fg:#ece7f5; --fg-2:rgba(236,231,245,0.88); --fg-3:rgba(236,231,245,0.70); --fg-4:rgba(236,231,245,0.55);
-  --accent:#8b5cf6; --accent-2:rgba(139,92,246,0.14); --accent-bright:#a78bfa; --on-accent:#0a0810;
-  --serif:'Noto Serif', Georgia, serif;
-  --sans:'Inter', system-ui, -apple-system, sans-serif;
-  --mono:'JetBrains Mono', ui-monospace, monospace;
-  /* 4 rows: header · sub-head (banners, collapses to 0 when empty) · body · tabs/gutter */
-  display: grid; grid-template-rows: auto auto 1fr auto;
-  width: 100%; max-width: 100vw;
-  height: 100vh; height: 100dvh;
-  overflow: hidden;
-  background: var(--paper); color: var(--fg); font-family: var(--sans);
-}
-.arr { font-family: var(--serif); }
-.live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); display: inline-block; }
-
-/* Head */
-.sess-head {
-  display: flex; align-items: center;
-  padding: 10px clamp(14px,3vw,24px);
-  border-bottom: 1px solid var(--rule);
-  background: var(--paper-3);
-  gap: 12px;
-  position: relative;
-  z-index: 10; /* ensure burger dropdown paints above chat stream */
-}
-.head-left {
-  display: flex; align-items: center; gap: 12px;
-  flex: 1; min-width: 0;
-}
-/* Burger button — desktop hidden, mobile top-right */
-
-/* Sub-header: banners wrapper — collapses to 0 height when empty */
-.sess-sub-head { display: flex; flex-direction: column; }
-@media (max-width: 900px) {
-  .sess-head { background: transparent; border-bottom: 0; }
-  .sess-head .pill { font-size: 11px; letter-spacing: 0.08em; min-width: 0; flex-shrink: 1; overflow: hidden; }
-  .soul-id-btn { display: none; }
-  .pill-sep { display: none; }
-  .mobile-tabs { border-top: 0; }
-  /* gradient fades — stream erscheint nach oben/unten endlos */
-  .col-chat { position: relative; }
-  .col-chat::before,
-  .col-chat::after {
-    content: ''; position: absolute; left: 0; right: 0;
-    height: 56px; pointer-events: none; z-index: 2;
-  }
-  .col-chat::before { top: 0; background: linear-gradient(to bottom, var(--paper), transparent); }
-  .col-chat::after  { bottom: 0; background: linear-gradient(to top,   var(--paper), transparent); }
+/* ── Loading ── */
+.sys-loading {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-.sess-head .back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; border: 0; background: transparent; display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; white-space: nowrap; }
-.sess-head .back:hover { color: var(--accent); }
-.sess-head .pill { justify-self: center; display: flex; align-items: center; gap: 10px; padding: 8px 18px; border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); }
-.pill-sep { color: var(--fg-4); }
-.soul-id-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; color: var(--fg-3); background: transparent; border: 1px solid var(--rule-2); border-radius: 3px; padding: 2px 7px; cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
-.soul-id-btn:hover { color: var(--accent); border-color: var(--accent); }
+/* ── Status banners ── */
+.sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
+.banner {
+  padding: 10px clamp(16px,3vw,32px); border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--fg-3); display: flex; align-items: center; gap: 14px;
+}
+.banner.b-loading { color: var(--fg-3); }
+.banner.b-success { color: var(--accent); }
+.banner.b-error   { color: #e06c75; border-color: rgba(224,108,117,0.25); }
+.banner.b-warn    { color: var(--accent-bright); border-color: rgba(138,208,179,0.25); }
+.banner-close { margin-left: auto; background: transparent; border: 0; color: inherit; opacity: 0.5; cursor: pointer; font-size: 12px; }
+.banner-close:hover { opacity: 1; }
+
+/* ── Soul growth indicators ── */
 .soul-growing { font-size: 13px; color: var(--accent); opacity: 0.6; animation: soul-pulse 1.4s ease-in-out infinite; }
-.soul-grew { font-size: 12px; color: var(--accent); }
+.soul-grew    { font-size: 12px; color: var(--accent); }
 @keyframes soul-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }
 .fade-quick-enter-active, .fade-quick-leave-active { transition: opacity 0.5s; }
 .fade-quick-enter-from, .fade-quick-leave-to { opacity: 0; }
-.sess-head .tools { display: flex; align-items: center; }
-@media (max-width: 900px) { .sess-head .tools--desktop { display: none; } }
-.burger-wrap { position: relative; display: none; }
-@media (max-width: 900px) { .burger-wrap { display: block; } }
-.burger-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; background: transparent; color: var(--fg-3); cursor: pointer; }
-.burger-btn:hover { color: var(--fg); }
-.burger-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 200; background: var(--paper-3); border: 1px solid var(--rule); border-radius: 4px; display: flex; flex-direction: column; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-.burger-menu .tool { border-left: 0; border-bottom: 1px solid var(--rule); text-align: left; padding: 14px 20px; }
-.burger-menu .tool:last-child { border-bottom: 0; }
-.slide-up-enter-active, .slide-up-leave-active { transition: all 0.2s ease; }
-.slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(6px); }
-.tool { padding: 10px 16px; border-left: 1px solid var(--rule); border-top: 0; border-bottom: 0; border-right: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); cursor: pointer; background: transparent; white-space: nowrap; }
-.tool:hover:not(:disabled) { color: var(--fg); }
-.tool.active { color: var(--accent); }
-.tool:disabled { opacity: 0.4; cursor: not-allowed; }
-.tool--logout { color: var(--err, #f0a3a3); }
-.tool--logout:hover { color: var(--fg); }
-.tool--emerg { color: var(--fg-4); letter-spacing: 0.10em; }
-.tool--emerg:hover:not(:disabled) { color: #f87171; }
-.tool--emerg-on { color: #f87171 !important; }
-/* Notfall im Mobile-Header: auf Desktop versteckt, auf Mobile sichtbar */
-
-
-/* Banners */
-.banner { padding: 10px clamp(16px,3vw,32px); border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); display: flex; align-items: center; gap: 14px; }
-.banner.b-loading { color: var(--fg-3); }
-.banner.b-success { color: #b8dcc4; }
-.banner.b-error { color: #f0a3a3; border-color: rgba(240,163,163,0.25); }
-.banner.b-warn { color: var(--accent-bright); border-color: rgba(167,139,250,0.25); }
-.banner .close { margin-left: auto; background: transparent; border: 0; color: inherit; opacity: 0.5; cursor: pointer; font-size: 12px; }
-.banner .close:hover { opacity: 1; }
-
-/* Body */
-/* min-height: 0 is critical — without it the grid item expands to content height
-   and overflows the 1fr track, making the dock push below the viewport */
-.sess-body { display: grid; grid-template-columns: 360px 1fr; gap: 0; overflow: hidden; min-height: 0; min-width: 0; }
-@media (max-width: 900px) {
-  .sess-body { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-  .col-soul, .col-chat { grid-row: 1; grid-column: 1; }
-  .mobile-hidden { display: none !important; }
-}
-@media (min-width: 901px) { .mobile-hidden { display: flex !important; } }
-
-.col-soul { border-right: 1px solid var(--rule); padding: clamp(24px,4vw,40px) clamp(18px,3vw,28px); display: flex; flex-direction: column; gap: 28px; overflow-y: auto; background: linear-gradient(180deg, rgba(139,92,246,0.04) 0%, transparent 40%); min-height: 0; min-width: 0; }
-@media (max-width: 900px) {
-  .col-soul { border-right: 0; padding: 0; gap: 0; }
-  /* Hide the "Lebendige Datei / sys.md" header on mobile — SoulViewer shows soul name already */
-  .col-soul > div:first-child { display: none; }
-}
-.col-soul .cap { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 10px; }
-.col-soul .ttl { font-family: var(--serif); font-size: 32px; font-weight: 400; letter-spacing: -0.02em; margin: 0; line-height: 1; }
-.col-soul .ttl em { font-style: italic; color: var(--accent); }
-
-/* min-height: 0 prevents the flex child from growing past its available track */
-.col-chat { display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
-
-.onboard { display: flex; align-items: center; gap: 24px; padding: 14px clamp(16px,3vw,40px); border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); flex-wrap: wrap; flex-shrink: 0; }
-.onboard .n { color: var(--accent); }
-.onboard .step { display: flex; gap: 10px; align-items: center; }
-.onboard .step b { color: var(--fg); font-weight: 500; }
-.onboard code { font-family: var(--mono); color: var(--fg); letter-spacing: 0.02em; text-transform: none; }
-.onboard .close { margin-left: auto; background: transparent; border: 0; color: var(--fg-3); cursor: pointer; font-size: 12px; }
-.onboard .close:hover { color: var(--accent); }
-
-/* flex: 1 + min-height: 0 — hands all remaining height to ChatInterface */
-.chat-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; min-width: 0; }
-.chat-wrap :deep(.msg) { font-family: var(--serif); font-size: 17px; line-height: 1.55; }
-
-/* Legal footer */
-.sess-foot {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 0;
-  border-top: 1px solid var(--rule); background: var(--paper-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase;
-}
-.sf-copy { color: var(--fg-4); padding: 10px clamp(14px,3vw,32px); white-space: nowrap; }
-.sf-links { display: flex; }
-.sf-links a { color: var(--fg-3); text-decoration: none; padding: 0 12px; border-left: 1px solid var(--rule); min-height: 36px; display: flex; align-items: center; white-space: nowrap; }
-.sf-links a:hover { color: var(--accent); }
-/* Mobile: single horizontal scrollable row — like the tools bar */
-@media (max-width: 900px) {
-  .sess-foot {
-    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 36px), transparent 100%);
-    mask-image: linear-gradient(to right, black calc(100% - 36px), transparent 100%);
-  }
-  .sess-foot::-webkit-scrollbar { display: none; }
-  .sf-copy { padding: 0 14px; min-height: 40px; display: flex; align-items: center; flex-shrink: 0; font-size: 12px; }
-  .sf-links { flex-wrap: nowrap; flex-shrink: 0; }
-  .sf-links a { min-height: 40px; font-size: 12px; padding: 0 12px; letter-spacing: 0.12em; }
-}
-
-/* Mobile tabs / Desktop gutter */
-.mobile-tabs { display: none; border-top: 1px solid var(--rule); background: transparent; }
-@media (max-width: 900px) {
-  .mobile-tabs { display: flex; padding-bottom: env(safe-area-inset-bottom, 0px); }
-}
-.mobile-tabs button { flex: 1; padding: 14px; background: transparent; border: 0; color: var(--fg-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
-.mobile-tabs button.active { color: var(--accent); }
-
-/* Loading */
-.sys-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #12101a; color: rgba(236,231,245,0.70); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
-
-/* Transitions */
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.25s ease; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(8px); }
 
-/* ═══════════════════════════════════════════════════════════════════
-   :deep() — Editorial override für alle child-Komponenten
-   Ziel: SoulViewer, SoulSetupWizard, VaultExplorer, SoulMaturityMeter
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── Typografie ─────────────────────────────────────────────────── */
+/* ── Child component overrides ── */
 :deep(h2), :deep(h3), :deep(h4) {
-  font-family: 'Noto Serif', Georgia, serif !important;
-  letter-spacing: -0.02em;
-  font-weight: 400;
-  color: var(--fg);
+  font-family: var(--serif) !important; letter-spacing: -0.02em; font-weight: 400; color: var(--fg);
 }
-
-/* ── Border-radius entfernen (editorial: keine runden Ecken) ─────── */
-:deep(.rounded-xl), :deep(.rounded-2xl), :deep(.rounded-lg),
-:deep(.rounded-xl\/2), :deep(.rounded-t-2xl), :deep(.rounded-b-2xl) {
-  border-radius: 0 !important;
-}
-/* Kleine Tags/Badges: dezent eckig */
+:deep(.rounded-xl), :deep(.rounded-2xl), :deep(.rounded-lg) { border-radius: 0 !important; }
 :deep(.rounded-full) { border-radius: 2px !important; }
-
-/* ── Hintergründe auf Paper-Palette ─────────────────────────────── */
-:deep(.bg-\[var\(--sys-bg-elevated\)\]) { background: var(--paper-2) !important; }
-:deep(.bg-\[var\(--sys-bg-surface\)\])  { background: var(--paper-3) !important; }
-:deep(.border-\[var\(--sys-border\)\])  { border-color: var(--rule) !important; }
-
-/* ── Tab-Leisten: editorial border-bottom statt card-bg ─────────── */
-:deep(.flex.gap-1.p-1.rounded-xl),
-:deep(.flex.gap-1\.5.p-1\.5.rounded-xl) {
-  background: transparent !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  gap: 0 !important;
-  border-bottom: 1px solid var(--rule) !important;
-}
-:deep(.flex.gap-1.p-1.rounded-xl button),
-:deep(.flex.gap-1\.5.p-1\.5.rounded-xl button) {
-  border-radius: 0 !important;
-  height: 40px !important;
-  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
-  font-size: 12px !important;
-  letter-spacing: 0.10em !important;
-  text-transform: uppercase !important;
-  border-right: 1px solid var(--rule) !important;
-}
-:deep(.flex.gap-1.p-1.rounded-xl button:last-child) { border-right: 0 !important; }
-/* Aktiver Tab */
-:deep(.bg-white\/12), :deep(.bg-white\/\[0\.12\]) {
-  background: rgba(139,92,246,0.14) !important;
-  color: var(--fg) !important;
-}
-
-/* ── Buttons in Panels ───────────────────────────────────────────── */
-:deep(button.rounded-xl), :deep(button.rounded-lg), :deep(button.rounded-2xl) {
-  border-radius: 0 !important;
-  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
-  letter-spacing: 0.12em !important;
-}
-
-/* ── Inputs in Panels ────────────────────────────────────────────── */
 :deep(input:not([type="file"])), :deep(textarea), :deep(select) {
-  border-radius: 0 !important;
-  background: rgba(255,255,255,0.03) !important;
-  color: var(--fg) !important;
+  border-radius: 0 !important; background: rgba(255,255,255,0.03) !important; color: var(--fg) !important;
 }
 :deep(input:focus), :deep(textarea:focus) {
-  outline: none !important;
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 1px var(--accent) !important;
+  outline: none !important; border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent) !important;
 }
-
-/* ── SoulViewer Sidebar ──────────────────────────────────────────── */
-.col-soul :deep(h3) {
-  font-family: 'Noto Serif', Georgia, serif !important;
-  font-size: 17px !important;
-  font-weight: 400 !important;
-  letter-spacing: -0.015em !important;
-  color: var(--fg) !important;
-  padding-top: 16px;
-  margin-top: 16px !important;
-  margin-bottom: 6px !important;
-  border-top: 1px solid var(--rule);
+.soulpanel :deep(h3) {
+  font-family: var(--serif) !important; font-size: 17px !important; font-weight: 400 !important;
+  letter-spacing: -0.015em !important; color: var(--fg) !important;
+  padding-top: 16px; margin-top: 16px !important; margin-bottom: 6px !important; border-top: 1px solid var(--line);
 }
-.col-soul :deep(p) {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--fg-2);
-}
-
-/* ── Violet-Akzente aus globalen Vars ────────────────────────────── */
-:deep(.text-\[var\(--sys-violet\)\])       { color: var(--accent) !important; }
-:deep(.border-\[var\(--sys-violet-border\)\]) { border-color: var(--accent) !important; }
-:deep(.bg-\[var\(--sys-violet-dim\)\])     { background: var(--accent-2) !important; }
+.soulpanel :deep(p) { font-size: 13px; line-height: 1.6; color: var(--fg-2); }
 </style>
