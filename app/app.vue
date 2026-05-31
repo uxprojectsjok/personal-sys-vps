@@ -2,6 +2,7 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <SysMobileNav />
   <div id="teleports"></div>
 </template>
 
