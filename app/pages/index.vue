@@ -60,109 +60,104 @@
 
             <!-- ── Home ──────────────────────────────────────────────── -->
             <div v-if="route === 'home'" class="page">
+
+              <!-- Hero -->
               <div class="hero">
-                <div class="greet">
-                  <span class="live-dot" style="margin-right:8px" />
-                  Soul aktiv · {{ shortId }}
-                </div>
+                <div class="greet">Willkommen zurück</div>
                 <h1>{{ soulMeta?.name || 'Soul' }}<em>.</em></h1>
-                <div class="hero-sub">{{ maturityLevel }} · {{ maturity }}% Reife · {{ chainCount }} Sessions</div>
+                <div class="hero-sub">Dein Knoten im Internet. Als Mensch. Sprich mit deiner KI, verbinde dich mit Peers — der Soul-Archivar schreibt still mit.</div>
                 <div class="hero-actions">
                   <button class="btn btn-primary" @click="onNav('chat')">
-                    Mit Seele sprechen
+                    Session starten
                     <SysIcon name="arrow" style="width:16px;height:16px" />
                   </button>
                   <button class="btn btn-ghost" @click="onNav('soul')">
-                    sys.md bearbeiten
+                    sys.md ansehen
                   </button>
                 </div>
               </div>
 
+              <!-- Überblick -->
+              <div class="section-head">
+                <h3>Überblick</h3>
+              </div>
               <div class="stat-grid">
                 <div class="stat">
                   <div class="stat-val">{{ maturity }}<small>%</small></div>
                   <div class="stat-label">Soul-Reife</div>
-                  <div class="mat-bar" style="margin-top:12px">
+                  <div class="mat-bar" style="margin-top:10px">
                     <div class="mat-fill" :style="{ width: maturity + '%' }" />
                   </div>
-                </div>
-                <div class="stat">
-                  <div class="stat-val">{{ chainCount }}</div>
-                  <div class="stat-label">Sessions</div>
                   <div class="stat-foot" :class="{ off: !hasAnchor }">
                     <span class="d" />{{ hasAnchor ? 'Verankert' : 'Kein Anker' }}
                   </div>
                 </div>
                 <div class="stat">
-                  <div class="stat-val">{{ vaultConnected ? 'Aktiv' : 'Offline' }}</div>
-                  <div class="stat-label">Vault</div>
-                  <div class="stat-foot" :class="{ off: !vaultConnected }">
-                    <span class="d" />{{ vaultConnected ? 'Verbunden' : 'Getrennt' }}
+                  <div class="stat-val">{{ chainCount }}</div>
+                  <div class="stat-label">Sessions in der Chain</div>
+                  <div class="stat-foot">
+                    <span class="d" />Bereit
                   </div>
                 </div>
                 <div class="stat">
-                  <div class="stat-val">{{ shortCert }}</div>
-                  <div class="stat-label">Cert</div>
+                  <div class="stat-val" style="font-size:20px">Lokal</div>
+                  <div class="stat-label">Soul-Datei</div>
+                  <div class="stat-foot" :class="{ off: !vaultConnected }">
+                    <span class="d" />{{ vaultConnected ? 'Bereit' : 'Offline' }}
+                  </div>
+                </div>
+                <div class="stat">
+                  <div class="stat-val" style="font-size:20px">{{ soulMeta?.version || 'v1' }}</div>
+                  <div class="stat-label">Soul-Version</div>
                   <div class="stat-foot">
-                    <span class="d" />Signiert
+                    <span class="d" />{{ shortCert }} · signiert
                   </div>
                 </div>
               </div>
 
-              <ul class="action-list" style="margin-top:24px">
+              <!-- Weiter mit -->
+              <div class="section-head">
+                <h3>Weiter mit</h3>
+              </div>
+              <ul class="action-list">
                 <li class="action" @click="onNav('soul')">
-                  <div class="act-ic"><SysIcon name="soul" style="width:20px;height:20px" /></div>
+                  <div class="act-ic"><SysIcon name="settings" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">sys.md</div>
-                    <div class="act-sub">Lebendige Identitätsdatei</div>
+                    <div class="act-title">Soul einrichten</div>
+                    <div class="act-sub">Wizard · Vault · Verschlüsselung</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
                 <li class="action" @click="onNav('files')">
                   <div class="act-ic"><SysIcon name="files" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Dateien</div>
-                    <div class="act-sub">Vault · Audio · Video</div>
-                  </div>
-                  <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
-                </li>
-                <li class="action" @click="onNav('anchor')">
-                  <div class="act-ic"><SysIcon name="anchor" style="width:20px;height:20px" /></div>
-                  <div class="act-body">
-                    <div class="act-title">Verankern</div>
-                    <div class="act-sub">Polygon Blockchain</div>
+                    <div class="act-title">Dateien verwalten</div>
+                    <div class="act-sub">Audio · Video · Bilder · Kontext</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
                 <li class="action" @click="onNav('export')">
                   <div class="act-ic"><SysIcon name="export" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Exportieren</div>
-                    <div class="act-sub">.soul · AES-GCM</div>
+                    <div class="act-title">Soul exportieren</div>
+                    <div class="act-sub">.soul · AES-GCM · 12 Wörter</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
-                <li class="action" @click="onNav('market')">
-                  <div class="act-ic"><SysIcon name="market" style="width:20px;height:20px" /></div>
+                <li class="action" @click="onNav('anchor')">
+                  <div class="act-ic"><SysIcon name="anchor" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Marketplace</div>
-                    <div class="act-sub">Agents & Souls</div>
-                  </div>
-                  <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
-                </li>
-                <li class="action" @click="onNav('settings')">
-                  <div class="act-ic"><SysIcon name="settings" style="width:20px;height:20px" /></div>
-                  <div class="act-body">
-                    <div class="act-title">Einstellungen</div>
-                    <div class="act-sub">Node-Konfiguration</div>
+                    <div class="act-title">Polygon verankern</div>
+                    <div class="act-sub">SHA-256 · Zeitstempel · irreversibel</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
               </ul>
 
-              <div class="section-head" style="margin-top:36px">
+              <!-- Chronik preview -->
+              <div class="section-head">
                 <h3>Chronik<em>.</em></h3>
-                <button class="more" @click="onNav('chronik')">Alle anzeigen →</button>
+                <button class="more" @click="onNav('chronik')">Alle {{ journal.length }} Einträge →</button>
               </div>
               <div v-if="journal.length === 0" class="empty-hint">Noch keine Session-Einträge.</div>
               <div v-else class="chronik">
@@ -402,6 +397,7 @@
 </template>
 
 <script setup>
+definePageMeta({ layout: false })
 import { computed, ref, onMounted } from 'vue'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { usePwaInstall } from '~/composables/usePwaInstall.js'
