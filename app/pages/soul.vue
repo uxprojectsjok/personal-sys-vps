@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'sys.md']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
+        <SysTopbar :crumbs="['Seele', 'sys.md']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <button class="icon-btn" :class="{ on: syncing }" @click="handlePush" :disabled="syncing" title="Auf Server hochladen">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
@@ -90,6 +90,7 @@
           </div>
         </div>
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <!-- Not loaded yet -->
@@ -127,6 +128,7 @@ const liveMaturity = computed(() => soulContent.value ? computeMaturity(soulCont
 // ── Shell state ──────────────────────────────────────────────────────────────
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 const syncing          = ref(false)
 
 // ── Soul sections ────────────────────────────────────────────────────────────
@@ -202,7 +204,7 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'soul')     return
-  if (id === 'setup')    return
+  if (id === 'setup')    { router.push('/einrichten'); return }
   if (id === 'chat')     { router.push('/session');  return }
   if (id === 'chronik')  { router.push('/chronik');  return }
   if (id === 'files')    { router.push('/dateien');    return }

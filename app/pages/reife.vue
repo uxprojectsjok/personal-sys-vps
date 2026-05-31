@@ -4,7 +4,7 @@
       <SysSidebar route="maturity" :soul-meta="soulMeta ? { ...soulMeta, maturity: data.score } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Reife']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}" />
+        <SysTopbar :crumbs="['Seele', 'Reife']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
         <div class="page rf-page">
 
@@ -71,6 +71,7 @@
         </div>
         </div><!-- /scroll -->
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
     <div v-else class="sys-loading"><span>SYS · wird geladen</span></div>
     <SysMobileNav />
@@ -91,6 +92,7 @@ const { allFiles } = useVault()
 
 const drawerOpen      = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen        = ref(false)
 
 function lockSoul() {
   _clear?.()
@@ -101,7 +103,7 @@ function lockSoul() {
 function onNav(id) {
   if (id === 'maturity') return
   if (id === 'chat')     { router.push('/session');     return }
-  if (id === 'setup')    { router.push('/soul');        return }
+  if (id === 'setup')    { router.push('/einrichten');   return }
   if (id === 'soul')     { router.push('/soul');        return }
   if (id === 'chronik')  { router.push('/chronik');     return }
   if (id === 'files')    { router.push('/dateien');     return }

@@ -385,8 +385,8 @@
     border-radius: 12px;
   }
   .sys-cta-primary:hover {
-    background: #9d73f8;
-    box-shadow: 0 0 0 1px rgba(139,92,246,0.30), 0 4px 20px rgba(139,92,246,0.22);
+    background: var(--sys-accent-bright);
+    box-shadow: 0 0 0 1px var(--sys-violet-dim), 0 4px 20px var(--sys-violet-glow);
   }
   .sys-cta-primary:active {
     transform: scale(0.95);
@@ -708,8 +708,8 @@
   border-radius: 10px;
 }
 .sys-btn-filled:hover {
-  background: #9d73f8;
-  box-shadow: 0 0 0 1px rgba(139,92,246,0.30), 0 4px 18px rgba(139,92,246,0.20);
+  background: var(--sys-accent-bright);
+  box-shadow: 0 0 0 1px var(--sys-violet-dim), 0 4px 18px var(--sys-violet-glow);
 }
 
 /* Tonal: subtle glass */

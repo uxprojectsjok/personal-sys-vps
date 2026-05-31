@@ -673,7 +673,7 @@ const MODAL_MAP = {
 
 function onNav(id) {
   if (id === 'chat')     { navigateTo('/session');  return }
-  if (id === 'setup')    { navigateTo('/soul');     return }
+  if (id === 'setup')    { navigateTo('/einrichten'); return }
   if (id === 'soul')     { navigateTo('/soul');     return }
   if (id === 'chronik')  { navigateTo('/chronik');  return }
   if (id === 'maturity') { navigateTo('/reife');    return }

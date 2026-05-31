@@ -72,7 +72,7 @@ const shortId = computed(() => {
 const NAV = [
   { group: null, items: [{ id: 'home', icon: 'home', label: 'Start' }] },
   { group: 'Seele', items: [
-    { id: 'setup',    icon: 'edit',    label: 'Soul Einrichten' },
+    { id: 'setup',    icon: 'edit',    label: 'Einrichten' },
     { id: 'chat',     icon: 'chat',    label: 'Session' },
     { id: 'soul',     icon: 'soul',    label: 'sys.md' },
     { id: 'chronik',  icon: 'history', label: 'Chronik' },

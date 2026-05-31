@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Vault', 'Kalender']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}" />
+        <SysTopbar :crumbs="['Vault', 'Kalender']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="kal-page">
@@ -112,6 +112,7 @@
           </div><!-- /kal-page -->
         </div><!-- /scroll -->
       </div><!-- /main -->
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <!-- Add entry modal -->
@@ -175,6 +176,7 @@ function lockGate() {
 // ── Shell state ──────────────────────────────────────────────────────────
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 
 // ── Calendar state ────────────────────────────────────────────────────────
 const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -314,7 +316,7 @@ async function deleteEntry(idx) {
 function onNav(id) {
   if (id === 'calendar') return
   if (id === 'chat')     { router.push('/session');     return }
-  if (id === 'setup')    { router.push('/soul');        return }
+  if (id === 'setup')    { router.push('/einrichten');   return }
   if (id === 'soul')     { router.push('/soul');        return }
   if (id === 'chronik')  { router.push('/chronik');     return }
   if (id === 'files')    { router.push('/dateien');     return }

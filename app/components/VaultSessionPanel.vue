@@ -98,9 +98,9 @@
               v-for="opt in durationOptions"
               :key="opt.value"
               class="py-2 rounded-none border text-xs font-mono transition-all min-h-[36px]"
-              :class="selectedDuration === opt.value
-                ? 'border-white/35 text-white bg-[rgba(255,255,255,0.08)]'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:border-[rgba(255,255,255,0.2)]'"
+              :style="selectedDuration === opt.value
+                ? 'border-color:var(--sys-accent);color:var(--sys-accent);background:rgba(109,184,154,0.12);font-weight:600'
+                : 'border-color:var(--sys-border);color:var(--sys-fg-dim)'"
               @click="selectedDuration = opt.value"
             >
               {{ opt.label }}
@@ -126,9 +126,9 @@
                 :key="opt.value"
                 type="button"
                 class="py-2 rounded-none border text-xs transition-all min-h-[36px]"
-                :class="encryptMode === opt.value
-                  ? 'border-white/35 text-white bg-[rgba(255,255,255,0.08)]'
-                  : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:border-[rgba(255,255,255,0.2)]'"
+                :style="encryptMode === opt.value
+                  ? 'border-color:var(--sys-accent);color:var(--sys-accent);background:rgba(109,184,154,0.12);font-weight:600'
+                  : 'border-color:var(--sys-border);color:var(--sys-fg-dim)'"
                 @click="encryptMode = opt.value"
               >{{ opt.label }}</button>
             </div>
