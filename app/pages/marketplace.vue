@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Netzwerk', 'Marketplace']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}" />
+        <SysTopbar :crumbs="['Netzwerk', 'Marketplace']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="market-page">
@@ -25,6 +25,7 @@
           </div>
         </div>
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <div v-else class="sys-loading">
@@ -46,6 +47,7 @@ const { soulMeta, hasSoul, soulToken } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 
 function lockGate() {
   document.cookie = 'sys_token=; Max-Age=0; path=/'
@@ -55,7 +57,7 @@ function lockGate() {
 function onNav(id) {
   if (id === 'market')   return
   if (id === 'chat')     { router.push('/session');    return }
-  if (id === 'setup')    { router.push('/soul');       return }
+  if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');       return }
   if (id === 'chronik')  { router.push('/chronik');    return }
   if (id === 'files')    { router.push('/dateien');    return }

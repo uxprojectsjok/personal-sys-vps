@@ -54,7 +54,7 @@
           <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--sys-border)]" />
           <div
             class="absolute bottom-0 left-0 h-[2px] transition-all duration-500 rounded-r"
-            :style="`width: ${(currentStep / (steps.length - 1)) * 100}%; background: rgba(139,92,246,0.7)`"
+            :style="`width: ${(currentStep / (steps.length - 1)) * 100}%; background: var(--sys-violet)`"
           />
 
           <button
@@ -70,7 +70,7 @@
                 ? 'scale-110 shadow-lg'
                 : 'scale-100'"
               :style="currentStep === i
-                ? (isDark ? 'background: rgba(255,255,255,0.10); border: 1.5px solid rgba(255,255,255,0.35); box-shadow: 0 0 10px rgba(139,92,246,0.22)' : 'background: rgba(6,14,28,0.08); border: 1.5px solid rgba(6,14,28,0.28); box-shadow: 0 0 10px rgba(139,92,246,0.22)')
+                ? (isDark ? 'background: rgba(255,255,255,0.10); border: 1.5px solid rgba(255,255,255,0.35); box-shadow: 0 0 10px var(--sys-glow)' : 'background: rgba(6,14,28,0.08); border: 1.5px solid rgba(6,14,28,0.28); box-shadow: 0 0 10px var(--sys-glow)')
                 : step.done
                   ? (isDark ? 'background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.20)' : 'background: rgba(6,14,28,0.05); border: 1.5px solid rgba(6,14,28,0.18)')
                   : (isDark ? 'background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.09)' : 'background: rgba(6,14,28,0.03); border: 1.5px solid rgba(6,14,28,0.09)')"
@@ -110,7 +110,7 @@
 
             <!-- Status -->
             <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
-              <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:#a78bfa' : 'background: rgba(255,255,255,0.15)'"></span>
+              <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:var(--sys-violet)' : 'background: rgba(255,255,255,0.15)'"></span>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-semibold text-white/75">
                   {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}

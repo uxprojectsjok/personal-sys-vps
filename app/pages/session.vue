@@ -4,7 +4,7 @@
       <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
+        <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <!-- Filter toggle -->
           <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, 'has-filter': filter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
@@ -79,6 +79,7 @@
           </aside>
         </div>
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <div v-else class="sys-loading">
@@ -398,6 +399,7 @@ async function onSetupImport(markdown) {
 // ── Shell nav state (UI only, no business logic)
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 const soulPanelOpen    = ref(false)
 const filterOpen       = ref(false)
 const filter           = ref('all')
@@ -405,7 +407,7 @@ const maturity         = computed(() => computeMaturity(soulContent.value).score
 
 function onNav(id) {
   if (id === 'chat')     return
-  if (id === 'setup')    { router.push('/soul');    return }
+  if (id === 'setup')    { router.push('/einrichten'); return }
   if (id === 'soul')     { router.push('/soul');    return }
   if (id === 'chronik')  { router.push('/chronik'); return }
   if (id === 'files')    { router.push('/dateien');    return }

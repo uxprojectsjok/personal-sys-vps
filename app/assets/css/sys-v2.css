@@ -60,6 +60,14 @@
   --sidebar-w: 264px;
   --soulpanel-w: 336px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Remap old violet system → Warm Ash & Sage (global migration) ─────── */
+  --sys-violet:        var(--accent);
+  --sys-violet-dim:    var(--accent-dim);
+  --sys-violet-glow:   var(--accent-glow);
+  --sys-violet-border: rgba(109,184,154,0.40);
+  --sys-accent-bright: var(--accent-bright);
+  --sys-on-accent:     var(--on-accent);
 }
 
 * { box-sizing: border-box; }

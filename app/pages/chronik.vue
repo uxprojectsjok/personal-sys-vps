@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Chronik']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
+        <SysTopbar :crumbs="['Seele', 'Chronik']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <div class="ch-search-wrap">
             <svg class="ch-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
               <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/>
@@ -91,6 +91,7 @@
           </div>
         </div>
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <div v-else class="sys-loading">
@@ -112,6 +113,7 @@ const { soulContent, soulMeta, hasSoul } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 const query            = ref('')
 
 // ── Parse all journal entries ──────────────────────────────────────────────
@@ -222,7 +224,7 @@ function lockGate() {
 function onNav(id) {
   if (id === 'chronik')  return
   if (id === 'chat')     { router.push('/session');  return }
-  if (id === 'setup')    { router.push('/soul');     return }
+  if (id === 'setup')    { router.push('/einrichten'); return }
   if (id === 'soul')     { router.push('/soul');     return }
   if (id === 'files')    { router.push('/dateien');    return }
   if (id === 'market')   { router.push('/marketplace'); return }

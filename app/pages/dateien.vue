@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Vault', 'Dateien']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="() => {}">
+        <SysTopbar :crumbs="['Vault', 'Dateien']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <div class="dt-search-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14" class="dt-search-icon">
               <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/>
@@ -194,6 +194,7 @@
           </div>
         </div>
       </div>
+      <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
 
     <div v-else class="sys-loading">
@@ -220,6 +221,7 @@ const { vaultKey } = useVaultSession()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
+const cmdkOpen         = ref(false)
 const tab              = ref('lokal')
 const typeFilter       = ref('all')
 const searchQuery      = ref('')
@@ -442,7 +444,7 @@ function lockGate() {
 function onNav(id) {
   if (id === 'files')    return
   if (id === 'chat')     { router.push('/session');    return }
-  if (id === 'setup')    { router.push('/soul');       return }
+  if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');       return }
   if (id === 'chronik')  { router.push('/chronik');    return }
   if (id === 'market')   { router.push('/marketplace'); return }
