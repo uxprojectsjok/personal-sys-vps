@@ -3970,8 +3970,7 @@ defineExpose({
 .dock-filter-btn { color: var(--fg-3); }
 .dock-filter-btn.active { color: var(--accent); }
 .dock-filter-btn.filter-on { color: var(--accent-bright); }
-/* Hide on desktop — filter row is in session.vue */
-@media (min-width: 901px) { .dock-filter-btn { display: none; } }
+.dock-filter-btn { display: none; }
 .cmd-at { color: var(--accent); font-size: 10px; }
 
 .cmd-strip-enter-active { transition: opacity 0.14s ease, transform 0.16s ease; }
@@ -4165,9 +4164,9 @@ defineExpose({
    ════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 900px) {
-  /* Stream: symmetric 16px horizontal padding, FAB-only bottom padding */
-  .stream { padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px) + 80px); box-sizing: border-box; overflow-x: hidden; width: 100%; }
-  .mob-composer-open .stream { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 260px); }
+  /* Stream: symmetric 16px horizontal padding */
+  .stream { padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 80px); box-sizing: border-box; overflow-x: hidden; width: 100%; }
+  .mob-composer-open .stream { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 260px); }
   /* No margin:auto or max-width on desktop → no overrides needed here. Just tighten gap. */
   .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; }
 
@@ -4202,10 +4201,10 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: always visible on mobile, fixed above tab bar */
+  /* Dock: always visible on mobile, fixed at bottom */
   .dock {
     position: fixed;
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 0; right: 0;
     z-index: 200;
     padding: 10px 14px 12px; gap: 7px;
@@ -4226,9 +4225,9 @@ defineExpose({
   .input-wrap { padding: 0 10px; }
   /* font-size ≥ 16px verhindert Auto-Zoom beim Fokussieren auf Android/iOS */
   .input { padding: 11px 4px; font-size: 16px; }
-  /* stream padding: dock height (≈130px) + tab bar (56px) + safe-area */
-  .stream { padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px) + 150px); }
-  .mob-composer-open .stream { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 150px); }
+  /* stream padding: dock height (≈130px) + safe-area */
+  .stream { padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 150px); }
+  .mob-composer-open .stream { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); }
   .mobile-fab { display: none; }
 }
 
