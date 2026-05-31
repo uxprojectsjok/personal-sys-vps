@@ -668,7 +668,7 @@ const MODAL_MAP = {
   anchor: () => { anchorOpen.value = true },
   export: () => { encryptOpen.value   = true },
   settings: () => { settingsOpen.value = true },
-  market: () => { marketplaceOpen.value = true },
+  market: () => { navigateTo('/marketplace') },
 }
 
 function onNav(id) {
