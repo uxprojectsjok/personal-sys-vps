@@ -6,7 +6,7 @@
   <div class="sys-chat" :class="{ 'mob-composer-open': mobileComposerOpen }">
 
     <!-- ── Stream ──────────────────────────────────────────────────── -->
-    <div ref="scrollEl" class="stream">
+    <div ref="scrollEl" class="stream" :style="streamPadStyle">
       <div class="stream-inner">
 
       <div v-if="peerPollErrors.length" class="peer-error-notice">
@@ -270,13 +270,23 @@
         </div>
       </Transition>
 
+      <!-- Filter strip — mobile only, toggled via ≡ button -->
+      <Transition name="cmd-strip">
+        <div v-show="filterOpen" class="filter-strip">
+          <button :class="{ on: props.filter === 'all' }"    @click="setFilter('all')">Alle</button>
+          <button :class="{ on: props.filter === 'soul' }"   @click="setFilter('soul')">SoulKI</button>
+          <button :class="{ on: props.filter === 'peers' }"  @click="setFilter('peers')">Peers</button>
+          <button :class="{ on: props.filter === 'agents' }" @click="setFilter('agents')">Agent</button>
+        </div>
+      </Transition>
+
       <!-- Input row -->
       <div class="dock-main">
         <!-- Open media picker -->
         <button
           class="dock-icon dock-plus"
           :class="{ active: mediaPickerOpen }"
-          @click="mediaPickerOpen = !mediaPickerOpen"
+          @click="mediaPickerOpen = !mediaPickerOpen; filterOpen = false; cmdsOpen = false"
           :disabled="props.growthLocked"
           :title="mediaPickerOpen ? 'Schließen' : 'Foto oder Datei'"
         >
@@ -288,8 +298,14 @@
           </svg>
         </button>
         <!-- @ button toggles command strip -->
-        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false" :disabled="props.growthLocked" title="@ Befehle">
+        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false; filterOpen = false" :disabled="props.growthLocked" title="@ Befehle">
           <span class="dock-at-sym">@</span>
+        </button>
+        <!-- Filter toggle — mobile only -->
+        <button class="dock-icon dock-filter-btn" :class="{ active: filterOpen, 'filter-on': props.filter !== 'all' }" @click="filterOpen = !filterOpen; cmdsOpen = false; mediaPickerOpen = false" title="Filter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
+          </svg>
         </button>
         <div class="input-wrap">
           <textarea
@@ -424,7 +440,7 @@ const props = defineProps({
   growthLocked: { type: Boolean, default: false },
   filter:       { type: String,  default: 'all' },
 })
-const emit = defineEmits(['cert-error', 'session-end'])
+const emit = defineEmits(['cert-error', 'session-end', 'update:filter'])
 
 // ── Composables ────────────────────────────────────────────────────
 const { chat, isLoading, error, certError } = useClaude()
@@ -764,12 +780,26 @@ function insertCommand(cmd) {
 // ── Mobile composer FAB ─────────────────────────────────────────────
 const mobileComposerOpen = ref(false)
 const dockEl             = ref(null)
-const dockHeight         = ref(160)
+const dockHeight         = ref(110)
 // isMobile: Teleport dock+FAB aus overflow:hidden-Containern heraus
 // damit backdrop-filter auf Android Chrome funktioniert
 const isMobile = ref(typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches)
 let _mqMobile = null
 const _onMqMobile = (e) => { isMobile.value = e.matches }
+
+// ── Filter strip (mobile dock toggle) ───────────────────────────────
+const filterOpen = ref(false)
+function setFilter(val) {
+  emit('update:filter', val)
+  filterOpen.value = false
+}
+
+// ── Dynamic stream padding (tracks real dock height) ─────────────────
+const streamPadStyle = computed(() => {
+  if (!isMobile.value) return {}
+  return { paddingBottom: `calc(${dockHeight.value}px + 56px + env(safe-area-inset-bottom, 0px) + 10px)` }
+})
+let _dockRO = null
 
 function toggleMobileComposer() {
   mobileComposerOpen.value = !mobileComposerOpen.value
@@ -3177,6 +3207,15 @@ onMounted(async () => {
   _mqMobile = window.matchMedia('(max-width: 900px)')
   isMobile.value = _mqMobile.matches
   _mqMobile.addEventListener('change', _onMqMobile)
+  nextTick(() => {
+    if (dockEl.value) {
+      dockHeight.value = dockEl.value.offsetHeight
+      _dockRO = new ResizeObserver(() => {
+        if (dockEl.value) dockHeight.value = dockEl.value.offsetHeight
+      })
+      _dockRO.observe(dockEl.value)
+    }
+  })
   document.addEventListener('keydown', _onLightboxKey)
   nextTick(autoResize)
   loadMind(props.soulCert)
@@ -3224,6 +3263,7 @@ onMounted(async () => {
 })
 onUnmounted(() => {
   if (_mqMobile) _mqMobile.removeEventListener('change', _onMqMobile)
+  _dockRO?.disconnect()
   document.removeEventListener('keydown', _onLightboxKey)
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
@@ -3907,6 +3947,31 @@ defineExpose({
   background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38);
   color: var(--fg-1);
 }
+
+/* ── Filter strip (mobile dock) ── */
+.filter-strip {
+  display: flex; gap: 4px; padding: 6px 0 2px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.filter-strip::-webkit-scrollbar { display: none; }
+.filter-strip button {
+  padding: 4px 12px; border: 1px solid transparent; flex-shrink: 0;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-3); white-space: nowrap; cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.filter-strip button.on {
+  color: var(--accent); border-color: rgba(109,184,154,0.30);
+  background: rgba(109,184,154,0.07);
+}
+.filter-strip button:hover:not(.on) { color: var(--fg); }
+
+/* ── Filter toggle button ── */
+.dock-filter-btn { color: var(--fg-3); }
+.dock-filter-btn.active { color: var(--accent); }
+.dock-filter-btn.filter-on { color: var(--accent-bright); }
+/* Hide on desktop — filter row is in session.vue */
+@media (min-width: 901px) { .dock-filter-btn { display: none; } }
 .cmd-at { color: var(--accent); font-size: 10px; }
 
 .cmd-strip-enter-active { transition: opacity 0.14s ease, transform 0.16s ease; }
