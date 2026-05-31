@@ -407,7 +407,8 @@ function onNav(id) {
   if (id === 'chat')     return
   if (id === 'soul')     { router.push('/soul');    return }
   if (id === 'chronik')  { router.push('/chronik'); return }
-  if (id === 'files')    { router.push('/dateien'); return }
+  if (id === 'files')    { router.push('/dateien');    return }
+  if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'settings') { settingsOpen.value = true; return }
   if (id === 'anchor')   { anchorModalOpen.value = true; return }
   if (id === 'maturity') { router.push('/reife'); return }

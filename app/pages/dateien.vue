@@ -56,7 +56,8 @@ function onNav(id) {
   if (id === 'chat')     { router.push('/session');  return }
   if (id === 'soul')     { router.push('/soul');     return }
   if (id === 'chronik')  { router.push('/chronik');  return }
-  if (id === 'maturity') { router.push('/reife');    return }
+  if (id === 'market')   { router.push('/marketplace'); return }
+  if (id === 'maturity') { router.push('/reife');       return }
   if (id === 'calendar') { router.push('/kalender'); return }
   drawerOpen.value = false
   router.push('/')
