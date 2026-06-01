@@ -113,6 +113,7 @@ function onNav(id) {
   if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');  return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   router.push('/')
 }
 

@@ -10,9 +10,9 @@
           <div class="page er-page">
 
             <div class="er-head">
-              <div class="eyebrow">Einrichtung</div>
-              <h1 class="er-title">Soul <em>einrichten</em></h1>
-              <p class="er-lede">Vault verbinden, API-Keys hinterlegen, Dienste freigeben — alles an einem Ort.</p>
+              <div class="eyebrow">Ersteinrichtung</div>
+              <h1 class="er-title">Soul <em>aktivieren</em></h1>
+              <p class="er-lede">Einmalig: Vault verbinden, Soul laden, loslegen.</p>
             </div>
 
             <div class="er-wizard">
@@ -71,6 +71,7 @@ function onNav(id) {
   if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');  return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   drawerOpen.value = false
   router.push('/')
 }

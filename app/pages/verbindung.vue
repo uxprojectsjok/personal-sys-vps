@@ -199,7 +199,11 @@ async function startSession() {
   phase.value = 'creating'
   errorMsg.value = ''
   try {
-    const res = await fetch('/api/connect/create', { method: 'POST', headers: authHeaders() })
+    const res = await fetch('/api/connect/create', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ soul_name: soulMeta.value?.name || 'Soul' }),
+    })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Fehler beim Erstellen')
 
@@ -319,6 +323,7 @@ function onNav(id) {
   if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'peers')    { router.push('/peers');        return }
   if (id === 'market')   { router.push('/marketplace'); return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   drawerOpen.value = false
   router.push('/')
 }
@@ -390,7 +395,7 @@ function onNav(id) {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 20px; border-bottom: 1px solid var(--line);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg);
 }
 .cn-label-ic { width: 14px; height: 14px; flex: none; }
 
@@ -437,10 +442,10 @@ function onNav(id) {
 }
 .cn-btn--accept:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
 .cn-btn--done {
-  background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent); font-weight: 600;
+  background: var(--surface-3); border: 1px solid var(--line-2); color: var(--fg); font-weight: 500;
   padding: 0 40px; height: 44px; margin-top: 4px;
 }
-.cn-btn--done:hover { background: var(--accent-bright); }
+.cn-btn--done:hover { background: var(--surface-2); border-color: var(--fg-4); }
 
 /* Done state */
 .cn-done-check {
@@ -452,7 +457,7 @@ function onNav(id) {
 .cn-done-check--err { background: rgba(224,108,117,0.15); border: 1px solid rgba(224,108,117,0.35); color: #e06c75; }
 .cn-done-check svg { width: 24px; height: 24px; }
 .cn-done-title { font-family: var(--serif); font-size: 22px; font-weight: 400; color: var(--fg); }
-.cn-done-hint  { font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin: 0; max-width: 200px; }
+.cn-done-hint  { font-family: var(--mono); font-size: 12px; color: var(--fg-2); margin: 0; max-width: 200px; }
 
 /* Stranger panel */
 .cn-stranger-body { background: rgba(0,0,0,0.12); }

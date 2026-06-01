@@ -1,10 +1,19 @@
 <template>
   <aside class="sidebar">
     <div class="sb-head">
-      <span class="sb-mark">SYS<span class="dot">.</span></span>
-      <button class="sb-collapse" @click="$emit('collapse')" title="Seitenleiste" aria-label="Seitenleiste einklappen">
-        <SysIcon name="panel" style="width:17px;height:17px" />
-      </button>
+      <div class="sb-head-top">
+        <span class="sb-mark">SYS<span class="dot">.</span></span>
+        <button class="sb-collapse" @click="$emit('collapse')" title="Seitenleiste" aria-label="Seitenleiste einklappen">
+          <SysIcon name="panel" style="width:17px;height:17px" />
+        </button>
+      </div>
+      <div class="sb-node">
+        <span class="live-dot" />
+        <span>Private Node</span>
+        <button class="lock" title="Node sperren" aria-label="Node sperren" @click="$emit('lock')">
+          <SysIcon name="lock" style="width:16px;height:16px" />
+        </button>
+      </div>
     </div>
 
     <button class="sb-soul" @click="$emit('go', 'soul')" :title="soulMeta?.id || ''">
@@ -33,22 +42,6 @@
       </div>
     </nav>
 
-    <div class="sb-foot">
-      <div class="sb-node">
-        <span class="live-dot" />
-        <span>Private Node</span>
-        <button class="lock" title="Node sperren" aria-label="Node sperren" @click="$emit('lock')">
-          <SysIcon name="lock" style="width:16px;height:16px" />
-        </button>
-      </div>
-      <div class="sb-mat-row">
-        <span>Soul-Reife</span>
-        <b>{{ soulMeta?.maturity ?? 0 }}%</b>
-      </div>
-      <div class="sb-mat-bar">
-        <div class="sb-mat-fill" :style="{ width: (soulMeta?.maturity ?? 0) + '%' }" />
-      </div>
-    </div>
   </aside>
 </template>
 
@@ -87,7 +80,7 @@ const NAV = [
     { id: 'connect', icon: 'qr', label: 'Verbindung', tag: 'neu' },
     { id: 'market', icon: 'market', label: 'Marketplace' },
   ]},
-  { group: 'Eigen', items: [
+  { group: 'Werkzeuge', items: [
     { id: 'anchor', icon: 'anchor', label: 'Verankern' },
     { id: 'export', icon: 'export', label: 'Exportieren' },
     { id: 'settings', icon: 'settings', label: 'Einstellungen' },

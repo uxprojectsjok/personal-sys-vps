@@ -377,44 +377,47 @@
   margin-bottom: 16px;
 }
 .sys-field-label {
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--sys-fg-dim);
+  font-family: var(--sys-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--sys-fg-muted);
 }
 .sys-field-hint {
+  font-family: var(--sys-mono);
+  font-size: 11px;
   color: var(--sys-fg-dim);
   text-transform: none;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   margin-left: 6px;
-  opacity: 0.6;
 }
 
 .sys-input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 13px;
   background: var(--sys-paper-2);
   border: 1px solid var(--sys-rule-strong);
   color: var(--sys-fg);
   font-family: var(--sys-sans);
-  font-size: 14px;
+  font-size: 16px;
   outline: 0;
-  transition: all 0.15s;
-  border-radius: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  border-radius: var(--r-xs, 7px);
   min-height: unset;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .sys-input--mono {
   font-family: var(--sys-mono);
-  font-size: 12px;
-  letter-spacing: 0.02em;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
 .sys-input:focus {
   border-color: var(--sys-violet);
-  background: var(--sys-paper);
-  box-shadow: 0 0 0 3px var(--sys-violet-dim);
+  box-shadow: 0 0 0 2px var(--sys-violet-dim);
 }
-.sys-input::placeholder { color: var(--sys-fg-muted); opacity: 0.75; }
+.sys-input::placeholder { color: var(--sys-fg-dim); }
 
 .sys-field-error {
   font-family: var(--sys-mono);
@@ -463,10 +466,11 @@
 }
 .sys-state-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sys-state-label {
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: var(--sys-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--sys-accent-bright);
 }
 .sys-state--ok .sys-state-label { color: var(--sys-ok); }

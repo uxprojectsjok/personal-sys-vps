@@ -44,13 +44,7 @@
 
         <!-- Main column -->
         <div class="main">
-          <SysTopbar :crumbs="crumbs" @open-cmdk="cmdkOpen = true" @open-drawer="drawerOpen = true">
-            <label class="icon-btn" title="Profilbild" style="cursor:pointer">
-              <img v-if="hasProfile" :src="profileUrl" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover" />
-              <SysIcon v-else name="user" style="width:18px;height:18px" />
-              <input type="file" accept="image/*" hidden @change="handleProfileUpload" />
-            </label>
-          </SysTopbar>
+          <SysTopbar :crumbs="crumbs" @open-cmdk="cmdkOpen = true" @open-drawer="drawerOpen = true" />
 
           <!-- Scrollable view area -->
           <div class="scroll">
@@ -117,7 +111,7 @@
                 <h3>Weiter mit</h3>
               </div>
               <ul class="action-list">
-                <li class="action" @click="onNav('soul')">
+                <li class="action" @click="onNav('setup')">
                   <div class="act-ic"><SysIcon name="settings" style="width:20px;height:20px" /></div>
                   <div class="act-body">
                     <div class="act-title">Soul einrichten</div>
@@ -154,7 +148,7 @@
               <!-- Chronik preview -->
               <div class="section-head">
                 <h3>Chronik<em>.</em></h3>
-                <button class="more" @click="onNav('chronik')">Alle {{ journal.length }} Einträge →</button>
+                <button class="more" @click="onNav('chronik')">Alle Einträge →</button>
               </div>
               <div v-if="journal.length === 0" class="empty-hint">Noch keine Session-Einträge.</div>
               <div v-else class="chronik">
@@ -664,7 +658,7 @@ const MODAL_MAP = {
   files: () => { filesOpen.value   = true },
   anchor: () => { navigateTo('/verankern') },
   export: () => { navigateTo('/exportieren') },
-  settings: () => { settingsOpen.value = true },
+  settings: () => { navigateTo('/einstellungen') },
   market: () => { navigateTo('/marketplace') },
 }
 

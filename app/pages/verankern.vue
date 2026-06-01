@@ -43,7 +43,6 @@
 
             <!-- ── Discovery-Tags ── -->
             <section class="vank-section">
-              <div class="vank-divider"><span>Discovery-Tags</span></div>
               <div class="vank-section-body">
                 <p class="vank-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</p>
                 <input
@@ -61,7 +60,6 @@
 
             <!-- ── Aktionen ── -->
             <section class="vank-section">
-              <div class="vank-divider"><span>Aktionen</span></div>
               <div class="vank-section-body">
 
                 <div v-if="!canAnchor" class="vank-note">
@@ -70,14 +68,24 @@
 
                 <div class="vank-actions">
                   <button
-                    v-if="canAnchor"
-                    class="vank-btn vank-btn--ghost"
+                    v-if="canAnchor && !isConnected"
+                    class="vank-btn vank-btn--primary"
                     @click="connectWallet().then(() => recheckWallet())"
                   >
                     <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/>
                     </svg>
-                    {{ isConnected ? 'Wallet verwalten' : 'Wallet verbinden' }}
+                    Wallet verbinden
+                  </button>
+                  <button
+                    v-if="canAnchor && isConnected"
+                    class="vank-btn vank-btn--ghost"
+                    @click="disconnectWallet()"
+                  >
+                    <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
+                    </svg>
+                    Wallet trennen
                   </button>
                   <button
                     class="vank-btn vank-btn--primary"
@@ -129,10 +137,9 @@
             <!-- ── Identität (nur wenn verankert) ── -->
             <template v-if="hasAnchor">
               <section class="vank-section">
-                <div class="vank-divider"><span>Identität</span></div>
                 <div class="vank-section-body">
                   <button
-                    class="vank-btn vank-btn--ghost vank-btn--full"
+                    class="vank-btn vank-btn--primary vank-btn--full"
                     :class="{ 'vank-btn--busy': isProvingIdentity || isConnectingForProof }"
                     @click="isProvingIdentity ? cancelProveIdentity() : handleProveIdentity()"
                   >
@@ -140,7 +147,7 @@
                     <svg v-else class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
                     </svg>
-                    {{ isProvingIdentity ? 'Signiert… · Abbrechen' : isConnectingForProof ? 'Wallet verbinden…' : isConnected ? 'Identität nachweisen' : 'Wallet verbinden · Identität nachweisen' }}
+                    {{ isProvingIdentity ? 'Signiert… · Abbrechen' : isConnectingForProof ? 'Wallet verbinden…' : 'Identität nachweisen' }}
                   </button>
 
                   <Transition name="slide-up">
@@ -195,7 +202,7 @@ const { hasSoul, soulMeta, soulContent, pushToServer } = useSoul()
 const {
   walletAddress, currentNetwork, isConnected, isAnchoring, isProvingIdentity,
   anchorError, hasAnchor, sessionCount,
-  connectWallet, anchorSoul, cancelAnchor, checkNextAnchorAllowed,
+  connectWallet, disconnectWallet, anchorSoul, cancelAnchor, checkNextAnchorAllowed,
   syncAnchorFromChain, proveIdentity, recheckWallet,
 } = useChainAnchor()
 
@@ -333,6 +340,7 @@ function onNav(id) {
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'maturity') { router.push('/reife');       return }
   if (id === 'calendar') { router.push('/kalender');    return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   drawerOpen.value = false
   router.push('/')
 }
