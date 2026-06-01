@@ -48,70 +48,10 @@
             </div>
 
             <p class="prose">
-              Bestimme, wie andere KI-Assistenten auf deine Soul-Daten zugreifen dürfen —
-              kostenlos oder gegen eine Zahlung in POL (Kryptowährung auf Polygon).
+              Lege fest, ob KI-Assistenten anderer Personen kostenlos oder gegen Bezahlung auf deine Soul zugreifen dürfen.
+              Zugangscode und MCP-Peers findest du unter <strong>Peers</strong>.
             </p>
 
-            <!-- ── Dein Zugangscode ── -->
-            <div class="field" style="margin-bottom:24px">
-              <label class="field-label">Dein Zugangscode <span class="field-hint">(als Bearer-Token im KI-Assistenten eintragen)</span></label>
-              <div class="bearer-row">
-                <code class="bearer-val">{{ soulBearerToken || '—' }}</code>
-                <button class="bearer-copy" :class="{ copied: bearerCopied }" @click="copyBearer" :disabled="!soulBearerToken">
-                  {{ bearerCopied ? '✓ Kopiert' : 'Kopieren' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- ── Verbundene Peers ── -->
-            <div class="connected-head">
-              <h3 class="connected-title">Verbundene <em>Peers</em></h3>
-            </div>
-            <p class="prose" style="margin-bottom:16px">
-              Peers haben gegenseitig kostenlosen Zugriff auf alle MCP-Tools — ohne Zahlung.
-              Trage deinen Zugangscode (oben) auf dem Peer-Node ein.
-              Für Cross-Domain-Nachrichten: beide Seiten müssen sich gegenseitig mit <code>https://domain</code> als Endpoint eintragen.
-            </p>
-
-            <div v-if="peers.length" class="node-list">
-              <div v-for="(peer, i) in peers" :key="peer.soul_id" class="node-row">
-                <div class="node-info">
-                  <span v-if="peer.label" class="node-label">{{ peer.label }}</span>
-                  <span class="node-url mono">{{ peer.soul_id }}</span>
-                  <div class="peer-endpoint-row">
-                    <input
-                      :value="peer.endpoint"
-                      @change="e => { peer.endpoint = e.target.value.trim().replace(/\/$/, ''); savePeersSilent() }"
-                      class="input peer-endpoint-input"
-                      placeholder="https://peer.domain.com"
-                      title="Cross-Domain-Endpoint (leer = same-server)"
-                    />
-                  </div>
-                </div>
-                <button class="node-remove" @click="removePeer(i)" aria-label="Peer entfernen">×</button>
-              </div>
-            </div>
-            <p v-else class="no-nodes">Noch keine Peers verbunden.</p>
-
-            <div class="own-endpoint-row">
-              <span class="oe-label">Dein Endpoint</span>
-              <code class="oe-val">{{ ownOrigin }}</code>
-              <button class="oe-copy" :class="{ copied: endpointCopied }" @click="copyOwnEndpoint">{{ endpointCopied ? '✓' : 'Kopieren' }}</button>
-            </div>
-
-            <div class="peer-form">
-              <div class="peer-form-inputs">
-                <input v-model="newPeer.soul_id" class="input mono" placeholder="Soul-ID (UUID)" @keydown.enter.prevent="addPeer" />
-                <input v-model="newPeer.endpoint" class="input" placeholder="https://peer.domain.com" title="Cross-Domain-Endpoint (leer = same-server)" @keydown.enter.prevent="addPeer" />
-              </div>
-              <div class="peer-form-row">
-                <input v-model="newPeer.label" class="input" placeholder="Name (Pflicht — z.B. Jan)" style="flex:1" @keydown.enter.prevent="addPeer" />
-                <button class="btn btn-ghost" :disabled="!newPeer.soul_id.trim() || !newPeer.label.trim()" @click="addPeer">+ Hinzufügen</button>
-              </div>
-              <p v-if="peerError" class="field-error" style="margin-top:4px">{{ peerError }}</p>
-            </div>
-
-            <div class="section-divider"></div>
 
             <!-- ── Wer darf zugreifen? ── -->
             <div class="connected-head">
@@ -392,10 +332,8 @@ const amort = reactive({
   token_duration_days:  1,
 })
 
-// Unified peers: { soul_id, endpoint, label }
-const peers     = ref([])
-const newPeer   = reactive({ soul_id: '', endpoint: '', label: '' })
-const peerError = ref('')
+// Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
+const peers = ref([])
 
 function buildPeers(trustedSouls, localNodes) {
   const labelMap = new Map()
@@ -416,53 +354,6 @@ function peersToTrustedSouls(peersArr) {
   return peersArr.map(p => p.endpoint ? { soul_id: p.soul_id, endpoint: p.endpoint } : p.soul_id)
 }
 
-function addPeer() {
-  peerError.value = ''
-  const sid = newPeer.soul_id.trim()
-  if (!/^[a-f0-9-]{36}$/i.test(sid)) return
-  const label = newPeer.label.trim()
-  if (!label) return
-  if (peers.value.some(p => p.soul_id === sid)) { peerError.value = 'Dieser Peer ist bereits verbunden.'; return }
-  if (peers.value.some(p => p.label?.toLowerCase() === label.toLowerCase())) {
-    peerError.value = `Name "${label}" ist bereits vergeben — bitte eindeutigen Namen wählen.`
-    return
-  }
-  peers.value.push({ soul_id: sid, endpoint: newPeer.endpoint.trim().replace(/\/$/, ''), label })
-  newPeer.soul_id = ''
-  newPeer.endpoint = ''
-  newPeer.label = ''
-  savePeersSilent()
-}
-
-function removePeer(i) {
-  peers.value.splice(i, 1)
-  savePeersSilent()
-}
-
-async function savePeersSilent() {
-  if (nodesStorageKey.value) {
-    const nodes = peers.value.map(p => ({
-      soul_id: p.soul_id,
-      url: p.endpoint ? `${p.endpoint}/mcp` : `${window.location.origin}/mcp`,
-      label: p.label,
-    }))
-    localStorage.setItem(nodesStorageKey.value, JSON.stringify(nodes))
-  }
-  try {
-    await fetch(`${BASE()}/api/soul/amortization`, {
-      method: 'PUT',
-      headers: authHeader(),
-      body: JSON.stringify({
-        enabled: amort.enabled,
-        pol_per_request: amort.pol_per_request,
-        wallet: amort.wallet,
-        agent_tools: amort.agent_tools,
-        trusted_souls: peersToTrustedSouls(peers.value),
-        token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
-      }),
-    })
-  } catch { /* silent */ }
-}
 const agentToolsStr = computed({
   get: () => amort.agent_tools.join(', '),
   set: v => { amort.agent_tools = v.split(',').map(s => s.trim()).filter(Boolean) },
@@ -474,35 +365,10 @@ const modeTouched   = ref(false)
 const amortError    = ref('')
 const amortSuccess  = ref(false)
 
-// ═══════════ SOUL BEARER ═══════════
-const bearerCopied    = ref(false)
-const soulBearerToken = computed(() => props.soulCert || '')
-
-// ═══════════ OWN ENDPOINT ═══════════
-const endpointCopied = ref(false)
-const ownOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-
-async function copyOwnEndpoint() {
-  try {
-    await navigator.clipboard.writeText(ownOrigin)
-    endpointCopied.value = true
-    setTimeout(() => { endpointCopied.value = false }, 2000)
-  } catch { /* ignore */ }
-}
-
 const nodesStorageKey = computed(() => {
   const id = props.soulCert?.split('.')?.[0] || ''
   return id ? `sys.connected_nodes.${id}` : null
 })
-
-async function copyBearer() {
-  if (!soulBearerToken.value) return
-  try {
-    await navigator.clipboard.writeText(`Bearer ${soulBearerToken.value}`)
-    bearerCopied.value = true
-    setTimeout(() => { bearerCopied.value = false }, 2000)
-  } catch { /* ignore */ }
-}
 
 const currentCid    = ref('')
 const registered    = ref(false)
