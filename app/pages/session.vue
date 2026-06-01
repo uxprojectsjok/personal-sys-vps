@@ -413,7 +413,8 @@ function onNav(id) {
   if (id === 'files')    { router.push('/dateien');    return }
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'settings') { settingsOpen.value = true; return }
-  if (id === 'anchor')   { router.push('/verankern'); return }
+  if (id === 'anchor')   { router.push('/verankern');    return }
+  if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'maturity') { router.push('/reife'); return }
   if (id === 'calendar') { router.push('/kalender'); return }
   drawerOpen.value = false

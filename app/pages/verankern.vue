@@ -322,6 +322,7 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'anchor')   return
+  if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'chat')     { router.push('/session');     return }
   if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');        return }

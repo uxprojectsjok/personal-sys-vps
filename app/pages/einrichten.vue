@@ -67,7 +67,8 @@ function onNav(id) {
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'maturity') { router.push('/reife');       return }
   if (id === 'calendar') { router.push('/kalender');    return }
-  if (id === 'anchor')   { router.push('/verankern'); return }
+  if (id === 'anchor')   { router.push('/verankern');    return }
+  if (id === 'export')   { router.push('/exportieren'); return }
   drawerOpen.value = false
   router.push('/')
 }
