@@ -187,7 +187,7 @@ local function valid_domain(d)
   if type(d) ~= "string" or d == "" then return false end
   if d:sub(1, 8) ~= "https://" then return false end
   local host = d:sub(9):match("^([^/]+)") or ""
-  if not host:match("^[a-zA-Z0-9][a-zA-Z0-9%.%-]+(:[0-9]+)?$") then return false end
+  if not (host:match("^[a-zA-Z0-9][a-zA-Z0-9%.%-]+$") or host:match("^[a-zA-Z0-9][a-zA-Z0-9%.%-]+:[0-9]+$")) then return false end
   local bare = host:match("^([^:]+)")
   if bare:match("^localhost") or bare:match("^127%.") or bare:match("^10%.") or
      bare:match("^192%.168%.") or bare:match("^172%.1[6-9]%.") or
