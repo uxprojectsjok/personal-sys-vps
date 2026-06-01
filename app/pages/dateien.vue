@@ -5,14 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Vault', 'Dateien']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
-          <div class="dt-search-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14" class="dt-search-icon">
-              <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/>
-            </svg>
-            <input v-model="searchQuery" class="dt-search" type="search" placeholder="Suchen…" autocomplete="off" spellcheck="false" />
-          </div>
-        </SysTopbar>
+        <SysTopbar :crumbs="['Vault', 'Dateien']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="dateien-page">
