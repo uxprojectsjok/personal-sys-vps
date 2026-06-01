@@ -103,7 +103,7 @@
           :class="[item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other', item.sphere === 'synthesis' ? 'msg-bubble--archivar' : '']"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.sphere === 'synthesis' ? '#7099b8' : item.sphere === 'social' ? '#5baa87' : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
+            :style="{ color: item.sphere === 'synthesis' ? '#7099b8' : item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
@@ -1123,6 +1123,13 @@ const filteredStream = computed(() => {
   if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'synthesis' || i.sphere === 'agent' || i.sphere === 'agent_reply'))
   return s
 })
+
+const _PEER_COLORS = ['#6db89a','#9c7cd6','#d4a46a','#6aadd4','#d46a9c','#94cb6d']
+function peerTextColor(id) {
+  let n = 0
+  for (let i = 0; i < (id || '').length; i++) n = (n * 31 + id.charCodeAt(i)) & 0xffff
+  return _PEER_COLORS[n % _PEER_COLORS.length]
+}
 
 function resolveAuthor(msg) {
   if (msg.sphere === 'synthesis') return 'Archivar'
