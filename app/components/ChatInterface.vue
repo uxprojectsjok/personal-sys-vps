@@ -3799,8 +3799,8 @@ defineExpose({
 .dock {
   border-top: 1px solid var(--rule);
   background: rgba(22,21,19,0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   flex-shrink: 0;
   display: flex; flex-direction: column;
   padding: 10px clamp(10px, 2vw, 18px) 12px;
@@ -4201,8 +4201,8 @@ defineExpose({
     z-index: 200;
     padding: 10px 14px max(12px, env(safe-area-inset-bottom, 12px)); gap: 7px;
     background: rgba(22, 21, 19, 0.96);
-    backdrop-filter: blur(32px) saturate(220%);
-    -webkit-backdrop-filter: blur(32px) saturate(220%);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
     border-top: 1px solid rgba(109, 184, 154, 0.14);
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
   }
