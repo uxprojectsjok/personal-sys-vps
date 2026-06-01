@@ -371,10 +371,10 @@ async function downloadFile(file) {
 async function uploadToServer(file) {
   busy[file.id] = true
   try {
-    const buf = await readVaultFile(file.name)
+    const buf = await readVaultFile(file.displayName)
     if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
     const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
-    const res = await syncFile(soulToken.value, file.apiType, file.name, buf, key)
+    const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
     if (res.ok) { showToast(`${file.displayName} hochgeladen ✓`); await loadContext(soulToken.value) }
     else showToast(res.error || 'Upload fehlgeschlagen', 'err')
   } catch { showToast('Fehler beim Hochladen', 'err') }
@@ -438,7 +438,7 @@ async function pushVaultToServer() {
   let ok = 0, fail = 0
   const uploadable = localFileList.value.filter(f => f.type !== 'soul')
   for (const file of uploadable) {
-    const buf = await readVaultFile(file.name)
+    const buf = await readVaultFile(file.displayName)
     if (!buf) { fail++; continue }
     const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
     if (res.ok) ok++
