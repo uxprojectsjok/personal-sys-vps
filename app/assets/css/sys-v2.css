@@ -67,7 +67,21 @@
   --sys-violet-glow:   var(--accent-glow);
   --sys-violet-border: rgba(109,184,154,0.40);
   --sys-accent-bright: var(--accent-bright);
+  --sys-accent-deep:   var(--accent-deep);
   --sys-on-accent:     var(--on-accent);
+  --sys-ok:            var(--c-ok);
+
+  /* ── Remap editorial violet backgrounds → warm neutral ─────────────────── */
+  --sys-bg:          var(--bg);
+  --sys-bg-elevated: var(--surface);
+  --sys-bg-surface:  var(--surface-2);
+  --sys-bg-overlay:  rgba(10,9,8,0.95);
+  --sys-paper:       var(--surface);
+  --sys-paper-2:     var(--surface-2);
+  --sys-paper-3:     var(--bg);
+  --sys-rule:        var(--line);
+  --sys-rule-strong: var(--line-2);
+  --sys-border:      var(--line);
 }
 
 * { box-sizing: border-box; }

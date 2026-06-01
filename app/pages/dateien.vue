@@ -47,30 +47,6 @@
                   Server
                 </button>
               </div>
-              <span class="dt-tab-desc">{{ tab === 'lokal' ? 'Alles bleibt auf diesem Gerät — kein Upload.' : 'Verschlüsselt auf deinem SYS-Knoten · Sync über Gerät.' }}</span>
-            </div>
-
-            <!-- ── Storage bar ── -->
-            <div class="dt-storage">
-              <div class="dt-storage-info">
-                <span class="dt-storage-label">{{ tab === 'lokal' ? 'Lokaler Speicher · AES-256' : 'Verschlüsselter Server' }}</span>
-                <span v-if="tab === 'server' && serverLoaded" class="dt-storage-sync">· Sync aktiv</span>
-              </div>
-              <div v-if="tab === 'lokal' && vaultConnected" class="dt-storage-bar-wrap">
-                <div class="dt-storage-bar"><div class="dt-storage-fill" :style="{ width: '4%' }" /></div>
-              </div>
-              <span class="dt-storage-size">{{ tab === 'lokal' ? `${localFileCount} Dateien` : `${serverFileCount} Dateien` }}</span>
-            </div>
-
-            <!-- ── Stats chips ── -->
-            <div class="dt-stats">
-              <span class="dt-stat"><span class="dt-stat-dot dt-stat-audio" />Audio {{ statsCount('audio') }}</span>
-              <span class="dt-stat-sep">·</span>
-              <span class="dt-stat"><span class="dt-stat-dot dt-stat-video" />Video {{ statsCount('video') }}</span>
-              <span class="dt-stat-sep">·</span>
-              <span class="dt-stat"><span class="dt-stat-dot dt-stat-image" />Bilder {{ statsCount('image') }}</span>
-              <span class="dt-stat-sep">·</span>
-              <span class="dt-stat"><span class="dt-stat-dot dt-stat-doc" />Kontext {{ statsCount('doc') }}</span>
             </div>
 
             <!-- ── Toolbar ── -->

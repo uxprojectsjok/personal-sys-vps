@@ -12,7 +12,6 @@
             <div class="er-head">
               <div class="eyebrow">Ersteinrichtung</div>
               <h1 class="er-title">Soul <em>aktivieren</em></h1>
-              <p class="er-lede">Einmalig: Vault verbinden, Soul laden, loslegen.</p>
             </div>
 
             <div class="er-wizard">
