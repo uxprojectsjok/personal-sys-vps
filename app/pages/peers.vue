@@ -805,11 +805,12 @@ function onNav(id) {
 
 .pr-mcp-head { margin-bottom: 24px; }
 .pr-mcp-title {
-  font-family: var(--serif); font-size: clamp(22px, 3.5vw, 32px);
-  font-weight: 400; letter-spacing: -0.025em; color: var(--fg);
-  line-height: 1.1; margin: 8px 0 10px;
+  font-family: var(--serif); font-size: 24px;
+  font-weight: 400; letter-spacing: -0.02em; color: var(--fg);
+  line-height: 1.15; margin: 6px 0 8px;
 }
 .pr-mcp-title em { font-style: italic; color: var(--accent); }
+.pr-mcp-head .pr-lede { font-size: 14px; color: var(--fg-3); }
 
 .pr-section-label--flat {
   display: flex; align-items: center; gap: 8px;
