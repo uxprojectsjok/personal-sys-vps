@@ -212,7 +212,7 @@ function onNav(id) {
   if (id === 'maturity') { router.push('/reife');    return }
   if (id === 'calendar') { router.push('/kalender'); return }
   if (id === 'settings') { router.push('/'); return }
-  if (id === 'anchor')   { router.push('/'); return }
+  if (id === 'anchor')   { router.push('/verankern'); return }
   drawerOpen.value = false
   router.push('/')
 }
