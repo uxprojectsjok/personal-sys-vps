@@ -168,6 +168,86 @@
               </div>
             </div>
 
+            <!-- ── KI-Zugang & MCP-Peers ── -->
+            <div class="pr-mcp-section">
+              <div class="pr-mcp-head">
+                <div class="eyebrow">KI-Assistenten</div>
+                <h2 class="pr-mcp-title">Zugangscode & <em>MCP-Peers</em></h2>
+                <p class="pr-lede">Dein Bearer-Token für externe KI-Assistenten. MCP-Peers haben gegenseitigen kostenlosen Zugriff auf alle Tools — beide Seiten müssen sich jeweils eintragen.</p>
+              </div>
+
+              <!-- Bearer token -->
+              <div class="pr-mcp-block">
+                <div class="pr-section-label pr-section-label--flat">Dein Zugangscode</div>
+                <div class="pr-bearer-row">
+                  <code class="pr-bearer-val">{{ soulToken || '—' }}</code>
+                  <button class="pr-bearer-copy" :class="{ copied: bearerCopied }" @click="copyBearer" :disabled="!soulToken">
+                    {{ bearerCopied ? '✓ Kopiert' : 'Kopieren' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- MCP peer list + own endpoint -->
+              <div class="pr-mcp-block">
+                <div class="pr-section-label pr-section-label--flat">
+                  <span>MCP-Peers</span>
+                  <span v-if="mcpPeers.length" class="pr-badge">{{ mcpPeers.length }}</span>
+                </div>
+                <div v-if="mcpPeers.length" class="pr-mcp-list">
+                  <div v-for="(peer, i) in mcpPeers" :key="peer.soul_id" class="pr-mcp-row">
+                    <div class="pr-mcp-row-body">
+                      <span v-if="peer.label" class="pr-mcp-row-name">{{ peer.label }}</span>
+                      <span class="pr-mcp-row-id">{{ peer.soul_id }}</span>
+                      <input
+                        :value="peer.endpoint"
+                        @change="e => { peer.endpoint = e.target.value.trim().replace(/\/$/, ''); saveMcpPeersSilent() }"
+                        class="pr-input pr-mcp-ep-input"
+                        placeholder="https://peer.domain.com (Cross-Domain-Endpoint)"
+                      />
+                    </div>
+                    <button class="pr-action pr-action--remove" @click="removeMcpPeer(i)" title="Entfernen">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <p v-else class="pr-mcp-empty">Noch keine MCP-Peers eingetragen.</p>
+                <div class="pr-mcp-own-ep">
+                  <span class="pr-mcp-ep-label">Dein Endpoint</span>
+                  <code class="pr-mcp-ep-val">{{ ownOrigin }}</code>
+                  <button class="pr-bearer-copy pr-bearer-copy--sm" :class="{ copied: endpointCopied }" @click="copyOwnEndpoint">{{ endpointCopied ? '✓' : 'Kopieren' }}</button>
+                </div>
+              </div>
+
+              <!-- Add form -->
+              <div class="pr-mcp-block pr-mcp-block--form">
+                <div class="pr-add-fields">
+                  <div class="pr-field">
+                    <label class="pr-label">Soul-ID</label>
+                    <input v-model="newMcpPeer.soul_id" type="text" class="pr-input" placeholder="2c81aa74-0ed0-43c8-…" autocomplete="off" spellcheck="false" @keydown.enter.prevent="addMcpPeer" />
+                  </div>
+                  <div class="pr-field">
+                    <label class="pr-label">Name <span class="pr-label-opt">(Pflicht)</span></label>
+                    <input v-model="newMcpPeer.label" type="text" class="pr-input" placeholder="z.B. Till" maxlength="64" @keydown.enter.prevent="addMcpPeer" />
+                  </div>
+                  <div class="pr-field pr-field--full">
+                    <label class="pr-label">Domain <span class="pr-label-opt">(optional · für externe Peers)</span></label>
+                    <input v-model="newMcpPeer.endpoint" type="text" class="pr-input" placeholder="https://peer.domain.com" autocomplete="off" @keydown.enter.prevent="addMcpPeer" />
+                  </div>
+                </div>
+                <p v-if="mcpPeerError" class="pr-add-error">{{ mcpPeerError }}</p>
+                <div class="pr-add-foot">
+                  <button class="pr-btn pr-btn--primary" :disabled="!newMcpPeer.soul_id.trim() || !newMcpPeer.label.trim()" @click="addMcpPeer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                    </svg>
+                    Hinzufügen
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -182,7 +262,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useConfirm } from '~/composables/useConfirm.js'
@@ -336,7 +416,121 @@ async function handleDismiss(soulId) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-onMounted(() => { loadConnections() })
+onMounted(() => { loadConnections(); loadMcpPeers() })
+
+// ── MCP Peers (amortization trusted_souls) ────────────────────────────────────
+const mcpPeers     = ref([])
+const mcpAmort     = ref(null)
+const newMcpPeer   = reactive({ soul_id: '', endpoint: '', label: '' })
+const mcpPeerError = ref('')
+const bearerCopied   = ref(false)
+const endpointCopied = ref(false)
+const ownOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+
+const nodesStorageKey = computed(() => {
+  const id = soulToken.value?.split('.')?.[0] || ''
+  return id ? `sys.connected_nodes.${id}` : null
+})
+
+function buildMcpPeers(trustedSouls, localNodes) {
+  const labelMap = new Map()
+  for (const n of localNodes) {
+    const sid = n.soul_id || n.url?.match(/[?&]soul_id=([^&]+)/)?.[1]
+    if (sid) labelMap.set(sid, n.label || '')
+  }
+  return trustedSouls.map(t => {
+    if (typeof t === 'string') return { soul_id: t, endpoint: '', label: labelMap.get(t) || '' }
+    if (typeof t === 'object' && t?.soul_id) return { soul_id: t.soul_id, endpoint: t.endpoint || '', label: t.label || labelMap.get(t.soul_id) || '' }
+    return null
+  }).filter(Boolean)
+}
+
+function mcpPeersToTrustedSouls(arr) {
+  return arr.map(p => p.endpoint ? { soul_id: p.soul_id, endpoint: p.endpoint } : p.soul_id)
+}
+
+async function loadMcpPeers() {
+  try {
+    const r = await fetch('/api/soul/amortization', { headers: authHeaders() })
+    if (!r.ok) return
+    const d = await r.json()
+    const a = d.amortization || {}
+    mcpAmort.value = a
+    const rawTrustedSouls = Array.isArray(a.trusted_souls)
+      ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
+      : []
+    let localNodes = []
+    if (nodesStorageKey.value) {
+      try { localNodes = JSON.parse(localStorage.getItem(nodesStorageKey.value) || '[]') } catch { /* ignore */ }
+    }
+    mcpPeers.value = buildMcpPeers(rawTrustedSouls, localNodes)
+  } catch { /* ignore */ }
+}
+
+async function saveMcpPeersSilent() {
+  if (nodesStorageKey.value) {
+    const nodes = mcpPeers.value.map(p => ({
+      soul_id: p.soul_id,
+      url: p.endpoint ? `${p.endpoint}/mcp` : `${ownOrigin}/mcp`,
+      label: p.label,
+    }))
+    localStorage.setItem(nodesStorageKey.value, JSON.stringify(nodes))
+  }
+  const a = mcpAmort.value || {}
+  try {
+    await fetch('/api/soul/amortization', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        enabled:             a.enabled             ?? false,
+        pol_per_request:     a.pol_per_request     ?? '0.001',
+        wallet:              a.wallet              ?? '',
+        agent_tools:         Array.isArray(a.agent_tools) ? a.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
+        trusted_souls:       mcpPeersToTrustedSouls(mcpPeers.value),
+        token_duration_days: Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1)),
+        name:                a.name        || '',
+        description:         a.description || '',
+        tags:                Array.isArray(a.tags) ? a.tags : [],
+      }),
+    })
+  } catch { /* ignore */ }
+}
+
+function addMcpPeer() {
+  mcpPeerError.value = ''
+  const sid   = newMcpPeer.soul_id.trim()
+  const label = newMcpPeer.label.trim()
+  if (!/^[a-f0-9-]{36}$/i.test(sid)) { mcpPeerError.value = 'Ungültige Soul-ID (UUID-Format erforderlich)'; return }
+  if (!label) { mcpPeerError.value = 'Name ist Pflicht'; return }
+  if (mcpPeers.value.some(p => p.soul_id === sid)) { mcpPeerError.value = 'Dieser Peer ist bereits eingetragen.'; return }
+  mcpPeers.value.push({ soul_id: sid, endpoint: newMcpPeer.endpoint.trim().replace(/\/$/, ''), label })
+  newMcpPeer.soul_id  = ''
+  newMcpPeer.endpoint = ''
+  newMcpPeer.label    = ''
+  saveMcpPeersSilent()
+}
+
+function removeMcpPeer(i) {
+  mcpPeers.value.splice(i, 1)
+  saveMcpPeersSilent()
+}
+
+async function copyBearer() {
+  if (!soulToken.value) return
+  try {
+    await navigator.clipboard.writeText(`Bearer ${soulToken.value}`)
+    bearerCopied.value = true
+    setTimeout(() => { bearerCopied.value = false }, 2000)
+  } catch { /* ignore */ }
+}
+
+async function copyOwnEndpoint() {
+  try {
+    await navigator.clipboard.writeText(ownOrigin)
+    endpointCopied.value = true
+    setTimeout(() => { endpointCopied.value = false }, 2000)
+  } catch { /* ignore */ }
+}
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() {
@@ -596,5 +790,110 @@ function onNav(id) {
   .pr-page { padding: 20px 16px 100px; }
   .pr-toolbar { padding: 10px 12px; }
   .pr-tab { width: 100%; justify-content: center; }
+  .pr-bearer-row { flex-direction: column; }
+  .pr-bearer-val { width: 100%; }
+  .pr-mcp-own-ep { flex-wrap: wrap; }
+  .pr-mcp-ep-val { width: 100%; }
 }
+
+/* ── MCP section ── */
+.pr-mcp-section {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
+
+.pr-mcp-head { margin-bottom: 24px; }
+.pr-mcp-title {
+  font-family: var(--serif); font-size: clamp(22px, 3.5vw, 32px);
+  font-weight: 400; letter-spacing: -0.025em; color: var(--fg);
+  line-height: 1.1; margin: 8px 0 10px;
+}
+.pr-mcp-title em { font-style: italic; color: var(--accent); }
+
+.pr-section-label--flat {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  padding: 10px 20px;
+  background: var(--surface);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-3);
+}
+
+.pr-mcp-block {
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: var(--surface);
+}
+.pr-mcp-block:last-child { border-bottom: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r); }
+.pr-mcp-block:first-child { border-radius: var(--r) var(--r) 0 0; }
+
+/* Bearer row */
+.pr-bearer-row {
+  display: flex; align-items: stretch; gap: 0;
+  border-top: 1px solid var(--line);
+}
+.pr-bearer-val {
+  flex: 1; min-width: 0;
+  padding: 12px 16px; border-right: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--surface-2);
+}
+.pr-bearer-copy {
+  flex: none; padding: 0 16px;
+  background: transparent; border: none;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-3); cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.pr-bearer-copy:hover:not(:disabled) { color: var(--fg); background: var(--surface-2); }
+.pr-bearer-copy.copied { color: var(--accent); }
+.pr-bearer-copy:disabled { opacity: 0.3; cursor: not-allowed; }
+.pr-bearer-copy--sm { padding: 0 12px; font-size: 11px; }
+
+/* MCP peer list */
+.pr-mcp-list {
+  border-top: 1px solid var(--line);
+}
+.pr-mcp-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.pr-mcp-row:last-child { border-bottom: none; }
+.pr-mcp-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pr-mcp-row-name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--fg); }
+.pr-mcp-row-id {
+  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pr-mcp-ep-input {
+  font-size: 11px !important; padding: 5px 10px !important; height: auto !important;
+  background: var(--surface-2) !important;
+}
+
+.pr-mcp-empty {
+  padding: 20px; border-top: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-4);
+}
+
+/* Own endpoint row */
+.pr-mcp-own-ep {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.pr-mcp-ep-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--fg-4); flex-shrink: 0;
+}
+.pr-mcp-ep-val {
+  font-family: var(--mono); font-size: 12px; color: var(--accent-bright);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Add form block */
+.pr-mcp-block--form { padding: 20px; }
 </style>
