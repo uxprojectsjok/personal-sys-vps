@@ -159,8 +159,8 @@
                       <button v-if="tab === 'lokal'" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" title="Auf Server hochladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
                       </button>
-                      <!-- Delete -->
-                      <button class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" title="Löschen">
+                      <!-- Delete (nur auf Server-Tab) -->
+                      <button v-if="tab === 'server'" class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" title="Löschen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
                       </button>
                     </template>
