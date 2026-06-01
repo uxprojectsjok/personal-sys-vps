@@ -18,21 +18,11 @@
 
             <!-- ── Toolbar ── -->
             <div class="pr-toolbar">
-              <button
-                class="pr-tab"
-                :class="{ 'pr-tab--on': addOpen }"
-                @click="addOpen = !addOpen"
-              >
-                <svg class="pr-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button class="pr-add-btn" :class="{ 'pr-add-btn--open': addOpen }" @click="addOpen = !addOpen">
+                <svg class="pr-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
                 Peer hinzufügen
-              </button>
-              <button class="pr-tab" @click="onNav('chat')">
-                <svg class="pr-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
-                </svg>
-                @alle in Session
               </button>
             </div>
 
@@ -94,8 +84,8 @@
                 <span class="pr-badge">{{ incoming.length }}</span>
               </div>
               <div class="pr-chips">
-                <div v-for="req in incoming" :key="req.soul_id" class="pr-chip pr-chip--request">
-                  <div class="pr-chip-avatar" :style="`background: ${avatarColor(req.alias)}`">
+                <div v-for="req in incoming" :key="req.soul_id" class="pr-chip pr-chip--request" :style="`border-left: 3px solid ${peerTextColor(req.soul_id)}`">
+                  <div class="pr-chip-avatar" :style="`background: ${avatarBg(req.soul_id)}`">
                     {{ (req.alias || req.soul_id).charAt(0).toUpperCase() }}
                   </div>
                   <div class="pr-chip-body">
@@ -146,8 +136,8 @@
                 Noch keine verbundenen Souls. Füge deinen ersten Peer hinzu.
               </div>
               <div v-else class="pr-chips">
-                <div v-for="peer in connections" :key="peer.soul_id" class="pr-chip">
-                  <div class="pr-chip-avatar" :style="`background: ${avatarColor(peer.alias)}`">
+                <div v-for="peer in connections" :key="peer.soul_id" class="pr-chip" :style="`border-left: 3px solid ${peerTextColor(peer.soul_id)}`">
+                  <div class="pr-chip-avatar" :style="`background: ${avatarBg(peer.soul_id)}`">
                     {{ peer.alias.charAt(0).toUpperCase() }}
                   </div>
                   <div class="pr-chip-body">
@@ -220,15 +210,27 @@ const newAlias      = ref('')
 const newDomain     = ref('')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const AVATAR_COLORS = [
-  'rgba(109,184,154,0.55)', 'rgba(138,108,184,0.45)', 'rgba(184,138,108,0.45)',
-  'rgba(108,160,184,0.45)', 'rgba(184,108,138,0.45)', 'rgba(154,184,109,0.45)',
+// Text colors for chat sender names (solid, good contrast on dark bg)
+const PEER_COLORS = [
+  '#6db89a', // sage
+  '#9c7cd6', // purple
+  '#d4a46a', // amber
+  '#6aadd4', // sky
+  '#d46a9c', // rose
+  '#94cb6d', // lime
 ]
-function avatarColor(alias) {
+const AVATAR_BG_COLORS = [
+  'rgba(109,184,154,0.25)', 'rgba(138,108,184,0.20)', 'rgba(184,138,108,0.20)',
+  'rgba(108,160,184,0.20)', 'rgba(184,108,138,0.20)', 'rgba(154,184,109,0.20)',
+]
+
+function peerColorIndex(id) {
   let n = 0
-  for (let i = 0; i < (alias || '').length; i++) n = (n * 31 + alias.charCodeAt(i)) & 0xffff
-  return AVATAR_COLORS[n % AVATAR_COLORS.length]
+  for (let i = 0; i < (id || '').length; i++) n = (n * 31 + id.charCodeAt(i)) & 0xffff
+  return n % PEER_COLORS.length
 }
+function peerTextColor(id) { return PEER_COLORS[peerColorIndex(id)] }
+function avatarBg(id)      { return AVATAR_BG_COLORS[peerColorIndex(id)] }
 
 function shortId(id) {
   if (!id || id.length <= 16) return id
@@ -395,32 +397,29 @@ function onNav(id) {
 
 /* ── Toolbar ── */
 .pr-toolbar {
-  display: flex; gap: 8px; margin-bottom: 0;
-  border: 1px solid var(--line);
-  border-bottom: none;
-  border-radius: var(--r) var(--r) 0 0;
-  background: var(--surface);
-  padding: 12px 16px;
+  display: flex; gap: 8px; margin-bottom: 24px;
 }
-.pr-tab {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 38px; padding: 0 16px;
-  border: 1px solid var(--line-2); border-radius: var(--r-xs);
-  background: transparent; cursor: pointer;
-  font-family: var(--sans); font-size: 14px; font-weight: 500; letter-spacing: 0;
-  color: var(--fg-2); transition: all 0.15s;
+.pr-add-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 20px;
+  background: var(--accent); border: 1px solid var(--accent); border-radius: var(--r-xs);
+  cursor: pointer; color: var(--on-accent);
+  font-family: var(--sans); font-size: 14px; font-weight: 600; letter-spacing: 0;
+  transition: all 0.15s;
 }
-.pr-tab:hover { color: var(--fg); border-color: var(--line-2); background: var(--surface-2); }
-.pr-tab--on { background: var(--accent-dim); border-color: rgba(109,184,154,0.40); color: var(--accent-bright); }
+.pr-add-btn:hover { background: var(--accent-bright); border-color: var(--accent-bright); box-shadow: 0 4px 14px var(--accent-glow); }
+.pr-add-btn--open { background: var(--surface-2); border-color: var(--line-2); color: var(--fg-2); box-shadow: none; }
+.pr-add-btn--open:hover { background: var(--surface); color: var(--fg); }
 .pr-tab-ic { width: 14px; height: 14px; flex: none; }
 
 /* ── Add form ── */
 .pr-add-form {
   border: 1px solid var(--line);
-  border-bottom: none;
+  border-radius: var(--r);
   background: var(--surface-2);
   padding: 20px;
   display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: 24px;
 }
 .pr-add-fields {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
@@ -463,13 +462,12 @@ function onNav(id) {
 .pr-section-label {
   display: flex; align-items: center; gap: 8px;
   border: 1px solid var(--line); border-bottom: none;
-  border-top: none;
+  border-radius: var(--r) var(--r) 0 0;
   padding: 13px 20px;
   background: var(--surface);
   font-family: var(--sans); font-size: 15px; font-weight: 500;
   letter-spacing: 0; text-transform: none; color: var(--fg);
 }
-.pr-section:first-child .pr-section-label { border-top: 1px solid var(--line); }
 .pr-badge {
   background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.30);
   border-radius: 99px; color: var(--accent-bright);
@@ -546,14 +544,9 @@ function onNav(id) {
 .pr-chips {
   display: grid; grid-template-columns: 1fr 1fr;
   border: 1px solid var(--line);
-  border-top: none;
   border-radius: 0 0 var(--r) var(--r);
   overflow: hidden;
   background: var(--surface);
-}
-.pr-section:first-child .pr-chips {
-  border-radius: var(--r);
-  border-top: 1px solid var(--line);
 }
 
 .pr-chip {
@@ -596,7 +589,6 @@ function onNav(id) {
   .pr-chip:last-child { border-bottom: none; }
   .pr-add-fields { grid-template-columns: 1fr; }
   .pr-page { padding: 20px 16px 100px; }
-  .pr-toolbar { padding: 10px 12px; gap: 6px; }
-  .pr-tab { flex: 1; justify-content: center; }
+  .pr-add-btn { width: 100%; justify-content: center; }
 }
 </style>
