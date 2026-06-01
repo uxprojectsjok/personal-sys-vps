@@ -815,10 +815,10 @@ function onNav(id) {
   display: flex; align-items: center; gap: 8px;
   border: 1px solid var(--line);
   border-bottom: none;
-  padding: 13px 20px;
+  padding: 14px 20px;
   background: var(--surface);
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--fg-2);
+  font-family: var(--sans); font-size: 15px; letter-spacing: 0.01em;
+  font-weight: 500; color: var(--fg);
 }
 
 .pr-mcp-block {
