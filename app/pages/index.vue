@@ -666,7 +666,7 @@ const MODAL_MAP = {
   soul: () => { setupOpen.value    = true },
   files: () => { filesOpen.value   = true },
   anchor: () => { navigateTo('/verankern') },
-  export: () => { encryptOpen.value   = true },
+  export: () => { navigateTo('/exportieren') },
   settings: () => { settingsOpen.value = true },
   market: () => { navigateTo('/marketplace') },
 }
