@@ -28,13 +28,6 @@
                 </svg>
                 Peer hinzufügen
               </button>
-              <button
-                class="pr-tab"
-                :class="{ 'pr-tab--on': atAllOpen }"
-                @click="atAllOpen = !atAllOpen"
-              >
-                @alle in Session
-              </button>
             </div>
 
             <!-- ── Add form (inline) ── -->
@@ -84,19 +77,6 @@
                     <svg v-if="addLoading" class="spin pr-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                     {{ addLoading ? 'Verbinden…' : 'Verbindung herstellen' }}
                   </button>
-                </div>
-              </div>
-            </Transition>
-
-            <!-- ── @alle info panel ── -->
-            <Transition name="slide-down">
-              <div v-if="atAllOpen" class="pr-atall">
-                <svg class="pr-atall-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm0 0c0 1.657 1.007 3 2.25 3S21 13.657 21 12a9 9 0 1 0-2.636 6.364M16.5 12V8.25"/>
-                </svg>
-                <div>
-                  <p class="pr-atall-title">@alle in Session verwenden</p>
-                  <p class="pr-atall-text">Tippe <code class="pr-code">@alle</code> oder <code class="pr-code">@all</code> im Chat, um deine Nachricht an alle verbundenen Peers zu senden. Einzelne Peers erreichst du mit <code class="pr-code">@alias</code>.</p>
                 </div>
               </div>
             </Transition>
@@ -219,8 +199,7 @@ const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 
 // ── UI state ─────────────────────────────────────────────────────────────────
-const addOpen   = ref(false)
-const atAllOpen = ref(false)
+const addOpen = ref(false)
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const connections   = ref([])
@@ -442,8 +421,8 @@ function onNav(id) {
 .pr-field { display: flex; flex-direction: column; gap: 5px; }
 .pr-field--full { grid-column: 1 / -1; }
 .pr-label {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-2);
 }
 .pr-label-opt { text-transform: none; letter-spacing: 0; font-family: inherit; color: var(--fg-4); font-size: 11px; }
 .pr-input {
@@ -615,5 +594,7 @@ function onNav(id) {
   .pr-card:last-child { border-bottom: none; }
   .pr-add-fields { grid-template-columns: 1fr; }
   .pr-page { padding: 20px 16px 100px; }
+  .pr-toolbar { padding: 10px 12px; }
+  .pr-tab { width: 100%; justify-content: center; }
 }
 </style>
