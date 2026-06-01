@@ -233,7 +233,7 @@
     <!-- ── Dock — Teleport auf mobile heraus aus overflow:hidden Containern
          damit backdrop-filter auf Android Chrome funktioniert ──────── -->
     <Teleport to="#teleports" :disabled="!isMobile">
-    <footer ref="dockEl" class="dock">
+    <footer ref="dockEl" class="dock" v-show="!(isMobile && props.sidebarOpen)">
 
       <!-- Soul-Archivar läuft -->
       <Transition name="fade-quick">
@@ -423,6 +423,7 @@ const props = defineProps({
   role:         { type: String,  default: 'soul' },
   growthLocked: { type: Boolean, default: false },
   filter:       { type: String,  default: 'all' },
+  sidebarOpen:  { type: Boolean, default: false },
 })
 const emit = defineEmits(['cert-error', 'session-end', 'update:filter'])
 

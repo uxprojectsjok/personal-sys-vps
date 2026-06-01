@@ -56,6 +56,7 @@
               :soul-cert="soulToken"
               role="soul"
               :growth-locked="isGrowingQuietly"
+              :sidebar-open="drawerOpen"
               v-model:filter="filter"
               @cert-error="handleCertError"
               @session-end="forceSessionEnd"
