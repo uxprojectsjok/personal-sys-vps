@@ -179,39 +179,74 @@ function onNav(id) {
 /* 3. Hide close button and drag handle */
 .mk-panel :deep(.amm-head) { display: none !important; }
 
-/* 4. Step rail — 2 cols (2 steps), no overflow */
+/* 4. Step rail — horizontal chips */
 .mk-panel :deep(.amm-rail) {
-  border: 1px solid var(--rule) !important;
-  background: var(--paper-2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  border: none !important;
+  background: transparent !important;
   border-radius: 0 !important;
-  margin-bottom: 32px;
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  overflow: hidden !important;
+  margin-bottom: 36px;
+  overflow: visible !important;
   width: 100% !important;
 }
 .mk-panel :deep(.amm-rail-item) {
-  background: transparent !important;
-  border-right: none !important;
-  padding: 14px 16px !important;
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 18px 22px !important;
   min-width: 0 !important;
-  overflow: hidden !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+  transition: background 0.15s, border-color 0.15s !important;
 }
 .mk-panel :deep(.amm-rail-item:first-child) {
-  border-right: 1px solid var(--rule) !important;
+  border-right: 1px solid var(--line) !important;
+}
+/* Connector dash between chips */
+.mk-panel :deep(.amm-rail-item:not(:last-child))::after {
+  content: '—' !important;
+  display: block !important;
+  flex: none !important;
+  width: 32px !important;
+  text-align: center !important;
+  color: var(--fg-4) !important;
+  font-family: var(--serif) !important;
+  font-size: 16px !important;
+  margin: 0 4px !important;
 }
 .mk-panel :deep(.amm-rail-item.on) {
-  background: var(--paper) !important;
+  background: var(--accent-dim) !important;
+  border-color: rgba(109,184,154,0.35) !important;
+}
+.mk-panel :deep(.amm-rail-item.done) {
+  border-color: rgba(109,184,154,0.25) !important;
+}
+.mk-panel :deep(.amm-rail-item .num) {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 15px !important;
+  flex: none !important;
+}
+.mk-panel :deep(.amm-rail-item.on .num) {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--on-accent) !important;
 }
 .mk-panel :deep(.amm-rail-item .t) {
+  font-size: 18px !important;
+  white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  white-space: nowrap !important;
 }
 .mk-panel :deep(.amm-rail-item .sub) {
+  font-size: 11px !important;
+  white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  white-space: nowrap !important;
 }
 
 /* 5. Body */
@@ -280,14 +315,15 @@ function onNav(id) {
 
   /* Step rail: stack vertically on mobile */
   .mk-panel :deep(.amm-rail) {
-    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+    gap: 8px !important;
   }
   .mk-panel :deep(.amm-rail-item) {
-    padding: 10px 14px !important;
+    padding: 14px 18px !important;
+    width: 100% !important;
   }
-  .mk-panel :deep(.amm-rail-item:first-child) {
-    border-right: none !important;
-    border-bottom: 1px solid var(--rule) !important;
+  .mk-panel :deep(.amm-rail-item:not(:last-child))::after {
+    display: none !important;
   }
   .mk-panel :deep(.amm-rail-item .t) {
     white-space: normal !important;
