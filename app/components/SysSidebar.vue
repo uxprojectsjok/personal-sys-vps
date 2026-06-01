@@ -67,7 +67,7 @@ const NAV = [
   { group: 'Seele', items: [
     { id: 'setup',    icon: 'edit',    label: 'Einrichten' },
     { id: 'chat',     icon: 'chat',    label: 'Session' },
-    { id: 'soul',     icon: 'soul',    label: 'sys.md' },
+    { id: 'soul',     icon: 'soul',    label: 'Inhalte' },
     { id: 'chronik',  icon: 'history', label: 'Chronik' },
     { id: 'maturity', icon: 'spark',   label: 'Reife' },
   ]},
