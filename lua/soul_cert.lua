@@ -199,6 +199,52 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
     _mind_check:close()
   end
 
+  -- shopping.md anlegen falls nicht vorhanden
+  local _shop_path  = SOULS_DIR .. soul_id .. "/vault/context/shopping.md"
+  local _shop_check = io.open(_shop_path, "r")
+  if not _shop_check then
+    local _sf = io.open(_shop_path, "w")
+    if _sf then
+      local _today = os.date("%Y-%m-%d")
+      local _month = os.date("%Y-%m")
+      local _year  = os.date("%Y")
+      _sf:write("---\nlast_updated: " .. _today .. "\nlocation_source: sys.md\n---\n\n## Wishlist\n\n## Recent Purchases\n\n## Monthly Summary (" .. _month .. ")\n_Noch keine Einträge._\n\n## Annual Categories (" .. _year .. ")\n_Noch keine Einträge._\n")
+      _sf:close()
+      os.execute("chown www-data:www-data " .. _shop_path .. " 2>/dev/null || true")
+    end
+  else
+    _shop_check:close()
+  end
+
+  -- health.md Leer-Template anlegen falls nicht vorhanden
+  local _health_path  = SOULS_DIR .. soul_id .. "/vault/context/health.md"
+  local _health_check = io.open(_health_path, "r")
+  if not _health_check then
+    local _hf = io.open(_health_path, "w")
+    if _hf then
+      local _today = os.date("%Y-%m-%d")
+      local _month = os.date("%Y-%m")
+      _hf:write("---\nsource: placeholder\nlast_sync: " .. _today .. "\n---\n\n## This Week\n- Resting HR: \226\128\147\n- Sleep: \226\128\147\n- Steps: \226\128\147\n- Active days: \226\128\147\n\n## Monthly Summary (" .. _month .. ")\n- Resting HR: \226\128\147\n- Sleep: \226\128\147\n- Active days: \226\128\147\n\n## Food Log\n\n## Annual Journal\n")
+      _hf:close()
+      os.execute("chown www-data:www-data " .. _health_path .. " 2>/dev/null || true")
+    end
+  else
+    _health_check:close()
+  end
+
+  -- prompts.md via MCP generieren (fire-and-forget nach dem Response)
+  ngx.timer.at(0, function()
+    local ok, http = pcall(require, "resty.http")
+    if not ok then return end
+    local httpc = http.new()
+    httpc:set_timeout(10000)
+    httpc:request_uri("http://127.0.0.1:3098/internal/generate-prompts", {
+      method  = "POST",
+      headers = { ["Content-Type"] = "application/json" },
+      body    = "{}",
+    })
+  end)
+
   if multi_hoster then
     -- Multi-Hoster: jede neue Soul bekommt eigenen Master-Key + Admin-Token
     -- Beides wird in souls/{soul_id}/soul_admin.json gespeichert (nie in master.json).
