@@ -1,63 +1,150 @@
 <template>
-  <Teleport to="body">
+  <Teleport :disabled="inline" to="body">
     <Transition name="sys-modal-fade">
-      <div v-if="open" class="sys-modal-overlay" @click.self="$emit('close')" role="dialog" aria-modal="true" aria-label="Einstellungen">
-        <div class="sys-modal sys-modal--md" style="max-width:520px">
-          <div class="sys-modal-handle"></div>
-
-          <!-- Head -->
-          <div class="sys-modal-head" style="padding:20px 28px 16px">
-            <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
-            <span class="sys-kicker" style="margin-bottom:0;padding-bottom:0;border-bottom:none">Einstellungen</span>
-          </div>
+      <div
+        v-if="inline || open"
+        :class="inline ? null : 'sys-modal-overlay'"
+        @click.self="!inline && $emit('close')"
+        :role="!inline ? 'dialog' : undefined"
+        :aria-modal="!inline ? 'true' : undefined"
+        :aria-label="!inline ? 'Einstellungen' : undefined"
+      >
+        <div :class="inline ? null : 'sys-modal sys-modal--md'" :style="!inline ? 'max-width:520px' : ''">
+          <template v-if="!inline">
+            <div class="sys-modal-handle"></div>
+            <!-- Head -->
+            <div class="sys-modal-head" style="padding:20px 28px 16px">
+              <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
+              <span class="sys-kicker" style="margin-bottom:0;padding-bottom:0;border-bottom:none">Einstellungen</span>
+            </div>
+          </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail" :class="'sys-rail--2'">
-            <button
-              @click="tab = 'api'"
-              class="sys-rail-item"
-              :class="tab === 'api' ? 'is-active' : ''"
-            >
-              <span class="sys-rail-num">
-                <span class="sys-rail-check" v-if="keySource === 'soul'">✓</span>
-                <span v-else>K</span>
-              </span>
-              <span class="sys-rail-lbl">
-                <span class="sys-rail-t">API-Keys</span>
-              </span>
+          <div class="sys-rail sys-rail--4">
+            <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">API</span></span>
             </button>
-
-            <button
-              v-if="!isAdmin && isMultiHoster"
-              @click="tab = 'connect'"
-              class="sys-rail-item"
-              :class="tab === 'connect' ? 'is-active' : ''"
-            >
-              <span class="sys-rail-num">A</span>
-              <span class="sys-rail-lbl">
-                <span class="sys-rail-t">Admin</span>
-                <span class="sys-rail-sub">Token verbinden</span>
-              </span>
+            <button @click="tab = 'dienste'" class="sys-rail-item" :class="tab === 'dienste' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">Dienste</span></span>
             </button>
-
-            <button
-              v-if="isAdmin"
-              @click="tab = 'admin'"
-              class="sys-rail-item"
-              :class="tab === 'admin' ? 'is-active' : ''"
-            >
-              <span class="sys-rail-num">S</span>
-              <span class="sys-rail-lbl">
-                <span class="sys-rail-t">Server-Admin</span>
-                <span class="sys-rail-sub">Key-Rotation</span>
-              </span>
+            <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">Plugins</span></span>
+            </button>
+            <button @click="tab = 'config'" class="sys-rail-item" :class="tab === 'config' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">Config</span></span>
             </button>
           </div>
 
           <!-- Body -->
-          <div class="sys-modal-body" style="padding:24px 28px;overflow-y:auto">
+          <div :class="inline ? 'settings-inline-body' : 'sys-modal-body'" style="padding:24px 28px;overflow-y:auto">
 
-            <!-- ── Tab: Mein API-Key ── -->
+            <!-- ── Tab: Dienste ── -->
+            <template v-if="tab === 'dienste'">
+
+              <!-- WaveSpeed Key -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">
+                  WaveSpeed API-Key
+                  <span v-if="wavespeedKeySet" class="sm-key-ok">{{ wavespeedPreview }}</span>
+                </label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="wavespeedKey"
+                    :type="showWavespeedKey ? 'text' : 'password'"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="wavespeedDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                  <button
+                    @click="showWavespeedKey = !showWavespeedKey"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                    :aria-label="showWavespeedKey ? 'Key verbergen' : 'Key anzeigen'"
+                  >
+                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                  </button>
+                </div>
+                <div v-if="wavespeedKeySet" style="display:flex;gap:8px">
+                  <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                </div>
+              </div>
+
+              <!-- ElevenLabs Key -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">
+                  ElevenLabs API-Key
+                  <span v-if="elevenlabsKeySet" class="sm-key-ok">{{ elevenlabsPreview }}</span>
+                </label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="elevenlabsKey"
+                    :type="showElevenlabsKey ? 'text' : 'password'"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="elevenlabsDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                  <button
+                    @click="showElevenlabsKey = !showElevenlabsKey"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                    :aria-label="showElevenlabsKey ? 'Key verbergen' : 'Key anzeigen'"
+                  >
+                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                  </button>
+                </div>
+                <div v-if="elevenlabsKeySet" style="display:flex;gap:8px">
+                  <button @click="deleteKey('elevenlabs_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                </div>
+              </div>
+
+              <!-- ElevenLabs Agent-URL (Klartext-URL, kein eye) -->
+              <div class="sys-field" style="gap:12px">
+                <label class="sys-field-label">
+                  ElevenLabs Agent-URL
+                  <span v-if="agentUrlSet" class="sm-key-ok">gespeichert</span>
+                </label>
+                <input
+                  v-model="agentUrl"
+                  type="text"
+                  class="sys-input"
+                  :style="agentUrlSet ? 'border-color:var(--sys-ok)' : ''"
+                  :placeholder="agentUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://elevenlabs.io/app/talk-to?agent_id=…'"
+                  autocomplete="off"
+                  spellcheck="false"
+                  @keyup.enter="saveAgentUrl"
+                />
+                <div v-if="agentUrl || agentUrlSet" style="display:flex;align-items:center;gap:8px">
+                  <button v-if="agentUrl" @click="saveAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">Speichern</button>
+                  <button v-if="agentUrlSet" @click="deleteAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <span v-if="agentUrlFeedback" class="sm-feedback"
+                    :style="agentUrlFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ agentUrlFeedback.message }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Feedback -->
+              <Transition name="sys-modal-fade">
+                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="feedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ feedback.message }}</div>
+              </Transition>
+
+            </template>
+
+            <!-- ── Tab: API ── -->
             <template v-if="tab === 'api'">
 
               <!-- Key status -->
@@ -88,7 +175,7 @@
                     v-model="apiKey"
                     :type="showKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
                     placeholder="sk-ant-..."
                     autocomplete="off"
@@ -98,202 +185,142 @@
                   <button
                     @click="showKey = !showKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
                     :aria-label="showKey ? 'Key verbergen' : 'Key anzeigen'"
                   >
                     <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="testKey('anthropic', apiKey, !apiKey && !!keyPreview)"
-                    :disabled="anthTest?.loading || (!apiKey && !keyPreview)"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
-                  >{{ anthTest?.loading ? 'Teste…' : 'Testen' }}</button>
-                  <span v-if="anthTest && !anthTest.loading" style="font-family:var(--sys-mono);font-size:10px"
-                    :style="anthTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
-                    {{ anthTest.message }}
-                  </span>
+                <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
+                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Leer lassen → Server-Key (Fallback).
-                  <a href="https://console.anthropic.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">console.anthropic.com</a>
-                </p>
               </div>
 
-              <!-- WaveSpeed Key -->
+              <!-- Feedback -->
+              <Transition name="sys-modal-fade">
+                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="feedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ feedback.message }}</div>
+              </Transition>
+
+            </template>
+
+            <!-- ── Tab: Plugins ── -->
+            <template v-if="tab === 'plugins'">
+
+              <!-- Brave Search Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  WaveSpeed API-Key
-                  <span v-if="wavespeedKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ wavespeedPreview }}</span>
+                  Brave Search API-Key
+                  <span v-if="braveKeySet" class="sm-key-ok">{{ bravePreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
                   <input
-                    v-model="wavespeedKey"
-                    :type="showWavespeedKey ? 'text' : 'password'"
+                    v-model="braveKey"
+                    :type="showBraveKey ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none"
-                    :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="braveKeySet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
                     autocomplete="off"
                     spellcheck="false"
-                    @input="wavespeedDirty = true"
+                    @input="braveDirty = true"
                     @keyup.enter="saveConfig"
                   />
                   <button
-                    @click="showWavespeedKey = !showWavespeedKey"
+                    @click="showBraveKey = !showBraveKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none"
-                    :aria-label="showWavespeedKey ? 'Key verbergen' : 'Key anzeigen'"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                    :aria-label="showBraveKey ? 'Key verbergen' : 'Key anzeigen'"
                   >
-                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                    <i :class="showBraveKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="testKey('wavespeed', wavespeedKey, !wavespeedKey && wavespeedKeySet)"
-                    :disabled="waveTest?.loading || (!wavespeedKey && !wavespeedKeySet)"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
-                  >{{ waveTest?.loading ? 'Teste…' : 'Testen' }}</button>
-                  <span v-if="waveTest && !waveTest.loading" style="font-family:var(--sys-mono);font-size:10px"
-                    :style="waveTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
-                    {{ waveTest.message }}
-                  </span>
+                <div v-if="braveKeySet" style="display:flex;gap:8px">
+                  <button @click="deleteKey('brave_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Für KI-Bildgenerierung.
-                  <a href="https://wavespeed.ai" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">wavespeed.ai</a>
-                </p>
-              </div>
-
-              <!-- Brave Search Key -->
-              <div class="sys-field" style="gap:12px">
-                <label class="sys-field-label">
-                  Brave Search API-Key
-                  <span v-if="braveKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ bravePreview }}</span>
-                </label>
-                <input
-                  v-model="braveKey"
-                  type="password"
-                  class="sys-input sys-input--mono"
-                  :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="braveKeySet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @input="braveDirty = true"
-                  @keyup.enter="saveConfig"
-                />
               </div>
 
               <!-- Reown Project ID -->
-              <div class="sys-field" style="gap:12px">
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
                   Reown Project ID
-                  <span v-if="reownSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ reownPreview }}</span>
-                </label>
-                <input
-                  v-model="reownProjectId"
-                  type="password"
-                  class="sys-input sys-input--mono"
-                  :style="reownSet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="reownSet ? 'Neu eingeben zum Überschreiben…' : 'a1b2c3d4…'"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @input="reownDirty = true"
-                  @keyup.enter="saveConfig"
-                />
-                <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-3)">
-                  Für Wallet-Connect (Blockchain-Anker) ·
-                  <a href="https://dashboard.reown.com" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">dashboard.reown.com</a>
-                </span>
-              </div>
-
-              <!-- Zapier MCP -->
-              <div class="sys-field" style="gap:12px">
-                <label class="sys-field-label" style="margin-bottom:4px">Zapier MCP</label>
-
-                <!-- Zapier MCP URL -->
-                <label class="sys-field-label" style="margin-top:8px">
-                  MCP Server URL
-                  <span v-if="mcpUrlSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ mcpPreview }}</span>
-                </label>
-                <input
-                  v-model="mcpUrl"
-                  type="text"
-                  class="sys-input sys-input--mono"
-                  :style="mcpUrlSet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="mcpUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @input="mcpDirty = true"
-                  @keyup.enter="saveConfig"
-                />
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Zapier MCP: Gmail, Calendar, Docs, Slack u.v.m. direkt im Chat.
-                  <a href="https://zapier.com/mcp" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">zapier.com/mcp</a>
-                </p>
-              </div>
-
-              <!-- ElevenLabs Key -->
-              <div class="sys-field" style="gap:12px;margin-bottom:0">
-                <label class="sys-field-label">
-                  ElevenLabs API-Key
-                  <span v-if="elevenlabsKeySet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ elevenlabsPreview }}</span>
+                  <span v-if="reownSet" class="sm-key-ok">{{ reownPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
                   <input
-                    v-model="elevenlabsKey"
-                    :type="showElevenlabsKey ? 'text' : 'password'"
+                    v-model="reownProjectId"
+                    :type="showReownId ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none"
-                    :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    :style="reownSet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="reownSet ? 'Neu eingeben zum Überschreiben…' : 'a1b2c3d4…'"
                     autocomplete="off"
                     spellcheck="false"
-                    @input="elevenlabsDirty = true"
+                    @input="reownDirty = true"
                     @keyup.enter="saveConfig"
                   />
                   <button
-                    @click="showElevenlabsKey = !showElevenlabsKey"
+                    @click="showReownId = !showReownId"
                     class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none"
-                    :aria-label="showElevenlabsKey ? 'Key verbergen' : 'Key anzeigen'"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                    :aria-label="showReownId ? 'ID verbergen' : 'ID anzeigen'"
                   >
-                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                    <i :class="showReownId ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="testKey('elevenlabs', elevenlabsKey, !elevenlabsKey && elevenlabsKeySet)"
-                    :disabled="labsTest?.loading || (!elevenlabsKey && !elevenlabsKeySet)"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
-                  >{{ labsTest?.loading ? 'Teste…' : 'Testen' }}</button>
-                  <span v-if="labsTest && !labsTest.loading" style="font-family:var(--sys-mono);font-size:10px"
-                    :style="labsTest.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
-                    {{ labsTest.message }}
-                  </span>
+                <div v-if="reownSet" style="display:flex;gap:8px">
+                  <button @click="deleteKey('reown_project_id')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
                 </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Für Text-to-Speech.
-                  <a href="https://elevenlabs.io" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">elevenlabs.io</a>
-                </p>
+              </div>
+
+              <!-- Zapier MCP -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">
+                  Zapier MCP Server
+                  <span v-if="mcpUrlSet" class="sm-key-ok">{{ mcpPreview }}</span>
+                </label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="mcpUrl"
+                    :type="showMcpUrl ? 'text' : 'password'"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    :style="mcpUrlSet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="mcpUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="mcpDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                  <button
+                    @click="showMcpUrl = !showMcpUrl"
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                    :aria-label="showMcpUrl ? 'URL verbergen' : 'URL anzeigen'"
+                  >
+                    <i :class="showMcpUrl ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                  </button>
+                </div>
+                <div v-if="mcpUrlSet" style="display:flex;gap:8px">
+                  <button @click="deleteKey('mcp_url')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                </div>
               </div>
 
               <!-- Pinata JWT -->
-              <div class="sys-field" style="gap:12px;margin-top:24px">
+              <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label">
                   Pinata JWT
-                  <span v-if="pinataJwtSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">{{ pinataPreview }}</span>
+                  <span v-if="pinataJwtSet" class="sm-key-ok">{{ pinataPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="pinataJwt"
                     :type="showPinataJwt ? 'text' : 'password'"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none"
+                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="pinataJwtSet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="pinataJwtSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
                     autocomplete="off"
@@ -303,68 +330,18 @@
                   <button
                     @click="showPinataJwt = !showPinataJwt"
                     class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none"
+                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
                     :aria-label="showPinataJwt ? 'JWT verbergen' : 'JWT anzeigen'"
                   >
                     <i :class="showPinataJwt ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="savePinataJwt"
-                    :disabled="!pinataJwt"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
-                  >Speichern</button>
-                  <button
-                    v-if="pinataJwtSet"
-                    @click="deletePinataJwt"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em;color:var(--sys-err)"
-                  >Löschen</button>
-                  <span v-if="pinataFeedback" style="font-family:var(--sys-mono);font-size:10px"
+                <div v-if="pinataJwt || pinataJwtSet" style="display:flex;align-items:center;gap:8px">
+                  <button v-if="pinataJwt" @click="savePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">Speichern</button>
+                  <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <span v-if="pinataFeedback" class="sm-feedback"
                     :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ pinataFeedback.message }}
-                  </span>
-                </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.08em;margin:0">
-                  Für IPFS-Veröffentlichung und Blockchain-Anchoring.
-                  <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">app.pinata.cloud</a>
-                </p>
-              </div>
-
-              <!-- ElevenLabs Agent-URL -->
-              <div class="sys-field" style="gap:12px;margin-top:24px">
-                <label class="sys-field-label">
-                  ElevenLabs Agent-URL
-                  <span v-if="agentUrlSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
-                </label>
-                <input
-                  v-model="agentUrl"
-                  type="text"
-                  class="sys-input sys-input--mono"
-                  :style="agentUrlSet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="agentUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://elevenlabs.io/app/talk-to?agent_id=…'"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @keyup.enter="saveAgentUrl"
-                />
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="saveAgentUrl"
-                    :disabled="!agentUrl"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em"
-                  >Speichern</button>
-                  <button
-                    v-if="agentUrlSet"
-                    @click="deleteAgentUrl"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="height:26px;font-size:10px;padding:0 10px;letter-spacing:0.08em;color:var(--sys-err)"
-                  >Löschen</button>
-                  <span v-if="agentUrlFeedback" style="font-family:var(--sys-mono);font-size:10px"
-                    :style="agentUrlFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
-                    {{ agentUrlFeedback.message }}
                   </span>
                 </div>
               </div>
@@ -378,21 +355,33 @@
                 >{{ feedback.message }}</div>
               </Transition>
 
-              <!-- Soul-Cert rotieren — für jeden Soul-Nutzer, kein Admin-Token nötig -->
-              <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--sys-rule)">
-                <div style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:10px">Soul-Cert</div>
+            </template>
+
+            <!-- ── Tab: Config ── -->
+            <template v-if="tab === 'config'">
+
+              <!-- Soul-Cert -->
+              <div style="margin-bottom:24px">
+                <div class="sys-field-label" style="margin-bottom:8px">Soul-Cert</div>
+                <div v-if="soulToken" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                  <div style="display:flex;align-items:flex-start;gap:8px">
+                    <code style="flex:1;font-family:var(--sys-mono);font-size:13px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ soulToken }}</code>
+                    <button @click="copyCurrentCert" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="certCurrentCopied ? 'color:var(--accent)' : 'color:var(--fg-4)'">
+                        <path v-if="certCurrentCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        <path v-else stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
                 <button
                   @click="handleRotateCert"
                   :disabled="certRotateBusy"
-                  class="sys-btn-ed sys-btn-ed--ghost"
+                  class="sys-btn-ed sys-btn-ed--primary"
                   style="width:100%;justify-content:center"
                 >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:6px 0 0">
-                  Neues Cert wird sofort aktiv — du bleibst eingeloggt. sys.md wird heruntergeladen.
-                </p>
                 <Transition name="sys-modal-fade">
                   <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
-                    <!-- Fehler-Fall -->
                     <div v-if="certRotationResult.error" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">
                       Cert-Rotation fehlgeschlagen — bitte Seite neu laden und erneut versuchen.
                     </div>
@@ -401,7 +390,7 @@
                       <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
                     </div>
-                    <div style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--sys-fg-muted);margin-bottom:4px">Bearer-Token (Zugangscode)</div>
+                    <div class="sm-sec-head" style="margin-bottom:4px">Bearer-Token (Zugangscode)</div>
                     <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
                       <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
                       <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
@@ -412,14 +401,13 @@
                         </svg>
                       </button>
                     </div>
-                    <p style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em"
-                      :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
+                    <p class="sm-desc" :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--fg-4)'">
                       {{ certRotationResult.validated ? '✓ Cert auf Server validiert' : 'Server-Validierung prüfen — Seite neu laden' }}
                     </p>
-                    <p v-if="certRotationResult.credsUpdated" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-ok);margin-top:4px">
+                    <p v-if="certRotationResult.credsUpdated" class="sm-desc f-ok" style="margin-top:4px">
                       ✓ Biometrische Zugangsdaten aktualisiert
                     </p>
-                    <p v-else-if="certRotationResult.credsUpdateFailed" style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.06em;color:var(--sys-warn,#f59e0b);margin-top:4px">
+                    <p v-else-if="certRotationResult.credsUpdateFailed" class="sm-desc" style="color:var(--sys-warn);margin-top:4px">
                       Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
                     </p>
                     </template>
@@ -427,107 +415,91 @@
                 </Transition>
               </div>
 
-            </template>
-
-            <!-- ── Tab: Admin verbinden ── -->
-            <template v-if="tab === 'connect' && !isAdmin">
-              <p class="sys-prose">Gib den Admin-Token ein, den du beim Server-Setup erhalten hast. Er wird nur lokal im Browser gespeichert.</p>
-
-              <div class="sys-field" style="margin-bottom:0">
-                <label class="sys-field-label">Admin-Token</label>
-                <div style="display:flex;gap:0">
-                  <input
-                    v-model="connectToken"
-                    :type="showConnectToken ? 'text' : 'password'"
-                    class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none"
-                    placeholder="adm_..."
-                    autocomplete="off"
-                    spellcheck="false"
-                    @keyup.enter="connectAdmin"
-                  />
-                  <button
-                    @click="showConnectToken = !showConnectToken"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none"
-                    :aria-label="showConnectToken ? 'Token verbergen' : 'Token anzeigen'"
-                  >
-                    <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
-                </div>
-              </div>
-
-              <Transition name="sys-modal-fade">
-                <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="connectFeedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ connectFeedback.message }}</div>
-              </Transition>
-            </template>
-
-            <!-- ── Tab: Server-Admin ── -->
-            <template v-if="tab === 'admin' && isAdmin">
-
-              <div style="padding:10px 14px;border-left:2px solid var(--sys-rule-strong);background:rgba(167,139,250,0.05);font-family:var(--sys-mono);font-size:10px;letter-spacing:0.1em;color:var(--sys-fg-muted);margin-bottom:20px">
-                Master-Key-Rotation betrifft diese Instanz. Grace-Period 15 min — danach sind alte Certs ungültig.
-              </div>
-
-              <!-- Neuer Soul-Master-Key -->
-              <div class="sys-field">
-                <label class="sys-field-label">Neuer Soul-Master-Key</label>
-                <div style="display:flex;gap:8px">
-                  <input
-                    v-model="newMasterKey"
-                    type="text"
-                    readonly
-                    class="sys-input sys-input--mono"
-                    style="flex:1"
-                    placeholder="→ Generieren klicken"
-                  />
-                  <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--ghost" style="white-space:nowrap">Generieren</button>
-                </div>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em">sys_ + 256-bit zufällig. Nur im Browser generiert.</p>
-              </div>
-
-              <!-- Grace-Period -->
-              <Transition name="sys-modal-fade">
-                <div v-if="graceUntil" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);padding:14px 16px;margin-bottom:16px">
-                  <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-                    <span style="font-family:var(--sys-mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--sys-accent-bright)">Grace-Period aktiv</span>
-                    <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-accent-bright)">{{ graceCountdown }}</span>
+              <!-- Admin verbinden (Multi-Hoster, kein Admin) -->
+              <template v-if="!isAdmin && isMultiHoster">
+                <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
+                  <div class="sys-field-label" style="margin-bottom:12px">Admin verbinden</div>
+                  <p class="sys-prose" style="margin-bottom:16px">Gib den Admin-Token ein, den du beim Server-Setup erhalten hast. Er wird nur lokal im Browser gespeichert.</p>
+                  <div class="sys-field" style="margin-bottom:12px">
+                    <label class="sys-field-label">Admin-Token</label>
+                    <div style="display:flex;gap:0">
+                      <input
+                        v-model="connectToken"
+                        :type="showConnectToken ? 'text' : 'password'"
+                        class="sys-input sys-input--mono"
+                        style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                        placeholder="adm_..."
+                        autocomplete="off"
+                        spellcheck="false"
+                        @keyup.enter="connectAdmin"
+                      />
+                      <button
+                        @click="showConnectToken = !showConnectToken"
+                        class="sys-btn-ed sys-btn-ed--ghost"
+                        style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
+                        :aria-label="showConnectToken ? 'Token verbergen' : 'Token anzeigen'"
+                      >
+                        <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
+                      </button>
+                    </div>
                   </div>
-                  <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em;margin:0">
-                    ElevenLabs-Agent: <strong style="color:var(--sys-fg)">@create-agent</strong> im Chat ausführen — neuer Webhook-Token wird automatisch registriert.
-                  </p>
+                  <button class="sys-btn-ed sys-btn-ed--primary" @click="connectAdmin" :disabled="connectingAdmin || !connectToken">
+                    {{ connectingAdmin ? 'Prüfe…' : 'Verbinden' }}
+                  </button>
+                  <Transition name="sys-modal-fade">
+                    <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                      :style="connectFeedback.ok
+                        ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                        : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                    >{{ connectFeedback.message }}</div>
+                  </Transition>
                 </div>
-              </Transition>
+              </template>
 
-              <!-- Admin-Token rotieren (nur Multi-Hoster) -->
-              <div v-if="isMultiHoster" class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
-                <label class="sys-field-label">Admin-Token rotieren</label>
-                <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg);letter-spacing:0.06em;margin:0 0 8px">Bei Leak: neuen Token generieren. Der alte wird sofort ungültig.</p>
-                <div style="display:flex;gap:8px">
-                  <input
-                    v-model="newAdminToken"
-                    type="text"
-                    readonly
-                    class="sys-input sys-input--mono"
-                    style="flex:1"
-                    placeholder="→ Generieren klicken"
-                  />
-                  <button @click="generateAdminToken" class="sys-btn-ed sys-btn-ed--ghost" style="white-space:nowrap">Generieren</button>
+              <!-- Server-Admin (isAdmin) -->
+              <template v-if="isAdmin">
+                <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
+                  <div class="sys-field-label" style="margin-bottom:12px">Server-Admin</div>
+                  <div class="sm-infoblock">
+                    Master-Key-Rotation betrifft diese Instanz. Grace-Period 15 min — danach sind alte Certs ungültig.
+                  </div>
+                  <div class="sys-field">
+                    <label class="sys-field-label">Neuer Soul-Master-Key</label>
+                    <div style="display:flex;gap:8px">
+                      <input v-model="newMasterKey" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generieren klicken" />
+                      <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">Generieren</button>
+                    </div>
+                  </div>
+                  <Transition name="sys-modal-fade">
+                    <div v-if="graceUntil" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);padding:14px 16px;margin-bottom:16px">
+                      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                        <span class="sm-accent-label">Grace-Period aktiv</span>
+                        <span class="sm-accent-label">{{ graceCountdown }}</span>
+                      </div>
+                    </div>
+                  </Transition>
+                  <div v-if="isMultiHoster" class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
+                    <label class="sys-field-label">Admin-Token rotieren</label>
+                    <div style="display:flex;gap:8px">
+                      <input v-model="newAdminToken" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generieren klicken" />
+                      <button @click="generateAdminToken" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">Generieren</button>
+                    </div>
+                  </div>
+                  <div style="margin-top:16px">
+                    <button class="sys-btn-ed sys-btn-ed--primary" @click="saveMaster"
+                      :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)">
+                      {{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}
+                    </button>
+                  </div>
+                  <Transition name="sys-modal-fade">
+                    <div v-if="adminFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                      :style="adminFeedback.ok
+                        ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                        : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                    >{{ adminFeedback.message }}</div>
+                  </Transition>
                 </div>
-              </div>
-
-              <!-- Admin-Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="adminFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="adminFeedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ adminFeedback.message }}</div>
-              </Transition>
+              </template>
 
             </template>
 
@@ -537,44 +509,27 @@
           <div class="sys-modal-foot">
             <div class="sys-foot-meta">
               <template v-if="tab === 'api'">
-                <span class="sys-dot"
-                  :class="keySource === 'soul' ? 'sys-dot--ok' : keySource === 'none' ? 'sys-dot--idle' : 'sys-dot--live'"
-                ></span>
+                <span class="sys-dot" :class="keySource === 'soul' ? 'sys-dot--ok' : keySource === 'none' ? 'sys-dot--idle' : 'sys-dot--live'"></span>
                 {{ keySourceLabel }}
               </template>
-              <template v-else-if="tab === 'connect'">
+              <template v-else-if="tab === 'dienste'">
                 <span class="sys-dot sys-dot--idle"></span>
-                Admin-Zugang
+                Dienste
               </template>
-              <template v-else-if="tab === 'admin'">
-                <span class="sys-dot sys-dot--warn"></span>
-                Server-Admin · Rotation
+              <template v-else-if="tab === 'plugins'">
+                <span class="sys-dot sys-dot--idle"></span>
+                Plugins
+              </template>
+              <template v-else-if="tab === 'config'">
+                <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
+                {{ isAdmin ? 'Server-Admin · Rotation' : 'Soul-Cert & Admin' }}
               </template>
             </div>
             <div class="sys-foot-actions">
-              <!-- API-Key tab -->
-              <template v-if="tab === 'api'">
-                <button
-                  class="sys-btn-ed sys-btn-ed--primary"
-                  @click="saveConfig"
-                  :disabled="saving"
-                >{{ saving ? 'Speichert…' : 'Speichern' }}</button>
-              </template>
-              <!-- Connect tab -->
-              <template v-else-if="tab === 'connect'">
-                <button
-                  class="sys-btn-ed sys-btn-ed--primary"
-                  @click="connectAdmin"
-                  :disabled="connectingAdmin || !connectToken"
-                >{{ connectingAdmin ? 'Prüfe…' : 'Verbinden' }}</button>
-              </template>
-              <!-- Admin tab -->
-              <template v-else-if="tab === 'admin'">
-                <button
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  @click="saveMaster"
-                  :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)"
-                >{{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}</button>
+              <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
+                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
+                  {{ saving ? 'Speichert…' : 'Speichern' }}
+                </button>
               </template>
             </div>
           </div>
@@ -586,14 +541,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 
-const props = defineProps({ open: Boolean })
+const props = defineProps({ open: Boolean, inline: { type: Boolean, default: false } })
 const emit  = defineEmits(['close', 'master-rotated'])
 
 const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer, exportAsBlob } = useSoul()
@@ -677,19 +632,22 @@ const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
 
 const braveKey     = ref('')
+const showBraveKey = ref(false)
 const braveKeySet  = ref(false)
 const bravePreview = ref('')
 const braveDirty   = ref(false)
 
 const reownProjectId = ref('')
+const showReownId    = ref(false)
 const reownSet       = ref(false)
 const reownPreview   = ref('')
 const reownDirty     = ref(false)
 
-const mcpUrl    = ref('')
-const mcpUrlSet = ref(false)
+const mcpUrl     = ref('')
+const showMcpUrl = ref(false)
+const mcpUrlSet  = ref(false)
 const mcpPreview = ref('')
-const mcpDirty  = ref(false)
+const mcpDirty   = ref(false)
 
 
 const pinataJwt      = ref('')
@@ -697,8 +655,9 @@ const showPinataJwt  = ref(false)
 const pinataJwtSet   = ref(false)
 const pinataPreview  = ref('')
 const pinataFeedback = ref(null)
-const agentUrl       = ref('')
-const agentUrlSet    = ref(false)
+const agentUrl         = ref('')
+const showAgentUrl     = ref(false)
+const agentUrlSet      = ref(false)
 const agentUrlFeedback = ref(null)
 
 const keySourceLabel = computed(() => ({
@@ -809,6 +768,23 @@ async function deleteAgentUrl() {
     })
     agentUrl.value    = ''
     agentUrlSet.value = false
+  } catch {}
+}
+
+async function deleteKey(field) {
+  try {
+    await fetch('/api/set-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ [field]: '' }),
+    })
+    if (field === 'anthropic_key')    { keySource.value = 'none'; keyPreview.value = '' }
+    if (field === 'wavespeed_key')    { wavespeedKeySet.value = false; wavespeedPreview.value = '' }
+    if (field === 'elevenlabs_key')   { elevenlabsKeySet.value = false; elevenlabsPreview.value = '' }
+    if (field === 'brave_key')        { braveKeySet.value = false; bravePreview.value = '' }
+    if (field === 'reown_project_id') { reownSet.value = false; reownPreview.value = '' }
+    if (field === 'mcp_url')          { mcpUrlSet.value = false; mcpPreview.value = ''; clearMcpCache() }
+    await loadStatus()
   } catch {}
 }
 
@@ -1087,6 +1063,13 @@ onUnmounted(() => clearTimeout(graceTimer))
 const certRotateBusy     = ref(false)
 const certRotationResult = ref(null)
 const certCopied         = ref(false)
+const certCurrentCopied  = ref(false)
+
+function copyCurrentCert() {
+  navigator.clipboard.writeText(soulToken.value || '').catch(() => {})
+  certCurrentCopied.value = true
+  setTimeout(() => { certCurrentCopied.value = false }, 2000)
+}
 
 const localSoulFileName = computed(() => {
   const soulFile = allFiles.value.find(f => f.kind === 'soul')
@@ -1160,42 +1143,74 @@ async function handleRotateCert() {
 }
 
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
-watch(() => props.open, async (val) => {
-  if (val) {
-    await loadNodeStatus()
-    detectAdmin()
-    loadStatus()
-    tab.value           = 'api'
-    wavespeedKey.value   = ''
-    wavespeedDirty.value = false
-    elevenlabsKey.value  = ''
-    elevenlabsDirty.value = false
-  }
-})
+async function initSettings() {
+  await loadNodeStatus()
+  detectAdmin()
+  loadStatus()
+  tab.value            = 'api'
+  wavespeedKey.value   = ''
+  wavespeedDirty.value = false
+  elevenlabsKey.value  = ''
+  elevenlabsDirty.value = false
+}
+
+watch(() => props.open, (val) => { if (val) initSettings() })
+
+onMounted(() => { if (props.inline) initSettings() })
 </script>
 
 <style scoped>
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Override: Rail dient hier als Tab-Navigation, nicht als Step-Wizard.
-   Alle Items immer sichtbar — auch auf Mobile. */
+/* ── Settings form atoms ─────────────────────────────────────────────── */
+/* Small action button (Test / Save inline) */
+.sm-test-btn {
+  height: 32px; padding: 0 12px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+}
+/* Key-set preview badge (shown inline in label) */
+.sm-key-ok {
+  font-family: var(--mono); font-size: 12px; color: var(--accent);
+  text-transform: none; letter-spacing: 0; margin-left: 8px; font-weight: 400;
+}
+/* Description / info paragraphs below inputs */
+.sm-desc {
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  letter-spacing: 0.04em; margin: 0; line-height: 1.55;
+}
+/* Uppercase section mini-head */
+.sm-sec-head {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--fg-4); margin-bottom: 10px;
+}
+/* Inline result feedback (ok/err toggled via :style) */
+.sm-feedback {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em;
+}
+/* Accent-colored label chips (grace period, cert version etc.) */
+.sm-accent-label {
+  font-family: var(--mono); font-size: 12px; color: var(--accent-bright);
+  letter-spacing: 0.06em;
+}
+/* Warning / info block with left border */
+.sm-infoblock {
+  padding: 10px 14px; margin-bottom: 20px;
+  border-left: 2px solid var(--line-2);
+  background: var(--surface-2);
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.06em; color: var(--fg-2);
+}
+
+/* Override: Rail als Tab-Navigation — 4 Items immer sichtbar */
 @media (max-width: 560px) {
   :deep(.sys-rail) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
   :deep(.sys-rail-item) {
     display: flex !important;
-    padding: 10px 14px;
-    gap: 8px;
-  }
-  :deep(.sys-rail-sub) {
-    display: none;
-  }
-  :deep(.sys-rail-num) {
-    width: 26px;
-    height: 26px;
-    font-size: 11px;
-    flex-shrink: 0;
+    padding: 10px 8px;
+    justify-content: center;
   }
 }
+.settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>

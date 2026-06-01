@@ -21,15 +21,17 @@ const route  = useRoute()
 const router = useRouter()
 
 const TABS = [
-  { id: 'gate',    label: 'Gate',    icon: 'lock',  path: '/gate'    },
-  { id: 'start',   label: 'Start',   icon: 'home',  path: '/'        },
-  { id: 'session', label: 'Session', icon: 'chat',  path: '/session' },
+  { id: 'start',        label: 'Start',        icon: 'home',     path: '/'               },
+  { id: 'session',      label: 'Session',      icon: 'chat',     path: '/session'        },
+  { id: 'einstellungen', label: 'Einstellungen', icon: 'settings', path: '/einstellungen' },
+  { id: 'gate',         label: 'Gate',         icon: 'lock',     path: '/gate'           },
 ]
 
 const current = computed(() => {
   const p = route.path
-  if (p === '/session') return 'session'
-  if (p === '/gate')    return 'gate'
+  if (p === '/session')       return 'session'
+  if (p === '/einstellungen') return 'einstellungen'
+  if (p === '/gate')          return 'gate'
   return 'start'
 })
 

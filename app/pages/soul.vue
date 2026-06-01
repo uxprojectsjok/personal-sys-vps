@@ -211,7 +211,7 @@ function onNav(id) {
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'maturity') { router.push('/reife');    return }
   if (id === 'calendar') { router.push('/kalender'); return }
-  if (id === 'settings') { router.push('/'); return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   if (id === 'anchor')   { router.push('/verankern');    return }
   if (id === 'export')   { router.push('/exportieren'); return }
   if (id === 'peers')    { router.push('/peers');       return }

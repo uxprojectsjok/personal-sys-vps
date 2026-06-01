@@ -334,6 +334,7 @@ function onNav(id) {
   if (id === 'anchor')   { router.push('/verankern');   return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');  return }
+  if (id === 'settings') { router.push('/einstellungen'); return }
   drawerOpen.value = false
   router.push('/')
 }

@@ -784,18 +784,18 @@ async function register() {
 
 .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .field.span-2 { grid-column: 1 / -1; }
-.field-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); }
-.field-hint { color: var(--fg-2); text-transform: none; letter-spacing: 0.04em; margin-left: 6px; font-size: 12px; }
+.field-label { font-family: var(--sans); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-2); }
+.field-hint { font-family: var(--mono); font-size: 11px; color: var(--fg-3); text-transform: none; letter-spacing: 0.03em; margin-left: 6px; }
 .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .field-label-row .field-label { margin-bottom: 0; }
 .field-hint-btn { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); background: none; border: 1px solid var(--accent); padding: 2px 7px; cursor: pointer; opacity: 0.8; transition: opacity 0.15s; }
 .field-hint-btn:hover { opacity: 1; }
-.input { width: 100%; padding: 12px 14px; background: var(--paper-2); border: 1px solid var(--rule-2); color: var(--fg); font-family: var(--sans); font-size: 14px; outline: 0; transition: all 0.15s; }
-.input.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; }
-.input:focus { border-color: var(--accent); background: var(--paper); box-shadow: 0 0 0 3px var(--accent-2); }
-.input::placeholder { color: var(--fg-4); }
-.field-error { font-family: var(--mono); font-size: 12px; color: var(--err); margin: 0; padding-left: 12px; border-left: 2px solid var(--err); }
-.field-ok { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ok); margin: 0; }
+.input { width: 100%; padding: 10px 13px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--fg); font-family: var(--sans); font-size: 16px; outline: 0; transition: border-color 0.15s, box-shadow 0.15s; border-radius: var(--r-xs); -webkit-appearance: none; appearance: none; }
+.input.mono { font-family: var(--mono); font-size: 14px; letter-spacing: 0.01em; }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.input::placeholder { color: var(--fg-3); }
+.field-error { font-family: var(--mono); font-size: 12px; color: #e06c75; margin: 0; padding-left: 12px; border-left: 2px solid #e06c75; }
+.field-ok { font-family: var(--mono); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--accent); margin: 0; }
 
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
 .mode-card { text-align: left; background: var(--paper-2); border: 1px solid var(--rule-2); padding: 22px; cursor: pointer; transition: all 0.15s; position: relative; font-family: inherit; color: inherit; display: flex; flex-direction: column; gap: 12px; min-height: 140px; }

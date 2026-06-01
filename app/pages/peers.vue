@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="peers" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="peers" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -30,39 +30,39 @@
             <Transition name="slide-down">
               <div v-if="addOpen" class="pr-add-form">
                 <div class="pr-add-fields">
-                  <div class="pr-field">
-                    <label class="pr-label">Soul-ID</label>
+                  <div class="f-field">
+                    <label class="f-label">Soul-ID</label>
                     <input
                       v-model="newSoulId"
                       type="text"
-                      class="pr-input"
+                      class="f-inp f-inp--mono"
                       placeholder="2c81aa74-0ed0-43c8-…"
                       autocomplete="off"
                       spellcheck="false"
                     />
                   </div>
-                  <div class="pr-field">
-                    <label class="pr-label">Alias</label>
+                  <div class="f-field">
+                    <label class="f-label">Alias</label>
                     <input
                       v-model="newAlias"
                       type="text"
-                      class="pr-input"
+                      class="f-inp"
                       placeholder="alice_abc"
                       maxlength="64"
                     />
                   </div>
-                  <div class="pr-field pr-field--full">
-                    <label class="pr-label">Domain <span class="pr-label-opt">(optional · für externe Peers)</span></label>
+                  <div class="f-field pr-field--full">
+                    <label class="f-label">Domain <span class="f-label-opt">(optional · für externe Peers)</span></label>
                     <input
                       v-model="newDomain"
                       type="text"
-                      class="pr-input"
+                      class="f-inp"
                       placeholder="https://alice.example.com"
                       autocomplete="off"
                     />
                   </div>
                 </div>
-                <p v-if="addError" class="pr-add-error">{{ addError }}</p>
+                <p v-if="addError" class="f-error">{{ addError }}</p>
                 <div class="pr-add-foot">
                   <button class="pr-btn pr-btn--ghost" @click="addOpen = false; addError = ''">Abbrechen</button>
                   <button
@@ -179,15 +179,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useConfirm } from '~/composables/useConfirm.js'
+import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { hasSoul, soulMeta, soulToken } = useSoul() // soulToken needed for authHeaders
+const { hasSoul, soulMeta, soulToken, soulContent } = useSoul() // soulToken needed for authHeaders
+const maturity = computed(() => computeMaturity(soulContent.value).score)
 const { ask } = useConfirm()
 
 // ── Shell state ───────────────────────────────────────────────────────────────
@@ -355,6 +357,7 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'peers')    return
+  if (id === 'settings') { router.push('/einstellungen'); return }
   if (id === 'chat')     { router.push('/session');     return }
   if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');        return }
@@ -424,21 +427,7 @@ function onNav(id) {
 .pr-add-fields {
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
-.pr-field { display: flex; flex-direction: column; gap: 5px; }
 .pr-field--full { grid-column: 1 / -1; }
-.pr-label {
-  font-family: var(--sans); font-size: 15px; font-weight: 500;
-  letter-spacing: 0; text-transform: none; color: var(--fg);
-}
-.pr-label-opt { font-weight: 400; color: var(--fg-3); font-size: 14px; }
-.pr-input {
-  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-xs);
-  color: var(--fg); font-family: var(--mono); font-size: 14px;
-  padding: 10px 14px; outline: none; transition: border-color 0.15s;
-}
-.pr-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
-.pr-input::placeholder { color: var(--fg-3); }
-.pr-add-error { font-family: var(--mono); font-size: 13px; color: #e06c75; margin: 0; }
 .pr-add-foot {
   display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px;
   border-top: 1px solid var(--line);
@@ -484,7 +473,7 @@ function onNav(id) {
   width: 32px; height: 32px; border-radius: var(--r-xs);
   border: 1px solid transparent; background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  color: var(--fg-3); transition: all 0.12s;
+  color: var(--fg-2); transition: all 0.12s;
 }
 .pr-action svg { width: 14px; height: 14px; }
 .pr-action:hover { background: var(--surface-2); border-color: var(--line); color: var(--fg); }
@@ -542,43 +531,41 @@ function onNav(id) {
 
 /* ── Chips grid ── */
 .pr-chips {
-  display: grid; grid-template-columns: 1fr 1fr;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   border: 1px solid var(--line);
   border-radius: 0 0 var(--r) var(--r);
   overflow: hidden;
-  background: var(--surface);
+  gap: 1px;
+  background: var(--line); /* gap wird zur Trennlinie */
 }
 
 .pr-chip {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 18px;
+  background: var(--surface);
   transition: background 0.12s;
 }
-.pr-chip:nth-child(2n)        { border-right: none; }
-.pr-chip:nth-last-child(-n+2) { border-bottom: none; }
-.pr-chip:hover                { background: var(--surface-2); }
-.pr-chip--request             { background: rgba(109,184,154,0.03); }
+.pr-chip:hover     { background: var(--surface-2); }
+.pr-chip--request  { background: rgba(109,184,154,0.03); }
 
 .pr-chip-avatar {
-  width: 36px; height: 36px; border-radius: 50%; flex: none;
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--serif); font-size: 15px; font-weight: 600;
+  font-family: var(--serif); font-size: 18px; font-weight: 600;
   color: rgba(244,241,234,0.90);
 }
 .pr-chip-body { flex: 1; min-width: 0; }
 .pr-chip-alias {
-  font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--fg);
+  font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr-chip-id {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px;
 }
 .pr-chip-status {
   display: flex; align-items: center; gap: 5px;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin-top: 2px;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2); margin-top: 3px;
 }
 .pr-chip-actions { display: flex; align-items: center; gap: 2px; flex: none; }
 

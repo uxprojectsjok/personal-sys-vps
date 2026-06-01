@@ -65,8 +65,7 @@
           <p v-if="certAutoFilled" class="gate-autofill">✓ Cert aus aktiver Session geladen</p>
           <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
             <span v-if="loading" class="gate-spinner" />
-            {{ loading ? 'Lädt…' : 'Knoten entsperren' }}
-            <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
+            {{ loading ? 'Lädt…' : 'Login with Soul' }}
           </button>
         </form>
         <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">Mit Biometrik entsperren</button>
@@ -267,6 +266,8 @@ const showPw = ref(false)
 </script>
 
 <style scoped>
+.gate .btn-primary { background: var(--accent); color: #fff; }
+.gate .btn-primary:hover { background: var(--accent-bright); }
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
 .gate-error { font-size: 12px; color: var(--c-err, #e06c75); border-left: 2px solid currentColor; padding-left: 10px; line-height: 1.6; margin: 0 0 14px; text-align: left; }
 .gate-hint { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0 0 14px; }

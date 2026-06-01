@@ -2,7 +2,11 @@
   <ClientOnly>
     <div class="cw-root">
       <div class="cw-card">
-        <div class="cw-logo">SYS<span>.</span></div>
+        <div class="cw-brand">
+          <span class="cw-sys">SYS<span class="cw-accent">.</span></span>
+          <span class="cw-name">Save Your Soul</span>
+        </div>
+        <p class="cw-tagline">Persönliche Identitätsschicht für KI-Systeme.<br>Portabel. Verschlüsselt.</p>
 
         <!-- Loading -->
         <template v-if="phase === 'loading'">
@@ -174,12 +178,20 @@ async function fetchHello(token) {
   text-align: center;
 }
 
-.cw-logo {
-  font-family: var(--sans); font-size: 24px; font-weight: 700;
-  letter-spacing: -0.04em; color: var(--fg); margin-bottom: 8px;
+.cw-brand { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cw-sys {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
 }
-.cw-logo span { color: var(--accent); }
-
+.cw-accent { color: var(--accent); }
+.cw-name {
+  font-family: var(--serif); font-size: 24px; font-weight: 400;
+  letter-spacing: -0.02em; color: var(--fg);
+}
+.cw-tagline {
+  font-family: var(--mono); font-size: 11px; line-height: 1.65;
+  color: var(--fg-3); text-align: center; margin: 0;
+}
 .cw-ic { width: 32px; height: 32px; color: var(--fg-3); }
 .spin { animation: cw-spin 1s linear infinite; }
 @keyframes cw-spin { to { transform: rotate(360deg); } }

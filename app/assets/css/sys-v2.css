@@ -127,8 +127,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   z-index: 30;
 }
 .sb-head {
-  display: flex; align-items: center; gap: 11px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0;
   padding: 20px 20px 14px;
+}
+.sb-head-top {
+  display: flex; align-items: center; gap: 11px; margin-bottom: 8px;
 }
 .sb-mark {
   font-family: var(--serif); font-weight: 700; font-size: 21px;
@@ -172,7 +175,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .sb-group:first-child { margin-top: 6px; }
 .sb-group-label {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--fg-4); font-weight: 500;
+  text-transform: uppercase; color: var(--fg); font-weight: 500;
   padding: 0 12px 7px;
 }
 .is-collapsed .sb-group-label { text-align: center; padding: 0 0 7px; font-size: 8px; }
@@ -1210,3 +1213,10 @@ code.inline { font-family: var(--mono); font-size: 12px; background: var(--surfa
 @media (max-width: 800px) {
   .qrc-stage { grid-template-columns: 1fr; }
 }
+
+/* ── sys-editorial button overrides → new Warm Ash & Sage tokens ── */
+.sys-btn-ed { border-radius: var(--r); }
+.sys-btn-ed--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.sys-btn-ed--primary:hover:not(:disabled) { background: var(--accent-bright); border-color: var(--accent-bright); box-shadow: none; }
+.sys-btn-ed--ghost { border-color: var(--line-2); color: var(--fg-2); }
+.sys-btn-ed--ghost:hover:not(:disabled) { color: var(--fg); border-color: var(--line-3); }
