@@ -63,6 +63,7 @@ function onNav(id) {
   if (id === 'files')    { router.push('/dateien');    return }
   if (id === 'maturity') { router.push('/reife');      return }
   if (id === 'calendar') { router.push('/kalender');   return }
+  if (id === 'anchor')   { router.push('/verankern'); return }
   drawerOpen.value = false
   router.push('/')
 }

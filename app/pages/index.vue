@@ -665,7 +665,7 @@ const cmdkOpen         = ref(false)
 const MODAL_MAP = {
   soul: () => { setupOpen.value    = true },
   files: () => { filesOpen.value   = true },
-  anchor: () => { anchorOpen.value = true },
+  anchor: () => { navigateTo('/verankern') },
   export: () => { encryptOpen.value   = true },
   settings: () => { settingsOpen.value = true },
   market: () => { navigateTo('/marketplace') },

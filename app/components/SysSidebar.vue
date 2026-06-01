@@ -87,7 +87,7 @@ const NAV = [
     { id: 'connect', icon: 'qr', label: 'Verbindung', tag: 'neu' },
     { id: 'market', icon: 'market', label: 'Marketplace' },
   ]},
-  { group: 'System', items: [
+  { group: 'Eigen', items: [
     { id: 'anchor', icon: 'anchor', label: 'Verankern' },
     { id: 'export', icon: 'export', label: 'Exportieren' },
     { id: 'settings', icon: 'settings', label: 'Einstellungen' },
