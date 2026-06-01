@@ -54,7 +54,16 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
                 </svg>
               </button>
-              <!-- Upload from device -->
+              <!-- Alle lokalen Dateien auf Server laden -->
+              <button v-if="tab === 'lokal' && vaultConnected" class="dt-upload-btn" @click="pushVaultToServer" :disabled="syncing" :title="syncing ? 'Wird hochgeladen…' : 'Vault auf Server laden'">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                  <rect x="2" y="12" width="16" height="5" rx="1.5"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 9V2m0 0L6 6m4-4 4 4"/>
+                  <circle cx="5.5" cy="14.5" r="1"/>
+                </svg>
+                {{ syncing ? 'Lädt…' : 'Auf Server' }}
+              </button>
+              <!-- Upload from device (lokal: in vault; server: direkt auf server) -->
               <button class="dt-upload-btn" @click="triggerUpload">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M10 13V3m0 0L6 7m4-4 4 4"/>
@@ -142,8 +151,8 @@
 
                     <!-- Regular files -->
                     <template v-else>
-                      <!-- Download -->
-                      <button class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
+                      <!-- Download (nur auf Server-Tab sinnvoll) -->
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
                       <!-- Upload to server (lokal only) -->
@@ -198,6 +207,7 @@ const refreshing       = ref(false)
 const fileInput        = ref(null)
 const soulInput        = ref(null)
 const busy             = reactive({})
+const syncing          = ref(false)
 const toast            = ref(null)
 let   toastTimer       = null
 
@@ -394,6 +404,21 @@ function triggerUpload() { fileInput.value?.click() }
 
 async function handleFileUpload(e) {
   const files = Array.from(e.target.files || []); if (!files.length) return
+  // Server-Tab: direkt auf Server hochladen
+  if (tab.value === 'server') {
+    let ok = 0
+    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+    for (const file of files) {
+      const buf     = await file.arrayBuffer()
+      const apiType = nameToApiType(file.name)
+      const res     = await syncFile(soulToken.value, apiType, file.name, buf, key)
+      if (res.ok) ok++
+      else showToast(`${file.name}: ${res.error || 'Upload fehlgeschlagen'}`, 'err')
+    }
+    if (ok) { showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} auf Server hochgeladen ✓`); await loadContext(soulToken.value) }
+    e.target.value = ''; return
+  }
+  // Lokal-Tab: in Vault speichern
   let ok = 0
   for (const file of files) {
     const buf = await file.arrayBuffer()
@@ -403,6 +428,28 @@ async function handleFileUpload(e) {
   await scanLocalVault()
   showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} hinzugefügt ✓`)
   e.target.value = ''
+}
+
+// ── Ganzen lokalen Vault auf Server laden ──────────────────────────────────
+async function pushVaultToServer() {
+  if (syncing.value) return
+  syncing.value = true
+  const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+  let ok = 0, fail = 0
+  const uploadable = localFileList.value.filter(f => f.type !== 'soul')
+  for (const file of uploadable) {
+    const buf = await readVaultFile(file.name)
+    if (!buf) { fail++; continue }
+    const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
+    if (res.ok) ok++
+    else fail++
+  }
+  // sys.md separat
+  try { await pushToServer() } catch { fail++ }
+  syncing.value = false
+  if (fail === 0) showToast(`Vault hochgeladen — ${ok + 1} Dateien ✓`)
+  else showToast(`${ok} hochgeladen, ${fail} fehlgeschlagen`, fail === ok + 1 ? 'err' : 'ok')
+  await loadContext(soulToken.value)
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
