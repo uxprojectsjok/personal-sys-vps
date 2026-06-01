@@ -2125,7 +2125,7 @@ async function handleDiagnose() {
   await scrollToBottom()
 }
 
-// ── @contact — Peer im Agent-Marketplace hinzufügen ───────────────
+// ── @contact — MCP-Peer hinzufügen ───────────────────────────────
 async function handleContact(query) {
   const GUIDE = [
     '**Peer hinzufügen — Format:**',
@@ -2136,7 +2136,7 @@ async function handleContact(query) {
     '**Beispiel:**',
     '`@contact 550e8400-e29b-41d4-a716-446655440000 Jan`',
     '',
-    'soul_id und Endpoint findest du im Marketplace-Tab des Peers unter "Dein Endpoint".',
+    'soul_id und Endpoint findest du auf der Peers-Seite unter "Dein Endpoint".',
   ].join('\n')
 
   if (!query) {
@@ -2236,7 +2236,7 @@ async function handleContact(query) {
 
     const lines = [`Peer **${label}** hinzugefügt ✓`, '', `Soul-ID: \`${soulId}\``]
     if (endpoint) lines.push(`Endpoint: \`${endpoint}\``)
-    lines.push('', 'Sichtbar im Agent-Marketplace unter **Zugang**.')
+    lines.push('', 'Sichtbar unter **Peers → MCP-Peers**.')
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
