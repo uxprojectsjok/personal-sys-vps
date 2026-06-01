@@ -62,9 +62,6 @@
                     Session starten
                     <SysIcon name="arrow" style="width:16px;height:16px" />
                   </button>
-                  <button class="btn btn-ghost" @click="onNav('soul')">
-                    sys.md ansehen
-                  </button>
                 </div>
               </div>
 
