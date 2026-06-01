@@ -6,9 +6,6 @@
         <div class="gate-card">
           <div class="gate-mark">SYS<span class="dot">.</span></div>
           <div class="gate-sub">{{ config.public.nodeName }}</div>
-          <div class="gate-orb">
-            <SysIcon name="soul" class="go-inner" />
-          </div>
           <h1>Save Your Soul<em>.</em></h1>
           <p class="welcome">{{ config.public.nodeTagline || 'Persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt.' }}</p>
           <div style="display:flex;flex-direction:column;gap:12px;width:100%">
