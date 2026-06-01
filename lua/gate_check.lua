@@ -11,6 +11,12 @@ if uri == "/gate" or uri:sub(1, 6) == "/gate/" then
   return
 end
 
+-- QR-Connect-Landingpage für Fremde (kein sys_gate Cookie erforderlich)
+if uri == "/connect" then
+  ngx.ctx.gate_done = true
+  return
+end
+
 -- try_files interne Weiterleitung zu /index.html würde diesen Handler ein zweites
 -- Mal auslösen (uri wäre dann "/index.html"). ngx.ctx bleibt im selben Request
 -- erhalten → einmal geprüft reicht.

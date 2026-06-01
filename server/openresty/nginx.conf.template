@@ -29,11 +29,12 @@ http {
   lua_package_path "/etc/openresty/lua/?.lua;;";
   lua_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
   lua_ssl_verify_depth 3;
-  lua_shared_dict vault_sessions  10m;
-  lua_shared_dict verify_cache     5m;
-  lua_shared_dict pol_tx_used     10m;
-  lua_shared_dict pol_access      10m;
-  lua_shared_dict gate_sessions    2m;
+  lua_shared_dict vault_sessions    10m;
+  lua_shared_dict verify_cache       5m;
+  lua_shared_dict pol_tx_used       10m;
+  lua_shared_dict pol_access        10m;
+  lua_shared_dict gate_sessions      2m;
+  lua_shared_dict connect_sessions   5m;
   client_max_body_size 150M;
 
   # Real IP — only needed if running behind a reverse proxy.
