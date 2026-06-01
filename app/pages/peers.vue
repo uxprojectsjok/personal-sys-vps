@@ -615,10 +615,10 @@ function onNav(id) {
 .pr-field { display: flex; flex-direction: column; gap: 5px; }
 .pr-field--full { grid-column: 1 / -1; }
 .pr-label {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  letter-spacing: 0; text-transform: none; color: var(--fg);
 }
-.pr-label-opt { text-transform: none; letter-spacing: 0; font-family: inherit; color: var(--fg-4); font-size: 12px; }
+.pr-label-opt { font-weight: 400; color: var(--fg-3); font-size: 14px; }
 .pr-input {
   background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-xs);
   color: var(--fg); font-family: var(--mono); font-size: 13px;
@@ -837,7 +837,7 @@ function onNav(id) {
 .pr-bearer-val {
   flex: 1; min-width: 0;
   padding: 14px 16px; border-right: 1px solid var(--line);
-  font-family: var(--mono); font-size: 14px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 14px; color: var(--fg);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   background: var(--surface-2);
 }
@@ -886,11 +886,11 @@ function onNav(id) {
   background: var(--surface-2);
 }
 .pr-mcp-ep-label {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-3); flex-shrink: 0;
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  letter-spacing: 0; text-transform: none; color: var(--fg); flex-shrink: 0;
 }
 .pr-mcp-ep-val {
-  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg);
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
