@@ -4,10 +4,6 @@
       <div class="gate-mark">SYS<span class="dot">.</span></div>
       <div class="gate-sub">Save Your Soul · Private Node</div>
 
-      <div class="gate-orb">
-        <SysIcon name="soul" class="go-inner" />
-      </div>
-
       <!-- ── Biometric unlock ── -->
       <template v-if="mode === 'biometric'">
         <h1>Willkommen zurück<em>.</em></h1>

@@ -376,7 +376,7 @@ function onNav(id) {
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg-2);
 }
 .vank-card--on .vank-status-row { color: var(--fg-2); background: rgba(109,184,154,0.04); }
 .vank-status-label { flex: 1; }
@@ -390,7 +390,7 @@ function onNav(id) {
 }
 .vank-wallet-addr { flex: 1; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vank-wallet-net  { flex: none; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); }
-.vank-wallet-hint { color: var(--fg-4); }
+.vank-wallet-hint { color: var(--fg-3); }
 
 /* ── Dot ── */
 .vank-dot {
@@ -412,7 +412,7 @@ function onNav(id) {
 .vank-divider {
   display: flex; align-items: center; gap: 12px;
   padding: 0;
-  color: var(--fg-4);
+  color: var(--fg-2);
   margin-bottom: 0;
 }
 .vank-divider::before, .vank-divider::after {
@@ -434,7 +434,7 @@ function onNav(id) {
 
 /* ── Tags ── */
 .vank-hint {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
   letter-spacing: 0.06em; margin: 0; line-height: 1.5;
 }
 .vank-input {
@@ -446,7 +446,7 @@ function onNav(id) {
 }
 .vank-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
 .vank-input:disabled { opacity: 0.4; cursor: not-allowed; }
-.vank-input::placeholder { color: var(--fg-4); }
+.vank-input::placeholder { color: var(--fg-3); }
 
 .vank-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .vank-chip {
@@ -466,7 +466,7 @@ function onNav(id) {
   border: 1px solid var(--line-2); border-radius: var(--r-xs);
   background: transparent; cursor: pointer;
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg-2);
   transition: all 0.15s; white-space: nowrap;
 }
 .vank-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); border-color: var(--line-2); }
