@@ -578,7 +578,7 @@ function onNav(id) {
   line-height: 1.1; margin: 8px 0 12px;
 }
 .pr-title em { font-style: italic; color: var(--accent); }
-.pr-lede { font-size: 15px; line-height: 1.65; color: var(--fg-2); margin: 0; max-width: 560px; }
+.pr-lede { font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px; }
 
 /* ── Toolbar ── */
 .pr-toolbar {
@@ -591,11 +591,11 @@ function onNav(id) {
 }
 .pr-tab {
   display: inline-flex; align-items: center; gap: 6px;
-  height: 34px; padding: 0 14px;
+  height: 38px; padding: 0 16px;
   border: 1px solid var(--line-2); border-radius: var(--r-xs);
   background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--fg-3); transition: all 0.15s;
+  font-family: var(--sans); font-size: 14px; font-weight: 500; letter-spacing: 0;
+  color: var(--fg-2); transition: all 0.15s;
 }
 .pr-tab:hover { color: var(--fg); border-color: var(--line-2); background: var(--surface-2); }
 .pr-tab--on { background: var(--accent-dim); border-color: rgba(109,184,154,0.40); color: var(--accent-bright); }
@@ -621,12 +621,12 @@ function onNav(id) {
 .pr-label-opt { font-weight: 400; color: var(--fg-3); font-size: 14px; }
 .pr-input {
   background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-xs);
-  color: var(--fg); font-family: var(--mono); font-size: 13px;
-  padding: 8px 12px; outline: none; transition: border-color 0.15s;
+  color: var(--fg); font-family: var(--mono); font-size: 14px;
+  padding: 10px 14px; outline: none; transition: border-color 0.15s;
 }
 .pr-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
-.pr-input::placeholder { color: var(--fg-4); }
-.pr-add-error { font-family: var(--mono); font-size: 12px; color: #e06c75; margin: 0; }
+.pr-input::placeholder { color: var(--fg-3); }
+.pr-add-error { font-family: var(--mono); font-size: 13px; color: #e06c75; margin: 0; }
 .pr-add-foot {
   display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px;
   border-top: 1px solid var(--line);
@@ -651,16 +651,16 @@ function onNav(id) {
   display: flex; align-items: center; gap: 8px;
   border: 1px solid var(--line); border-bottom: none;
   border-top: none;
-  padding: 10px 20px;
+  padding: 13px 20px;
   background: var(--surface);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  letter-spacing: 0; text-transform: none; color: var(--fg);
 }
 .pr-section:first-child .pr-section-label { border-top: 1px solid var(--line); }
 .pr-badge {
   background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.30);
   border-radius: 99px; color: var(--accent-bright);
-  font-size: 10px; padding: 1px 7px; letter-spacing: 0.06em;
+  font-size: 12px; padding: 2px 9px; letter-spacing: 0.03em;
 }
 
 /* ── Cards ── */
@@ -697,21 +697,21 @@ function onNav(id) {
 
 .pr-card-body { flex: 1; min-width: 0; }
 .pr-card-alias {
-  font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--fg);
+  font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr-card-id {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-4);
-  letter-spacing: 0.06em; margin-top: 2px;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  letter-spacing: 0.02em; margin-top: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr-card-domain {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-4);
-  margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr-card-status {
   display: flex; align-items: center; gap: 5px;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
   margin-top: 3px;
 }
 .pr-mutual-dot {
@@ -741,13 +741,13 @@ function onNav(id) {
 }
 .pr-removed {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 20px; border-bottom: 1px solid var(--line);
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
 }
 .pr-removed:last-child { border-bottom: none; }
-.pr-removed-alias { color: var(--fg-2); font-weight: 600; }
+.pr-removed-alias { color: var(--fg); font-weight: 600; }
 .pr-removed-text { flex: 1; }
-.pr-removed-ts { color: var(--fg-4); font-size: 11px; }
+.pr-removed-ts { color: var(--fg-3); font-size: 13px; }
 
 /* ── Empty ── */
 .pr-empty {
@@ -755,14 +755,14 @@ function onNav(id) {
   border: 1px solid var(--line); border-top: none;
   border-radius: 0 0 var(--r) var(--r);
   padding: 32px 20px;
-  font-family: var(--mono); font-size: 12.5px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   background: var(--surface);
 }
 
 /* ── Buttons ── */
 .pr-btn {
-  height: 36px; padding: 0 16px;
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+  height: 38px; padding: 0 16px;
+  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
   cursor: pointer; border-radius: var(--r-xs);
   display: inline-flex; align-items: center; gap: 6px;
   transition: all 0.15s;
@@ -875,7 +875,7 @@ function onNav(id) {
 
 .pr-mcp-empty {
   padding: 20px; border-top: 1px solid var(--line);
-  font-family: var(--mono); font-size: 12px; color: var(--fg-4);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
 }
 
 /* Own endpoint row */
