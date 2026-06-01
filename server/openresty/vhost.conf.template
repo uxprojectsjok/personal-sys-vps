@@ -719,6 +719,15 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_connections_peer.lua;
   }
 
+  # Subpaths: DELETE /{soul_id}, DELETE /ack/{id}, DELETE /incoming/{id}
+  location ~ ^/api/vault/connections/ {
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
   # ── Peer-Handshake Eingang (öffentlich, CORS) ────────────────────────────────
   location = /api/peer/connect {
     add_header Access-Control-Allow-Origin  "*"                    always;

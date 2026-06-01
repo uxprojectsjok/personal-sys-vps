@@ -65,6 +65,8 @@ function onNav(id) {
   if (id === 'calendar') { router.push('/kalender');   return }
   if (id === 'anchor')   { router.push('/verankern');    return }
   if (id === 'export')   { router.push('/exportieren'); return }
+  if (id === 'peers')    { router.push('/peers');       return }
+  if (id === 'connect')  { router.push('/verbindung');  return }
   drawerOpen.value = false
   router.push('/')
 }

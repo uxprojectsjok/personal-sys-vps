@@ -672,13 +672,15 @@ const MODAL_MAP = {
 }
 
 function onNav(id) {
-  if (id === 'chat')     { navigateTo('/session');  return }
+  if (id === 'chat')     { navigateTo('/session');    return }
   if (id === 'setup')    { navigateTo('/einrichten'); return }
-  if (id === 'soul')     { navigateTo('/soul');     return }
-  if (id === 'chronik')  { navigateTo('/chronik');  return }
-  if (id === 'maturity') { navigateTo('/reife');    return }
-  if (id === 'calendar') { navigateTo('/kalender'); return }
-  if (id === 'files')    { navigateTo('/dateien');  return }
+  if (id === 'soul')     { navigateTo('/soul');       return }
+  if (id === 'chronik')  { navigateTo('/chronik');    return }
+  if (id === 'maturity') { navigateTo('/reife');      return }
+  if (id === 'calendar') { navigateTo('/kalender');   return }
+  if (id === 'files')    { navigateTo('/dateien');    return }
+  if (id === 'peers')    { navigateTo('/peers');      return }
+  if (id === 'connect')  { navigateTo('/verbindung'); return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
