@@ -544,8 +544,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     height: calc(56px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: rgba(22,21,19,0.94);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid rgba(245,241,234,0.07);
   }
   .mob-tab {
