@@ -169,49 +169,44 @@
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="tokenModal = null" />
 
         <!-- Sheet -->
-        <div class="relative w-full max-w-md rounded-2xl border border-[var(--sys-border)] bg-[var(--sys-bg-surface)] overflow-hidden z-10">
-          <!-- Handle -->
+        <div class="relative w-full max-w-md overflow-hidden z-10"
+          style="background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-lg)">
+          <!-- Handle mobile -->
           <div class="flex justify-center pt-3 pb-1 sm:hidden">
-            <div class="w-8 h-1 rounded-full bg-[rgba(255,255,255,0.15)]" />
+            <div style="width:32px;height:4px;border-radius:99px;background:var(--line-2)" />
           </div>
 
-          <div class="px-5 pt-4 pb-2 flex items-start justify-between gap-3">
+          <div style="padding:16px 20px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
             <div>
-              <p class="text-sm font-medium text-[var(--sys-fg)]">{{ tokenModal.name }}</p>
-              <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">Service-Token</p>
+              <p style="font-size:14px;font-weight:500;color:var(--fg);margin:0">{{ tokenModal.name }}</p>
+              <p style="font-size:11px;color:var(--fg-3);margin:2px 0 0">Service-Token</p>
             </div>
-            <button
-              class="w-8 h-8 flex items-center justify-center rounded-none text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-none"
-              @click="tokenModal = null"
-              aria-label="Schließen"
-            >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <button class="icon-btn" @click="tokenModal = null" aria-label="Schließen" style="flex:none">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          <div class="px-5 pb-5 space-y-3">
+          <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:12px">
             <!-- Token-Anzeige -->
-            <div class="rounded-none bg-[rgba(255,255,255,0.03)] border border-[var(--sys-border)] px-4 py-3">
-              <p class="text-xs font-mono text-[var(--sys-fg)] break-all select-all leading-relaxed">{{ tokenModal.token }}</p>
+            <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px">
+              <p style="font-size:12px;font-family:var(--mono);color:var(--fg);word-break:break-all;margin:0;line-height:1.6;user-select:all">{{ tokenModal.token }}</p>
             </div>
 
             <!-- Verwendung -->
-            <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
+            <p style="font-size:13px;color:var(--fg-2);line-height:1.6;margin:0">
               Im Dienst als Authorization-Header eintragen:
-              <code class="block mt-1 text-white/70 bg-[rgba(255,255,255,0.04)] rounded px-2 py-1 break-all">Authorization: Bearer {{ tokenModal.token }}</code>
+              <code style="display:block;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--fg-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 10px;word-break:break-all">Authorization: Bearer {{ tokenModal.token }}</code>
             </p>
 
-            <!-- Verbindung testen -->
-            <div class="flex gap-2">
+            <!-- Verbindung testen + Kopieren -->
+            <div style="display:flex;gap:8px">
               <button
-                class="flex-1 py-2.5 rounded-none text-xs font-medium transition-all min-h-[40px] border active:scale-[0.98] disabled:opacity-40"
-                :class="testResult === 'ok'
-                  ? 'border-white/25 text-white/80 bg-[rgba(255,255,255,0.07)]'
-                  : testResult === 'error'
-                    ? 'border-[rgba(239,68,68,0.3)] text-red-400 bg-[rgba(239,68,68,0.06)]'
-                    : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.04)]'"
+                class="btn btn-sm"
+                style="flex:1"
+                :class="testResult === 'ok' ? 'btn-ghost' : testResult === 'error' ? '' : 'btn-ghost'"
+                :style="testResult === 'error' ? 'border:1px solid rgba(224,108,117,0.35);color:#e06c75;background:rgba(224,108,117,0.07)' : ''"
                 :disabled="testLoading"
                 @click="testConnection(tokenModal.token)"
               >
@@ -221,12 +216,10 @@
                 <span v-else>Verbindung testen</span>
               </button>
 
-              <!-- Kopier-Button -->
               <button
-                class="flex-1 py-2.5 rounded-none text-xs font-medium transition-all min-h-[40px] border active:scale-[0.98]"
-                :class="copied === tokenModal.token
-                  ? 'border-white/25 text-white/80 bg-[rgba(255,255,255,0.07)]'
-                  : 'border-[rgba(255,255,255,0.12)] text-[var(--sys-fg)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)]'"
+                class="btn btn-sm"
+                style="flex:1"
+                :class="copied === tokenModal.token ? 'btn-ghost' : 'btn-primary'"
                 @click="copyToken(tokenModal.token)"
               >
                 {{ copied === tokenModal.token ? '✓ Kopiert' : 'Token kopieren' }}
@@ -234,7 +227,7 @@
             </div>
 
             <!-- Test-Hinweis bei Fehler -->
-            <p v-if="testResult === 'error' && testError === 'Vault gesperrt'" class="text-xs text-white/55 leading-relaxed">
+            <p v-if="testResult === 'error' && testError === 'Vault gesperrt'" style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">
               Der Vault-Zugang ist auf dem Server abgelaufen. Bitte im Vault-Panel sperren und neu öffnen.
             </p>
             <p v-if="testResult === 'error' && testError.startsWith('Schlüssel falsch')" class="text-xs text-white/55 leading-relaxed">
