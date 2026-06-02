@@ -489,7 +489,7 @@ function onNav(id) {
   border-radius: var(--r-xs);
 }
 .exp-warn-box svg { width: 15px; height: 15px; flex: none; color: var(--fg-3); margin-top: 1px; }
-.exp-warn-box p   { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0; }
+.exp-warn-box p   { font-size: 13px; color: var(--fg); font-weight: 600; line-height: 1.6; margin: 0; }
 .exp-warn-box--yellow svg { color: rgba(251,191,36,0.65); }
 .exp-warn-box--yellow p   { color: rgba(251,191,36,0.65); }
 
