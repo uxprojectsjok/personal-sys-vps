@@ -132,23 +132,24 @@
               v-if="!vaultConnected"
               @click="connectLocalVault"
               :disabled="connectingLocal"
-              class="w-full h-12 flex items-center gap-3 px-4 rounded-none bg-[var(--sys-violet)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 active:scale-[0.99] transition-all"
+              class="btn btn-primary w-full"
+              style="height:48px; justify-content:flex-start; gap:12px; border-radius:var(--r);"
             >
-              <svg class="w-4 h-4 flex-none text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none;opacity:0.7">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
               </svg>
-              <span class="flex-1 text-left">{{ connectingLocal ? 'Wählen…' : 'Lokal' }}</span>
-              <span class="text-xs text-white/35">FileSystem API</span>
+              <span style="flex:1; text-align:left">{{ connectingLocal ? 'Wählen…' : 'Lokal' }}</span>
+              <span style="font-size:11px;opacity:0.5">FileSystem API</span>
             </button>
 
             <!-- Cloud-Vault löschen -->
             <button
               @click="handleDeleteVault"
               :disabled="deleteLoading"
-              class="w-full flex items-center gap-3 px-4 py-3 rounded-none transition-all duration-150 text-left disabled:opacity-50"
-              style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);"
+              class="w-full flex items-center gap-3 px-4 py-3 transition-all duration-150 text-left disabled:opacity-50"
+              style="background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r);"
             >
-              <div class="w-7 h-7 rounded-none flex items-center justify-center flex-none" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10)">
+              <div class="w-7 h-7 flex items-center justify-center flex-none" style="background: var(--surface-3); border: 1px solid var(--line-2); border-radius: var(--r-xs);">
                 <svg class="w-3.5 h-3.5" style="color:var(--sys-fg-dim)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
                 </svg>
@@ -285,10 +286,10 @@
         <div class="flex items-center justify-between px-5 py-4 border-t border-[var(--sys-border)]">
           <button
             v-if="currentStep > 0"
-            class="flex items-center gap-1.5 text-xs font-medium text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition-colors py-2 px-3 rounded-none hover:bg-[rgba(255,255,255,0.05)] min-h-[36px]"
+            class="btn btn-sm btn-quiet"
             @click="currentStep--"
           >
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
             </svg>
             Zurück
@@ -302,25 +303,23 @@
 
           <button
             v-if="currentStep < steps.length - 1"
-            class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-none min-h-[36px] transition-all duration-150 active:scale-[0.97]"
-            :class="steps[currentStep].done
-              ? 'bg-[var(--sys-violet)] text-white hover:opacity-90'
-              : 'bg-[rgba(128,90,213,0.12)] text-[var(--sys-fg-muted)] border border-[rgba(139,92,246,0.22)] hover:bg-[rgba(128,90,213,0.20)]'"
+            class="btn btn-sm"
+            :class="steps[currentStep].done ? 'btn-primary' : 'btn-ghost'"
             @click="currentStep++"
           >
             Weiter
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
             </svg>
           </button>
 
           <button
             v-else
-            class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-none min-h-[36px] transition-all duration-150 active:scale-[0.97] bg-[var(--sys-violet)] text-white hover:opacity-90"
+            class="btn btn-sm btn-primary"
             @click="modal ? $emit('close') : (open = false)"
           >
             Fertig
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
             </svg>
           </button>
