@@ -342,8 +342,8 @@ function onNav(id) {
   margin-bottom: 6px;
 }
 .ch-entry-title {
-  font-family: var(--sans); font-size: 15px; font-weight: 500;
-  color: var(--fg); letter-spacing: -0.01em;
+  font-family: var(--serif); font-size: 17px; font-weight: 400;
+  color: var(--fg); letter-spacing: -0.015em;
 }
 .ch-time {
   font-family: var(--mono); font-size: 11px; color: var(--fg-4);
@@ -361,7 +361,7 @@ function onNav(id) {
 .ch-badge-genesis { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .ch-entry-body {
-  font-size: 14px; line-height: 1.65; color: var(--fg-2);
+  font-size: 15px; line-height: 1.65; color: var(--fg-2);
   margin: 0; word-break: break-word;
 }
 
