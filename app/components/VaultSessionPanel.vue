@@ -54,7 +54,7 @@
     <Transition name="slide-up">
       <div v-if="open || headless" class="px-5 pb-5 space-y-4 border-t border-[var(--sys-border)]">
         <p class="amm-prose pt-4">
-          Zeitfenster für externe Dienste. Nur wenn der Vault <strong style="color:var(--sys-fg)">offen</strong> ist,
+          Zeitfenster für externe Dienste. Nur wenn der Vault <strong>offen</strong> ist,
           können verbundene Dienste auf deine Soul-Daten zugreifen. Du bestimmst die Dauer.
         </p>
 
@@ -294,12 +294,11 @@ async function handleLock() {
 .amm-prose {
   font-family: var(--sans);
   font-size: 13px;
+  font-weight: 500;
   line-height: 1.6;
-  color: var(--fg-2);
-  margin: 0;
+  color: var(--fg);
+  margin: 0 0 20px;
 }
-/* Override global sys-cta-primary border-radius */
-button { border-radius: 0 !important; }
 .slide-up-enter-active, .slide-up-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>
