@@ -76,28 +76,19 @@
                   : (isDark ? 'background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.09)' : 'background: rgba(6,14,28,0.03); border: 1.5px solid rgba(6,14,28,0.09)')"
             >
               <!-- Done checkmark -->
-              <svg v-if="step.done && currentStep !== i" class="w-3.5 h-3.5"
-                :style="isDark ? 'color: rgba(255,255,255,0.75)' : 'color: rgba(6,14,28,0.75)'"
+              <svg v-if="step.done && currentStep !== i" class="w-3.5 h-3.5" style="color:var(--fg-2)"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
               </svg>
               <!-- Step icon -->
               <component v-else :is="step.icon" class="w-3.5 h-3.5"
-                :style="currentStep === i
-                  ? (isDark ? 'color: rgba(255,255,255,0.90)' : 'color: rgba(6,14,28,0.90)')
-                  : step.done
-                    ? (isDark ? 'color: rgba(255,255,255,0.60)' : 'color: rgba(6,14,28,0.60)')
-                    : (isDark ? 'color: rgba(255,255,255,0.30)' : 'color: rgba(6,14,28,0.35)')"
+                :style="currentStep === i ? 'color:var(--fg)' : step.done ? 'color:var(--fg-2)' : 'color:var(--fg-4)'"
               />
             </div>
             <!-- Label -->
             <span
               class="text-xs font-semibold tracking-wider uppercase transition-colors leading-none"
-              :style="currentStep === i
-                ? (isDark ? 'color: rgba(255,255,255,0.95)' : 'color: rgba(6,14,28,0.92)')
-                : step.done
-                  ? (isDark ? 'color: rgba(255,255,255,0.60)' : 'color: rgba(6,14,28,0.58)')
-                  : (isDark ? 'color: rgba(255,255,255,0.28)' : 'color: rgba(6,14,28,0.32)')"
+              :style="currentStep === i ? 'color:var(--fg)' : step.done ? 'color:var(--fg-2)' : 'color:var(--fg-4)'"
             >{{ step.label }}</span>
           </button>
         </div>
@@ -112,10 +103,10 @@
             <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
               <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:var(--sys-violet)' : 'background: rgba(255,255,255,0.15)'"></span>
               <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-white/75">
+                <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
                   {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}
                 </p>
-                <p class="text-xs text-white/55 truncate">
+                <p style="font-size:13px;color:var(--fg-3);margin:0" class="truncate">
                   {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : 'Lokaler Ordner') : 'Vault über Lokal oder Cloud verbinden' }}
                 </p>
               </div>
@@ -139,7 +130,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
               </svg>
               <span style="flex:1; text-align:left">{{ connectingLocal ? 'Wählen…' : 'Lokal' }}</span>
-              <span style="font-size:11px;opacity:0.5">FileSystem API</span>
+              <span style="font-size:11px;color:var(--fg-3)">FileSystem API</span>
             </button>
 
             <!-- Cloud-Vault löschen -->
@@ -195,7 +186,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 Anthropic API-Key
-                <span v-if="cfgAnthSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgAnthSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
                 placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
@@ -206,7 +197,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 WaveSpeed API-Key
-                <span v-if="cfgWaveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgWaveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
@@ -218,7 +209,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 ElevenLabs API-Key
-                <span v-if="cfgLabsSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgLabsSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
@@ -230,7 +221,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 ElevenLabs Agent-URL
-                <span v-if="cfgAgentSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgAgentSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgAgentUrl" type="text" class="sys-input sys-input--mono"
                 placeholder="https://elevenlabs.io/app/talk-to?agent_id=…"
@@ -242,7 +233,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 Brave Search API-Key
-                <span v-if="cfgBraveSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgBraveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgBraveKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgBraveSet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
@@ -254,15 +245,15 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 Pinata JWT
-                <span v-if="cfgPinataSet" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-ok);text-transform:none;letter-spacing:0;margin-left:8px">gespeichert</span>
+                <span v-if="cfgPinataSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
               </label>
               <input v-model="cfgPinataJwt" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgPinataSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
                 autocomplete="off" spellcheck="false"
                 :style="cfgPinataSet ? 'border-color:var(--sys-ok)' : ''" />
-              <p style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);letter-spacing:0.08em;margin:0">
+              <p style="font-size:11px;color:var(--fg-3);letter-spacing:0.04em;margin:0">
                 Für IPFS-Veröffentlichung und Blockchain-Anchoring.
-                <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--sys-accent-bright)">app.pinata.cloud</a>
+                <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--accent-bright)">app.pinata.cloud</a>
               </p>
             </div>
 
@@ -297,7 +288,7 @@
           <div v-else />
 
           <!-- Step counter -->
-          <span class="text-xs font-mono text-[var(--sys-fg-dim)] tabular-nums">
+          <span style="font-size:12px;font-family:var(--mono);color:var(--fg-3)">
             {{ currentStep + 1 }} / {{ steps.length }}
           </span>
 
