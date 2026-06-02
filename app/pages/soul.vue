@@ -94,10 +94,8 @@
     </div>
 
     <!-- Not loaded yet -->
-    <div v-else class="sys-loading">
-      <span>SYS · sys.md lädt</span>
-    </div>
-  </ClientOnly>
+    <SysPageLoading v-else />
+</ClientOnly>
 </template>
 
 <script setup>
@@ -111,7 +109,7 @@ import { computeMaturity } from '#shared/utils/soulMaturity.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer } = useSoul()
+const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer, isLoaded } = useSoul()
 const { allFiles } = useVault()
 
 const syncedFiles = computed(() => {

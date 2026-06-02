@@ -170,11 +170,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · lädt</span>
-    </div>
-    <ConfirmModal />
+    <SysPageLoading v-else />
+<ConfirmModal />
   </ClientOnly>
 </template>
 
@@ -188,7 +185,7 @@ import { computeMaturity } from '#shared/utils/soulMaturity.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { hasSoul, soulMeta, soulToken, soulContent } = useSoul() // soulToken needed for authHeaders
+const { hasSoul, soulMeta, soulToken, soulContent, isLoaded } = useSoul() // soulToken needed for authHeaders
 const maturity = computed(() => computeMaturity(soulContent.value).score)
 const { ask } = useConfirm()
 

@@ -174,11 +174,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · Dateien lädt</span>
-    </div>
-  </ClientOnly>
+    <SysPageLoading v-else />
+</ClientOnly>
 </template>
 
 <script setup>
@@ -192,7 +189,7 @@ import { useVaultSession } from '~/composables/useVaultSession.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText } = useSoul()
+const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded } = useSoul()
 const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, writeFile, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
 const { vaultKey } = useVaultSession()

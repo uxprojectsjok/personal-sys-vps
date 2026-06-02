@@ -30,11 +30,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · lädt</span>
-    </div>
-    <ConfirmModal />
+    <SysPageLoading v-else />
+<ConfirmModal />
   </ClientOnly>
 </template>
 
@@ -46,7 +43,7 @@ import { useSoul } from '~/composables/useSoul.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, soulToken } = useSoul()
+const { soulContent, soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
