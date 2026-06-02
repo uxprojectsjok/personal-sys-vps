@@ -669,6 +669,7 @@ function onNav(id) {
   if (id === 'files')    { navigateTo('/dateien');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/verbindung'); return }
+  if (id === 'earnings') { navigateTo('/einnahmen');  return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
