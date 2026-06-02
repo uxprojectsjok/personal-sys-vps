@@ -161,6 +161,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .is-collapsed .sb-collapse { margin-left: 0; }
 .is-collapsed .sb-mark { display: none; }
 .is-collapsed .sb-head { justify-content: center; padding: 20px 0 14px; }
+.is-collapsed .sb-head-top { justify-content: center; }
 
 /* soul identity card */
 .sb-soul {
@@ -192,7 +193,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   text-transform: uppercase; color: var(--fg); font-weight: 500;
   padding: 0 12px 7px;
 }
-.is-collapsed .sb-group-label { text-align: center; padding: 0 0 7px; font-size: 8px; }
+.is-collapsed .sb-group-label { display: none; }
 .nav-item {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 9px 12px; border-radius: var(--r-sm);
@@ -214,6 +215,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   text-transform: uppercase; color: var(--c-synth); border: 1px solid rgba(210,172,110,0.4);
   border-radius: var(--r-pill); padding: 1px 6px;
 }
+.is-collapsed .sb-nav { padding: 8px 10px 14px; }
 .is-collapsed .nav-item { justify-content: center; padding: 11px 0; }
 .is-collapsed .nav-item span:not(.nav-ic), .is-collapsed .nav-badge, .is-collapsed .nav-tag { display: none; }
 
