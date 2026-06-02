@@ -464,6 +464,7 @@ function onNav(id) {
   if (id === 'soul')     { router.push('/soul');       return }
   if (id === 'chronik')  { router.push('/chronik');    return }
   if (id === 'market')   { router.push('/marketplace'); return }
+  if (id === 'earnings') { router.push('/einnahmen');   return }
   if (id === 'maturity') { router.push('/reife');      return }
   if (id === 'calendar') { router.push('/kalender');   return }
   if (id === 'anchor')   { router.push('/verankern');    return }

@@ -413,6 +413,7 @@ function onNav(id) {
   if (id === 'chronik')  { router.push('/chronik'); return }
   if (id === 'files')    { router.push('/dateien');    return }
   if (id === 'market')   { router.push('/marketplace'); return }
+  if (id === 'earnings') { router.push('/einnahmen');   return }
   if (id === 'settings') { router.push('/einstellungen'); return }
   if (id === 'anchor')   { router.push('/verankern');    return }
   if (id === 'export')   { router.push('/exportieren'); return }
