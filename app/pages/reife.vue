@@ -264,10 +264,10 @@ function cardDesc(card) {
   display: flex; align-items: center; gap: 12px;
   padding: 9px 14px; border-radius: 6px;
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
-  color: var(--fg-3); transition: background 0.15s, color 0.15s;
+  color: var(--fg-2); transition: background 0.15s, color 0.15s;
 }
-.rf-level.done { color: var(--fg-3); }
-.rf-level.done .rf-lv-name { color: var(--fg-2); }
+.rf-level.done { color: var(--fg-2); }
+.rf-level.done .rf-lv-name { color: var(--fg); }
 .rf-level.active {
   background: rgba(109,184,154,0.10);
   border: 1px solid rgba(109,184,154,0.25);
@@ -283,8 +283,8 @@ function cardDesc(card) {
 .rf-level.done .rf-lv-check svg { width: 12px; height: 12px; }
 .rf-level.active .rf-lv-check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .rf-lv-num { font-size: 9px; color: inherit; }
-.rf-lv-name { flex: 1; text-transform: uppercase; font-size: 11px; letter-spacing: 0.10em; }
-.rf-lv-range { font-size: 10px; color: var(--fg-4); white-space: nowrap; }
+.rf-lv-name { flex: 1; text-transform: uppercase; font-size: 13px; letter-spacing: 0.08em; }
+.rf-lv-range { font-size: 11px; color: var(--fg-3); white-space: nowrap; }
 
 /* ── Stat cards ── */
 .rf-section-head {
@@ -312,7 +312,7 @@ function cardDesc(card) {
 }
 .rf-card-pct small { font-family: var(--mono); font-size: 10px; color: var(--fg-3); vertical-align: super; }
 .rf-card-title { font-size: 13px; font-weight: 600; color: var(--fg); line-height: 1.2; }
-.rf-card-desc { font-size: 12px; color: var(--fg-3); line-height: 1.45; font-family: var(--mono); flex: 1; }
+.rf-card-desc { font-size: 13px; color: var(--fg-2); line-height: 1.5; font-family: var(--mono); flex: 1; }
 .rf-card-bar {
   height: 2px; background: var(--line); margin-top: 6px; border-radius: 1px; overflow: hidden;
 }
