@@ -521,7 +521,7 @@ onMounted(() => {
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
 .dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; flex: none; }
-.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 13px; color: var(--fg-3); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
+.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 14px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
 .dt-tab:last-child { border-right: none; }
 .dt-tab.on { background: var(--surface); color: var(--fg); }
 .dt-tab:hover:not(.on) { color: var(--fg-2); }
@@ -567,7 +567,7 @@ onMounted(() => {
   display: grid; grid-template-columns: 1fr 110px 100px;
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
-.dt-table-head span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); }
+.dt-table-head span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
 .dt-row {
   display: grid; grid-template-columns: 1fr 110px 100px;
   padding: 9px 14px; align-items: center;
