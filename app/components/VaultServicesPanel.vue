@@ -44,7 +44,7 @@
 
         <!-- Erklärung -->
         <div class="px-5 pt-4 pb-3">
-          <p class="text-xs leading-relaxed" style="color:var(--fg-2)">
+          <p style="font-size:13px;line-height:1.6;color:var(--fg-2);margin:0">
             Jeder Dienst erhält einen eigenen Service-Token.
             Dieser Token kommt als <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
             in den Webhook-Header externer Dienste.
