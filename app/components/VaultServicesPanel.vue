@@ -104,6 +104,7 @@
             type="text"
             placeholder="Name (z. B. Mein KI-Dienst)"
             class="sys-input"
+            style="font-size:13px"
             aria-label="Name des neuen Dienstes"
           />
 
