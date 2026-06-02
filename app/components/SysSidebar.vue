@@ -79,6 +79,7 @@ const NAV = [
     { id: 'peers', icon: 'peers', label: 'Peers' },
     { id: 'connect', icon: 'qr', label: 'Verbindung', tag: 'neu' },
     { id: 'market', icon: 'market', label: 'Marketplace' },
+    { id: 'earnings', icon: 'earn', label: 'Einnahmen' },
   ]},
   { group: 'Werkzeuge', items: [
     { id: 'anchor', icon: 'anchor', label: 'Verankern' },
