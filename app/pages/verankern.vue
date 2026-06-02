@@ -180,11 +180,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · lädt</span>
-    </div>
-    <ConfirmModal />
+    <SysPageLoading v-else />
+<ConfirmModal />
   </ClientOnly>
 </template>
 
@@ -197,7 +194,7 @@ import { useChainAnchor } from '~/composables/useChainAnchor.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { hasSoul, soulMeta, soulContent, pushToServer } = useSoul()
+const { hasSoul, soulMeta, soulContent, pushToServer, isLoaded } = useSoul()
 
 const {
   walletAddress, currentNetwork, isConnected, isAnchoring, isProvingIdentity,

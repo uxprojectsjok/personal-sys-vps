@@ -82,12 +82,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS &middot; cert validating</span>
-    </div>
-
-    <Modal :open="certErrorVisible" title="Zertifikat ungueltig" confirm-text="Seite neu laden" :hide-cancel="true" @confirm="reloadPage">
+    <SysPageLoading v-else />
+<Modal :open="certErrorVisible" title="Zertifikat ungueltig" confirm-text="Seite neu laden" :hide-cancel="true" @confirm="reloadPage">
       Das Soul-Zertifikat konnte nicht validiert werden. Die Seite wird neu geladen.
     </Modal>
     <SoulAnchorModal :is-open="anchorModalOpen" @close="anchorModalOpen = false" />
@@ -125,7 +121,7 @@ import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
-const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer } = useSoul()
+const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer, isLoaded } = useSoul()
 const { messages, clearSession, addMessage, toApiMessages } = useSession()
 const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()

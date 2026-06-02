@@ -93,11 +93,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · Chronik lädt</span>
-    </div>
-  </ClientOnly>
+    <SysPageLoading v-else />
+</ClientOnly>
 </template>
 
 <script setup>
@@ -109,7 +106,7 @@ import { parseSoul } from '#shared/utils/soulParser.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul } = useSoul()
+const { soulContent, soulMeta, hasSoul, isLoaded } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)

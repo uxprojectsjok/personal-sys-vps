@@ -209,11 +209,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · lädt</span>
-    </div>
-    <ConfirmModal />
+    <SysPageLoading v-else />
+<ConfirmModal />
   </ClientOnly>
 </template>
 
@@ -228,7 +225,7 @@ import { useApiContext } from '~/composables/useApiContext.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { hasSoul, soulContent, soulMeta, soulToken } = useSoul()
+const { hasSoul, soulContent, soulMeta, soulToken, isLoaded } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles } = useApiContext()
 const { readAllVaultFiles, isConnected: vaultConnected } = useVault()
 const { mnemonic, isEncrypting, encryptError, encrypt } = useSoulEncrypt()

@@ -106,11 +106,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-
-    <div v-else class="sys-loading">
-      <span>SYS · Einnahmen lädt</span>
-    </div>
-  </ClientOnly>
+    <SysPageLoading v-else />
+</ClientOnly>
 </template>
 
 <script setup>
@@ -121,7 +118,7 @@ import { useSoul } from '~/composables/useSoul.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken } = useSoul()
+const { soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)

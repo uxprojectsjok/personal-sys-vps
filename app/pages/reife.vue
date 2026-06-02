@@ -73,8 +73,8 @@
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
-    <div v-else class="sys-loading"><span>SYS · wird geladen</span></div>
-    <SysMobileNav />
+    <SysPageLoading v-else />
+<SysMobileNav />
   </ClientOnly>
 </template>
 
@@ -87,7 +87,7 @@ import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
-const { hasSoul, soulContent, soulMeta, clear: _clear } = useSoul()
+const { hasSoul, soulContent, soulMeta, clear: _clear, isLoaded } = useSoul()
 const { allFiles } = useVault()
 
 const drawerOpen      = ref(false)
