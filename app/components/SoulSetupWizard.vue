@@ -65,15 +65,13 @@
           >
             <!-- Step icon circle -->
             <div
-              class="w-8 h-8 rounded-none flex items-center justify-center transition-all duration-200 relative"
-              :class="currentStep === i
-                ? 'scale-110 shadow-lg'
-                : 'scale-100'"
+              class="w-8 h-8 flex items-center justify-center transition-all duration-200 relative"
+              :class="currentStep === i ? 'scale-110' : 'scale-100'"
               :style="currentStep === i
-                ? (isDark ? 'background: rgba(255,255,255,0.10); border: 1.5px solid rgba(255,255,255,0.35); box-shadow: 0 0 10px var(--sys-glow)' : 'background: rgba(6,14,28,0.08); border: 1.5px solid rgba(6,14,28,0.28); box-shadow: 0 0 10px var(--sys-glow)')
+                ? 'background:var(--surface-3);border:1.5px solid var(--line-2);border-radius:var(--r-xs)'
                 : step.done
-                  ? (isDark ? 'background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.20)' : 'background: rgba(6,14,28,0.05); border: 1.5px solid rgba(6,14,28,0.18)')
-                  : (isDark ? 'background: rgba(255,255,255,0.03); border: 1.5px solid rgba(255,255,255,0.09)' : 'background: rgba(6,14,28,0.03); border: 1.5px solid rgba(6,14,28,0.09)')"
+                  ? 'background:var(--surface-2);border:1.5px solid var(--line);border-radius:var(--r-xs)'
+                  : 'background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-xs)'"
             >
               <!-- Done checkmark -->
               <svg v-if="step.done && currentStep !== i" class="w-3.5 h-3.5" style="color:var(--fg-2)"
@@ -100,8 +98,8 @@
           <div v-show="currentStep === 0" class="p-5 space-y-3">
 
             <!-- Status -->
-            <div class="flex items-center gap-3 px-4 py-3 rounded-none bg-[rgba(255,255,255,0.04)] border border-white/10">
-              <span class="w-2 h-2 rounded-full flex-none" :style="vaultConnected ? 'background:var(--sys-violet)' : 'background: rgba(255,255,255,0.15)'"></span>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm)">
+              <span style="width:8px;height:8px;border-radius:50%;flex:none" :style="vaultConnected ? 'background:var(--accent)' : 'background:var(--fg-4)'"></span>
               <div class="flex-1 min-w-0">
                 <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
                   {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}
