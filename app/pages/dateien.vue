@@ -567,7 +567,7 @@ onMounted(() => {
   display: grid; grid-template-columns: 1fr 110px 100px;
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
-.dt-table-head span { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }
+.dt-table-head span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); }
 .dt-row {
   display: grid; grid-template-columns: 1fr 110px 100px;
   padding: 9px 14px; align-items: center;
@@ -586,11 +586,11 @@ onMounted(() => {
 .dt-icon-image { background: rgba(196,169,110,0.15); color: #c4a96e; }
 .dt-icon-doc   { background: rgba(244,241,234,0.07); color: var(--fg-3); }
 .dt-name-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.dt-filename { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-filetype { font-family: var(--mono); font-size: 10px; color: var(--fg-4); letter-spacing: 0.06em; }
+.dt-filename { font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dt-filetype { font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.04em; }
 
 /* ── Meta / status ── */
-.dt-meta { font-family: var(--mono); font-size: 12px; color: var(--fg-4); }
+.dt-meta { font-family: var(--mono); font-size: 13px; color: var(--fg-3); }
 .dt-status-sync { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
 .dt-status-local { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
 
