@@ -3833,17 +3833,17 @@ defineExpose({
 }
 .mode-cmd-toggle {
   display: inline-flex; align-items: center; gap: 3px;
-  background: transparent; border: 1px solid transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--fg-4); padding: 3px 8px;
+  background: var(--surface-2); border: 1px solid var(--line); cursor: pointer;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--fg-2); padding: 4px 10px;
   border-radius: 999px;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
-.mode-cmd-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
+.mode-cmd-toggle:hover { color: var(--fg); border-color: var(--line-2); }
 .mode-cmd-toggle.active {
-  color: var(--accent); border-color: rgba(109,184,154,0.30);
-  background: rgba(109,184,154,0.08);
+  color: var(--accent); border-color: rgba(109,184,154,0.35);
+  background: var(--accent-dim);
 }
 .mode-at { color: var(--accent); font-weight: 700; }
 .mode-sep {
@@ -3928,16 +3928,16 @@ defineExpose({
 
 .cmd-chip {
   display: inline-flex; align-items: center; gap: 1px;
-  padding: 5px 11px; border-radius: 999px;
-  background: rgba(109,184,154,0.07); border: 1px solid rgba(109,184,154,0.15);
-  color: var(--fg-2);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  padding: 6px 13px; border-radius: 999px;
+  background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
+  color: var(--accent);
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
   cursor: pointer; white-space: nowrap;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .cmd-chip:hover {
-  background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38);
-  color: var(--fg);
+  background: rgba(109,184,154,0.22); border-color: var(--accent);
+  color: var(--accent-bright);
 }
 
 /* ── Filter strip (mobile dock) ── */
@@ -4010,12 +4010,12 @@ defineExpose({
   width: 44px; flex-shrink: 0;
   border: 0;
   background: transparent; cursor: pointer;
-  color: var(--fg-3);
+  color: var(--accent);
   transition: color 0.12s, background 0.12s;
 }
 .dock-icon:hover:not(:disabled) {
-  color: var(--fg);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-bright);
+  background: var(--accent-dim);
 }
 .dock-icon:disabled { opacity: 0.3; cursor: not-allowed; }
 .dock-icon-svg { width: 16px; height: 16px; }
