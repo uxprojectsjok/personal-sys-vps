@@ -310,8 +310,8 @@ async function handleLock() {
 
 <style scoped>
 .amm-prose {
-  font-family: 'Noto Serif', Georgia, serif;
-  font-size: 14px;
+  font-family: var(--sans);
+  font-size: 13px;
   line-height: 1.6;
   color: var(--fg-2);
   margin: 0;

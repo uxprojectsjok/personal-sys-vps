@@ -61,7 +61,7 @@
           <button
             @click="onSave"
             :disabled="isSaving"
-            class="sys-btn-ed sys-btn-ed--ghost"
+            class="btn btn-primary"
             style="width:100%;justify-content:center;margin-top:4px"
           >{{ isSaving ? 'Speichern …' : 'Berechtigungen speichern' }}</button>
 
@@ -246,10 +246,10 @@ async function onSave() {
 .api-toggle-thumb--sm.is-on { transform: translateX(12px); }
 
 .api-panel-prose {
-  font-family: var(--sys-serif);
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--sys-fg-muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-2);
   margin: 6px 0 0;
 }
 
@@ -260,15 +260,15 @@ async function onSave() {
   cursor: pointer;
 }
 .api-panel-perm-label {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
-  color: var(--sys-fg-muted);
+  color: var(--fg);
   flex: 1;
 }
 .api-panel-perm-hint {
-  font-family: var(--sys-mono);
-  font-size: 12px;
-  color: var(--sys-fg-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-3);
   letter-spacing: 0.06em;
 }
 
