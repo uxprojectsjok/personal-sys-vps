@@ -416,6 +416,32 @@ function onNav(id) {
 .pr-tab-ic { width: 14px; height: 14px; flex: none; }
 
 /* ── Add form ── */
+/* ── Add form fields ── */
+.f-field { display: flex; flex-direction: column; gap: 7px; }
+.f-label {
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  color: var(--fg); letter-spacing: 0;
+}
+.f-label-opt { font-weight: 400; color: var(--fg-3); font-size: 12px; }
+.f-inp {
+  width: 100%; padding: 10px 13px;
+  background: var(--surface-3); border: 1px solid var(--line-2);
+  border-radius: var(--r-xs); color: var(--fg);
+  font-family: var(--sans); font-size: 14px;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+}
+.f-inp--mono { font-family: var(--mono); font-size: 13px; }
+.f-inp::placeholder { color: var(--fg-3); }
+.f-inp:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.f-error {
+  font-size: 13px; color: #e06c75;
+  border-left: 2px solid #e06c75; padding-left: 10px; margin: 0;
+}
+
 .pr-add-form {
   border: 1px solid var(--line);
   border-radius: var(--r);
