@@ -353,7 +353,6 @@
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
-        <span v-else class="mode-status">Standard</span>
       </div>
 
       <!-- Attachment previews -->
@@ -3867,35 +3866,35 @@ defineExpose({
 .mode-activity span:nth-child(3) { animation-delay: 0.4s; }
 
 .model-btn {
-  background: transparent;
-  border: 1px solid var(--rule-2);
+  background: var(--accent-dim);
+  border: 1px solid rgba(109,184,154,0.30);
   border-radius: 999px;
-  color: var(--fg-2);
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 3px 10px;
+  color: var(--accent);
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 4px 13px;
   cursor: pointer;
   outline: 0;
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.model-btn:hover { color: var(--fg); border-color: var(--rule); }
+.model-btn:hover { color: var(--accent-bright); border-color: var(--accent); background: rgba(109,184,154,0.22); }
 
 .archivar-toggle {
   display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid transparent;
-  background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--fg-2); padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2); cursor: pointer;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--fg-2); padding: 4px 12px;
   border-radius: 999px;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
-.archivar-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
+.archivar-toggle:hover { color: var(--fg); border-color: var(--line-2); }
 .archivar-toggle.active {
   color: var(--accent);
-  border-color: rgba(109, 184, 154, 0.30);
-  background: rgba(109, 184, 154, 0.08);
+  border-color: rgba(109, 184, 154, 0.35);
+  background: var(--accent-dim);
 }
 .archivar-dot {
   width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
@@ -4209,9 +4208,9 @@ defineExpose({
   /* chip strip wraps on mobile */
   .cmd-strip { flex-wrap: wrap; overflow-x: visible; padding: 4px 0 2px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
-  .archivar-toggle { font-size: 11px; padding: 3px 8px; }
+  .archivar-toggle { font-size: 12px; padding: 4px 10px; }
   .archivar-dot { width: 5px; height: 5px; }
-  .model-btn { font-size: 11px; padding: 2px 9px; }
+  .model-btn { font-size: 12px; padding: 4px 10px; }
   .mode-cmd-toggle { font-size: 11px; padding: 2px 8px; }
   .dock-icon { width: 40px; }
   .input-wrap { padding: 0 10px; }
