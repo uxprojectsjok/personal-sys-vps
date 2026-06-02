@@ -3976,21 +3976,21 @@ defineExpose({
 }
 .mp-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 11px; border-radius: 999px;
-  background: rgba(109,184,154,0.07); border: 1px solid rgba(109,184,154,0.15);
-  color: var(--fg-3); cursor: pointer;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  padding: 6px 13px; border-radius: 999px;
+  background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
+  color: var(--accent); cursor: pointer;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .mp-btn:hover:not(:disabled) {
-  background: rgba(109,184,154,0.16); border-color: rgba(109,184,154,0.38); color: var(--fg-1);
+  background: rgba(109,184,154,0.22); border-color: var(--accent); color: var(--accent-bright);
 }
 .mp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── @ dock button ── */
 .dock-at { font-size: 15px; font-weight: 600; }
-.dock-at-sym { font-family: var(--mono); font-size: 14px; color: var(--fg-3); transition: color 0.12s; }
-.dock-at.active .dock-at-sym { color: var(--accent); }
+.dock-at-sym { font-family: var(--mono); font-size: 14px; color: var(--accent); transition: color 0.12s; }
+.dock-at.active .dock-at-sym { color: var(--accent-bright); }
 
 .dock-main {
   display: flex; align-items: center;
