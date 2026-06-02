@@ -44,9 +44,9 @@
 
         <!-- Erklärung -->
         <div class="px-5 pt-4 pb-3">
-          <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
+          <p class="text-xs leading-relaxed" style="color:var(--fg-2)">
             Jeder Dienst erhält einen eigenen Service-Token.
-            Dieser Token kommt als <code class="text-[var(--sys-accent)] text-xs">Authorization: Bearer &lt;token&gt;</code>
+            Dieser Token kommt als <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
             in den Webhook-Header externer Dienste.
             Zugriff nur wenn Vault-Zugang offen ist.
           </p>
@@ -97,13 +97,13 @@
 
         <!-- Neuer Dienst -->
         <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)] space-y-3">
-          <p class="text-xs font-medium text-[var(--sys-fg-muted)]">Neuer Dienst</p>
+          <p class="text-xs font-medium" style="color:var(--fg)">Neuer Dienst</p>
 
           <input
             v-model="newName"
             type="text"
             placeholder="Name (z.B. Mein KI-Dienst)"
-            class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-4 py-3 text-sm text-[var(--sys-fg)] placeholder-[var(--sys-fg-muted)] focus:outline-none focus:border-[rgba(255,255,255,0.30)] transition-colors"
+            class="sys-input"
             aria-label="Name des neuen Dienstes"
           />
 
@@ -112,10 +112,10 @@
             <button
               v-for="p in allPermissions"
               :key="p.value"
-              class="text-xs px-3 py-1.5 rounded-none border transition-all min-h-[32px]"
-              :class="newPermissions.includes(p.value)
-                ? 'border-[rgba(255,255,255,0.35)] text-white bg-[rgba(255,255,255,0.08)]'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:border-[rgba(255,255,255,0.2)]'"
+              class="text-xs px-3 py-1.5 border transition-all min-h-[32px]"
+              :style="newPermissions.includes(p.value)
+                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);border-radius:var(--r-xs)'
+                : 'border-color:var(--line-2);color:var(--fg-2);border-radius:var(--r-xs)'"
               @click="togglePermission(p.value)"
               :aria-pressed="newPermissions.includes(p.value)"
             >
@@ -128,10 +128,10 @@
             <button
               v-for="opt in expiryOptions"
               :key="opt.value"
-              class="py-2 rounded-none border text-xs font-mono transition-all min-h-[32px]"
-              :class="newExpiry === opt.value
-                ? 'border-[rgba(255,255,255,0.35)] text-white bg-[rgba(255,255,255,0.08)]'
-                : 'border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:border-[rgba(255,255,255,0.2)]'"
+              class="py-2 border text-xs font-mono transition-all min-h-[32px]"
+              :style="newExpiry === opt.value
+                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);border-radius:var(--r-xs)'
+                : 'border-color:var(--line-2);color:var(--fg-2);border-radius:var(--r-xs)'"
               @click="newExpiry = opt.value"
             >
               {{ opt.label }}
@@ -139,7 +139,7 @@
           </div>
 
           <button
-            class="w-full py-3 rounded-none text-sm font-semibold transition-all min-h-[44px] border border-[rgba(255,255,255,0.15)] text-white/80 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.10)] hover:border-[rgba(255,255,255,0.28)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            class="btn btn-primary w-full"
             :disabled="!newName.trim() || addLoading"
             @click="handleAdd"
             aria-label="Dienst hinzufügen"

@@ -92,7 +92,7 @@
 
         <!-- Gesperrt → Entsperren -->
         <div v-else class="space-y-3">
-          <p class="text-xs text-[var(--sys-fg-muted)]">Zeitfenster wählen:</p>
+          <p class="text-xs" style="color:var(--fg-2)">Zeitfenster wählen:</p>
           <div class="grid grid-cols-4 gap-1.5">
             <button
               v-for="opt in durationOptions"
@@ -115,7 +115,7 @@
 
           <!-- Verschlüsselung -->
           <div class="space-y-2">
-            <p class="text-xs text-[var(--sys-fg-muted)]">
+            <p class="text-xs" style="color:var(--fg-2)">
               Verschlüsselung
               <span v-if="savedMethod()" class="text-white/50"> · zuletzt: {{ savedMethod() === 'mnemonic' ? '12 Wörter' : 'Passkey' }}</span>
               <span v-else class="text-white/35"> · immer dieselbe Methode wählen</span>
@@ -313,7 +313,7 @@ async function handleLock() {
   font-family: 'Noto Serif', Georgia, serif;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--sys-fg-muted);
+  color: var(--fg-2);
   margin: 0;
 }
 /* Override global sys-cta-primary border-radius */

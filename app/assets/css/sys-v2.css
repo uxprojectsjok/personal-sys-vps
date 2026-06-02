@@ -1229,6 +1229,9 @@ code.inline { font-family: var(--mono); font-size: 12px; background: var(--surfa
   .qrc-stage { grid-template-columns: 1fr; }
 }
 
+/* ── sys-editorial text overrides → Warm Ash & Sage tokens ── */
+.sys-field-label { color: var(--fg); }
+
 /* ── sys-editorial button overrides → new Warm Ash & Sage tokens ── */
 .sys-btn-ed { border-radius: var(--r); }
 .sys-btn-ed--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
