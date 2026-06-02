@@ -516,7 +516,7 @@ onMounted(() => {
 .dt-hero { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .dt-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
 .dt-title { font-family: var(--serif); font-size: clamp(28px, 4vw, 42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
-.dt-title em { font-style: italic; color: var(--fg-2); }
+.dt-title em { font-style: italic; color: var(--accent); }
 
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }

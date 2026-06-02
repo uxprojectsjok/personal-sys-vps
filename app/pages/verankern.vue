@@ -368,7 +368,7 @@ function onNav(id) {
 }
 .vank-title em { font-style: italic; color: var(--accent); }
 .vank-lede {
-  font-size: 15px; line-height: 1.65; color: var(--fg-2); margin: 0; max-width: 560px;
+  font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px;
 }
 
 /* ── Status + Wallet card ── */
