@@ -44,6 +44,62 @@
               </button>
             </div>
 
+            <!-- ── Agent-Zugriff Panel ── -->
+            <div class="cn-agent-section">
+              <div class="cn-agent-head">
+                <div>
+                  <div class="eyebrow">Agent Commerce Protocol</div>
+                  <h2 class="cn-agent-title">Agenten <em>Zugriff</em></h2>
+                  <p class="cn-lede" style="margin-top:8px">Externe KI-Agenten können deine Soul gegen POL lesen. Jeder Zugriff wird on-chain verifiziert und hier protokolliert.</p>
+                </div>
+                <button class="cn-action-btn" @click="agentPanelOpen = true">
+                  <svg class="cn-btn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                  </svg>
+                  <span>Konfigurieren</span>
+                </button>
+              </div>
+
+              <!-- Status + Einnahmen-Kacheln -->
+              <div class="cn-agent-stats">
+                <div class="cn-stat-card">
+                  <div class="cn-stat-label">Status</div>
+                  <div class="cn-stat-value" :class="amort.enabled ? 'cn-stat--on' : 'cn-stat--off'">
+                    <span class="cn-stat-dot" />
+                    {{ amort.enabled ? 'Aktiv · ' + amort.pol_per_request + ' POL' : 'Inaktiv' }}
+                  </div>
+                  <div v-if="amort.enabled && amort.wallet" class="cn-stat-sub">{{ amort.wallet.slice(0,6) }}…{{ amort.wallet.slice(-4) }}</div>
+                </div>
+                <div class="cn-stat-card">
+                  <div class="cn-stat-label">Zugriffe gesamt</div>
+                  <div class="cn-stat-value">{{ earnings.total_requests }}</div>
+                </div>
+                <div class="cn-stat-card">
+                  <div class="cn-stat-label">Einnahmen</div>
+                  <div class="cn-stat-value cn-stat--pol">{{ parseFloat(earnings.total_pol || 0).toFixed(4) }} POL</div>
+                </div>
+              </div>
+
+              <!-- TX-Log -->
+              <div v-if="earnings.entries && earnings.entries.length" class="cn-tx-log">
+                <div class="cn-tx-head">
+                  <span>TX-Hash</span>
+                  <span>Von</span>
+                  <span>Betrag</span>
+                  <span>Datum</span>
+                </div>
+                <div v-for="e in [...earnings.entries].reverse().slice(0, 20)" :key="e.tx_hash" class="cn-tx-row">
+                  <span class="cn-tx-hash">{{ e.tx_hash.slice(0, 10) }}…</span>
+                  <span class="cn-tx-from">{{ e.from ? e.from.slice(0,6) + '…' + e.from.slice(-4) : '—' }}</span>
+                  <span class="cn-tx-pol">{{ e.pol_amount }} POL</span>
+                  <span class="cn-tx-date">{{ e.redeemed_at ? new Date(e.redeemed_at).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—' }}</span>
+                </div>
+              </div>
+              <div v-else-if="amort.enabled" class="cn-tx-empty">
+                Noch keine Zugriffe. Agenten können deine Soul über soul_discover finden und per soul_pay_read zugreifen.
+              </div>
+            </div>
+
             <!-- ── Dual panel (active / probed / done) ── -->
             <Transition name="slide-down">
               <div v-if="phase !== 'idle'" class="cn-dual">
@@ -149,6 +205,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <AgentMarketplacePanel v-if="agentPanelOpen" :soul-cert="soulToken" @close="agentPanelOpen = false; loadAgentData()" />
     </div>
 
     <div v-else class="sys-loading">
@@ -158,9 +215,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
+import AgentMarketplacePanel from '~/components/AgentMarketplacePanel.vue'
 
 definePageMeta({ layout: false })
 
@@ -170,6 +228,24 @@ const { hasSoul, soulMeta, soulToken } = useSoul()
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
+
+// ── Agent Commerce Protocol ────────────────────────────────────────────────────
+const agentPanelOpen = ref(false)
+const amort   = ref({ enabled: false, pol_per_request: '0.001', wallet: '' })
+const earnings = ref({ total_pol: '0', total_requests: 0, entries: [] })
+
+async function loadAgentData() {
+  if (!soulToken.value) return
+  const headers = { Authorization: `Bearer ${soulToken.value}` }
+  const [amRes, erRes] = await Promise.all([
+    fetch('/api/soul/amortization', { headers }).catch(() => null),
+    fetch('/api/soul/earnings',     { headers }).catch(() => null),
+  ])
+  if (amRes?.ok) { const d = await amRes.json(); if (d.amortization) amort.value = d.amortization }
+  if (erRes?.ok) { const d = await erRes.json(); earnings.value = d }
+}
+
+onMounted(() => { loadAgentData() })
 
 // ── QR session state ──────────────────────────────────────────────────────────
 
@@ -340,6 +416,82 @@ function onNav(id) {
   max-width: 860px;
   margin: 0 auto;
   padding: 32px clamp(16px, 3vw, 32px) 80px;
+}
+
+/* ── Agent-Zugriff ── */
+.cn-agent-section {
+  margin-top: 48px;
+  border-top: 1px solid var(--line);
+  padding-top: 32px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.cn-agent-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.cn-agent-title {
+  font-family: var(--serif); font-size: clamp(22px, 3vw, 30px);
+  font-weight: 400; letter-spacing: -0.025em; color: var(--fg); margin: 6px 0 0;
+}
+.cn-agent-title em { font-style: italic; color: var(--accent); }
+
+.cn-agent-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.cn-stat-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.cn-stat-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--fg-3);
+}
+.cn-stat-value {
+  font-family: var(--serif); font-size: 20px; font-weight: 400;
+  color: var(--fg); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;
+}
+.cn-stat--on { color: var(--accent); }
+.cn-stat--pol { color: var(--accent-bright); }
+.cn-stat--off { color: var(--fg-3); font-size: 15px; font-family: var(--sans); }
+.cn-stat-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: currentColor;
+}
+.cn-stat-sub { font-family: var(--mono); font-size: 11px; color: var(--fg-3); }
+
+/* TX Log */
+.cn-tx-log {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  overflow: hidden;
+}
+.cn-tx-head {
+  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr;
+  padding: 10px 16px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-3);
+  border-bottom: 1px solid var(--line); background: var(--surface-2);
+}
+.cn-tx-row {
+  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr;
+  padding: 11px 16px; border-bottom: 1px solid var(--line);
+  font-size: 13px; color: var(--fg-2);
+  transition: background 0.12s;
+}
+.cn-tx-row:last-child { border-bottom: none; }
+.cn-tx-row:hover { background: var(--surface-2); }
+.cn-tx-hash { font-family: var(--mono); color: var(--accent); }
+.cn-tx-from { font-family: var(--mono); color: var(--fg-3); }
+.cn-tx-pol  { font-family: var(--mono); color: var(--accent-bright); font-weight: 600; }
+.cn-tx-date { font-family: var(--mono); color: var(--fg-3); }
+.cn-tx-empty {
+  font-size: 13px; color: var(--fg-3); line-height: 1.6;
+  padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+}
+
+@media (max-width: 600px) {
+  .cn-agent-stats { grid-template-columns: 1fr 1fr; }
+  .cn-tx-head, .cn-tx-row { grid-template-columns: 2fr 1fr 2fr; }
+  .cn-tx-from { display: none; }
 }
 
 /* ── Header ── */
