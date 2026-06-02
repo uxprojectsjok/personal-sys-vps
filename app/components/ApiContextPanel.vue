@@ -248,9 +248,10 @@ async function onSave() {
 .api-panel-prose {
   font-family: var(--sans);
   font-size: 13px;
+  font-weight: 500;
   line-height: 1.6;
-  color: var(--fg-2);
-  margin: 6px 0 0;
+  color: var(--fg);
+  margin: 6px 0 20px;
 }
 
 .api-panel-perm {
