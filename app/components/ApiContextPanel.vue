@@ -216,7 +216,7 @@ async function onSave() {
   font-family: var(--sys-mono);
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--sys-fg-muted);
+  color: var(--fg);
   transition: color 0.15s;
 }
 .api-panel-row:hover .api-panel-row-label { color: var(--sys-fg); }
