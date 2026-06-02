@@ -43,8 +43,8 @@
       <div v-if="open || headless" class="border-t border-[var(--sys-border)]">
 
         <!-- Erklärung -->
-        <div class="px-5 pt-4 pb-3">
-          <p style="font-size:13px;line-height:1.6;color:var(--fg-2);margin:0">
+        <div class="px-5 pt-4" style="padding-bottom:20px">
+          <p style="font-size:13px;font-weight:500;line-height:1.6;color:var(--fg);margin:0">
             Jeder Dienst erhält einen eigenen Service-Token.
             Dieser Token kommt als <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
             in den Webhook-Header externer Dienste.
@@ -92,50 +92,46 @@
         </div>
 
         <div v-else class="px-5 py-4">
-          <p class="text-xs text-[var(--sys-fg-muted)]">Noch keine verbundenen Dienste.</p>
+          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">Noch keine verbundenen Dienste.</p>
         </div>
 
         <!-- Neuer Dienst -->
-        <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)] space-y-3">
-          <p class="text-xs font-medium" style="color:var(--fg)">Neuer Dienst</p>
+        <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)]" style="display:flex;flex-direction:column;gap:12px">
+          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">Neuer Dienst</p>
 
           <input
             v-model="newName"
             type="text"
-            placeholder="Name (z.B. Mein KI-Dienst)"
+            placeholder="Name (z. B. Mein KI-Dienst)"
             class="sys-input"
             aria-label="Name des neuen Dienstes"
           />
 
           <!-- Permissions -->
-          <div class="flex flex-wrap gap-2">
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
             <button
               v-for="p in allPermissions"
               :key="p.value"
-              class="text-xs px-3 py-1.5 border transition-all min-h-[32px]"
+              style="font-size:13px;font-weight:500;padding:6px 14px;border:1px solid;border-radius:var(--r-xs);transition:all .15s;min-height:34px"
               :style="newPermissions.includes(p.value)
-                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);border-radius:var(--r-xs)'
-                : 'border-color:var(--line-2);color:var(--fg-2);border-radius:var(--r-xs)'"
+                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)'
+                : 'border-color:var(--line-2);color:var(--fg)'"
               @click="togglePermission(p.value)"
               :aria-pressed="newPermissions.includes(p.value)"
-            >
-              {{ p.label }}
-            </button>
+            >{{ p.label }}</button>
           </div>
 
           <!-- Ablauf -->
-          <div class="grid grid-cols-4 gap-1.5">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
             <button
               v-for="opt in expiryOptions"
               :key="opt.value"
-              class="py-2 border text-xs font-mono transition-all min-h-[32px]"
+              style="padding:8px 4px;min-height:36px;font-size:13px;font-weight:500;font-family:var(--mono);border:1px solid;border-radius:var(--r-xs);transition:all .15s"
               :style="newExpiry === opt.value
-                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);border-radius:var(--r-xs)'
-                : 'border-color:var(--line-2);color:var(--fg-2);border-radius:var(--r-xs)'"
+                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)'
+                : 'border-color:var(--line-2);color:var(--fg)'"
               @click="newExpiry = opt.value"
-            >
-              {{ opt.label }}
-            </button>
+            >{{ opt.label }}</button>
           </div>
 
           <button

@@ -1231,6 +1231,7 @@ code.inline { font-family: var(--mono); font-size: 12px; background: var(--surfa
 
 /* ── sys-editorial text overrides → Warm Ash & Sage tokens ── */
 .sys-field-label { color: var(--fg); }
+.sys-input::placeholder { color: var(--fg-3); }
 
 /* ── sys-editorial button overrides → new Warm Ash & Sage tokens ── */
 .sys-btn-ed { border-radius: var(--r); }
