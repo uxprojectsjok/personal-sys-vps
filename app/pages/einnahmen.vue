@@ -235,12 +235,12 @@ function onNav(id) {
 .earn-step-num {
   width: 24px; height: 24px; border-radius: 50%; flex: none;
   border: 1.5px solid var(--line-2); display: grid; place-items: center;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
 }
 .earn-step--on .earn-step-num { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .earn-step-lbl { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.earn-step-t { font-family: var(--mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg); }
-.earn-step-s { font-family: var(--mono); font-size: 11px; color: var(--fg-3); }
+.earn-step-t { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
+.earn-step-s { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
 .earn-step--on .earn-step-s { color: var(--accent); }
 
 /* ── Stats ── */
@@ -251,18 +251,18 @@ function onNav(id) {
   display: flex; flex-direction: column; gap: 6px;
 }
 .earn-stat-label {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--fg-2);
 }
 .earn-stat-value {
   font-family: var(--serif); font-size: 20px; font-weight: 400;
   color: var(--fg); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;
 }
 .earn-stat--on  { color: var(--accent); }
-.earn-stat--off { color: var(--fg-3); font-size: 15px; font-family: var(--sans); }
+.earn-stat--off { color: var(--fg); font-size: 15px; font-family: var(--sans); }
 .earn-stat--pol { color: var(--accent-bright); }
 .earn-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
-.earn-stat-sub { font-family: var(--mono); font-size: 11px; color: var(--fg-3); }
+.earn-stat-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
 
 /* ── Table ── */
 .earn-table-wrap { }
@@ -271,13 +271,13 @@ function onNav(id) {
   display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
   padding: 10px 18px;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg-2);
   border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
 .earn-table-row {
   display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
   padding: 12px 18px; border-bottom: 1px solid var(--line);
-  font-size: 13px; color: var(--fg-2); align-items: center;
+  font-size: 13px; color: var(--fg); align-items: center;
   transition: background 0.12s;
 }
 .earn-table-row:last-child { border-bottom: none; }
@@ -285,16 +285,16 @@ function onNav(id) {
 .earn-tx-hash { font-family: var(--mono); }
 .earn-tx-link { color: var(--accent); text-decoration: none; }
 .earn-tx-link:hover { color: var(--accent-bright); text-decoration: underline; }
-.earn-tx-from { font-family: var(--mono); color: var(--fg-3); }
+.earn-tx-from { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-pol  { font-family: var(--mono); color: var(--accent-bright); font-weight: 600; }
-.earn-tx-date { font-family: var(--mono); color: var(--fg-3); }
+.earn-tx-date { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-status { font-family: var(--mono); font-size: 12px; }
 .earn-status--on  { color: var(--accent); }
 .earn-status--off { color: var(--fg-4); }
 
 .earn-empty {
   padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
-  font-size: 15px; color: var(--fg-2); line-height: 1.65;
+  font-size: 15px; color: var(--fg); line-height: 1.65;
 }
 
 /* ── CSV Export ── */
@@ -304,7 +304,7 @@ function onNav(id) {
   border-radius: var(--r); flex-wrap: wrap;
 }
 .earn-export-title { font-size: 15px; font-weight: 500; color: var(--fg); margin-bottom: 4px; }
-.earn-export-sub { font-size: 13px; color: var(--fg-2); line-height: 1.5; max-width: 500px; }
+.earn-export-sub { font-size: 13px; color: var(--fg); line-height: 1.5; max-width: 500px; }
 
 @media (max-width: 720px) {
   .earn-stats { grid-template-columns: 1fr 1fr; }
