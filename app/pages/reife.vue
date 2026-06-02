@@ -224,7 +224,7 @@ function cardDesc(card) {
   line-height: 1.1; margin: 8px 0 14px;
 }
 .rf-title em { color: var(--accent); font-style: italic; }
-.rf-lede { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 56ch; margin: 0; }
+.rf-lede { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 /* ── Hero (ring + levels) ── */
 .rf-hero {

@@ -354,9 +354,9 @@ function onNav(id) {
 }
 .kal-title em { font-style: italic; color: var(--accent); }
 .kal-sub {
-  font-size: 13px;
-  color: var(--fg-2);
-  line-height: 1.6;
+  font-size: 15px;
+  color: var(--fg);
+  line-height: 1.65;
   max-width: 480px;
 }
 .br-hide { display: none; }

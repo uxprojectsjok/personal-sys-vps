@@ -350,7 +350,7 @@ function onNav(id) {
   line-height: 1.05; margin: 8px 0 12px;
 }
 .cn-title em { font-style: italic; color: var(--accent); }
-.cn-lede { font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 560px; margin: 0; }
+.cn-lede { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 /* ── Action card ── */
 .cn-action-card {

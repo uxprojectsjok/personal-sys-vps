@@ -283,10 +283,10 @@ function onNav(id) {
   font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
   line-height: 1.05; margin-bottom: 14px;
 }
-.ch-title em { font-style: italic; color: var(--fg-2); }
+.ch-title em { font-style: italic; color: var(--accent); }
 .ch-sub {
-  font-size: 14px; line-height: 1.65; color: var(--fg-2);
-  max-width: 540px; margin: 0;
+  font-size: 15px; line-height: 1.65; color: var(--fg);
+  max-width: 560px; margin: 0;
 }
 
 /* ── Empty ── */
