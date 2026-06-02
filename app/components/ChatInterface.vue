@@ -3922,6 +3922,7 @@ defineExpose({
   display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px;
   padding: 8px 2px;
   scrollbar-width: none;
+  width: 100%; min-width: 0; box-sizing: border-box;
 }
 .cmd-strip::-webkit-scrollbar { display: none; }
 
