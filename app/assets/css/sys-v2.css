@@ -299,7 +299,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero .greet { color: var(--fg-2); font-size: 14px; margin-bottom: 10px; }
 .hero h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.02; color: var(--fg); }
 .hero h1 em { font-style: italic; color: var(--accent); }
-.hero-sub { color: var(--fg-2); font-size: 16px; margin-top: 14px; max-width: 56ch; line-height: 1.6; }
+.hero-sub { color: var(--fg); font-size: 15px; margin-top: 14px; max-width: 560px; line-height: 1.65; }
 .hero-actions { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
 
 .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 34px 0 16px; gap: 16px; }
