@@ -398,13 +398,13 @@ function onNav(id) {
 
 .exp-step-lbl   { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .exp-step-title {
-  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-2);
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .exp-step-sub {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
-  color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+  color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ── Body ── */
@@ -423,8 +423,8 @@ function onNav(id) {
 }
 .exp-section-title em { font-style: italic; color: var(--accent); }
 .exp-prose {
-  font-family: var(--serif); font-size: 15px; color: var(--fg-2);
-  line-height: 1.65; margin: 0; max-width: 60ch;
+  font-family: var(--sans); font-size: 15px; color: var(--fg);
+  line-height: 1.65; margin: 0; max-width: 560px;
 }
 .exp-code {
   font-family: var(--mono); font-size: 12px; color: var(--fg-2);
@@ -447,7 +447,7 @@ function onNav(id) {
 .exp-word-row--invalid { border-color: rgba(224,108,117,0.35); }
 
 .exp-word-num {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-4);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
   width: 16px; flex: none; text-align: right;
 }
 .exp-word-input {
@@ -456,7 +456,7 @@ function onNav(id) {
   font-family: var(--mono); font-size: 13px; font-weight: 700;
   color: var(--fg);
 }
-.exp-word-input::placeholder { color: var(--fg-4); font-weight: 400; }
+.exp-word-input::placeholder { color: var(--fg-3); font-weight: 400; }
 .exp-word-ic { width: 12px; height: 12px; flex: none; }
 .exp-word-ic.ok  { color: var(--accent-bright); opacity: 0.75; }
 .exp-word-ic.err { color: #e06c75; opacity: 0.75; }
@@ -467,14 +467,14 @@ function onNav(id) {
   margin-top: -4px;
 }
 .exp-count {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
 }
 .exp-count--full { color: var(--accent-bright); }
 
 .exp-random {
   display: flex; align-items: center; gap: 6px;
   background: transparent; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
   transition: color 0.12s;
 }
 .exp-random:hover { color: var(--fg); }
@@ -489,7 +489,7 @@ function onNav(id) {
   border-radius: var(--r-xs);
 }
 .exp-warn-box svg { width: 15px; height: 15px; flex: none; color: var(--fg-3); margin-top: 1px; }
-.exp-warn-box p   { font-size: 12.5px; color: var(--fg-3); line-height: 1.55; margin: 0; }
+.exp-warn-box p   { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0; }
 .exp-warn-box--yellow svg { color: rgba(251,191,36,0.65); }
 .exp-warn-box--yellow p   { color: rgba(251,191,36,0.65); }
 
@@ -517,7 +517,7 @@ function onNav(id) {
 .exp-checkbox--on { background: var(--fg); border-color: var(--fg); }
 .exp-checkbox svg { width: 12px; height: 12px; color: var(--bg); }
 .exp-confirm-text {
-  font-size: 13.5px; color: var(--fg-2); line-height: 1.5; user-select: none;
+  font-size: 14px; color: var(--fg); line-height: 1.55; user-select: none;
 }
 
 /* ── State center (step 2) ── */
@@ -525,7 +525,7 @@ function onNav(id) {
   display: flex; flex-direction: column; align-items: center;
   gap: 16px; padding: 32px 0; text-align: center;
 }
-.exp-state-lbl { font-size: 14px; color: var(--fg-2); }
+.exp-state-lbl { font-size: 15px; color: var(--fg); }
 .exp-state-lbl--err { color: #e06c75; }
 
 .exp-spinner {
@@ -552,8 +552,8 @@ function onNav(id) {
   font-family: var(--serif); font-size: 17px; font-weight: 400; color: var(--fg); margin-bottom: 4px;
 }
 .exp-success-sub {
-  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg-2);
 }
 .exp-info-box {
   width: 100%; padding: 14px 16px;
