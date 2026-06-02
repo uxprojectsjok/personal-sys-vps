@@ -59,31 +59,21 @@
         </p>
 
         <!-- Bereits entsperrt (oder Sperrvorgang läuft) -->
-        <div v-if="isUnlocked || locking" class="space-y-3">
-          <div
-            class="rounded-none px-4 py-3 flex items-center justify-between border"
-            :class="vaultKey
-              ? 'bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.15)]'
-              : 'bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.12)]'"
-          >
+        <div v-if="isUnlocked || locking">
+          <div style="background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
-              <p class="text-xs font-medium text-white/75">
+              <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
                 {{ locking ? 'Wird gesperrt…' : 'Vault offen' }}{{ !locking && vaultKey ? ' · verschlüsselt' : '' }}
               </p>
-              <p v-if="!locking && !isUnlimited && expiresAt" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
+              <p v-if="!locking && !isUnlimited && expiresAt" style="font-size:12px;color:var(--fg-3);margin:3px 0 0">
                 Läuft ab: {{ formatTs(expiresAt) }}
               </p>
-              <p v-else-if="!locking && isUnlimited" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">Kein Ablauf</p>
+              <p v-else-if="!locking && isUnlimited" style="font-size:12px;color:var(--fg-3);margin:3px 0 0">Kein Ablauf</p>
             </div>
-            <button
-              class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-none border border-[rgba(226,220,240,0.18)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.05)] transition-colors min-h-[36px]"
-              :disabled="locking"
-              @click="handleLock"
-              aria-label="Vault sperren"
-            >
-              <svg v-if="locking" class="w-3 h-3 animate-spin flex-none" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            <button class="btn btn-sm btn-ghost" :disabled="locking" @click="handleLock" aria-label="Vault sperren">
+              <svg v-if="locking" width="12" height="12" class="animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity:.25"/>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" style="opacity:.75"/>
               </svg>
               {{ locking ? 'Gesperrt…' : 'Sperren' }}
             </button>
@@ -97,38 +87,34 @@
             <button
               v-for="opt in durationOptions"
               :key="opt.value"
-              class="py-2 rounded-none border text-xs font-mono transition-all min-h-[36px]"
+              style="padding:8px 4px;min-height:36px;font-size:12px;font-family:var(--mono);border-radius:var(--r-xs);border:1px solid;transition:all .15s"
               :style="selectedDuration === opt.value
-                ? 'border-color:var(--sys-accent);color:var(--sys-accent);background:rgba(109,184,154,0.12);font-weight:600'
-                : 'border-color:var(--sys-border);color:var(--sys-fg-dim)'"
+                ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);font-weight:600'
+                : 'border-color:var(--line-2);color:var(--fg-2)'"
               @click="selectedDuration = opt.value"
-            >
-              {{ opt.label }}
-            </button>
+            >{{ opt.label }}</button>
           </div>
 
-          <div v-if="selectedDuration === 'unlimited'" class="rounded-none bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.12)] px-3 py-2">
-            <p class="text-xs text-white/55">
-              Unbegrenzt: Vault bleibt bis zum manuellen Sperren offen.
-            </p>
+          <div v-if="selectedDuration === 'unlimited'" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 12px">
+            <p style="font-size:13px;color:var(--fg-3);margin:0">Unbegrenzt: Vault bleibt bis zum manuellen Sperren offen.</p>
           </div>
 
           <!-- Verschlüsselung -->
           <div class="space-y-2">
-            <p class="text-xs" style="color:var(--fg-2)">
+            <p style="font-size:13px;color:var(--fg-2);margin:0">
               Verschlüsselung
-              <span v-if="savedMethod()" class="text-white/50"> · zuletzt: {{ savedMethod() === 'mnemonic' ? '12 Wörter' : 'Passkey' }}</span>
-              <span v-else class="text-white/35"> · immer dieselbe Methode wählen</span>
+              <span style="color:var(--fg-3)" v-if="savedMethod()"> · zuletzt: {{ savedMethod() === 'mnemonic' ? '12 Wörter' : 'Passkey' }}</span>
+              <span style="color:var(--fg-4)" v-else> · immer dieselbe Methode wählen</span>
             </p>
             <div class="grid grid-cols-2 gap-1.5">
               <button
                 v-for="opt in [{ value: 'passkey', label: '🔑 Passkey' }, { value: 'mnemonic', label: '📝 12 Wörter' }]"
                 :key="opt.value"
                 type="button"
-                class="py-2 rounded-none border text-xs transition-all min-h-[36px]"
+                style="padding:8px 4px;min-height:36px;font-size:13px;border-radius:var(--r-xs);border:1px solid;transition:all .15s"
                 :style="encryptMode === opt.value
-                  ? 'border-color:var(--sys-accent);color:var(--sys-accent);background:rgba(109,184,154,0.12);font-weight:600'
-                  : 'border-color:var(--sys-border);color:var(--sys-fg-dim)'"
+                  ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);font-weight:600'
+                  : 'border-color:var(--line-2);color:var(--fg-2)'"
                 @click="encryptMode = opt.value"
               >{{ opt.label }}</button>
             </div>
@@ -142,14 +128,10 @@
 
             <!-- Passkey Info -->
             <Transition name="slide-up">
-              <div v-if="encryptMode === 'passkey'" class="rounded-none bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.12)] px-3 py-2 space-y-1">
-                <p class="text-xs text-white/65">
-                  {{ hasPasskey ? 'Biometrische Bestätigung beim Öffnen erforderlich.' : 'Neuen Passkey erstellen (einmalig).' }}
-                </p>
-                <p class="text-xs text-[var(--sys-fg-muted)]">
-                  Face ID · Touch ID · Windows Hello · Smartphone-Displaysperre
-                </p>
-                <p v-if="passkeyError" class="text-xs text-red-400">{{ passkeyError }}</p>
+              <div v-if="encryptMode === 'passkey'" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+                <p style="font-size:13px;color:var(--fg-2);margin:0">{{ hasPasskey ? 'Biometrische Bestätigung beim Öffnen erforderlich.' : 'Neuen Passkey erstellen (einmalig).' }}</p>
+                <p style="font-size:12px;color:var(--fg-3);margin:0">Face ID · Touch ID · Windows Hello · Smartphone-Displaysperre</p>
+                <p v-if="passkeyError" style="font-size:12px;color:var(--c-danger,#e06c75);margin:0">{{ passkeyError }}</p>
               </div>
             </Transition>
 
