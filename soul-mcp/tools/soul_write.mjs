@@ -13,6 +13,9 @@ function escapeRe(s) {
  * Existiert die Sektion nicht, wird sie am Ende des Dokuments angelegt.
  */
 function updateSection(md, heading, newContent, mode) {
+  // CRLF normalisieren (Windows-Zeilenenden) + trailing whitespace entfernen
+  md = md.replace(/\r\n/g, '\n').trimEnd();
+
   const re = new RegExp(
     `(## ${escapeRe(heading)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
   );
@@ -31,11 +34,13 @@ function updateSection(md, heading, newContent, mode) {
       // append (default)
       body = (existing ? existing + '\n\n' : '') + newContent;
     }
-    return md.replace(re, block(heading, body) + '\n');
+    // Replacement-Funktion statt String verhindert $1/$&/$' Sonderzeichen-Interpretation
+    const replacement = block(heading, body) + '\n';
+    return md.replace(re, () => replacement);
   }
 
   // Sektion existiert nicht → am Ende anhängen
-  return md.trimEnd() + '\n\n' + block(heading, newContent) + '\n';
+  return md + '\n\n' + block(heading, newContent) + '\n';
 }
 
 export function register(server, token) {
