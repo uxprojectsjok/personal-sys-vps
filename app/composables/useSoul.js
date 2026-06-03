@@ -517,6 +517,7 @@ Mögliche section-Werte (exakt so schreiben):
           .replace(/^\*Noch nicht beschrieben\.\*\s*$/gm, '')
           .replace(/^\*Noch nicht konfiguriert\.\*\s*$/gm, '')
           .replace(/^\*Noch keine Sessions\.\*\s*$/gm, '')
+          .replace(/^_Destilliert ins LONGMEM\._\s*$/gm, '')
           .replace(/\n{3,}/g, '\n\n');
       }
 
