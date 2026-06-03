@@ -100,14 +100,14 @@
         <div
           v-else-if="item._type === 'bubble'"
           class="msg-bubble"
-          :class="[item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other', item.sphere === 'synthesis' ? 'msg-bubble--archivar' : '']"
+          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.sphere === 'synthesis' ? '#7099b8' : item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
+            :style="{ color: item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
           </div>
           <div class="msg-inner"
-            :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : item.sphere === 'synthesis' ? 'msg-inner--synthesis' : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+            :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <!-- Local cached image (encrypted messages) -->
@@ -197,10 +197,6 @@
               :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
-            <template v-if="item.sphere === 'synthesis' && item.local">
-              <button v-if="!item.forwarded" class="msg-forward-btn" @click="forwardSynthesis(item)" title="An Peers weiterleiten">→ Peers</button>
-              <span v-else class="msg-forwarded">✓ gesendet</span>
-            </template>
           </div>
         </div>
 
@@ -344,9 +340,6 @@
 
       <!-- Mode bar — always below input -->
       <div class="dock-mode-bar">
-        <button class="archivar-toggle" :class="{ active: archivEnabled }" @click="archivEnabled = !archivEnabled">
-          <span class="archivar-dot"></span>Archivar
-        </button>
         <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
           <span class="archivar-dot"></span>KI-Auto
         </button>
@@ -1081,7 +1074,7 @@ const agentMessages = computed(() => agentMsgsOld.value)
 
 const displayMessages = computed(() => {
   const seen = new Set()
-  return [...socialMsgs.value, ...agentMsgsNew.value, ...agentMsgsOld.value, ...localSynthesisMsgs.value]
+  return [...socialMsgs.value, ...agentMsgsNew.value, ...agentMsgsOld.value]
     .filter(m => {
       const k = `${m.ts}|${m.from}|${m.to}|${m.content}`
       if (seen.has(k)) return false
@@ -1119,8 +1112,8 @@ const filteredStream = computed(() => {
   const s = unifiedStream.value
   if (props.filter === 'all')    return s
   if (props.filter === 'soul')   return s.filter(i => i._type === 'ai')
-  if (props.filter === 'peers')  return s.filter(i => i._type === 'bubble' && i.sphere !== 'synthesis')
-  if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'synthesis' || i.sphere === 'agent' || i.sphere === 'agent_reply'))
+  if (props.filter === 'peers')  return s.filter(i => i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply')
+  if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'agent' || i.sphere === 'agent_reply'))
   return s
 })
 
@@ -1132,7 +1125,6 @@ function peerTextColor(id) {
 }
 
 function resolveAuthor(msg) {
-  if (msg.sphere === 'synthesis') return 'Archivar'
   const senderName = msg.author
     || (!msg.from || msg.from === 'me'
         ? (soulMeta.value?.name || 'Du')
@@ -3048,7 +3040,6 @@ async function handleSend() {
 
   const intent = detectIntent(raw)
 
-  if (intent.type === 'ki')        { await triggerSynthesis(); return }
 
   if (intent.type === 'capture-audio' || intent.type === 'capture-face' || intent.type === 'capture-body') {
     const mode = intent.type.replace('capture-', '')
@@ -3099,7 +3090,6 @@ async function handleSend() {
 
   if (intent.type === 'session-end') {
     addMessage('user', '@session-end')
-    addMessage('assistant', 'Archivar analysiert Session…')
     emit('session-end')
     return
   }
@@ -3235,20 +3225,10 @@ onMounted(async () => {
   setTimeout(() => {
     const msgs = displayMessages.value
     const total = msgs.slice(-5).map(m => m.content || '').join(' ').replace(/\[.*?\]\(.*?\)/g, '').trim()
-    if (msgs.length >= 2 && total.length >= 80) {
-      triggerSynthesis()
-      _lastBriefingMsgCount = msgs.length
-    }
   }, 3000)
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
   _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
-  // Every 3 min — synthesis if new messages; autonomous post if mode active
   _briefingTimer   = setInterval(() => {
-    const count = displayMessages.value.length
-    if (count > 0 && count !== _lastBriefingMsgCount) {
-      _lastBriefingMsgCount = count
-      triggerSynthesis()
-    }
     if (autonomousKi.value) runAutonomousKiPost()
   }, 3 * 60 * 1000)
 })
