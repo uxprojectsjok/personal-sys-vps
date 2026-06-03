@@ -184,6 +184,7 @@ import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailed
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
+import { herzActivate, herzDeactivate, herzStatus, herzForceTick } from './lib/herz.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -811,6 +812,30 @@ app.post('/internal/seed-soul', async (req, res) => {
 });
 
 // ── Soul aus Netzwerk abmelden (bei deinstall.sh) ────────────────────────────
+// ── Herz — autonomes Trigger-System ──────────────────────────────────────────
+// POST /internal/herz/toggle  { soul_id, active: bool }
+app.post('/internal/herz/toggle', async (req, res) => {
+  const { soul_id, active } = req.body || {};
+  if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
+  const result = active ? herzActivate(soul_id) : herzDeactivate(soul_id);
+  res.json(result);
+});
+
+// GET /internal/herz/status?soul_id=...
+app.get('/internal/herz/status', (req, res) => {
+  const soul_id = req.query.soul_id;
+  if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
+  res.json(herzStatus(soul_id));
+});
+
+// POST /internal/herz/tick  { soul_id }  — manueller Trigger (Debug)
+app.post('/internal/herz/tick', async (req, res) => {
+  const { soul_id } = req.body || {};
+  if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
+  await herzForceTick(soul_id);
+  res.json({ ok: true });
+});
+
 // POST /internal/deregister-soul  { soul_id }
 app.post('/internal/deregister-soul', async (req, res) => {
   const { soul_id } = req.body || {};
