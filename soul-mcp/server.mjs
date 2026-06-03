@@ -935,11 +935,34 @@ app.post('/internal/generate-prompts', async (_req, res) => {
 const PORT = parseInt(process.env.PORT || '3098', 10);
 app.listen(PORT, '127.0.0.1', async () => {
   console.log(`soul-mcp läuft auf 127.0.0.1:${PORT}`);
-  // Indexer non-blocking starten — Discovery ist sofort verfügbar, wächst im Hintergrund
   startIndexer().catch(e => console.error('[soul-index] Start-Fehler:', e.message));
   console.log(`MCP-Endpunkt: ${BASE_URL}/mcp`);
   console.log(`OAuth: ${BASE_URL}/oauth/authorize`);
+  // LONGMEM-Bootstrap: Souls mit pending-Flag einmalig kristallisieren
+  bootstrapLongmem().catch(e => console.error('[longmem-bootstrap] Fehler:', e.message));
 });
+
+async function bootstrapLongmem() {
+  const { readdir, stat, unlink } = await import('fs/promises');
+  let souls;
+  try { souls = await readdir(SOULS_DIR); } catch { return; }
+
+  for (const soulId of souls) {
+    const flagPath = `${SOULS_DIR}${soulId}/.longmem_bootstrap_pending`;
+    try { await stat(flagPath); } catch { continue; } // kein Flag → überspringen
+
+    console.log(`[longmem-bootstrap] Starte Kristallisation für ${soulId}...`);
+    try {
+      await herzForceCrystallize(soulId);
+      await unlink(flagPath);
+      console.log(`[longmem-bootstrap] ${soulId} ✓`);
+    } catch (e) {
+      console.warn(`[longmem-bootstrap] ${soulId} Fehler: ${e.message}`);
+    }
+    // Kurze Pause zwischen Souls — API nicht überlasten
+    await new Promise(r => setTimeout(r, 3000));
+  }
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function extractToken(req) {
