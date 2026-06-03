@@ -200,9 +200,77 @@ async function onCircadian(soulId, soul, apiKey, period) {
   if (text) await appendToSoulLog(soulId, `${period === 'morning' ? 'Morgen' : 'Abend'} — ${text}`);
 }
 
+// Robuste Sektion-Extraktion (umgeht den \z-Bug in soul_parser.mjs)
+function extractSectionFull(md, heading) {
+  const parts = md.split(/\n(?=## )/);
+  for (const part of parts) {
+    const prefix = `## ${heading}`;
+    if (part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part === prefix) {
+      return part.slice(prefix.length).replace(/^\s*\n/, '').trimEnd();
+    }
+  }
+  return null;
+}
+
+// Ersetzt den Inhalt einer ## Sektion zuverlässig
+function replaceSection(md, heading, newContent) {
+  const parts = md.split(/\n(?=## )/);
+  const prefix = `## ${heading}`;
+  const result = parts.map(part => {
+    if (part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part === prefix) {
+      return `## ${heading}\n\n${newContent.trim()}\n`;
+    }
+    return part;
+  });
+  return result.join('\n');
+}
+
+// Bereinigt Sektionen die rohe Chat-Dumps oder Emoji-Content enthalten
+async function onOptimizeSections(soulId, soul, apiKey) {
+  const CLEANUP_SECTIONS = [
+    'Offene Fragen dieser Person',
+    'Zukünftige Feature-Ideen für SYS',
+  ];
+  let current = soul;
+  let changed = false;
+
+  for (const heading of CLEANUP_SECTIONS) {
+    const content = extractSectionFull(current, heading);
+    if (!content) continue;
+    // Prüfe ob Cleanup nötig: Emojis, "SESSION", raw chat indicators
+    const needsCleanup = /[\u{1F300}-\u{1FFFF}]|SESSION\n|schreibe das in meine soul|IF action ==|Konkreter Flow|Was du dafür brauchst/u.test(content);
+    if (!needsCleanup) continue;
+
+    const cleaned = await callClaude(
+      apiKey,
+      `Du bist der Archivar. Restrukturiere diesen Soul-Abschnitt in sauberes Markdown.
+Regeln:
+- Keine Emojis, keine Chat-Fragmente, keine "SESSION"-Blöcke
+- Behalte alle inhaltlich relevanten Informationen und Ideen
+- Strukturiere als klare Markdown-Liste oder Unterabschnitte (###)
+- Entferne rohe KI-Konversationen, behalte nur destillierte Kernaussagen
+- Antworte NUR mit dem bereinigten Inhalt, kein Intro, kein Outro`,
+      `Abschnitt: ## ${heading}\n\n${content.slice(0, 2500)}`,
+      900
+    );
+    if (!cleaned?.trim()) continue;
+    current = replaceSection(current, heading, cleaned);
+    changed = true;
+  }
+
+  if (changed) {
+    await writeSoul(soulId, current);
+  }
+  return current;
+}
+
 async function onCrystallize(soulId, soul, apiKey) {
-  const sections  = extractAllSections(soul);
-  const existing  = extractLongmem(soul);
+  // ── Schritt 1: Sektionen bereinigen ──────────────────────────────────────────
+  const optimized = await onOptimizeSections(soulId, soul, apiKey);
+  const soulForFacts = optimized || soul;
+
+  const sections  = extractAllSections(soulForFacts);
+  const existing  = extractLongmem(soulForFacts);
   const existingFacts = existing?.facts ?? [];
 
   // Relevante Sektionen für Kristallisation (keine Logs, keine technischen Blöcke)
@@ -215,8 +283,10 @@ async function onCrystallize(soulId, soul, apiKey) {
 
   if (!sectionText.trim()) return;
 
-  const existingJson = existingFacts.length
-    ? `\nBereits kristallisierte Fakten (nicht duplizieren):\n${JSON.stringify(existingFacts, null, 2)}`
+  // Bestehende IDs explizit übergeben damit Claude sie wiederverwendet
+  const existingIds = existingFacts.map(f => `${f.id} → "${f.text.slice(0, 60)}"`).join('\n');
+  const existingHint = existingFacts.length
+    ? `\nBestehende Fakt-IDs (wiederverwendet wenn Inhalt gleich — keine neuen IDs für bekannte Fakten):\n${existingIds}`
     : '';
 
   const raw = await callClaude(
@@ -224,13 +294,13 @@ async function onCrystallize(soulId, soul, apiKey) {
     `Du bist der Archivar. Antworte NUR mit reinem JSON — kein Markdown, keine Code-Blöcke, kein Text davor oder danach.`,
     `Extrahiere max. 12 stabile Kern-Fakten aus diesen Soul-Sektionen.
 Nur Fakten die sich kaum ändern (Name, Familie, Werte, Kernprojekte, Persönlichkeit).
-Keine Session-Logs, keine temporären Ereignisse.${existingJson}
+Keine Session-Logs, keine temporären Ereignisse.${existingHint}
 
 Soul-Sektionen:
 ${sectionText}
 
 Gib NUR dieses JSON zurück (kein Markdown):
-{"facts":[{"id":"slug","cat":"identity","text":"Faktum",\"score\":5}]}
+{"facts":[{"id":"slug","cat":"identity","text":"Faktum","score":5}]}
 
 cat: identity|values|personality|project
 score: 5=absoluter Kern, 4=wichtig, 3=relevant`,
@@ -238,7 +308,6 @@ score: 5=absoluter Kern, 4=wichtig, 3=relevant`,
   );
 
   if (!raw) return;
-  // Markdown-Codeblock entfernen falls Claude ihn trotzdem schreibt
   const cleaned = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
   const m = cleaned.match(/\{[\s\S]*\}/);
   if (!m) return;
@@ -249,16 +318,28 @@ score: 5=absoluter Kern, 4=wichtig, 3=relevant`,
   // Merge: existierende Fakten behalten, neue hinzufügen / score aktualisieren
   const merged = [...existingFacts];
   for (const newFact of parsed.facts) {
-    const existing = merged.find(f => f.id === newFact.id);
-    if (existing) {
-      existing.score = Math.max(existing.score ?? 1, newFact.score ?? 1);
-      existing.text  = newFact.text; // Text aktualisieren
+    const byId = merged.find(f => f.id === newFact.id);
+    if (byId) {
+      byId.score = Math.max(byId.score ?? 1, newFact.score ?? 1);
+      byId.text  = newFact.text;
     } else {
       merged.push({ ...newFact, since: new Date().toISOString().slice(0, 10) });
     }
   }
-  // Fakten mit score < 1 entfernen
-  const kept = merged.filter(f => (f.score ?? 1) >= 1);
+
+  // Text-basierte Deduplication: gleicher Inhalt → ältere Variante entfernen
+  const seen = new Map();
+  const deduped = [];
+  for (const f of merged) {
+    const key = f.text.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!seen.has(key)) {
+      seen.set(key, true);
+      deduped.push(f);
+    }
+    // Duplikat — überspringen, ältere Variante bereits drin
+  }
+
+  const kept = deduped.filter(f => (f.score ?? 1) >= 1);
 
   const current = await readSoul(soulId);
   if (!current) return;
