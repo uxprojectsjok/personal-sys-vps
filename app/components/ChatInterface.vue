@@ -570,7 +570,10 @@ async function chatCrystallize() {
     const data = await res.json()
     if (data?.ok) {
       archivPanelMsg.value = { ok: true, text: 'Kristallisation gestartet — ~15 Sek.' }
-      setTimeout(() => loadArchivPanel(), 18000)
+      setTimeout(async () => {
+        await syncLongmemFromServer()
+        loadArchivPanel()
+      }, 18000)
     } else {
       archivPanelMsg.value = { ok: false, text: data?.error || 'Fehler' }
     }
@@ -939,7 +942,7 @@ const inputPlaceholder = computed(() => {
 })
 
 // ── Messaging / Social sphere state ───────────────────────────────
-const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent } = useSoul()
+const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent, syncLongmemFromServer } = useSoul()
 const isSavingAgent      = ref(false)
 const isRefreshing       = ref(false)
 const isSynthesizing     = ref(false)
