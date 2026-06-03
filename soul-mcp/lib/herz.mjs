@@ -12,13 +12,15 @@
  */
 
 import { readFile, writeFile } from 'fs/promises';
-import { SOULS_DIR }           from './vault_fs.mjs';
+import { SOULS_DIR, decryptIfNeeded, encryptBuf, loadVaultMeta } from './vault_fs.mjs';
+import { extractLongmem, updateLongmem, extractAllSections } from './soul_parser.mjs';
 
-const TICK_INTERVAL_MS    = 10 * 60 * 1000;  // alle 10 Min prüfen
-const HEARTBEAT_TIMEOUT   = 30 * 60 * 1000;  // 30 Min ohne Ping → auto-deaktivieren
-const SILENCE_SOFT_DAYS   = 3;
-const SILENCE_MID_DAYS    = 7;
-const SILENCE_HARD_DAYS   = 14;
+const TICK_INTERVAL_MS      = 10 * 60 * 1000;  // alle 10 Min prüfen
+const HEARTBEAT_TIMEOUT     = 30 * 60 * 1000;  // 30 Min ohne Ping → auto-deaktivieren
+const SILENCE_SOFT_DAYS     = 3;
+const SILENCE_MID_DAYS      = 7;
+const SILENCE_HARD_DAYS     = 14;
+const CRYSTALLIZE_ANCHORS   = 5;   // alle 5 neuen Anker kristallisieren
 
 // ── State (pro Soul, in-memory) ───────────────────────────────────────────────
 const _state = new Map();  // soulId → HerzState
@@ -26,13 +28,14 @@ const _state = new Map();  // soulId → HerzState
 function getState(soulId) {
   if (!_state.has(soulId)) {
     _state.set(soulId, {
-      active:           false,
-      lastHeartbeat:    0,
-      lastAnchorCount:  0,
-      lastAgentHash:    '',
-      lastCircadian:    { morning: 0, evening: 0 },
-      lastSilenceNotif: 0,
-      tickTimer:        null,
+      active:                false,
+      lastHeartbeat:         0,
+      lastAnchorCount:       0,
+      lastAgentHash:         '',
+      lastCircadian:         { morning: 0, evening: 0 },
+      lastSilenceNotif:      0,
+      lastCrystallizeAnchor: 0,
+      tickTimer:             null,
     });
   }
   return _state.get(soulId);
@@ -42,9 +45,22 @@ function getState(soulId) {
 
 async function readSoul(soulId) {
   try {
-    const p = `${SOULS_DIR}${soulId}/sys.md`;
-    return await readFile(p, 'utf8');
+    const p      = `${SOULS_DIR}${soulId}/sys.md`;
+    const raw    = await readFile(p);
+    const { vaultKeyHex } = await loadVaultMeta(soulId);
+    return decryptIfNeeded(raw, vaultKeyHex).toString('utf8');
   } catch { return null; }
+}
+
+async function writeSoul(soulId, text) {
+  const p   = `${SOULS_DIR}${soulId}/sys.md`;
+  const raw = await readFile(p).catch(() => null);
+  if (!raw) return;
+  const { vaultKeyHex } = await loadVaultMeta(soulId);
+  const wasEncrypted = raw.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
+  let buf = Buffer.from(text, 'utf8');
+  if (wasEncrypted && vaultKeyHex) buf = encryptBuf(buf, vaultKeyHex);
+  await writeFile(p, buf);
 }
 
 async function readConfig(soulId) {
@@ -126,16 +142,15 @@ async function callClaude(apiKey, systemPrompt, userContent, maxTokens = 300) {
 
 async function appendToSoulLog(soulId, text) {
   try {
-    const path = `${SOULS_DIR}${soulId}/sys.md`;
-    let soul = await readFile(path, 'utf8');
+    let soul = await readSoul(soulId);
+    if (!soul) return false;
     const logHeader = '## Session-Log';
     const idx = soul.indexOf(logHeader);
     if (idx === -1) return false;
     const insertAt = idx + logHeader.length;
     const today = new Date().toISOString().slice(0, 10);
-    const entry = `\n- **${today} [herz]:** ${text}`;
-    soul = soul.slice(0, insertAt) + entry + soul.slice(insertAt);
-    await writeFile(path, soul, 'utf8');
+    soul = soul.slice(0, insertAt) + `\n- **${today} [herz]:** ${text}` + soul.slice(insertAt);
+    await writeSoul(soulId, soul);
     return true;
   } catch { return false; }
 }
@@ -185,6 +200,78 @@ async function onCircadian(soulId, soul, apiKey, period) {
   if (text) await appendToSoulLog(soulId, `${period === 'morning' ? 'Morgen' : 'Abend'} — ${text}`);
 }
 
+async function onCrystallize(soulId, soul, apiKey) {
+  const sections  = extractAllSections(soul);
+  const existing  = extractLongmem(soul);
+  const existingFacts = existing?.facts ?? [];
+
+  // Relevante Sektionen für Kristallisation (keine Logs, keine technischen Blöcke)
+  const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz',
+    'Weltbild', 'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck'];
+  const sectionText = CORE_SECTIONS
+    .filter(s => sections[s])
+    .map(s => `### ${s}\n${sections[s].slice(0, 600)}`)
+    .join('\n\n');
+
+  if (!sectionText.trim()) return;
+
+  const existingJson = existingFacts.length
+    ? `\nBereits kristallisierte Fakten (nicht duplizieren):\n${JSON.stringify(existingFacts, null, 2)}`
+    : '';
+
+  const raw = await callClaude(
+    apiKey,
+    `Du bist der Archivar. Antworte NUR mit reinem JSON — kein Markdown, keine Code-Blöcke, kein Text davor oder danach.`,
+    `Extrahiere max. 12 stabile Kern-Fakten aus diesen Soul-Sektionen.
+Nur Fakten die sich kaum ändern (Name, Familie, Werte, Kernprojekte, Persönlichkeit).
+Keine Session-Logs, keine temporären Ereignisse.${existingJson}
+
+Soul-Sektionen:
+${sectionText}
+
+Gib NUR dieses JSON zurück (kein Markdown):
+{"facts":[{"id":"slug","cat":"identity","text":"Faktum",\"score\":5}]}
+
+cat: identity|values|personality|project
+score: 5=absoluter Kern, 4=wichtig, 3=relevant`,
+    1200
+  );
+
+  if (!raw) return;
+  // Markdown-Codeblock entfernen falls Claude ihn trotzdem schreibt
+  const cleaned = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (!m) return;
+  let parsed;
+  try { parsed = JSON.parse(m[0]); } catch { return; }
+  if (!Array.isArray(parsed?.facts)) return;
+
+  // Merge: existierende Fakten behalten, neue hinzufügen / score aktualisieren
+  const merged = [...existingFacts];
+  for (const newFact of parsed.facts) {
+    const existing = merged.find(f => f.id === newFact.id);
+    if (existing) {
+      existing.score = Math.max(existing.score ?? 1, newFact.score ?? 1);
+      existing.text  = newFact.text; // Text aktualisieren
+    } else {
+      merged.push({ ...newFact, since: new Date().toISOString().slice(0, 10) });
+    }
+  }
+  // Fakten mit score < 1 entfernen
+  const kept = merged.filter(f => (f.score ?? 1) >= 1);
+
+  const current = await readSoul(soulId);
+  if (!current) return;
+
+  const updated = updateLongmem(current, {
+    v:       1,
+    updated: new Date().toISOString().slice(0, 10),
+    facts:   kept,
+  });
+  await writeSoul(soulId, updated);
+  await appendToSoulLog(soulId, `Kristallisation — ${kept.length} Fakten im LONGMEM verankert.`);
+}
+
 // ── Main Tick ─────────────────────────────────────────────────────────────────
 
 async function tick(soulId) {
@@ -209,6 +296,12 @@ async function tick(soulId) {
   const chainLen = extractGrowthChainLength(soul);
   if (chainLen > state.lastAnchorCount && state.lastAnchorCount > 0) {
     await onAnchor(soulId, soul, apiKey, chainLen);
+    // ── on_crystallize — alle CRYSTALLIZE_ANCHORS neuen Anker ──────────────────
+    const anchorsSinceCrystallize = chainLen - state.lastCrystallizeAnchor;
+    if (anchorsSinceCrystallize >= CRYSTALLIZE_ANCHORS || state.lastCrystallizeAnchor === 0) {
+      await onCrystallize(soulId, soul, apiKey);
+      state.lastCrystallizeAnchor = chainLen;
+    }
   }
   state.lastAnchorCount = chainLen;
 
@@ -289,5 +382,14 @@ export function herzStatus(soulId) {
 
 export async function herzForceTick(soulId) {
   await tick(soulId);
+  return { ok: true };
+}
+
+export async function herzForceCrystallize(soulId) {
+  const [soul, cfg] = await Promise.all([readSoul(soulId), readConfig(soulId)]);
+  if (!soul || !cfg?.anthropic_key) return { ok: false, error: 'soul oder key fehlt' };
+  await onCrystallize(soulId, soul, cfg.anthropic_key);
+  const state = getState(soulId);
+  state.lastCrystallizeAnchor = extractGrowthChainLength(soul);
   return { ok: true };
 }

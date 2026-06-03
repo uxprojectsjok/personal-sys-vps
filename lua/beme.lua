@@ -129,7 +129,27 @@ Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
 Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.]]
 -- PROMPT_END: beme
 
-local system_prompt = name_clause .. BEME_INTRO .. soul_text .. BEME_OUTRO
+-- ── LONGMEM: kristallisierte Langzeit-Fakten extrahieren und voranstellen ────
+local longmem_block = soul_text:match("<!%-%- SYS:LONGMEM:START %-%->(.-)<!%-%- SYS:LONGMEM:END %-%->")
+                   or soul_text:match("<!%-%-+%s*LONGMEM:START%s*%-%-+>(.-)\n?<!%-%-+%s*LONGMEM:END%s*%-%-+>")
+local longmem_prefix = ""
+if longmem_block and longmem_block:match('"facts"') then
+  local cjson_ok, cjson = pcall(require, "cjson.safe")
+  if cjson_ok then
+    local ok, lm = pcall(cjson.decode, longmem_block:match("{.*}"))
+    if ok and type(lm) == "table" and type(lm.facts) == "table" and #lm.facts > 0 then
+      -- Nach score absteigend sortieren
+      table.sort(lm.facts, function(a, b) return (a.score or 0) > (b.score or 0) end)
+      local lines = {}
+      for _, f in ipairs(lm.facts) do
+        table.insert(lines, "- " .. tostring(f.text or ""))
+      end
+      longmem_prefix = "\n\n## Kristallisiertes Langzeitgedächtnis\n" .. table.concat(lines, "\n") .. "\n\n"
+    end
+  end
+end
+
+local system_prompt = name_clause .. BEME_INTRO .. longmem_prefix .. soul_text .. BEME_OUTRO
 
 -- ── Nachrichten-Array aufbauen ─────────────────────────────────────────────
 

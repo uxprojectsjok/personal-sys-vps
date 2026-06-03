@@ -19,6 +19,11 @@ ngx.header["Cache-Control"] = "no-store"
 
 local uri    = ngx.var.uri  -- z.B. /api/soul/herz/toggle
 local action = uri:match("/api/soul/herz/(.+)$") or "status"
+if not ({ toggle=1, status=1, tick=1, heartbeat=1, crystallize=1 })[action] then
+  ngx.status = 404
+  ngx.say('{"error":"unknown action"}')
+  return
+end
 local method = ngx.req.get_method()
 
 local body = "{}"
