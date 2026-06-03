@@ -14,10 +14,11 @@
 import { readFile, writeFile } from 'fs/promises';
 import { SOULS_DIR }           from './vault_fs.mjs';
 
-const TICK_INTERVAL_MS  = 10 * 60 * 1000;  // alle 10 Min prüfen
-const SILENCE_SOFT_DAYS = 3;
-const SILENCE_MID_DAYS  = 7;
-const SILENCE_HARD_DAYS = 14;
+const TICK_INTERVAL_MS    = 10 * 60 * 1000;  // alle 10 Min prüfen
+const HEARTBEAT_TIMEOUT   = 30 * 60 * 1000;  // 30 Min ohne Ping → auto-deaktivieren
+const SILENCE_SOFT_DAYS   = 3;
+const SILENCE_MID_DAYS    = 7;
+const SILENCE_HARD_DAYS   = 14;
 
 // ── State (pro Soul, in-memory) ───────────────────────────────────────────────
 const _state = new Map();  // soulId → HerzState
@@ -25,12 +26,13 @@ const _state = new Map();  // soulId → HerzState
 function getState(soulId) {
   if (!_state.has(soulId)) {
     _state.set(soulId, {
-      active:          false,
-      lastAnchorCount: 0,
-      lastAgentHash:   '',
-      lastCircadian:   { morning: 0, evening: 0 },
+      active:           false,
+      lastHeartbeat:    0,
+      lastAnchorCount:  0,
+      lastAgentHash:    '',
+      lastCircadian:    { morning: 0, evening: 0 },
       lastSilenceNotif: 0,
-      tickTimer:       null,
+      tickTimer:        null,
     });
   }
   return _state.get(soulId);
@@ -163,6 +165,13 @@ async function tick(soulId) {
   const state = getState(soulId);
   if (!state.active) return;
 
+  // Kein Heartbeat seit HEARTBEAT_TIMEOUT → auto-deaktivieren, kein Token-Verbrauch
+  if (Date.now() - state.lastHeartbeat > HEARTBEAT_TIMEOUT) {
+    herzDeactivate(soulId);
+    console.log(`[herz] ${soulId} auto-deaktiviert (kein Heartbeat)`);
+    return;
+  }
+
   const [soul, cfg] = await Promise.all([readSoul(soulId), readConfig(soulId)]);
   if (!soul || !cfg?.anthropic_key) return;
 
@@ -216,8 +225,15 @@ async function tick(soulId) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+export function herzHeartbeat(soulId) {
+  const state = getState(soulId);
+  state.lastHeartbeat = Date.now();
+  return { ok: true, active: state.active };
+}
+
 export function herzActivate(soulId) {
   const state = getState(soulId);
+  state.lastHeartbeat = Date.now();  // sofort als aktiv markieren
   if (state.active) return { ok: true, active: true };
   state.active = true;
   // Initialzustand lesen ohne zu feuern

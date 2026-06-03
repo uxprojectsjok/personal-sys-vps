@@ -465,9 +465,26 @@ watch(archivEnabled, v => { if (typeof window !== 'undefined') localStorage.setI
 const autonomousKi = ref(
   typeof window !== 'undefined' ? localStorage.getItem('sys_autonomous_ki') === 'true' : false
 )
+let _herzHeartbeatTimer = null
+
+function startHerzHeartbeat() {
+  if (_herzHeartbeatTimer) return
+  _herzHeartbeatTimer = setInterval(() => {
+    if (!autonomousKi.value || !props.soulCert) return
+    fetch('/api/soul/herz/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({}),
+    }).catch(() => {})
+  }, 5 * 60 * 1000)
+}
+
+function stopHerzHeartbeat() {
+  if (_herzHeartbeatTimer) { clearInterval(_herzHeartbeatTimer); _herzHeartbeatTimer = null }
+}
+
 watch(autonomousKi, async (v) => {
   if (typeof window !== 'undefined') localStorage.setItem('sys_autonomous_ki', String(v))
-  // herz-Worker auf dem Server aktivieren/deaktivieren
   if (!props.soulCert) return
   try {
     await fetch('/api/soul/herz/toggle', {
@@ -475,6 +492,8 @@ watch(autonomousKi, async (v) => {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
       body: JSON.stringify({ active: v }),
     })
+    if (v) startHerzHeartbeat()
+    else stopHerzHeartbeat()
   } catch { /* silent */ }
 })
 
@@ -3247,6 +3266,15 @@ onUnmounted(() => {
   document.removeEventListener('keydown', _onLightboxKey)
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
+  // herz deaktivieren wenn Chat geschlossen wird
+  stopHerzHeartbeat()
+  if (autonomousKi.value && props.soulCert) {
+    fetch('/api/soul/herz/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({ active: false }),
+    }).catch(() => {})
+  }
 })
 
 defineExpose({

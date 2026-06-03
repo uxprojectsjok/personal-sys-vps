@@ -184,7 +184,7 @@ import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailed
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
-import { herzActivate, herzDeactivate, herzStatus, herzForceTick } from './lib/herz.mjs';
+import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat } from './lib/herz.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -834,6 +834,13 @@ app.post('/internal/herz/tick', async (req, res) => {
   if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
   await herzForceTick(soul_id);
   res.json({ ok: true });
+});
+
+// POST /internal/herz/heartbeat  { soul_id }  — Session-Ping (alle 5 Min vom Chat)
+app.post('/internal/herz/heartbeat', (req, res) => {
+  const { soul_id } = req.body || {};
+  if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
+  res.json(herzHeartbeat(soul_id));
 });
 
 // POST /internal/deregister-soul  { soul_id }
