@@ -659,7 +659,10 @@ Mögliche section-Werte (exakt so schreiben):
   }
 
   // Holt LONGMEM-Block vom Server und injiziert ihn in die lokale Browser-Kopie.
-  // Wird nach jeder Kristallisation aufgerufen damit soulContent immer vollständig ist.
+  // Wird nach jeder Kristallisation aufgerufen — übernimmt die vollständige
+  // Server-Soul in den Browser. Nach Kristallisation ist der Server die
+  // autoritative Quelle: Sektionen geleert, LONGMEM bereinigt und korrekt
+  // positioniert. Der Browser-Stand wird vollständig ersetzt.
   async function syncLongmemFromServer() {
     if (!isClient || !soulContent.value) return;
     const token = soulToken.value;
@@ -669,18 +672,7 @@ Mögliche section-Werte (exakt so schreiben):
       if (!res.ok) return;
       const serverSoul = await res.text();
       if (!serverSoul?.trim().startsWith("---")) return;
-      const lmMatch = serverSoul.match(/(<!-- SYS:LONGMEM:START -->[\s\S]*?<!-- SYS:LONGMEM:END -->)/);
-      if (!lmMatch) return;
-      const lmBlock = lmMatch[1];
-      const localHasLm = /<!-- SYS:LONGMEM:START -->/.test(soulContent.value);
-      if (localHasLm) {
-        soulContent.value = soulContent.value.replace(
-          /<!-- SYS:LONGMEM:START -->[\s\S]*?<!-- SYS:LONGMEM:END -->/,
-          lmBlock
-        );
-      } else {
-        soulContent.value = soulContent.value.trimEnd() + '\n\n' + lmBlock + '\n';
-      }
+      soulContent.value = serverSoul;
       save();
     } catch { /* silent */ }
   }
