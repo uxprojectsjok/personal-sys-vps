@@ -236,27 +236,28 @@ ctx.updated_at = ngx.now()
 -- soul_content_encrypted: base64-kodierter AES-CBC Ciphertext (Magic-Bytes + IV + Daten)
 -- soul_content:           Plaintext → wird serverseitig re-verschlüsselt wenn cipher_mode="ciphered"
 --
--- Versionsschutz: Server-Stand gewinnt wenn cert_version höher als Browser-Version.
--- Verhindert dass Browser-Login einen neueren Service-Token-Stand überschreibt.
-local function get_server_cert_version()
-  local sf = io.open(base_dir .. "/sys.md", "rb")
-  if not sf then return 0 end
-  local head = sf:read(512); sf:close()
-  if not head then return 0 end
-  local v = head:match("cert_version:%s*(%d+)")
-  return tonumber(v) or 0
+-- Versionsschutz: soul_cert_version wird in api_context.json gespeichert (JSON, lesbar).
+-- Die sys.md kann verschlüsselt sein → cert_version nie aus der Datei lesen.
+-- Service-Token-Writes setzen die Version; Browser-Uploads mit niedrigerer Version werden abgelehnt.
+local function get_server_soul_version()
+  return tonumber(ctx.soul_cert_version) or 0
 end
 
 local function get_incoming_cert_version(content)
   if type(content) ~= "string" then return 0 end
-  local v = content:sub(1, 512):match("cert_version:%s*(%d+)")
+  local v = content:sub(1, 1024):match("cert_version:%s*(%d+)")
   return tonumber(v) or 0
 end
 
 local function soul_is_newer_on_server(incoming_content)
-  local server_v  = get_server_cert_version()
+  local server_v  = get_server_soul_version()
   local browser_v = get_incoming_cert_version(incoming_content)
   return server_v > browser_v
+end
+
+local function save_soul_version(content)
+  local v = get_incoming_cert_version(content)
+  ctx.soul_cert_version = v
 end
 
 if type(incoming.soul_content_encrypted) == "string" and #incoming.soul_content_encrypted > 0 then
@@ -296,6 +297,7 @@ elseif type(incoming.soul_content) == "string" and #incoming.soul_content > 0 th
       final_content = encrypted
       local sf = io.open(base_dir .. "/sys.md", "wb")
       if sf then sf:write(final_content); sf:close() end
+      save_soul_version(incoming.soul_content)
     else
       ngx.status = 500
       ngx.header["Content-Type"] = "application/json"
@@ -306,6 +308,7 @@ elseif type(incoming.soul_content) == "string" and #incoming.soul_content > 0 th
     -- Open mode: Klartext nur wenn explizit cipher_mode="open" gesetzt
     local sf = io.open(base_dir .. "/sys.md", "w")
     if sf then sf:write(final_content); sf:close() end
+    save_soul_version(incoming.soul_content)
   end
 end
 ::skip_soul_write::
