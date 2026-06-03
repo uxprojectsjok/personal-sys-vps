@@ -371,19 +371,32 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
         .replace(/^---[\s\S]*?---\n*/m, '')
         .trim()
 
-      // LONGMEM: kristallisierte Kern-Fakten als Anker für den Gedächtnisassistenten
-      const longmemMatch = soulContent.value.match(/<!--\s*LONGMEM:START\s*-->([\s\S]*?)<!--\s*LONGMEM:END\s*-->/)
+      // LONGMEM: alle vier Kategorien als kompakter Kontext-Anker
+      const longmemMatch = soulContent.value.match(/<!-- SYS:LONGMEM:START -->([\s\S]*?)<!-- SYS:LONGMEM:END -->/)
       let longmemContext = ''
       if (longmemMatch) {
         try {
           const lm = JSON.parse(longmemMatch[1].trim())
-          if (Array.isArray(lm?.facts) && lm.facts.length > 0) {
-            const lines = lm.facts
+          const parts = []
+          if (lm?.facts?.length) {
+            parts.push('Kern-Fakten:\n' + lm.facts
               .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-              .map(f => `- ${f.text}`)
-              .join('\n')
-            longmemContext = `\nKRISTALLISIERTE KERN-FAKTEN (permanent, nicht überschreiben):\n${lines}\n`
+              .map(f => `- ${f.text}`).join('\n'))
           }
+          if (lm?.memories?.length) {
+            parts.push('Erinnerungen:\n' + lm.memories.slice(-15)
+              .map(m => `- ${m.date ? m.date + ' ' : ''}${m.text}`).join('\n'))
+          }
+          if (lm?.ideas?.length) {
+            const active = lm.ideas.filter(i => i.status !== 'done')
+            if (active.length) parts.push('Ideen:\n' + active
+              .map(i => `- ${i.title}: ${i.text}`).join('\n'))
+          }
+          if (lm?.learnings?.length) {
+            parts.push('Erkenntnisse:\n' + lm.learnings
+              .map(l => `- ${l.text}`).join('\n'))
+          }
+          if (parts.length) longmemContext = `\nLONGMEM (kristallisiert, permanent):\n${parts.join('\n\n')}\n`
         } catch { /* ignorieren */ }
       }
 

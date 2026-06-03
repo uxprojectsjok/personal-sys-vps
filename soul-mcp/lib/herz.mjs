@@ -225,132 +225,155 @@ function replaceSection(md, heading, newContent) {
   return result.join('\n');
 }
 
-// Bereinigt Sektionen die rohe Chat-Dumps oder Emoji-Content enthalten
-async function onOptimizeSections(soulId, soul, apiKey) {
-  const CLEANUP_SECTIONS = [
-    'Offene Fragen dieser Person',
-    'Zukünftige Feature-Ideen für SYS',
-  ];
-  let current = soul;
-  let changed = false;
+// JSON aus Claude-Antwort sicher parsen
+function parseJson(raw) {
+  if (!raw) return null;
+  const cleaned = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
+  const m = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
 
-  for (const heading of CLEANUP_SECTIONS) {
-    const content = extractSectionFull(current, heading);
-    if (!content) continue;
-    // Prüfe ob Cleanup nötig: Emojis, "SESSION", raw chat indicators
-    const needsCleanup = /[\u{1F300}-\u{1FFFF}]|SESSION\n|schreibe das in meine soul|IF action ==|Konkreter Flow|Was du dafür brauchst/u.test(content);
-    if (!needsCleanup) continue;
-
-    const cleaned = await callClaude(
-      apiKey,
-      `Du bist der Archivar. Restrukturiere diesen Soul-Abschnitt in sauberes Markdown.
-Regeln:
-- Keine Emojis, keine Chat-Fragmente, keine "SESSION"-Blöcke
-- Behalte alle inhaltlich relevanten Informationen und Ideen
-- Strukturiere als klare Markdown-Liste oder Unterabschnitte (###)
-- Entferne rohe KI-Konversationen, behalte nur destillierte Kernaussagen
-- Antworte NUR mit dem bereinigten Inhalt, kein Intro, kein Outro`,
-      `Abschnitt: ## ${heading}\n\n${content.slice(0, 2500)}`,
-      900
-    );
-    if (!cleaned?.trim()) continue;
-    current = replaceSection(current, heading, cleaned);
-    changed = true;
+// Text-Deduplication für Arrays mit {id, text}
+function deduplicateById(existing, incoming, today) {
+  const merged = [...existing];
+  for (const item of incoming) {
+    const byId = merged.find(e => e.id === item.id);
+    if (byId) {
+      Object.assign(byId, item);
+    } else {
+      merged.push({ ...item, since: today });
+    }
   }
-
-  if (changed) {
-    await writeSoul(soulId, current);
-  }
-  return current;
+  const seen = new Set();
+  return merged.filter(e => {
+    const key = (e.text ?? e.summary ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 async function onCrystallize(soulId, soul, apiKey) {
-  // ── Schritt 1: Sektionen bereinigen ──────────────────────────────────────────
-  const optimized = await onOptimizeSections(soulId, soul, apiKey);
-  const soulForFacts = optimized || soul;
+  const today   = new Date().toISOString().slice(0, 10);
+  const existing = extractLongmem(soul) ?? {};
+  let current   = soul;
+  let changed   = false;
 
-  const sections  = extractAllSections(soulForFacts);
-  const existing  = extractLongmem(soulForFacts);
-  const existingFacts = existing?.facts ?? [];
+  const existingFacts    = existing.facts    ?? [];
+  const existingMemories = existing.memories ?? [];
+  const existingIdeas    = existing.ideas    ?? [];
+  const existingLearnings = existing.learnings ?? [];
 
-  // Relevante Sektionen für Kristallisation (keine Logs, keine technischen Blöcke)
+  // ── 1. facts — stabile Identität aus Kern-Sektionen ─────────────────────────
   const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz',
     'Weltbild', 'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck'];
-  const sectionText = CORE_SECTIONS
-    .filter(s => sections[s])
-    .map(s => `### ${s}\n${sections[s].slice(0, 600)}`)
-    .join('\n\n');
+  const sectionParts = [];
+  for (const h of CORE_SECTIONS) {
+    const c = extractSectionFull(soul, h);
+    if (c) sectionParts.push(`### ${h}\n${c.slice(0, 500)}`);
+  }
+  if (sectionParts.length) {
+    const existingIds = existingFacts.map(f => `${f.id}: "${f.text.slice(0, 50)}"`).join('\n');
+    const raw = await callClaude(apiKey,
+      'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+      `Extrahiere max. 12 stabile Kern-Fakten (Name, Familie, Werte, Persönlichkeit, Kernprojekte).
+Bestehende IDs wiederverwenden wenn Inhalt gleich:\n${existingIds || '—'}
 
-  if (!sectionText.trim()) return;
+${sectionParts.join('\n\n')}
 
-  // Bestehende IDs explizit übergeben damit Claude sie wiederverwendet
-  const existingIds = existingFacts.map(f => `${f.id} → "${f.text.slice(0, 60)}"`).join('\n');
-  const existingHint = existingFacts.length
-    ? `\nBestehende Fakt-IDs (wiederverwendet wenn Inhalt gleich — keine neuen IDs für bekannte Fakten):\n${existingIds}`
-    : '';
-
-  const raw = await callClaude(
-    apiKey,
-    `Du bist der Archivar. Antworte NUR mit reinem JSON — kein Markdown, keine Code-Blöcke, kein Text davor oder danach.`,
-    `Extrahiere max. 12 stabile Kern-Fakten aus diesen Soul-Sektionen.
-Nur Fakten die sich kaum ändern (Name, Familie, Werte, Kernprojekte, Persönlichkeit).
-Keine Session-Logs, keine temporären Ereignisse.${existingHint}
-
-Soul-Sektionen:
-${sectionText}
-
-Gib NUR dieses JSON zurück (kein Markdown):
-{"facts":[{"id":"slug","cat":"identity","text":"Faktum","score":5}]}
-
-cat: identity|values|personality|project
-score: 5=absoluter Kern, 4=wichtig, 3=relevant`,
-    1200
-  );
-
-  if (!raw) return;
-  const cleaned = raw.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim();
-  const m = cleaned.match(/\{[\s\S]*\}/);
-  if (!m) return;
-  let parsed;
-  try { parsed = JSON.parse(m[0]); } catch { return; }
-  if (!Array.isArray(parsed?.facts)) return;
-
-  // Merge: existierende Fakten behalten, neue hinzufügen / score aktualisieren
-  const merged = [...existingFacts];
-  for (const newFact of parsed.facts) {
-    const byId = merged.find(f => f.id === newFact.id);
-    if (byId) {
-      byId.score = Math.max(byId.score ?? 1, newFact.score ?? 1);
-      byId.text  = newFact.text;
-    } else {
-      merged.push({ ...newFact, since: new Date().toISOString().slice(0, 10) });
+Format: [{"id":"slug","cat":"identity|values|personality|project","text":"Fakt","score":5}]
+score: 5=absoluter Kern, 4=wichtig, 3=relevant`, 1200);
+    const parsed = parseJson(raw);
+    if (Array.isArray(parsed)) {
+      existing.facts = deduplicateById(existingFacts, parsed, today).filter(f => (f.score ?? 1) >= 1);
+      changed = true;
     }
   }
 
-  // Text-basierte Deduplication: gleicher Inhalt → ältere Variante entfernen
-  const seen = new Map();
-  const deduped = [];
-  for (const f of merged) {
-    const key = f.text.toLowerCase().replace(/\s+/g, ' ').trim();
-    if (!seen.has(key)) {
-      seen.set(key, true);
-      deduped.push(f);
+  // ── 2. memories — Session-Log destillieren und Log kürzen ────────────────────
+  const logContent = extractSectionFull(soul, 'Session-Log');
+  if (logContent) {
+    const logLines = logContent.split('\n').filter(l => l.startsWith('- '));
+    const toDistill = logLines.slice(0, -5); // letzte 5 behalten
+    if (toDistill.length > 0) {
+      const raw = await callClaude(apiKey,
+        'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+        `Destilliere diese Session-Log-Einträge in kompakte Erinnerungen.
+Jede Erinnerung: was ist passiert, was ist relevant für das Langzeitgedächtnis dieser Person.
+Keine Technik-Details, keine Wiederholungen, nur was über die Person aussagt.
+
+Log-Einträge:
+${toDistill.join('\n')}
+
+Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinnerung"}]`, 1000);
+      const parsed = parseJson(raw);
+      if (Array.isArray(parsed)) {
+        existing.memories = deduplicateById(existingMemories, parsed, today);
+        // Log kürzen: nur letzte 5 Einträge behalten
+        const kept = logLines.slice(-5);
+        current = replaceSection(current, 'Session-Log', kept.join('\n'));
+        changed = true;
+      }
     }
-    // Duplikat — überspringen, ältere Variante bereits drin
   }
 
-  const kept = deduped.filter(f => (f.score ?? 1) >= 1);
+  // ── 3. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
+  const ideasContent = extractSectionFull(soul, 'Zukünftige Feature-Ideen für SYS');
+  if (ideasContent && ideasContent.trim().length > 50) {
+    const raw = await callClaude(apiKey,
+      'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+      `Destilliere diese Feature-Ideen in kompakte JSON-Einträge.
+Kein Fließtext, keine Konversationsfragmente, nur die Kernidee.
 
-  const current = await readSoul(soulId);
-  if (!current) return;
+Inhalt:
+${ideasContent.slice(0, 2000)}
 
-  const updated = updateLongmem(current, {
-    v:       1,
-    updated: new Date().toISOString().slice(0, 10),
-    facts:   kept,
-  });
-  await writeSoul(soulId, updated);
-  await appendToSoulLog(soulId, `Kristallisation — ${kept.length} Fakten im LONGMEM verankert.`);
+Format: [{"id":"idea_slug","title":"Kurztitel","text":"Kernidee in 1-2 Sätzen","status":"idea|planned|done"}]`, 800);
+    const parsed = parseJson(raw);
+    if (Array.isArray(parsed)) {
+      existing.ideas = deduplicateById(existingIdeas, parsed, today);
+      current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS',
+        '_Destilliert ins LONGMEM._');
+      changed = true;
+    }
+  }
+
+  // ── 4. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
+  const learningsContent = extractSectionFull(soul, 'Offene Fragen dieser Person');
+  if (learningsContent && learningsContent.trim().length > 50) {
+    const raw = await callClaude(apiKey,
+      'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+      `Destilliere diese Erkenntnisse / offenen Fragen in kompakte Lerneinträge.
+Technische Findings, Architektur-Entscheidungen, persönliche Erkenntnisse.
+
+Inhalt:
+${learningsContent.slice(0, 2000)}
+
+Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text":"Erkenntnis"}]`, 800);
+    const parsed = parseJson(raw);
+    if (Array.isArray(parsed)) {
+      existing.learnings = deduplicateById(existingLearnings, parsed, today);
+      current = replaceSection(current, 'Offene Fragen dieser Person',
+        '_Destilliert ins LONGMEM._');
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+
+  existing.v       = 1;
+  existing.updated = today;
+
+  const withLongmem = updateLongmem(current, existing);
+  await writeSoul(soulId, withLongmem);
+
+  const total = (existing.facts?.length ?? 0) + (existing.memories?.length ?? 0) +
+                (existing.ideas?.length ?? 0) + (existing.learnings?.length ?? 0);
+  await appendToSoulLog(soulId,
+    `Kristallisation — ${total} Einträge im LONGMEM (${existing.facts?.length ?? 0} Fakten, ` +
+    `${existing.memories?.length ?? 0} Erinnerungen, ${existing.ideas?.length ?? 0} Ideen, ` +
+    `${existing.learnings?.length ?? 0} Erkenntnisse).`);
 }
 
 // ── Main Tick ─────────────────────────────────────────────────────────────────
