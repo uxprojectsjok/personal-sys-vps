@@ -528,6 +528,14 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_pinata_config.lua;
   }
 
+  location = /api/soul/longmem-status {
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_longmem_status.lua;
+  }
+
   location ~ ^/api/soul/herz/(toggle|status|tick|heartbeat)$ {
     limit_req zone=chat burst=20 nodelay;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
