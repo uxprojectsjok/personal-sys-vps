@@ -370,11 +370,28 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       const soulSections = soulContent.value
         .replace(/^---[\s\S]*?---\n*/m, '')
         .trim()
+
+      // LONGMEM: kristallisierte Kern-Fakten als Anker für den Gedächtnisassistenten
+      const longmemMatch = soulContent.value.match(/<!--\s*LONGMEM:START\s*-->([\s\S]*?)<!--\s*LONGMEM:END\s*-->/)
+      let longmemContext = ''
+      if (longmemMatch) {
+        try {
+          const lm = JSON.parse(longmemMatch[1].trim())
+          if (Array.isArray(lm?.facts) && lm.facts.length > 0) {
+            const lines = lm.facts
+              .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+              .map(f => `- ${f.text}`)
+              .join('\n')
+            longmemContext = `\nKRISTALLISIERTE KERN-FAKTEN (permanent, nicht überschreiben):\n${lines}\n`
+          }
+        } catch { /* ignorieren */ }
+      }
+
       const systemPrompt = `Du bist ein persönlicher Gedächtnisassistent. Deine einzige Aufgabe: Aus dem Gesprächsverlauf persönliche Fakten über ${soulName || 'die Person'} extrahieren und strukturiert in das Profil eintragen.
 
 ABSOLUTES VERBOT:
 Du darfst NIEMALS Bewertungen, Korrekturen oder Disclaimer über technische Werkzeuge, Software oder Systeme hinzufügen die die Person erwähnt. Du beobachtest was die Person mitteilt — du urteilst nicht über ihre Werkzeuge. Kein einziger Satz in deiner Ausgabe darf eine Bewertung technischer Sachverhalte enthalten.
-
+${longmemContext}
 BESTEHENDES PROFIL:
 ${soulSections}
 

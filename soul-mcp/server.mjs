@@ -184,7 +184,7 @@ import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailed
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
-import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat } from './lib/herz.mjs';
+import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat, herzForceCrystallize } from './lib/herz.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -833,6 +833,14 @@ app.post('/internal/herz/tick', async (req, res) => {
   const { soul_id } = req.body || {};
   if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
   await herzForceTick(soul_id);
+  res.json({ ok: true });
+});
+
+// POST /internal/herz/crystallize  { soul_id }  — LONGMEM manuell kristallisieren
+app.post('/internal/herz/crystallize', async (req, res) => {
+  const { soul_id } = req.body || {};
+  if (!soul_id) return res.status(400).json({ error: 'soul_id required' });
+  await herzForceCrystallize(soul_id);
   res.json({ ok: true });
 });
 

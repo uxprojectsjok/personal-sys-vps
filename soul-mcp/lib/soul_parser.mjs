@@ -52,6 +52,42 @@ export function parseCalendar(md) {
   return { entries, raw };
 }
 
+// LONGMEM block markers — verwende eindeutige Marker die nicht in Session-Logs auftauchen
+const LM_START = '<!-- SYS:LONGMEM:START -->';
+const LM_END   = '<!-- SYS:LONGMEM:END -->';
+
+/** Extrahiert den LONGMEM-JSON-Block aus sys.md. */
+export function extractLongmem(md) {
+  const start = md.lastIndexOf(LM_START);
+  if (start === -1) return null;
+  const end = md.indexOf(LM_END, start);
+  if (end === -1) return null;
+  const content = md.slice(start + LM_START.length, end).trim();
+  try { return JSON.parse(content); } catch { return null; }
+}
+
+/** Schreibt aktualisierten LONGMEM-Block in sys.md. */
+export function updateLongmem(md, data) {
+  const json  = JSON.stringify(data, null, 2);
+  const block = `${LM_START}\n${json}\n${LM_END}`;
+  // Alten Block ersetzen (suche nach beiden Marker-Varianten für Migration)
+  const oldPattern = /(?:<!--\s*LONGMEM:START\s*-->|<!-- SYS:LONGMEM:START -->)[\s\S]*?(?:<!--\s*LONGMEM:END\s*-->|<!-- SYS:LONGMEM:END -->)/;
+  if (oldPattern.test(md)) {
+    return md.replace(oldPattern, block);
+  }
+  return md.trimEnd() + '\n\n' + block + '\n';
+}
+
+/** Formatiert LONGMEM-Fakten als lesbaren Text für KI-Prompts. */
+export function formatLongmemForPrompt(longmem) {
+  if (!longmem?.facts?.length) return '';
+  const lines = longmem.facts
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .map(f => `- [${f.cat}] ${f.text}`)
+    .join('\n');
+  return `## Kristallisierte Langzeit-Fakten (Kern-Erinnerung)\n${lines}`;
+}
+
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
