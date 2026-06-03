@@ -78,14 +78,39 @@ export function updateLongmem(md, data) {
   return md.trimEnd() + '\n\n' + block + '\n';
 }
 
-/** Formatiert LONGMEM-Fakten als lesbaren Text für KI-Prompts. */
+/** Formatiert alle LONGMEM-Kategorien als lesbaren Text für KI-Prompts. */
 export function formatLongmemForPrompt(longmem) {
-  if (!longmem?.facts?.length) return '';
-  const lines = longmem.facts
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .map(f => `- [${f.cat}] ${f.text}`)
-    .join('\n');
-  return `## Kristallisierte Langzeit-Fakten (Kern-Erinnerung)\n${lines}`;
+  if (!longmem) return '';
+  const parts = [];
+  if (longmem.facts?.length) {
+    const lines = longmem.facts
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .map(f => `- [${f.cat}] ${f.text}`)
+      .join('\n');
+    parts.push(`### Kern-Fakten\n${lines}`);
+  }
+  if (longmem.memories?.length) {
+    const lines = longmem.memories
+      .slice(-20)
+      .map(m => `- ${m.date ?? ''} ${m.text}`.trim())
+      .join('\n');
+    parts.push(`### Erinnerungen\n${lines}`);
+  }
+  if (longmem.ideas?.length) {
+    const lines = longmem.ideas
+      .filter(i => i.status !== 'done')
+      .map(i => `- [${i.status ?? 'idea'}] ${i.title}: ${i.text}`)
+      .join('\n');
+    if (lines) parts.push(`### Ideen\n${lines}`);
+  }
+  if (longmem.learnings?.length) {
+    const lines = longmem.learnings
+      .map(l => `- [${l.cat ?? 'learn'}] ${l.text}`)
+      .join('\n');
+    parts.push(`### Erkenntnisse\n${lines}`);
+  }
+  if (!parts.length) return '';
+  return `## LONGMEM — Kristallisiertes Langzeitgedächtnis\n${parts.join('\n\n')}`;
 }
 
 function escapeRe(s) {
