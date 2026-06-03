@@ -1353,10 +1353,10 @@ onMounted(() => { if (props.inline) initSettings() })
   font-family: var(--mono); font-size: 12px;
 }
 .archivar-lm-row:last-child { border-bottom: none; }
-.archivar-lm-key  { color: var(--fg-3); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
 .archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-warn { color: var(--sys-warn); }
-.archivar-lm-dim  { color: var(--fg-3); }
+.archivar-lm-dim  { color: var(--fg); }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>
