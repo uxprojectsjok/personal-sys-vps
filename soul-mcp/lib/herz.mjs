@@ -212,17 +212,29 @@ function extractSectionFull(md, heading) {
   return null;
 }
 
-// Ersetzt den Inhalt einer ## Sektion zuverlässig
+// Ersetzt den Inhalt einer ## Sektion — entfernt Duplikate und setzt Inhalt einmalig
 function replaceSection(md, heading, newContent) {
-  const parts = md.split(/\n(?=## )/);
   const prefix = `## ${heading}`;
-  const result = parts.map(part => {
-    if (part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part === prefix) {
-      return `## ${heading}\n\n${newContent.trim()}\n`;
+  const parts = md.split(/\n(?=## )/);
+  let insertIdx = -1;
+  const kept = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const isMatch = part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part.trim() === prefix;
+    if (isMatch) {
+      if (insertIdx === -1) insertIdx = kept.length; // erste Position merken
+      // alle weiteren Duplikate überspringen
+    } else {
+      kept.push(part);
     }
-    return part;
-  });
-  return result.join('\n');
+  }
+  const newPart = `## ${heading}\n\n${newContent.trim()}\n`;
+  if (insertIdx === -1) {
+    kept.push(newPart);
+  } else {
+    kept.splice(insertIdx, 0, newPart);
+  }
+  return kept.join('\n');
 }
 
 // JSON aus Claude-Antwort sicher parsen
@@ -265,14 +277,29 @@ async function onCrystallize(soulId, soul, apiKey) {
   const existingIdeas    = existing.ideas    ?? [];
   const existingLearnings = existing.learnings ?? [];
 
-  // ── 1. facts — stabile Identität aus Kern-Sektionen ─────────────────────────
+  // ── 1. Kern-Sektionen komprimieren + strukturieren ───────────────────────────
   const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz',
     'Weltbild', 'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck'];
   const sectionParts = [];
+
   for (const h of CORE_SECTIONS) {
-    const c = extractSectionFull(soul, h);
-    if (c) sectionParts.push(`### ${h}\n${c.slice(0, 500)}`);
+    const c = extractSectionFull(current, h);
+    if (!c || c.trim().length < 20) continue;
+    // Komprimieren wenn Sektion > 300 Zeichen
+    if (c.length > 300) {
+      const compressed = await callClaude(apiKey,
+        'Komprimiere diesen Soul-Abschnitt. Antworte NUR mit dem komprimierten Inhalt, kein Intro.',
+        `Abschnitt ## ${h}:\n\n${c}\n\nRegeln:\n- Gleiche Fakten, weniger Worte\n- Klare Sätze, keine Redundanz\n- Max. 60% der Originallänge\n- Kein Markdown-Overhead`, 400);
+      if (compressed?.trim() && compressed.length < c.length) {
+        current = replaceSection(current, h, compressed.trim());
+        changed = true;
+      }
+    }
+    const final = extractSectionFull(current, h);
+    if (final) sectionParts.push(`### ${h}\n${final}`);
   }
+
+  // ── 2. facts — aus komprimierten Sektionen extrahieren ───────────────────────
   if (sectionParts.length) {
     const existingIds = existingFacts.map(f => `${f.id}: "${f.text.slice(0, 50)}"`).join('\n');
     const raw = await callClaude(apiKey,
@@ -280,7 +307,7 @@ async function onCrystallize(soulId, soul, apiKey) {
       `Extrahiere max. 12 stabile Kern-Fakten (Name, Familie, Werte, Persönlichkeit, Kernprojekte).
 Bestehende IDs wiederverwenden wenn Inhalt gleich:\n${existingIds || '—'}
 
-${sectionParts.join('\n\n')}
+${sectionParts.map(p => p.slice(0, 500)).join('\n\n')}
 
 Format: [{"id":"slug","cat":"identity|values|personality|project","text":"Fakt","score":5}]
 score: 5=absoluter Kern, 4=wichtig, 3=relevant`, 1200);
@@ -291,8 +318,8 @@ score: 5=absoluter Kern, 4=wichtig, 3=relevant`, 1200);
     }
   }
 
-  // ── 2. memories — Session-Log destillieren und Log kürzen ────────────────────
-  const logContent = extractSectionFull(soul, 'Session-Log');
+  // ── 3. memories — Session-Log destillieren und Log kürzen ────────────────────
+  const logContent = extractSectionFull(current, 'Session-Log');
   if (logContent) {
     const logLines = logContent.split('\n').filter(l => l.startsWith('- '));
     const toDistill = logLines.slice(0, -5); // letzte 5 behalten
@@ -318,8 +345,8 @@ Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinneru
     }
   }
 
-  // ── 3. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
-  const ideasContent = extractSectionFull(soul, 'Zukünftige Feature-Ideen für SYS');
+  // ── 4. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
+  const ideasContent = extractSectionFull(current, 'Zukünftige Feature-Ideen für SYS');
   if (ideasContent && ideasContent.trim().length > 50) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',
@@ -339,8 +366,8 @@ Format: [{"id":"idea_slug","title":"Kurztitel","text":"Kernidee in 1-2 Sätzen",
     }
   }
 
-  // ── 4. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
-  const learningsContent = extractSectionFull(soul, 'Offene Fragen dieser Person');
+  // ── 5. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
+  const learningsContent = extractSectionFull(current, 'Offene Fragen dieser Person');
   if (learningsContent && learningsContent.trim().length > 50) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',

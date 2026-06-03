@@ -66,16 +66,23 @@ export function extractLongmem(md) {
   try { return JSON.parse(content); } catch { return null; }
 }
 
-/** Schreibt aktualisierten LONGMEM-Block in sys.md. */
+/** Schreibt aktualisierten LONGMEM-Block in sys.md — immer direkt nach Frontmatter. */
 export function updateLongmem(md, data) {
   const json  = JSON.stringify(data, null, 2);
   const block = `${LM_START}\n${json}\n${LM_END}`;
-  // Alten Block ersetzen (suche nach beiden Marker-Varianten für Migration)
-  const oldPattern = /(?:<!--\s*LONGMEM:START\s*-->|<!-- SYS:LONGMEM:START -->)[\s\S]*?(?:<!--\s*LONGMEM:END\s*-->|<!-- SYS:LONGMEM:END -->)/;
-  if (oldPattern.test(md)) {
-    return md.replace(oldPattern, block);
+
+  // Alten Block überall entfernen (beide Marker-Varianten)
+  const oldPattern = /\n?(?:<!--\s*LONGMEM:START\s*-->|<!-- SYS:LONGMEM:START -->)[\s\S]*?(?:<!--\s*LONGMEM:END\s*-->|<!-- SYS:LONGMEM:END -->)\n?/g;
+  const stripped = md.replace(oldPattern, '\n');
+
+  // Nach Frontmatter (---\n...\n---) einfügen
+  const fmEnd = stripped.indexOf('\n---\n', 3);
+  if (fmEnd !== -1) {
+    const after = fmEnd + 5; // nach "---\n"
+    return stripped.slice(0, after) + '\n' + block + '\n' + stripped.slice(after).replace(/^\n+/, '');
   }
-  return md.trimEnd() + '\n\n' + block + '\n';
+  // Kein Frontmatter → ganz oben
+  return block + '\n\n' + stripped.trimStart();
 }
 
 /** Formatiert alle LONGMEM-Kategorien als lesbaren Text für KI-Prompts. */
