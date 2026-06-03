@@ -10,7 +10,7 @@ import { join, relative } from "path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md"]);
+const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template"]);
 const EXCLUDE_DIRS = new Set([
   "node_modules", ".output", ".nuxt", ".git", ".claude",
   "soul-whatsapp", "soul-voice-clone", "soul-mcp",
@@ -19,7 +19,8 @@ const EXCLUDE_DIRS = new Set([
 const EXCLUDE_FILES = new Set([
   ".env", ".env.example", "package-lock.json",
   "project-hash.mjs",
-  "README.md",  // enthält den Fingerprint selbst — zirkulär, daher ausgeschlossen
+  "README.md",        // enthält den Fingerprint selbst — zirkulär
+  "me.uxprojects-jok.com",  // generierte Instanz-Datei, nicht Template
 ]);
 
 function collectFiles(dir, files = []) {
