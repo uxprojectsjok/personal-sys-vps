@@ -1127,8 +1127,21 @@ const localSoulFileName = computed(() => {
   return soulFile ? soulFile.name : 'sys.md'
 })
 
-function downloadSoulLocal() {
-  const content = composableSoulContent.value
+async function downloadSoulLocal() {
+  // Immer Server-Stand holen — Browser-Cache kann veraltet sein
+  let content = composableSoulContent.value
+  if (soulToken.value && soulToken.value !== 'anonymous') {
+    try {
+      const res = await fetch('/api/soul', {
+        headers: { Authorization: `Bearer ${soulToken.value}` },
+        cache: 'no-store'
+      })
+      if (res.ok) {
+        const text = await res.text()
+        if (text?.trim().startsWith('---')) content = text
+      }
+    } catch { /* Fallback auf Browser-Cache */ }
+  }
   if (!content) return
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
   const url  = URL.createObjectURL(blob)

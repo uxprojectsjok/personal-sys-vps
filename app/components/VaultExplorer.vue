@@ -932,8 +932,18 @@ function triggerBlobDownload(buf, name) {
 
 // ── sys.md Download ──────────────────────────────────────────────────────
 
-function downloadSoulLocal() {
-  const content = composableSoulContent.value || props.soulContent;
+async function downloadSoulLocal() {
+  // Immer Server-Stand holen — Browser-Cache kann veraltet sein
+  let content = composableSoulContent.value || props.soulContent;
+  if (props.soulCert) {
+    try {
+      const res = await fetch("/api/soul", { headers: authH.value, cache: "no-store" });
+      if (res.ok) {
+        const text = await res.text();
+        if (text?.trim().startsWith("---")) content = text;
+      }
+    } catch { /* Fallback auf Browser-Cache */ }
+  }
   if (!content) return;
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
   const url  = URL.createObjectURL(blob);
