@@ -677,9 +677,20 @@ Mögliche section-Werte (exakt so schreiben):
 
   async function exportAsBlob() {
     if (!isClient || !soulContent.value) return;
-    // Dateiname ist immer sys.md – Vault-Sync und späteres Überschreiben
-    // funktionieren nur wenn der Name stabil bleibt.
     const filename = "sys.md";
+
+    // Server-Version holen damit LONGMEM + herz-Änderungen enthalten sind
+    let content = soulContent.value;
+    const token = soulToken.value;
+    if (token && token !== "anonymous") {
+      try {
+        const res = await fetch("/api/soul", { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const text = await res.text();
+          if (text?.trim().startsWith("---")) content = text;
+        }
+      } catch { /* Fallback auf lokale Version */ }
+    }
 
     // File System Access API: User wählt Speicherort (Chrome/Edge)
     if ("showSaveFilePicker" in window) {
@@ -689,17 +700,16 @@ Mögliche section-Werte (exakt so schreiben):
           types: [{ description: "Soul (Markdown)", accept: { "text/markdown": [".md"] } }]
         });
         const writable = await fileHandle.createWritable();
-        await writable.write(soulContent.value);
+        await writable.write(content);
         await writable.close();
         return;
       } catch (e) {
-        if (e.name === "AbortError") return; // User hat Picker abgebrochen
-        // Anderer Fehler → Fallback
+        if (e.name === "AbortError") return;
       }
     }
 
-    // Fallback: klassischer Blob-Download (Firefox, Safari, Mobile)
-    const blob = new Blob([soulContent.value], { type: "text/markdown;charset=utf-8" });
+    // Fallback: klassischer Blob-Download
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
