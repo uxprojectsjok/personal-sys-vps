@@ -528,20 +528,20 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_pinata_config.lua;
   }
 
+  location ~ ^/api/soul/herz/(toggle|status|tick|heartbeat)$ {
+    limit_req zone=chat burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_herz.lua;
+  }
+
   location = /api/soul/amortization {
     limit_req zone=chat burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_amortization.lua;
-  }
-
-  location ~ ^/api/soul/herz(/.*)?$ {
-    limit_req zone=chat burst=5 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_herz.lua;
   }
 
   location = /api/soul/register-anchor {

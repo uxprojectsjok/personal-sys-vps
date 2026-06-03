@@ -88,16 +88,6 @@ server {
   location ~ ^/(assets|_nuxt|logo|fonts|img)$  { return 404; }
 
   ################################
-  # Service Worker – never cache (must always be fresh)
-  ################################
-  location = /sw.js {
-    root /var/www/me.uxprojects-jok.com;
-    try_files $uri =404;
-    add_header Cache-Control "no-store, no-cache, must-revalidate" always;
-    add_header Service-Worker-Allowed "/" always;
-  }
-
-  ################################
   # Static Assets – Long Cache
   ################################
   location ~* ^(?!/api/).*\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
@@ -580,15 +570,6 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_register.lua;
   }
 
-  location = /api/translate {
-    limit_except POST { deny all; }
-    limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/translate.lua;
-  }
-
   # ── Soul Earnings (soul_cert) ─────────────────────────────────────────────────
   location = /api/soul/earnings {
     limit_req zone=chat burst=10 nodelay;
@@ -650,21 +631,6 @@ server {
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_paid_comment.lua;
-  }
-
-  location = /api/soul/paid-shop {
-    limit_req zone=chat burst=10 nodelay;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_paid_shop.lua;
-  }
-
-  location = /api/soul/paid-write-shop {
-    limit_except POST { deny all; }
-    limit_req zone=chat burst=5 nodelay;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_paid_write_shop.lua;
   }
 
   # ── SOCIAL-Block für Cross-Domain Peers (v2 2026-05-09) ─────────────────────
@@ -761,6 +727,15 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_connections_peer.lua;
   }
 
+  # Subpaths: DELETE /{soul_id}, DELETE /ack/{id}, DELETE /incoming/{id}
+  location ~ ^/api/vault/connections/ {
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_connections.lua;
+  }
+
   # ── Peer-Handshake Eingang (öffentlich, CORS) ────────────────────────────────
   location = /api/peer/connect {
     add_header Access-Control-Allow-Origin  "*"                    always;
@@ -772,6 +747,71 @@ server {
     limit_req zone=auth burst=5 nodelay;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/peer_connect.lua;
+  }
+
+  # ── QR-Connect: Token erzeugen (soul_cert) ──────────────────────────────────
+  location = /api/connect/create {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/connect_create.lua;
+  }
+
+  # ── QR-Connect: Probe + Status (öffentlich, CORS) ────────────────────────────
+  location = /api/connect/probe {
+    add_header Access-Control-Allow-Origin  "*"                always;
+    add_header Access-Control-Allow-Headers "Content-Type"     always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+    add_header Cache-Control                "no-store"         always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/connect_probe.lua;
+  }
+
+  location = /api/connect/probe-status {
+    add_header Access-Control-Allow-Origin  "*"          always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Cache-Control                "no-store"   always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/connect_probe.lua;
+  }
+
+  # ── QR-Connect: Pending-Liste (soul_cert) ────────────────────────────────────
+  location = /api/connect/pending {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/connect_pending.lua;
+  }
+
+  # ── QR-Connect: Approve/Reject (soul_cert) ───────────────────────────────────
+  location = /api/connect/approve {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/connect_approve.lua;
+  }
+
+  # ── QR-Connect: Hello (öffentlich, CORS) ─────────────────────────────────────
+  location = /api/connect/hello {
+    add_header Access-Control-Allow-Origin  "*"          always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Cache-Control                "no-store"   always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/connect_hello.lua;
   }
 
   # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
