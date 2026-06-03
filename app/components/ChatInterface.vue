@@ -338,10 +338,45 @@
         </Transition>
       </div>
 
+      <!-- Archivar LONGMEM Panel -->
+      <Transition name="archivar-panel-fade">
+        <div v-if="showArchivPanel" class="archivar-panel">
+          <div v-if="archivPanelLoading" class="archivar-panel-loading">Lade…</div>
+          <template v-else>
+            <div class="archivar-panel-row">
+              <span class="archivar-panel-key">Fakten</span>
+              <span class="archivar-panel-val" :class="archivFacts > 0 ? 'archivar-panel-ok' : ''">
+                {{ archivFacts > 0 ? archivFacts + ' kristallisiert' : 'noch keine' }}
+              </span>
+            </div>
+            <div class="archivar-panel-row">
+              <span class="archivar-panel-key">Letzte Kristallisation</span>
+              <span class="archivar-panel-val">{{ archivUpdated || '—' }}</span>
+            </div>
+            <div class="archivar-panel-row">
+              <span class="archivar-panel-key">Bootstrap</span>
+              <span class="archivar-panel-val" :class="archivBootstrapPending ? 'archivar-panel-warn' : 'archivar-panel-ok'">
+                {{ archivBootstrapPending ? 'ausstehend' : 'abgeschlossen' }}
+              </span>
+            </div>
+            <button class="archivar-panel-btn" :disabled="archivCrystallizeBusy" @click="chatCrystallize">
+              {{ archivCrystallizeBusy ? 'Kristallisiert…' : 'Jetzt kristallisieren' }}
+            </button>
+            <div v-if="archivPanelMsg" class="archivar-panel-msg" :class="archivPanelMsg.ok ? 'ok' : 'err'">
+              {{ archivPanelMsg.text }}
+            </div>
+          </template>
+        </div>
+      </Transition>
+
       <!-- Mode bar — always below input -->
       <div class="dock-mode-bar">
         <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
           <span class="archivar-dot"></span>KI-Auto
+        </button>
+        <button class="archivar-info-btn" :class="{ active: showArchivPanel }" @click="toggleArchivPanel" title="Langzeitgedächtnis">
+          <span v-if="archivFacts > 0" class="archivar-facts-badge">{{ archivFacts }}</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </button>
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
@@ -496,6 +531,57 @@ watch(autonomousKi, async (v) => {
     else stopHerzHeartbeat()
   } catch { /* silent */ }
 })
+
+// ── Archivar LONGMEM Panel ──────────────────────────────────────────
+const showArchivPanel       = ref(false)
+const archivPanelLoading    = ref(false)
+const archivFacts           = ref(0)
+const archivUpdated         = ref('')
+const archivBootstrapPending = ref(false)
+const archivCrystallizeBusy = ref(false)
+const archivPanelMsg        = ref(null)
+
+async function loadArchivPanel() {
+  archivPanelLoading.value = true
+  try {
+    const res = await fetch('/api/soul/longmem-status', {
+      headers: { Authorization: `Bearer ${props.soulCert}` }
+    }).then(r => r.json()).catch(() => null)
+    archivFacts.value           = res?.facts ?? 0
+    archivUpdated.value         = res?.updated ?? ''
+    archivBootstrapPending.value = res?.bootstrap_pending ?? false
+  } finally {
+    archivPanelLoading.value = false
+  }
+}
+
+async function toggleArchivPanel() {
+  showArchivPanel.value = !showArchivPanel.value
+  if (showArchivPanel.value) loadArchivPanel()
+}
+
+async function chatCrystallize() {
+  archivCrystallizeBusy.value = true
+  archivPanelMsg.value = null
+  try {
+    const res = await fetch('/api/soul/herz/crystallize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+    })
+    const data = await res.json()
+    if (data?.ok) {
+      archivPanelMsg.value = { ok: true, text: 'Kristallisation gestartet — ~15 Sek.' }
+      setTimeout(() => loadArchivPanel(), 18000)
+    } else {
+      archivPanelMsg.value = { ok: false, text: data?.error || 'Fehler' }
+    }
+  } catch {
+    archivPanelMsg.value = { ok: false, text: 'Netzwerkfehler' }
+  } finally {
+    archivCrystallizeBusy.value = false
+    setTimeout(() => { archivPanelMsg.value = null }, 20000)
+  }
+}
 
 // ── Config status (Preflight-Checks) ───────────────────────────────
 const configStatus = ref(null)
@@ -3862,6 +3948,68 @@ defineExpose({
   background: var(--accent-dim);
 }
 .mode-at { color: var(--accent); font-weight: 700; }
+.archivar-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: transparent;
+  color: var(--fg-3); cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.archivar-info-btn:hover { color: var(--fg); border-color: var(--fg-3); }
+.archivar-info-btn.active { color: var(--accent); border-color: rgba(109,184,154,0.5); background: var(--accent-dim); }
+.archivar-facts-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: var(--accent); color: #0e1a14;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+.archivar-panel {
+  margin: 0 4px 6px;
+  border: 1px solid var(--sys-rule);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.archivar-panel-loading {
+  padding: 12px 14px;
+  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+}
+.archivar-panel-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--sys-rule);
+  font-family: var(--mono); font-size: 11px;
+}
+.archivar-panel-key { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-panel-val { color: var(--fg); letter-spacing: 0.04em; }
+.archivar-panel-ok  { color: var(--sys-ok); }
+.archivar-panel-warn { color: var(--sys-warn); }
+.archivar-panel-btn {
+  display: block; width: calc(100% - 28px); margin: 10px 14px;
+  padding: 7px 0; border-radius: var(--r-xs);
+  border: 1px solid rgba(109,184,154,0.35);
+  background: var(--accent-dim); color: var(--accent);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  cursor: pointer; transition: background 0.15s;
+}
+.archivar-panel-btn:hover { background: rgba(109,184,154,0.18); }
+.archivar-panel-btn:disabled { opacity: 0.5; cursor: default; }
+.archivar-panel-msg {
+  margin: 0 14px 10px;
+  padding: 7px 10px;
+  font-family: var(--mono); font-size: 10px;
+  border-left: 2px solid;
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+}
+.archivar-panel-msg.ok  { border-color: var(--sys-ok);  color: var(--sys-ok);  background: rgba(184,220,196,0.06); }
+.archivar-panel-msg.err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
+.archivar-panel-fade-enter-active, .archivar-panel-fade-leave-active { transition: opacity 0.15s, transform 0.15s; }
+.archivar-panel-fade-enter-from, .archivar-panel-fade-leave-to { opacity: 0; transform: translateY(4px); }
+
 .mode-sep {
   width: 1px; height: 12px; flex: none;
   background: var(--rule-2);
