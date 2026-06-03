@@ -213,6 +213,14 @@ function extractSectionFull(md, heading) {
   return null;
 }
 
+// Entfernt eine ## Sektion vollständig aus dem Dokument
+function removeSection(md, heading) {
+  const prefix = `## ${heading}`;
+  return md.split(/\n(?=## )/).filter(part => {
+    return !(part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part.trim() === prefix);
+  }).join('\n');
+}
+
 // Ersetzt den Inhalt einer ## Sektion — entfernt Duplikate und setzt Inhalt einmalig
 function replaceSection(md, heading, newContent) {
   const prefix = `## ${heading}`;
@@ -272,6 +280,7 @@ async function onCrystallize(soulId, soul, apiKey) {
   const existing = extractLongmem(soul) ?? {};
   let current   = soul;
   let changed   = false;
+  const EMPTY_SECTION = '*Noch nicht beschrieben.*';
 
   const existingFacts    = existing.facts    ?? [];
   const existingMemories = existing.memories ?? [];
@@ -316,6 +325,30 @@ score: 5=absoluter Kern, 4=wichtig, 3=relevant`, 1200);
     if (Array.isArray(parsed)) {
       existing.facts = deduplicateById(existingFacts, parsed, today).filter(f => (f.score ?? 1) >= 1);
       changed = true;
+      // Nur wenn Extraktion erfolgreich → verarbeitete Sektionen zurücksetzen
+      for (const h of CORE_SECTIONS) {
+        const c = extractSectionFull(current, h);
+        if (c && c.trim().length >= 20 && !c.includes('Noch nicht beschrieben')) {
+          current = replaceSection(current, h, EMPTY_SECTION);
+        }
+      }
+    }
+  }
+
+  // ── 2b. Fakten deduplizieren wenn zu viele akkumuliert ───────────────────────
+  const factsNow = existing.facts ?? [];
+  if (factsNow.length > 18) {
+    const raw2b = await callClaude(apiKey,
+      'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+      `Konsolidiere diese LONGMEM-Facts: merze inhaltliche Duplikate (gleiche Bedeutung → einer), behalte höchsten Score. Ziel: max. 15 Einträge, keine Informationen verlieren.
+
+${JSON.stringify(factsNow, null, 2).slice(0, 3000)}
+
+Format: [{"id":"...","cat":"identity|values|personality|project","text":"...","score":N,"since":"YYYY-MM-DD"}]`, 2000);
+    const parsed2b = parseJson(raw2b);
+    if (Array.isArray(parsed2b) && parsed2b.length > 0 && parsed2b.length < factsNow.length) {
+      existing.facts = parsed2b;
+      changed = true;
     }
   }
 
@@ -347,7 +380,6 @@ Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinneru
   }
 
   // ── 4. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
-  const DESTILLIERT = '_Destilliert ins LONGMEM._';
   const ideasContent = extractSectionFull(current, 'Zukünftige Feature-Ideen für SYS');
   const ideasHasContent = ideasContent && !ideasContent.includes('Destilliert') && ideasContent.trim().length > 50;
   if (ideasHasContent) {
@@ -362,10 +394,9 @@ Format: [{"id":"idea_slug","title":"Kurztitel","text":"Kernidee in 1-2 Sätzen",
     const parsed = parseJson(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       existing.ideas = deduplicateById(existingIdeas, parsed, today);
+      current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS', EMPTY_SECTION);
+      changed = true;
     }
-    // Immer leeren — auch wenn Claude-Call fehlschlägt
-    current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS', DESTILLIERT);
-    changed = true;
   }
 
   // ── 5. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
@@ -383,9 +414,119 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     const parsed = parseJson(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       existing.learnings = deduplicateById(existingLearnings, parsed, today);
+      current = replaceSection(current, 'Offene Fragen dieser Person', EMPTY_SECTION);
+      changed = true;
     }
-    // Immer leeren
-    current = replaceSection(current, 'Offene Fragen dieser Person', DESTILLIERT);
+  }
+
+  // ── 6a. Kalender — Geburtstage → Fact, vergangene Events entfernen ──────────
+  const kalContent = extractSectionFull(current, 'Kalender');
+  if (kalContent && !kalContent.includes('Noch nicht beschrieben') && kalContent.trim().length > 10) {
+    const kalLines = kalContent.split('\n').filter(l => l.trim());
+    const futureLines = kalLines.filter(l => {
+      const m = l.match(/\*\*(\d{4}-\d{2}-\d{2})\*\*/);
+      return m && m[1] >= today;
+    });
+    const birthdayLines = kalLines.filter(l => /geburtstag/i.test(l));
+    if (birthdayLines.length > 0) {
+      const bdText = birthdayLines
+        .map(l => l.replace(/^-\s*\*\*[^*]+\*\*:?\s*/, '').trim())
+        .join(', ');
+      const existingBd = (existing.facts ?? []).find(f => f.id === 'family_dates');
+      if (!existingBd) {
+        existing.facts = [...(existing.facts ?? []), {
+          id: 'family_dates', cat: 'identity',
+          text: `Geburtstage: ${bdText}`,
+          score: 4, since: today,
+        }];
+      }
+    }
+    // Kein Kalender im Template → Sektion ganz entfernen (oder nur Zukunft behalten)
+    if (futureLines.length > 0) {
+      current = replaceSection(current, 'Kalender', futureLines.join('\n'));
+    } else {
+      current = removeSection(current, 'Kalender');
+    }
+    changed = true;
+  }
+
+  // ── 6b. Food Log → health.md verschieben, Standort → LONGMEM Fact ──────────
+  // Food Log: Einträge in vault/context/health.md anhängen, dann entfernen
+  const foodContent = extractSectionFull(current, 'Food Log');
+  if (foodContent && foodContent.trim().length > 0) {
+    try {
+      const healthPath = `${SOULS_DIR}${soulId}/vault/context/health.md`;
+      let healthMd = await readFile(healthPath, 'utf8').catch(() => null);
+      if (healthMd) {
+        const foodLines = foodContent.split('\n').filter(l => l.trim());
+        const foodIdx = healthMd.indexOf('\n## Food Log');
+        if (foodIdx !== -1) {
+          const insertAt = foodIdx + '\n## Food Log'.length;
+          healthMd = healthMd.slice(0, insertAt) + '\n' + foodLines.join('\n') + healthMd.slice(insertAt);
+        } else {
+          healthMd += '\n\n## Food Log\n' + foodLines.join('\n') + '\n';
+        }
+        await writeFile(healthPath, healthMd, 'utf8');
+        current = removeSection(current, 'Food Log');
+        changed = true;
+      }
+    } catch { /* health.md nicht erreichbar → Food Log behalten */ }
+  }
+
+  // Standort / Wohnort → als location-Fact in LONGMEM, dann entfernen
+  for (const h of ['Standort', 'Wohnort']) {
+    const c = extractSectionFull(current, h);
+    if (!c || c.trim().length === 0) continue;
+    const existingLoc = (existing.facts ?? []).find(f => f.id === 'location');
+    if (!existingLoc) {
+      existing.facts = [...(existing.facts ?? []), {
+        id: 'location', cat: 'identity',
+        text: c.trim(),
+        score: 4, since: today,
+      }];
+    }
+    current = removeSection(current, h);
+    changed = true;
+  }
+
+  // ── 6c. Dynamische Sektionen — unbekannte Sektionen mit Inhalt → Facts + entfernen
+  const HANDLED = new Set([
+    // Template-Sektionen
+    'Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz', 'Weltbild',
+    'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck',
+    'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
+    'Session-Log', 'Session-Log (komprimiert)',
+    // Preserved Blöcke — niemals anfassen
+    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Vault',
+    // Bereits explizit behandelt
+    'Kalender', 'Food Log', 'Standort', 'Wohnort',
+  ]);
+  for (const part of current.split(/\n(?=## )/)) {
+    const hm = part.match(/^## (.+)\n/);
+    if (!hm) continue;
+    const fullHeading = hm[1].trim();
+    const baseHeading = fullHeading.split(' — ')[0].trim().split(' (')[0].trim();
+    if (HANDLED.has(fullHeading) || HANDLED.has(baseHeading)) continue;
+    const content = part.slice(hm[0].length).trim();
+    if (!content || content.includes('Noch nicht beschrieben') || content.length < 60) continue;
+    const existingIds = (existing.facts ?? []).map(f => `${f.id}: "${f.text.slice(0, 50)}"`).join('\n');
+    const rawDyn = await callClaude(apiKey,
+      'Antworte NUR mit reinem JSON-Array, kein Markdown.',
+      `Extrahiere stabile Fakten aus dieser Soul-Sektion. Nur zurückgeben was wirklich neu ist.
+Bestehende Fakten (IDs wiederverwenden): ${existingIds || '—'}
+
+## ${fullHeading}
+${content.slice(0, 1500)}
+
+Format: [{"id":"slug","cat":"identity|values|personality|project","text":"Fakt","score":5}]
+Leeres Array [] wenn nichts Neues.`, 800);
+    const parsedDyn = parseJson(rawDyn);
+    if (parsedDyn === null) continue; // Claude-Call fehlgeschlagen → Sektion behalten
+    if (Array.isArray(parsedDyn) && parsedDyn.length > 0) {
+      existing.facts = deduplicateById(existing.facts ?? [], parsedDyn, today);
+    }
+    // Claude hat geantwortet (auch leeres Array = "nichts Neues") → Sektion entfernen
+    current = removeSection(current, fullHeading);
     changed = true;
   }
 
@@ -439,6 +580,40 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
     const c = extractSectionFull(soul, h);
     if (c && c.trim().length > 100 && !c.includes('Destilliert ins LONGMEM')) {
       findings.push(`${h} (nicht destilliert)`);
+    }
+  }
+
+  // LONGMEM Facts: zu viele Einträge?
+  if ((lm?.facts?.length ?? 0) > 18) findings.push(`LONGMEM Facts (${lm.facts.length} — Dedup fällig)`);
+
+  // Food Log in sys.md (gehört nach health.md)?
+  const foodCheck = extractSectionFull(soul, 'Food Log');
+  if (foodCheck && foodCheck.trim().length > 10) findings.push('Food Log (gehört nach health.md)');
+
+  // Standort mit Inhalt (sollte nach LONGMEM)?
+  for (const h of ['Standort', 'Wohnort']) {
+    const c = extractSectionFull(soul, h);
+    if (c && c.trim().length > 5) findings.push(`${h} (nicht nach LONGMEM übernommen)`);
+  }
+
+  // Unbekannte Sektionen mit Inhalt?
+  const KNOWN_SECTIONS = new Set([
+    'Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz', 'Weltbild',
+    'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck',
+    'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
+    'Session-Log', 'Session-Log (komprimiert)',
+    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Vault',
+    'Kalender', 'Food Log', 'Standort', 'Wohnort',
+  ]);
+  for (const part of soul.split(/\n(?=## )/)) {
+    const hm = part.match(/^## (.+)\n/);
+    if (!hm) continue;
+    const fullH = hm[1].trim();
+    const baseH = fullH.split(' — ')[0].trim().split(' (')[0].trim();
+    if (KNOWN_SECTIONS.has(fullH) || KNOWN_SECTIONS.has(baseH)) continue;
+    const content = part.slice(hm[0].length).trim();
+    if (content && !content.includes('Destilliert') && content.length > 60) {
+      findings.push(`Unbekannte Sektion: "${fullH}"`);
     }
   }
 
