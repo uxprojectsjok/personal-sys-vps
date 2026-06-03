@@ -1,0 +1,73 @@
+-- /etc/openresty/lua/soul_longmem_status.lua
+-- GET /api/soul/longmem-status — LONGMEM-Status der Soul zurückgeben
+-- Auth: soul_auth.lua (soul_cert)
+
+local cjson   = require("cjson.safe")
+local soul_id = ngx.ctx.soul_id
+
+if not soul_id then
+  ngx.status = 401
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"Unauthorized"}')
+  return
+end
+
+ngx.header["Content-Type"]  = "application/json"
+ngx.header["Cache-Control"] = "no-store"
+
+local base_dir = "/var/lib/sys/souls/" .. soul_id
+
+-- Bootstrap-Flag prüfen
+local bootstrap_pending = false
+local bf = io.open(base_dir .. "/.longmem_bootstrap_pending", "r")
+if bf then bf:close(); bootstrap_pending = true end
+
+-- sys.md lesen und LONGMEM-Block extrahieren
+local sf = io.open(base_dir .. "/sys.md", "rb")
+if not sf then
+  ngx.say(cjson.encode({ facts = 0, updated = "", bootstrap_pending = bootstrap_pending }))
+  return
+end
+local raw = sf:read("*a"); sf:close()
+
+-- Entschlüsseln falls nötig
+local MAGIC = "\x53\x59\x53\x01"
+local soul_text = raw
+if raw:sub(1, 4) == MAGIC then
+  local cf = io.open(base_dir .. "/api_context.json", "r")
+  if cf then
+    local ctx_raw = cf:read("*a"); cf:close()
+    local ok, ctx = pcall(cjson.decode, ctx_raw)
+    if ok and type(ctx) == "table" and ctx.vault_key_hex and #ctx.vault_key_hex == 64 then
+      local decrypt = require("resty.aes")
+      local str     = require("resty.string")
+      local key = str.from_hex(ctx.vault_key_hex)
+      local iv  = raw:sub(5, 20)
+      local enc = raw:sub(21)
+      local aes_ok, aes = pcall(decrypt.new, key, nil, decrypt.cipher(256, "cbc"), { iv = iv })
+      if aes_ok then
+        local dec = aes:decrypt(enc)
+        if dec then soul_text = dec end
+      end
+    end
+  end
+end
+
+-- LONGMEM-Block parsen
+local lm_content = soul_text:match("<!%-%- SYS:LONGMEM:START %-%->%s*(.-)\n?<!%-%- SYS:LONGMEM:END %-%->")
+local facts_count = 0
+local updated     = ""
+
+if lm_content then
+  local ok, lm = pcall(cjson.decode, lm_content:match("{.*}") or "")
+  if ok and type(lm) == "table" then
+    if type(lm.facts) == "table" then facts_count = #lm.facts end
+    if type(lm.updated) == "string" then updated = lm.updated end
+  end
+end
+
+ngx.say(cjson.encode({
+  facts            = facts_count,
+  updated          = updated,
+  bootstrap_pending = bootstrap_pending,
+}))

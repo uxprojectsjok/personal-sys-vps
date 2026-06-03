@@ -20,7 +20,7 @@
           </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail sys-rail--4">
+          <div class="sys-rail sys-rail--5">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">API</span></span>
             </button>
@@ -32,6 +32,9 @@
             </button>
             <button @click="tab = 'config'" class="sys-rail-item" :class="tab === 'config' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">Config</span></span>
+            </button>
+            <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">Archivar</span></span>
             </button>
           </div>
 
@@ -503,6 +506,59 @@
 
             </template>
 
+            <!-- ── Tab: Archivar ── -->
+            <template v-if="tab === 'archivar'">
+
+              <!-- herz Status -->
+              <div class="sys-field" style="margin-bottom:24px">
+                <div class="sys-field-label" style="margin-bottom:10px">Archivar (herz)</div>
+                <div class="archivar-status-row">
+                  <span class="sys-dot" :class="herzActive ? 'sys-dot--live' : 'sys-dot--idle'"></span>
+                  <span class="archivar-status-lbl">{{ herzActive ? 'Aktiv — läuft im Hintergrund' : 'Inaktiv — startet wenn Chat geöffnet ist' }}</span>
+                </div>
+              </div>
+
+              <!-- LONGMEM Status -->
+              <div class="sys-field" style="margin-bottom:24px">
+                <div class="sys-field-label" style="margin-bottom:10px">Langzeitgedächtnis (LONGMEM)</div>
+                <div v-if="archivLoading" class="archivar-loading">Lade…</div>
+                <template v-else>
+                  <div class="archivar-lm-block">
+                    <div class="archivar-lm-row">
+                      <span class="archivar-lm-key">Fakten</span>
+                      <span class="archivar-lm-val" :class="longmemFacts > 0 ? 'archivar-lm-ok' : 'archivar-lm-dim'">
+                        {{ longmemFacts > 0 ? longmemFacts + ' kristallisiert' : 'noch keine' }}
+                      </span>
+                    </div>
+                    <div class="archivar-lm-row">
+                      <span class="archivar-lm-key">Letzte Kristallisation</span>
+                      <span class="archivar-lm-val archivar-lm-dim">{{ longmemUpdated || '—' }}</span>
+                    </div>
+                    <div class="archivar-lm-row">
+                      <span class="archivar-lm-key">Bootstrap</span>
+                      <span class="archivar-lm-val" :class="bootstrapPending ? 'archivar-lm-warn' : 'archivar-lm-ok'">
+                        {{ bootstrapPending ? 'ausstehend' : 'abgeschlossen' }}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    class="sys-btn-ed sys-btn-ed--primary"
+                    style="margin-top:14px;width:100%;justify-content:center"
+                    :disabled="crystallizeBusy"
+                    @click="triggerCrystallize"
+                  >{{ crystallizeBusy ? 'Kristallisiert…' : 'Jetzt kristallisieren' }}</button>
+                  <Transition name="sys-modal-fade">
+                    <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                      :style="archivFeedback.ok
+                        ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                        : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                    >{{ archivFeedback.message }}</div>
+                  </Transition>
+                </template>
+              </div>
+
+            </template>
+
           </div>
 
           <!-- Foot -->
@@ -523,6 +579,10 @@
               <template v-else-if="tab === 'config'">
                 <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
                 {{ isAdmin ? 'Server-Admin · Rotation' : 'Soul-Cert & Admin' }}
+              </template>
+              <template v-else-if="tab === 'archivar'">
+                <span class="sys-dot" :class="longmemFacts > 0 ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
+                {{ longmemFacts > 0 ? longmemFacts + ' Fakten im Langzeitgedächtnis' : 'Langzeitgedächtnis leer' }}
               </template>
             </div>
             <div class="sys-foot-actions">
@@ -1142,6 +1202,58 @@ async function handleRotateCert() {
   }
 }
 
+// ── Archivar Tab ──────────────────────────────────────────────────────────────
+const herzActive       = ref(false)
+const longmemFacts     = ref(0)
+const longmemUpdated   = ref('')
+const bootstrapPending = ref(false)
+const archivLoading    = ref(false)
+const crystallizeBusy  = ref(false)
+const archivFeedback   = ref(null)
+
+async function loadArchivStatus() {
+  archivLoading.value = true
+  try {
+    const [herzRes, lmRes] = await Promise.all([
+      fetch('/api/soul/herz/status', {
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      }).then(r => r.json()).catch(() => null),
+      fetch('/api/soul/longmem-status', {
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      }).then(r => r.json()).catch(() => null),
+    ])
+    herzActive.value     = herzRes?.active ?? false
+    longmemFacts.value   = lmRes?.facts ?? 0
+    longmemUpdated.value = lmRes?.updated ?? ''
+    bootstrapPending.value = lmRes?.bootstrap_pending ?? false
+  } finally {
+    archivLoading.value = false
+  }
+}
+
+async function triggerCrystallize() {
+  crystallizeBusy.value = true
+  archivFeedback.value  = null
+  try {
+    const res = await fetch('/api/soul/herz/crystallize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+    })
+    const data = await res.json()
+    if (data?.ok) {
+      archivFeedback.value = { ok: true, message: 'Kristallisation gestartet — Ergebnis in ~15 Sek.' }
+      setTimeout(() => loadArchivStatus(), 18000)
+    } else {
+      archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Starten' }
+    }
+  } catch {
+    archivFeedback.value = { ok: false, message: 'Netzwerkfehler' }
+  } finally {
+    crystallizeBusy.value = false
+    setTimeout(() => { archivFeedback.value = null }, 20000)
+  }
+}
+
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
 async function initSettings() {
   await loadNodeStatus()
@@ -1201,16 +1313,50 @@ onMounted(() => { if (props.inline) initSettings() })
   letter-spacing: 0.06em; color: var(--fg-2);
 }
 
-/* Override: Rail als Tab-Navigation — 4 Items immer sichtbar */
-@media (max-width: 560px) {
+/* Override: Rail als Tab-Navigation — 5 Items immer sichtbar */
+@media (max-width: 640px) {
   :deep(.sys-rail) {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
   :deep(.sys-rail-item) {
     display: flex !important;
-    padding: 10px 8px;
+    padding: 10px 6px;
     justify-content: center;
   }
 }
+
+/* Archivar Tab */
+.archivar-status-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--sys-rule);
+  border-radius: var(--r-xs);
+}
+.archivar-status-lbl {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg-2); letter-spacing: 0.04em;
+}
+.archivar-loading {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg-4); letter-spacing: 0.06em;
+}
+.archivar-lm-block {
+  border: 1px solid var(--sys-rule);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+}
+.archivar-lm-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--sys-rule);
+  font-family: var(--mono); font-size: 12px;
+}
+.archivar-lm-row:last-child { border-bottom: none; }
+.archivar-lm-key  { color: var(--fg-4); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
+.archivar-lm-ok   { color: var(--sys-ok); }
+.archivar-lm-warn { color: var(--sys-warn); }
+.archivar-lm-dim  { color: var(--fg-4); }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>
