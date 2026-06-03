@@ -465,7 +465,18 @@ watch(archivEnabled, v => { if (typeof window !== 'undefined') localStorage.setI
 const autonomousKi = ref(
   typeof window !== 'undefined' ? localStorage.getItem('sys_autonomous_ki') === 'true' : false
 )
-watch(autonomousKi, v => { if (typeof window !== 'undefined') localStorage.setItem('sys_autonomous_ki', String(v)) })
+watch(autonomousKi, async (v) => {
+  if (typeof window !== 'undefined') localStorage.setItem('sys_autonomous_ki', String(v))
+  // herz-Worker auf dem Server aktivieren/deaktivieren
+  if (!props.soulCert) return
+  try {
+    await fetch('/api/soul/herz/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({ active: v }),
+    })
+  } catch { /* silent */ }
+})
 
 // ── Config status (Preflight-Checks) ───────────────────────────────
 const configStatus = ref(null)
@@ -1193,8 +1204,6 @@ async function forwardSynthesis(item) {
   await handlePeerSend(`[KI] ${item.content}`, 'peer')
 }
 
-let _lastAutonomousPostTs = 0
-const AUTONOMOUS_MIN_INTERVAL_MS = 20 * 60 * 1000
 
 async function runAutonomousKiPost() {
   if (!autonomousKi.value) return
@@ -3229,7 +3238,7 @@ onMounted(async () => {
   _agentPollTimer  = setInterval(refreshAgentContent, 30_000)
   _cacheEvictTimer = setInterval(evictCache, 5 * 60 * 1000)
   _briefingTimer   = setInterval(() => {
-    if (autonomousKi.value) runAutonomousKiPost()
+    // herz läuft server-seitig — kein Browser-Timer nötig
   }, 3 * 60 * 1000)
 })
 onUnmounted(() => {
