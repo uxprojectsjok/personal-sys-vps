@@ -645,6 +645,33 @@ Mögliche section-Werte (exakt so schreiben):
     return false;
   }
 
+  // Holt LONGMEM-Block vom Server und injiziert ihn in die lokale Browser-Kopie.
+  // Wird nach jeder Kristallisation aufgerufen damit soulContent immer vollständig ist.
+  async function syncLongmemFromServer() {
+    if (!isClient || !soulContent.value) return;
+    const token = soulToken.value;
+    if (!token || token === "anonymous") return;
+    try {
+      const res = await fetch("/api/soul", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const serverSoul = await res.text();
+      if (!serverSoul?.trim().startsWith("---")) return;
+      const lmMatch = serverSoul.match(/(<!-- SYS:LONGMEM:START -->[\s\S]*?<!-- SYS:LONGMEM:END -->)/);
+      if (!lmMatch) return;
+      const lmBlock = lmMatch[1];
+      const localHasLm = /<!-- SYS:LONGMEM:START -->/.test(soulContent.value);
+      if (localHasLm) {
+        soulContent.value = soulContent.value.replace(
+          /<!-- SYS:LONGMEM:START -->[\s\S]*?<!-- SYS:LONGMEM:END -->/,
+          lmBlock
+        );
+      } else {
+        soulContent.value = soulContent.value.trimEnd() + '\n\n' + lmBlock + '\n';
+      }
+      save();
+    } catch { /* silent */ }
+  }
+
   function dismissSync() {
     syncStatus.value = null;
     serverContent.value = "";
@@ -797,6 +824,7 @@ Mögliche section-Werte (exakt so schreiben):
     acceptServerVersion,
     pushToServer,
     dismissSync,
+    syncLongmemFromServer,
     resetCertToV0,
     pendingSoulFileWrite,
     serverVaultEncrypted,
