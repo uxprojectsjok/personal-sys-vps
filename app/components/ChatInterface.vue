@@ -374,9 +374,8 @@
         <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
           <span class="archivar-dot"></span>KI-Auto
         </button>
-        <button class="archivar-info-btn" :class="{ active: showArchivPanel }" @click="toggleArchivPanel" title="Langzeitgedächtnis">
-          <span v-if="archivFacts > 0" class="archivar-facts-badge">{{ archivFacts }}</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <button class="archivar-toggle" :class="{ active: showArchivPanel }" @click="toggleArchivPanel">
+          <span class="archivar-dot"></span>Archivar<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
         </button>
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
@@ -3948,23 +3947,12 @@ defineExpose({
   background: var(--accent-dim);
 }
 .mode-at { color: var(--accent); font-weight: 700; }
-.archivar-info-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  position: relative;
-  width: 24px; height: 24px; border-radius: 50%;
-  border: 1px solid var(--line-2); background: transparent;
-  color: var(--fg-3); cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.archivar-info-btn:hover { color: var(--fg); border-color: var(--fg-3); }
-.archivar-info-btn.active { color: var(--accent); border-color: rgba(109,184,154,0.5); background: var(--accent-dim); }
-.archivar-facts-badge {
-  position: absolute; top: -4px; right: -4px;
+.archivar-facts-count {
+  margin-left: 4px;
   background: var(--accent); color: #0e1a14;
-  font-family: var(--mono); font-size: 9px; font-weight: 700;
-  width: 14px; height: 14px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  line-height: 1;
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 999px;
+  line-height: 1.4;
 }
 
 .archivar-panel {
