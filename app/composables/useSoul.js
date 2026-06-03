@@ -290,6 +290,22 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     }
     soulCert.value = cert;
     save();
+
+    // Nach Cert-Refresh: Server-Stand holen damit Browser immer aktuell ist.
+    // Stille Ausführung — schlägt offline/fehler lautlos fehl.
+    try {
+      const syncRes = await fetch("/api/soul", {
+        headers: { Authorization: `Bearer ${soulId}.${cert}` },
+        cache: "no-store"
+      });
+      if (syncRes.ok) {
+        const text = await syncRes.text();
+        if (text?.trim().startsWith("---")) {
+          soulContent.value = text;
+          save();
+        }
+      }
+    } catch { /* offline oder Fehler — lokale Version behalten */ }
   }
 
   // Rotiert den soul_cert: inkrementiert cert_version auf dem Server,
