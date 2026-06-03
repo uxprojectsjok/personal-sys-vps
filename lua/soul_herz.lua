@@ -42,7 +42,8 @@ else
 end
 
 local httpc = http.new()
-httpc:set_timeout(15000)
+-- Kristallisation braucht mehrere Claude-Calls (~60 Sek.) → großzügiger Timeout
+httpc:set_timeout(action == "crystallize" and 120000 or 15000)
 
 local target_url
 if action == "status" then
