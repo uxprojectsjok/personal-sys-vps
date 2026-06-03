@@ -323,69 +323,70 @@ score: 5=absoluter Kern, 4=wichtig, 3=relevant`, 1200);
   const logContent = extractSectionFull(current, 'Session-Log');
   if (logContent) {
     const logLines = logContent.split('\n').filter(l => l.startsWith('- '));
-    const toDistill = logLines.slice(0, -5); // letzte 5 behalten
+    // Neueste Einträge stehen oben → erste 5 behalten, Rest (ältere) destillieren
+    const toDistill = logLines.slice(5);
     if (toDistill.length > 0) {
+      // Destillation versuchen — aber Log IMMER kürzen, unabhängig vom API-Ergebnis
       const raw = await callClaude(apiKey,
         'Antworte NUR mit reinem JSON-Array, kein Markdown.',
         `Destilliere diese Session-Log-Einträge in kompakte Erinnerungen.
-Jede Erinnerung: was ist passiert, was ist relevant für das Langzeitgedächtnis dieser Person.
-Keine Technik-Details, keine Wiederholungen, nur was über die Person aussagt.
+Nur was über die Person selbst aussagt (keine reinen Technik-Operationen).
 
 Log-Einträge:
 ${toDistill.join('\n')}
 
 Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinnerung"}]`, 1000);
       const parsed = parseJson(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         existing.memories = deduplicateById(existingMemories, parsed, today);
-        // Log kürzen: nur letzte 5 Einträge behalten
-        const kept = logLines.slice(-5);
-        current = replaceSection(current, 'Session-Log', kept.join('\n'));
-        changed = true;
       }
+      // Immer kürzen — auch wenn Claude-Call fehlschlägt
+      current = replaceSection(current, 'Session-Log', logLines.slice(0, 5).join('\n'));
+      changed = true;
     }
   }
 
   // ── 4. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
+  const DESTILLIERT = '_Destilliert ins LONGMEM._';
   const ideasContent = extractSectionFull(current, 'Zukünftige Feature-Ideen für SYS');
-  if (ideasContent && ideasContent.trim().length > 50) {
+  const ideasHasContent = ideasContent && !ideasContent.includes('Destilliert') && ideasContent.trim().length > 50;
+  if (ideasHasContent) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',
-      `Destilliere diese Feature-Ideen in kompakte JSON-Einträge.
-Kein Fließtext, keine Konversationsfragmente, nur die Kernidee.
+      `Destilliere diese Feature-Ideen in kompakte JSON-Einträge. Nur Kernideen.
 
 Inhalt:
 ${ideasContent.slice(0, 2000)}
 
 Format: [{"id":"idea_slug","title":"Kurztitel","text":"Kernidee in 1-2 Sätzen","status":"idea|planned|done"}]`, 800);
     const parsed = parseJson(raw);
-    if (Array.isArray(parsed)) {
+    if (Array.isArray(parsed) && parsed.length > 0) {
       existing.ideas = deduplicateById(existingIdeas, parsed, today);
-      current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS',
-        '_Destilliert ins LONGMEM._');
-      changed = true;
     }
+    // Immer leeren — auch wenn Claude-Call fehlschlägt
+    current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS', DESTILLIERT);
+    changed = true;
   }
 
   // ── 5. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
   const learningsContent = extractSectionFull(current, 'Offene Fragen dieser Person');
-  if (learningsContent && learningsContent.trim().length > 50) {
+  const learningsHasContent = learningsContent && !learningsContent.includes('Destilliert') && learningsContent.trim().length > 50;
+  if (learningsHasContent) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',
-      `Destilliere diese Erkenntnisse / offenen Fragen in kompakte Lerneinträge.
-Technische Findings, Architektur-Entscheidungen, persönliche Erkenntnisse.
+      `Destilliere diese Erkenntnisse in kompakte Lerneinträge.
 
 Inhalt:
 ${learningsContent.slice(0, 2000)}
 
 Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text":"Erkenntnis"}]`, 800);
     const parsed = parseJson(raw);
-    if (Array.isArray(parsed)) {
+    if (Array.isArray(parsed) && parsed.length > 0) {
       existing.learnings = deduplicateById(existingLearnings, parsed, today);
-      current = replaceSection(current, 'Offene Fragen dieser Person',
-        '_Destilliert ins LONGMEM._');
-      changed = true;
     }
+    // Immer leeren
+    current = replaceSection(current, 'Offene Fragen dieser Person', DESTILLIERT);
+    changed = true;
   }
 
   if (!changed) return;
