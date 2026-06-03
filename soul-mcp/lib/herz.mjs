@@ -35,6 +35,7 @@ function getState(soulId) {
       lastCircadian:         { morning: 0, evening: 0 },
       lastSilenceNotif:      0,
       lastCrystallizeAnchor: 0,
+      lastHealthCheck:       0,
       tickTimer:             null,
     });
   }
@@ -403,6 +404,58 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     `${existing.learnings?.length ?? 0} Erkenntnisse).`);
 }
 
+// ── Soul Health Check ─────────────────────────────────────────────────────────
+// Läuft nur wenn KI-Auto aktiv + Heartbeat frisch (= User eingeloggt).
+// Bewertet Unordnung und löst Kristallisation aus wenn nötig.
+
+async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
+  const findings = [];
+
+  // Session-Log: zu viele Einträge?
+  const logContent = extractSectionFull(soul, 'Session-Log');
+  const logLines = logContent ? logContent.split('\n').filter(l => l.startsWith('- ')).length : 0;
+  if (logLines > 8) findings.push(`Session-Log (${logLines} Einträge)`);
+
+  // LONGMEM Alter: letzte Kristallisation > 7 Tage?
+  const lm = extractLongmem(soul);
+  if (lm?.updated) {
+    const ageDays = Math.floor((Date.now() - new Date(lm.updated).getTime()) / 86400000);
+    if (ageDays > 7) findings.push(`LONGMEM (${ageDays} Tage alt)`);
+  } else if (!lm) {
+    findings.push('LONGMEM fehlt');
+  }
+
+  // Kern-Sektionen: einzelne Sektion > 600 Zeichen?
+  const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Weltbild',
+    'Wiederkehrende Themen & Obsessionen'];
+  for (const h of CORE_SECTIONS) {
+    const c = extractSectionFull(soul, h);
+    if (c && c.length > 600) findings.push(`${h} (${c.length} Zeichen)`);
+  }
+
+  // Offene Fragen / Feature-Ideen noch nicht destilliert?
+  for (const h of ['Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS']) {
+    const c = extractSectionFull(soul, h);
+    if (c && c.trim().length > 100 && !c.includes('Destilliert ins LONGMEM')) {
+      findings.push(`${h} (nicht destilliert)`);
+    }
+  }
+
+  if (findings.length === 0) return;
+
+  // Kristallisation noch nicht kürzlich gelaufen?
+  const anchorsSince = chainLen - state.lastCrystallizeAnchor;
+  const lmAge = lm?.updated
+    ? Math.floor((Date.now() - new Date(lm.updated).getTime()) / 86400000)
+    : 999;
+  if (anchorsSince < 2 && lmAge < 2) return; // frisch genug, kein Handlungsbedarf
+
+  const reason = findings.join(', ');
+  await appendToSoulLog(soulId, `Health-Check: ${reason} → Kristallisation ausgelöst.`);
+  await onCrystallize(soulId, soul, apiKey);
+  state.lastCrystallizeAnchor = chainLen;
+}
+
 // ── Main Tick ─────────────────────────────────────────────────────────────────
 
 async function tick(soulId) {
@@ -470,6 +523,13 @@ async function tick(soulId) {
   if (hour >= 21 && hour <= 23 && state.lastCircadian.evening < todayStart) {
     await onCircadian(soulId, soul, apiKey, 'evening');
     state.lastCircadian.evening = now;
+  }
+
+  // ── soul health check — max. 1× pro Stunde ───────────────────────────────────
+  const HEALTH_CHECK_INTERVAL = 60 * 60 * 1000;
+  if (now - state.lastHealthCheck > HEALTH_CHECK_INTERVAL) {
+    state.lastHealthCheck = now;
+    await onSoulHealthCheck(soulId, soul, apiKey, state, chainLen);
   }
 }
 
