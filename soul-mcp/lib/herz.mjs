@@ -48,11 +48,37 @@ async function readSoul(soulId) {
 }
 
 async function readConfig(soulId) {
+  // Soul-eigener Key → Master-Fallback (wie config_reader.lua)
+  let soulKey = null;
   try {
-    const p = `${SOULS_DIR}${soulId}/config.json`;
-    const raw = await readFile(p, 'utf8');
-    return JSON.parse(raw);
-  } catch { return null; }
+    const raw = await readFile(`${SOULS_DIR}${soulId}/config.json`, 'utf8');
+    const cfg  = JSON.parse(raw);
+    if (cfg?.anthropic_key?.startsWith('sk-ant-')) soulKey = cfg.anthropic_key;
+  } catch { /* kein soul-eigener Key */ }
+
+  if (soulKey) return { anthropic_key: soulKey };
+
+  // Fallback: master.json (domain-aware oder global)
+  const masterPaths = [
+    '/var/lib/sys/config/master.json',
+  ];
+  // domain-aware: alle Unterverzeichnisse von /var/lib/sys/config/
+  try {
+    const { readdir } = await import('fs/promises');
+    const entries = await readdir('/var/lib/sys/config', { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isDirectory()) masterPaths.unshift(`/var/lib/sys/config/${e.name}/master.json`);
+    }
+  } catch { /* ignore */ }
+
+  for (const p of masterPaths) {
+    try {
+      const raw = await readFile(p, 'utf8');
+      const m   = JSON.parse(raw);
+      if (m?.anthropic_key?.startsWith('sk-ant-')) return { anthropic_key: m.anthropic_key };
+    } catch { /* try next */ }
+  }
+  return null;
 }
 
 function extractGrowthChainLength(soul) {
