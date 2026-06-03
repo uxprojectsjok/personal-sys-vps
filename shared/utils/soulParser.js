@@ -73,14 +73,14 @@ export function appendSessionLog(markdown, sessionText) {
       // Heute bereits vorhanden → ersetzen statt duplizieren
       return markdown.replace(todayRe, entry);
     }
-    // Neuer Tag → oben einfügen
+    // Neuer Tag → oben einfügen (matcht "## Session-Log" mit oder ohne "(komprimiert)")
     return markdown.replace(
-      /## Session-Log \(komprimiert\)\n/,
-      `## Session-Log (komprimiert)\n${entry}\n`
+      /## Session-Log(?: \(komprimiert\))?\n/,
+      `## Session-Log\n${entry}\n`
     );
   }
 
-  return markdown + `\n\n## Session-Log (komprimiert)\n${entry}\n`;
+  return markdown + `\n\n## Session-Log\n${entry}\n`;
 }
 
 /**
@@ -88,7 +88,7 @@ export function appendSessionLog(markdown, sessionText) {
  * Einmaliger Cleanup für bestehende souls mit mehrfachen Tageseinträgen.
  */
 export function deduplicateSessionLog(markdown) {
-  const logRe = /## Session-Log \(komprimiert\)\n([\s\S]*?)(?=\n##|\n---|\n<!-- |$)/;
+  const logRe = /## Session-Log(?: \(komprimiert\))?\n([\s\S]*?)(?=\n##|\n---|\n<!-- |$)/;
   const m = markdown.match(logRe);
   if (!m) return markdown;
 
@@ -107,7 +107,7 @@ export function deduplicateSessionLog(markdown) {
     return markdown; // no duplicates → nothing to do
   }
   const deduped = order.map(d => seen.get(d)).join('\n') + '\n';
-  return markdown.replace(logRe, `## Session-Log (komprimiert)\n${deduped}`);
+  return markdown.replace(logRe, `## Session-Log\n${deduped}`);
 }
 
 /**
