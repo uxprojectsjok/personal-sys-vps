@@ -235,6 +235,30 @@ ctx.updated_at = ngx.now()
 -- Soul-Inhalt in separate Datei auslagern (nicht in context.json)
 -- soul_content_encrypted: base64-kodierter AES-CBC Ciphertext (Magic-Bytes + IV + Daten)
 -- soul_content:           Plaintext → wird serverseitig re-verschlüsselt wenn cipher_mode="ciphered"
+--
+-- Versionsschutz: Server-Stand gewinnt wenn cert_version höher als Browser-Version.
+-- Verhindert dass Browser-Login einen neueren Service-Token-Stand überschreibt.
+local function get_server_cert_version()
+  local sf = io.open(base_dir .. "/sys.md", "rb")
+  if not sf then return 0 end
+  local head = sf:read(512); sf:close()
+  if not head then return 0 end
+  local v = head:match("cert_version:%s*(%d+)")
+  return tonumber(v) or 0
+end
+
+local function get_incoming_cert_version(content)
+  if type(content) ~= "string" then return 0 end
+  local v = content:sub(1, 512):match("cert_version:%s*(%d+)")
+  return tonumber(v) or 0
+end
+
+local function soul_is_newer_on_server(incoming_content)
+  local server_v  = get_server_cert_version()
+  local browser_v = get_incoming_cert_version(incoming_content)
+  return server_v > browser_v
+end
+
 if type(incoming.soul_content_encrypted) == "string" and #incoming.soul_content_encrypted > 0 then
   local decoded = ngx.decode_base64(incoming.soul_content_encrypted)
   if decoded then
@@ -242,6 +266,11 @@ if type(incoming.soul_content_encrypted) == "string" and #incoming.soul_content_
     if sf then sf:write(decoded); sf:close() end
   end
 elseif type(incoming.soul_content) == "string" and #incoming.soul_content > 0 then
+  -- Server-Stand schützen: nicht überschreiben wenn Server neuer ist
+  if soul_is_newer_on_server(incoming.soul_content) then
+    ngx.log(ngx.INFO, "[api_context] Browser-Upload abgelehnt — Server-cert_version neuer")
+    goto skip_soul_write
+  end
   -- Größenlimit: max. 2 MB Plaintext sys.md
   if #incoming.soul_content > 2 * 1024 * 1024 then
     ngx.status = 413
@@ -279,6 +308,7 @@ elseif type(incoming.soul_content) == "string" and #incoming.soul_content > 0 th
     if sf then sf:write(final_content); sf:close() end
   end
 end
+::skip_soul_write::
 
 -- mind.md anlegen sobald soul_content zum ersten Mal hochgeladen wird
 local mind_path = base_dir .. "/vault/context/mind.md"
