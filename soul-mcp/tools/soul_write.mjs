@@ -14,8 +14,7 @@ function escapeRe(s) {
  */
 function updateSection(md, heading, newContent, mode) {
   const re = new RegExp(
-    `(^## ${escapeRe(heading)}[ \\t]*\\n)([\\s\\S]*?)(?=^## |\\s*$)`,
-    'm'
+    `(## ${escapeRe(heading)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
   );
   const match = md.match(re);
 

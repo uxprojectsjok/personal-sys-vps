@@ -264,10 +264,9 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const wasEncrypted = rawBuf.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
         let   md           = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
 
-        // Aligned mit soul_write.mjs updateSection (multiline, trailing spaces, create-if-missing)
+        // Aligned mit soul_write.mjs updateSection
         const re = new RegExp(
-          `(^## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=^## |\\s*$)`,
-          'm'
+          `(## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
         );
 
         if (re.test(md)) {
@@ -347,8 +346,7 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         let md = await readFile(mindPath, 'utf8').catch(() => DEFAULT_MIND);
 
         const re = new RegExp(
-          `(^## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=^## |\\s*$)`,
-          'm'
+          `(## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
         );
         if (re.test(md)) {
           md = md.replace(re, (_, h, existing) => {
