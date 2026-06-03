@@ -509,15 +509,6 @@
             <!-- ── Tab: Archivar ── -->
             <template v-if="tab === 'archivar'">
 
-              <!-- herz Status -->
-              <div class="sys-field" style="margin-bottom:24px">
-                <div class="sys-field-label" style="margin-bottom:10px">Archivar (herz)</div>
-                <div class="archivar-status-row">
-                  <span class="sys-dot" :class="herzActive ? 'sys-dot--live' : 'sys-dot--idle'"></span>
-                  <span class="archivar-status-lbl">{{ herzActive ? 'Aktiv — läuft im Hintergrund' : 'Inaktiv — startet wenn Chat geöffnet ist' }}</span>
-                </div>
-              </div>
-
               <!-- LONGMEM Status -->
               <div class="sys-field" style="margin-bottom:24px">
                 <div class="sys-field-label" style="margin-bottom:10px">Langzeitgedächtnis (LONGMEM)</div>
