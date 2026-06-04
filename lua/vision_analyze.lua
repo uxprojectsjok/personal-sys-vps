@@ -66,10 +66,10 @@ if soul_context_safe ~= "" then
   soul_block = '\n\n## Was du über den Nutzer weißt:\n' .. soul_context_safe
 end
 
--- Transcript-Block (was der Nutzer gesagt hat)
+-- Transcript-Block (was der Nutzer gesagt hat – hat PRIORITÄT über visuelle Analyse)
 local transcript_block = ""
 if transcript_safe ~= "" then
-  transcript_block = '\n\nDer Nutzer hat dazu gesagt: "' .. transcript_safe .. '"'
+  transcript_block = '\n\n## Nutzerbeschreibung (PRIORITAET – verwende dies als primaere Erkennungsquelle):\n"' .. transcript_safe .. '"\nDiese Beschreibung ist massgeblich fuer die Erkennung. Visuelle Analyse ergaenzt und bestaetigst nur — widerspricht ihr nicht. Wenn der Nutzer sagt "Schuhe", dann sind es Schuhe, egal wie das Bild aussieht.'
 end
 
 -- PROMPT_START: vision_persona
@@ -88,7 +88,8 @@ local prompt_text = VISION_PERSONA
 
   .. '\n\n## Produkt-Erkennung (pruefen wenn KEIN Lebensmittelbild)'
   .. '\n- Zeigt das Bild ein klar erkennbares Produkt, Geraet, Gadget, Kabel, Kleidungsstueck, Schuh, Moebel, Buch, Spielzeug oder sonstigen Konsumgegenstand?'
-  .. '\n- Wenn JA: setze isProductPhoto:true, bestimme productName (konkreter Produktname, z.B. "SanDisk USB-Stick 64GB", "Nike Laufschuhe"), productCategory (eine von: Elektronik, Kleidung, Schuhe, Moebel, Buecher, Sport, Beauty, Haushalt, Sonstiges), productPrice (sichtbarer Preis als Zahl ohne Waehrungszeichen, z.B. 29.99 — oder 0 wenn nicht sichtbar). soulReaction normal berechnen, outputMode="skip".'
+  .. '\n- Wenn Nutzerbeschreibung vorhanden: nutze sie als primaere Quelle fuer productName und productCategory.'
+  .. '\n- Wenn JA: setze isProductPhoto:true, bestimme productName (konkreter Produktname, z.B. "SanDisk USB-Stick 64GB", "Nike Laufschuhe"), productCategory (eine von: Elektronik, Kleidung, Schuhe, Moebel, Buecher, Sport, Beauty, Haushalt, Sonstiges), productPrice (sichtbarer Preis als Zahl ohne Waehrungszeichen, z.B. 29.99 — oder 0 wenn nicht sichtbar). soulReaction=aktive Frage (s.u.), outputMode="skip".'
   .. '\n- Wenn NEIN: isProductPhoto:false, productName/productCategory/productPrice leer lassen.'
 
 -- PROMPT_START: soul_reaction
@@ -97,6 +98,7 @@ local prompt_text = VISION_PERSONA
   .. '\n- Humor, Direktheit, Waerme — je nachdem was zur Soul passt und was das Bild ausloest'
   .. '\n- Keine Assistenten-Floskeln. Kein "Wie schoen". Kein "Ich sehe..."'
   .. '\n- Direkt ansprechen. Keine Emojis. Keine Beleidigungen.'
+  .. '\n- Bei Produktbild (isProductPhoto:true): Kurz das Produkt bestaetigen + direkt fragen was getan werden soll. Beispiel: "Nike Laufschuhe. Preis checken, in die Soul schreiben oder ignorieren?" — maximal 2 Saetze, keine Floskeln.'
 -- PROMPT_END: soul_reaction
   .. (transcript_safe ~= "" and '\n- Der Nutzer hat etwas dazu gesagt – reagiere konkret darauf' or '')
 
