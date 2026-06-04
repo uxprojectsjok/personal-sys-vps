@@ -360,7 +360,7 @@
               </span>
             </div>
             <button class="archivar-panel-btn" :disabled="archivCrystallizeBusy" @click="chatCrystallize">
-              {{ archivCrystallizeBusy ? 'Kristallisiert…' : 'Jetzt kristallisieren' }}
+              <span v-if="archivCrystallizeBusy" class="dots-running">Kristallisiert</span><template v-else>Jetzt kristallisieren</template>
             </button>
             <div v-if="archivPanelMsg" class="archivar-panel-msg" :class="archivPanelMsg.ok ? 'ok' : 'err'">
               {{ archivPanelMsg.text }}
@@ -569,22 +569,22 @@ async function chatCrystallize() {
     })
     const data = await res.json()
     if (data?.ok) {
-      archivPanelMsg.value = { ok: true, text: 'Kristallisation läuft — ~15 Sek.' }
       setTimeout(async () => {
         await syncLongmemFromServer()
         loadArchivPanel()
+        archivCrystallizeBusy.value = false
         archivPanelMsg.value = { ok: true, text: 'Kristallisation abgeschlossen ✓' }
         setTimeout(() => { archivPanelMsg.value = null }, 5000)
       }, 18000)
     } else {
+      archivCrystallizeBusy.value = false
       archivPanelMsg.value = { ok: false, text: data?.error || 'Fehler' }
       setTimeout(() => { archivPanelMsg.value = null }, 8000)
     }
   } catch {
+    archivCrystallizeBusy.value = false
     archivPanelMsg.value = { ok: false, text: 'Netzwerkfehler' }
     setTimeout(() => { archivPanelMsg.value = null }, 8000)
-  } finally {
-    archivCrystallizeBusy.value = false
   }
 }
 
