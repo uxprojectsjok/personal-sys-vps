@@ -849,5 +849,21 @@
   100% { width: 0%;   opacity: 1; }
 }
 
+/* ── Animated dots (Kristallisation buttons) ───────────── */
+.dots-running::after {
+  content: '...';
+  display: inline-block;
+  overflow: hidden;
+  width: 0;
+  animation: dots-grow 1.2s steps(3, end) infinite;
+  vertical-align: bottom;
+}
+@keyframes dots-grow {
+  0%   { width: 0 }
+  33%  { width: 0.4em }
+  66%  { width: 0.8em }
+  100% { width: 1.2em }
+}
+
 /* ── Editorial Add-on ──────────────────────────────────── */
 @import "./sys-editorial.css";

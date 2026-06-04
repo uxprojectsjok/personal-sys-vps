@@ -537,7 +537,7 @@
                     style="margin-top:14px;width:100%;justify-content:center"
                     :disabled="crystallizeBusy"
                     @click="triggerCrystallize"
-                  >{{ crystallizeBusy ? 'Kristallisiert…' : 'Jetzt kristallisieren' }}</button>
+                  ><span v-if="crystallizeBusy" class="dots-running">Kristallisiert</span><template v-else>Jetzt kristallisieren</template></button>
                   <Transition name="sys-modal-fade">
                     <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
                       :style="archivFeedback.ok
@@ -1245,21 +1245,21 @@ async function triggerCrystallize() {
     })
     const data = await res.json()
     if (data?.ok) {
-      archivFeedback.value = { ok: true, message: 'Kristallisation läuft — ~15 Sek.' }
       setTimeout(async () => {
         await loadArchivStatus()
+        crystallizeBusy.value = false
         archivFeedback.value = { ok: true, message: 'Kristallisation abgeschlossen ✓' }
         setTimeout(() => { archivFeedback.value = null }, 5000)
       }, 18000)
     } else {
+      crystallizeBusy.value = false
       archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Starten' }
       setTimeout(() => { archivFeedback.value = null }, 8000)
     }
   } catch {
+    crystallizeBusy.value = false
     archivFeedback.value = { ok: false, message: 'Netzwerkfehler' }
     setTimeout(() => { archivFeedback.value = null }, 8000)
-  } finally {
-    crystallizeBusy.value = false
   }
 }
 
