@@ -67,7 +67,7 @@ if lm_content then
   end
 end
 
--- Session-Log Einträge zählen (Chaos-Indikator)
+-- Session-Log Einträge zählen — nur reguläre (keine Agent-Tags wie [herz], [agent:x])
 local log_entries = 0
 local in_log = false
 for line in soul_text:gmatch("[^\n]+") do
@@ -76,7 +76,9 @@ for line in soul_text:gmatch("[^\n]+") do
   elseif in_log and line:match("^## ") then
     in_log = false
   elseif in_log and line:match("^%- ") then
-    log_entries = log_entries + 1
+    if not line:match("%*%*[^*]+%[[^%]]+%][^*]*%*%*") then
+      log_entries = log_entries + 1
+    end
   end
 end
 
