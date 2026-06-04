@@ -355,9 +355,12 @@ Format: [{"id":"...","cat":"identity|values|personality|project","text":"...","s
   // ── 3. memories — Session-Log destillieren und Log kürzen ────────────────────
   const logContent = extractSectionFull(current, 'Session-Log');
   if (logContent) {
-    const logLines = logContent.split('\n').filter(l => l.startsWith('- '));
-    // Neueste Einträge stehen oben → erste 5 behalten, Rest (ältere) destillieren
-    const toDistill = logLines.slice(5);
+    const allLines = logContent.split('\n').filter(l => l.startsWith('- '));
+    // Agent-Einträge (z.B. [herz], [agent:xxx]) sind geschützt — nie anfassen
+    const agentLines   = allLines.filter(l => /\*\*[^*]+\[[^\]]+\][^*]*\*\*/.test(l));
+    const regularLines = allLines.filter(l => !/\*\*[^*]+\[[^\]]+\][^*]*\*\*/.test(l));
+    // Neueste reguläre Einträge oben → erste 5 behalten, Rest destillieren
+    const toDistill = regularLines.slice(5);
     if (toDistill.length > 0) {
       // Destillation versuchen — aber Log IMMER kürzen, unabhängig vom API-Ergebnis
       const raw = await callClaude(apiKey,
@@ -373,8 +376,14 @@ Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinneru
       if (Array.isArray(parsed) && parsed.length > 0) {
         existing.memories = deduplicateById(existingMemories, parsed, today);
       }
-      // Immer kürzen — auch wenn Claude-Call fehlschlägt
-      current = replaceSection(current, 'Session-Log', logLines.slice(0, 5).join('\n'));
+      // Agent-Einträge immer erhalten, reguläre auf 5 kürzen
+      const kept = [...agentLines, ...regularLines.slice(0, 5)];
+      current = replaceSection(current, 'Session-Log', kept.join('\n'));
+      changed = true;
+    } else if (agentLines.length > 0 && agentLines.length !== allLines.length) {
+      // Kein Kürzen nötig, aber Reihenfolge sicherstellen: Agent-Zeilen oben
+      const kept = [...agentLines, ...regularLines];
+      current = replaceSection(current, 'Session-Log', kept.join('\n'));
       changed = true;
     }
   }
