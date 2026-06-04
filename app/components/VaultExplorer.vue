@@ -787,10 +787,10 @@ async function onRefresh() {
     } else {
       await scanApiVault();
     }
-    showSuccess("Aktualisiert ✓");
-  } finally {
+  } catch { /* silent */ } finally {
     isScanning.value = false;
   }
+  showSuccess("Aktualisiert ✓");
 }
 
 // ── Alle hochladen ─────────────────────────────────────────────────────────

@@ -569,19 +569,22 @@ async function chatCrystallize() {
     })
     const data = await res.json()
     if (data?.ok) {
-      archivPanelMsg.value = { ok: true, text: 'Kristallisation gestartet — ~15 Sek.' }
+      archivPanelMsg.value = { ok: true, text: 'Kristallisation läuft — ~15 Sek.' }
       setTimeout(async () => {
         await syncLongmemFromServer()
         loadArchivPanel()
+        archivPanelMsg.value = { ok: true, text: 'Kristallisation abgeschlossen ✓' }
+        setTimeout(() => { archivPanelMsg.value = null }, 5000)
       }, 18000)
     } else {
       archivPanelMsg.value = { ok: false, text: data?.error || 'Fehler' }
+      setTimeout(() => { archivPanelMsg.value = null }, 8000)
     }
   } catch {
     archivPanelMsg.value = { ok: false, text: 'Netzwerkfehler' }
+    setTimeout(() => { archivPanelMsg.value = null }, 8000)
   } finally {
     archivCrystallizeBusy.value = false
-    setTimeout(() => { archivPanelMsg.value = null }, 20000)
   }
 }
 

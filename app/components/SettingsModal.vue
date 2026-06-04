@@ -1245,16 +1245,21 @@ async function triggerCrystallize() {
     })
     const data = await res.json()
     if (data?.ok) {
-      archivFeedback.value = { ok: true, message: 'Kristallisation gestartet — Ergebnis in ~15 Sek.' }
-      setTimeout(() => loadArchivStatus(), 18000)
+      archivFeedback.value = { ok: true, message: 'Kristallisation läuft — ~15 Sek.' }
+      setTimeout(async () => {
+        await loadArchivStatus()
+        archivFeedback.value = { ok: true, message: 'Kristallisation abgeschlossen ✓' }
+        setTimeout(() => { archivFeedback.value = null }, 5000)
+      }, 18000)
     } else {
       archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Starten' }
+      setTimeout(() => { archivFeedback.value = null }, 8000)
     }
   } catch {
     archivFeedback.value = { ok: false, message: 'Netzwerkfehler' }
+    setTimeout(() => { archivFeedback.value = null }, 8000)
   } finally {
     crystallizeBusy.value = false
-    setTimeout(() => { archivFeedback.value = null }, 20000)
   }
 }
 
