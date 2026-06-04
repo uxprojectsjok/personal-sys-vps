@@ -1394,7 +1394,7 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-lm-warn { color: var(--sys-warn); }
 .archivar-lm-dim  { color: var(--fg); }
 .archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
-.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
-.archivar-chaos-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.6s ease; }
+.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+.archivar-chaos-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; opacity: 0.9; }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>

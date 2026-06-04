@@ -4028,8 +4028,8 @@ defineExpose({
 .archivar-panel-msg.ok  { border-color: var(--sys-ok);  color: var(--sys-ok);  background: rgba(184,220,196,0.06); }
 .archivar-panel-msg.err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
 .archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
-.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
-.archivar-chaos-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.6s ease; }
+.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+.archivar-chaos-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; opacity: 0.9; }
 .archivar-panel-fade-enter-active, .archivar-panel-fade-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .archivar-panel-fade-enter-from, .archivar-panel-fade-leave-to { opacity: 0; transform: translateY(4px); }
 
