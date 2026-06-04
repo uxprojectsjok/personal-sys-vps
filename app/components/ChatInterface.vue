@@ -556,9 +556,9 @@ const archivSizeKb = computed(() => {
 const archivChaos = computed(() => {
   const e = archivLogEntries.value, d = archivDaysSince.value
   const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
-  if (e <= 7 && d <= 14) return { pct: Math.max(4, pct), color: '#6db89a', label: 'ruhig' }
-  if (e <= 12 || d <= 21) return { pct: Math.max(30, pct), color: '#e0a030', label: 'wächst' }
-  return { pct: Math.min(100, pct), color: '#e06c75', label: 'chaotisch' }
+  if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: 'ruhig' }
+  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: 'wächst' }
+  return { pct: 100, color: '#ef4444', label: 'chaotisch' }
 })
 const archivCrystallizeBusy = ref(false)
 const archivPanelMsg        = ref(null)
@@ -4029,7 +4029,7 @@ defineExpose({
 .archivar-panel-msg.err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
 .archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
 .archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
-.archivar-chaos-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; opacity: 0.9; }
+.archivar-chaos-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
 .archivar-panel-fade-enter-active, .archivar-panel-fade-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .archivar-panel-fade-enter-from, .archivar-panel-fade-leave-to { opacity: 0; transform: translateY(4px); }
 
