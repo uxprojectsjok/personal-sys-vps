@@ -2,7 +2,7 @@
   <div class="gate">
     <div class="gate-card">
       <div class="gate-mark">SYS<span class="dot">.</span></div>
-      <div class="gate-sub">Save Your Soul · Private Node</div>
+      <div class="gate-sub">Dein digitales Ich · Private Node</div>
 
       <!-- ── Biometric unlock ── -->
       <template v-if="mode === 'biometric'">
@@ -33,7 +33,6 @@
       <!-- ── Standard form ── -->
       <template v-else>
         <h1>Willkommen zurück<em>.</em></h1>
-        <p class="welcome">Entsperre deinen Knoten, um mit deiner Seele zu sprechen.</p>
         <p v-if="error" class="gate-error">{{ error }}</p>
         <form @submit.prevent="submit" style="width:100%">
           <div class="gate-field">
