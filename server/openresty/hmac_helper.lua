@@ -48,8 +48,9 @@ function M.read_cert_version(soul_id)
   if not f then return 0 end
   local raw = f:read("*a"); f:close()
   local ok, data = pcall(require("cjson.safe").decode, raw)
-  if ok and type(data) == "table" and type(data.cert_version) == "number" then
-    return data.cert_version
+  if ok and type(data) == "table" then
+    local v = data.soul_cert_version or data.cert_version
+    if type(v) == "number" then return v end
   end
   return 0
 end
