@@ -493,22 +493,16 @@ Mögliche section-Werte (exakt so schreiben):
       let updated = soulContent.value;
       const sectionsUpdated = [];
 
-      // Sektionen aktualisieren
+      // Sektionen aktualisieren — Session-Log nie per updateSection anfassen (nur per appendSessionLog)
+      const PROTECTED = new Set(['Session-Log', 'Session-Log (komprimiert)']);
       if (Array.isArray(changes)) {
         for (const { section, content } of changes) {
-          if (section && content) {
-            updated = updateSection(updated, section, content);
-            sectionsUpdated.push(section);
+          const s = typeof section === 'string' ? section.trim() : '';
+          if (s && content && !PROTECTED.has(s) && !/session.log/i.test(s)) {
+            updated = updateSection(updated, s, content);
+            sectionsUpdated.push(s);
           }
         }
-      }
-
-      // Session-Log: Duplikate desselben Datums bereinigen (einmaliger Cleanup für bestehende souls)
-      updated = deduplicateSessionLog(updated);
-
-      // Session-Log anhängen
-      if (sessionLog) {
-        updated = appendSessionLog(updated, sessionLog);
       }
 
       // Platzhalterwerte entfernen sobald echter Inhalt angekommen ist
@@ -658,17 +652,55 @@ Mögliche section-Werte (exakt so schreiben):
     const token = soulToken.value;
     if (!token || token === "anonymous") return false;
     try {
+      // Session-Log vom Server holen und in den zu pushenden Content einsetzen —
+      // so gehen soul_write-Einträge der Soul-KI nicht durch pushToServer verloren.
+      let content = soulContent.value;
+      try {
+        const fr = await fetch('/api/soul', { headers: { Authorization: `Bearer ${token}` } });
+        if (fr.ok) {
+          const fresh = await fr.text();
+          if (fresh.trim().startsWith('---')) {
+            const logRe = /## Session-Log[^\n]*\n[\s\S]*?(?=\n## |\n---|\n<!-- |$)/;
+            const serverLog = fresh.match(logRe)?.[0];
+            if (serverLog) content = content.replace(logRe, serverLog);
+          }
+        }
+      } catch { /* Browser-State verwenden */ }
+
       const res = await fetch("/api/context", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ soul_content: soulContent.value })
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ soul_content: content })
       });
       if (res.ok) {
         syncStatus.value = "in_sync";
         serverContent.value = "";
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
+  // Schreibt einen Session-Log-Eintrag atomar: fresh read vom Server → prepend → write.
+  // Genau wie soul_write, damit keine Einträge der Soul-KI überschrieben werden.
+  async function pushSessionLogEntry(text) {
+    if (!isClient || !text || !soulToken.value) return false;
+    const token = soulToken.value;
+    try {
+      const readRes = await fetch('/api/soul', { headers: { Authorization: `Bearer ${token}` } });
+      if (!readRes.ok) return false;
+      const current = await readRes.text();
+      if (!current.trim().startsWith('---')) return false;
+      const withEntry = appendSessionLog(current, text);
+      const writeRes = await fetch('/api/context', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ soul_content: withEntry })
+      });
+      if (writeRes.ok) {
+        soulContent.value = withEntry;
+        save();
+        syncStatus.value = 'in_sync';
         return true;
       }
     } catch {}
@@ -845,6 +877,7 @@ Mögliche section-Werte (exakt so schreiben):
     fetchFromServer,
     acceptServerVersion,
     pushToServer,
+    pushSessionLogEntry,
     dismissSync,
     syncLongmemFromServer,
     resetCertToV0,

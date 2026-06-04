@@ -55,8 +55,7 @@ export function updateSection(markdown, sectionTitle, newContent) {
 }
 
 /**
- * Schreibt den Session-Log-Eintrag für heute — ersetzt einen vorhandenen
- * Eintrag desselben Datums statt einen neuen anzuhängen.
+ * Fügt einen neuen Session-Log-Eintrag oben ein — immer als neuer Eintrag.
  * @param {string} markdown
  * @param {string} sessionText - Kurze Zusammenfassung
  * @returns {string}
@@ -64,16 +63,8 @@ export function updateSection(markdown, sectionTitle, newContent) {
 export function appendSessionLog(markdown, sessionText) {
   const today = new Date().toISOString().split("T")[0];
   const entry = `- **${today}:** ${sessionText}`;
-  // Escaped für RegExp: Punkte im Datum maskieren
-  const escapedDate = today.replace(/\./g, '\\.');
-  const todayRe = new RegExp(`^- \\*\\*${escapedDate}:\\*\\*[^\n]*`, 'm');
 
   if (markdown.includes("## Session-Log")) {
-    if (todayRe.test(markdown)) {
-      // Heute bereits vorhanden → ersetzen statt duplizieren
-      return markdown.replace(todayRe, entry);
-    }
-    // Neuer Tag → oben einfügen (matcht "## Session-Log" mit oder ohne "(komprimiert)")
     return markdown.replace(
       /## Session-Log(?: \(komprimiert\))?\n/,
       `## Session-Log\n${entry}\n`
@@ -85,7 +76,7 @@ export function appendSessionLog(markdown, sessionText) {
 
 /**
  * Entfernt Duplikate im Session-Log: pro Datum nur den letzten Eintrag behalten.
- * Einmaliger Cleanup für bestehende souls mit mehrfachen Tageseinträgen.
+ * Alle anderen Zeilen (Herz-Einträge, Leerzeilen) bleiben erhalten.
  */
 export function deduplicateSessionLog(markdown) {
   const logRe = /## Session-Log(?: \(komprimiert\))?\n([\s\S]*?)(?=\n##|\n---|\n<!-- |$)/;
@@ -93,21 +84,35 @@ export function deduplicateSessionLog(markdown) {
   if (!m) return markdown;
 
   const lines = m[1].split('\n');
-  const seen = new Map(); // date → last line with that date
-  const order = [];      // preserve date order (most recent first)
+  const dateRe = /^- \*\*(\d{4}-\d{2}-\d{2}):/;
+
+  // Letzte Position jedes Datums ermitteln
+  const lastIdx = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const dm = lines[i].match(dateRe);
+    if (dm) lastIdx.set(dm[1], i);
+  }
+
+  // Duplikate prüfen: gibt es ein Datum das mehr als einmal vorkommt?
+  const seen = new Set();
+  let hasDuplicates = false;
   for (const line of lines) {
-    const dm = line.match(/^- \*\*(\d{4}-\d{2}-\d{2}):/);
+    const dm = line.match(dateRe);
     if (dm) {
-      const d = dm[1];
-      if (!seen.has(d)) order.push(d);
-      seen.set(d, line); // always keep latest occurrence
+      if (seen.has(dm[1])) { hasDuplicates = true; break; }
+      seen.add(dm[1]);
     }
   }
-  if (seen.size === lines.filter(l => l.match(/^- \*\*\d{4}-\d{2}-\d{2}:/)).length) {
-    return markdown; // no duplicates → nothing to do
-  }
-  const deduped = order.map(d => seen.get(d)).join('\n') + '\n';
-  return markdown.replace(logRe, `## Session-Log\n${deduped}`);
+  if (!hasDuplicates) return markdown;
+
+  // Alle Zeilen behalten — bei Datum-Duplikaten nur die letzte Zeile dieses Datums
+  const kept = lines.filter((line, i) => {
+    const dm = line.match(dateRe);
+    if (!dm) return true;           // Nicht-Datum-Zeilen immer behalten
+    return lastIdx.get(dm[1]) === i; // Datum: nur letzte Instanz behalten
+  });
+
+  return markdown.replace(logRe, `## Session-Log\n${kept.join('\n')}`);
 }
 
 /**

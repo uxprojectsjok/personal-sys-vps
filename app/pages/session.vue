@@ -121,7 +121,7 @@ import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
-const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer, isLoaded } = useSoul()
+const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer, pushSessionLogEntry, isLoaded } = useSoul()
 const { messages, clearSession, addMessage, toApiMessages } = useSession()
 const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()
@@ -216,6 +216,7 @@ async function forceSessionEnd() {
       _lastGrowthAiCount = aiMsgs.filter(m => m.role === 'user').length
       await appendGrowthEntry().catch(() => {})
       await pushToServer().catch(() => {})
+      if (result.logEntry) await pushSessionLogEntry(result.logEntry).catch(() => {})
       if (vaultConnected.value) await writeSoulMd(soulContent.value, 'sys').catch(() => {})
       soulJustGrew.value = true
       setTimeout(() => { soulJustGrew.value = false }, 3000)
