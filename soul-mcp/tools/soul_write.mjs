@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { getText, putJson } from '../lib/api.mjs';
 
+// Per-soul write serializer — verhindert Race Conditions bei parallelen soul_write-Calls
+const _queues = new Map();
+async function withSoulLock(token, fn) {
+  const key = token.slice(0, 16);
+  const prev = _queues.get(key) ?? Promise.resolve();
+  let resolveCurrent;
+  const current = new Promise(r => { resolveCurrent = r; });
+  _queues.set(key, prev.then(() => current));
+  await prev;
+  try { return await fn(); } finally { resolveCurrent(); }
+}
+
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -70,6 +82,7 @@ export function register(server, token) {
     },
     async ({ section, content, mode }) => {
       try {
+        return await withSoulLock(token, async () => {
         // 1. Aktuelle sys.md lesen (Server entschlüsselt; beim Schreiben re-verschlüsselt der Server automatisch)
         const current = await getText('/api/soul', token);
 
@@ -98,6 +111,7 @@ export function register(server, token) {
             }, null, 2),
           }],
         };
+        }); // withSoulLock
       } catch (err) {
         let msg = err.message;
         try {

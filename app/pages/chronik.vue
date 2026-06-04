@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { parseSoul } from '#shared/utils/soulParser.js'
@@ -106,12 +106,23 @@ import { parseSoul } from '#shared/utils/soulParser.js'
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, isLoaded } = useSoul()
+const { soulContent, soulMeta, hasSoul, isLoaded, fetchFromServer, acceptServerVersion, syncStatus, serverContent, soulToken } = useSoul()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 const query            = ref('')
+
+// Beim Öffnen immer aktuellen Stand vom Server holen — Soul-KI-Einträge sind nur dort
+onMounted(async () => {
+  if (!hasSoul.value) return
+  await fetchFromServer(true)
+  if (syncStatus.value === 'differs' && serverContent.value) {
+    const localDate  = soulContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? ''
+    const serverDate = serverContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? ''
+    if (serverDate >= localDate) acceptServerVersion()
+  }
+})
 
 // ── Parse all journal entries ──────────────────────────────────────────────
 const allEntries = computed(() => {
@@ -147,7 +158,7 @@ const allEntries = computed(() => {
 
     if (/soul erschaff|genesis|initialisiert/i.test(lower + ds)) {
       type = 'genesis'; title = 'Soul erschaffen'; badge = 'genesis'
-    } else if (/peer|verbindung|@/i.test(lower + ds)) {
+    } else if (/peer|verbindung/i.test(lower + ds) || (/@[\w_]+/.test(body) && !/session.end/i.test(body))) {
       type = 'peer'; title = 'Peer-Verbindung'
       const handle = body.match(/@([\w_]+)/); if (handle) badge = '@' + handle[1]
     } else if (/health|garmin|puls|schlaf|schritt/i.test(lower + ds)) {
@@ -180,7 +191,8 @@ const allEntries = computed(() => {
         } else {
           dateLabel = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
         }
-        time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        // Nur Zeit anzeigen wenn der Eintrag einen expliziten Zeitstempel hat (T oder Leerzeichen im String)
+        time = /[T ]/.test(ds) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
       }
     } catch {}
 
