@@ -1395,6 +1395,6 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-lm-dim  { color: var(--fg); }
 .archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
 .archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
-.archivar-chaos-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
+.archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>
