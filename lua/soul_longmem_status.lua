@@ -39,14 +39,13 @@ if raw:sub(1, 4) == MAGIC then
     local ctx_raw = cf:read("*a"); cf:close()
     local ok, ctx = pcall(cjson.decode, ctx_raw)
     if ok and type(ctx) == "table" and ctx.vault_key_hex and #ctx.vault_key_hex == 64 then
-      local decrypt = require("resty.aes")
-      local str     = require("resty.string")
-      local key = str.from_hex(ctx.vault_key_hex)
+      local resty_aes = require("resty.aes")
+      local key = ctx.vault_key_hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end)
       local iv  = raw:sub(5, 20)
       local enc = raw:sub(21)
-      local aes_ok, aes = pcall(decrypt.new, key, nil, decrypt.cipher(256, "cbc"), { iv = iv })
-      if aes_ok then
-        local dec = aes:decrypt(enc)
+      local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+      if aes_ctx then
+        local dec = aes_ctx:decrypt(enc)
         if dec then soul_text = dec end
       end
     end
