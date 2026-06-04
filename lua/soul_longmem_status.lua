@@ -22,13 +22,15 @@ local bootstrap_pending = false
 local bf = io.open(base_dir .. "/.longmem_bootstrap_pending", "r")
 if bf then bf:close(); bootstrap_pending = true end
 
--- sys.md lesen und LONGMEM-Block extrahieren
+-- sys.md lesen
 local sf = io.open(base_dir .. "/sys.md", "rb")
 if not sf then
-  ngx.say(cjson.encode({ facts = 0, updated = "", bootstrap_pending = bootstrap_pending }))
+  ngx.say(cjson.encode({ facts = 0, updated = "", bootstrap_pending = bootstrap_pending,
+    size_bytes = 0, log_entries = 0, days_since_cleanup = 0 }))
   return
 end
 local raw = sf:read("*a"); sf:close()
+local size_bytes = #raw
 
 -- Entschlüsseln falls nötig
 local MAGIC = "\x53\x59\x53\x01"
@@ -65,8 +67,34 @@ if lm_content then
   end
 end
 
+-- Session-Log Einträge zählen (Chaos-Indikator)
+local log_entries = 0
+local in_log = false
+for line in soul_text:gmatch("[^\n]+") do
+  if line:match("^## Session%-Log") then
+    in_log = true
+  elseif in_log and line:match("^## ") then
+    in_log = false
+  elseif in_log and line:match("^%- ") then
+    log_entries = log_entries + 1
+  end
+end
+
+-- Tage seit letztem Aufräumen
+local days_since_cleanup = 0
+if updated ~= "" then
+  local uy, um, ud = updated:match("(%d%d%d%d)-(%d%d)-(%d%d)")
+  if uy then
+    local then_ts = os.time({ year = tonumber(uy), month = tonumber(um), day = tonumber(ud), hour = 0, min = 0, sec = 0 })
+    days_since_cleanup = math.floor((os.time() - then_ts) / 86400)
+  end
+end
+
 ngx.say(cjson.encode({
-  facts            = facts_count,
-  updated          = updated,
-  bootstrap_pending = bootstrap_pending,
+  facts              = facts_count,
+  updated            = updated,
+  bootstrap_pending  = bootstrap_pending,
+  size_bytes         = size_bytes,
+  log_entries        = log_entries,
+  days_since_cleanup = days_since_cleanup,
 }))

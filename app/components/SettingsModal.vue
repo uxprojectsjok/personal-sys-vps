@@ -518,17 +518,24 @@
                     <div class="archivar-lm-row">
                       <span class="archivar-lm-key">Fakten</span>
                       <span class="archivar-lm-val" :class="longmemFacts > 0 ? 'archivar-lm-ok' : 'archivar-lm-dim'">
-                        {{ longmemFacts > 0 ? longmemFacts + ' kristallisiert' : 'noch keine' }}
+                        {{ longmemFacts > 0 ? longmemFacts + ' gespeichert' : 'noch keine' }}
                       </span>
                     </div>
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Letzte Kristallisation</span>
+                      <span class="archivar-lm-key">Letztes Aufräumen</span>
                       <span class="archivar-lm-val archivar-lm-dim">{{ longmemUpdated || '—' }}</span>
                     </div>
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Bootstrap</span>
-                      <span class="archivar-lm-val" :class="bootstrapPending ? 'archivar-lm-warn' : 'archivar-lm-ok'">
-                        {{ bootstrapPending ? 'ausstehend' : 'abgeschlossen' }}
+                      <span class="archivar-lm-key">Größe</span>
+                      <span class="archivar-lm-val archivar-lm-dim">{{ longmemSizeKb }}</span>
+                    </div>
+                    <div class="archivar-lm-row">
+                      <span class="archivar-lm-key">Chaos</span>
+                      <span class="archivar-lm-val archivar-chaos-wrap">
+                        <span class="archivar-chaos-bar">
+                          <span class="archivar-chaos-fill" :style="{ width: longmemChaos.pct + '%', background: longmemChaos.color }" />
+                        </span>
+                        <span :style="{ color: longmemChaos.color }">{{ longmemChaos.label }}</span>
                       </span>
                     </div>
                   </div>
@@ -537,7 +544,7 @@
                     style="margin-top:14px;width:100%;justify-content:center"
                     :disabled="crystallizeBusy"
                     @click="triggerCrystallize"
-                  ><span v-if="crystallizeBusy" class="dots-running">Kristallisiert</span><template v-else>Jetzt kristallisieren</template></button>
+                  ><span v-if="crystallizeBusy" class="dots-running">Räumt auf</span><template v-else>Jetzt aufräumen</template></button>
                   <Transition name="sys-modal-fade">
                     <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
                       :style="archivFeedback.ok
@@ -1212,7 +1219,22 @@ const longmemFacts     = ref(0)
 const longmemUpdated   = ref('')
 const bootstrapPending = ref(false)
 const archivLoading    = ref(false)
-const crystallizeBusy  = ref(false)
+const crystallizeBusy   = ref(false)
+const longmemSizeBytes  = ref(0)
+const longmemLogEntries = ref(0)
+const longmemDaysSince  = ref(0)
+
+const longmemSizeKb = computed(() => {
+  const kb = longmemSizeBytes.value / 1024
+  return kb < 1 ? longmemSizeBytes.value + ' B' : kb.toFixed(1) + ' KB'
+})
+
+const longmemChaos = computed(() => {
+  const score = Math.min(100, longmemLogEntries.value * 10 + longmemDaysSince.value * 3)
+  if (score < 25) return { pct: Math.max(4, score), color: '#6db89a', label: 'ruhig' }
+  if (score < 55) return { pct: score, color: '#e0a030', label: 'wächst' }
+  return { pct: Math.min(100, score), color: '#e06c75', label: 'chaotisch' }
+})
 const archivFeedback   = ref(null)
 
 async function loadArchivStatus() {
@@ -1226,10 +1248,13 @@ async function loadArchivStatus() {
         headers: { Authorization: `Bearer ${soulToken.value}` }
       }).then(r => r.json()).catch(() => null),
     ])
-    herzActive.value     = herzRes?.active ?? false
-    longmemFacts.value   = lmRes?.facts ?? 0
-    longmemUpdated.value = lmRes?.updated ?? ''
-    bootstrapPending.value = lmRes?.bootstrap_pending ?? false
+    herzActive.value        = herzRes?.active ?? false
+    longmemFacts.value      = lmRes?.facts ?? 0
+    longmemUpdated.value    = lmRes?.updated ?? ''
+    bootstrapPending.value  = lmRes?.bootstrap_pending ?? false
+    longmemSizeBytes.value  = lmRes?.size_bytes ?? 0
+    longmemLogEntries.value = lmRes?.log_entries ?? 0
+    longmemDaysSince.value  = lmRes?.days_since_cleanup ?? 0
   } finally {
     archivLoading.value = false
   }
@@ -1248,7 +1273,7 @@ async function triggerCrystallize() {
       setTimeout(async () => {
         await loadArchivStatus()
         crystallizeBusy.value = false
-        archivFeedback.value = { ok: true, message: 'Kristallisation abgeschlossen ✓' }
+        archivFeedback.value = { ok: true, message: 'Aufräumen abgeschlossen ✓' }
         setTimeout(() => { archivFeedback.value = null }, 5000)
       }, 18000)
     } else {
@@ -1367,5 +1392,8 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-warn { color: var(--sys-warn); }
 .archivar-lm-dim  { color: var(--fg); }
+.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
+.archivar-chaos-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.archivar-chaos-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.6s ease; }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>

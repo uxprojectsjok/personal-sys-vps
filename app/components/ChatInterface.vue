@@ -338,7 +338,7 @@
         </Transition>
       </div>
 
-      <!-- Archivar LONGMEM Panel -->
+      <!-- Speicher Panel -->
       <Transition name="archivar-panel-fade">
         <div v-if="showArchivPanel" class="archivar-panel">
           <div v-if="archivPanelLoading" class="archivar-panel-loading">Lade…</div>
@@ -346,21 +346,28 @@
             <div class="archivar-panel-row">
               <span class="archivar-panel-key">Fakten</span>
               <span class="archivar-panel-val" :class="archivFacts > 0 ? 'archivar-panel-ok' : ''">
-                {{ archivFacts > 0 ? archivFacts + ' kristallisiert' : 'noch keine' }}
+                {{ archivFacts > 0 ? archivFacts + ' gespeichert' : 'noch keine' }}
               </span>
             </div>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Letzte Kristallisation</span>
+              <span class="archivar-panel-key">Letztes Aufräumen</span>
               <span class="archivar-panel-val">{{ archivUpdated || '—' }}</span>
             </div>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Bootstrap</span>
-              <span class="archivar-panel-val" :class="archivBootstrapPending ? 'archivar-panel-warn' : 'archivar-panel-ok'">
-                {{ archivBootstrapPending ? 'ausstehend' : 'abgeschlossen' }}
+              <span class="archivar-panel-key">Größe</span>
+              <span class="archivar-panel-val">{{ archivSizeKb }}</span>
+            </div>
+            <div class="archivar-panel-row">
+              <span class="archivar-panel-key">Chaos</span>
+              <span class="archivar-panel-val archivar-chaos-wrap">
+                <span class="archivar-chaos-bar">
+                  <span class="archivar-chaos-fill" :style="{ width: archivChaos.pct + '%', background: archivChaos.color }" />
+                </span>
+                <span :style="{ color: archivChaos.color }">{{ archivChaos.label }}</span>
               </span>
             </div>
             <button class="archivar-panel-btn" :disabled="archivCrystallizeBusy" @click="chatCrystallize">
-              <span v-if="archivCrystallizeBusy" class="dots-running">Kristallisiert</span><template v-else>Jetzt kristallisieren</template>
+              <span v-if="archivCrystallizeBusy" class="dots-running">Räumt auf</span><template v-else>Jetzt aufräumen</template>
             </button>
             <div v-if="archivPanelMsg" class="archivar-panel-msg" :class="archivPanelMsg.ok ? 'ok' : 'err'">
               {{ archivPanelMsg.text }}
@@ -375,7 +382,7 @@
           <span class="archivar-dot"></span>KI-Auto
         </button>
         <button class="archivar-toggle" :class="{ active: showArchivPanel }" @click="toggleArchivPanel">
-          <span class="archivar-dot"></span>Archivar<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
+          <span class="archivar-dot"></span>Speicher<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
         </button>
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
@@ -537,6 +544,21 @@ const archivPanelLoading    = ref(false)
 const archivFacts           = ref(0)
 const archivUpdated         = ref('')
 const archivBootstrapPending = ref(false)
+const archivSizeBytes       = ref(0)
+const archivLogEntries      = ref(0)
+const archivDaysSince       = ref(0)
+
+const archivSizeKb = computed(() => {
+  const kb = archivSizeBytes.value / 1024
+  return kb < 1 ? archivSizeBytes.value + ' B' : kb.toFixed(1) + ' KB'
+})
+
+const archivChaos = computed(() => {
+  const score = Math.min(100, archivLogEntries.value * 10 + archivDaysSince.value * 3)
+  if (score < 25) return { pct: Math.max(4, score), color: '#6db89a', label: 'ruhig' }
+  if (score < 55) return { pct: score, color: '#e0a030', label: 'wächst' }
+  return { pct: Math.min(100, score), color: '#e06c75', label: 'chaotisch' }
+})
 const archivCrystallizeBusy = ref(false)
 const archivPanelMsg        = ref(null)
 
@@ -549,6 +571,9 @@ async function loadArchivPanel() {
     archivFacts.value           = res?.facts ?? 0
     archivUpdated.value         = res?.updated ?? ''
     archivBootstrapPending.value = res?.bootstrap_pending ?? false
+    archivSizeBytes.value       = res?.size_bytes ?? 0
+    archivLogEntries.value      = res?.log_entries ?? 0
+    archivDaysSince.value       = res?.days_since_cleanup ?? 0
   } finally {
     archivPanelLoading.value = false
   }
@@ -573,7 +598,7 @@ async function chatCrystallize() {
         await syncLongmemFromServer()
         loadArchivPanel()
         archivCrystallizeBusy.value = false
-        archivPanelMsg.value = { ok: true, text: 'Kristallisation abgeschlossen ✓' }
+        archivPanelMsg.value = { ok: true, text: 'Aufräumen abgeschlossen ✓' }
         setTimeout(() => { archivPanelMsg.value = null }, 5000)
       }, 18000)
     } else {
@@ -4001,6 +4026,9 @@ defineExpose({
 }
 .archivar-panel-msg.ok  { border-color: var(--sys-ok);  color: var(--sys-ok);  background: rgba(184,220,196,0.06); }
 .archivar-panel-msg.err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
+.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
+.archivar-chaos-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.archivar-chaos-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.6s ease; }
 .archivar-panel-fade-enter-active, .archivar-panel-fade-leave-active { transition: opacity 0.15s, transform 0.15s; }
 .archivar-panel-fade-enter-from, .archivar-panel-fade-leave-to { opacity: 0; transform: translateY(4px); }
 
