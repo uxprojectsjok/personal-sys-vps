@@ -1230,10 +1230,11 @@ const longmemSizeKb = computed(() => {
 })
 
 const longmemChaos = computed(() => {
-  const score = Math.min(100, longmemLogEntries.value * 10 + longmemDaysSince.value * 3)
-  if (score < 25) return { pct: Math.max(4, score), color: '#6db89a', label: 'ruhig' }
-  if (score < 55) return { pct: score, color: '#e0a030', label: 'wächst' }
-  return { pct: Math.min(100, score), color: '#e06c75', label: 'chaotisch' }
+  const e = longmemLogEntries.value, d = longmemDaysSince.value
+  const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
+  if (e <= 7 && d <= 14) return { pct: Math.max(4, pct), color: '#6db89a', label: 'ruhig' }
+  if (e <= 12 || d <= 21) return { pct: Math.max(30, pct), color: '#e0a030', label: 'wächst' }
+  return { pct: Math.min(100, pct), color: '#e06c75', label: 'chaotisch' }
 })
 const archivFeedback   = ref(null)
 
@@ -1392,8 +1393,8 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-warn { color: var(--sys-warn); }
 .archivar-lm-dim  { color: var(--fg); }
-.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
-.archivar-chaos-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
+.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
 .archivar-chaos-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease, background 0.6s ease; }
 .settings-inline-body { max-height: none !important; overflow: visible !important; }
 </style>
