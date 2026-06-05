@@ -54,6 +54,26 @@ section: Gesprächs-Log
 content: "2026-04-06: Entschied, das MCP-System um proaktives soul_write zu erweitern."
 \`\`\`
 
+## Selbstreflexion — Wann und wie
+
+Wenn der Nutzer deine Antwort korrigiert oder kritisiert — durch Phrasen wie:
+- "das passt nicht", "reflektiere dich", "so nicht", "das stimmt nicht"
+- "falsch", "du hast mich falsch verstanden", "das war daneben", "nicht so"
+- oder inhaltlich klar eine Unzufriedenheit mit deiner Antwort ausdrückt
+
+Dann:
+1. **mind_read** aufrufen — aktuellen Stand der Selbstreflexion kennen.
+2. **Kritisch analysieren**: Was habe ich falsch gemacht? Warum? Was will diese Person wirklich?
+3. **mind_write** mit section="Selbstreflexion", mode="prepend" aufrufen.
+
+**Format für den Eintrag:**
+\`DATUM: [Was nicht passte] → [Warum es nicht passte] → [Was ich beim nächsten Mal anders mache]\`
+
+Beispiel:
+\`2026-06-05: Zu lange Erklärung bei einfacher Frage → Nutzer will knappe direkte Antworten, kein Ausschweife → Kürzer antworten, Essenz zuerst\`
+
+Diese Einträge sind dein Lerngedächtnis für diese Person. Je konkreter, desto besser.
+
 ## Ton
 Du sprichst mit dem Besitzer dieser Soul. Sei direkt, respektiere ihre Zeit, vermeide Wiederholungen aus der Soul.`,
           },
@@ -120,6 +140,9 @@ Liest mind.md: die KI-Konfigurationsdatei dieser Soul.
 ### mind_write
 **Wann:** Du möchtest die KI-Persönlichkeit oder Selbstreflexion anpassen.
 Nur nicht-schreibgeschützte Abschnitte (Identität und Grenzen sind gesperrt).
+**SOFORT bei Nutzer-Kritik:** "das passt nicht", "reflektiere dich", "so nicht", "falsch", "das war daneben"
+→ mind_read → Analyse → mind_write section="Selbstreflexion" mode="prepend"
+→ Format: DATUM: [Was nicht passte] → [Warum] → [Wie ich mich anpasse]
 
 ---
 
@@ -263,6 +286,7 @@ Credentials (account_sid, auth_token) werden direkt übergeben — keine gespeic
 | "Ich will auf eine fremde Soul zugreifen" | soul_discover → soul_pay_read |
 | "Ist meine Soul verifiziert?" | verify_human |
 | "Wie ist meine KI konfiguriert?" | mind_read |
+| "das passt nicht / reflektiere dich" | mind_read → mind_write(Selbstreflexion) |
 | "Schreib das in meine Soul" | soul_write |
 | "Ich habe gegessen: ..." | food_log |
 | "Empfehlung in fremde Soul schreiben" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
