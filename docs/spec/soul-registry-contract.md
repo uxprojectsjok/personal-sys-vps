@@ -4,8 +4,23 @@
 **Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`  
 **Deployer:** `uxprojects-jok.eth`  
 **Deployed:** 2026-04-04  
+**Verified:** 2026-06-05 (Polygonscan, exact match, v0.8.34)  
 **Version:** 1.0.0  
 **License:** MIT  
+
+---
+
+## Tested 2026-06-05
+
+| Funktion | Status | Anmerkung |
+|----------|--------|-----------|
+| `withdraw()` | ✓ | 30.5 POL erfolgreich ausgezahlt |
+| `pause()` | ✓ | Contract pausiert |
+| `unpause()` | ✓ | Contract wieder aktiv |
+| `setFee()` | ✓ | 0.3 POL gesetzt, zurück auf 0.5 POL |
+| `anchor()` | ✓ | 62 Transaktionen on-chain, Rate-Limit aktiv |
+| `acceptOwnership()` | — | Nur nach proposeOwnership relevant |
+| `transferSoul()` | — | Erst bei Soul-Transfer-Feature nötig |
 
 ---
 
