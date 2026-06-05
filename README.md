@@ -151,14 +151,30 @@ Three phases — nothing more:
 
 ```
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
-│   ├── pages/               Routes: index, session, gate, …
-│   ├── components/          UI components — Chat, Vault, SoulViewer, AgentMarketplace,
-│   │                        EmergencyModal, SoulCalendar, LiveProfile, MotionCapture, …
-│   └── composables/         useSoul, useVault, useClaude, useChainAnchor, useSavedCreds, …
+│   ├── pages/               session, soul, gate, dateien, kalender, chronik, einnahmen,
+│   │                        marketplace, peers, reife, verankern, verbindung, connect,
+│   │                        einrichten, einstellungen, exportieren
+│   ├── components/          ChatInterface, VaultExplorer, SoulViewer, AgentMarketplacePanel,
+│   │                        AgentSandboxCard, ApiContextPanel, AudioCaptureCard, CameraRecorder,
+│   │                        ConfirmModal, EmergencyModal, FirstSetupModal, LiveProfile,
+│   │                        MediaPlayer, ModalCreateSoul, MotionCaptureCard, MotionRecorder,
+│   │                        SettingsModal, SoulAnchorModal, SoulCalendar, SoulDecryptModal,
+│   │                        SoulDownload, SoulEncryptModal, SoulMaturityMeter, SoulSetupWizard,
+│   │                        SoulSyncModal, SoulUpload, SysCommandPalette, SysIcon, SysMobileNav,
+│   │                        SysSidebar, SysTopbar, VaultServicesPanel, VaultSessionPanel,
+│   │                        VaultUpload, VideoBackground, VoiceRecorder
+│   │   └── ui/              Alert, Button, GlowText, Modal
+│   └── composables/         useSoul, useVault, useClaude, useSession, useMind, useProfile,
+│                            useVaultSession, useVaultServices, useConnectedVault, useApiContext,
+│                            useCamera, useMotion, useVoice, usePlayer, useElevenLabsConversation,
+│                            useMcpTools, useChainAnchor, useSoulEncrypt, useSoulDecrypt,
+│                            useSoulPasskey, useSavedCreds, useNodeStatus, useColorScheme,
+│                            useConfirm, usePwaInstall, useSpotify, useTrezorKey,
+│                            useVerifySpecial, useYouTube
 │
 ├── lua/                     OpenResty Lua scripts (production API layer, 80+ endpoints)
 │   ├── soul_cert.lua        Soul cert issuance — per-soul key on multi-hoster
-│   ├── soul_auth.lua        Request authentication (per-soul key aware)
+│   ├── soul_auth.lua        Request authentication (per-soul key + X-Soul-Id aware)
 │   ├── vault_auth.lua       Vault endpoint auth
 │   ├── gate_auth.lua        Gate password protection
 │   ├── emergency_guard.lua  Emergency protocol — blocks endpoints per lock level
@@ -181,20 +197,34 @@ Three phases — nothing more:
 │   └── adapters/            garmin.py, apple_health.py, oura.py
 │
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
-│   └── tools/               44 tools — soul_read/write, vault_manifest, health_check,
-│                            health_sync, food_log, mind_read/write, soul_discover,
-│                            soul_skills, beme_chat, calendar_read, verify_human, …
+│   ├── server.mjs           Main server — OAuth flow, /internal/run-tool, X-Soul-Id routing
+│   ├── oauth.mjs            OAuth 2.0 + PKCE token management
+│   ├── tools/               50+ tools — soul_read/write, vault_manifest, health_check,
+│   │                        health_sync, food_log, mind_read/write, soul_discover,
+│   │                        soul_skills, beme_chat, calendar_read, verify_human,
+│   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
+│   │                        soul_paid_comment, soul_pay_read, shop_write_read,
+│   │                        elevenlabs_agent_update, twilio_call_config,
+│   │                        audio/image/video list+get, context_get/list, profile_get/save,
+│   │                        soul_read_by_token, *_peer variants, …
+│   ├── lib/                 api.mjs, blockchain.mjs, herz.mjs, soul_indexer.mjs,
+│   │                        soul_parser.mjs, vault_fs.mjs
+│   └── prompts/             index.mjs — soul_guide + tool_guide (Selbstreflexion-Workflow)
 │
 ├── server/
 │   ├── api/                 Nitro API routes (development server only)
+│   ├── plugins/             env.js — server-side env injection
+│   ├── utils/               validateSoulToken.js
 │   └── openresty/           nginx.conf.template, vhost.conf.template
 │
 ├── shared/
-│   └── utils/               soulParser.js, soulMaturity.js — shared browser logic
+│   └── utils/               soulParser.js, soulMaturity.js — shared browser/server logic
 │
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
-│   └── project-hash.mjs     SHA-256 fingerprint of all source files
+│   ├── project-hash.mjs     SHA-256 fingerprint of all source files
+│   ├── generate-prompts.mjs Sync prompts.md into vault on build
+│   └── sync-server.sh       Sync /opt/sys changes back to repo (on demand)
 └── docs/                    Protocol documentation, API reference, specs
 ```
 
@@ -385,7 +415,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 93edf5e4cc8f7ce5
+Current release fingerprint: 7a30a82c886d23a8
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
