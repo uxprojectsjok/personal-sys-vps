@@ -663,6 +663,12 @@ Mögliche section-Werte (exakt so schreiben):
             const logRe = /## Session-Log[^\n]*\n[\s\S]*?(?=\n## |\n---|\n<!-- |$)/;
             const serverLog = fresh.match(logRe)?.[0];
             if (serverLog) content = content.replace(logRe, serverLog);
+            // cert_version: Server-Stand übernehmen falls höher — verhindert Versionsschutz-Block
+            const serverV = parseInt(fresh.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10);
+            const localV  = parseInt(content.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10);
+            if (serverV > localV && content.includes('cert_version:')) {
+              content = content.replace(/cert_version:\s*\d+/, `cert_version: ${serverV}`);
+            }
           }
         }
       } catch { /* Browser-State verwenden */ }
