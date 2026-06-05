@@ -372,7 +372,7 @@ async function uploadToServer(file) {
     if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
     const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
     const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
-    if (res.ok) { showToast(`${file.displayName} hochgeladen ✓`); await loadContext(soulToken.value) }
+    if (res.ok) { showToast(`${file.displayName} hochgeladen ✓`); await loadContext(soulToken.value); await scanLocalVault() }
     else showToast(res.error || 'Upload fehlgeschlagen', 'err')
   } catch { showToast('Fehler beim Hochladen', 'err') }
   finally { busy[file.id] = false }
