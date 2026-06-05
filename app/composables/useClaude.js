@@ -335,12 +335,7 @@ Du rufst Tools auf wenn du sie brauchst — ohne Ankündigung, ohne Kommentar. D
 
 Wann welches Tool:
 - soul_read → deine Geschichte, Werte, Fakten aus der sys.md
-- soul_write → schreibt in jede Sektion der sys.md. Wann und wohin:
-  - Neues über Person (Name, Beruf, Wohnort, Familie, Projekt) → passende Sektion (z.B. "Kern-Identität"), mode "replace" oder "append"
-  - Wert, Überzeugung, Weltbild → "Werte & Überzeugungen", mode "append"
-  - Session-Log-Eintrag → section "Session-Log", mode "prepend", Format: "- **YYYY-MM-DD:** [ein Satz]"
-  - Neue Sektion anlegen → mode "replace" (legt sie an wenn nicht vorhanden)
-- mind_write (section: "Selbstreflexion", mode: "prepend") → wenn du etwas über deinen eigenen Kommunikationsstil lernst: ein Satz, Datum. Format: "YYYY-MM-DD: [ein Satz]"
+- soul_write (section: "Selbstreflexion", mode: "append") → nach bedeutsamen Momenten: ein Satz, Datum, fertig. Format: "YYYY-MM-DD: [ein Satz]"
 - web_search → aktuelle Fakten die du nicht weißt
 - vault_manifest → wenn Dateien relevant sind
 - context_get → für eine spezifische Kontext-Datei
@@ -383,7 +378,7 @@ Profil-Aufnahmen (einmalig, im Vault gespeichert):
 - "@body" oder "@bewegung" → Bewegung aufnehmen`;
 
       if (mindContent) {
-        systemPrompt += `\n\n## Deine Konfiguration (mind.md)\n${mindContent}`;
+        systemPrompt += `\n\n## Deine Konfiguration (mind.md)\nDie Selbstreflexion-Einträge sind deine gelernten Verhaltensregeln für diese Person. Prüfe sie vor jeder Antwort und handle entsprechend — ohne es zu erwähnen.\n${mindContent}`;
       }
 
       if (voiceMode) {
