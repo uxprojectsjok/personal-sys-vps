@@ -67,17 +67,6 @@
             <div class="flex items-center gap-2 px-3 min-h-[44px]">
               <span class="w-1.5 h-1.5 rounded-full shrink-0 bg-[#22c55e]/60"/>
               <span class="text-sm text-white/70 flex-1 font-mono">{{ localSoulFileName }}</span>
-              <!-- sys.md herunterladen -->
-              <button
-                @click="downloadSoulLocal"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition shrink-0"
-                :title="`${localSoulFileName} herunterladen (lokaler Stand)`"
-                :aria-label="`${localSoulFileName} herunterladen`"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/>
-                </svg>
-              </button>
             </div>
           </div>
 
@@ -771,8 +760,9 @@ function isActive(type, name) {
 function switchTab(id) {
   tab.value = id;
   closePlayer();
-  if (id === "server" && !loaded.value && props.soulCert) {
+  if (id === "server" && props.soulCert) {
     serverLoading.value = true;
+    loadContext(props.soulCert).finally(() => { serverLoading.value = false; });
   }
 }
 
