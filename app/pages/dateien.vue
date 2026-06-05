@@ -141,8 +141,8 @@
                       <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadSoul(file)" title="sys.md vom Server herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="Lokale sys.md aus Datei ersetzen (.md importieren)">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h10M3 6h6M10 9l2 2 4-4"/></svg>
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="sys.md aus Datei importieren (lokalen Stand ersetzen)">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
                       <button v-if="tab === 'lokal'" class="dt-act-btn" @click="pushSoulToServer" :disabled="busy['soul']" title="sys.md auf Server hochladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
@@ -412,7 +412,7 @@ async function handleFileUpload(e) {
       if (res.ok) ok++
       else showToast(`${file.name}: ${res.error || 'Upload fehlgeschlagen'}`, 'err')
     }
-    if (ok) { showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} auf Server hochgeladen ✓`); await loadContext(soulToken.value) }
+    if (ok) { showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} auf Server hochgeladen ✓`); await loadContext(soulToken.value); await scanLocalVault() }
     e.target.value = ''; return
   }
   // Lokal-Tab: in Vault speichern

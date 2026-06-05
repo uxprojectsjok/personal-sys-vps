@@ -2,7 +2,7 @@
 // Strategie: Network-first, Cache als Offline-Fallback für App-Shell.
 // API-Calls (/api/*) werden nie gecacht.
 
-const CACHE = 'sys-shell-v8'
+const CACHE = 'sys-shell-v9'
 const SHELL = ['/', '/gate', '/session', '/manifest.json']
 
 self.addEventListener('install', e => {
@@ -33,9 +33,9 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(request)
       .then(res => {
-        if (res.ok) {
+        if (res.ok && res.type === 'basic') {
           const clone = res.clone()
-          caches.open(CACHE).then(c => c.put(request, clone))
+          caches.open(CACHE).then(c => c.put(request, clone)).catch(() => {})
         }
         return res
       })

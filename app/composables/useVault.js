@@ -74,6 +74,7 @@ export function useVault() {
   }
 
   async function saveHandle(soulId, handle) {
+    if (!soulId || typeof soulId !== "string") return;
     try {
       const db = await openDb();
       const tx = db.transaction(STORE_NAME, "readwrite");
