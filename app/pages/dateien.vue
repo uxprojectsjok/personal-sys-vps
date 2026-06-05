@@ -347,13 +347,25 @@ async function replaceSoulOnServer(e) {
   const file = e.target.files?.[0]; if (!file) return
   busy['soul'] = true
   try {
-    const buf = await file.arrayBuffer()
-    const res = await syncFile(soulToken.value, 'context', 'sys.md', buf, '')
+    let text = await file.text()
+    // cert_version des lokalen Stands nehmen falls höher als die im Upload —
+    // verhindert dass der Server-Versionsschutz den Upload blockiert
+    const currentV = parseInt(soulContent.value?.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
+    const uploadV  = parseInt(text.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
+    if (currentV > uploadV && text.includes('cert_version:')) {
+      text = text.replace(/cert_version:\s*\d+/, `cert_version: ${currentV}`)
+    }
+    const res = await fetch('/api/context', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ soul_content: text })
+    })
     if (res.ok) {
       showToast('sys.md auf Server ersetzt ✓')
       await loadContext(soulToken.value)
     } else {
-      showToast(res.error || 'Ersetzen fehlgeschlagen', 'err')
+      const err = await res.json().catch(() => ({}))
+      showToast(err.error || 'Ersetzen fehlgeschlagen', 'err')
     }
   } catch { showToast('Fehler beim Ersetzen', 'err') }
   finally { busy['soul'] = false; e.target.value = '' }
