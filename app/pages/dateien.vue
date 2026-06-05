@@ -458,22 +458,28 @@ async function handleFileUpload(e) {
 async function pushVaultToServer() {
   if (syncing.value) return
   syncing.value = true
-  const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
-  let ok = 0, fail = 0
-  const uploadable = localFileList.value.filter(f => f.type !== 'soul')
-  for (const file of uploadable) {
-    const buf = await readVaultFile(file.displayName)
-    if (!buf) { fail++; continue }
-    const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
-    if (res.ok) ok++
+  try {
+    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+    let ok = 0, fail = 0
+    const uploadable = localFileList.value.filter(f => f.type !== 'soul')
+    for (const file of uploadable) {
+      const buf = await readVaultFile(file.displayName)
+      if (!buf) { fail++; continue }
+      const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
+      if (res.ok) ok++
+      else fail++
+    }
+    // sys.md separat — Return-Wert prüfen (false = fehlgeschlagen, kein throw)
+    const soulOk = await pushToServer().catch(() => false)
+    if (soulOk) ok++
     else fail++
+    if (fail === 0) showToast(`Vault hochgeladen — ${ok} Datei${ok !== 1 ? 'en' : ''} ✓`)
+    else showToast(`${ok} hochgeladen, ${fail} fehlgeschlagen`, ok === 0 ? 'err' : 'ok')
+    await loadContext(soulToken.value)
+    await scanLocalVault()
+  } finally {
+    syncing.value = false
   }
-  // sys.md separat
-  try { await pushToServer() } catch { fail++ }
-  syncing.value = false
-  if (fail === 0) showToast(`Vault hochgeladen — ${ok + 1} Dateien ✓`)
-  else showToast(`${ok} hochgeladen, ${fail} fehlgeschlagen`, fail === ok + 1 ? 'err' : 'ok')
-  await loadContext(soulToken.value)
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
