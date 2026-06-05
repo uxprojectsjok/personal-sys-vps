@@ -138,13 +138,13 @@
                   <div class="dt-col-actions dt-actions">
                     <!-- sys.md specific -->
                     <template v-if="file.type === 'soul'">
-                      <button class="dt-act-btn" @click="downloadSoul(file)" title="Herunterladen">
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadSoul(file)" title="sys.md vom Server herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="Überschreiben">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 14V6m0 0 3 3M8 6 5 9"/><path stroke-linecap="round" d="M2 3h12"/></svg>
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="Lokale sys.md aus Datei ersetzen (.md importieren)">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h10M3 6h6M10 9l2 2 4-4"/></svg>
                       </button>
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="pushSoulToServer" :disabled="busy['soul']" title="Auf Server hochladen">
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="pushSoulToServer" :disabled="busy['soul']" title="sys.md auf Server hochladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
                       </button>
                     </template>
@@ -309,7 +309,7 @@ async function refresh() {
 // ── Server switch ──────────────────────────────────────────────────────────
 async function switchToServer() {
   tab.value = 'server'
-  if (!serverLoaded.value && soulToken.value) await loadContext(soulToken.value)
+  if (soulToken.value) await loadContext(soulToken.value)
 }
 
 // ── Blob download helper ───────────────────────────────────────────────────
