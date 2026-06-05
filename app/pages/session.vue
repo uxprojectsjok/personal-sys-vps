@@ -259,15 +259,16 @@ function lockGate() {
 
 // ── Lifecycle (preserves original init order)
 onMounted(async () => {
-  clearSession()
+  const isReturn = messages.value.length > 0
+  if (!isReturn) clearSession()
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
   fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
   fetch('/api/emergency/status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     .then(r => r.json()).then(d => { if (d.active) emergencyLevel.value = d.level || 1 }).catch(() => {})
 
-  // Initial AI greeting (removes need for empty-state placeholder)
-  addMessage('assistant', 'Hallo, was wollen wir heute tun?')
+  // Initial AI greeting — nur beim ersten Laden, nicht bei Rückkehr
+  if (!isReturn) addMessage('assistant', 'Hallo, was wollen wir heute tun?')
 
   fetchFromServer(true).then(() => {
     // Nur auto-akzeptieren wenn der Server NEUER ist (last_session-Datum vergleichen).
