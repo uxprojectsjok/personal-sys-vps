@@ -336,38 +336,34 @@ async function handleSoulImport(e) {
   e.target.value = ''
 }
 
-async function pushSoulToServer() {
-  busy['soul'] = true
-  try { await pushToServer(); showToast('sys.md auf Server hochgeladen ✓') }
-  catch { showToast('Upload fehlgeschlagen', 'err') }
-  finally { busy['soul'] = false }
+// Gemeinsame Funktion für sys.md Upload — genutzt von Einzelupload und Gesamt-Upload
+async function uploadSoulText(text) {
+  const currentV = parseInt(soulContent.value?.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
+  const uploadV  = parseInt(text.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
+  if (currentV > uploadV && text.includes('cert_version:')) {
+    text = text.replace(/cert_version:\s*\d+/, `cert_version: ${currentV}`)
+  }
+  const res = await fetch('/api/context', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+    body: JSON.stringify({ soul_content: text })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `HTTP ${res.status}`)
+  }
+  return true
 }
 
 async function replaceSoulOnServer(e) {
   const file = e.target.files?.[0]; if (!file) return
   busy['soul'] = true
   try {
-    let text = await file.text()
-    // cert_version des lokalen Stands nehmen falls höher als die im Upload —
-    // verhindert dass der Server-Versionsschutz den Upload blockiert
-    const currentV = parseInt(soulContent.value?.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
-    const uploadV  = parseInt(text.match(/cert_version:\s*(\d+)/)?.[1] || '0', 10)
-    if (currentV > uploadV && text.includes('cert_version:')) {
-      text = text.replace(/cert_version:\s*\d+/, `cert_version: ${currentV}`)
-    }
-    const res = await fetch('/api/context', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ soul_content: text })
-    })
-    if (res.ok) {
-      showToast('sys.md auf Server ersetzt ✓')
-      await loadContext(soulToken.value)
-    } else {
-      const err = await res.json().catch(() => ({}))
-      showToast(err.error || 'Ersetzen fehlgeschlagen', 'err')
-    }
-  } catch { showToast('Fehler beim Ersetzen', 'err') }
+    const text = await file.text()
+    await uploadSoulText(text)
+    showToast('sys.md auf Server ersetzt ✓')
+    await loadContext(soulToken.value)
+  } catch (err) { showToast(err.message || 'Ersetzen fehlgeschlagen', 'err') }
   finally { busy['soul'] = false; e.target.value = '' }
 }
 
@@ -469,10 +465,15 @@ async function pushVaultToServer() {
       if (res.ok) ok++
       else fail++
     }
-    // sys.md separat — Return-Wert prüfen (false = fehlgeschlagen, kein throw)
-    const soulOk = await pushToServer().catch(() => false)
-    if (soulOk) ok++
-    else fail++
+    // sys.md: Datei aus Vault lesen und gleichen Weg wie Einzelupload nutzen
+    const soulFile = await readVaultFile(soulFilename?.value || 'sys.md')
+    if (soulFile) {
+      const text = await soulFile.text()
+      await uploadSoulText(text)
+      ok++
+    } else {
+      fail++
+    }
     if (fail === 0) showToast(`Vault hochgeladen — ${ok} Datei${ok !== 1 ? 'en' : ''} ✓`)
     else showToast(`${ok} hochgeladen, ${fail} fehlgeschlagen`, ok === 0 ? 'err' : 'ok')
     await loadContext(soulToken.value)
