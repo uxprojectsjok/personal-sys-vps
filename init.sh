@@ -393,6 +393,26 @@ for _SOUL_DIR in /var/lib/sys/souls/*/; do
   fi
 done
 
+# ── 7g. AGENT/SOCIAL-Block-Bootstrap für bestehende Souls vormerken ──────────
+# soul-mcp fügt beim nächsten Start automatisch die fehlenden Blöcke ein.
+# Bei verschlüsselten Souls ist strings nicht aussagekräftig → Flag immer setzen,
+# bootstrapAgentSocial() prüft idempotent ob die Blöcke bereits vorhanden sind.
+info "Prüfe AGENT/SOCIAL-Blöcke für bestehende Souls..."
+for _SOUL_DIR in /var/lib/sys/souls/*/; do
+  [ -d "$_SOUL_DIR" ] || continue
+  _BOOTSTRAP_FLAG="${_SOUL_DIR}.agent_social_bootstrap_pending"
+  _SYS_MD="${_SOUL_DIR}sys.md"
+  [ -f "$_SYS_MD" ] || continue
+  [ -f "$_BOOTSTRAP_FLAG" ] && continue  # bereits vorgemerkt
+  # Nur Flag setzen wenn AGENT:START nicht im Klartext gefunden wird
+  # (verschlüsselte Souls: strings findet nichts → Flag nötig)
+  if ! strings "$_SYS_MD" 2>/dev/null | grep -q "AGENT:START"; then
+    touch "$_BOOTSTRAP_FLAG"
+    chown www-data:www-data "$_BOOTSTRAP_FLAG"
+    info "  AGENT/SOCIAL-Bootstrap vorgemerkt: $(basename $_SOUL_DIR)"
+  fi
+done
+
 # ── 8. Master Key + Gate-Passwort-Hash ───────────────────────────────────────
 # Bestehenden Master Key wiederverwenden falls master.json schon existiert
 # (schützt bestehende Soul-Certs bei Reinstall oder Skript-Neustart).

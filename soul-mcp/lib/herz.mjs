@@ -141,6 +141,33 @@ async function callClaude(apiKey, systemPrompt, userContent, maxTokens = 300) {
   } catch { return null; }
 }
 
+// Stellt sicher dass AGENT:END und SOCIAL:END nicht fehlen.
+// Passiert wenn ## Überschriften innerhalb eines Blocks beim Split verloren gehen.
+function repairBlockEndTags(md) {
+  let out = md;
+  // AGENT:START ohne AGENT:END → direkt vor der nächsten ## Sektion NACH AGENT:START einfügen
+  if (out.includes('<!-- AGENT:START -->') && !out.includes('<!-- AGENT:END -->')) {
+    const startIdx = out.indexOf('<!-- AGENT:START -->') + '<!-- AGENT:START -->'.length;
+    const nextSection = out.indexOf('\n## ', startIdx);
+    if (nextSection !== -1) {
+      out = out.slice(0, nextSection) + '\n<!-- AGENT:END -->' + out.slice(nextSection);
+    } else {
+      out = out.trimEnd() + '\n<!-- AGENT:END -->\n';
+    }
+  }
+  // SOCIAL:START ohne SOCIAL:END → direkt vor der nächsten ## Sektion NACH SOCIAL:START einfügen
+  if (out.includes('<!-- SOCIAL:START -->') && !out.includes('<!-- SOCIAL:END -->')) {
+    const startIdx = out.indexOf('<!-- SOCIAL:START -->') + '<!-- SOCIAL:START -->'.length;
+    const nextSection = out.indexOf('\n## ', startIdx);
+    if (nextSection !== -1) {
+      out = out.slice(0, nextSection) + '\n<!-- SOCIAL:END -->' + out.slice(nextSection);
+    } else {
+      out = out.trimEnd() + '\n<!-- SOCIAL:END -->\n';
+    }
+  }
+  return out;
+}
+
 async function appendToSoulLog(soulId, text) {
   try {
     let soul = await readSoul(soulId);
@@ -151,7 +178,7 @@ async function appendToSoulLog(soulId, text) {
     const insertAt = idx + logHeader.length;
     const today = new Date().toISOString().slice(0, 10);
     soul = soul.slice(0, insertAt) + `\n- **${today} [herz]:** ${text}` + soul.slice(insertAt);
-    await writeSoul(soulId, soul);
+    await writeSoul(soulId, repairBlockEndTags(soul));
     return true;
   } catch { return false; }
 }
@@ -506,7 +533,7 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
     'Session-Log', 'Session-Log (komprimiert)',
     // Preserved Blöcke — niemals anfassen
-    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Vault',
+    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
     // Bereits explizit behandelt
     'Kalender', 'Food Log', 'Standort', 'Wohnort',
   ]);
@@ -544,7 +571,7 @@ Leeres Array [] wenn nichts Neues.`, 800);
   existing.v       = 1;
   existing.updated = today;
 
-  const withLongmem = updateLongmem(current, existing);
+  const withLongmem = repairBlockEndTags(updateLongmem(current, existing));
   await writeSoul(soulId, withLongmem);
 
   const total = (existing.facts?.length ?? 0) + (existing.memories?.length ?? 0) +
@@ -611,7 +638,7 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
     'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck',
     'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
     'Session-Log', 'Session-Log (komprimiert)',
-    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Vault',
+    'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
     'Kalender', 'Food Log', 'Standort', 'Wohnort',
   ]);
   for (const part of soul.split(/\n(?=## )/)) {
@@ -768,4 +795,27 @@ export async function herzForceCrystallize(soulId) {
   const state = getState(soulId);
   state.lastCrystallizeAnchor = extractGrowthChainLength(soul);
   return { ok: true };
+}
+
+export async function herzEnsureAgentSocialBlocks(soulId) {
+  const soul = await readSoul(soulId);
+  if (!soul) return { ok: false, error: 'soul nicht lesbar' };
+
+  function addSectionIfMissing(md, heading, content) {
+    const re = new RegExp(`## ${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ \t]*\n`);
+    if (re.test(md)) return md;
+    return md.trimEnd() + `\n\n## ${heading}\n${content}\n`;
+  }
+
+  let updated = soul;
+  if (!updated.includes('<!-- SOCIAL:START -->')) {
+    updated = addSectionIfMissing(updated, 'Sozialsphäre', '<!-- SOCIAL:START -->\n<!-- SOCIAL:END -->');
+  }
+  if (!updated.includes('<!-- AGENT:START -->')) {
+    updated = addSectionIfMissing(updated, 'Agent-Sandbox', '<!-- AGENT:START -->\n<!-- AGENT:END -->');
+  }
+
+  if (updated === soul) return { ok: true, changed: false };
+  await writeSoul(soulId, updated);
+  return { ok: true, changed: true };
 }

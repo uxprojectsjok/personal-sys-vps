@@ -322,9 +322,20 @@ function triggerDownload(buf, filename) {
 }
 
 // ── sys.md actions ─────────────────────────────────────────────────────────
-function downloadSoul() {
-  const blob = new Blob([soulContent.value || ''], { type: 'text/markdown' })
-  triggerDownload(blob.arrayBuffer ? blob : new Uint8Array(new TextEncoder().encode(soulContent.value)), soulFilename?.value || 'sys.md')
+async function downloadSoul() {
+  // Immer direkt vom Server holen — nie den sessionStorage-Cache verwenden
+  try {
+    const res = await fetch('/api/soul', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (res.ok) {
+      const text = await res.text()
+      triggerDownload(new Blob([text], { type: 'text/markdown' }), soulFilename?.value || 'sys.md')
+      return
+    }
+  } catch {}
+  // Fallback: lokaler Stand
+  triggerDownload(new Blob([soulContent.value || ''], { type: 'text/markdown' }), soulFilename?.value || 'sys.md')
 }
 
 async function handleSoulImport(e) {

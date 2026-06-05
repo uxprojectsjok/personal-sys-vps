@@ -10,19 +10,29 @@ local M     = {}
 local TOKEN_DIR = "/var/lib/sys/pol_tokens/"
 local UUID_PAT  = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 
--- Parst "YYYY-MM-DDTHH:MM:SS" (mit oder ohne abschließendes Z) → Unix-Timestamp.
--- Gibt nil zurück wenn Format nicht erkannt.
+-- Parst "YYYY-MM-DDTHH:MM:SS[Z]" → Unix-Timestamp (UTC-Epoch).
+-- Mit Z-Suffix → UTC-String korrekt konvertieren.
+-- Ohne Z-Suffix → lokale Zeit (rückwärtskompatibel für alte Token-Dateien).
 local function parse_iso(s)
   if type(s) ~= "string" then return nil end
   local y,mo,d,h,mi,sec = s:match("^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)")
   if not y then return nil end
+  if s:sub(-1) == "Z" then
+    -- UTC-String: os.time() würde die Werte als lokale Zeit interpretieren → Offset kompensieren.
+    -- tz_off = wie viele Sekunden os.time(UTC-Tabelle) vom echten UTC-Epoch abweicht.
+    local ref    = ngx.time()
+    local utc_t  = os.date("!*t", ref)
+    local tz_off = ref - os.time(utc_t)  -- positiv bei UTC+N (z.B. +7200 für CEST)
+    local naive  = os.time({
+      year  = tonumber(y), month = tonumber(mo), day   = tonumber(d),
+      hour  = tonumber(h), min   = tonumber(mi), sec   = tonumber(sec), isdst = false
+    })
+    return naive + tz_off
+  end
+  -- Kein Z → lokale Zeit (ältere Token ohne Z-Suffix)
   return os.time({
-    year  = tonumber(y),
-    month = tonumber(mo),
-    day   = tonumber(d),
-    hour  = tonumber(h),
-    min   = tonumber(mi),
-    sec   = tonumber(sec),
+    year  = tonumber(y), month = tonumber(mo), day   = tonumber(d),
+    hour  = tonumber(h), min   = tonumber(mi), sec   = tonumber(sec), isdst = false
   })
 end
 
@@ -42,6 +52,12 @@ function M.check(token)
       if ok and type(data) == "table"
          and type(data.soul_id) == "string"
          and data.soul_id:match(UUID_PAT) then
+        -- Expiry explizit prüfen (Defense-in-depth: nicht nur auf Dict-TTL verlassen)
+        local exp_ts = parse_iso(data.expires_at)
+        if exp_ts and exp_ts < ngx.time() then
+          access_cache:delete("tok:" .. tok_lower)
+          return nil
+        end
         return data
       end
     end
