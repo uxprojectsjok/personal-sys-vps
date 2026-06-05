@@ -78,6 +78,7 @@ if node_soul_id and node_soul_id ~= soul_id then
 end
 
 ngx.ctx.soul_id = soul_id
+ngx.req.set_header("X-Soul-Id", soul_id)
 ngx.req.clear_header("Authorization")
 
 -- Anthropic key für Proxy-Locations (chat, soul-update) — pcall ist sicher,

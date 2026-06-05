@@ -242,7 +242,12 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
 
   try {
     const dirs     = await readdir(SOULS_DIR).catch(() => []);
-    const soulId   = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d));
+    // Multi-hoster: soul_id kommt als X-Soul-Id Header (gesetzt von soul_auth.lua).
+    // Fallback: erste Soul im Verzeichnis (Single-hoster / interne Aufrufe ohne Auth).
+    const headerSoulId = req.headers['x-soul-id'];
+    const soulId = (headerSoulId && /^[a-f0-9-]{36}$/i.test(headerSoulId))
+      ? headerSoulId
+      : dirs.find(d => /^[a-f0-9-]{36}$/i.test(d));
     if (!soulId) return res.status(404).json({ error: 'Keine Soul gefunden' });
 
     const { vaultKeyHex } = await loadVaultMeta(soulId);
