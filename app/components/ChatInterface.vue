@@ -1257,7 +1257,8 @@ const unifiedStream = computed(() => {
 
 const filteredStream = computed(() => {
   const s = unifiedStream.value
-  if (props.filter === 'all')    return s
+  // 'all': AI-Chat + Social-Bubbles — Agent-Block-Einträge nur im 'agents'-Tab
+  if (props.filter === 'all')    return s.filter(i => i._type === 'ai' || (i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply'))
   if (props.filter === 'soul')   return s.filter(i => i._type === 'ai')
   if (props.filter === 'peers')  return s.filter(i => i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply')
   if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'agent' || i.sphere === 'agent_reply'))
