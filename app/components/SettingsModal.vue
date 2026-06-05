@@ -1262,24 +1262,27 @@ async function loadArchivStatus() {
 }
 
 async function triggerCrystallize() {
+  const token = soulToken.value
+  if (!token || token === 'anonymous') {
+    archivFeedback.value = { ok: false, message: 'Soul nicht geladen — bitte Seite neu laden.' }
+    setTimeout(() => { archivFeedback.value = null }, 8000)
+    return
+  }
   crystallizeBusy.value = true
   archivFeedback.value  = null
   try {
     const res = await fetch('/api/soul/herz/crystallize', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     })
     const data = await res.json()
+    await loadArchivStatus()
+    crystallizeBusy.value = false
     if (data?.ok) {
-      setTimeout(async () => {
-        await loadArchivStatus()
-        crystallizeBusy.value = false
-        archivFeedback.value = { ok: true, message: 'Aufräumen abgeschlossen ✓' }
-        setTimeout(() => { archivFeedback.value = null }, 5000)
-      }, 18000)
+      archivFeedback.value = { ok: true, message: 'Aufräumen abgeschlossen ✓' }
+      setTimeout(() => { archivFeedback.value = null }, 5000)
     } else {
-      crystallizeBusy.value = false
-      archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Starten' }
+      archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Aufräumen' }
       setTimeout(() => { archivFeedback.value = null }, 8000)
     }
   } catch {

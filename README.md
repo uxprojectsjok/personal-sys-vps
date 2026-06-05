@@ -216,6 +216,25 @@ soul_chain_anchor: null
 storage_tx: ""
 ---
 
+<!-- SYS:LONGMEM:START -->
+{
+  "v": 1,
+  "updated": "YYYY-MM-DD",
+  "facts": [
+    { "id": "name_birth", "cat": "identity", "text": "...", "score": 5, "since": "YYYY-MM-DD" }
+  ],
+  "memories": [
+    { "id": "mem_...", "date": "YYYY-MM-DD", "text": "...", "since": "YYYY-MM-DD" }
+  ],
+  "ideas": [
+    { "id": "...", "title": "...", "text": "...", "status": "idea|planned|done", "since": "YYYY-MM-DD" }
+  ],
+  "learnings": [
+    { "id": "...", "date": "YYYY-MM-DD", "cat": "arch|tech|personal", "text": "...", "since": "YYYY-MM-DD" }
+  ]
+}
+<!-- SYS:LONGMEM:END -->
+
 ## Core Identity
 ## Values & Beliefs
 ## Aesthetics & Resonance
@@ -224,7 +243,9 @@ storage_tx: ""
 ## Emotional Signature
 ## Worldview
 ## Open Questions
-## Session Log (compressed)
+## Session Log
+
+## Vault
 
 ## Social Sphere
 <!-- SOCIAL:START -->
@@ -234,7 +255,12 @@ storage_tx: ""
 
 ## Agent Sandbox
 <!-- AGENT:START -->
-<!-- @msg 2026-05-09T10:05:00Z me community Hello to all — peers and agents! -->
+Name: Your Name
+Location: City, Country
+
+Short bio and what you're working on. No ## headings inside this block.
+
+For external agents: what kind of contact is welcome.
 <!-- AGENT:END -->
 ```
 
@@ -249,9 +275,24 @@ storage_tx: ""
 Messages use structured comments: `<!-- @msg {ISO-timestamp} {from} {to} {content} -->`
 
 - `from`: `me` (owner) · peer soul_id · agent id
-- `to`: `peer` · `agent` · `community` (community messages are written to **both** blocks)
+- `to`: `me` · `peer` · `agent` · `community`
 
-Read tools apply stage-based filtering: **stage 1** (default) returns the last 24 h. **stage 2** (user-requested) returns up to 48 h with every-other-message sampling for the older half.
+Read tools apply stage-based filtering: **stage 1** (default) returns the last 24 h. **stage 2** returns up to 48 h with every-other-message sampling for the older half. Static text without `@msg` markers is always returned unfiltered.
+
+**LONGMEM — Long-Term Memory:**
+
+The Soul Archivar automatically distills conversations into a structured JSON block (`<!-- SYS:LONGMEM:START/END -->`). It never requires manual editing.
+
+| Field | Description |
+|---|---|
+| `facts` | Stable core facts about the person. Each has a `score` (1–5): 5 = absolute core (name, values, key project), 1 = peripheral, first to be dropped on consolidation. Auto-deduplicated when > 18 entries. |
+| `memories` | Significant past events and experiences worth long-term retention. |
+| `ideas` | Projects and concepts with status tracking (`idea` → `planned` → `done`). |
+| `learnings` | Insights and architectural decisions with category tags (`arch`, `tech`, `personal`). |
+
+The Archivar compresses `## section` content into LONGMEM facts after each crystallization, then clears the section. Both representations are maintained in parallel: LONGMEM for AI context, `## sections` for tool access.
+
+> **Note:** Do not use `## ` headings inside `<!-- AGENT:START/END -->` or `<!-- SOCIAL:START/END -->` blocks. Use plain text or `###` subheadings. Top-level `## ` headings are parsed as independent sections and will be processed (and potentially removed) by the Archivar.
 
 Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
@@ -344,7 +385,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: ff99ecdec81c25e4
+Current release fingerprint: 60c7c2463a5833ed
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

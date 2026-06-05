@@ -184,7 +184,7 @@ import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailed
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
-import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat, herzForceCrystallize } from './lib/herz.mjs';
+import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat, herzForceCrystallize, herzEnsureAgentSocialBlocks } from './lib/herz.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -938,6 +938,8 @@ app.listen(PORT, '127.0.0.1', async () => {
   console.log(`OAuth: ${BASE_URL}/oauth/authorize`);
   // LONGMEM-Bootstrap: Souls mit pending-Flag einmalig kristallisieren
   bootstrapLongmem().catch(e => console.error('[longmem-bootstrap] Fehler:', e.message));
+  // AGENT/SOCIAL-Bootstrap: Fehlende Blöcke in v1-Souls einmalig einfügen
+  bootstrapAgentSocial().catch(e => console.error('[agent-social-bootstrap] Fehler:', e.message));
 });
 
 async function bootstrapLongmem() {
@@ -959,6 +961,28 @@ async function bootstrapLongmem() {
     }
     // Kurze Pause zwischen Souls — API nicht überlasten
     await new Promise(r => setTimeout(r, 3000));
+  }
+}
+
+async function bootstrapAgentSocial() {
+  const { readdir, stat, unlink } = await import('fs/promises');
+  let souls;
+  try { souls = await readdir(SOULS_DIR); } catch { return; }
+
+  for (const soulId of souls) {
+    if (!/^[a-f0-9-]{36}$/i.test(soulId)) continue;
+    const flagPath = `${SOULS_DIR}${soulId}/.agent_social_bootstrap_pending`;
+    try { await stat(flagPath); } catch { continue; }
+
+    console.log(`[agent-social-bootstrap] Migriere ${soulId}...`);
+    try {
+      const result = await herzEnsureAgentSocialBlocks(soulId);
+      await unlink(flagPath);
+      console.log(`[agent-social-bootstrap] ${soulId} ✓ changed=${result.changed}`);
+    } catch (e) {
+      console.warn(`[agent-social-bootstrap] ${soulId} Fehler: ${e.message}`);
+    }
+    await new Promise(r => setTimeout(r, 1000));
   }
 }
 

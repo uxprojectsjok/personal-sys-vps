@@ -75,7 +75,7 @@
                   </span>
                   <span class="earn-tx-from">{{ e.from ? e.from.slice(0,6) + '…' + e.from.slice(-4) : '—' }}</span>
                   <span class="earn-tx-pol">{{ e.pol_amount }} POL</span>
-                  <span class="earn-tx-date">{{ formatDate(e.redeemed_at) }}</span>
+                  <span class="earn-tx-date">{{ formatPeriod(e.redeemed_at) }}</span>
                   <span class="earn-tx-status" :class="isActive(e) ? 'earn-status--on' : 'earn-status--off'">
                     {{ isActive(e) ? '● Aktiv' : '○ Abgelaufen' }}
                   </span>
@@ -147,6 +147,15 @@ function formatDate(iso) {
   return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+function formatPeriod(redeemedAt) {
+  if (!redeemedAt) return '—'
+  const days   = amort.value.token_duration_days || 1
+  const from   = new Date(redeemedAt)
+  const to     = new Date(from.getTime() + days * 86400 * 1000)
+  const opts   = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }
+  return from.toLocaleString('de-DE', opts) + ' – ' + to.toLocaleString('de-DE', opts)
+}
+
 function isActive(entry) {
   if (!entry.redeemed_at) return false
   const days = amort.value.token_duration_days || 1
@@ -155,13 +164,17 @@ function isActive(entry) {
 }
 
 function exportCSV() {
-  const rows = [['TX-Hash', 'Von (Wallet)', 'POL-Betrag', 'Datum (UTC)', 'Status']]
+  const rows = [['TX-Hash', 'Von (Wallet)', 'POL-Betrag', 'Gültig von (UTC)', 'Gültig bis (UTC)', 'Status']]
   for (const e of earnings.value.entries || []) {
+    const days   = amort.value.token_duration_days || 1
+    const from   = e.redeemed_at || ''
+    const to     = from ? new Date(new Date(from).getTime() + days * 86400 * 1000).toISOString() : ''
     rows.push([
       e.tx_hash,
       e.from || '',
       e.pol_amount || '',
-      e.redeemed_at || '',
+      from,
+      to,
       isActive(e) ? 'Aktiv' : 'Abgelaufen',
     ])
   }

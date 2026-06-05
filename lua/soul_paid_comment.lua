@@ -170,7 +170,7 @@ if type(tdata.tx_hash) == "string" and #tdata.tx_hash > 10 then
   safe_content = safe_content .. " [tx:" .. tdata.tx_hash:sub(1, 10) .. "…]"
 end
 
-local entry = "\n<!-- @msg " .. ts_iso .. " " .. safe_from .. " agent " .. safe_content .. " -->"
+local entry = "\n<!-- @msg " .. ts_iso .. " " .. safe_from .. " me " .. safe_content .. " -->"
 
 -- In den AGENT-Block einfügen (vor dem End-Marker)
 local before_end = content:sub(1, e - 1)
