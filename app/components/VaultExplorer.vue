@@ -555,8 +555,8 @@ async function uploadSelectedLocal() {
         try {
           const file = await readVaultFile(name);
           if (!file) { fail++; continue; }
-          const key        = vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || "");
           const serverType = type === "images" ? "image" : type;
+          const key = vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || "");
           const res = await syncFile(props.soulCert, serverType, name, file, key);
           if (res.ok) ok++; else fail++;
         } catch { fail++; }
@@ -567,6 +567,7 @@ async function uploadSelectedLocal() {
   }
   if ([...names].some(n => n.toLowerCase() === "mind.md")) clearMindCache();
   await loadContext(props.soulCert);
+  await scanLocalVault();
   selectedLocal.value = new Set();
   if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} hochgeladen ✓`);
   else if (ok === 0) showError(`Upload fehlgeschlagen (${fail} Fehler)`);
@@ -875,6 +876,7 @@ async function uploadToServer(type, name) {
     if (res.ok) {
       if (name.toLowerCase() === "mind.md") clearMindCache();
       await loadContext(props.soulCert);
+      await scanLocalVault();
       showSuccess(`${name} hochgeladen ✓`);
     } else {
       showError(res.error || "Upload fehlgeschlagen");
