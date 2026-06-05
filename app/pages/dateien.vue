@@ -72,8 +72,10 @@
                 Hochladen
               </button>
               <input ref="fileInput" type="file" multiple class="dt-file-input" @change="handleFileUpload" />
-              <!-- sys.md overwrite input -->
+              <!-- sys.md lokal importieren -->
               <input ref="soulInput" type="file" accept=".md" class="dt-file-input" @change="handleSoulImport" />
+              <!-- sys.md auf Server ersetzen -->
+              <input ref="soulServerInput" type="file" accept=".md" class="dt-file-input" @change="replaceSoulOnServer" />
             </div>
 
             <!-- ── File table ── -->
@@ -141,11 +143,11 @@
                       <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadSoul(file)" title="sys.md vom Server herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="soulServerInput?.click()" :disabled="busy['soul']" title="sys.md auf Server ersetzen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
+                      </button>
                       <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="sys.md aus Datei importieren (lokalen Stand ersetzen)">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
-                      </button>
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="pushSoulToServer" :disabled="busy['soul']" title="sys.md auf Server hochladen">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
                       </button>
                     </template>
 
@@ -154,10 +156,6 @@
                       <!-- Download (nur auf Server-Tab sinnvoll) -->
                       <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
-                      </button>
-                      <!-- Upload to server (lokal only) -->
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" title="Auf Server hochladen">
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
                       </button>
                       <!-- Delete (nur auf Server-Tab) -->
                       <button v-if="tab === 'server'" class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" title="Löschen">
@@ -203,6 +201,7 @@ const searchQuery      = ref('')
 const refreshing       = ref(false)
 const fileInput        = ref(null)
 const soulInput        = ref(null)
+const soulServerInput  = ref(null)
 const busy             = reactive({})
 const syncing          = ref(false)
 const toast            = ref(null)
@@ -342,6 +341,22 @@ async function pushSoulToServer() {
   try { await pushToServer(); showToast('sys.md auf Server hochgeladen ✓') }
   catch { showToast('Upload fehlgeschlagen', 'err') }
   finally { busy['soul'] = false }
+}
+
+async function replaceSoulOnServer(e) {
+  const file = e.target.files?.[0]; if (!file) return
+  busy['soul'] = true
+  try {
+    const buf = await file.arrayBuffer()
+    const res = await syncFile(soulToken.value, 'context', 'sys.md', buf, '')
+    if (res.ok) {
+      showToast('sys.md auf Server ersetzt ✓')
+      await loadContext(soulToken.value)
+    } else {
+      showToast(res.error || 'Ersetzen fehlgeschlagen', 'err')
+    }
+  } catch { showToast('Fehler beim Ersetzen', 'err') }
+  finally { busy['soul'] = false; e.target.value = '' }
 }
 
 // ── Download file ──────────────────────────────────────────────────────────
