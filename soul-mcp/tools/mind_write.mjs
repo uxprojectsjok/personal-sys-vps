@@ -24,12 +24,14 @@ export function register(server, token) {
       'oder andere Kritik/Korrektur an deiner Antwort äußert:',
       '1. Lese zuerst mind_read um den aktuellen Stand zu kennen.',
       '2. Analysiere KRITISCH: Was habe ich falsch gemacht? Warum? Was erwartet diese Person?',
-      '3. Schreibe eine Reflexion in "Selbstreflexion" mit mode="prepend".',
+      '3. DEDUP-PRÜFUNG (Pflicht): Gibt es bereits einen Eintrag der dasselbe Kernprinzip beschreibt — auch mit anderen Worten? Wenn JA → nicht schreiben. Das Prinzip ist bereits gelernt.',
+      '4. Nur wenn das Prinzip wirklich neu ist: Schreibe mit mode="prepend".',
       '',
       'Format für Selbstreflexion-Einträge:',
       '`DATUM: [Was nicht passte] → [Warum es nicht passte] → [Was ich beim nächsten Mal anders mache]`',
       '',
-      'Nur schreiben bei echten Erkenntnissen — nicht bei jeder Antwort.',
+      'Nur schreiben bei echten, neuen Erkenntnissen — nicht bei Variationen bereits gelernter Prinzipien.',
+      'Max. 20 Einträge. Der Server entfernt älteste automatisch wenn die Grenze überschritten wird.',
     ].join('\n'),
     {
       section: z.string().min(1).max(200).describe(

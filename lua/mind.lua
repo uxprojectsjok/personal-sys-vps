@@ -244,6 +244,39 @@ if protected[section] then
 end
 
 local updated = update_section(current, section, content, mode)
+
+-- Selbstreflexion: Rolling Window — max. 20 DATUM:-Einträge behalten
+if section == "Selbstreflexion" and (mode == "prepend" or mode == "append") then
+  local sec_lines = split_lines(updated)
+  local sr_start, sr_end = find_section(sec_lines, "Selbstreflexion")
+  if sr_start and sr_end then
+    local blocks, current_block = {}, nil
+    for i = sr_start + 1, sr_end do
+      local line = sec_lines[i]
+      if line:match("^%d%d%d%d%-%d%d%-%d%d") then
+        if current_block then blocks[#blocks + 1] = current_block end
+        current_block = { line }
+      elseif current_block and not line:match("^%s*$") then
+        current_block[#current_block + 1] = line
+      elseif current_block then
+        blocks[#blocks + 1] = current_block
+        current_block = nil
+      end
+    end
+    if current_block then blocks[#blocks + 1] = current_block end
+
+    if #blocks > 20 then
+      local new_body = {}
+      for i = 1, 20 do
+        for _, l in ipairs(blocks[i]) do new_body[#new_body + 1] = l end
+        new_body[#new_body + 1] = ""
+      end
+      updated = update_section(updated, "Selbstreflexion",
+        table.concat(new_body, "\n"):gsub("%s+$", ""), "replace")
+    end
+  end
+end
+
 if not write_mind(updated) then
   ngx.status = 500
   ngx.header["Content-Type"] = "application/json"
