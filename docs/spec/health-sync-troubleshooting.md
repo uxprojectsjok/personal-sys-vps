@@ -1,22 +1,22 @@
 # Health Sync — Troubleshooting
 
-## garminconnect nicht installiert
+## garminconnect not installed
 
-**Symptom:** Sync schlägt fehl mit `python-garminconnect not installed`
+**Symptom:** Sync fails with `python-garminconnect not installed`
 
-**Ursache:** Nach System-Updates oder pip-Cleanups kann das Paket verloren gehen. `install.sh` richtet nur Credentials und Config ein, installiert keine Python-Pakete persistent.
+**Cause:** The package can be lost after system updates or pip cleanups. `install.sh` only sets up credentials and config — it does not install Python packages persistently.
 
 **Fix:**
 ```bash
 pip3 install garminconnect --break-system-packages
 ```
 
-Danach manuell testen:
+Then test manually:
 ```bash
 python3 /opt/sys/health-sync/health_sync.py
 ```
 
-Erfolgreich wenn Ausgabe endet mit: `Done. 1/1 soul(s) synced.`
+Success when output ends with: `Done. 1/1 soul(s) synced.`
 
 ---
 
@@ -24,21 +24,21 @@ Erfolgreich wenn Ausgabe endet mit: `Done. 1/1 soul(s) synced.`
 
 **Symptom:** `Mobile login returned 429 — IP rate limited by Garmin`
 
-**Ursache:** Zu viele Login-Versuche in kurzer Zeit. Garmin blockiert die IP temporär.
+**Cause:** Too many login attempts in a short time. Garmin temporarily blocks the IP.
 
-**Fix:** 10–30 Minuten warten, dann erneut versuchen. Tritt oft auf wenn `health_sync.py` mehrfach schnell hintereinander ausgeführt wird.
+**Fix:** Wait 10–30 minutes, then try again. Often occurs when `health_sync.py` is run multiple times in quick succession.
 
 ---
 
-## Daten veraltet
+## Stale Data
 
-**Symptom:** health.md zeigt Daten die älter als 7 Tage sind.
+**Symptom:** health.md shows data older than 7 days.
 
-**Vorgehen:**
-1. `python3 /opt/sys/health-sync/health_sync.py` manuell ausführen
-2. Fehlerausgabe prüfen
-3. Bei `garminconnect not installed` → Fix oben
-4. Bei `429` → warten
-5. Bei anderen Fehlern → Garmin-Credentials in `/var/lib/sys/config/health_sync_{soul_id}.json` prüfen
+**Steps:**
+1. Run `python3 /opt/sys/health-sync/health_sync.py` manually
+2. Check error output
+3. On `garminconnect not installed` → fix above
+4. On `429` → wait
+5. On other errors → check Garmin credentials in `/var/lib/sys/config/health_sync_{soul_id}.json`
 
-**Hinweis:** Health Sync ist manuell auszulösen — kein Cron, kein automatischer Trigger.
+**Note:** Health Sync must be triggered manually — no cron, no automatic trigger.
