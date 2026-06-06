@@ -880,6 +880,7 @@ const AT_COMMANDS = [
   { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
   { cmd: '@session-end',  label: 'session-end',  desc: 'Session jetzt analysieren & eintragen', direct: true                                              },
   { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
+  { cmd: '@peer ',        label: 'peer',         desc: 'Direkt an Peer (explizit)',       direct: false, hint: 'Name Nachricht …'                       },
   { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',                   direct: false, hint: 'Frage an den Agent …'                  },
 ]
 
@@ -1929,6 +1930,18 @@ function detectIntent(text) {
   // @agent → Agent Sandbox
   const agentMention = t.match(/^@agent\b\s*(.*)/is)
   if (agentMention) return { type: 'agent', query: (agentMention[1].trim() || t) }
+  // @peer Name → explizites Peer-Routing, geht NIE an die KI
+  const peerPrefixMatch = t.match(/^@peer\s+(\w+)\b\s*(.*)/is)
+  if (peerPrefixMatch) {
+    const name = peerPrefixMatch[1].toLowerCase()
+    const msg  = peerPrefixMatch[2].trim() || t
+    const exact = peerIds.value.find(p => p.label?.toLowerCase() === name)
+    if (exact) return { type: 'peer-specific', soul_id: exact.soul_id, query: msg }
+    const prefix = peerIds.value.filter(p => p.label?.toLowerCase().startsWith(name))
+    if (prefix.length === 1) return { type: 'peer-specific', soul_id: prefix[0].soul_id, query: msg }
+    if (prefix.length > 1)   return { type: 'ambiguous', candidates: prefix, name: peerPrefixMatch[1] }
+    return { type: 'peer-not-found', name: peerPrefixMatch[1] }
+  }
   // @name → specific peer by label (exact match, then unique prefix match)
   const nameMention = t.match(/^@(\w+)\b\s*(.*)/is)
   if (nameMention) {
@@ -3257,6 +3270,11 @@ async function handleSend() {
   if (intent.type === 'ambiguous') {
     const names = intent.candidates.map(p => `@${p.label}`).join(', ')
     addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
+    return
+  }
+
+  if (intent.type === 'peer-not-found') {
+    addMessage('assistant', `Peer "@${intent.name}" nicht gefunden. Verbindung herstellen unter → Peers.`)
     return
   }
 
