@@ -3382,6 +3382,15 @@ onMounted(async () => {
           return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
         })
         .filter(p => p && p.soul_id)
+      // Aliases aus vault/connections einmergen (Peers die via peers.vue verbunden wurden)
+      try {
+        const cr = await fetch('/api/vault/connections', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+        if (cr.ok) {
+          const cd = await cr.json()
+          const aliasMap = new Map((cd.connections || []).map(c => [c.soul_id, c.alias || '']))
+          peerIds.value = peerIds.value.map(p => ({ ...p, label: p.label || aliasMap.get(p.soul_id) || '' }))
+        }
+      } catch { /* silent */ }
     }
   } catch { /* silent */ }
   await refreshAgentContent()
