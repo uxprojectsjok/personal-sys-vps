@@ -355,6 +355,84 @@ if method == "GET" then
   return
 end
 
+-- ── POST /api/vault/connections/retry-handshake ──────────────────────────────
+
+if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
+  ngx.req.read_body()
+  local body = ngx.req.get_body_data() or "{}"
+  local ok, payload = pcall(cjson.decode, body)
+  if not ok or type(payload) ~= "table" then
+    ngx.status = 400; ngx.say(cjson.encode({ error = "Ungültiges JSON" })); return
+  end
+  local target_id = payload.soul_id
+  if not valid_soul_id(target_id) then
+    ngx.status = 400; ngx.say(cjson.encode({ error = "Ungültige soul_id" })); return
+  end
+  local data = load_data()
+  local conn = nil
+  for _, c in ipairs(data.connections) do
+    if c.soul_id == target_id then conn = c; break end
+  end
+  if not conn then
+    ngx.status = 404; ngx.say(cjson.encode({ error = "Verbindung nicht gefunden" })); return
+  end
+  if type(conn.domain) ~= "string" or conn.domain == "" then
+    ngx.status = 400; ngx.say(cjson.encode({ error = "Kein Remote-Peer (kein domain-Feld)" })); return
+  end
+
+  local auth  = ngx.req.get_headers()["authorization"] or ""
+  local token = auth:match("^[Bb]earer%s+(.+)$") or ""
+  local dot   = token:find(".", 1, true)
+  local our_cert = dot and token:sub(dot + 1) or ""
+  if our_cert == "" then
+    ngx.status = 401; ngx.say(cjson.encode({ error = "Cert fehlt" })); return
+  end
+
+  local scheme     = ngx.var.scheme or "https"
+  local our_domain = scheme .. "://" .. (ngx.var.host or "")
+  local http_mod   = require "resty.http"
+  local httpc      = http_mod.new()
+  httpc:set_timeout(8000)
+
+  local cb_body = cjson.encode({
+    soul_id        = soul_id,
+    cert           = our_cert,
+    domain         = our_domain,
+    alias          = soul_id:sub(1, 16),
+    permissions    = conn.permissions or { "soul" },
+    target_soul_id = target_id,
+  })
+
+  local cres, cerr = httpc:request_uri(conn.domain .. "/api/peer/connect", {
+    method  = "POST",
+    headers = { ["Content-Type"] = "application/json" },
+    body    = cb_body,
+  })
+
+  if not cres then
+    ngx.status = 502
+    ngx.say(cjson.encode({ error = "Peer nicht erreichbar", detail = tostring(cerr) }))
+    return
+  end
+
+  local cok, cdata = pcall(cjson.decode, cres.body or "")
+  if cres.status == 200 and cok and type(cdata) == "table" and cdata.ok then
+    -- peer_token in Connection-Record speichern
+    for i, c in ipairs(data.connections) do
+      if c.soul_id == target_id then
+        data.connections[i].peer_token = cdata.peer_token
+        break
+      end
+    end
+    save_data(data)
+    ngx.say(cjson.encode({ ok = true, peer_token = cdata.peer_token or cjson.null }))
+  else
+    ngx.status = cres.status or 502
+    ngx.say(cres.body or cjson.encode({ error = "Handshake fehlgeschlagen" }))
+  end
+  return
+end
+
 -- ── POST /api/vault/connections ───────────────────────────────────────────────
 
 if method == "POST" then
@@ -457,6 +535,43 @@ if method == "POST" then
   -- Soul-Grant: nur für lokale Souls automatisch anlegen
   if not is_remote then
     grant_add(target_id, soul_id, permissions)
+
+    -- Reziproken Eintrag in target_id/soul_connections.json schreiben,
+    -- damit soul_social_read den OWNER (soul_id) als vertrauenswürdig erkennt.
+    local target_conn_path = SOULS_DIR .. target_id .. "/soul_connections.json"
+    local tf = io.open(target_conn_path, "r")
+    local tdata = { connections = {}, removed_by_peer = {}, incoming_requests = {} }
+    if tf then
+      local raw = tf:read("*a"); tf:close()
+      local ok2, parsed = pcall(cjson.decode, raw)
+      if ok2 and type(parsed) == "table" then
+        tdata.connections       = type(parsed.connections)       == "table" and parsed.connections       or {}
+        tdata.removed_by_peer   = type(parsed.removed_by_peer)  == "table" and parsed.removed_by_peer   or {}
+        tdata.incoming_requests = type(parsed.incoming_requests) == "table" and parsed.incoming_requests or {}
+      end
+    end
+    local already = false
+    for _, c in ipairs(tdata.connections) do
+      if c.soul_id == soul_id then already = true; break end
+    end
+    if not already then
+      table.insert(tdata.connections, {
+        soul_id      = soul_id,
+        alias        = soul_id:sub(1, 8),
+        permissions  = permissions,
+        connected_at = math.floor(ngx.now()),
+        auto_reciprocal = true,
+      })
+      local wf = io.open(target_conn_path, "w")
+      if wf then
+        wf:write(cjson.encode({
+          connections       = #tdata.connections       > 0 and tdata.connections       or cjson.empty_array,
+          removed_by_peer   = #tdata.removed_by_peer   > 0 and tdata.removed_by_peer   or cjson.empty_array,
+          incoming_requests = #tdata.incoming_requests > 0 and tdata.incoming_requests or cjson.empty_array,
+        }))
+        wf:close()
+      end
+    end
   end
 
   -- Eingehende Anfrage von dieser Soul löschen falls vorhanden (Verbindung akzeptiert)
