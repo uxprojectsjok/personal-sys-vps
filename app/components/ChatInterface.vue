@@ -3382,13 +3382,21 @@ onMounted(async () => {
           return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
         })
         .filter(p => p && p.soul_id)
-      // Aliases aus vault/connections einmergen (Peers die via peers.vue verbunden wurden)
+      // Aliases und fehlende Peers aus vault/connections einmergen (Peers die via peers.vue verbunden wurden)
       try {
         const cr = await fetch('/api/vault/connections', { headers: { Authorization: `Bearer ${props.soulCert}` } })
         if (cr.ok) {
           const cd = await cr.json()
-          const aliasMap = new Map((cd.connections || []).map(c => [c.soul_id, c.alias || '']))
+          const conns = cd.connections || []
+          const aliasMap = new Map(conns.map(c => [c.soul_id, c.alias || '']))
+          // Labels für vorhandene Peers ergänzen
           peerIds.value = peerIds.value.map(p => ({ ...p, label: p.label || aliasMap.get(p.soul_id) || '' }))
+          // Peers aus vault/connections hinzufügen, die noch nicht in peerIds sind
+          const existingIds = new Set(peerIds.value.map(p => p.soul_id))
+          const newPeers = conns
+            .filter(c => c.soul_id && !existingIds.has(c.soul_id))
+            .map(c => ({ soul_id: c.soul_id, endpoint: c.domain || null, label: c.alias || '' }))
+          if (newPeers.length) peerIds.value = [...peerIds.value, ...newPeers]
         }
       } catch { /* silent */ }
     }
