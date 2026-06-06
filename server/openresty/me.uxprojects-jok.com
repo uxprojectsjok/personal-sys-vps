@@ -262,11 +262,12 @@ server {
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
 
     set $anthropic_key "";
+    set $anthropic_upstream "https://api.anthropic.com";
 
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
 
-    proxy_pass            https://api.anthropic.com/v1/messages;
+    proxy_pass            $anthropic_upstream/v1/messages;
     proxy_ssl_server_name on;
     proxy_ssl_name        api.anthropic.com;
     proxy_ssl_verify      on;
@@ -314,11 +315,12 @@ server {
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
 
     set $anthropic_key "";
+    set $anthropic_upstream "https://api.anthropic.com";
 
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
 
-    proxy_pass            https://api.anthropic.com/v1/messages;
+    proxy_pass            $anthropic_upstream/v1/messages;
     proxy_ssl_server_name on;
     proxy_ssl_name        api.anthropic.com;
     proxy_ssl_verify      on;

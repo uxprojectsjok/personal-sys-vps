@@ -119,8 +119,9 @@ if found_same_server then
     if cv_ctx then
       local raw_cv = cv_ctx:read("*a"); cv_ctx:close()
       local ok_v, cv_data = pcall(cjson.decode, raw_cv)
-      if ok_v and type(cv_data) == "table" and type(cv_data.cert_version) == "number" then
-        cv = cv_data.cert_version
+      if ok_v and type(cv_data) == "table" then
+        local raw_cv_val = cv_data.soul_cert_version or cv_data.cert_version
+        if type(raw_cv_val) == "number" then cv = raw_cv_val end
       end
     end
     -- Prüfe cert_version und Fallback ±1

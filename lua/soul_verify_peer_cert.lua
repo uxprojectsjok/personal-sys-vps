@@ -62,8 +62,9 @@ local function get_cert_version()
   local raw = cf:read("*a"); cf:close()
   local cjson = require("cjson.safe")
   local ok, ctx = pcall(cjson.decode, raw)
-  if ok and type(ctx) == "table" and type(ctx.cert_version) == "number" then
-    return ctx.cert_version
+  if ok and type(ctx) == "table" then
+    local v = ctx.soul_cert_version or ctx.cert_version
+    if type(v) == "number" then return v end
   end
   return 0
 end
