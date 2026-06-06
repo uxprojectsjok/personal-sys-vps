@@ -79,7 +79,7 @@ if not ok_c or type(ctx) ~= "table" then
   return
 end
 
--- ── Prüfen ob peer_soul_id in trusted_souls ────────────────────────────────────
+-- ── Prüfen ob peer_soul_id in trusted_souls oder soul_connections ────────────────
 local amort = ctx.amortization
 local trusted_souls = (type(amort) == "table" and type(amort.trusted_souls) == "table")
   and amort.trusted_souls or {}
@@ -94,6 +94,30 @@ for _, entry in ipairs(trusted_souls) do
   elseif type(entry) == "table" and entry.soul_id == peer_soul_id then
     found_cross_domain_endpoint = entry.endpoint
     break
+  end
+end
+
+-- Fallback: soul_connections.json (Peers via peers.vue verbunden)
+if not found_same_server and not found_cross_domain_endpoint then
+  local conn_path = SOULS_DIR .. target_soul_id .. "/soul_connections.json"
+  local cf2 = io.open(conn_path, "r")
+  if cf2 then
+    local raw_conn = cf2:read("*a"); cf2:close()
+    local ok_conn, conn_data = pcall(cjson.decode, raw_conn)
+    if ok_conn and type(conn_data) == "table" then
+      local conns = type(conn_data.connections) == "table" and conn_data.connections
+                    or (conn_data[1] and conn_data or {})
+      for _, c in ipairs(conns) do
+        if type(c) == "table" and c.soul_id == peer_soul_id then
+          if type(c.domain) == "string" and c.domain ~= "" then
+            found_cross_domain_endpoint = c.domain
+          else
+            found_same_server = true
+          end
+          break
+        end
+      end
+    end
   end
 end
 
