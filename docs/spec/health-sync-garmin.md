@@ -1,20 +1,20 @@
-# Health Sync — Garmin Implementierung
+# Health Sync — Garmin Implementation
 
-## Übersicht
+## Overview
 
-Health Sync liest Gesundheitsdaten aus Garmin Connect und schreibt sie als `health.md` in den Soul-Vault. Die KI liest die Datei automatisch als Kontext — kein spezielles Handling nötig.
+Health Sync reads health data from Garmin Connect and writes it as `health.md` into the Soul Vault. The AI reads the file automatically as context — no special handling required.
 
-**Wichtig:** Garmin hat keine öffentliche API. Die Implementierung nutzt die inoffizielle `python-garminconnect`-Library, die die private Web-API von Garmin Connect reverse-engineered. Kann nach Garmin-Updates brechen.
+**Important:** Garmin has no public API. The implementation uses the unofficial `python-garminconnect` library, which reverse-engineers Garmin Connect's private web API. May break after Garmin updates.
 
 ---
 
-## Abhängigkeiten
+## Dependencies
 
 ```bash
 pip3 install garminconnect --break-system-packages
 ```
 
-Muss nach System-Updates erneut installiert werden wenn der Sync fehlschlägt.
+Must be reinstalled after system updates if sync fails.
 
 ---
 
@@ -24,7 +24,7 @@ Muss nach System-Updates erneut installiert werden wenn der Sync fehlschlägt.
 bash /opt/sys/health-sync/install.sh
 ```
 
-Legt an: `/var/lib/sys/config/health_sync_{soul_id}.json`
+Creates: `/var/lib/sys/config/health_sync_{soul_id}.json`
 
 ```json
 {
@@ -38,32 +38,32 @@ Legt an: `/var/lib/sys/config/health_sync_{soul_id}.json`
 
 ---
 
-## Manueller Sync
+## Manual Sync
 
 ```bash
 python3 /opt/sys/health-sync/health_sync.py
 ```
 
-Kein Cron — immer manuell auslösen. Multi-Hoster: alle Souls werden in einem Durchlauf gesynct.
+No cron — always trigger manually. Multi-hoster: all souls are synced in a single run.
 
 ---
 
-## Was wird geholt
+## What Gets Fetched
 
-| Datenpunkt | Zeitraum | Quelle |
-|------------|----------|--------|
-| Ruhepuls (avg) | 7 Tage | `get_stats()` |
-| Schlaf (avg) | 7 Tage | `get_sleep_data()` → Fallback `get_stats()` |
-| Schritte (avg) | 7 Tage | `get_stats()` |
-| Aktive Tage | 7 Tage | `highlyActiveSeconds ≥ 1800s` |
-| Ruhepuls, Schlaf, Aktive Tage | 30 Tage | `get_stats()` |
-| Recent Activities | letzte 14 Tage | `get_activities()` — Typ, Dauer, Distanz, Ø-HR |
+| Data point | Period | Source |
+|------------|--------|--------|
+| Resting HR (avg) | 7 days | `get_stats()` |
+| Sleep (avg) | 7 days | `get_sleep_data()` → fallback `get_stats()` |
+| Steps (avg) | 7 days | `get_stats()` |
+| Active days | 7 days | `highlyActiveSeconds ≥ 1800s` |
+| Resting HR, Sleep, Active days | 30 days | `get_stats()` |
+| Recent Activities | last 14 days | `get_activities()` — type, duration, distance, avg HR |
 
 ---
 
 ## Output: health.md
 
-Geschrieben nach: `/var/lib/sys/souls/{soul_id}/vault/context/health.md`
+Written to: `/var/lib/sys/souls/{soul_id}/vault/context/health.md`
 
 ```markdown
 ---
@@ -73,8 +73,8 @@ last_sync: YYYY-MM-DD
 
 ## This Week (YYYY-Www)
 - Resting HR: 55 bpm (avg)
-- Sleep: 7h 23min/Nacht (Ø)
-- Steps: 11.131 (avg)
+- Sleep: 7h 23min/night (avg)
+- Steps: 11,131 (avg)
 - Active days: 3
 
 ## Recent Activities
@@ -82,41 +82,41 @@ last_sync: YYYY-MM-DD
 
 ## Monthly Summary (YYYY-MM)
 - Resting HR: 56 bpm (avg)
-- Sleep: 7h 15min/Nacht (Ø)
+- Sleep: 7h 15min/night (avg)
 - Active days: 18 / 30
 
 ## Food Log
-(wird nicht überschrieben — bleibt erhalten)
+(not overwritten — preserved on each sync)
 
 ## Annual Journal
-(wird nicht überschrieben — bleibt erhalten)
+(not overwritten — preserved on each sync)
 ```
 
-**Wichtig:** `Food Log` und `Annual Journal` bleiben bei jedem Sync erhalten — werden nie überschrieben.
+**Important:** `Food Log` and `Annual Journal` are preserved on every sync — never overwritten.
 
 ---
 
-## Architektur
+## Architecture
 
 ```
-health_sync.py          Entry point — findet alle health_sync_{soul_id}.json
-    └── adapters/garmin.py   Holt Daten von Garmin Connect API
-    └── writer.py            Schreibt health.md, registriert in api_context.json
+health_sync.py          Entry point — finds all health_sync_{soul_id}.json
+    └── adapters/garmin.py   Fetches data from Garmin Connect API
+    └── writer.py            Writes health.md, registers in api_context.json
 ```
 
-`writer.py` trägt `health.md` automatisch in `api_context.json → synced_files.context` ein, damit die KI die Datei als Vault-Kontext liest.
+`writer.py` automatically adds `health.md` to `api_context.json → synced_files.context` so the AI reads it as vault context.
 
 ---
 
 ## Multi-Hoster
 
-Pro Soul eine eigene Config-Datei mit eigenen Garmin-Credentials. Ein einziger `health_sync.py`-Aufruf synct alle Souls sequenziell.
+One config file per soul with its own Garmin credentials. A single `health_sync.py` call syncs all souls sequentially.
 
 ---
 
-## Bekannte Einschränkungen
+## Known Limitations
 
-- Inoffizielle API — kann ohne Vorwarnung brechen
-- Rate Limit: `429`-Fehler bei zu vielen Login-Versuchen → 10–30 Minuten warten
-- Schlaf-Daten fehlen manchmal (Garmin-API-Inkonsistenz) → Fallback auf `get_stats()`
-- Garmin Authentifizierung funktioniert nur mit E-Mail + Passwort, kein OAuth
+- Unofficial API — can break without warning
+- Rate limit: `429` errors on too many login attempts → wait 10–30 minutes
+- Sleep data sometimes missing (Garmin API inconsistency) → fallback to `get_stats()`
+- Garmin authentication only works with email + password, no OAuth
