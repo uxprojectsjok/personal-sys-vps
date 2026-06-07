@@ -1318,13 +1318,13 @@ function fmtMsgDate(ts) {
   try {
     const d   = new Date(ts)
     const now = new Date()
+    const hm  = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
     const isToday     = d.toDateString() === now.toDateString()
     const isYesterday = d.toDateString() === new Date(Date.now() - 86400000).toDateString()
-    const hm = d.toLocaleTimeString('de', { hour: '2-digit', minute: '2-digit' })
     if (isToday)     return hm
     if (isYesterday) return `Gestern ${hm}`
-    return d.toLocaleDateString('de', { day: '2-digit', month: '2-digit' }) + ' ' + hm
-  } catch { return ts?.slice(0, 16) ?? '' }
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')} ${hm}`
+  } catch { return '' }
 }
 
 function isDifferentDay(msg, prev) {
@@ -1929,8 +1929,10 @@ watch(isSynthesizing, (val) => { if (val) nextTick(scrollToBottom) })
 
 // ── Formatters ─────────────────────────────────────────────────────
 function fmtTime(ts) {
-  try { return new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }
-  catch { return '' }
+  try {
+    const d = new Date(ts)
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  } catch { return '' }
 }
 
 function paragraphs(s) {
