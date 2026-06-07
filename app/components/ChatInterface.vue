@@ -261,6 +261,18 @@
         </div>
       </Transition>
 
+      <!-- Emoji picker panel -->
+      <Transition name="cmd-strip">
+        <div v-show="emojiOpen" class="emoji-panel" @click.stop>
+          <button
+            v-for="e in EMOJIS" :key="e"
+            class="emoji-btn"
+            @click="insertEmoji(e)"
+            :aria-label="e"
+          >{{ e }}</button>
+        </div>
+      </Transition>
+
       <!-- @-Command chip strip — toggled via @ button -->
       <Transition name="cmd-strip">
         <div v-show="cmdsOpen" class="cmd-strip">
@@ -288,8 +300,12 @@
           </svg>
         </button>
         <!-- @ button toggles command strip -->
-        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false" :disabled="props.growthLocked" title="@ Befehle">
+        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false; emojiOpen = false" :disabled="props.growthLocked" title="@ Befehle">
           <span class="dock-at-sym">@</span>
+        </button>
+        <!-- Emoji button -->
+        <button class="dock-icon dock-emoji" :class="{ active: emojiOpen }" @click="emojiOpen = !emojiOpen; cmdsOpen = false; mediaPickerOpen = false" :disabled="props.growthLocked" title="Emoji einfügen">
+          <span class="dock-emoji-sym">🙂</span>
         </button>
         <div class="input-wrap">
           <textarea
@@ -866,6 +882,29 @@ async function stopVoiceRecord() {
 const mediaOpen  = ref(false)
 const ttsAudio   = ref(null)
 const ttsPlaying = ref(false)
+
+// ── Emoji picker ────────────────────────────────────────────────────
+const emojiOpen = ref(false)
+const EMOJIS = [
+  '😊','😂','🥹','😍','🤩','😎','🥳','😅','😇','🙃','😏','🤔','😴','🤯','😤',
+  '❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💯','✨','🔥','⚡','🌟',
+  '👍','👎','👏','🙌','🤝','✌️','🤞','💪','🫶','🙏','👀','🫡','🤙','☝️','🫂',
+  '🎉','🎊','🥂','🍀','🎯','🚀','💡','🛠️','📌','📎','🔑','💎','🏆','🎁','🌈',
+]
+function insertEmoji(emoji) {
+  const el = textareaEl.value
+  if (!el) { draft.value += emoji; return }
+  const start = el.selectionStart ?? draft.value.length
+  const end   = el.selectionEnd   ?? draft.value.length
+  draft.value = draft.value.slice(0, start) + emoji + draft.value.slice(end)
+  nextTick(() => {
+    el.focus()
+    const pos = start + emoji.length
+    el.setSelectionRange(pos, pos)
+    autoResize()
+  })
+  if (isMobile.value) emojiOpen.value = false
+}
 
 // ── @-Command strip ─────────────────────────────────────────────────
 const cmdsOpen = ref(false)
@@ -3394,7 +3433,10 @@ async function loadPeerIds() {
 let _briefingTimer        = null
 let _lastBriefingMsgCount = 0
 
-function _onLightboxKey(e) { if (e.key === 'Escape') closeLightbox() }
+function _onLightboxKey(e) {
+  if (e.key === 'Escape') { closeLightbox(); emojiOpen.value = false }
+}
+function _onDocClick() { if (!isMobile.value) emojiOpen.value = false }
 
 onMounted(async () => {
   _mqMobile = window.matchMedia('(max-width: 900px)')
@@ -3410,6 +3452,7 @@ onMounted(async () => {
     }
   })
   document.addEventListener('keydown', _onLightboxKey)
+  document.addEventListener('click', _onDocClick)
   nextTick(autoResize)
   loadMind(props.soulCert)
   loadMcpTools(props.soulCert)
@@ -3431,6 +3474,7 @@ onUnmounted(() => {
   if (_mqMobile) _mqMobile.removeEventListener('change', _onMqMobile)
   _dockRO?.disconnect()
   document.removeEventListener('keydown', _onLightboxKey)
+  document.removeEventListener('click', _onDocClick)
   for (const { url } of msgBlobCache.values()) URL.revokeObjectURL(url)
   mediaBlobUrls.forEach((url) => URL.revokeObjectURL(url))
   // herz deaktivieren wenn Chat geschlossen wird
@@ -4156,6 +4200,28 @@ defineExpose({
 .cmd-toggle:hover { color: var(--fg-2); border-color: var(--rule-2); }
 .cmd-toggle.active { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
+.emoji-panel {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  padding: 8px 4px;
+  width: 100%; box-sizing: border-box;
+}
+.emoji-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; aspect-ratio: 1;
+  font-size: 20px; line-height: 1;
+  background: none; border: none; border-radius: 6px;
+  cursor: pointer; padding: 2px;
+  transition: background 0.1s;
+}
+.emoji-btn:hover { background: rgba(255,255,255,0.08); }
+.emoji-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.9); }
+
+.dock-emoji { font-size: 17px; }
+.dock-emoji-sym { line-height: 1; display: block; }
+.dock-emoji.active { opacity: 0.7; }
+
 .cmd-strip {
   display: flex; flex-wrap: wrap; gap: 6px;
   padding: 8px 2px;
@@ -4444,6 +4510,10 @@ defineExpose({
   }
   /* chip strip padding adjustment on mobile */
   .cmd-strip { padding: 4px 0 2px; }
+  /* emoji picker: 8 columns, bigger touch targets on mobile */
+  .emoji-panel { grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 8px 0; }
+  .emoji-btn { font-size: 24px; border-radius: 8px; }
+  .dock-emoji { font-size: 20px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
   .archivar-toggle { font-size: 12px; padding: 4px 10px; }
   .archivar-dot { width: 5px; height: 5px; }
