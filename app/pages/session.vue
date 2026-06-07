@@ -14,11 +14,20 @@
           </button>
           <!-- Filter pills — shown when toggle is open -->
           <Transition name="seg-reveal">
-            <div v-show="filterOpen" class="sess-seg seg">
-              <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
-              <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
-              <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
-              <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+            <div v-show="filterOpen" class="sess-filter-group">
+              <div class="sess-seg seg">
+                <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
+                <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
+                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
+                <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+              </div>
+              <div class="sess-seg seg">
+                <button :class="{ on: timeFilter === '1d' }"  @click="timeFilter = '1d'">1T</button>
+                <button :class="{ on: timeFilter === '3d' }"  @click="timeFilter = '3d'">3T</button>
+                <button :class="{ on: timeFilter === '7d' }"  @click="timeFilter = '7d'">7T</button>
+                <button :class="{ on: timeFilter === '14d' }" @click="timeFilter = '14d'">14T</button>
+                <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">Alle</button>
+              </div>
             </div>
           </Transition>
           <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
@@ -58,6 +67,7 @@
               :growth-locked="isGrowingQuietly"
               :sidebar-open="drawerOpen"
               v-model:filter="filter"
+              :time-filter="timeFilter"
               @cert-error="handleCertError"
               @session-end="forceSessionEnd"
             />
@@ -402,6 +412,7 @@ const cmdkOpen         = ref(false)
 const soulPanelOpen    = ref(false)
 const filterOpen       = ref(false)
 const filter           = ref('all')
+const timeFilter       = ref('all')
 const maturity         = computed(() => computeMaturity(soulContent.value).score)
 
 function onNav(id) {
@@ -454,6 +465,8 @@ function onNav(id) {
   }
   .sess-seg button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; }
 }
+
+.sess-filter-group { display: flex; flex-direction: column; gap: 4px; }
 
 /* ── Transition ── */
 .seg-reveal-enter-active, .seg-reveal-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }

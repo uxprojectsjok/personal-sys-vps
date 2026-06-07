@@ -476,6 +476,7 @@ const props = defineProps({
   role:         { type: String,  default: 'soul' },
   growthLocked: { type: Boolean, default: false },
   filter:       { type: String,  default: 'all' },
+  timeFilter:   { type: String,  default: 'all' },
   sidebarOpen:  { type: Boolean, default: false },
 })
 const emit = defineEmits(['cert-error', 'session-end', 'update:filter'])
@@ -1307,16 +1308,27 @@ const unifiedStream = computed(() => {
 
 const filteredStream = computed(() => {
   const s = unifiedStream.value
+  const TIME_MS = { '1d': 86400000, '3d': 259200000, '7d': 604800000, '14d': 1209600000 }
+  const cutoff = TIME_MS[props.timeFilter] ? Date.now() - TIME_MS[props.timeFilter] : null
+
+  let base
   // 'all': AI-Chat + Social-Bubbles — Agent-Block-Einträge nur im 'agents'-Tab
-  if (props.filter === 'all')    return s.filter(i =>
+  if (props.filter === 'all')    base = s.filter(i =>
     i._type === 'ai' ||
     (i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply') ||
     (i._type === 'bubble' && i.sphere === 'agent' && i.from === 'me')
   )
-  if (props.filter === 'soul')   return s.filter(i => i._type === 'ai')
-  if (props.filter === 'peers')  return s.filter(i => i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply')
-  if (props.filter === 'agents') return s.filter(i => i._type === 'bubble' && (i.sphere === 'agent' || i.sphere === 'agent_reply'))
-  return s
+  else if (props.filter === 'soul')   base = s.filter(i => i._type === 'ai')
+  else if (props.filter === 'peers')  base = s.filter(i => i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply')
+  else if (props.filter === 'agents') base = s.filter(i => i._type === 'bubble' && (i.sphere === 'agent' || i.sphere === 'agent_reply'))
+  else base = s
+
+  if (!cutoff) return base
+  return base.filter(i => {
+    if (i._type === 'ai') return true  // KI-Antworten immer zeigen
+    const t = i._ts ?? (typeof i.ts === 'number' ? i.ts : new Date(i.ts).getTime())
+    return t >= cutoff
+  })
 })
 
 const _PEER_COLORS = ['#6db89a','#9c7cd6','#d4a46a','#6aadd4','#d46a9c','#94cb6d']
@@ -1488,7 +1500,7 @@ function downloadImg(url, name) {
   document.body.removeChild(a)
 }
 
-function deleteLocalImg(item) {
+async function deleteLocalImg(item) {
   // Clear media cache entries
   if (item.ts) msgMediaCache.delete(item.ts)
   // Clear vault blob URL/error so the bubble stops rendering the image
@@ -1503,6 +1515,16 @@ function deleteLocalImg(item) {
   // Remove message from correct store
   if (item._type === 'bubble') {
     peerSocialMsgs.value = peerSocialMsgs.value.filter(m => m.ts !== item.ts)
+    // If it's own message stored in soulContentAgent (SOCIAL or AGENT block), strip it there too
+    if (item.from === 'me' && item.ts && soulContentAgent.value) {
+      const escaped = item.ts.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const msgLineRE = new RegExp(`\\n?<!--\\s*@msg\\s+${escaped}[^>]*-->`, 'g')
+      const patched = soulContentAgent.value.replace(msgLineRE, '')
+      if (patched !== soulContentAgent.value) {
+        updateContent(patched)
+        await pushToServer()
+      }
+    }
   } else if (item.id) {
     removeMessage(item.id)
   }
@@ -1510,7 +1532,7 @@ function deleteLocalImg(item) {
 
 async function deleteVaultImg(item, filename) {
   if (item.from === 'me') await deleteSharedFile(filename)
-  deleteLocalImg(item)
+  await deleteLocalImg(item)
 }
 
 function openLightbox(url, name) {

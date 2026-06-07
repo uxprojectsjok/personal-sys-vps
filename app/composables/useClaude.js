@@ -296,8 +296,11 @@ Wenn im Gespräch ein Signal wie [YouTube-Suche: "..."], [Spotify-Suche: "..."],
     let systemPrompt;
     if (fullSoul && role === "soul") {
       const nameClause = soulName ? `Du bist ${soulName}.` : "Du bist diese Person.";
+      const nowDE = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
       systemPrompt = `${nameClause} ${IDENTITY_CORE}
+
+Heute ist ${nowDE}.
 
 ${fullSoul}`;
 
