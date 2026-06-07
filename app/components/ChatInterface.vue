@@ -917,9 +917,6 @@ const AT_COMMANDS = [
   { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',              direct: true                                                  },
   { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: true                                                  },
   { cmd: '@sprechen',     label: 'sprechen',     desc: 'Sprachaufnahme starten',          direct: true                                                  },
-  { cmd: '@diagnose',     label: 'diagnose',     desc: 'Fehlerlog anzeigen',              direct: true                                                  },
-  { cmd: '@contact ',     label: 'contact',      desc: 'Peer hinzufügen',                 direct: false, hint: '<soul_id> <name> https://peer.domain'   },
-  { cmd: '@pin ',         label: 'pin',          desc: 'Soul pinnen / Pinata JWT',        direct: false, hint: 'free | paid 0.001 0xWallet | publish Name | Beschreibung | Tags | status' },
   { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
   { cmd: '@session-end',  label: 'session-end',  desc: 'Session jetzt analysieren & eintragen', direct: true                                              },
   { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
@@ -1963,14 +1960,6 @@ function detectIntent(text) {
   if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
   // @sprechen → Voice-Agent Aufnahme starten
   if (/^@sprechen\b/i.test(t)) return { type: 'voice-agent' }
-  // @diagnose → OpenResty Fehlerlog anzeigen
-  if (/^@diagnose\b/i.test(t)) return { type: 'diagnose' }
-  // @contact → Peer im Agent-Marketplace hinzufügen
-  const contactMatch = t.match(/^@contact\b\s*(.*)/is)
-  if (contactMatch) return { type: 'contact', query: contactMatch[1].trim() }
-  // @pin → Pinata JWT hinterlegen oder Soul auf IPFS registrieren
-  const pinMatch = t.match(/^@pin\b\s*(.*)/is)
-  if (pinMatch) return { type: 'pin', query: pinMatch[1].trim() }
   // @abbruch → laufende Chat-Aktion abbrechen
   if (/^@abbruch\b/i.test(t)) return { type: 'abbruch' }
   if (/^@session-end\b/i.test(t)) return { type: 'session-end' }
@@ -3273,21 +3262,6 @@ async function handleSend() {
 
   if (intent.type === 'create-agent') {
     await handleCreateAgent()
-    return
-  }
-
-  if (intent.type === 'diagnose') {
-    await handleDiagnose()
-    return
-  }
-
-  if (intent.type === 'contact') {
-    await handleContact(intent.query)
-    return
-  }
-
-  if (intent.type === 'pin') {
-    await handlePin(intent.query)
     return
   }
 
