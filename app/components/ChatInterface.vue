@@ -903,7 +903,7 @@ function insertEmoji(emoji) {
     el.setSelectionRange(pos, pos)
     autoResize()
   })
-  if (isMobile.value) emojiOpen.value = false
+  emojiOpen.value = false
 }
 
 // ── @-Command strip ─────────────────────────────────────────────────
@@ -4208,7 +4208,11 @@ defineExpose({
   gap: 2px;
   padding: 8px 4px;
   width: 100%; box-sizing: border-box;
-  overflow: hidden;
+  max-height: 180px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
 }
 .emoji-btn {
   display: flex; align-items: center; justify-content: center;
