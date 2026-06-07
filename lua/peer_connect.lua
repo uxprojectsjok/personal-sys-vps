@@ -102,12 +102,7 @@ if not valid_domain(remote_domain) then
   return
 end
 
-local own_host = ngx.var.host or ""
-if remote_domain:find(own_host, 1, true) then
-  ngx.status = 400
-  ngx.say(cjson.encode({ error = "Eigene Domain" }))
-  return
-end
+-- Self-Connection wird nach Ziel-Soul-Bestimmung geprüft (siehe unten)
 
 if type(remote_alias) ~= "string" or remote_alias:match("^%s*$") then
   remote_alias = remote_soul_id:sub(1, 16)
@@ -145,6 +140,13 @@ else
     return
   end
   local_soul_id = req_target_sid
+end
+
+-- Self-Connection verhindern
+if remote_soul_id == local_soul_id then
+  ngx.status = 400
+  ngx.say(cjson.encode({ error = "Keine Verbindung mit der eigenen Soul möglich" }))
+  return
 end
 
 -- ── Callback: ${domain}/api/peer/verify ──────────────────────────────────────

@@ -52,12 +52,12 @@
                     />
                   </div>
                   <div class="f-field pr-field--full">
-                    <label class="f-label">Domain <span class="f-label-opt">(nur bei anderem Server · z.B. https://alice.example.com)</span></label>
+                    <label class="f-label">Domain</label>
                     <input
                       v-model="newDomain"
                       type="text"
                       class="f-inp"
-                      placeholder="Leer lassen wenn gleicher Server"
+                      placeholder="https://me.example.com"
                       autocomplete="off"
                     />
                   </div>
@@ -104,7 +104,7 @@
                       <div class="pr-chip-alias">{{ req.alias || req.soul_id }}</div>
                     </template>
                     <div class="pr-chip-id">{{ shortId(req.soul_id) }}</div>
-                    <div class="pr-chip-status">{{ req.domain ? req.domain.replace('https://', '') : 'Gleicher Server' }}</div>
+                    <div class="pr-chip-status">{{ (req.domain || '').replace('https://', '') }}</div>
                   </div>
                   <div class="pr-chip-actions">
                     <template v-if="acceptingId === req.soul_id">
@@ -172,11 +172,11 @@
                     <div class="pr-chip-id">{{ shortId(peer.soul_id) }}</div>
                     <div class="pr-chip-status">
                       <span v-if="peer.mutual" class="pr-mutual-dot" />
-                      {{ peer.mutual ? 'Gegenseitig' : (peer.domain ? '⏳ Bestätigung ausstehend · ' + peer.domain.replace('https://', '') : '⏳ Bestätigung ausstehend · Gleicher Server') }}
+                      {{ peer.mutual ? 'Gegenseitig' : '⏳ Bestätigung ausstehend · ' + (peer.domain || '').replace('https://', '') }}
                     </div>
                   </div>
                   <div class="pr-chip-actions">
-                    <button v-if="peer.domain && !peer.peer_token" class="pr-action" @click="handleRetryHandshake(peer)" title="Handshake erneut versuchen (Peer war offline)">
+                    <button v-if="!peer.peer_token" class="pr-action" @click="handleRetryHandshake(peer)" title="Handshake erneut versuchen (Peer war offline)">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
                       </svg>
@@ -308,15 +308,18 @@ async function handleAdd() {
   const domain = newDomain.value.trim()
 
   if (!sid || !alias) return
-  if (domain && !domain.startsWith('https://')) {
+  if (!domain) {
+    addError.value = 'Domain erforderlich (z.B. https://me.example.com).'
+    return
+  }
+  if (!domain.startsWith('https://')) {
     addError.value = 'Domain muss mit https:// beginnen.'
     return
   }
 
   addLoading.value = true
   try {
-    const body = { soul_id: sid, alias, permissions: ['soul'] }
-    if (domain) body.domain = domain
+    const body = { soul_id: sid, alias, domain, permissions: ['soul'] }
 
     const res = await fetch('/api/vault/connections', {
       method: 'POST',
@@ -379,8 +382,7 @@ async function handleAcceptRequest(req, aliasOverride) {
   addLoading.value = true
   try {
     const alias = aliasOverride || req.alias || req.soul_id.slice(0, 16)
-    const body = { soul_id: req.soul_id, alias, permissions: req.permissions || ['soul'] }
-    if (req.domain) body.domain = req.domain
+    const body = { soul_id: req.soul_id, alias, domain: req.domain || window.location.origin, permissions: req.permissions || ['soul'] }
     const res = await fetch('/api/vault/connections', {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
     })
