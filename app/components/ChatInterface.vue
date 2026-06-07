@@ -9,7 +9,7 @@
     <div ref="scrollEl" class="stream" :style="streamPadStyle">
       <div class="stream-inner">
 
-      <div v-if="peerPollPending.length" class="peer-error-notice peer-error-notice--pending">
+      <div v-if="peerPendingVisible && peerPollPending.length" class="peer-error-notice peer-error-notice--pending">
         <span class="peer-error-icon">⏳</span>
         <span>Verbindung ausstehend · {{ peerPollPending.map(e => `${peerLabel(e.soul_id)} muss Verbindungsanfrage bestätigen`).join(', ') }}</span>
       </div>
@@ -1130,13 +1130,22 @@ const peerPollPending = computed(() =>
 const peerPollUnreachable = computed(() =>
   peerPollErrors.value.filter(e => !e.error?.includes('peer_not_trusted'))
 )
-const peerWarnVisible = ref(false)
-let _peerWarnTimer = null
+const peerWarnVisible    = ref(false)
+const peerPendingVisible = ref(false)
+let _peerWarnTimer    = null
+let _peerPendingTimer = null
 watch(peerPollUnreachable, (list) => {
   clearTimeout(_peerWarnTimer)
   if (list.length) {
     peerWarnVisible.value = true
     _peerWarnTimer = setTimeout(() => { peerWarnVisible.value = false }, 8000)
+  }
+}, { immediate: true })
+watch(peerPollPending, (list) => {
+  clearTimeout(_peerPendingTimer)
+  if (list.length) {
+    peerPendingVisible.value = true
+    _peerPendingTimer = setTimeout(() => { peerPendingVisible.value = false }, 8000)
   }
 }, { immediate: true })
 function peerLabel(soulId) {
