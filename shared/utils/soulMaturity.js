@@ -76,7 +76,9 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
     sectionTotal += pts;
   }
   const sectionPts  = Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12); // 0–12
-  const logEntries  = countSessionEntries(sections["Session-Log (komprimiert)"] ?? "");
+  const logEntries  = countSessionEntries(
+    sections["Session-Log (komprimiert)"] ?? sections["Session-Log"] ?? ""
+  );
   // 1 Pt pro 2 Sessions — braucht 16+ Sessions für Maximum
   const sessionPts  = Math.min(Math.floor(logEntries / 2), 8); // 0–8
   const tiefePts    = sectionPts + sessionPts;
