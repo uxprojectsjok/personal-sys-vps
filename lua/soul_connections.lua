@@ -174,6 +174,21 @@ local function grant_remove(target_id, grantor_id)
   wf:close()
 end
 
+-- Liest den Anzeigenamen der Soul aus sys.md (nur wenn nicht verschlüsselt).
+-- Gibt soul_id:sub(1,16) zurück wenn verschlüsselt oder kein name-Feld gefunden.
+local function soul_display_name(sid)
+  local path = SOULS_DIR .. sid .. "/sys.md"
+  local f = io.open(path, "r")
+  if not f then return sid:sub(1, 16) end
+  local header = f:read(4) or ""
+  if header == "SYS\x01" then f:close(); return sid:sub(1, 16) end
+  local rest = header .. (f:read(4096) or "")
+  f:close()
+  local n = rest:match("\nname:%s*([^\n]+)") or rest:match("^name:%s*([^\n]+)")
+  if n then return n:gsub("^%s*", ""):gsub("%s*$", ""):sub(1, 64) end
+  return sid:sub(1, 16)
+end
+
 -- Soul-ID: alphanumerisch + - und _, 8–128 Zeichen (UUID-Format ok)
 local function valid_soul_id(id)
   return type(id) == "string"
@@ -193,13 +208,6 @@ local function valid_domain(d)
      bare:match("^192%.168%.") or bare:match("^172%.1[6-9]%.") or
      bare:match("^172%.2[0-9]%.") or bare:match("^172%.3[0-1]%.") then return false end
   return true
-end
-
--- Ist die Verbindung lokal (kein domain-Feld oder gleicher Host)?
-local function is_local_conn(conn)
-  if type(conn.domain) ~= "string" or conn.domain == "" then return true end
-  local current_host = ngx.var.host or ""
-  return conn.domain:find(current_host, 1, true) ~= nil
 end
 
 local function soul_exists(target_id)
@@ -222,52 +230,15 @@ if method == "GET" and uri == "/api/vault/connections/network" then
   local result = {}
 
   for _, conn in ipairs(data.connections) do
-    -- Remote-Soul: Availability wird vom Browser per CORS geprüft
-    if not is_local_conn(conn) then
-      table.insert(result, {
-        soul_id    = conn.soul_id,
-        alias      = conn.alias,
-        permissions = conn.permissions,
-        domain     = conn.domain,
-        external   = true,
-        available  = cjson.null,  -- Browser prüft selbst
-      })
-    else
-      -- Lokale Soul: Filesystem-Zugriff wie bisher
-      local soul_path = SOULS_DIR .. conn.soul_id .. "/sys.md"
-      local f = io.open(soul_path, "r")
-      if f then
-        local content = f:read("*a"); f:close()
-        if content:sub(1, 4) == "SYS\x01" then
-          local sessions   = ngx.shared.vault_sessions
-          local vault_open = sessions and sessions:get(conn.soul_id) ~= nil
-          table.insert(result, {
-            soul_id      = conn.soul_id,
-            alias        = conn.alias,
-            permissions  = conn.permissions,
-            available    = vault_open,
-            encrypted    = true,
-            soul_content = "",
-          })
-        else
-          table.insert(result, {
-            soul_id      = conn.soul_id,
-            alias        = conn.alias,
-            permissions  = conn.permissions,
-            available    = true,
-            soul_content = content:sub(1, 32768),
-          })
-        end
-      else
-        table.insert(result, {
-          soul_id     = conn.soul_id,
-          alias       = conn.alias,
-          permissions = conn.permissions,
-          available   = false,
-          reason      = "not_found",
-        })
-      end
-    end
+    -- Alle Verbindungen haben eine Domain — Browser prüft Verfügbarkeit per CORS/HTTP
+    table.insert(result, {
+      soul_id     = conn.soul_id,
+      alias       = conn.alias,
+      permissions = conn.permissions,
+      domain      = conn.domain,
+      external    = true,
+      available   = cjson.null,
+    })
   end
 
   ngx.say(cjson.encode({ ok = true, connections = result }))
@@ -290,39 +261,20 @@ if method == "GET" and uri:match("^/api/vault/connections/test/") then
     return
   end
 
-  -- Cross-Domain: Test wird vom Browser übernommen
+  -- Browser prüft Verfügbarkeit per HTTP direkt gegen die Domain
   local args   = ngx.req.get_uri_args()
   local domain = args and args.domain
-  if domain and domain ~= "" then
-    if not valid_domain(domain) then
-      ngx.status = 400
-      ngx.say(cjson.encode({ error = "Ungültige Domain (muss https:// sein)" }))
-      return
-    end
-    ngx.say(cjson.encode({ ok = true, external = true, domain = domain }))
+  if not domain or domain == "" then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "domain-Parameter erforderlich" }))
     return
   end
-
-  -- Lokale Soul: Filesystem-Check wie bisher
-  if not soul_exists(target_id) then
-    ngx.status = 404
-    ngx.say(cjson.encode({ ok = false, reason = "not_found" }))
+  if not valid_domain(domain) then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "Ungültige Domain (muss https:// sein)" }))
     return
   end
-  local target_conn_path = SOULS_DIR .. target_id .. "/soul_connections.json"
-  local tf = io.open(target_conn_path, "r")
-  local is_mutual = false
-  if tf then
-    local raw = tf:read("*a"); tf:close()
-    local ok2, tdata = pcall(cjson.decode, raw)
-    if ok2 and type(tdata) == "table" then
-      local tconns = tdata.connections or (tdata[1] and tdata or {})
-      for _, tc in ipairs(tconns) do
-        if tc.soul_id == soul_id then is_mutual = true; break end
-      end
-    end
-  end
-  ngx.say(cjson.encode({ ok = true, found = true, mutual = is_mutual }))
+  ngx.say(cjson.encode({ ok = true, external = true, domain = domain }))
   return
 end
 
@@ -330,27 +282,9 @@ end
 
 if method == "GET" then
   local data = load_data()
-  -- Mutual-Status anreichern
+  -- Mutual-Status: peer_token vorhanden = Handshake erfolgreich = gegenseitig verbunden
   for _, conn in ipairs(data.connections) do
-    conn.mutual = false
-    if is_local_conn(conn) then
-      -- Lokale Soul: Filesystem-Check
-      local target_conn_path = SOULS_DIR .. conn.soul_id .. "/soul_connections.json"
-      local tf = io.open(target_conn_path, "r")
-      if tf then
-        local raw = tf:read("*a"); tf:close()
-        local ok2, tdata = pcall(cjson.decode, raw)
-        if ok2 and type(tdata) == "table" then
-          local tconns = tdata.connections or (tdata[1] and tdata or {})
-          for _, tc in ipairs(tconns) do
-            if tc.soul_id == soul_id then conn.mutual = true; break end
-          end
-        end
-      end
-    else
-      -- Remote Soul: peer_token vorhanden = Handshake erfolgreich = verbunden
-      conn.mutual = type(conn.peer_token) == "string" and conn.peer_token ~= ""
-    end
+    conn.mutual = type(conn.peer_token) == "string" and conn.peer_token ~= ""
   end
   ngx.say(cjson.encode({
     ok                = true,
@@ -382,10 +316,6 @@ if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
   if not conn then
     ngx.status = 404; ngx.say(cjson.encode({ error = "Verbindung nicht gefunden" })); return
   end
-  if type(conn.domain) ~= "string" or conn.domain == "" then
-    ngx.status = 400; ngx.say(cjson.encode({ error = "Kein Remote-Peer (kein domain-Feld)" })); return
-  end
-
   local our_cert = ngx.ctx.soul_cert or ""
   if our_cert == "" then
     ngx.status = 500; ngx.say(cjson.encode({ error = "Cert nicht im Kontext" })); return
@@ -401,7 +331,7 @@ if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
     soul_id        = soul_id,
     cert           = our_cert,
     domain         = our_domain,
-    alias          = soul_id:sub(1, 16),
+    alias          = soul_display_name(soul_id),
     permissions    = conn.permissions or { "soul" },
     target_soul_id = target_id,
   })
@@ -468,15 +398,17 @@ if method == "POST" then
   end
   alias = alias:gsub("[%c]", ""):sub(1, 64)
 
-  -- Optionales domain-Feld (für Cross-Domain P2P)
-  local conn_domain = ""
-  if type(payload.domain) == "string" and payload.domain ~= "" then
-    if not valid_domain(payload.domain) then
-      ngx.status = 400
-      ngx.say(cjson.encode({ error = "Ungültige Domain (muss https:// sein, kein Trailing-Slash)" }))
-      return
-    end
-    conn_domain = payload.domain
+  -- Domain ist Pflichtfeld — identifiziert den Peer-Server (auch bei gleichem Server)
+  local conn_domain = payload.domain
+  if type(conn_domain) ~= "string" or conn_domain == "" then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "Domain erforderlich (z.B. https://me.example.com)" }))
+    return
+  end
+  if not valid_domain(conn_domain) then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "Ungültige Domain (muss https:// sein, kein Trailing-Slash)" }))
+    return
   end
 
   local allowed = { soul = true, audio = true, images = true, video = true, context_files = true }
@@ -488,13 +420,7 @@ if method == "POST" then
   end
   if #permissions == 0 then permissions = { "soul" } end
 
-  -- Soul-Existenz nur lokal prüfen; Remote-Souls werden nicht lokal gespeichert
-  local is_remote = (conn_domain ~= "")
-  if not is_remote and not soul_exists(target_id) then
-    ngx.status = 404
-    ngx.say(cjson.encode({ error = "Soul nicht gefunden. Vault-ID prüfen." }))
-    return
-  end
+  -- Soul-Existenz wird per HTTP-Handshake geprüft; kein lokaler Filesystem-Check
 
   local data = load_data()
 
@@ -522,65 +448,11 @@ if method == "POST" then
   local new_conn = {
     soul_id      = target_id,
     alias        = alias,
+    domain       = conn_domain,
     permissions  = permissions,
     connected_at = math.floor(ngx.now())
   }
-  if conn_domain ~= "" then new_conn.domain = conn_domain end
-
   table.insert(data.connections, new_conn)
-
-  if not save_data(data) then
-    ngx.status = 500
-    ngx.say(cjson.encode({ error = "Speichern fehlgeschlagen" }))
-    return
-  end
-
-  -- Lokale Souls: Grant anlegen + incoming_request beim Ziel schreiben (explizite Bestätigung nötig)
-  if not is_remote then
-    grant_add(target_id, soul_id, permissions)
-
-    local target_conn_path = SOULS_DIR .. target_id .. "/soul_connections.json"
-    local tf = io.open(target_conn_path, "r")
-    local tdata = { connections = {}, removed_by_peer = {}, incoming_requests = {} }
-    if tf then
-      local raw = tf:read("*a"); tf:close()
-      local ok2, parsed = pcall(cjson.decode, raw)
-      if ok2 and type(parsed) == "table" then
-        tdata.connections       = type(parsed.connections)       == "table" and parsed.connections       or {}
-        tdata.removed_by_peer   = type(parsed.removed_by_peer)  == "table" and parsed.removed_by_peer   or {}
-        tdata.incoming_requests = type(parsed.incoming_requests) == "table" and parsed.incoming_requests or {}
-      end
-    end
-    -- Kein incoming_request wenn Gegenseite bereits verbunden ist (verhindert Duplikat beim Accept)
-    local already_connected = false
-    for _, c in ipairs(tdata.connections) do
-      if c.soul_id == soul_id then already_connected = true; break end
-    end
-    if not already_connected then
-      -- Upsert: bestehende Anfrage dieser Soul ersetzen
-      local new_inc = {}
-      for _, r in ipairs(tdata.incoming_requests) do
-        if r.soul_id ~= soul_id then table.insert(new_inc, r) end
-      end
-      table.insert(new_inc, {
-        soul_id     = soul_id,
-        domain      = "",  -- leer = lokal (kein HTTP-Roundtrip)
-        alias       = alias,
-        permissions = permissions,
-        received_at = math.floor(ngx.now()),
-      })
-      tdata.incoming_requests = new_inc
-      local wf = io.open(target_conn_path, "w")
-      if wf then
-        wf:write(cjson.encode({
-          connections       = #tdata.connections       > 0 and tdata.connections       or cjson.empty_array,
-          removed_by_peer   = #tdata.removed_by_peer   > 0 and tdata.removed_by_peer   or cjson.empty_array,
-          incoming_requests = #tdata.incoming_requests > 0 and tdata.incoming_requests or cjson.empty_array,
-        }))
-        wf:close()
-      end
-    end
-  end
 
   -- Eingehende Anfrage von dieser Soul löschen falls vorhanden (Verbindung akzeptiert)
   local new_incoming = {}
@@ -588,60 +460,61 @@ if method == "POST" then
     if r.soul_id ~= target_id then table.insert(new_incoming, r) end
   end
   data.incoming_requests = new_incoming
-  save_data(data)
 
-  -- Remote-Soul: bidirektionalen Handshake starten via /api/peer/connect
-  -- soul_id (ngx.ctx) ist die authentifizierte Soul — passt für single- und multi-soul
+  if not save_data(data) then
+    ngx.status = 500
+    ngx.say(cjson.encode({ error = "Speichern fehlgeschlagen" }))
+    return
+  end
+
+  -- Bidirektionalen Handshake starten via /api/peer/connect (gleicher oder anderer Server)
   local peer_token = nil
-  if is_remote then
-    local our_cert = ngx.ctx.soul_cert or ""
+  local our_cert = ngx.ctx.soul_cert or ""
 
-    if our_cert ~= "" then
-      local scheme     = ngx.var.scheme or "https"
-      local our_domain = scheme .. "://" .. (ngx.var.host or "")
+  if our_cert ~= "" then
+    local scheme     = ngx.var.scheme or "https"
+    local our_domain = scheme .. "://" .. (ngx.var.host or "")
 
-      local http  = require "resty.http"
-      local httpc = http.new()
-      httpc:set_timeout(8000)
+    local http  = require "resty.http"
+    local httpc = http.new()
+    httpc:set_timeout(8000)
 
-      local cb_body = cjson.encode({
-        soul_id        = soul_id,      -- authentifizierte Soul (funktioniert für single+multi)
-        cert           = our_cert,
-        domain         = our_domain,
-        alias          = soul_id:sub(1, 16),
-        permissions    = permissions,
-        target_soul_id = target_id,   -- welche Soul auf dem Remote wir erreichen wollen
-      })
+    local cb_body = cjson.encode({
+      soul_id        = soul_id,
+      cert           = our_cert,
+      domain         = our_domain,
+      alias          = soul_display_name(soul_id),
+      permissions    = permissions,
+      target_soul_id = target_id,
+    })
 
-      local cres, cerr = httpc:request_uri(conn_domain .. "/api/peer/connect", {
-        method  = "POST",
-        headers = { ["Content-Type"] = "application/json" },
-        body    = cb_body,
-      })
+    local cres, cerr = httpc:request_uri(conn_domain .. "/api/peer/connect", {
+      method  = "POST",
+      headers = { ["Content-Type"] = "application/json" },
+      body    = cb_body,
+    })
 
-      if cres and cres.status == 200 then
-        local cok, cdata = pcall(cjson.decode, cres.body or "")
-        if cok and type(cdata) == "table" and cdata.ok then
-          peer_token = cdata.peer_token
-          -- peer_token in Connection-Record speichern
-          for i, c in ipairs(data.connections) do
-            if c.soul_id == target_id then
-              data.connections[i].peer_token = peer_token
-              break
-            end
+    if cres and cres.status == 200 then
+      local cok, cdata = pcall(cjson.decode, cres.body or "")
+      if cok and type(cdata) == "table" and cdata.ok then
+        peer_token = cdata.peer_token
+        for i, c in ipairs(data.connections) do
+          if c.soul_id == target_id then
+            data.connections[i].peer_token = peer_token
+            break
           end
-          save_data(data)
         end
-      else
-        ngx.log(ngx.WARN, "[soul_connections] peer_connect fehlgeschlagen für ", conn_domain, ": ", cerr or "?")
+        save_data(data)
       end
+    else
+      ngx.log(ngx.WARN, "[soul_connections] peer_connect fehlgeschlagen für ", conn_domain, ": ", cerr or "?")
     end
   end
 
   ngx.say(cjson.encode({
     ok          = true,
     soul_id     = target_id,
-    domain      = conn_domain ~= "" and conn_domain or cjson.null,
+    domain      = conn_domain,
     alias       = alias,
     permissions = permissions,
     peer_token  = peer_token or cjson.null,
@@ -719,20 +592,11 @@ if method == "DELETE" then
     return
   end
 
-  -- Gespeicherte Connection: war sie remote?
-  local was_remote = false
-  for _, c in ipairs(data.connections) do
-    if c.soul_id == target_id then
-      was_remote = type(c.domain) == "string" and c.domain ~= ""
-      break
-    end
-  end
-
   data.connections = new_conn
   save_data(data)
 
-  -- Soul-Grant + Peer-Notification nur für lokale Souls
-  if not was_remote and soul_exists(target_id) then
+  -- Soul-Grant + Peer-Notification wenn Soul lokal vorhanden (gleicher Server)
+  if soul_exists(target_id) then
     grant_remove(target_id, soul_id)
     write_peer_removed(target_id)
   end
