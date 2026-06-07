@@ -30,10 +30,11 @@
           v-if="item._type === 'ai'"
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
-          @pointerdown="_startLongPress($event, item)"
-          @pointerup="_cancelLongPress"
-          @pointermove="_onLpMove"
-          @pointercancel="_cancelLongPress"
+          @contextmenu.prevent="e => _openCtx(e, item)"
+          @touchstart.passive="_startLongPress($event, item)"
+          @touchend="_cancelLongPress"
+          @touchmove="_cancelLongPress"
+          @touchcancel="_cancelLongPress"
         >
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
@@ -109,10 +110,11 @@
           v-else-if="item._type === 'bubble'"
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
-          @pointerdown="_startLongPress($event, item)"
-          @pointerup="_cancelLongPress"
-          @pointermove="_onLpMove"
-          @pointercancel="_cancelLongPress"
+          @contextmenu.prevent="e => _openCtx(e, item)"
+          @touchstart.passive="_startLongPress($event, item)"
+          @touchend="_cancelLongPress"
+          @touchmove="_cancelLongPress"
+          @touchcancel="_cancelLongPress"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
             :style="{ color: item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
@@ -998,21 +1000,20 @@ function setFilter(val) {
   filterOpen.value = false
 }
 
-// ── Long-press context menu ───────────────────────────────────────────
-const ctxItem     = ref(null)   // item being long-pressed
-const ctxPos      = ref({ x: 0, y: 0 })
-let   _lpTimer    = null
+// ── Context menu (right-click desktop / long-press touch) ────────────
+const ctxItem  = ref(null)
+const ctxPos   = ref({ x: 0, y: 0 })
+let   _lpTimer = null
+
+function _openCtx(e, item) {
+  const src = e.touches?.[0] ?? e
+  ctxPos.value = { x: src.clientX, y: src.clientY }
+  ctxItem.value = item
+}
 function _startLongPress(e, item) {
-  _lpTimer = setTimeout(() => {
-    const src = e.touches?.[0] ?? e
-    ctxPos.value = { x: src.clientX, y: src.clientY }
-    ctxItem.value = item
-  }, 500)
+  _lpTimer = setTimeout(() => _openCtx(e, item), 500)
 }
 function _cancelLongPress() { clearTimeout(_lpTimer); _lpTimer = null }
-function _onLpMove(e) {
-  if (_lpTimer) _cancelLongPress()
-}
 async function ctxDelete() {
   if (!ctxItem.value) return
   const item = ctxItem.value
