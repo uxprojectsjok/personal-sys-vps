@@ -346,13 +346,14 @@ async function handleRetryHandshake(peer) {
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ soul_id: peer.soul_id }),
     })
-    const d = await res.json()
-    if (d.ok) {
-      alert(`Verbindungsanfrage erneut gesendet an ${peer.domain}.\nTill muss sie in seiner Peers-Seite bestätigen.`)
+    let d = {}
+    try { d = await res.json() } catch { /* non-JSON error response */ }
+    if (res.ok && d.ok) {
+      await loadConnections()
     } else {
-      alert(`Fehler: ${d.error || 'Unbekannt'}`)
+      alert(`Handshake fehlgeschlagen (${res.status}): ${d.error || 'Unbekannter Fehler'}`)
     }
-  } catch { alert('Netzwerkfehler beim Handshake.') }
+  } catch { alert('Netzwerkfehler beim Handshake — Peer vermutlich nicht erreichbar.') }
 }
 
 async function handleRemove(soulId, alias) {
