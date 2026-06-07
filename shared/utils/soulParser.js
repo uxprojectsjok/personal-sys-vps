@@ -65,9 +65,10 @@ export function appendSessionLog(markdown, sessionText) {
   const entry = `- **${today}:** ${sessionText}`;
 
   if (markdown.includes("## Session-Log")) {
+    const existingHeading = /## (Session-Log(?: \(komprimiert\))?)/.exec(markdown)?.[1] ?? "Session-Log";
     return markdown.replace(
       /## Session-Log(?: \(komprimiert\))?\n/,
-      `## Session-Log\n${entry}\n`
+      `## ${existingHeading}\n${entry}\n`
     );
   }
 
@@ -83,6 +84,7 @@ export function deduplicateSessionLog(markdown) {
   const m = markdown.match(logRe);
   if (!m) return markdown;
 
+  const existingHeading = /## (Session-Log(?: \(komprimiert\))?)/.exec(markdown)?.[1] ?? "Session-Log";
   const lines = m[1].split('\n');
   const dateRe = /^- \*\*(\d{4}-\d{2}-\d{2}):/;
 
@@ -112,7 +114,7 @@ export function deduplicateSessionLog(markdown) {
     return lastIdx.get(dm[1]) === i; // Datum: nur letzte Instanz behalten
   });
 
-  return markdown.replace(logRe, `## Session-Log\n${kept.join('\n')}`);
+  return markdown.replace(logRe, `## ${existingHeading}\n${kept.join('\n')}`);
 }
 
 /**
