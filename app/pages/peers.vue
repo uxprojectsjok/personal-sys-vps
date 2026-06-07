@@ -52,12 +52,12 @@
                     />
                   </div>
                   <div class="f-field pr-field--full">
-                    <label class="f-label">Domain <span class="f-label-opt">(optional · für externe Peers)</span></label>
+                    <label class="f-label">Domain <span class="f-label-opt">(nur bei anderem Server · z.B. https://alice.example.com)</span></label>
                     <input
                       v-model="newDomain"
                       type="text"
                       class="f-inp"
-                      placeholder="https://alice.example.com"
+                      placeholder="Leer lassen wenn gleicher Server"
                       autocomplete="off"
                     />
                   </div>
@@ -91,7 +91,7 @@
                   <div class="pr-chip-body">
                     <div class="pr-chip-alias">{{ req.alias || req.soul_id }}</div>
                     <div class="pr-chip-id">{{ shortId(req.soul_id) }}</div>
-                    <div v-if="req.domain" class="pr-chip-status">{{ req.domain.replace('https://', '') }}</div>
+                    <div class="pr-chip-status">{{ req.domain ? req.domain.replace('https://', '') : 'Gleicher Server' }}</div>
                   </div>
                   <div class="pr-chip-actions">
                     <button class="pr-action pr-action--accept" @click="handleAcceptRequest(req)" title="Annehmen">
@@ -145,7 +145,7 @@
                     <div class="pr-chip-id">{{ shortId(peer.soul_id) }}</div>
                     <div class="pr-chip-status">
                       <span v-if="peer.mutual" class="pr-mutual-dot" />
-                      {{ peer.mutual ? 'Gegenseitig' : (peer.domain ? '⏳ Bestätigung ausstehend · ' + peer.domain.replace('https://', '') : 'Verbunden · ' + formatDate(peer.connected_at * 1000)) }}
+                      {{ peer.mutual ? 'Gegenseitig' : (peer.domain ? '⏳ Bestätigung ausstehend · ' + peer.domain.replace('https://', '') : '⏳ Bestätigung ausstehend · Gleicher Server') }}
                     </div>
                   </div>
                   <div class="pr-chip-actions">

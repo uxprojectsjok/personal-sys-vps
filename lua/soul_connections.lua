@@ -532,12 +532,10 @@ if method == "POST" then
     return
   end
 
-  -- Soul-Grant: nur für lokale Souls automatisch anlegen
+  -- Lokale Souls: Grant anlegen + incoming_request beim Ziel schreiben (explizite Bestätigung nötig)
   if not is_remote then
     grant_add(target_id, soul_id, permissions)
 
-    -- Reziproken Eintrag in target_id/soul_connections.json schreiben,
-    -- damit soul_social_read den OWNER (soul_id) als vertrauenswürdig erkennt.
     local target_conn_path = SOULS_DIR .. target_id .. "/soul_connections.json"
     local tf = io.open(target_conn_path, "r")
     local tdata = { connections = {}, removed_by_peer = {}, incoming_requests = {} }
@@ -550,18 +548,25 @@ if method == "POST" then
         tdata.incoming_requests = type(parsed.incoming_requests) == "table" and parsed.incoming_requests or {}
       end
     end
-    local already = false
+    -- Kein incoming_request wenn Gegenseite bereits verbunden ist (verhindert Duplikat beim Accept)
+    local already_connected = false
     for _, c in ipairs(tdata.connections) do
-      if c.soul_id == soul_id then already = true; break end
+      if c.soul_id == soul_id then already_connected = true; break end
     end
-    if not already then
-      table.insert(tdata.connections, {
-        soul_id      = soul_id,
-        alias        = soul_id:sub(1, 8),
-        permissions  = permissions,
-        connected_at = math.floor(ngx.now()),
-        auto_reciprocal = true,
+    if not already_connected then
+      -- Upsert: bestehende Anfrage dieser Soul ersetzen
+      local new_inc = {}
+      for _, r in ipairs(tdata.incoming_requests) do
+        if r.soul_id ~= soul_id then table.insert(new_inc, r) end
+      end
+      table.insert(new_inc, {
+        soul_id     = soul_id,
+        domain      = "",  -- leer = lokal (kein HTTP-Roundtrip)
+        alias       = alias,
+        permissions = permissions,
+        received_at = math.floor(ngx.now()),
       })
+      tdata.incoming_requests = new_inc
       local wf = io.open(target_conn_path, "w")
       if wf then
         wf:write(cjson.encode({
