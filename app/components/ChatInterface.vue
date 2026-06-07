@@ -258,6 +258,10 @@
             </svg>
             Datei
           </button>
+          <button class="mp-btn" @click.stop="mediaPickerOpen = false; emojiOpen = true" :disabled="props.growthLocked">
+            <span style="font-size:12px;line-height:1;">🙂</span>
+            Emoji
+          </button>
         </div>
       </Transition>
 
@@ -287,12 +291,12 @@
         <!-- Open media picker -->
         <button
           class="dock-icon dock-plus"
-          :class="{ active: mediaPickerOpen }"
-          @click="mediaPickerOpen = !mediaPickerOpen; cmdsOpen = false"
+          :class="{ active: mediaPickerOpen || emojiOpen }"
+          @click="mediaPickerOpen = !mediaPickerOpen; cmdsOpen = false; emojiOpen = false"
           :disabled="props.growthLocked"
-          :title="mediaPickerOpen ? 'Schließen' : 'Foto oder Datei'"
+          :title="(mediaPickerOpen || emojiOpen) ? 'Schließen' : 'Foto, Datei oder Emoji'"
         >
-          <svg v-if="!mediaPickerOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+          <svg v-if="!mediaPickerOpen && !emojiOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
@@ -302,10 +306,6 @@
         <!-- @ button toggles command strip -->
         <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false; emojiOpen = false" :disabled="props.growthLocked" title="@ Befehle">
           <span class="dock-at-sym">@</span>
-        </button>
-        <!-- Emoji button -->
-        <button class="dock-icon dock-emoji" :class="{ active: emojiOpen }" @click="emojiOpen = !emojiOpen; cmdsOpen = false; mediaPickerOpen = false" :disabled="props.growthLocked" title="Emoji einfügen">
-          <span class="dock-emoji-sym">🙂</span>
         </button>
         <div class="input-wrap">
           <textarea
@@ -3436,7 +3436,9 @@ let _lastBriefingMsgCount = 0
 function _onLightboxKey(e) {
   if (e.key === 'Escape') { closeLightbox(); emojiOpen.value = false }
 }
-function _onDocClick() { if (!isMobile.value) emojiOpen.value = false }
+function _onDocClick(e) {
+  if (!isMobile.value && !dockEl.value?.contains(e.target)) emojiOpen.value = false
+}
 
 onMounted(async () => {
   _mqMobile = window.matchMedia('(max-width: 900px)')
@@ -4206,6 +4208,7 @@ defineExpose({
   gap: 2px;
   padding: 8px 4px;
   width: 100%; box-sizing: border-box;
+  overflow: hidden;
 }
 .emoji-btn {
   display: flex; align-items: center; justify-content: center;
@@ -4510,10 +4513,18 @@ defineExpose({
   }
   /* chip strip padding adjustment on mobile */
   .cmd-strip { padding: 4px 0 2px; }
-  /* emoji picker: 8 columns, bigger touch targets on mobile */
-  .emoji-panel { grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 8px 0; }
-  .emoji-btn { font-size: 24px; border-radius: 8px; }
-  .dock-emoji { font-size: 20px; }
+  /* emoji picker: 6 columns, constrained height, scrollable */
+  .emoji-panel {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    padding: 6px 0;
+    max-height: 160px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+  }
+  .emoji-btn { font-size: 22px; border-radius: 8px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
   .archivar-toggle { font-size: 12px; padding: 4px 10px; }
   .archivar-dot { width: 5px; height: 5px; }
