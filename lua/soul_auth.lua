@@ -77,7 +77,8 @@ if node_soul_id and node_soul_id ~= soul_id then
   return ngx.exit(403)
 end
 
-ngx.ctx.soul_id = soul_id
+ngx.ctx.soul_id   = soul_id
+ngx.ctx.soul_cert = cert
 ngx.req.set_header("X-Soul-Id", soul_id)
 ngx.req.clear_header("Authorization")
 
