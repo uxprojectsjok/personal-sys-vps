@@ -1031,6 +1031,8 @@ let   _agentPollTimer  = null
 let   _cacheEvictTimer = null
 const peerIds           = ref([])
 const peerSocialMsgs    = ref([])
+const _HIDDEN_KEY = 'soulHiddenPeerTs'
+const hiddenPeerTs  = reactive(new Set(JSON.parse(localStorage.getItem(_HIDDEN_KEY) || '[]')))
 const msgDeliveryStatus  = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
 const peerPollStatus     = reactive(new Map()) // soul_id → { ok, error, ts }
 const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL | null (loading)
@@ -1249,6 +1251,7 @@ const socialMsgs = computed(() => {
   const seen = new Set()
   return [...own, ...peerSocialMsgs.value]
     .filter(msg => {
+      if (hiddenPeerTs.has(msg.ts)) return false
       const k = `${msg.ts}|${msg.from}|${msg.to}|${msg.content}`
       if (seen.has(k)) return false
       seen.add(k)
@@ -1514,10 +1517,14 @@ async function deleteLocalImg(item) {
   }
   // Remove message from correct store
   if (item._type === 'bubble') {
-    // Remove from live peer-fetch list (session-only for foreign peer messages)
     peerSocialMsgs.value = peerSocialMsgs.value.filter(m => m.ts !== item.ts)
-    // Strip from own sys.md (SOCIAL + AGENT blocks are the user's own data — DSGVO)
-    if (item.ts && soulContentAgent.value) {
+    const isPeerFetched = item.sphere === 'social' && item.from !== 'me' && !soulContentAgent.value?.includes(`@msg ${item.ts}`)
+    if (isPeerFetched && item.ts) {
+      // Peer-server message: hide permanently via localStorage blocklist
+      hiddenPeerTs.add(item.ts)
+      localStorage.setItem(_HIDDEN_KEY, JSON.stringify([...hiddenPeerTs]))
+    } else if (item.ts && soulContentAgent.value) {
+      // Own sys.md entry (SOCIAL or AGENT block) — strip and push (DSGVO)
       const escaped = item.ts.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const msgLineRE = new RegExp(`\\n?<!--\\s*@msg\\s+${escaped}[^>]*-->`, 'g')
       const patched = soulContentAgent.value.replace(msgLineRE, '')
