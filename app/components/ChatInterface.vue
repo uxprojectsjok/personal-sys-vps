@@ -4325,10 +4325,11 @@ defineExpose({
 
 .emoji-panel {
   display: grid;
-  grid-template-columns: repeat(10, 32px);
+  grid-template-columns: repeat(auto-fill, 32px);
+  justify-content: space-evenly;
   gap: 2px;
-  padding: 8px 4px;
-  width: max-content; max-width: 100%; box-sizing: border-box;
+  padding: 8px 0;
+  width: 100%; box-sizing: border-box;
   max-height: 180px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -4638,12 +4639,13 @@ defineExpose({
   }
   /* chip strip padding adjustment on mobile */
   .cmd-strip { padding: 4px 0 2px; }
-  /* emoji picker: 6 columns, constrained height, scrollable */
+  /* emoji picker: auto-fill 40px-Zellen über volle Breite */
   .emoji-panel {
-    grid-template-columns: repeat(6, 40px);
+    grid-template-columns: repeat(auto-fill, 40px);
+    justify-content: space-evenly;
     gap: 3px;
     padding: 6px 0;
-    width: max-content; max-width: 100%;
+    width: 100%;
     max-height: 160px;
     overflow-y: auto;
     overflow-x: hidden;
