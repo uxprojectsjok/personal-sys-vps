@@ -91,6 +91,7 @@ else
   end
 
   -- Fallback: soul_connections.json (Peers via peers.vue verbunden)
+  local own_host = ngx.var.host or ""
   if not found_same and not found_endpoint then
     local conn_path = SOULS_DIR .. target_soul_id .. "/soul_connections.json"
     local cf2 = io.open(conn_path, "r")
@@ -102,7 +103,8 @@ else
                       or (conn_data[1] and conn_data or {})
         for _, c in ipairs(conns) do
           if type(c) == "table" and c.soul_id == req_soul_id then
-            if type(c.domain) == "string" and c.domain ~= "" then
+            if type(c.domain) == "string" and c.domain ~= ""
+               and not c.domain:find(own_host, 1, true) then
               found_endpoint = c.domain
             else
               found_same = true
