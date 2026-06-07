@@ -1515,8 +1515,10 @@ async function deleteLocalImg(item) {
   // Remove message from correct store
   if (item._type === 'bubble') {
     peerSocialMsgs.value = peerSocialMsgs.value.filter(m => m.ts !== item.ts)
-    // If it's own message stored in soulContentAgent (SOCIAL or AGENT block), strip it there too
-    if (item.from === 'me' && item.ts && soulContentAgent.value) {
+    // Strip @msg entry from soulContentAgent (SOCIAL/AGENT blocks belong to us regardless of sender)
+    // Excludes pure peer-social msgs (from: peerId, sphere: 'social') — those live on peer servers
+    const isOurBlock = item.from === 'me' || item.sphere === 'agent' || item.sphere === 'agent_reply'
+    if (isOurBlock && item.ts && soulContentAgent.value) {
       const escaped = item.ts.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       const msgLineRE = new RegExp(`\\n?<!--\\s*@msg\\s+${escaped}[^>]*-->`, 'g')
       const patched = soulContentAgent.value.replace(msgLineRE, '')
