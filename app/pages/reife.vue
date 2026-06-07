@@ -80,15 +80,40 @@
 
 <script setup>
 definePageMeta({ layout: false })
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
-const { hasSoul, soulContent, soulMeta, clear: _clear, isLoaded } = useSoul()
+const { hasSoul, soulContent, soulMeta, soulToken, clear: _clear, isLoaded } = useSoul()
 const { allFiles } = useVault()
+
+const peerCount = ref(0)
+async function loadPeerCount() {
+  if (!soulToken.value || soulToken.value === 'anonymous') return
+  try {
+    const hdrs = { Authorization: `Bearer ${soulToken.value}` }
+    const [ar, cr] = await Promise.all([
+      fetch('/api/soul/amortization', { headers: hdrs }),
+      fetch('/api/vault/connections',  { headers: hdrs }),
+    ])
+    const ids = new Set()
+    if (ar.ok) {
+      const d = await ar.json()
+      ;(d.amortization?.trusted_souls ?? []).forEach(p =>
+        ids.add(typeof p === 'string' ? p : p.soul_id)
+      )
+    }
+    if (cr.ok) {
+      const d = await cr.json()
+      ;(d.connections ?? []).forEach(c => { if (c.soul_id) ids.add(c.soul_id) })
+    }
+    peerCount.value = ids.size
+  } catch { /* silent */ }
+}
+onMounted(loadPeerCount)
 
 const drawerOpen      = ref(false)
 const sidebarCollapsed = ref(false)
@@ -130,7 +155,7 @@ const syncedFiles = computed(() => {
 
 const data = computed(() => {
   if (!soulContent.value) return { score: 0, level: 'Genesis', breakdown: null }
-  return computeMaturity(soulContent.value, syncedFiles.value)
+  return computeMaturity(soulContent.value, syncedFiles.value, null, peerCount.value)
 })
 
 // Ring circumference (r=66)
