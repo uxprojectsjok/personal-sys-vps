@@ -2407,9 +2407,10 @@ async function handleContact(query) {
 
     const lines = [`Peer **${label}** hinzugefügt ✓`, '', `Soul-ID: \`${soulId}\``]
     if (endpoint) lines.push(`Endpoint: \`${endpoint}\``)
-    lines.push('', 'Sichtbar unter **Peers → MCP-Peers**.')
+    lines.push('', `Ab jetzt mit \`@${label}\` erreichbar.`)
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
+    await loadPeerIds()
   } catch (err) {
     setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
     setMessageMetaById(statusMsg.id, 'streaming', false)
@@ -3355,6 +3356,40 @@ async function handleSend() {
   await dispatchToChat(raw, {})
 }
 
+// ── Peer-ID-Liste laden (trusted_souls + vault/connections) ────────
+async function loadPeerIds() {
+  try {
+    const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+    if (!r.ok) return
+    const d = await r.json()
+    const ownId    = props.soulCert?.split('.')?.[0] || ''
+    const lsKey    = ownId ? `sys.connected_nodes.${ownId}` : null
+    let localNodes = []
+    if (lsKey) { try { localNodes = JSON.parse(localStorage.getItem(lsKey) || '[]') } catch {} }
+    const labelMap = new Map(localNodes.map(n => [n.soul_id, n.label || '']))
+    peerIds.value = (d.amortization?.trusted_souls ?? [])
+      .map(p => {
+        if (typeof p === 'string') return { soul_id: p, endpoint: null, label: labelMap.get(p) || '' }
+        return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
+      })
+      .filter(p => p && p.soul_id)
+    try {
+      const cr = await fetch('/api/vault/connections', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+      if (cr.ok) {
+        const cd = await cr.json()
+        const conns = cd.connections || []
+        const aliasMap = new Map(conns.map(c => [c.soul_id, c.alias || '']))
+        peerIds.value = peerIds.value.map(p => ({ ...p, label: p.label || aliasMap.get(p.soul_id) || '' }))
+        const existingIds = new Set(peerIds.value.map(p => p.soul_id))
+        const newPeers = conns
+          .filter(c => c.soul_id && !existingIds.has(c.soul_id))
+          .map(c => ({ soul_id: c.soul_id, endpoint: c.domain || null, label: c.alias || '' }))
+        if (newPeers.length) peerIds.value = [...peerIds.value, ...newPeers]
+      }
+    } catch { /* silent */ }
+  } catch { /* silent */ }
+}
+
 // ── Lifecycle ──────────────────────────────────────────────────────
 let _briefingTimer        = null
 let _lastBriefingMsgCount = 0
@@ -3379,41 +3414,7 @@ onMounted(async () => {
   loadMind(props.soulCert)
   loadMcpTools(props.soulCert)
   loadConfigStatus()
-  try {
-    const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
-    if (r.ok) {
-      const d = await r.json()
-      // Enrich peer list with labels from localStorage
-      const ownId     = props.soulCert?.split('.')?.[0] || ''
-      const lsKey     = ownId ? `sys.connected_nodes.${ownId}` : null
-      let localNodes  = []
-      if (lsKey) { try { localNodes = JSON.parse(localStorage.getItem(lsKey) || '[]') } catch {} }
-      const labelMap  = new Map(localNodes.map(n => [n.soul_id, n.label || '']))
-      peerIds.value = (d.amortization?.trusted_souls ?? [])
-        .map(p => {
-          if (typeof p === 'string') return { soul_id: p, endpoint: null, label: labelMap.get(p) || '' }
-          return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
-        })
-        .filter(p => p && p.soul_id)
-      // Aliases und fehlende Peers aus vault/connections einmergen (Peers die via peers.vue verbunden wurden)
-      try {
-        const cr = await fetch('/api/vault/connections', { headers: { Authorization: `Bearer ${props.soulCert}` } })
-        if (cr.ok) {
-          const cd = await cr.json()
-          const conns = cd.connections || []
-          const aliasMap = new Map(conns.map(c => [c.soul_id, c.alias || '']))
-          // Labels für vorhandene Peers ergänzen
-          peerIds.value = peerIds.value.map(p => ({ ...p, label: p.label || aliasMap.get(p.soul_id) || '' }))
-          // Peers aus vault/connections hinzufügen, die noch nicht in peerIds sind
-          const existingIds = new Set(peerIds.value.map(p => p.soul_id))
-          const newPeers = conns
-            .filter(c => c.soul_id && !existingIds.has(c.soul_id))
-            .map(c => ({ soul_id: c.soul_id, endpoint: c.domain || null, label: c.alias || '' }))
-          if (newPeers.length) peerIds.value = [...peerIds.value, ...newPeers]
-        }
-      } catch { /* silent */ }
-    }
-  } catch { /* silent */ }
+  await loadPeerIds()
   await refreshAgentContent()
   // Auto-briefing on open (small delay so content renders first)
   setTimeout(() => {
