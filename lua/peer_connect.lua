@@ -311,7 +311,7 @@ end
 -- ── Antwort ───────────────────────────────────────────────────────────────────
 
 local scheme     = ngx.var.scheme or "https"
-local own_domain = scheme .. "://" .. own_host
+local own_domain = scheme .. "://" .. (ngx.var.host or "")
 
 ngx.say(cjson.encode({
   ok         = true,
