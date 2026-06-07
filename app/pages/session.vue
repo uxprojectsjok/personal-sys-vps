@@ -5,37 +5,45 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
-          <!-- Filter toggle -->
-          <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, 'has-filter': filter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
+          <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, active: filter !== 'all' || timeFilter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
             </svg>
-            <span v-if="filter !== 'all'" class="sess-filter-dot" />
+            <span v-if="filter !== 'all' || timeFilter !== 'all'" class="sess-filter-dot" />
           </button>
-          <!-- Filter pills — shown when toggle is open -->
-          <Transition name="seg-reveal">
-            <div v-show="filterOpen" class="sess-filter-group">
-              <div class="sess-seg seg">
-                <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
-                <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
-                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
-                <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
-              </div>
-              <div class="sess-seg seg">
-                <button :class="{ on: timeFilter === '1d' }"  @click="timeFilter = '1d'">1T</button>
-                <button :class="{ on: timeFilter === '3d' }"  @click="timeFilter = '3d'">3T</button>
-                <button :class="{ on: timeFilter === '7d' }"  @click="timeFilter = '7d'">7T</button>
-                <button :class="{ on: timeFilter === '14d' }" @click="timeFilter = '14d'">14T</button>
-                <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">Alle</button>
-              </div>
-            </div>
-          </Transition>
           <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
             <SysIcon name="soul" style="width:18px;height:18px" />
           </button>
           <span v-if="isGrowingQuietly" class="soul-growing" title="Seele waechst">&#x25CC;</span>
           <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">&#x2726;</span></Transition>
         </SysTopbar>
+
+        <!-- Filter dropdown panel — floats below topbar, outside header flow -->
+        <div v-if="filterOpen" class="sess-filter-scrim" @click="filterOpen = false" />
+        <Transition name="filter-drop">
+          <div v-if="filterOpen" class="sess-filter-panel">
+            <div class="sfp-group">
+              <p class="sfp-label">Bereich</p>
+              <div class="sfp-chips">
+                <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
+                <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
+                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
+                <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+              </div>
+            </div>
+            <div class="sfp-divider" />
+            <div class="sfp-group">
+              <p class="sfp-label">Zeitraum</p>
+              <div class="sfp-chips">
+                <button :class="{ on: timeFilter === '1d' }"  @click="timeFilter = '1d'">1 Tag</button>
+                <button :class="{ on: timeFilter === '3d' }"  @click="timeFilter = '3d'">3 Tage</button>
+                <button :class="{ on: timeFilter === '7d' }"  @click="timeFilter = '7d'">7 Tage</button>
+                <button :class="{ on: timeFilter === '14d' }" @click="timeFilter = '14d'">14 Tage</button>
+                <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">Alle</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
 
         <div class="sess-banners">
           <Transition name="slide-up">
@@ -443,34 +451,41 @@ function onNav(id) {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
-/* ── Filter toggle button ── */
+/* ── Filter toggle ── */
 .sess-filter-toggle { position: relative; color: var(--fg-2); }
-.sess-filter-toggle.on { background: var(--accent-dim) !important; color: var(--accent-bright) !important; }
-.sess-filter-toggle.has-filter { color: var(--accent); }
-.sess-filter-toggle.on.has-filter { color: var(--accent-bright) !important; }
+.sess-filter-toggle.on  { background: var(--accent-dim) !important; color: var(--accent-bright) !important; }
+.sess-filter-toggle.active { color: var(--accent); }
 .sess-filter-dot {
-  position: absolute; top: 5px; right: 5px;
+  position: absolute; top: 4px; right: 4px;
   width: 5px; height: 5px; border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent); pointer-events: none;
 }
 
-/* ── Filter seg — inline on desktop, wraps to full row on mobile ── */
-@media (max-width: 900px) {
-  .sess-seg {
-    order: 10;
-    width: 100%;
-    padding: 6px 0 8px;
-    border-top: 1px solid var(--line);
-    gap: 4px;
-  }
-  .sess-seg button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; }
+/* ── Filter dropdown panel ── */
+.sess-filter-scrim { position: fixed; inset: 0; z-index: 119; }
+.sess-filter-panel {
+  position: absolute; top: var(--topbar-h, 48px); right: 12px; z-index: 120;
+  background: var(--bg-2, #1a1a1a); border: 1px solid var(--line);
+  border-radius: 12px; padding: 14px 16px; min-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; gap: 12px;
 }
-
-.sess-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.sfp-group { display: flex; flex-direction: column; gap: 6px; }
+.sfp-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); margin: 0; }
+.sfp-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.sfp-chips button {
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em;
+  padding: 4px 10px; border-radius: 20px; border: 1px solid var(--line);
+  background: transparent; color: var(--fg-2); cursor: pointer;
+  transition: all 0.12s ease;
+}
+.sfp-chips button:hover { border-color: var(--accent); color: var(--accent); }
+.sfp-chips button.on  { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-bright); }
+.sfp-divider { height: 1px; background: var(--line); margin: 0 -4px; }
 
 /* ── Transition ── */
-.seg-reveal-enter-active, .seg-reveal-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.seg-reveal-enter-from, .seg-reveal-leave-to { opacity: 0; transform: scale(0.95); }
+.filter-drop-enter-active, .filter-drop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.filter-drop-enter-from, .filter-drop-leave-to { opacity: 0; transform: translateY(-6px) scale(0.97); }
 
 .sess-banners { display: flex; flex-direction: column; flex-shrink: 0; }
 .banner {

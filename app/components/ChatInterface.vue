@@ -30,6 +30,10 @@
           v-if="item._type === 'ai'"
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
+          @pointerdown="_startLongPress($event, item)"
+          @pointerup="_cancelLongPress"
+          @pointermove="_onLpMove"
+          @pointercancel="_cancelLongPress"
         >
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
@@ -105,6 +109,10 @@
           v-else-if="item._type === 'bubble'"
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
+          @pointerdown="_startLongPress($event, item)"
+          @pointerup="_cancelLongPress"
+          @pointermove="_onLpMove"
+          @pointercancel="_cancelLongPress"
         >
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
             :style="{ color: item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
@@ -407,6 +415,19 @@
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
         <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
+        <span class="mode-sep"></span>
+        <Transition name="fade-quick">
+          <span v-if="clearAllConfirm" class="clear-confirm">
+            Alles löschen?
+            <button class="clear-ok" @click="clearAll">OK</button>
+            <button class="clear-cancel" @click="clearAllConfirm = false">Abbrechen</button>
+          </span>
+          <button v-else class="clear-all-btn" @click="clearAllConfirm = true" title="Alle Nachrichten löschen">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
+            </svg>
+          </button>
+        </Transition>
       </div>
 
       <!-- Attachment previews -->
@@ -451,6 +472,23 @@
     <!-- Hidden file input — must be in DOM for mobile to work -->
     <input ref="fileInputEl" type="file" style="display:none;position:fixed" @change="onFileInputChange" />
 
+    <!-- Long-press context menu -->
+    <Teleport to="body">
+      <Transition name="ctx-pop">
+        <div v-if="ctxItem" class="ctx-scrim" @click="ctxItem = null">
+          <div class="ctx-menu" :style="{ top: ctxPos.y + 'px', left: ctxPos.x + 'px' }" @click.stop>
+            <button class="ctx-del" @click="ctxDelete">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
+              </svg>
+              Löschen
+            </button>
+            <button class="ctx-cancel" @click="ctxItem = null">Abbrechen</button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -488,7 +526,7 @@ const { mcpTools, loadMcpTools } = useMcpTools()
 const {
   messages, conversationSummary,
   addMessage, removeMessage, updateLastMessage, setLastMessageMeta, setMessageMetaById,
-  toApiMessages, getMessagesToSummarize, pruneWithSummary,
+  toApiMessages, getMessagesToSummarize, pruneWithSummary, clearSession: clearMessages,
 } = useSession()
 const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected, writeSoulMd } = useVault()
 const { vaultKey: _vaultKey } = useVaultSession()
@@ -958,6 +996,47 @@ const filterOpen = ref(false)
 function setFilter(val) {
   emit('update:filter', val)
   filterOpen.value = false
+}
+
+// ── Long-press context menu ───────────────────────────────────────────
+const ctxItem     = ref(null)   // item being long-pressed
+const ctxPos      = ref({ x: 0, y: 0 })
+let   _lpTimer    = null
+function _startLongPress(e, item) {
+  _lpTimer = setTimeout(() => {
+    const src = e.touches?.[0] ?? e
+    ctxPos.value = { x: src.clientX, y: src.clientY }
+    ctxItem.value = item
+  }, 500)
+}
+function _cancelLongPress() { clearTimeout(_lpTimer); _lpTimer = null }
+function _onLpMove(e) {
+  if (_lpTimer) _cancelLongPress()
+}
+async function ctxDelete() {
+  if (!ctxItem.value) return
+  const item = ctxItem.value
+  ctxItem.value = null
+  if (item._type === 'ai') { removeMessage(item.id); return }
+  await deleteLocalImg(item)
+}
+
+// ── Clear-all confirm ─────────────────────────────────────────────────
+const clearAllConfirm = ref(false)
+async function clearAll() {
+  clearAllConfirm.value = false
+  // Clear AI session messages
+  clearMessages()
+  // Clear own sys.md SOCIAL + AGENT blocks
+  if (soulContentAgent.value) {
+    let patched = soulContentAgent.value
+    patched = patched.replace(/<!--\s*SOCIAL:START\s*-->([\s\S]*?)<!--\s*SOCIAL:END\s*-->/, '<!-- SOCIAL:START --><!-- SOCIAL:END -->')
+    patched = patched.replace(/<!--\s*AGENT:START\s*-->([\s\S]*?)<!--\s*AGENT:END\s*-->/, '<!-- AGENT:START --><!-- AGENT:END -->')
+    updateContent(patched)
+    await pushToServer()
+  }
+  // Clear fetched peer messages
+  peerSocialMsgs.value = []
 }
 
 // ── Dynamic stream padding (tracks real dock height) ─────────────────
@@ -4679,5 +4758,52 @@ defineExpose({
   transition: all 0.15s;
 }
 .sfb-delete:hover { background: rgba(240,163,163,0.08); border-color: #f0a3a3; }
+
+/* ── Long-press context menu ── */
+.ctx-scrim { position: fixed; inset: 0; z-index: 900; }
+.ctx-menu {
+  position: fixed; z-index: 901;
+  background: var(--bg-2, #1c1c1c); border: 1px solid var(--line);
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transform: translate(-50%, -110%);
+  display: flex; flex-direction: column; min-width: 140px;
+}
+.ctx-del, .ctx-cancel {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; font-family: var(--sans); font-size: 13.5px;
+  background: transparent; border: 0; cursor: pointer; text-align: left;
+}
+.ctx-del { color: #e06c75; border-bottom: 1px solid var(--line); }
+.ctx-del:hover { background: rgba(224,108,117,0.08); }
+.ctx-cancel { color: var(--fg-2); }
+.ctx-cancel:hover { background: rgba(255,255,255,0.04); }
+.ctx-pop-enter-active, .ctx-pop-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.ctx-pop-enter-from, .ctx-pop-leave-to { opacity: 0; }
+
+/* ── Clear-all button + confirm ── */
+.clear-all-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  background: transparent; border: 1px solid transparent;
+  color: var(--fg-3); cursor: pointer; transition: all 0.12s;
+}
+.clear-all-btn:hover { color: #e06c75; border-color: rgba(224,108,117,0.3); background: rgba(224,108,117,0.06); }
+.clear-confirm {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--fg-2);
+}
+.clear-ok {
+  padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(224,108,117,0.5);
+  background: rgba(224,108,117,0.1); color: #e06c75;
+  font-family: var(--mono); font-size: 10.5px; cursor: pointer;
+}
+.clear-ok:hover { background: rgba(224,108,117,0.2); }
+.clear-cancel {
+  padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line);
+  background: transparent; color: var(--fg-3);
+  font-family: var(--mono); font-size: 10.5px; cursor: pointer;
+}
+.clear-cancel:hover { color: var(--fg-1); border-color: var(--fg-3); }
 
 </style>
