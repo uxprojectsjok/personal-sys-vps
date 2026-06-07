@@ -332,18 +332,24 @@ if method == "GET" then
   local data = load_data()
   -- Mutual-Status anreichern
   for _, conn in ipairs(data.connections) do
-    local target_conn_path = SOULS_DIR .. conn.soul_id .. "/soul_connections.json"
-    local tf = io.open(target_conn_path, "r")
     conn.mutual = false
-    if tf then
-      local raw = tf:read("*a"); tf:close()
-      local ok2, tdata = pcall(cjson.decode, raw)
-      if ok2 and type(tdata) == "table" then
-        local tconns = tdata.connections or (tdata[1] and tdata or {})
-        for _, tc in ipairs(tconns) do
-          if tc.soul_id == soul_id then conn.mutual = true; break end
+    if is_local_conn(conn) then
+      -- Lokale Soul: Filesystem-Check
+      local target_conn_path = SOULS_DIR .. conn.soul_id .. "/soul_connections.json"
+      local tf = io.open(target_conn_path, "r")
+      if tf then
+        local raw = tf:read("*a"); tf:close()
+        local ok2, tdata = pcall(cjson.decode, raw)
+        if ok2 and type(tdata) == "table" then
+          local tconns = tdata.connections or (tdata[1] and tdata or {})
+          for _, tc in ipairs(tconns) do
+            if tc.soul_id == soul_id then conn.mutual = true; break end
+          end
         end
       end
+    else
+      -- Remote Soul: peer_token vorhanden = Handshake erfolgreich = verbunden
+      conn.mutual = type(conn.peer_token) == "string" and conn.peer_token ~= ""
     end
   end
   ngx.say(cjson.encode({
