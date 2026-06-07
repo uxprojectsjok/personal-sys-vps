@@ -86,24 +86,51 @@
               <div class="pr-chips">
                 <div v-for="req in incoming" :key="req.soul_id" class="pr-chip pr-chip--request" :style="`border-left: 3px solid ${peerTextColor(req.soul_id)}`">
                   <div class="pr-chip-avatar" :style="`background: ${avatarBg(req.soul_id)}`">
-                    {{ (req.alias || req.soul_id).charAt(0).toUpperCase() }}
+                    {{ (acceptAliases[req.soul_id] || req.alias || req.soul_id).charAt(0).toUpperCase() }}
                   </div>
                   <div class="pr-chip-body">
-                    <div class="pr-chip-alias">{{ req.alias || req.soul_id }}</div>
+                    <input
+                      v-if="acceptingId === req.soul_id"
+                      :value="acceptAliases[req.soul_id]"
+                      @input="acceptAliases[req.soul_id] = $event.target.value"
+                      class="pr-alias-input"
+                      placeholder="Name für diesen Peer"
+                      @keydown.enter="confirmAccept(req)"
+                      @keydown.escape="acceptingId = null"
+                      ref="aliasInputEl"
+                      autofocus
+                    />
+                    <template v-else>
+                      <div class="pr-chip-alias">{{ req.alias || req.soul_id }}</div>
+                    </template>
                     <div class="pr-chip-id">{{ shortId(req.soul_id) }}</div>
                     <div class="pr-chip-status">{{ req.domain ? req.domain.replace('https://', '') : 'Gleicher Server' }}</div>
                   </div>
                   <div class="pr-chip-actions">
-                    <button class="pr-action pr-action--accept" @click="handleAcceptRequest(req)" title="Annehmen">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                      </svg>
-                    </button>
-                    <button class="pr-action pr-action--reject" @click="handleRejectRequest(req.soul_id)" title="Ablehnen">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
+                    <template v-if="acceptingId === req.soul_id">
+                      <button class="pr-action pr-action--accept" @click="confirmAccept(req)" title="Bestätigen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                      </button>
+                      <button class="pr-action" @click="acceptingId = null" title="Abbrechen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button class="pr-action pr-action--accept" @click="startAccept(req)" title="Annehmen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        </svg>
+                      </button>
+                      <button class="pr-action pr-action--reject" @click="handleRejectRequest(req.soul_id)" title="Ablehnen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -181,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useConfirm } from '~/composables/useConfirm.js'
@@ -204,6 +231,8 @@ const addOpen = ref(false)
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const connections   = ref([])
+const acceptingId   = ref(null)       // soul_id of request being named before accepting
+const acceptAliases = reactive({})    // soul_id → alias draft
 const removedByPeer = ref([])
 const incoming      = ref([])
 const loading       = ref(false)
@@ -334,10 +363,23 @@ async function handleRemove(soulId, alias) {
   } catch { /* ignore */ }
 }
 
-async function handleAcceptRequest(req) {
+function startAccept(req) {
+  acceptAliases[req.soul_id] = req.alias && !req.alias.match(/^[0-9a-f-]{8,}$/i) ? req.alias : ''
+  acceptingId.value = req.soul_id
+  nextTick(() => document.querySelector('.pr-alias-input')?.focus())
+}
+
+async function confirmAccept(req) {
+  const alias = (acceptAliases[req.soul_id] || '').trim() || req.alias || req.soul_id.slice(0, 16)
+  acceptingId.value = null
+  await handleAcceptRequest(req, alias)
+}
+
+async function handleAcceptRequest(req, aliasOverride) {
   addLoading.value = true
   try {
-    const body = { soul_id: req.soul_id, alias: req.alias || req.soul_id.slice(0, 16), permissions: req.permissions || ['soul'] }
+    const alias = aliasOverride || req.alias || req.soul_id.slice(0, 16)
+    const body = { soul_id: req.soul_id, alias, permissions: req.permissions || ['soul'] }
     if (req.domain) body.domain = req.domain
     const res = await fetch('/api/vault/connections', {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
@@ -525,6 +567,13 @@ function onNav(id) {
 .pr-action--accept:hover { background: var(--accent-dim); border-color: rgba(109,184,154,0.35); color: var(--accent-bright); }
 .pr-action--reject:hover, .pr-action--remove:hover { background: rgba(224,108,117,0.08); border-color: rgba(224,108,117,0.25); color: #e06c75; }
 .pr-action--dismiss:hover { background: var(--surface-2); color: var(--fg-3); }
+.pr-alias-input {
+  flex: 1; min-width: 0; height: 28px; padding: 0 8px;
+  background: var(--surface); border: 1px solid var(--accent-dim);
+  border-radius: var(--r-xs); color: var(--fg); font-size: 13px;
+  outline: none;
+}
+.pr-alias-input:focus { border-color: var(--accent-bright); }
 
 /* ── Removed list ── */
 .pr-removed-list {
