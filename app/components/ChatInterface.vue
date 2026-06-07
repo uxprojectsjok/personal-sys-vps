@@ -4325,10 +4325,10 @@ defineExpose({
 
 .emoji-panel {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(10, 32px);
   gap: 2px;
   padding: 8px 4px;
-  width: 100%; box-sizing: border-box;
+  width: max-content; max-width: 100%; box-sizing: border-box;
   max-height: 180px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -4337,10 +4337,10 @@ defineExpose({
 }
 .emoji-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 100%; aspect-ratio: 1;
+  width: 32px; height: 32px;
   font-size: 20px; line-height: 1;
   background: none; border: none; border-radius: 6px;
-  cursor: pointer; padding: 2px;
+  cursor: pointer; padding: 0;
   transition: background 0.1s;
 }
 .emoji-btn:hover { background: rgba(255,255,255,0.08); }
@@ -4640,16 +4640,17 @@ defineExpose({
   .cmd-strip { padding: 4px 0 2px; }
   /* emoji picker: 6 columns, constrained height, scrollable */
   .emoji-panel {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, 40px);
     gap: 3px;
     padding: 6px 0;
+    width: max-content; max-width: 100%;
     max-height: 160px;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.12) transparent;
   }
-  .emoji-btn { font-size: 22px; border-radius: 8px; }
+  .emoji-btn { width: 40px; height: 40px; font-size: 22px; border-radius: 8px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
   .archivar-toggle { font-size: 12px; padding: 4px 10px; }
   .archivar-dot { width: 5px; height: 5px; }
