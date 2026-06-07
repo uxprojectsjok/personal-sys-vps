@@ -15,7 +15,7 @@
       </div>
       <div v-if="peerWarnVisible && peerPollUnreachable.length" class="peer-error-notice">
         <span class="peer-error-icon">⚠</span>
-        <span>{{ peerPollUnreachable.length === 1 ? 'Peer nicht erreichbar' : `${peerPollUnreachable.length} Peers nicht erreichbar` }} · {{ peerPollUnreachable.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
+        <span>{{ peerPollUnreachable.length === 1 ? 'Peer nicht erreichbar' : `${peerPollUnreachable.length} Peers nicht erreichbar` }} · {{ peerPollUnreachable.map(e => `${peerLabel(e.soul_id)} (${peerErrorLabel(e.error)})`).join(', ') }}</span>
       </div>
 
       <template v-for="(item, idx) in filteredStream" :key="item.id || `${item._type}-${item.ts ?? item._ts}-${idx}`">
@@ -1131,7 +1131,9 @@ const peerPollPending = computed(() =>
   peerPollErrors.value.filter(e => e.error?.includes('peer_not_trusted'))
 )
 const peerPollUnreachable = computed(() =>
-  peerPollErrors.value.filter(e => !e.error?.includes('peer_not_trusted'))
+  peerPollErrors.value.filter(e =>
+    !e.error?.includes('peer_not_trusted') && !e.error?.includes('peer_unreachable')
+  )
 )
 const peerWarnVisible    = ref(false)
 const peerPendingVisible = ref(false)
@@ -1153,6 +1155,14 @@ watch(peerPollPending, (list) => {
 }, { immediate: true })
 function peerLabel(soulId) {
   return peerIds.value.find(p => p.soul_id === soulId)?.label || soulId.slice(0, 8) + '…'
+}
+function peerErrorLabel(err) {
+  if (!err) return 'Fehler'
+  if (err.includes('invalid_peer_cert') || err.includes('invalid_cert')) return 'Cert ungültig'
+  if (err.includes('peer_unreachable')) return 'Server offline'
+  if (err.includes('peer_not_trusted')) return 'Ausstehend'
+  if (err.includes('no_social_content') || err.includes('204')) return 'Leer'
+  return err.split('·')[0].trim()
 }
 
 onUnmounted(() => {

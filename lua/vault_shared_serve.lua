@@ -128,11 +128,15 @@ else
     local verify_url = found_endpoint
       .. "/api/soul/verify-peer-cert?soul_id=" .. req_soul_id .. "&cert=" .. req_cert
     local httpc = http.new(); httpc:set_timeout(8000)
-    local res, _ = httpc:request_uri(verify_url, {
+    local res, verr = httpc:request_uri(verify_url, {
       method = "GET", ssl_verify = true,
       headers = { Accept = "application/json" },
     })
-    if res and res.status == 200 then
+    if not res then
+      ngx.header["Content-Type"] = "application/json"
+      ngx.status = 503; ngx.say('{"error":"peer_unreachable"}'); return
+    end
+    if res.status == 200 then
       local ok_v, vdata = pcall(cjson.decode, res.body or "")
       if ok_v and type(vdata) == "table" and vdata.ok == true then cert_ok = true end
     end

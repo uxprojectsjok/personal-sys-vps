@@ -181,7 +181,14 @@ else
   local httpc = http.new()
   httpc:set_timeout(8000)
   local res, err = httpc:request_uri(verify_url, { method = "GET", headers = { Accept = "application/json" } })
-  if res and res.status == 200 then
+  if not res then
+    -- Netzwerkfehler: Peer-Server nicht erreichbar (kein Cert-Problem)
+    ngx.status = 503
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"peer_unreachable","message":"Peer-Server nicht erreichbar für Cert-Verifikation."}')
+    return
+  end
+  if res.status == 200 then
     local ok_v, vdata = pcall(cjson.decode, res.body or "")
     if ok_v and type(vdata) == "table" and vdata.ok == true then
       cert_ok = true
