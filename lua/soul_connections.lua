@@ -386,12 +386,9 @@ if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
     ngx.status = 400; ngx.say(cjson.encode({ error = "Kein Remote-Peer (kein domain-Feld)" })); return
   end
 
-  local auth  = ngx.req.get_headers()["authorization"] or ""
-  local token = auth:match("^[Bb]earer%s+(.+)$") or ""
-  local dot   = token:find(".", 1, true)
-  local our_cert = dot and token:sub(dot + 1) or ""
+  local our_cert = ngx.ctx.soul_cert or ""
   if our_cert == "" then
-    ngx.status = 401; ngx.say(cjson.encode({ error = "Cert fehlt" })); return
+    ngx.status = 500; ngx.say(cjson.encode({ error = "Cert nicht im Kontext" })); return
   end
 
   local scheme     = ngx.var.scheme or "https"
@@ -597,10 +594,7 @@ if method == "POST" then
   -- soul_id (ngx.ctx) ist die authentifizierte Soul — passt für single- und multi-soul
   local peer_token = nil
   if is_remote then
-    local auth  = ngx.req.get_headers()["authorization"] or ""
-    local token = auth:match("^[Bb]earer%s+(.+)$") or ""
-    local dot   = token:find(".", 1, true)
-    local our_cert = dot and token:sub(dot + 1) or ""
+    local our_cert = ngx.ctx.soul_cert or ""
 
     if our_cert ~= "" then
       local scheme     = ngx.var.scheme or "https"
