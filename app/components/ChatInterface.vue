@@ -13,7 +13,7 @@
         <span class="peer-error-icon">⏳</span>
         <span>Verbindung ausstehend · {{ peerPollPending.map(e => `${peerLabel(e.soul_id)} muss Verbindungsanfrage bestätigen`).join(', ') }}</span>
       </div>
-      <div v-if="peerPollUnreachable.length" class="peer-error-notice">
+      <div v-if="peerWarnVisible && peerPollUnreachable.length" class="peer-error-notice">
         <span class="peer-error-icon">⚠</span>
         <span>{{ peerPollUnreachable.length === 1 ? 'Peer nicht erreichbar' : `${peerPollUnreachable.length} Peers nicht erreichbar` }} · {{ peerPollUnreachable.map(e => `${e.soul_id.slice(0, 8)}… (${e.error})`).join(', ') }}</span>
       </div>
@@ -1130,6 +1130,15 @@ const peerPollPending = computed(() =>
 const peerPollUnreachable = computed(() =>
   peerPollErrors.value.filter(e => !e.error?.includes('peer_not_trusted'))
 )
+const peerWarnVisible = ref(false)
+let _peerWarnTimer = null
+watch(peerPollUnreachable, (list) => {
+  clearTimeout(_peerWarnTimer)
+  if (list.length) {
+    peerWarnVisible.value = true
+    _peerWarnTimer = setTimeout(() => { peerWarnVisible.value = false }, 8000)
+  }
+}, { immediate: true })
 function peerLabel(soulId) {
   return peerIds.value.find(p => p.soul_id === soulId)?.label || soulId.slice(0, 8) + '…'
 }
