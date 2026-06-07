@@ -1031,12 +1031,6 @@ let   _agentPollTimer  = null
 let   _cacheEvictTimer = null
 const peerIds           = ref([])
 const peerSocialMsgs    = ref([])
-// Local hide-list for peer messages we can't delete server-side
-const HIDDEN_PEER_KEY = 'soulHiddenPeerMsgs'
-const hiddenPeerMsgTs = ref(new Set(JSON.parse(localStorage.getItem(HIDDEN_PEER_KEY) || '[]')))
-function persistHiddenPeer() {
-  localStorage.setItem(HIDDEN_PEER_KEY, JSON.stringify([...hiddenPeerMsgTs.value]))
-}
 const msgDeliveryStatus  = reactive(new Map()) // ts → 'saving'|'saved'|'delivered'|'error'
 const peerPollStatus     = reactive(new Map()) // soul_id → { ok, error, ts }
 const vaultBlobUrls      = reactive(new Map()) // 'soul_id:filename' → blob URL | null (loading)
@@ -1251,11 +1245,10 @@ function formatDay(ts) {
 const socialMsgs = computed(() => {
   const m   = soulContentAgent.value?.match(RE_SOCIAL_BLOCK)
   const own = m ? parseMsgBlock(m[1], 'social') : []
+  if (!peerSocialMsgs.value.length) return own
   const seen = new Set()
-  const hidden = hiddenPeerMsgTs.value
   return [...own, ...peerSocialMsgs.value]
     .filter(msg => {
-      if (hidden.has(msg.ts)) return false
       const k = `${msg.ts}|${msg.from}|${msg.to}|${msg.content}`
       if (seen.has(k)) return false
       seen.add(k)
@@ -1521,22 +1514,16 @@ async function deleteLocalImg(item) {
   }
   // Remove message from correct store
   if (item._type === 'bubble') {
+    // Remove from live peer-fetch list (session-only for foreign peer messages)
     peerSocialMsgs.value = peerSocialMsgs.value.filter(m => m.ts !== item.ts)
-    const isPeerOnly = item.sphere === 'social' && item.from !== 'me'
-    if (isPeerOnly && item.ts) {
-      // Peer-server messages: add to local hide-list so they stay gone after re-fetch
-      hiddenPeerMsgTs.value = new Set([...hiddenPeerMsgTs.value, item.ts])
-      persistHiddenPeer()
-    } else {
-      // Strip @msg entry from soulContentAgent (SOCIAL/AGENT blocks belong to us)
-      if (item.ts && soulContentAgent.value) {
-        const escaped = item.ts.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const msgLineRE = new RegExp(`\\n?<!--\\s*@msg\\s+${escaped}[^>]*-->`, 'g')
-        const patched = soulContentAgent.value.replace(msgLineRE, '')
-        if (patched !== soulContentAgent.value) {
-          updateContent(patched)
-          await pushToServer()
-        }
+    // Strip from own sys.md (SOCIAL + AGENT blocks are the user's own data — DSGVO)
+    if (item.ts && soulContentAgent.value) {
+      const escaped = item.ts.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const msgLineRE = new RegExp(`\\n?<!--\\s*@msg\\s+${escaped}[^>]*-->`, 'g')
+      const patched = soulContentAgent.value.replace(msgLineRE, '')
+      if (patched !== soulContentAgent.value) {
+        updateContent(patched)
+        await pushToServer()
       }
     }
   } else if (item.id) {
