@@ -204,6 +204,9 @@
               :style="item.to === 'agent' ? 'color:var(--accent-bright)' : item.to === 'community' ? 'color:#7099b8' : 'color:#5baa87'">
               → {{ peerLabelForTo(item.to) }}
             </span>
+            <span v-else-if="item.sphere === 'social' && item.to && item.to !== 'peer'" class="msg-to" style="color:var(--fg-3)">
+              → {{ peerLabelForTo(item.to) }}
+            </span>
             <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
             <span
               v-if="item.from === 'me' && item.to !== 'agent' && item.to !== 'ki' && msgDeliveryStatus.has(item.ts)"
