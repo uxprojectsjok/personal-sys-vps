@@ -4156,12 +4156,10 @@ defineExpose({
 .cmd-toggle.active { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .cmd-strip {
-  display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 6px;
   padding: 8px 2px;
-  scrollbar-width: none;
   width: 100%; min-width: 0; box-sizing: border-box;
 }
-.cmd-strip::-webkit-scrollbar { display: none; }
 
 .cmd-chip {
   display: inline-flex; align-items: center; gap: 1px;
@@ -4443,8 +4441,8 @@ defineExpose({
     border-top: 1px solid rgba(109, 184, 154, 0.14);
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
   }
-  /* chip strip wraps on mobile */
-  .cmd-strip { flex-wrap: wrap; overflow-x: visible; padding: 4px 0 2px; }
+  /* chip strip padding adjustment on mobile */
+  .cmd-strip { padding: 4px 0 2px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
   .archivar-toggle { font-size: 12px; padding: 4px 10px; }
   .archivar-dot { width: 5px; height: 5px; }

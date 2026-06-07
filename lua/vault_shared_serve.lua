@@ -90,6 +90,30 @@ else
     end
   end
 
+  -- Fallback: soul_connections.json (Peers via peers.vue verbunden)
+  if not found_same and not found_endpoint then
+    local conn_path = SOULS_DIR .. target_soul_id .. "/soul_connections.json"
+    local cf2 = io.open(conn_path, "r")
+    if cf2 then
+      local raw_conn = cf2:read("*a"); cf2:close()
+      local ok_conn, conn_data = pcall(cjson.decode, raw_conn)
+      if ok_conn and type(conn_data) == "table" then
+        local conns = type(conn_data.connections) == "table" and conn_data.connections
+                      or (conn_data[1] and conn_data or {})
+        for _, c in ipairs(conns) do
+          if type(c) == "table" and c.soul_id == req_soul_id then
+            if type(c.domain) == "string" and c.domain ~= "" then
+              found_endpoint = c.domain
+            else
+              found_same = true
+            end
+            break
+          end
+        end
+      end
+    end
+  end
+
   if not found_same and not found_endpoint then
     ngx.header["Content-Type"] = "application/json"
     ngx.status = 403; ngx.say('{"error":"peer_not_trusted"}'); return
