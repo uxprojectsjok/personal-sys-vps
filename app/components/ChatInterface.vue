@@ -109,16 +109,10 @@
         <div
           v-else-if="item._type === 'bubble' && (item.sphere === 'social' || item.sphere === 'agent')"
           class="sticker"
-          :class="
-            item.sphere === 'agent'
-              ? 'sticker--agent'
-              : item.from === 'me'
-                ? 'sticker--social-out'
-                : 'sticker--social-in'
-          "
+          :class="item.sphere === 'agent' ? 'sticker--agent' : 'sticker--social'"
         >
           <div class="sticker-head">
-            <span class="sticker-dir">{{ item.from === 'me' ? 'out' : (item.sphere === 'agent' ? 'agent' : 'in') }}</span>
+            <span class="sticker-dir">{{ item.from === 'me' ? 'out' : 'in' }}</span>
             <span class="sticker-pin">pinned</span>
             <span class="sticker-author">{{ resolveAuthor(item) }}</span>
             <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
@@ -3988,12 +3982,10 @@ defineExpose({
   height: 3px;
   border-radius: 6px 6px 0 0;
 }
-.sticker--social-in  { align-self: flex-start; border: 1px solid rgba(91,170,135,0.25); transform: rotate(-0.6deg); }
-.sticker--social-out { align-self: flex-end;   border: 1px solid rgba(109,184,154,0.25); transform: rotate(0.5deg); }
-.sticker--agent      { align-self: flex-start; border: 1px solid rgba(109,184,154,0.18); transform: rotate(-0.3deg); }
-.sticker--social-in::before,
-.sticker--social-out::before { background: #5baa87; }
-.sticker--agent::before      { background: var(--accent-bright); }
+.sticker--social { align-self: center; border: 1px solid rgba(91,170,135,0.25); }
+.sticker--agent  { align-self: center; border: 1px solid rgba(109,184,154,0.18); }
+.sticker--social::before { background: #5baa87; }
+.sticker--agent::before  { background: var(--accent-bright); }
 
 /* Header row — NO background, just labels */
 .sticker-head {
@@ -4011,9 +4003,8 @@ defineExpose({
   font-weight: 700;
   flex-shrink: 0;
 }
-.sticker--social-in  .sticker-dir { color: #5baa87; }
-.sticker--social-out .sticker-dir { color: var(--accent-bright); }
-.sticker--agent      .sticker-dir { color: var(--accent-bright); }
+.sticker--social .sticker-dir { color: #5baa87; }
+.sticker--agent  .sticker-dir { color: var(--accent-bright); }
 
 .sticker-pin {
   font-family: var(--mono);
@@ -4079,7 +4070,6 @@ defineExpose({
   gap: 6px;
   margin-top: 6px;
 }
-.sticker--social-out .sticker-foot { flex-direction: row-reverse; }
 .sticker-to {
   font-family: var(--mono);
   font-size: clamp(14px, 1.35vw, 15.5px);
@@ -4087,7 +4077,6 @@ defineExpose({
   opacity: 0.75;
   margin-right: auto;
 }
-.sticker--social-out .sticker-to { margin-right: 0; margin-left: auto; }
 .sticker-time {
   font-family: var(--mono);
   font-size: clamp(14px, 1.35vw, 15.5px);
