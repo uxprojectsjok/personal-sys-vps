@@ -40,7 +40,7 @@
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
               @contextmenu.prevent.stop="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
-              @touchstart.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg')"
+              @touchstart.stop.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg')"
               @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
@@ -115,7 +115,7 @@
               <!-- Local cached image -->
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
                 @contextmenu.prevent.stop="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
-                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchstart.stop.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
@@ -123,7 +123,7 @@
               <!-- Local blob doc -->
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
                 @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchstart.stop.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
                   <span class="msg-doc-icon">📄</span>
@@ -135,7 +135,7 @@
                 <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
                   <div v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-img-wrap"
                     @contextmenu.prevent.stop="e => _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
-                    @touchstart.passive="e => _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                    @touchstart.stop.passive="e => _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                     <img
                       :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
@@ -148,7 +148,7 @@
                 </template>
                 <div v-else class="msg-doc-link"
                   @contextmenu.prevent.stop="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
-                  @touchstart.passive="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                  @touchstart.stop.passive="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                   @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                   <a v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
                     :href="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
@@ -196,7 +196,7 @@
             <template v-else>
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
                 @contextmenu.prevent.stop="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
-                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchstart.stop.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
@@ -204,7 +204,7 @@
               </div>
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
                 @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchstart.stop.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
                   <span class="msg-doc-icon">📄</span>
@@ -474,7 +474,7 @@
         <button class="lightbox-close" @click="closeLightbox" aria-label="Schließen">×</button>
         <img :src="lightboxImg.url" class="lightbox-img" alt=""
           @contextmenu.prevent.stop="e => _openMediaCtx(e, lightboxImg.url, lightboxImg.name)"
-          @touchstart.passive="e => _startMediaLongPress(e, lightboxImg.url, lightboxImg.name)"
+          @touchstart.stop.passive="e => _startMediaLongPress(e, lightboxImg.url, lightboxImg.name)"
           @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress" />
       </div>
     </Teleport>
@@ -3878,9 +3878,12 @@ defineExpose({
 .mia-btn--del:hover { background: rgba(248,113,113,0.10); color: #f87171; }
 .mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.08); }
 
-.msg-doc-link { margin-bottom: 6px; }
+.msg-doc-link {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: nowrap; margin-bottom: 6px;
+}
 .msg-doc-a {
-  display: inline-flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.10);
@@ -3889,13 +3892,12 @@ defineExpose({
   color: var(--fg-2);
   font-family: var(--mono);
   font-size: 12px; letter-spacing: 0.04em;
-  max-width: 240px;
+  min-width: 0; max-width: 100%; flex: 1 1 auto;
   transition: background 0.12s, border-color 0.12s;
 }
 .msg-doc-a:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.18); }
 .msg-doc-icon { flex-shrink: 0; font-size: 13px; opacity: 0.7; }
-.msg-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
-.msg-doc-link { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.msg-doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .msg-doc-del {
   flex-shrink: 0; background: transparent;
   border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
