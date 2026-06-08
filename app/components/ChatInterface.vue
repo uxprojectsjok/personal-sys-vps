@@ -2160,27 +2160,52 @@ function detectIntent(text) {
   // @agent → Agent Sandbox
   const agentMention = t.match(/^@agent\b\s*(.*)/is)
   if (agentMention) return { type: 'agent', query: (agentMention[1].trim() || t) }
-  // @peer Name → explizites Peer-Routing, geht NIE an die KI
-  const peerPrefixMatch = t.match(/^@peer\s+(\w+)\b\s*(.*)/is)
-  if (peerPrefixMatch) {
-    const name = peerPrefixMatch[1].toLowerCase()
-    const msg  = peerPrefixMatch[2].trim() || t
-    const exact = peerIds.value.find(p => p.label?.toLowerCase() === name)
-    if (exact) return { type: 'peer-specific', soul_id: exact.soul_id, query: msg }
-    const prefix = peerIds.value.filter(p => p.label?.toLowerCase().startsWith(name))
-    if (prefix.length === 1) return { type: 'peer-specific', soul_id: prefix[0].soul_id, query: msg }
-    if (prefix.length > 1)   return { type: 'ambiguous', candidates: prefix, name: peerPrefixMatch[1] }
-    return { type: 'peer-not-found', name: peerPrefixMatch[1] }
+  // Helper: match peer name at start of `rest` — handles hyphens, spaces, multi-word labels.
+  // Returns { peer, msgStart } on unique match, { ambiguous, candidates, name } on ambiguity, null if no match.
+  function findPeerInText(rest) {
+    const restLower = rest.toLowerCase()
+    const peers = [...peerIds.value].filter(p => p.label).sort((a, b) => b.label.length - a.label.length)
+    // 1. Exact match (longest label wins, greedy)
+    for (const p of peers) {
+      const lbl = p.label.toLowerCase()
+      if (restLower === lbl || restLower.startsWith(lbl + ' ') || restLower.startsWith(lbl + '\t')) {
+        return { peer: p, msgStart: p.label.length }
+      }
+    }
+    // 2. Prefix match: extract word-sequence (words may contain hyphens), try longest first
+    const wordSeq = rest.match(/^([\w][\w-]*(?:\s+[\w][\w-]*)*)/)?.[1] || ''
+    const words = wordSeq.split(/\s+/)
+    for (let len = words.length; len >= 1; len--) {
+      const candidate = words.slice(0, len).join(' ').toLowerCase()
+      const hits = peers.filter(p => p.label.toLowerCase().startsWith(candidate))
+      if (hits.length === 1) return { peer: hits[0], msgStart: words.slice(0, len).join(' ').length }
+      if (hits.length > 1)   return { ambiguous: true, candidates: hits, name: words.slice(0, len).join(' ') }
+    }
+    return null
   }
-  // @name → specific peer by label (exact match, then unique prefix match)
-  const nameMention = t.match(/^@(\w+)\b\s*(.*)/is)
+
+  // @peer Name msg → explizites Peer-Routing, geht NIE an die KI
+  const peerPrefixRe = t.match(/^@peer\s+([\s\S]+)/i)
+  if (peerPrefixRe) {
+    const rest = peerPrefixRe[1]
+    const found = findPeerInText(rest)
+    if (found?.peer) {
+      const msg = rest.slice(found.msgStart).trimStart() || t
+      return { type: 'peer-specific', soul_id: found.peer.soul_id, query: msg }
+    }
+    if (found?.ambiguous) return { type: 'ambiguous', candidates: found.candidates, name: found.name }
+    return { type: 'peer-not-found', name: rest.split(/\s+/)[0] }
+  }
+  // @Name msg → specific peer by label (greedy multi-word match)
+  const nameMention = t.match(/^@([\s\S]+)/i)
   if (nameMention) {
-    const name = nameMention[1].toLowerCase()
-    const exact = peerIds.value.find(p => p.label?.toLowerCase() === name)
-    if (exact) return { type: 'peer-specific', soul_id: exact.soul_id, query: (nameMention[2].trim() || t) }
-    const prefix = peerIds.value.filter(p => p.label?.toLowerCase().startsWith(name))
-    if (prefix.length === 1) return { type: 'peer-specific', soul_id: prefix[0].soul_id, query: (nameMention[2].trim() || t) }
-    if (prefix.length > 1)   return { type: 'ambiguous', candidates: prefix, name: nameMention[1] }
+    const rest = nameMention[1]
+    const found = findPeerInText(rest)
+    if (found?.peer) {
+      const msg = rest.slice(found.msgStart).trimStart() || t
+      return { type: 'peer-specific', soul_id: found.peer.soul_id, query: msg }
+    }
+    if (found?.ambiguous) return { type: 'ambiguous', candidates: found.candidates, name: found.name }
   }
   // Peer message: "→ peers: msg", "peer: msg", "an peers: msg"
   const peerMatch = t.match(/^(?:→\s*|peer(?:s)?:|an\s+(?:meine[n]?\s+)?peers?:\s*)(.+)/is)
