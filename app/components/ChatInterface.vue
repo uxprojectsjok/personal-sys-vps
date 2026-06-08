@@ -44,12 +44,6 @@
               @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
-              <div class="msg-img-actions">
-                <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
-                  <span>Löschen</span>
-                </button>
-              </div>
             </div>
             <div v-else-if="item.mediaType === 'audio' && item.mediaUrl" class="media-audio">
               <audio controls :src="item.mediaUrl" style="accent-color:var(--accent)"></audio>
@@ -480,8 +474,10 @@
     <Teleport to="#teleports">
       <div v-if="lightboxImg" class="lightbox-overlay" @click.self="closeLightbox">
         <button class="lightbox-close" @click="closeLightbox" aria-label="Schließen">×</button>
-        <img :src="lightboxImg.url" class="lightbox-img" alt="" />
-        <button class="lightbox-download" @click="downloadLightboxImg" aria-label="Herunterladen">↓ Speichern</button>
+        <img :src="lightboxImg.url" class="lightbox-img" alt=""
+          @contextmenu.prevent="e => _openMediaCtx(e, lightboxImg.url, lightboxImg.name)"
+          @touchstart.passive="e => _startMediaLongPress(e, lightboxImg.url, lightboxImg.name)"
+          @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress" />
       </div>
     </Teleport>
 
