@@ -84,7 +84,7 @@ server {
   ################################
   # Static Assets – Long Cache
   ################################
-  location ~* \.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
+  location ~* ^(?!/api/).*\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
     root /var/www/sys.uxprojects-jok.com;
     try_files $uri =404;
     access_log off;
@@ -545,10 +545,11 @@ server {
 
   # ── Vault-Dateien servieren (GET) – soul-cert ODER webhook-token ─────────────
   # /api/vault/manifest, /api/vault/audio, /api/vault/video, /api/vault/images, /api/vault/context
-  # ^~ verhindert dass Regex-Locations (z.B. ~* \.webm|mp4) API-Pfade abfangen.
+  # KEIN ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) müssen Vorrang haben.
+  # Static-Assets-Regex schließt /api/ bereits per negativem Lookahead aus.
   # HINWEIS: Steht absichtlich nach den spezifischeren /api/vault/... Prefix-Locations,
   # da bei Prefix-Matching die längste Übereinstimmung gewinnt (Reihenfolge egal).
-  location ^~ /api/vault/ {
+  location /api/vault/ {
     limit_req zone=chat burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
