@@ -142,33 +142,30 @@ if found_same_server then
   local per_soul_key = cfg.get_soul_master_key(peer_soul_id)
   local active_key  = (per_soul_key and per_soul_key ~= "") and per_soul_key or global_key
   if active_key and active_key ~= "" then
-    local cv_ctx = io.open(SOULS_DIR .. peer_soul_id .. "/api_context.json", "r")
-    local cv = 0
-    if cv_ctx then
-      local raw_cv = cv_ctx:read("*a"); cv_ctx:close()
-      local ok_v, cv_data = pcall(cjson.decode, raw_cv)
-      if ok_v and type(cv_data) == "table" then
-        local raw_cv_val = cv_data.soul_cert_version or cv_data.cert_version
-        if type(raw_cv_val) == "number" then cv = raw_cv_val end
+    local cv = hmac.read_cert_version(peer_soul_id)
+    -- stored version first, then full 0..20 scan (matches soul_auth.lua)
+    if hmac.cert_for_soul(active_key, peer_soul_id, cv) == peer_cert then
+      cert_ok = true
+    else
+      for v = 0, 20 do
+        if hmac.cert_for_soul(active_key, peer_soul_id, v) == peer_cert then
+          cert_ok = true; break
+        end
       end
     end
-    -- Prüfe cert_version und Fallback ±1
-    for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-      if v >= 0 and hmac.cert_for_soul(active_key, peer_soul_id, v) == peer_cert then
-        cert_ok = true
-        break
-      end
-    end
-    -- Grace-Period: auch prev key prüfen wenn kein Treffer
+    -- Grace-Period: prev key
     if not cert_ok then
       local prev_key
       if per_soul_key then prev_key = cfg.get_soul_master_key_prev(peer_soul_id) end
       if not prev_key or prev_key == "" then prev_key = cfg.get_master_key_prev() end
       if prev_key and prev_key ~= "" then
-        for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-          if v >= 0 and hmac.cert_for_soul(prev_key, peer_soul_id, v) == peer_cert then
-            cert_ok = true
-            break
+        if hmac.cert_for_soul(prev_key, peer_soul_id, cv) == peer_cert then
+          cert_ok = true
+        else
+          for v = 0, 20 do
+            if hmac.cert_for_soul(prev_key, peer_soul_id, v) == peer_cert then
+              cert_ok = true; break
+            end
           end
         end
       end
