@@ -3971,8 +3971,8 @@ defineExpose({
   background: rgba(255,255,255,0.055);
   box-shadow: 0 2px 10px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.18);
   font-family: var(--sans);
-  font-size: 13.5px;
-  line-height: 1.52;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  line-height: 1.58;
   color: var(--fg);
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -4005,7 +4005,7 @@ defineExpose({
 }
 .sticker-dir {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 9.5px;
   letter-spacing: 0.13em;
   text-transform: uppercase;
   font-weight: 700;
@@ -4017,19 +4017,19 @@ defineExpose({
 
 .sticker-pin {
   font-family: var(--mono);
-  font-size: 7.5px;
+  font-size: 9px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  opacity: 0.38;
+  opacity: 0.50;
   flex-shrink: 0;
 }
 
 .sticker-author {
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  opacity: 0.65;
+  opacity: 0.80;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -4082,15 +4082,15 @@ defineExpose({
 .sticker--social-out .sticker-foot { flex-direction: row-reverse; }
 .sticker-to {
   font-family: var(--mono);
-  font-size: 9px; letter-spacing: 0.07em;
-  opacity: 0.55;
+  font-size: 10.5px; letter-spacing: 0.07em;
+  opacity: 0.65;
   margin-right: auto;
 }
 .sticker--social-out .sticker-to { margin-right: 0; margin-left: auto; }
 .sticker-time {
   font-family: var(--mono);
-  font-size: 9px;
-  color: var(--fg-4);
+  font-size: 10.5px;
+  color: var(--fg-3);
   letter-spacing: 0.05em;
 }
 .sticker-delivery {
