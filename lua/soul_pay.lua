@@ -243,6 +243,19 @@ if imf then
     (new_entry.confirmed_at or "unknown")
   ))
   imf:close()
+
+  -- income.md in synced_files.context registrieren damit der VaultExplorer sie anzeigt
+  if not ctx.synced_files then ctx.synced_files = {} end
+  local sc = ctx.synced_files.context
+  if type(sc) ~= "table" then sc = {} end
+  local already = false
+  for _, n in ipairs(sc) do if n == "income.md" then already = true; break end end
+  if not already then
+    table.insert(sc, "income.md")
+    ctx.synced_files.context = sc
+    local wf = io.open(ctx_file, "w")
+    if wf then wf:write(cjson.encode(ctx)); wf:close() end
+  end
 end
 
 -- ── Zugriffs-Token ausstellen ─────────────────────────────────────────────────
