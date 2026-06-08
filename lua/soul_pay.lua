@@ -222,6 +222,29 @@ end
 local ewf = io.open(earnings_file, "w")
 if ewf then ewf:write(cjson.encode(earnings)); ewf:close() end
 
+-- ── Vault-Backup: Eintrag an income.md anhängen (persistent über VPS-Wechsel) ──
+local income_dir  = SOULS_DIR .. soul_id .. "/vault/context"
+local income_file = income_dir .. "/income.md"
+os.execute("mkdir -p " .. income_dir)
+local needs_header = true
+local ih = io.open(income_file, "r")
+if ih then ih:close(); needs_header = false end
+local imf = io.open(income_file, "a")
+if imf then
+  if needs_header then
+    imf:write("# Soul Income Log\n\n")
+  end
+  imf:write(string.format(
+    "<!-- @income redeemed:%s tx:%s from:%s pol:%s confirmed:%s -->\n",
+    new_entry.redeemed_at,
+    new_entry.tx_hash,
+    (new_entry.from or "unknown"):gsub("%s", "_"),
+    (new_entry.pol_amount or "0"),
+    (new_entry.confirmed_at or "unknown")
+  ))
+  imf:close()
+end
+
 -- ── Zugriffs-Token ausstellen ─────────────────────────────────────────────────
 local days      = math.max(1, math.min(30, tonumber(amort.token_duration_days) or 1))
 local TOKEN_TTL = days * 86400
