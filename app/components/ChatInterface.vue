@@ -1434,16 +1434,24 @@ const displayMessages = computed(() => {
     .sort((a, b) => new Date(a.ts) - new Date(b.ts))
 })
 
+// Normalisiert beliebige ts-Werte auf Millisekunden
+function toMs(ts) {
+  if (!ts) return 0
+  if (typeof ts === 'number') return ts < 1e12 ? ts * 1000 : ts
+  const n = new Date(ts).getTime()
+  return isNaN(n) ? 0 : n
+}
+
 // ── Unified stream: AI articles + social bubbles, sorted by time ──
 const unifiedStream = computed(() => {
   const ai = (messages.value || []).map(m => ({
     _type: 'ai',
-    _ts: typeof m.ts === 'number' ? m.ts : new Date(m.ts).getTime(),
+    _ts: toMs(m.ts),
     ...m,
   }))
   const bubbles = displayMessages.value.map(m => ({
     _type: 'bubble',
-    _ts: typeof m.ts === 'string' ? new Date(m.ts).getTime() : (m.ts || 0),
+    _ts: toMs(m.ts),
     ...m,
   }))
   const sorted = [...ai, ...bubbles].sort((a, b) => a._ts - b._ts)
