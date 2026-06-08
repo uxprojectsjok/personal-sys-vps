@@ -3902,14 +3902,13 @@ defineExpose({
 .msg-doc-link { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .msg-doc-del {
   flex-shrink: 0; background: transparent;
-  border: none; border-radius: 4px;
-  color: var(--fg-4); font-size: 11px; line-height: 1;
-  cursor: pointer; padding: 0; width: 20px; height: 20px; min-height: 20px;
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+  color: var(--fg-2); font-size: 14px; line-height: 1;
+  cursor: pointer; padding: 0; width: 26px; height: 26px; min-height: 26px;
   display: inline-flex; align-items: center; justify-content: center;
-  opacity: 0.5;
-  transition: color 0.15s, opacity 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.msg-doc-del:hover { color: #f0a3a3; opacity: 1; }
+.msg-doc-del:hover { color: #f0a3a3; border-color: #f0a3a3; background: rgba(240,163,163,0.08); }
 
 /* ── Lightbox ────────────────────────────────────────────────────── */
 .lightbox-overlay {
@@ -4071,12 +4070,12 @@ defineExpose({
 
 /* ✕ button */
 .sticker-x {
-  width: 16px; height: 16px; min-height: 16px;
+  width: 20px; height: 20px; min-height: 20px;
   border: none;
   background: transparent;
-  color: var(--fg-3);
+  color: var(--fg-2);
   border-radius: 50%;
-  font-size: 11px; line-height: 1;
+  font-size: 15px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
@@ -4084,9 +4083,9 @@ defineExpose({
   opacity: 0;
   transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
-.sticker:hover .sticker-x { opacity: 0.55; }
-.sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; opacity: 1; }
-@media (hover: none) { .sticker-x { opacity: 0.35; } }
+.sticker:hover .sticker-x { opacity: 1; }
+.sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
+@media (hover: none) { .sticker-x { opacity: 0.75; } }
 
 /* Body — inherits sticker background, no extra bg */
 .sticker-body { flex: 1; }
