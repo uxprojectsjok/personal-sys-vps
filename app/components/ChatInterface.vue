@@ -3962,64 +3962,64 @@ defineExpose({
 /* ── Sticker: Social / Agent (persistent pinboard) ──────────────── */
 .sticker {
   position: relative;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
-  width: clamp(160px, 48vw, 240px);
+  max-width: clamp(160px, 48vw, 240px);
+  padding: 9px 11px 7px;
   border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.055);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.18);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.52;
+  color: var(--fg);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
   cursor: default;
   margin: 3px 0;
 }
-.sticker--social-in  {
-  align-self: flex-start;
-  border: 1px solid rgba(91,170,135,0.30);
-  transform: rotate(-0.6deg);
+/* Thin colored top bar — sole color indicator */
+.sticker::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 6px 6px 0 0;
 }
-.sticker--social-out {
-  align-self: flex-end;
-  border: 1px solid rgba(109,184,154,0.30);
-  transform: rotate(0.5deg);
-}
-.sticker--agent {
-  align-self: flex-start;
-  border: 1px solid rgba(109,184,154,0.22);
-  transform: rotate(-0.3deg);
-}
+.sticker--social-in  { align-self: flex-start; border: 1px solid rgba(91,170,135,0.25); transform: rotate(-0.6deg); }
+.sticker--social-out { align-self: flex-end;   border: 1px solid rgba(109,184,154,0.25); transform: rotate(0.5deg); }
+.sticker--agent      { align-self: flex-start; border: 1px solid rgba(109,184,154,0.18); transform: rotate(-0.3deg); }
+.sticker--social-in::before,
+.sticker--social-out::before { background: #5baa87; }
+.sticker--agent::before      { background: var(--accent-bright); }
 
-/* Header strip */
+/* Header row — NO background, just labels */
 .sticker-head {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+  padding-top: 2px;
 }
-.sticker--social-in  .sticker-head { background: rgba(91,170,135,0.14); }
-.sticker--social-out .sticker-head { background: rgba(109,184,154,0.12); }
-.sticker--agent      .sticker-head { background: rgba(109,184,154,0.09); }
-
-/* Dir badge */
 .sticker-dir {
   font-family: var(--mono);
   font-size: 8px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 3px;
   flex-shrink: 0;
 }
-.sticker--social-in  .sticker-dir { color: #5baa87;              background: rgba(91,170,135,0.18); }
-.sticker--social-out .sticker-dir { color: var(--accent-bright); background: rgba(109,184,154,0.18); }
-.sticker--agent      .sticker-dir { color: var(--accent-bright); background: rgba(109,184,154,0.14); }
+.sticker--social-in  .sticker-dir { color: #5baa87; }
+.sticker--social-out .sticker-dir { color: var(--accent-bright); }
+.sticker--agent      .sticker-dir { color: var(--accent-bright); }
 
 .sticker-author {
   font-family: var(--mono);
   font-size: 9.5px;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 0.65;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -4046,44 +4046,34 @@ defineExpose({
 .sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
 @media (hover: none) { .sticker-x { opacity: 0.55; } }
 
-/* Body */
-.sticker-body {
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.03);
-  font-family: var(--sans);
-  font-size: 13.5px;
-  line-height: 1.52;
-  color: var(--fg);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  box-sizing: border-box;
-}
+/* Body — inherits sticker background, no extra bg */
+.sticker-body { flex: 1; }
 .sticker-body p { margin: 0 0 5px; }
 .sticker-body p:last-child { margin-bottom: 0; }
 .sticker-body a { color: var(--accent-bright); }
 
-/* Images inside: bleed to edges */
+/* Images inside: flush to edges */
 .sticker .msg-img-wrap {
-  margin: 4px -12px 6px;
-  max-width: calc(100% + 24px);
+  margin: 4px -11px 6px;
+  max-width: calc(100% + 22px);
   border-radius: 0;
   border: none;
+  box-shadow: none;
 }
+.sticker .msg-img-actions { background: rgba(0,0,0,0.50); }
 
-/* Footer */
+/* Footer row — NO background */
 .sticker-foot {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 5px;
-  background: rgba(0,0,0,0.10);
-  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 6px;
 }
 .sticker--social-out .sticker-foot { flex-direction: row-reverse; }
 .sticker-to {
   font-family: var(--mono);
   font-size: 9px; letter-spacing: 0.07em;
-  opacity: 0.65;
+  opacity: 0.55;
   margin-right: auto;
 }
 .sticker--social-out .sticker-to { margin-right: 0; margin-left: auto; }
@@ -4801,9 +4791,8 @@ defineExpose({
   .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
 
   /* Sticker mobile */
-  .sticker       { width: clamp(160px, 60vw, 260px); }
-  .sticker-x     { opacity: 0.55; }
-  .sticker-body  { font-size: 14px; }
+  .sticker   { max-width: clamp(160px, 62vw, 260px); font-size: 14px; }
+  .sticker-x { opacity: 0.55; }
 
   .capture-wrap {
     align-self: stretch;
