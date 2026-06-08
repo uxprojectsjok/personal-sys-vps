@@ -38,18 +38,31 @@ if not active_key or active_key == "" then
   ngx.status = 500; ngx.say('{"error":"no_master_key"}'); return
 end
 
-local cv = 0
-local cv_f = io.open(SOULS_DIR .. own_soul_id .. "/api_context.json", "r")
-if cv_f then
-  local raw = cv_f:read("*a"); cv_f:close()
-  local ok, data = pcall(cjson.decode, raw)
-  if ok and type(data) == "table" and type(data.cert_version) == "number" then cv = data.cert_version end
-end
-
+-- use hmac.read_cert_version (reads soul_cert_version or cert_version from api_context.json)
+local cv = hmac.read_cert_version(own_soul_id)
 local cert_ok = false
-for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-  if v >= 0 and hmac.cert_for_soul(active_key, own_soul_id, v) == own_cert then
-    cert_ok = true; break
+if hmac.cert_for_soul(active_key, own_soul_id, cv) == own_cert then
+  cert_ok = true
+else
+  for v = 0, 20 do
+    if hmac.cert_for_soul(active_key, own_soul_id, v) == own_cert then
+      cert_ok = true; break
+    end
+  end
+end
+-- grace period: prev key
+if not cert_ok then
+  local prev_key = cfg.get_master_key_prev and cfg.get_master_key_prev() or nil
+  if prev_key and prev_key ~= "" then
+    if hmac.cert_for_soul(prev_key, own_soul_id, cv) == own_cert then
+      cert_ok = true
+    else
+      for v = 0, 20 do
+        if hmac.cert_for_soul(prev_key, own_soul_id, v) == own_cert then
+          cert_ok = true; break
+        end
+      end
+    end
   end
 end
 if not cert_ok then
