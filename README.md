@@ -222,7 +222,7 @@ Three phases — nothing more:
 │
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
-│   ├── project-hash.mjs     SHA-256 fingerprint $HASH$HASH$HASHof all source files
+│   ├── project-hash.mjs     SHA-256 fingerprint $HASH$HASH$HASH$HASH$HASHof all source files
 │   ├── generate-prompts.mjs Sync prompts.md into vault on build
 │   └── sync-server.sh       Sync /opt/sys changes back to repo (on demand)
 └── docs/                    Protocol documentation, API reference, specs
@@ -415,7 +415,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 7ef396237254
+Current release fingerprint: 8d91fdcf5f39883b
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
