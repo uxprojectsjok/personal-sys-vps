@@ -38,18 +38,13 @@
         >
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
-            <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap">
+            <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
+              @contextmenu.prevent="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
+              @touchstart.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg')"
+              @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
               <div class="msg-img-actions">
-                <button class="mia-btn" @click="openLightbox(item.mediaUrl, 'bild.jpg')" title="Vergrößern">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
-                  <span>Groß</span>
-                </button>
-                <button class="mia-btn" @click="downloadImg(item.mediaUrl, 'bild.jpg')" title="Speichern">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
-                  <span>Laden</span>
-                </button>
                 <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
                   <span>Löschen</span>
@@ -123,61 +118,47 @@
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <!-- Local cached image -->
-              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap">
+              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
-                <div class="msg-img-actions">
-                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
-                    <span>Groß</span>
-                  </button>
-                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
-                    <span>Laden</span>
-                  </button>
-                </div>
               </div>
               <!-- Local blob doc -->
-              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
-                <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
-                  <span class="msg-doc-icon">↓</span>
+              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
+                <span class="msg-doc-a">
+                  <span class="msg-doc-icon">📄</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
-                </a>
+                </span>
               </div>
               <!-- Vault-shared attachment -->
               <template v-if="getMsgVaultRef(item.content)">
                 <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
-                  <div v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-img-wrap">
+                  <div v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-img-wrap"
+                    @contextmenu.prevent="e => _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                    @touchstart.passive="e => _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                    @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                     <img
                       :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
                       class="msg-media-img" alt="" loading="lazy"
                       @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     />
-                    <div class="msg-img-actions">
-                      <button class="mia-btn" @click="openLightbox(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Vergrößern">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
-                        <span>Groß</span>
-                      </button>
-                      <button class="mia-btn" @click="downloadImg(vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)" title="Speichern">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
-                        <span>Laden</span>
-                      </button>
-                    </div>
                   </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
                 </template>
-                <div v-else class="msg-doc-link">
-                  <template v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)">
-                    <a
-                      :href="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
-                      :download="getMsgVaultRef(item.content).label"
-                      class="msg-doc-a"
-                    >
-                      <span class="msg-doc-icon">↓</span>
-                      <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
-                    </a>
-                  </template>
+                <div v-else class="msg-doc-link"
+                  @contextmenu.prevent="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                  @touchstart.passive="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                  @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
+                  <span v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-doc-a">
+                    <span class="msg-doc-icon">📄</span>
+                    <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
+                  </span>
                   <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Datei nicht ladbar</span>
                   <span v-else class="msg-media-loading">Wird geladen…</span>
                 </div>
@@ -216,29 +197,27 @@
             :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : 'msg-inner--synthesis'">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
-              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap">
+              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
                 <div class="msg-img-actions">
-                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
-                    <span>Groß</span>
-                  </button>
-                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
-                    <span>Laden</span>
-                  </button>
                   <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
                     <span>Löschen</span>
                   </button>
                 </div>
               </div>
-              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
-                <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
-                  <span class="msg-doc-icon">↓</span>
+              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
+                <span class="msg-doc-a">
+                  <span class="msg-doc-icon">📄</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
-                </a>
+                </span>
                 <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
               </div>
             </template>
@@ -520,12 +499,22 @@
       <Transition name="ctx-pop">
         <div v-if="ctxItem" class="ctx-scrim" @click="ctxItem = null">
           <div class="ctx-menu" :style="{ top: ctxPos.y + 'px', left: ctxPos.x + 'px' }" @click.stop>
-            <button class="ctx-del" @click="ctxDelete">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
-              </svg>
-              Löschen
-            </button>
+            <template v-if="ctxItem._isMedia">
+              <button class="ctx-dl" @click="ctxDownload">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/>
+                </svg>
+                Herunterladen
+              </button>
+            </template>
+            <template v-else>
+              <button class="ctx-del" @click="ctxDelete">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
+                </svg>
+                Löschen
+              </button>
+            </template>
             <button class="ctx-cancel" @click="ctxItem = null">Abbrechen</button>
           </div>
         </div>
@@ -1055,6 +1044,24 @@ function _startLongPress(e, item) {
   _lpTimer = setTimeout(() => _openCtx(e, item), 500)
 }
 function _cancelLongPress() { clearTimeout(_lpTimer); _lpTimer = null }
+
+let _lpMediaTimer = null
+function _openMediaCtx(e, url, name) {
+  e.preventDefault?.()
+  const src = e.touches?.[0] ?? e
+  ctxPos.value = { x: src.clientX, y: src.clientY }
+  ctxItem.value = { _isMedia: true, _mediaUrl: url, _mediaName: name }
+}
+function _startMediaLongPress(e, url, name) {
+  _lpMediaTimer = setTimeout(() => _openMediaCtx(e, url, name), 500)
+}
+function _cancelMediaLongPress() { clearTimeout(_lpMediaTimer); _lpMediaTimer = null }
+function ctxDownload() {
+  if (!ctxItem.value?._mediaUrl) return
+  downloadImg(ctxItem.value._mediaUrl, ctxItem.value._mediaName || 'datei')
+  ctxItem.value = null
+}
+
 async function ctxDelete() {
   if (!ctxItem.value) return
   const item = ctxItem.value
@@ -3895,13 +3902,14 @@ defineExpose({
 .msg-doc-link { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .msg-doc-del {
   flex-shrink: 0; background: transparent;
-  border: 1px solid rgba(240,163,163,0.25); border-radius: 4px;
-  color: var(--fg-4); font-size: 14px; line-height: 1;
-  cursor: pointer; padding: 0; width: 26px; height: 26px; min-height: 26px;
+  border: none; border-radius: 4px;
+  color: var(--fg-4); font-size: 11px; line-height: 1;
+  cursor: pointer; padding: 0; width: 20px; height: 20px; min-height: 20px;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  opacity: 0.5;
+  transition: color 0.15s, opacity 0.15s;
 }
-.msg-doc-del:hover { color: #f0a3a3; border-color: #f0a3a3; background: rgba(240,163,163,0.08); }
+.msg-doc-del:hover { color: #f0a3a3; opacity: 1; }
 
 /* ── Lightbox ────────────────────────────────────────────────────── */
 .lightbox-overlay {
@@ -4063,12 +4071,12 @@ defineExpose({
 
 /* ✕ button */
 .sticker-x {
-  width: 18px; height: 18px; min-height: 18px;
+  width: 16px; height: 16px; min-height: 16px;
   border: none;
   background: transparent;
-  color: var(--fg-4);
+  color: var(--fg-3);
   border-radius: 50%;
-  font-size: 14px; line-height: 1;
+  font-size: 11px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
@@ -4076,9 +4084,9 @@ defineExpose({
   opacity: 0;
   transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
-.sticker:hover .sticker-x { opacity: 1; }
-.sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
-@media (hover: none) { .sticker-x { opacity: 0.55; } }
+.sticker:hover .sticker-x { opacity: 0.55; }
+.sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; opacity: 1; }
+@media (hover: none) { .sticker-x { opacity: 0.35; } }
 
 /* Body — inherits sticker background, no extra bg */
 .sticker-body { flex: 1; }
@@ -5023,6 +5031,8 @@ defineExpose({
 }
 .ctx-del { color: #e06c75; border-bottom: 1px solid var(--line); }
 .ctx-del:hover { background: rgba(224,108,117,0.08); }
+.ctx-dl { color: var(--fg-2); border-bottom: 1px solid var(--line); }
+.ctx-dl:hover { background: rgba(255,255,255,0.06); }
 .ctx-cancel { color: var(--fg-2); }
 .ctx-cancel:hover { background: rgba(255,255,255,0.04); }
 .ctx-pop-enter-active, .ctx-pop-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
