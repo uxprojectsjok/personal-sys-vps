@@ -117,8 +117,11 @@
                 : 'sticker--social-in'
           "
         >
-          <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
-          <div class="sticker-author">{{ resolveAuthor(item) }}</div>
+          <div class="sticker-head">
+            <span class="sticker-dir">{{ item.from === 'me' ? 'out' : (item.sphere === 'agent' ? 'agent' : 'in') }}</span>
+            <span class="sticker-author">{{ resolveAuthor(item) }}</span>
+            <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
+          </div>
           <div class="sticker-body">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
@@ -3956,139 +3959,129 @@ defineExpose({
   color: var(--fg);
 }
 
-/* ── Sticker / Post-it (Social + Agent persistent pinboard) ─────── */
+/* ── Sticker: Social / Agent (persistent pinboard) ──────────────── */
 .sticker {
-  position: relative;
   display: flex;
   flex-direction: column;
-  width: clamp(148px, 46vw, 236px);
-  padding: 9px 10px 7px;
-  border-radius: 2px 2px 2px 5px;
-  box-shadow:
-    3px 5px 14px rgba(0,0,0,0.50),
-    0 1px 3px rgba(0,0,0,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.28);
-  font-family: var(--sans);
-  font-size: 13px;
-  line-height: 1.50;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  cursor: default;
-  margin: 4px 0;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: 0;
 }
-/* Corner fold */
-.sticker::after {
-  content: '';
-  position: absolute;
-  bottom: 0; right: 0;
-  width: 13px; height: 13px;
-  background: linear-gradient(225deg, rgba(0,0,0,0.12) 50%, transparent 50%);
-  border-radius: 0 0 2px;
-  pointer-events: none;
-}
+.sticker--social-in  { align-items: flex-start; }
+.sticker--social-out { align-items: flex-end; }
+.sticker--agent      { align-items: flex-start; }
 
-/* Social – incoming (yellow) */
-.sticker--social-in {
-  background: linear-gradient(165deg, #fef08a 0%, #f5dd28 100%);
-  color: #1c1700;
-  transform: rotate(-1.4deg);
-  align-self: flex-start;
+/* Header: dir-badge + author + ✕ */
+.sticker-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
 }
-/* Social – outgoing (green) */
-.sticker--social-out {
-  background: linear-gradient(165deg, #d1fae5 0%, #6ee7b7 100%);
-  color: #052718;
-  transform: rotate(0.8deg);
-  align-self: flex-end;
+.sticker-dir {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.5;
 }
-/* Agent (blue) */
-.sticker--agent {
-  background: linear-gradient(165deg, #dbeafe 0%, #93c5fd 100%);
-  color: #071830;
-  transform: rotate(-0.5deg);
-  align-self: flex-start;
+.sticker--social-in  .sticker-dir { color: #5baa87;              background: rgba(91,170,135,0.10);  border: 1px solid rgba(91,170,135,0.25); }
+.sticker--social-out .sticker-dir { color: var(--accent-bright); background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.25); }
+.sticker--agent      .sticker-dir { color: var(--accent-bright); background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.25); }
+
+.sticker-author {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ✕ close button */
 .sticker-x {
-  position: absolute;
-  top: 5px; right: 5px;
-  width: 19px; height: 19px;
-  min-height: 19px;
+  width: 20px; height: 20px; min-height: 20px;
   border: none;
-  background: rgba(0,0,0,0.10);
-  color: rgba(0,0,0,0.40);
+  background: transparent;
+  color: var(--fg-4);
   border-radius: 50%;
-  font-size: 13px; line-height: 1;
+  font-size: 14px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
-  transition: background 0.12s, color 0.12s, opacity 0.12s;
-  z-index: 1;
-  opacity: 0.45;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  flex-shrink: 0;
 }
-.sticker:hover .sticker-x,
-.sticker-x:focus { opacity: 1; }
-.sticker-x:hover {
-  background: rgba(180,20,20,0.18);
-  color: #b01010;
-  opacity: 1;
-}
-@media (hover: none) { .sticker-x { opacity: 0.7; } }
+.sticker:hover .sticker-x { opacity: 1; }
+.sticker-x:hover { background: rgba(224,108,117,0.12); color: #e06c75; }
+@media (hover: none) { .sticker-x { opacity: 0.6; } }
 
-/* Author label */
-.sticker-author {
-  font-size: 9px;
-  font-family: var(--mono);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  opacity: 0.52;
-  padding-right: 20px;
-  margin-bottom: 5px;
-  display: block;
+/* Bubble body: reuse existing msg-inner colors */
+.sticker-body {
+  padding: 12px 16px;
+  font-family: var(--sans);
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  line-height: 1.58;
+  color: var(--fg);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+  max-width: 100%;
 }
-
-/* Body text */
-.sticker-body { flex: 1; }
-.sticker-body p { margin: 0 0 4px; }
+.sticker-body p { margin: 0 0 6px; }
 .sticker-body p:last-child { margin-bottom: 0; }
-.sticker-body a { color: inherit; text-decoration: underline; opacity: 0.8; }
+.sticker-body a { color: var(--accent-bright); }
 
-/* Images inside sticker: bleed to edges (polaroid) */
-.sticker .msg-img-wrap {
-  margin: 4px -10px 6px;
-  max-width: calc(100% + 20px);
-  border-radius: 0;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+.sticker--social-in  .sticker-body {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px 16px 16px 4px;
+  border-left: 2px solid #5baa87;
+}
+.sticker--social-out .sticker-body {
+  background: rgba(109,184,154,0.10);
+  border: 1px solid rgba(109,184,154,0.30);
+  border-radius: 16px 4px 16px 16px;
+}
+.sticker--agent .sticker-body {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px 16px 16px 4px;
+  border-left: 2px solid var(--accent-bright);
 }
 
 /* Footer */
 .sticker-foot {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-  margin-top: 6px;
-  opacity: 0.45;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 6px;
+  min-height: 14px;
 }
+.sticker--social-out .sticker-foot { flex-direction: row-reverse; }
 .sticker-to {
-  font-size: 9px;
   font-family: var(--mono);
-  letter-spacing: 0.07em;
-  margin-right: auto;
-  opacity: 0.7;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 .sticker-time {
-  font-size: 9px;
   font-family: var(--mono);
-  letter-spacing: 0.05em;
+  font-size: 10px;
+  color: var(--fg-4);
+  letter-spacing: 0.06em;
 }
 .sticker-delivery {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.04em;
+  transition: color 0.2s;
+  cursor: default; user-select: none;
 }
 .msg-inner--synthesis {
   background: rgba(112,153,184,0.07);
@@ -4791,8 +4784,8 @@ defineExpose({
   .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
 
   /* Sticker mobile */
-  .sticker { width: clamp(148px, 56vw, 240px); font-size: 13.5px; }
-  .sticker-x { opacity: 0.7; width: 22px; height: 22px; font-size: 14px; }
+  .sticker-body { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; }
+  .sticker-x    { opacity: 0.6; }
 
   .capture-wrap {
     align-self: stretch;
