@@ -39,7 +39,7 @@
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
-              @contextmenu.prevent="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
+              @contextmenu.prevent.stop="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
               @touchstart.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg')"
               @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
@@ -114,7 +114,7 @@
             <template v-else>
               <!-- Local cached image -->
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @contextmenu.prevent.stop="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
@@ -122,7 +122,7 @@
               </div>
               <!-- Local blob doc -->
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
@@ -134,7 +134,7 @@
               <template v-if="getMsgVaultRef(item.content)">
                 <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
                   <div v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-img-wrap"
-                    @contextmenu.prevent="e => _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                    @contextmenu.prevent.stop="e => _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     @touchstart.passive="e => _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                     @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                     <img
@@ -147,7 +147,7 @@
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
                 </template>
                 <div v-else class="msg-doc-link"
-                  @contextmenu.prevent="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
+                  @contextmenu.prevent.stop="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                   @touchstart.passive="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _startMediaLongPress(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
                   @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                   <a v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
@@ -195,7 +195,7 @@
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @contextmenu.prevent.stop="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
@@ -203,7 +203,7 @@
                 <button class="msg-img-del" @click.stop="deleteLocalImg(item)" title="Löschen">×</button>
               </div>
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
@@ -473,7 +473,7 @@
       <div v-if="lightboxImg" class="lightbox-overlay" @click.self="closeLightbox">
         <button class="lightbox-close" @click="closeLightbox" aria-label="Schließen">×</button>
         <img :src="lightboxImg.url" class="lightbox-img" alt=""
-          @contextmenu.prevent="e => _openMediaCtx(e, lightboxImg.url, lightboxImg.name)"
+          @contextmenu.prevent.stop="e => _openMediaCtx(e, lightboxImg.url, lightboxImg.name)"
           @touchstart.passive="e => _startMediaLongPress(e, lightboxImg.url, lightboxImg.name)"
           @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress" />
       </div>
