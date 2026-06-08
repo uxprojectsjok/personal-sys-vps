@@ -119,6 +119,7 @@
         >
           <div class="sticker-head">
             <span class="sticker-dir">{{ item.from === 'me' ? 'out' : (item.sphere === 'agent' ? 'agent' : 'in') }}</span>
+            <span class="sticker-pin">pinned</span>
             <span class="sticker-author">{{ resolveAuthor(item) }}</span>
             <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
           </div>
@@ -4013,6 +4014,15 @@ defineExpose({
 .sticker--social-in  .sticker-dir { color: #5baa87; }
 .sticker--social-out .sticker-dir { color: var(--accent-bright); }
 .sticker--agent      .sticker-dir { color: var(--accent-bright); }
+
+.sticker-pin {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  opacity: 0.38;
+  flex-shrink: 0;
+}
 
 .sticker-author {
   font-family: var(--mono);
