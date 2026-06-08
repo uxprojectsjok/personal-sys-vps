@@ -108,6 +108,8 @@
         <!-- ── Sticker: Social / Agent (persistent pinboard) ────────────── -->
         <div
           v-else-if="item._type === 'bubble' && (item.sphere === 'social' || item.sphere === 'agent')"
+          class="sticker-wrap"
+        ><div
           class="sticker"
           :class="item.sphere === 'agent' ? 'sticker--agent' : 'sticker--social'"
         >
@@ -193,7 +195,7 @@
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
           </div>
-        </div>
+        </div></div>
 
         <!-- ── Synthesis / sonstige Bubbles (Archivar etc.) ──────────── -->
         <div
@@ -3983,8 +3985,9 @@ defineExpose({
   height: 3px;
   border-radius: 6px 6px 0 0;
 }
-.sticker--social { align-self: center; border: 1px solid rgba(91,170,135,0.25); }
-.sticker--agent  { align-self: center; border: 1px solid rgba(109,184,154,0.18); }
+.sticker-wrap { display: flex; justify-content: center; width: 100%; }
+.sticker--social { border: 1px solid rgba(91,170,135,0.25); }
+.sticker--agent  { border: 1px solid rgba(109,184,154,0.18); }
 .sticker--social::before { background: #5baa87; }
 .sticker--agent::before  { background: var(--accent-bright); }
 
