@@ -105,26 +105,24 @@
           <time class="msg-time-ai">{{ fmtTime(item.ts || Date.now()) }}</time>
         </div>
 
-        <!-- Social / agent / synthesis bubble -->
+        <!-- ── Sticker: Social / Agent (persistent pinboard) ────────────── -->
         <div
-          v-else-if="item._type === 'bubble'"
-          class="msg-bubble"
-          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
-          @contextmenu.prevent="e => _openCtx(e, item)"
-          @touchstart.passive="_startLongPress($event, item)"
-          @touchend="_cancelLongPress"
-          @touchmove="_cancelLongPress"
-          @touchcancel="_cancelLongPress"
+          v-else-if="item._type === 'bubble' && (item.sphere === 'social' || item.sphere === 'agent')"
+          class="sticker"
+          :class="
+            item.sphere === 'agent'
+              ? 'sticker--agent'
+              : item.from === 'me'
+                ? 'sticker--social-out'
+                : 'sticker--social-in'
+          "
         >
-          <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.sphere === 'social' ? peerTextColor(item.from) : item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
-            {{ resolveAuthor(item) }}
-          </div>
-          <div class="msg-inner"
-            :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : (item.sphere === 'social' ? 'msg-inner--social' : 'msg-inner--agent')">
+          <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
+          <div class="sticker-author">{{ resolveAuthor(item) }}</div>
+          <div class="sticker-body">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
-              <!-- Local cached image (encrypted messages) -->
+              <!-- Local cached image -->
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
@@ -137,10 +135,6 @@
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
                     <span>Laden</span>
                   </button>
-                  <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
-                    <span>Löschen</span>
-                  </button>
                 </div>
               </div>
               <!-- Local blob doc -->
@@ -149,7 +143,6 @@
                   <span class="msg-doc-icon">↓</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
                 </a>
-                <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
               </div>
               <!-- Vault-shared attachment -->
               <template v-if="getMsgVaultRef(item.content)">
@@ -169,10 +162,6 @@
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
                         <span>Laden</span>
                       </button>
-                      <button class="mia-btn mia-btn--del" @click="deleteVaultImg(item, getMsgVaultRef(item.content).filename)" title="Löschen">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
-                        <span>Löschen</span>
-                      </button>
                     </div>
                   </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
@@ -188,9 +177,6 @@
                       <span class="msg-doc-icon">↓</span>
                       <span class="msg-doc-name">{{ getMsgVaultRef(item.content).label }}</span>
                     </a>
-                    <button class="msg-doc-del"
-                      @click="deleteVaultImg(item, getMsgVaultRef(item.content).filename)"
-                      title="Datei löschen">×</button>
                   </template>
                   <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Datei nicht ladbar</span>
                   <span v-else class="msg-media-loading">Wird geladen…</span>
@@ -199,17 +185,69 @@
             </template>
             <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
           </div>
-          <div class="msg-foot">
-            <span v-if="item.from === 'me'" class="msg-to"
-              :style="item.to === 'agent' ? 'color:var(--accent-bright)' : item.to === 'community' ? 'color:#7099b8' : 'color:#5baa87'">
-              → {{ peerLabelForTo(item.to) }}
-            </span>
-            <span v-else-if="item.sphere === 'social' && item.to && item.to !== 'peer'" class="msg-to" style="color:var(--fg-3)">
-              → {{ peerLabelForTo(item.to) }}
-            </span>
-            <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
+          <div class="sticker-foot">
+            <span v-if="item.to && item.to !== 'peer'" class="sticker-to">→ {{ peerLabelForTo(item.to) }}</span>
+            <time class="sticker-time">{{ fmtMsgDate(item.ts) }}</time>
             <span
               v-if="item.from === 'me' && item.to !== 'agent' && item.to !== 'ki' && msgDeliveryStatus.has(item.ts)"
+              class="sticker-delivery"
+              :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
+              :title="deliveryTitle(item.ts)"
+            >{{ deliveryIcon(item.ts) }}</span>
+          </div>
+        </div>
+
+        <!-- ── Synthesis / sonstige Bubbles (Archivar etc.) ──────────── -->
+        <div
+          v-else-if="item._type === 'bubble'"
+          class="msg-bubble"
+          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
+          @contextmenu.prevent="e => _openCtx(e, item)"
+          @touchstart.passive="_startLongPress($event, item)"
+          @touchend="_cancelLongPress"
+          @touchmove="_cancelLongPress"
+          @touchcancel="_cancelLongPress"
+        >
+          <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
+            :style="{ color: item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
+            {{ resolveAuthor(item) }}
+          </div>
+          <div class="msg-inner"
+            :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : 'msg-inner--synthesis'">
+            <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
+            <template v-else>
+              <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap">
+                <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
+                  @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
+                <div class="msg-img-actions">
+                  <button class="mia-btn" @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" title="Vergrößern">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 5.5V1h4.5M1 1l5 5M15 10.5V15h-4.5M15 15l-5-5"/></svg>
+                    <span>Groß</span>
+                  </button>
+                  <button class="mia-btn" @click="downloadImg(msgMediaCache.get(item.ts), 'bild.jpg')" title="Speichern">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/></svg>
+                    <span>Laden</span>
+                  </button>
+                  <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
+                    <span>Löschen</span>
+                  </button>
+                </div>
+              </div>
+              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link">
+                <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
+                  <span class="msg-doc-icon">↓</span>
+                  <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
+                </a>
+                <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
+              </div>
+            </template>
+            <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
+          </div>
+          <div class="msg-foot">
+            <time class="msg-time">{{ fmtMsgDate(item.ts) }}</time>
+            <span
+              v-if="item.from === 'me' && msgDeliveryStatus.has(item.ts)"
               class="msg-delivery"
               :class="`msg-delivery--${msgDeliveryStatus.get(item.ts)}`"
               :title="deliveryTitle(item.ts)"
@@ -3917,6 +3955,141 @@ defineExpose({
   border-left: 2px solid var(--accent-bright);
   color: var(--fg);
 }
+
+/* ── Sticker / Post-it (Social + Agent persistent pinboard) ─────── */
+.sticker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: clamp(148px, 46vw, 236px);
+  padding: 9px 10px 7px;
+  border-radius: 2px 2px 2px 5px;
+  box-shadow:
+    3px 5px 14px rgba(0,0,0,0.50),
+    0 1px 3px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.28);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.50;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  cursor: default;
+  margin: 4px 0;
+}
+/* Corner fold */
+.sticker::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 13px; height: 13px;
+  background: linear-gradient(225deg, rgba(0,0,0,0.12) 50%, transparent 50%);
+  border-radius: 0 0 2px;
+  pointer-events: none;
+}
+
+/* Social – incoming (yellow) */
+.sticker--social-in {
+  background: linear-gradient(165deg, #fef08a 0%, #f5dd28 100%);
+  color: #1c1700;
+  transform: rotate(-1.4deg);
+  align-self: flex-start;
+}
+/* Social – outgoing (green) */
+.sticker--social-out {
+  background: linear-gradient(165deg, #d1fae5 0%, #6ee7b7 100%);
+  color: #052718;
+  transform: rotate(0.8deg);
+  align-self: flex-end;
+}
+/* Agent (blue) */
+.sticker--agent {
+  background: linear-gradient(165deg, #dbeafe 0%, #93c5fd 100%);
+  color: #071830;
+  transform: rotate(-0.5deg);
+  align-self: flex-start;
+}
+
+/* ✕ close button */
+.sticker-x {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 19px; height: 19px;
+  min-height: 19px;
+  border: none;
+  background: rgba(0,0,0,0.10);
+  color: rgba(0,0,0,0.40);
+  border-radius: 50%;
+  font-size: 13px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  transition: background 0.12s, color 0.12s, opacity 0.12s;
+  z-index: 1;
+  opacity: 0.45;
+}
+.sticker:hover .sticker-x,
+.sticker-x:focus { opacity: 1; }
+.sticker-x:hover {
+  background: rgba(180,20,20,0.18);
+  color: #b01010;
+  opacity: 1;
+}
+@media (hover: none) { .sticker-x { opacity: 0.7; } }
+
+/* Author label */
+.sticker-author {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  opacity: 0.52;
+  padding-right: 20px;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* Body text */
+.sticker-body { flex: 1; }
+.sticker-body p { margin: 0 0 4px; }
+.sticker-body p:last-child { margin-bottom: 0; }
+.sticker-body a { color: inherit; text-decoration: underline; opacity: 0.8; }
+
+/* Images inside sticker: bleed to edges (polaroid) */
+.sticker .msg-img-wrap {
+  margin: 4px -10px 6px;
+  max-width: calc(100% + 20px);
+  border-radius: 0;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+}
+
+/* Footer */
+.sticker-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 6px;
+  opacity: 0.45;
+  flex-wrap: wrap;
+}
+.sticker-to {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 0.07em;
+  margin-right: auto;
+  opacity: 0.7;
+}
+.sticker-time {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+}
+.sticker-delivery {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
 .msg-inner--synthesis {
   background: rgba(112,153,184,0.07);
   border-radius: 16px 16px 16px 4px;
@@ -4616,6 +4789,10 @@ defineExpose({
   .msg-foot { gap: 6px; padding: 0 4px; flex-wrap: wrap; }
 
   .msg-vault-del-overlay { top: -6px; right: -6px; width: 26px; height: 26px; opacity: 1; }
+
+  /* Sticker mobile */
+  .sticker { width: clamp(148px, 56vw, 240px); font-size: 13.5px; }
+  .sticker-x { opacity: 0.7; width: 22px; height: 22px; font-size: 14px; }
 
   .capture-wrap {
     align-self: stretch;
