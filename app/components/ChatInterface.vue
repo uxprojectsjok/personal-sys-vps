@@ -3685,7 +3685,7 @@ defineExpose({
 /* ── Stream ──────────────────────────────────────────────────────── */
 .stream {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: clamp(20px,3vw,40px) 0 clamp(28px,4vw,56px) clamp(12px,3vw,32px);
+  padding: clamp(20px,3vw,40px) clamp(12px,3vw,32px) clamp(28px,4vw,56px);
   display: flex; flex-direction: column; position: relative;
 }
 .stream::before {
@@ -3701,7 +3701,6 @@ defineExpose({
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  padding-right: clamp(12px,3vw,32px);
 }
 .anchor { height: 1px; }
 
@@ -3958,8 +3957,9 @@ defineExpose({
 /* ── Sticker: Social / Agent (persistent pinboard) ──────────────── */
 .sticker {
   position: relative;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
+  width: fit-content;
   max-width: clamp(160px, 48vw, 240px);
   padding: 9px 11px 7px;
   border-radius: 6px;
