@@ -4005,8 +4005,8 @@ defineExpose({
 }
 .sticker-dir {
   font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.13em;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   font-weight: 700;
   flex-shrink: 0;
@@ -4017,19 +4017,19 @@ defineExpose({
 
 .sticker-pin {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: clamp(14px, 1.35vw, 15.5px);
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  opacity: 0.50;
+  opacity: 0.60;
   flex-shrink: 0;
 }
 
 .sticker-author {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.09em;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  opacity: 0.80;
+  opacity: 0.90;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -4082,16 +4082,17 @@ defineExpose({
 .sticker--social-out .sticker-foot { flex-direction: row-reverse; }
 .sticker-to {
   font-family: var(--mono);
-  font-size: 10.5px; letter-spacing: 0.07em;
-  opacity: 0.65;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  letter-spacing: 0.05em;
+  opacity: 0.75;
   margin-right: auto;
 }
 .sticker--social-out .sticker-to { margin-right: 0; margin-left: auto; }
 .sticker-time {
   font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--fg-3);
-  letter-spacing: 0.05em;
+  font-size: clamp(14px, 1.35vw, 15.5px);
+  color: var(--fg-2);
+  letter-spacing: 0.04em;
 }
 .sticker-delivery {
   font-family: var(--mono);
