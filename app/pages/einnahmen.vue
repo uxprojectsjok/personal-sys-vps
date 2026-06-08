@@ -57,6 +57,11 @@
               </div>
             </div>
 
+            <!-- ── Restore-Banner ── -->
+            <div v-if="earnings.restored_from" class="earn-restored-banner">
+              Daten aus <strong>vault/context/income.md</strong> wiederhergestellt — earnings.json war nicht vorhanden.
+            </div>
+
             <!-- ── TX-Tabelle ── -->
             <div class="earn-table-wrap">
               <div v-if="sortedEntries.length" class="earn-table">
@@ -308,6 +313,12 @@ function onNav(id) {
 .earn-empty {
   padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
   font-size: 15px; color: var(--fg); line-height: 1.65;
+}
+
+/* ── Restore Banner ── */
+.earn-restored-banner {
+  padding: 10px 16px; background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.25);
+  border-radius: var(--r); font-size: 13px; color: var(--fg); margin-bottom: 4px;
 }
 
 /* ── CSV Export ── */

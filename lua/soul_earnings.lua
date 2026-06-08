@@ -1,5 +1,5 @@
 -- /etc/openresty/lua/soul_earnings.lua
--- GET /api/soul/earnings  → earnings.json lesen
+-- GET /api/soul/earnings  → earnings.json lesen, Fallback: vault/context/income.md
 -- Auth: vault_auth.lua (soul_cert)
 
 local cjson   = require("cjson.safe")
@@ -22,11 +22,77 @@ end
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
-local earnings_file = "/var/lib/sys/souls/" .. soul_id .. "/earnings.json"
-local ef = io.open(earnings_file, "r")
+local SOULS_DIR    = "/var/lib/sys/souls/"
+local earnings_file = SOULS_DIR .. soul_id .. "/earnings.json"
+local income_file   = SOULS_DIR .. soul_id .. "/vault/context/income.md"
 
-if not ef then
-  -- Noch keine Einnahmen
+-- ── Hilfsfunktion: income.md → earnings-Struktur rekonstruieren ──────────────
+local function rebuild_from_income_md()
+  local f = io.open(income_file, "r")
+  if not f then return nil end
+  local raw = f:read("*a"); f:close()
+
+  local entries   = {}
+  local total_pol = 0.0
+
+  -- <!-- @income redeemed:{ts} tx:{hash} from:{wallet} pol:{amount} confirmed:{ts} -->
+  for line in raw:gmatch("[^\n]+") do
+    local redeemed, tx, from, pol, confirmed = line:match(
+      "<!%-%- @income redeemed:(%S+) tx:(%S+) from:(%S+) pol:(%S+) confirmed:(%S+) %-%->"
+    )
+    if redeemed and tx then
+      table.insert(entries, {
+        tx_hash      = tx,
+        from         = from ~= "unknown" and from or nil,
+        pol_amount   = pol,
+        confirmed_at = confirmed ~= "unknown" and confirmed or nil,
+        redeemed_at  = redeemed,
+      })
+      total_pol = total_pol + (tonumber(pol) or 0)
+    end
+  end
+
+  if #entries == 0 then return nil end
+
+  return {
+    total_pol      = string.format("%.6f", total_pol),
+    total_requests = #entries,
+    entries        = entries,
+    restored_from  = "income.md",
+  }
+end
+
+-- ── earnings.json lesen ───────────────────────────────────────────────────────
+local ef = io.open(earnings_file, "r")
+local data
+
+if ef then
+  local raw = ef:read("*a"); ef:close()
+  local ok, parsed = pcall(cjson.decode, raw)
+  if ok and type(parsed) == "table" and type(parsed.entries) == "table" and #parsed.entries > 0 then
+    data = parsed
+  end
+end
+
+-- ── Fallback: income.md wenn earnings.json fehlt oder leer ist ───────────────
+if not data then
+  local rebuilt = rebuild_from_income_md()
+  if rebuilt then
+    data = rebuilt
+    -- earnings.json neu schreiben damit nächste Anfrage direkt liest
+    local wf = io.open(earnings_file, "w")
+    if wf then
+      wf:write(cjson.encode({
+        total_pol      = rebuilt.total_pol,
+        total_requests = rebuilt.total_requests,
+        entries        = rebuilt.entries,
+      }))
+      wf:close()
+    end
+  end
+end
+
+if not data then
   ngx.say(cjson.encode({
     ok             = true,
     total_pol      = "0.000000",
@@ -36,16 +102,6 @@ if not ef then
   return
 end
 
-local raw = ef:read("*a"); ef:close()
-local ok, data = pcall(cjson.decode, raw)
-
-if not ok or type(data) ~= "table" then
-  ngx.status = 500
-  ngx.say('{"error":"earnings.json corrupt"}')
-  return
-end
-
--- Sicherstellen dass alle Felder vorhanden sind
 data.ok             = true
 data.total_pol      = data.total_pol or "0.000000"
 data.total_requests = data.total_requests or 0
