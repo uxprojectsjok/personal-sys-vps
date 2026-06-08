@@ -222,7 +222,7 @@ Three phases — nothing more:
 │
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
-│   ├── project-hash.mjs     SHA-256 fingerprint $HASHof all source files
+│   ├── project-hash.mjs     SHA-256 fingerprint $HASH$HASH$HASHof all source files
 │   ├── generate-prompts.mjs Sync prompts.md into vault on build
 │   └── sync-server.sh       Sync /opt/sys changes back to repo (on demand)
 └── docs/                    Protocol documentation, API reference, specs

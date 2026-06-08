@@ -868,7 +868,7 @@ async function uploadToServer(type, name) {
     if (!file) { showError("Datei nicht lesbar"); return; }
     const serverType = type === "images" ? "image" : type;
     // mind.md und health.md sind unverschlüsselt — Key weglassen damit kein Ciphertext entsteht
-    const plainContextFiles = ["mind.md", "health.md"];
+    const plainContextFiles = ["mind.md", "health.md", "income.md"];
     const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
       ? ""
       : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
