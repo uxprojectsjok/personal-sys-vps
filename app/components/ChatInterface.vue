@@ -3685,7 +3685,7 @@ defineExpose({
 /* ── Stream ──────────────────────────────────────────────────────── */
 .stream {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: clamp(20px,3vw,40px) clamp(12px,3vw,32px) clamp(28px,4vw,56px);
+  padding: clamp(20px,3vw,40px) 0 clamp(28px,4vw,56px) clamp(12px,3vw,32px);
   display: flex; flex-direction: column; position: relative;
 }
 .stream::before {
@@ -3701,6 +3701,7 @@ defineExpose({
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
+  padding-right: clamp(12px,3vw,32px);
 }
 .anchor { height: 1px; }
 
@@ -3997,7 +3998,7 @@ defineExpose({
 }
 .sticker-dir {
   font-family: var(--mono);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: 0.84em;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   font-weight: 700;
@@ -4008,7 +4009,7 @@ defineExpose({
 
 .sticker-pin {
   font-family: var(--mono);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: 0.84em;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   opacity: 0.60;
@@ -4017,7 +4018,7 @@ defineExpose({
 
 .sticker-author {
   font-family: var(--mono);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: 0.84em;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   opacity: 0.90;
@@ -4072,14 +4073,14 @@ defineExpose({
 }
 .sticker-to {
   font-family: var(--mono);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: 0.84em;
   letter-spacing: 0.05em;
   opacity: 0.75;
   margin-right: auto;
 }
 .sticker-time {
   font-family: var(--mono);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: 0.84em;
   color: var(--fg-2);
   letter-spacing: 0.04em;
 }
