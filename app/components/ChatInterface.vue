@@ -39,8 +39,8 @@
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
-              @contextmenu.prevent="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
-              @touchstart.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg')"
+              @contextmenu.prevent="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg', item)"
+              @touchstart.passive="e => _startMediaLongPress(e, item.mediaUrl, 'bild.jpg', item)"
               @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
@@ -113,16 +113,16 @@
             <template v-else>
               <!-- Local cached image -->
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
-                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg', item)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg', item)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
               </div>
               <!-- Local blob doc -->
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name, item)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name, item)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <span class="msg-doc-a">
                   <span class="msg-doc-icon">📄</span>
@@ -192,27 +192,20 @@
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <div v-if="msgMediaCache.get(item.ts)" class="msg-img-wrap"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg')"
-                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg')"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgMediaCache.get(item.ts), 'bild.jpg', item)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgMediaCache.get(item.ts), 'bild.jpg', item)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
-                <div class="msg-img-actions">
-                  <button class="mia-btn mia-btn--del" @click="deleteLocalImg(item)" title="Löschen">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/></svg>
-                    <span>Löschen</span>
-                  </button>
-                </div>
               </div>
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
-                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                @contextmenu.prevent="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name, item)"
+                @touchstart.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name, item)"
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <span class="msg-doc-a">
                   <span class="msg-doc-icon">📄</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
                 </span>
-                <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
               </div>
             </template>
             <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
@@ -495,22 +488,8 @@
       <Transition name="ctx-pop">
         <div v-if="ctxItem" class="ctx-scrim" @click="ctxItem = null">
           <div class="ctx-menu" :style="{ top: ctxPos.y + 'px', left: ctxPos.x + 'px' }" @click.stop>
-            <template v-if="ctxItem._isMedia">
-              <button class="ctx-dl" @click="ctxDownload">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 1v9M4.5 7l3.5 3.5L11.5 7M1.5 13v.5A1.5 1.5 0 003 15h10a1.5 1.5 0 001.5-1.5V13"/>
-                </svg>
-                Herunterladen
-              </button>
-            </template>
-            <template v-else>
-              <button class="ctx-del" @click="ctxDelete">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
-                </svg>
-                Löschen
-              </button>
-            </template>
+            <button v-if="ctxItem._mediaUrl" class="ctx-dl" @click="ctxDownload">Herunterladen</button>
+            <button v-if="ctxItem._item" class="ctx-del" @click="ctxDelete">Löschen</button>
             <button class="ctx-cancel" @click="ctxItem = null">Abbrechen</button>
           </div>
         </div>
@@ -1034,7 +1013,7 @@ let   _lpTimer = null
 function _openCtx(e, item) {
   const src = e.touches?.[0] ?? e
   ctxPos.value = { x: src.clientX, y: src.clientY }
-  ctxItem.value = item
+  ctxItem.value = { _item: item }
 }
 function _startLongPress(e, item) {
   _lpTimer = setTimeout(() => _openCtx(e, item), 500)
@@ -1042,14 +1021,14 @@ function _startLongPress(e, item) {
 function _cancelLongPress() { clearTimeout(_lpTimer); _lpTimer = null }
 
 let _lpMediaTimer = null
-function _openMediaCtx(e, url, name) {
+function _openMediaCtx(e, url, name, item = null) {
   e.preventDefault?.()
   const src = e.touches?.[0] ?? e
   ctxPos.value = { x: src.clientX, y: src.clientY }
-  ctxItem.value = { _isMedia: true, _mediaUrl: url, _mediaName: name }
+  ctxItem.value = { _mediaUrl: url, _mediaName: name, _item: item }
 }
-function _startMediaLongPress(e, url, name) {
-  _lpMediaTimer = setTimeout(() => _openMediaCtx(e, url, name), 500)
+function _startMediaLongPress(e, url, name, item = null) {
+  _lpMediaTimer = setTimeout(() => _openMediaCtx(e, url, name, item), 500)
 }
 function _cancelMediaLongPress() { clearTimeout(_lpMediaTimer); _lpMediaTimer = null }
 function ctxDownload() {
@@ -1059,8 +1038,8 @@ function ctxDownload() {
 }
 
 async function ctxDelete() {
-  if (!ctxItem.value) return
-  const item = ctxItem.value
+  if (!ctxItem.value?._item) return
+  const item = ctxItem.value._item
   ctxItem.value = null
   if (item._type === 'ai') { removeMessage(item.id); return }
   await deleteLocalImg(item)
@@ -5026,7 +5005,7 @@ defineExpose({
 }
 .ctx-del { color: #e06c75; border-bottom: 1px solid var(--line); }
 .ctx-del:hover { background: rgba(224,108,117,0.08); }
-.ctx-dl { color: var(--fg-2); border-bottom: 1px solid var(--line); }
+.ctx-dl { color: var(--fg-2); border-bottom: 1px solid var(--line); font-weight: 500; }
 .ctx-dl:hover { background: rgba(255,255,255,0.06); }
 .ctx-cancel { color: var(--fg-2); }
 .ctx-cancel:hover { background: rgba(255,255,255,0.04); }
