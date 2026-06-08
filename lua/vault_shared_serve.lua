@@ -51,8 +51,18 @@ local function verify_local(sid, cert)
   local active_key = (per_key and per_key ~= "") and per_key or global_key
   if not active_key or active_key == "" then return false end
   local cv = hmac.read_cert_version(sid)
-  for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-    if v >= 0 and hmac.cert_for_soul(active_key, sid, v) == cert then return true end
+  -- stored version first, then full scan 0..20 (matches soul_auth.lua)
+  if hmac.cert_for_soul(active_key, sid, cv) == cert then return true end
+  for v = 0, 20 do
+    if hmac.cert_for_soul(active_key, sid, v) == cert then return true end
+  end
+  -- grace period: prev key
+  local prev_key = cfg.get_master_key_prev and cfg.get_master_key_prev() or nil
+  if prev_key and prev_key ~= "" then
+    if hmac.cert_for_soul(prev_key, sid, cv) == cert then return true end
+    for v = 0, 20 do
+      if hmac.cert_for_soul(prev_key, sid, v) == cert then return true end
+    end
   end
   return false
 end
