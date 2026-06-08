@@ -41,9 +41,29 @@ end
 
 local cv = hmac.read_cert_version(own_soul_id)
 local cert_ok = false
-for _, v in ipairs({ cv, cv - 1, cv + 1 }) do
-  if v >= 0 and hmac.cert_for_soul(active_key, own_soul_id, v) == own_cert then
-    cert_ok = true; break
+-- stored version first, then full scan 0..20 (matches soul_auth.lua)
+if hmac.cert_for_soul(active_key, own_soul_id, cv) == own_cert then
+  cert_ok = true
+else
+  for v = 0, 20 do
+    if hmac.cert_for_soul(active_key, own_soul_id, v) == own_cert then
+      cert_ok = true; break
+    end
+  end
+end
+-- grace period: prev key
+if not cert_ok then
+  local prev_key = cfg.get_master_key_prev and cfg.get_master_key_prev() or nil
+  if prev_key and prev_key ~= "" then
+    if hmac.cert_for_soul(prev_key, own_soul_id, cv) == own_cert then
+      cert_ok = true
+    else
+      for v = 0, 20 do
+        if hmac.cert_for_soul(prev_key, own_soul_id, v) == own_cert then
+          cert_ok = true; break
+        end
+      end
+    end
   end
 end
 if not cert_ok then
