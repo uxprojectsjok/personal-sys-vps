@@ -31,11 +31,8 @@
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
           @contextmenu.prevent="e => _openCtx(e, item)"
-          @touchstart.passive="_startLongPress($event, item)"
-          @touchend="_cancelLongPress"
-          @touchmove="_cancelLongPress"
-          @touchcancel="_cancelLongPress"
         >
+          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
@@ -181,11 +178,8 @@
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
           @contextmenu.prevent="e => _openCtx(e, item)"
-          @touchstart.passive="_startLongPress($event, item)"
-          @touchend="_cancelLongPress"
-          @touchmove="_cancelLongPress"
-          @touchcancel="_cancelLongPress"
         >
+          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
             :style="{ color: item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
@@ -3789,6 +3783,7 @@ defineExpose({
   gap: 5px;
   box-sizing: border-box;
   min-width: 0;
+  position: relative;
 }
 .msg-bubble--me      { align-items: flex-end; }
 .msg-bubble--other   { align-items: flex-start; }
@@ -4084,6 +4079,25 @@ defineExpose({
 .sticker:hover .sticker-x { opacity: 1; }
 .sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
 @media (hover: none) { .sticker-x { opacity: 0.75; } }
+
+.bubble-del {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px; min-height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--fg-2);
+  border-radius: 50%;
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  z-index: 2;
+}
+.msg-bubble:hover .bubble-del { opacity: 1; }
+.bubble-del:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
+@media (hover: none) { .bubble-del { opacity: 0.55; } }
 
 /* Body — inherits sticker background, no extra bg */
 .sticker-body { flex: 1; }
