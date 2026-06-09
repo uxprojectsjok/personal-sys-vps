@@ -268,11 +268,11 @@ export function useClaude() {
           });
           const j = await r.json().catch(() => ({}));
           const msg = j.ok
-            ? "Health Sync gestartet — dauert ca. 30 Sekunden. Sag mir Bescheid, dann rufe ich die aktuellen Werte ab."
+            ? (j.message || "Health Sync erfolgreich.")
             : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
           await streamMsg(msg);
         } catch {
-          await streamMsg("Health Sync konnte nicht gestartet werden.");
+          await streamMsg("Health Sync fehlgeschlagen.");
         }
         isLoading.value = false;
         return streamedResponse.value;
@@ -347,7 +347,7 @@ Wann welches Tool:
 - calendar_read → bei Terminen und Zeitplanung
 - audio_list / image_list / video_list / context_list → für Vault-Inhalte nach Typ
 - profile_get → bei Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz)
-- health_sync → bei "sync", "garmin", "aktualisier" — zuerst synchen, dann: "Sync läuft, ~30 Sek. — ruf mich danach nochmal an." health_check erst wenn der User explizit Daten sehen will
+- health_sync → bei "sync", "garmin", "aktualisier" — wird vom System direkt ausgeführt (~30 Sek. synchron), Ergebnis erscheint automatisch. Nicht selbst aufrufen.
 - health_check → bei Körper, Schlaf, Puls, Wohlbefinden — vollständige Analyse zurück
 - food_log → bei Foto von Essen, Trinken, Süßigkeiten oder Snacks: sofort loggen ohne Kommentar. name und rating SELBST bestimmen (A=Vollwert/frisch z.B. Joghurt+Obst, Salat, Wasser; B=gut z.B. Vollkornbrot, Ei, ungesüßter Tee; C=moderat z.B. Pasta, weißer Reis, Saft; D=schlecht z.B. Frittiertes, Schokolade, Energydrink; E=Junk z.B. Chips, Softdrinks, Fast Food). Danach maximal eine Zeile (z.B. "Erdbeeren · A · gespeichert"). Dann einmal kurz fragen: "Soll ich ein Restaurant in der Nähe suchen?" — nur wenn Wohnort bekannt.
 - shop_log → bei Foto von Nicht-Lebensmittel-Produkten (Elektronik, USB-Sticks, Gadgets, Kabel, Kleidung, Schuhe, Möbel, Geräte, Bücher, Spielzeug etc.) oder wenn jemand etwas kauft/kaufen will: sofort erfassen ohne Ankündigung. name + category SELBST bestimmen, price falls sichtbar/genannt, status=purchased wenn gekauft, wishlist wenn gewünscht. DIREKT danach immer shop_check aufrufen.
