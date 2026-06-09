@@ -283,7 +283,7 @@ export function useClaude() {
             });
           }
           if (fetchDone) break;
-          if (streamedResponse.value) streamedResponse.value += "\n";
+          if (streamedResponse.value) streamedResponse.value += "\n\n";
           await streamMsg(text);
         }
 
@@ -294,7 +294,7 @@ export function useClaude() {
           : j.ok
             ? (j.message || "Health Sync erfolgreich.")
             : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
-        if (streamedResponse.value) streamedResponse.value += "\n";
+        if (streamedResponse.value) streamedResponse.value += "\n\n";
         await streamMsg(msg);
         isLoading.value = false;
         return streamedResponse.value;
