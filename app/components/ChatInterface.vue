@@ -30,7 +30,6 @@
           v-if="item._type === 'ai'"
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
-          @contextmenu.prevent="e => _openCtx(e, item)"
         >
           <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
@@ -177,7 +176,6 @@
           v-else-if="item._type === 'bubble'"
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
-          @contextmenu.prevent="e => _openCtx(e, item)"
         >
           <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
