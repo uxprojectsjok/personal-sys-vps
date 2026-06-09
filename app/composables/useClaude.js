@@ -292,7 +292,7 @@ export function useClaude() {
         const msg = fetchErr
           ? "Health Sync fehlgeschlagen."
           : j.ok
-            ? (j.message || "Health Sync erfolgreich.")
+            ? "Fertig."
             : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
         if (streamedResponse.value) streamedResponse.value += "\n\n";
         await streamMsg(msg);
