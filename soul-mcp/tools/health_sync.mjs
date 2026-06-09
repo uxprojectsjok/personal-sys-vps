@@ -3,7 +3,7 @@ import { postJson } from '../lib/api.mjs';
 export function register(server, token) {
   server.tool(
     'health_sync',
-    'Startet den Garmin Health Sync im Hintergrund — ruft aktuelle Daten (Ruhepuls, Schlaf, Schritte) von Garmin Connect ab und schreibt sie in health.md. Dauert ca. 30 Sekunden. Danach health_check aufrufen um die neuen Werte zu sehen.',
+    'Führt den Garmin Health Sync aus — ruft aktuelle Daten (Ruhepuls, Schlaf, Schritte) von Garmin Connect ab und schreibt sie in health.md. Wartet auf das Ergebnis (~30 Sek.) und gibt Erfolg oder Fehlermeldung zurück.',
     {},
     async () => {
       let result;

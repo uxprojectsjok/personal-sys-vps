@@ -1,6 +1,7 @@
 -- POST /api/health-sync
--- Startet health_sync.py im Hintergrund für die authentifizierte Soul.
--- Antwortet sofort — Sync läuft async (~30 Sek.).
+-- Führt health_sync.py synchron aus — wartet auf Ergebnis und gibt Erfolg/Fehler zurück.
+
+local cjson = require("cjson.safe")
 
 local soul_id = ngx.ctx.soul_id
 if not soul_id then
@@ -10,7 +11,7 @@ if not soul_id then
   return
 end
 
-local VENV   = "/opt/sys/health-sync/.venv/bin/python"
+local VENV   = "/opt/sys/health-sync/.venv/bin/python3"
 local SCRIPT = "/opt/sys/health-sync/health_sync.py"
 local LOG    = "/var/log/sys_health_sync.log"
 
@@ -25,10 +26,28 @@ if not fh then
 end
 fh:close()
 
--- Hintergrundprozess starten (non-blocking)
-local cmd = VENV .. " " .. SCRIPT .. " >> " .. LOG .. " 2>&1 &"
-os.execute(cmd)
+-- Synchron ausführen und Output erfassen
+local pipe = io.popen(VENV .. " " .. SCRIPT .. " 2>&1")
+local output = pipe and pipe:read("*a") or ""
+if pipe then pipe:close() end
 
-ngx.status = 200
+-- Output ins Log schreiben
+local lf = io.open(LOG, "a")
+if lf then lf:write(output); lf:close() end
+
+-- Ergebnis auswerten
+local success = output:find("Done%.") ~= nil or output:find("synced") ~= nil
+local written = output:match("Written: ([^\n]+)")
+
 ngx.header["Content-Type"] = "application/json"
-ngx.say('{"ok":true,"message":"Health Sync gestartet — dauert ca. 30 Sekunden. Danach health_check aufrufen.","log":"' .. LOG .. '"}')
+if success then
+  ngx.status = 200
+  ngx.say(cjson.encode({
+    ok      = true,
+    message = "Health Sync erfolgreich" .. (written and (" — " .. written:match("[^/]+$")) or ""),
+  }))
+else
+  local err = output:match("[Ee]rror[^\n]*") or output:match("Traceback[^\n]*") or "Sync fehlgeschlagen"
+  ngx.status = 500
+  ngx.say(cjson.encode({ ok = false, error = err }))
+end
