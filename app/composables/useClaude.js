@@ -260,20 +260,42 @@ export function useClaude() {
             await new Promise(r => setTimeout(r, 18));
           }
         };
-        try {
-          const r = await fetch("/api/health-sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${soulCert}` },
-            body: "{}"
-          });
-          const j = await r.json().catch(() => ({}));
-          const msg = j.ok
+        const rawFetch = fetch("/api/health-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${soulCert}` },
+          body: "{}"
+        });
+        let fetchDone = false, fetchRes = null, fetchErr = null;
+        rawFetch.then(r => { fetchRes = r; }).catch(e => { fetchErr = e; }).finally(() => { fetchDone = true; });
+
+        const steps = [
+          { at: 0,     text: "Verbinde mit Garmin Connect…" },
+          { at: 5000,  text: "Lese Gesundheitsdaten…" },
+          { at: 14000, text: "Schreibe health.md…" },
+        ];
+        const t0 = Date.now();
+        for (const { at, text } of steps) {
+          const wait = at - (Date.now() - t0);
+          if (wait > 0 && !fetchDone) {
+            await new Promise(res => {
+              const timer = setTimeout(res, wait);
+              rawFetch.finally(() => { clearTimeout(timer); res(); });
+            });
+          }
+          if (fetchDone) break;
+          if (streamedResponse.value) streamedResponse.value += "\n";
+          await streamMsg(text);
+        }
+
+        if (!fetchDone) await rawFetch.catch(() => {});
+        const j = fetchRes ? await fetchRes.json().catch(() => ({})) : {};
+        const msg = fetchErr
+          ? "Health Sync fehlgeschlagen."
+          : j.ok
             ? (j.message || "Health Sync erfolgreich.")
             : (j.error || "Health Sync nicht verfügbar. Aktivierung: bash /opt/sys/health-sync/install.sh");
-          await streamMsg(msg);
-        } catch {
-          await streamMsg("Health Sync fehlgeschlagen.");
-        }
+        if (streamedResponse.value) streamedResponse.value += "\n";
+        await streamMsg(msg);
         isLoading.value = false;
         return streamedResponse.value;
       }
