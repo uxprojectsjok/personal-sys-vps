@@ -432,6 +432,7 @@ export function useVault() {
    */
   /** Listet alle Dateipfade rekursiv – ohne Dateiinhalt zu lesen (schnell) */
   async function listVaultPaths() {
+    if (memoryMode.value) return Array.from(memoryFiles.value.keys());
     if (!dirHandle.value) return [];
     // Re-request permission (needed on mobile after page reload)
     try {

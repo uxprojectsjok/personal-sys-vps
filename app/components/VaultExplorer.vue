@@ -31,7 +31,7 @@
         <p class="text-sm text-white/35">Vault nicht verbunden</p>
       </div>
 
-      <!-- Cloud-Modus-Badge -->
+      <!-- Cloud-Modus-Badge (nur Status, keine v-else-Abhängigkeit) -->
       <div v-if="vaultConnected && memoryMode" class="flex items-center gap-2 px-3 py-2 rounded-none bg-white/4 border border-white/10 text-xs text-white/50">
         <svg class="w-3.5 h-3.5 flex-none text-white/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/>
@@ -40,10 +40,10 @@
         <span class="text-white/30">in-memory</span>
       </div>
 
-      <template v-else>
-        <!-- Sync-Button (gehört zum Lokal-Tab) -->
+      <template v-if="vaultConnected">
+        <!-- Sync-Button (nur im normalen Vault-Modus, nicht im Memory/Cloud-Modus) -->
         <button
-          v-if="soulCert"
+          v-if="soulCert && !memoryMode"
           @click="openSyncModal"
           :disabled="isSyncing || isScanning"
           class="w-full h-9 flex items-center justify-center gap-1.5 rounded-none border border-white/10 text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-xs font-medium"
@@ -281,9 +281,9 @@
 
     </template>
 
-    <!-- Dateien importieren (Lokal-Tab + Vault verbunden) -->
+    <!-- Dateien importieren (Lokal-Tab, auch ohne Vault-Verbindung für Mobile) -->
     <label
-      v-if="tab === 'local' && vaultConnected"
+      v-if="tab === 'local' && soulCert"
       class="w-full flex items-center justify-center gap-1.5 py-2 rounded-none border border-dashed border-white/15 text-white/40 hover:text-white/70 hover:border-white/30 transition cursor-pointer text-xs"
       title="Dateien aus dem Gerät importieren"
     >
@@ -492,7 +492,7 @@ const SKIP_FILES  = /^(voice_profile\.json|motion_profile\.json)$/i;
 
 const {
   isConnected: vaultConnected, memoryMode, cloudSource, writeFile, readVaultFile, deleteLocalFile, scanVault: scanLocalVault,
-  allFiles
+  allFiles, attachMemory
 } = useVault();
 
 const {
@@ -840,8 +840,12 @@ async function confirmSync() {
 
 async function addLocalFiles(event) {
   const files = [...(event.target.files || [])];
-  if (!files.length || !vaultConnected.value) return;
+  if (!files.length) return;
   event.target.value = "";
+  // Auf Mobile (kein File System Access API): Memory-Modus aktivieren damit Dateien gelistet werden können
+  if (!vaultConnected.value) {
+    await attachMemory([], "");
+  }
   let ok = 0, fail = 0;
   for (const file of files) {
     const buf    = await file.arrayBuffer();
