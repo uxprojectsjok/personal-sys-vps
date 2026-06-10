@@ -2130,6 +2130,12 @@ function detectIntent(text) {
   // @create-media → KI-Bildgenerierung via WaveSpeed
   const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
   if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
+  // @food-log / @food → food_log via KI (kein Bild nötig)
+  const foodMatch = t.match(/^@food(?:-log)?\b\s*(.*)/is)
+  if (foodMatch) return { type: 'food-log', query: foodMatch[1].trim() }
+  // @product / @product-log → shop_log via KI (kein Bild nötig)
+  const productMatch = t.match(/^@product(?:-log)?\b\s*(.*)/is)
+  if (productMatch) return { type: 'product-log', query: productMatch[1].trim() }
   // @suche → KI-Websuche
   const sucheMatch = t.match(/^@suche\b\s*(.*)/is)
   if (sucheMatch) return { type: 'web-search', query: sucheMatch[1].trim() }
@@ -3131,6 +3137,19 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
     if (vRes.ok) {
       const vData  = await vRes.json()
 
+      // Mehrdeutig (Food + Produkt möglich) → User fragen
+      if (vData.isAmbiguous) {
+        updateLastMessage('Als was soll ich das loggen?')
+        setLastMessageMeta('streaming', false)
+        setLastMessageMeta('actions', [
+          { label: 'Essen / Trinken', cmd: `@food-log ${caption}` },
+          { label: 'Produkt', cmd: `@product-log ${caption}` },
+        ])
+        await scrollToBottom()
+        visionLoading.value = false
+        return
+      }
+
       // Lebensmittelbild → food_log direkt aufrufen, keine soulReaction
       if (vData.isFoodPhoto && vData.foodName) {
         try {
@@ -3388,7 +3407,10 @@ async function maybeCompressHistory() {
 
 // ── Core dispatch ──────────────────────────────────────────────────
 async function dispatchToChat(text, msgMeta = {}) {
-  addMessage('user', text, msgMeta)
+  const forceTool = msgMeta._forceTool || null
+  const displayMeta = { ...msgMeta }
+  delete displayMeta._forceTool
+  addMessage('user', text, displayMeta)
   await scrollToBottom()
   await maybeCompressHistory()
   addMessage('assistant', '', { streaming: true })
@@ -3414,6 +3436,7 @@ async function dispatchToChat(text, msgMeta = {}) {
     role: localRole.value,
     model: selectedModel.value,
     externalTools: mcpTools.value,
+    forceTool,
     onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
   })
 
@@ -3543,6 +3566,15 @@ async function handleSend() {
     if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
     if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
     await dispatchToChat(result.text || raw, meta)
+    return
+  }
+
+  if (intent.type === 'food-log') {
+    await dispatchToChat(intent.query || raw, { _forceTool: 'food_log' })
+    return
+  }
+  if (intent.type === 'product-log') {
+    await dispatchToChat(intent.query || raw, { _forceTool: 'shop_log' })
     return
   }
 
