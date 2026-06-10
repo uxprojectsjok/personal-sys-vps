@@ -82,11 +82,21 @@ local prompt_text = VISION_PERSONA
   .. '\n\nAnalysiere das Bild und antworte NUR mit einem JSON-Objekt.'
 
   .. '\n\n## WICHTIG: Lebensmittel-Erkennung (ZUERST pruefen)'
-  .. '\n- Zeigt das Bild hauptsaechlich Essen, Trinken, Snacks, Suessigkeiten oder Getraenke?'
-  .. '\n- Wenn JA: setze isFoodPhoto:true, bestimme foodName (kurz, z.B. "Erdbeeren", "Kaffee", "Schokoriegel"), foodRating (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet/zuckerreich, E=Junk/Softdrink), foodNotes (erkannte Zutaten, max 60 Zeichen). soulReaction bleibt leer, outputMode="skip".'
-  .. '\n- Wenn NEIN: isFoodPhoto:false, foodName/foodRating/foodNotes leer lassen.'
+  .. '\n- Zeigt das Bild Essen/Trinken ODER beschreibt die Nutzerbeschreibung ein Lebensmittel?'
+  .. '\n- Wenn JA: setze isFoodPhoto:true.'
+  .. '\n- foodName: PFLICHT den Transcript als primaere Quelle nutzen. Wenn der Nutzer z.B. "Vollkornbrot mit Butter und Marmelade" sagt, dann foodName="Vollkornbrot mit Butter und Marmelade". Alle erwaennten Zutaten, Toppings und Zusaetze muessen im foodName enthalten sein. Bild nur zur Ergaenzung falls Transcript unvollstaendig.'
+  .. '\n- foodRating: das GESAMTE Gericht bewerten inkl. aller Zusaetze aus dem Transcript — z.B. Butter+Marmelade auf Brot → C (nicht A/B). A=Vollwert/frisch pur, B=gute Basis mit minimalen Zusaetzen, C=moderat (Aufschnitt/Aufstrich), D=stark verarbeitet/zuckerreich, E=Junk.'
+  .. '\n- foodNotes: alle Zutaten aus Transcript + Bild, max 60 Zeichen.'
+  .. '\n- soulReaction bleibt leer, outputMode="skip".'
+  .. '\n- Wenn weder Bild noch Transcript auf Lebensmittel hinweisen: isFoodPhoto:false, foodName/foodRating/foodNotes leer.'
 
-  .. '\n\n## Produkt-Erkennung (pruefen wenn KEIN Lebensmittelbild)'
+  .. '\n\n## Ambiguity-Check (vor Produkt-Erkennung — ZUERST pruefen)'
+  .. '\n- REGEL 1: Enthaelt die Nutzerbeschreibung ein Getraenk oder Lebensmittel (Wasser, Kaffee, Tee, Saft, Bier, Milch, Shake, Protein, Suppe, etc.) UND zeigt das Bild eine Flasche, Dose, Becher oder Verpackung? → isAmbiguous:true, FERTIG.'
+  .. '\n- REGEL 2: Zeigt das Bild eindeutig ein Getraenk in einem Behaelter (Trinkflasche, PET-Flasche, Dose, Tetra Pak, Becher) — auch ohne Nutzerbeschreibung? → isAmbiguous:true, FERTIG.'
+  .. '\n- REGEL 3: Zeigt das Bild verpackte Lebensmittel, Supplements, Proteinpulver, Suessigkeiten in Verpackung? → isAmbiguous:true, FERTIG.'
+  .. '\n- Wenn isAmbiguous:true: isFoodPhoto:false, isProductPhoto:false — alle anderen Felder leer lassen. Die App fragt den Nutzer.'
+  .. '\n- Nur wenn KEINE der Regeln zutrifft: weiter mit normaler Food/Produkt-Erkennung.'
+  .. '\n\n## Produkt-Erkennung (pruefen wenn KEIN Lebensmittelbild und NICHT ambiguous)'
   .. '\n- Zeigt das Bild ein klar erkennbares Produkt, Geraet, Gadget, Kabel, Kleidungsstueck, Schuh, Moebel, Buch, Spielzeug oder sonstigen Konsumgegenstand?'
   .. '\n- Wenn Nutzerbeschreibung vorhanden: nutze sie als primaere Quelle fuer productName und productCategory.'
   .. '\n- Wenn JA: setze isProductPhoto:true, bestimme productName (konkreter Produktname, z.B. "SanDisk USB-Stick 64GB", "Nike Laufschuhe"), productCategory (eine von: Elektronik, Kleidung, Schuhe, Moebel, Buecher, Sport, Beauty, Haushalt, Sonstiges), productPrice (sichtbarer Preis als Zahl ohne Waehrungszeichen, z.B. 29.99 — oder 0 wenn nicht sichtbar). soulReaction=aktive Frage (s.u.), outputMode="skip".'
@@ -111,7 +121,7 @@ local prompt_text = VISION_PERSONA
   .. '\n- KEINE Erwaehnung des Original-Hintergrunds – nur neue Szene + Person'
   .. '\n- Englisch, max 120 Zeichen'
 
-  .. '\n\n{"isFoodPhoto":<true ODER false>,"foodName":"<Name oder leer>","foodRating":"<A/B/C/D/E oder leer>","foodNotes":"<Zutaten oder leer>",'
+  .. '\n\n{"isAmbiguous":<true ODER false>,"isFoodPhoto":<true ODER false>,"foodName":"<Name oder leer>","foodRating":"<A/B/C/D/E oder leer>","foodNotes":"<Zutaten oder leer>",'
   .. '"isProductPhoto":<true ODER false>,"productName":"<Produktname oder leer>","productCategory":"<Kategorie oder leer>","productPrice":<Preis als Zahl oder 0>,'
   .. '"analysis":"<1-2 Saetze: Stimmung und Atmosphaere>",'
   .. '"soulReaction":"<2-3 Saetze auf Deutsch – leer wenn Lebensmittelbild>",'
@@ -201,6 +211,7 @@ local analysis        = ""
 local soul_reaction   = ""
 local gen_prompt      = ""
 local out_mode        = "skip"
+local is_ambiguous    = false
 local is_food         = false
 local food_name       = ""
 local food_rating     = ""
@@ -215,6 +226,7 @@ local json_str = text:match("%b{}")
 if json_str then
   local ok4, parsed = pcall(cjson.decode, json_str)
   if ok4 and type(parsed) == "table" then
+    is_ambiguous   = parsed.isAmbiguous == true
     is_food        = parsed.isFoodPhoto == true
     food_name      = tostring(parsed.foodName   or "")
     food_rating    = tostring(parsed.foodRating or "")
@@ -235,6 +247,7 @@ end
 if out_mode ~= "skip" and gen_prompt == "" then gen_prompt = text:sub(1, 120) end
 
 local ok5, result = pcall(cjson.encode, {
+  isAmbiguous      = is_ambiguous,
   isFoodPhoto      = is_food,
   foodName         = food_name,
   foodRating       = food_rating,
