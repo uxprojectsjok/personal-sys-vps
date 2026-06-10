@@ -143,6 +143,8 @@ Three phases — nothing more:
 
 **Encryption:** AES-256-CBC in the browser (WebCrypto API). The server only sees encrypted bytes with the magic header `SYSCRYPT01`. The key never leaves the browser.
 
+**Plaintext context files (by design):** `health.md`, `mind.md`, `income.md` and `shopping.md` are stored as plaintext on the server. This is a deliberate technical trade-off: server-side automation (Garmin health sync, food logging, payment tracking) requires direct read/write access without involving the client. `sys.md` (the main soul file) is encrypted client-side before upload and the server never sees its contents. `prompts.md` is a technical file and also plaintext by design.
+
 ---
 
 ## Repository Structure
