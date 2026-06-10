@@ -3209,7 +3209,7 @@ async function handleImageVision(file, name) {
   catch { visionLoading.value = false; return }
   const previewUrl = URL.createObjectURL(file)
   mediaBlobUrls.push(previewUrl)
-  await runVisionAnalysis(base64, `[Bild: "${name}"]`, previewUrl)
+  await runVisionAnalysis(base64, name, previewUrl)
   visionLoading.value = false
 }
 
