@@ -40,10 +40,10 @@
         <span class="text-white/30">in-memory</span>
       </div>
 
-      <template v-if="vaultConnected">
+      <template>
         <!-- Sync-Button (nur im normalen Vault-Modus, nicht im Memory/Cloud-Modus) -->
         <button
-          v-if="soulCert && !memoryMode"
+          v-if="soulCert && vaultConnected && !memoryMode"
           @click="openSyncModal"
           :disabled="isSyncing || isScanning"
           class="w-full h-9 flex items-center justify-center gap-1.5 rounded-none border border-white/10 text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-xs font-medium"
@@ -260,13 +260,27 @@
                 <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
               </button>
               <button
+                @click.stop="downloadToLocal(type, name)"
+                :disabled="!!serverBusy[name]"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition disabled:opacity-25 shrink-0"
+                title="Lokal speichern"
+                aria-label="Lokal speichern"
+              >
+                <svg v-if="serverBusy[name] === 'down'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
+                </svg>
+                <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/>
+                </svg>
+              </button>
+              <button
                 @click.stop="openContextMenu('server', type, name, $event)"
                 :disabled="!!serverBusy[name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 shrink-0"
                 :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/8'"
                 aria-label="Aktionen"
               >
-                <svg v-if="serverBusy[name]" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <svg v-if="serverBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
                 </svg>
                 <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
@@ -906,7 +920,6 @@ async function uploadToServer(type, name) {
 // ── Server → Lokal herunterladen ────────────────────────────────────────────
 
 async function downloadToLocal(type, name) {
-  if (!vaultConnected.value) return;
   serverBusy[name] = "down";
   try {
     // Profile haben einen eigenen Endpunkt
