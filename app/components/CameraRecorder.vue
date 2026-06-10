@@ -51,8 +51,9 @@
                 maxlength="280"
                 @keydown.enter.prevent="submitCapture"
               ></textarea>
-              <!-- Mic-Button (nach Aufnahme frei verfügbar) -->
+              <!-- Mic-Button: nur wenn kein Text getippt oder gerade aktiv -->
               <button
+                v-show="!captionText.trim() || isListening"
                 @click="startListening"
                 :class="isListening ? 'text-red-400' : 'text-white/40 hover:text-white/70'"
                 class="absolute right-3 bottom-3 transition-colors"

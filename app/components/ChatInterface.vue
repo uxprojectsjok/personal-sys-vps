@@ -341,6 +341,7 @@
         </button>
         <!-- Voice-Agent Mikrofon: gedrückt halten zum Aufnehmen -->
         <button
+          v-show="!draft.trim()"
           class="dock-icon dock-mic"
           :class="{ recording: voiceRecording }"
           :disabled="props.growthLocked"
@@ -1111,7 +1112,7 @@ const canSend = computed(() =>
 )
 
 const inputPlaceholder = computed(() => {
-  return 'Nachricht schreiben…'
+  return 'Schreiben…'
 })
 
 // ── Messaging / Social sphere state ───────────────────────────────
@@ -3854,7 +3855,7 @@ defineExpose({
 .msg-inner {
   padding: 12px 16px;
   font-family: var(--sans);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: clamp(15px, 1.5vw, 17px);
   line-height: 1.58;
   color: var(--fg);
   word-break: break-word;
@@ -4009,7 +4010,7 @@ defineExpose({
   border: 1px solid rgba(109,184,154,0.20);
   border-radius: 16px 16px 16px 4px;
   color: var(--fg);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: clamp(15px, 1.5vw, 17px);
   line-height: 1.58;
 }
 .msg-inner--ki em { color: var(--accent-bright); font-style: italic; }
@@ -4043,7 +4044,7 @@ defineExpose({
   background: rgba(255,255,255,0.055);
   box-shadow: 0 2px 10px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.18);
   font-family: var(--sans);
-  font-size: clamp(14px, 1.35vw, 15.5px);
+  font-size: clamp(15px, 1.5vw, 17px);
   line-height: 1.58;
   color: var(--fg);
   word-break: break-word;
