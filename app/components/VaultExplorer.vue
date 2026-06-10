@@ -121,7 +121,7 @@
               :class="selectedLocal.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('local', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0 overflow-hidden"
                 :disabled="settingActive || type === 'context' || type === 'profiles'"
                 :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
               >
@@ -250,7 +250,7 @@
               :class="selectedServer.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('server', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0 overflow-hidden"
                 :disabled="settingActive || type === 'context' || type === 'profiles'"
                 :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
               >
