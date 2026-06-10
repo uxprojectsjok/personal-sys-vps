@@ -131,13 +131,13 @@ const SOUL_TOOLS = [
   },
   {
     name: "food_log",
-    description: "Trägt eine Mahlzeit, ein Getränk oder eine Süßigkeit in health.md ein. Du bestimmst name und rating SELBST aus der Bildanalyse — frag den User NICHT. name = was du erkennst (Mahlzeit, Getränk, Snack, Süßigkeit). rating = deine eigene Bewertung A–E (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet/zuckerhaltig, E=Junk/Softdrink). notes = erkannte Zutaten. Direkt nach der Analyse aufrufen, ohne Rückfrage.",
+    description: "Trägt eine Mahlzeit, ein Getränk oder eine Süßigkeit in health.md ein. WICHTIG: Hat der User Text mitgeschickt der das Essen beschreibt, nimm DIESEN als Grundlage für name/notes/rating — der Text hat Vorrang vor der Bildanalyse. Das Bild ist nur Fallback wenn kein beschreibender Text vorhanden ist. rating = deine Bewertung A–E (A=Vollwert/frisch, B=gut, C=moderat, D=stark verarbeitet/zuckerhaltig, E=Junk/Softdrink). Direkt aufrufen ohne Rückfrage.",
     input_schema: {
       type: "object",
       properties: {
-        name:   { type: "string", description: "Name des Lebensmittels (Mahlzeit, Getränk, Snack, Süßigkeit) — du erkennst ihn selbst aus dem Bild" },
-        rating: { type: "string", enum: ["A", "B", "C", "D", "E"], description: "Deine eigene Bewertung A–E — nicht vom User fragen" },
-        notes:  { type: "string", description: "Erkannte Zutaten und Besonderheiten" }
+        name:   { type: "string", description: "Name des Lebensmittels — aus dem Text des Users wenn vorhanden, sonst aus dem Bild" },
+        rating: { type: "string", enum: ["A", "B", "C", "D", "E"], description: "Deine eigene Bewertung A–E basierend auf dem tatsächlichen Inhalt (Text > Bild)" },
+        notes:  { type: "string", description: "Zutaten und Besonderheiten — aus dem Text des Users wenn vorhanden, sonst aus dem Bild" }
       },
       required: ["name", "rating"]
     }
@@ -149,7 +149,7 @@ const SOUL_TOOLS = [
   },
   {
     name: "shop_log",
-    description: "Erfasst ein Produkt in shopping.md — Kauf oder Wunschliste. Bei Produktfotos: name und category SELBST aus dem Bild bestimmen, price falls sichtbar, status je nach Kontext. Direkt aufrufen ohne Rückfrage.",
+    description: "Erfasst ein Produkt in shopping.md — Kauf oder Wunschliste. Hat der User Text mitgeschickt der das Produkt beschreibt, nimm DIESEN als Grundlage — der Text hat Vorrang vor der Bildanalyse. price falls sichtbar, status je nach Kontext. Direkt aufrufen ohne Rückfrage.",
     input_schema: {
       type: "object",
       properties: {
@@ -371,7 +371,7 @@ Wann welches Tool:
 - profile_get → bei Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz)
 - health_sync → bei "sync", "garmin", "aktualisier" — wird vom System direkt ausgeführt (~30 Sek. synchron), Ergebnis erscheint automatisch. Nicht selbst aufrufen.
 - health_check → bei Körper, Schlaf, Puls, Wohlbefinden — vollständige Analyse zurück
-- food_log → bei Foto von Essen, Trinken, Süßigkeiten oder Snacks: sofort loggen ohne Kommentar. name und rating SELBST bestimmen (A=Vollwert/frisch z.B. Joghurt+Obst, Salat, Wasser; B=gut z.B. Vollkornbrot, Ei, ungesüßter Tee; C=moderat z.B. Pasta, weißer Reis, Saft; D=schlecht z.B. Frittiertes, Schokolade, Energydrink; E=Junk z.B. Chips, Softdrinks, Fast Food). Danach maximal eine Zeile (z.B. "Erdbeeren · A · gespeichert"). Dann einmal kurz fragen: "Soll ich ein Restaurant in der Nähe suchen?" — nur wenn Wohnort bekannt.
+- food_log → bei Foto von Essen, Trinken, Süßigkeiten oder Snacks: sofort loggen ohne Kommentar. WICHTIG: Hat der User Text dabei geschrieben der das Essen beschreibt, nutze DIESEN für name/notes — nicht die Bildanalyse. Das Bild ist nur Fallback. rating A–E selbst bestimmen (A=Vollwert/frisch z.B. Joghurt+Obst, Salat, Wasser; B=gut z.B. Vollkornbrot, Ei, ungesüßter Tee; C=moderat z.B. Pasta, weißer Reis, Saft; D=schlecht z.B. Frittiertes, Schokolade, Energydrink; E=Junk z.B. Chips, Softdrinks, Fast Food). Danach maximal eine Zeile (z.B. "Schwarzbrot mit Marmelade · B · gespeichert"). Dann einmal kurz fragen: "Soll ich ein Restaurant in der Nähe suchen?" — nur wenn Wohnort bekannt.
 - shop_log → bei Foto von Nicht-Lebensmittel-Produkten (Elektronik, USB-Sticks, Gadgets, Kabel, Kleidung, Schuhe, Möbel, Geräte, Bücher, Spielzeug etc.) oder wenn jemand etwas kauft/kaufen will: sofort erfassen ohne Ankündigung. name + category SELBST bestimmen, price falls sichtbar/genannt, status=purchased wenn gekauft, wishlist wenn gewünscht. DIREKT danach immer shop_check aufrufen.
 - shop_check → immer direkt nach shop_log aufrufen. Danach als Lifestyle-Berater in 3 Schritten: 1) Preisvergleich via web_search("[Produktname] Preisvergleich") 2) lokale Händler via web_search("[Produktname] kaufen [Wohnort]") falls Wohnort vorhanden 3) kurze Einschätzung ob Produkt zu Stil/Persönlichkeit passt. Auch bei expliziten Fragen zu Produkten oder Wunschliste.
 
