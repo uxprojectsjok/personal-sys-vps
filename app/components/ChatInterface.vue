@@ -3139,14 +3139,28 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
     if (vRes.ok) {
       const vData  = await vRes.json()
 
-      // Mehrdeutig (Food + Produkt möglich) → User fragen
+      // Mehrdeutig (Food + Produkt möglich) → KI fragt natürlich im Chat
       if (vData.isAmbiguous) {
-        updateLastMessage('Als was soll ich das loggen?')
+        const apiMsgs = toApiMessages()
+        const lastUser = [...apiMsgs].reverse().find(m => m.role === 'user')
+        if (lastUser) {
+          const baseText = typeof lastUser.content === 'string' ? lastUser.content : caption
+          lastUser.content = baseText + '\n[Bild erkannt – mehrdeutig: könnte Essen/Getränk oder Produkt sein. Frag mich kurz was ich damit machen möchte.]'
+        }
+        await chat({
+          messages: apiMsgs,
+          soulContent: props.soulContent, soulCert: props.soulCert,
+          mindContent: mindContent.value || null,
+          vaultContext: null, networkContext: null,
+          networkPdfBlocks: null, networkImageBlocks: null,
+          conversationSummary: conversationSummary.value || null,
+          profileImageBase64: profileBase64.value,
+          role: localRole.value, model: selectedModel.value,
+          externalTools: mcpTools.value, voiceMode: false,
+          forceTool: null,
+          onDelta: (delta, fullText) => { updateLastMessage(fullText); scrollToBottom() },
+        })
         setLastMessageMeta('streaming', false)
-        setLastMessageMeta('actions', [
-          { label: 'Essen / Trinken', cmd: `@food-log ${caption}` },
-          { label: 'Produkt', cmd: `@product-log ${caption}` },
-        ])
         await scrollToBottom()
         visionLoading.value = false
         return
