@@ -153,6 +153,10 @@
 
                     <!-- Regular files -->
                     <template v-else>
+                      <!-- Upload to server (Lokal-Tab) -->
+                      <button v-if="tab === 'lokal' && vaultConnected && soulToken" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" title="Auf Server hochladen">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10V2m0 0L5 5m3-3 3 3"/><rect x="2" y="12" width="12" height="3" rx="1"/></svg>
+                      </button>
                       <!-- Download (nur auf Server-Tab sinnvoll) -->
                       <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
