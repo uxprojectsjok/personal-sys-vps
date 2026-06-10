@@ -80,7 +80,7 @@
         >
           <span class="text-xs text-white/60 sm:flex-1">{{ selectedLocal.size }} ausgewählt</span>
           <div class="flex items-center gap-1.5">
-            <button v-if="soulCert" @click="uploadSelectedLocal"
+            <button @click="uploadSelectedLocal"
               class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
@@ -130,7 +130,7 @@
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
                 <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
               </button>
-              <button v-if="soulCert"
+              <button
                 @click.stop="uploadToServer(type, name)"
                 :disabled="!!localBusy[name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition disabled:opacity-25 shrink-0"
