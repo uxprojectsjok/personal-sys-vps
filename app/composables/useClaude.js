@@ -235,7 +235,7 @@ export function useClaude() {
     return [{ role: "user", content: firstBlocks }, ...rest];
   }
 
-  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6", externalTools = [], voiceMode = false }) {
+  async function chat({ messages, soulContent, soulCert, mindContent, vaultContext, networkContext, networkPdfBlocks, networkImageBlocks, conversationSummary, profileImageBase64, onDelta, role = "soul", model = "claude-sonnet-4-6", externalTools = [], voiceMode = false, forceTool = null }) {
     if (typeof window === "undefined") return null;
 
     isLoading.value = true;
@@ -591,17 +591,17 @@ ${mediaSignalInstructions}`;
         fullSoul && role === "soul" ? networkImageBlocks : null
       );
 
-      // Bild in letzter User-Nachricht? → food_log in Runde 0 erzwingen
+      // Bild in letzter User-Nachricht oder explizites forceTool? → Tool in Runde 0 erzwingen
       const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
       const lastMsgHasImage = Array.isArray(lastUserMsg?.content) &&
         lastUserMsg.content.some(b => b.type === "image");
-      const forceFoodLog = hasSoulTools && lastMsgHasImage
-        ? { type: "tool", name: "food_log" }
-        : null;
+      const forceToolChoice = forceTool
+        ? { type: "tool", name: forceTool }
+        : (hasSoulTools && lastMsgHasImage ? { type: "tool", name: "food_log" } : null);
 
       for (let round = 0; round < 4; round++) {
         // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
-        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0 ? forceFoodLog : null);
+        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0 ? forceToolChoice : null);
         if (!result) return null; // Cert-Fehler bereits gesetzt
 
         const { allBlocks, stopReason } = result;
