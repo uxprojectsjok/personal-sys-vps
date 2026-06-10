@@ -63,15 +63,6 @@
                 </svg>
                 {{ syncing ? 'Lädt…' : 'Auf Server' }}
               </button>
-              <!-- Upload from device (lokal: in vault; server: direkt auf server) -->
-              <button class="dt-upload-btn" @click="triggerUpload">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 13V3m0 0L6 7m4-4 4 4"/>
-                  <path stroke-linecap="round" d="M3 16h14"/>
-                </svg>
-                Hochladen
-              </button>
-              <input ref="fileInput" type="file" multiple class="dt-file-input" @change="handleFileUpload" />
               <!-- sys.md lokal importieren -->
               <input ref="soulInput" type="file" accept=".md" class="dt-file-input" @change="handleSoulImport" />
               <!-- sys.md auf Server ersetzen -->
@@ -192,7 +183,7 @@ definePageMeta({ layout: false })
 
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded } = useSoul()
-const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, writeFile, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
+const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
 const { vaultKey } = useVaultSession()
 
@@ -203,7 +194,6 @@ const tab              = ref('lokal')
 const typeFilter       = ref('all')
 const searchQuery      = ref('')
 const refreshing       = ref(false)
-const fileInput        = ref(null)
 const soulInput        = ref(null)
 const soulServerInput  = ref(null)
 const busy             = reactive({})
@@ -432,37 +422,6 @@ async function deleteFile(file) {
     }
   } catch { showToast('Fehler beim Löschen', 'err') }
   finally { busy[file.id] = false }
-}
-
-// ── Upload from device ─────────────────────────────────────────────────────
-function triggerUpload() { fileInput.value?.click() }
-
-async function handleFileUpload(e) {
-  const files = Array.from(e.target.files || []); if (!files.length) return
-  // Server-Tab: direkt auf Server hochladen
-  if (tab.value === 'server') {
-    let ok = 0
-    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
-    for (const file of files) {
-      const buf     = await file.arrayBuffer()
-      const apiType = nameToApiType(file.name)
-      const res     = await syncFile(soulToken.value, apiType, file.name, buf, key)
-      if (res.ok) ok++
-      else showToast(`${file.name}: ${res.error || 'Upload fehlgeschlagen'}`, 'err')
-    }
-    if (ok) { showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} auf Server hochgeladen ✓`); await loadContext(soulToken.value); await scanLocalVault() }
-    e.target.value = ''; return
-  }
-  // Lokal-Tab: in Vault speichern
-  let ok = 0
-  for (const file of files) {
-    const buf = await file.arrayBuffer()
-    const saved = await writeFile(file.name, buf)
-    if (saved) ok++
-  }
-  await scanLocalVault()
-  showToast(`${ok} Datei${ok !== 1 ? 'en' : ''} hinzugefügt ✓`)
-  e.target.value = ''
 }
 
 // ── Ganzen lokalen Vault auf Server laden ──────────────────────────────────
