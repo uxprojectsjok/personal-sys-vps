@@ -10,6 +10,9 @@
 // Service Worker registrieren — erforderlich für PWA-Installierbarkeit auf Android/Chrome
 if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_RELOAD') window.location.reload()
+  })
 }
 </script>
 

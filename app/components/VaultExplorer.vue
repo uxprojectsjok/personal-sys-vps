@@ -117,11 +117,12 @@
           <!-- Datei-Zeilen -->
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="name in files" :key="name"
-              class="flex items-center gap-2 px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+              class="grid items-center px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+              style="grid-template-columns: minmax(0,1fr) 2rem 2rem; gap: 0.5rem"
               :class="selectedLocal.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('local', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0 overflow-hidden"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 py-2 text-left overflow-hidden w-full"
                 :disabled="settingActive || type === 'context' || type === 'profiles'"
                 :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
               >
@@ -133,7 +134,7 @@
               <button
                 @click.stop="uploadToServer(type, name)"
                 :disabled="!!localBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition disabled:opacity-25 shrink-0"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
                 title="Auf Server hochladen"
                 aria-label="Auf Server hochladen"
               >
@@ -147,8 +148,8 @@
               <button
                 @click.stop="openContextMenu('local', type, name, $event)"
                 :disabled="!!localBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 shrink-0"
-                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/8'"
+                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25"
+                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/8'"
                 aria-label="Aktionen"
               >
                 <svg v-if="localBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -246,11 +247,12 @@
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="name in files" :key="name"
-              class="flex items-center gap-2 px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+              class="grid items-center px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+              style="grid-template-columns: minmax(0,1fr) 2rem 2rem; gap: 0.5rem"
               :class="selectedServer.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('server', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 flex-1 py-2 text-left min-w-0 overflow-hidden"
+              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 py-2 text-left overflow-hidden w-full"
                 :disabled="settingActive || type === 'context' || type === 'profiles'"
                 :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
               >
@@ -262,7 +264,7 @@
               <button
                 @click.stop="downloadToLocal(type, name)"
                 :disabled="!!serverBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition disabled:opacity-25 shrink-0"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
                 title="Lokal speichern"
                 aria-label="Lokal speichern"
               >
@@ -276,8 +278,8 @@
               <button
                 @click.stop="openContextMenu('server', type, name, $event)"
                 :disabled="!!serverBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 shrink-0"
-                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/8'"
+                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25"
+                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/8'"
                 aria-label="Aktionen"
               >
                 <svg v-if="serverBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
