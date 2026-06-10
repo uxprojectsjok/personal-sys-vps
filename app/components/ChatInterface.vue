@@ -953,6 +953,8 @@ function insertEmoji(emoji) {
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = [
+  { cmd: '@food-log ',    label: 'food-log',     desc: 'Mahlzeit / Getränk loggen',       direct: false, hint: 'Vollkornbrot mit Butter …'              },
+  { cmd: '@product ',     label: 'product',      desc: 'Produkt erfassen',                direct: false, hint: 'Nike Sneakers …'                        },
   { cmd: '@suche ',       label: 'suche',        desc: 'KI-Websuche',                     direct: false, hint: 'Was ist …'                              },
   { cmd: '@create-media ',label: 'create-media', desc: 'KI-Bild generieren',              direct: false, hint: 'Beschreibe das Bild …'                  },
   { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',                direct: true                                                  },
