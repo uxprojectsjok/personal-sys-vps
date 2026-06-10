@@ -117,48 +117,50 @@
           <!-- Datei-Zeilen -->
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="name in files" :key="name"
-              class="grid items-center px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
-              style="grid-template-columns: minmax(0,1fr) 2rem 2rem; gap: 0.5rem"
+              class="relative px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
               :class="selectedLocal.has(name) ? 'bg-white/[0.06]' : ''"
               @click="toggleSelect('local', name)"
             >
-              <button @click.stop="onSetActive(type, name)" class="flex items-center gap-2 py-2 text-left overflow-hidden w-full"
+              <button @click.stop="onSetActive(type, name)"
+                class="flex items-center gap-2 py-3 text-left overflow-hidden"
+                :style="{paddingRight:'76px', width:'100%', cursor: (type === 'context' || type === 'profiles') ? 'default' : 'pointer'}"
                 :disabled="settingActive || type === 'context' || type === 'profiles'"
-                :style="(type === 'context' || type === 'profiles') ? 'cursor:default' : ''"
               >
                 <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
                 <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
               </button>
-              <button
-                @click.stop="uploadToServer(type, name)"
-                :disabled="!!localBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
-                title="Auf Server hochladen"
-                aria-label="Auf Server hochladen"
-              >
-                <svg v-if="localBusy[name] === 'up'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
-                </svg>
-              </button>
-              <button
-                @click.stop="openContextMenu('local', type, name, $event)"
-                :disabled="!!localBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25"
-                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/8'"
-                aria-label="Aktionen"
-              >
-                <svg v-if="localBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
-                </svg>
-                <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="14" cy="8" r="1.5"/>
-                </svg>
-              </button>
+              <div class="absolute right-0 top-0 bottom-0 flex items-center" style="right:12px">
+                <button
+                  @click.stop="uploadToServer(type, name)"
+                  :disabled="!!localBusy[name]"
+                  style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.65);flex-shrink:0"
+                  title="Auf Server hochladen"
+                  aria-label="Auf Server hochladen"
+                >
+                  <svg v-if="localBusy[name] === 'up'" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
+                  </svg>
+                  <svg v-else style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+                  </svg>
+                </button>
+                <button
+                  @click.stop="openContextMenu('local', type, name, $event)"
+                  :disabled="!!localBusy[name]"
+                  style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                  :style="isMenuOpen(type, name) ? 'background:rgba(255,255,255,0.1);color:#fff' : 'color:rgba(255,255,255,0.65)'"
+                  aria-label="Aktionen"
+                >
+                  <svg v-if="localBusy[name] === 'del'" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
+                  </svg>
+                  <svg v-else style="width:16px;height:16px" fill="currentColor" viewBox="0 0 16 16">
+                    <circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="14" cy="8" r="1.5"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
