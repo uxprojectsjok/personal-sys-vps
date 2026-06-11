@@ -264,13 +264,20 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
             </svg>
-            Foto
+            Foto / Video
           </button>
           <button class="mp-btn" @click="mediaPickerOpen = false; onFileIconClick()" :disabled="props.growthLocked">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
             </svg>
             Datei
+          </button>
+          <button class="mp-btn" @click="mediaPickerOpen = false; startPeerAudioRec()" :disabled="props.growthLocked">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
+              <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+            </svg>
+            Mikro
           </button>
           <button class="mp-btn" @click.stop="mediaPickerOpen = false; emojiOpen = true" :disabled="props.growthLocked">
             <span style="font-size:12px;line-height:1;">🙂</span>
@@ -437,10 +444,33 @@
         </Transition>
       </div>
 
+      <!-- Audio recording indicator -->
+      <div v-if="peerAudioRec" class="dock-media-preview peer-audio-rec">
+        <span class="peer-audio-dot"></span>
+        <span class="peer-audio-dur">{{ formatAudioDuration(peerAudioDuration) }}</span>
+        <span class="dock-media-name" style="flex:1">Aufnahme läuft…</span>
+        <button class="dock-media-remove peer-audio-stop" @click="stopPeerAudioRec" title="Stoppen">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </button>
+      </div>
+
       <!-- Attachment previews -->
-      <div v-if="msgMedia" class="dock-media-preview">
-        <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
-        <span class="dock-media-name">{{ msgMedia.name ?? 'Bild' }}</span>
+      <div v-if="msgMedia && !peerAudioRec" class="dock-media-preview">
+        <template v-if="msgMedia.mime?.startsWith('audio/')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18" style="flex-shrink:0;color:var(--accent)">
+            <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+          </svg>
+        </template>
+        <template v-else-if="msgMedia.mime?.startsWith('video/')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18" style="flex-shrink:0;color:var(--accent)">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/>
+          </svg>
+        </template>
+        <template v-else>
+          <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
+        </template>
+        <span class="dock-media-name">{{ msgMedia.name ?? 'Anhang' }}</span>
         <button class="dock-media-remove" @click="msgMedia = null" aria-label="Entfernen">✕</button>
       </div>
       <div v-if="msgDoc" class="dock-media-preview">
@@ -1703,7 +1733,7 @@ async function uploadToSharedVault(file) {
   } else {
     b64 = await fileToBase64(file)
   }
-  if (file.size > 10 * 1024 * 1024) throw new Error('Datei zu groß (max 10 MB)')
+  if (file.size > 50 * 1024 * 1024) throw new Error('Datei zu groß (max 50 MB)')
   const r = await fetch('/api/vault/shared', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
@@ -1937,6 +1967,63 @@ const cameraOpen       = ref(false)
 const mediaPickerOpen  = ref(false)
 const visionLoading    = ref(false)
 const fileInputEl      = ref(null)
+
+// ── Peer Audio Recording ────────────────────────────────────────────
+const peerAudioRec      = ref(false)
+const peerAudioDuration = ref(0)
+let _peerAudioStream    = null
+let _peerAudioRecorder  = null
+let _peerAudioChunks    = []
+let _peerAudioTimer     = null
+
+function formatAudioDuration(s) {
+  const m = Math.floor(s / 60)
+  return `${m}:${String(s % 60).padStart(2, '0')}`
+}
+
+async function startPeerAudioRec() {
+  if (peerAudioRec.value) return
+  _peerAudioChunks = []
+  peerAudioDuration.value = 0
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  } catch (e) {
+    const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
+      ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
+      : 'Mikrofon nicht verfügbar.'
+    addMessage('assistant', msg); await scrollToBottom(); return
+  }
+  _peerAudioStream = stream
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
+               MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+               MediaRecorder.isTypeSupported('audio/mp4')  ? 'audio/mp4'  : ''
+  _peerAudioRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {})
+  _peerAudioRecorder.ondataavailable = e => { if (e.data.size > 0) _peerAudioChunks.push(e.data) }
+  _peerAudioRecorder.start(100)
+  peerAudioRec.value = true
+  _peerAudioTimer = setInterval(() => { peerAudioDuration.value++ }, 1000)
+}
+
+async function stopPeerAudioRec() {
+  if (!peerAudioRec.value || !_peerAudioRecorder) return
+  clearInterval(_peerAudioTimer)
+  peerAudioRec.value = false
+  await new Promise(resolve => {
+    _peerAudioRecorder.onstop = resolve
+    if (_peerAudioRecorder.state !== 'inactive') _peerAudioRecorder.stop()
+    else resolve()
+  })
+  _peerAudioStream?.getTracks().forEach(t => t.stop())
+  _peerAudioStream = null
+  const mime = _peerAudioRecorder.mimeType || 'audio/webm'
+  const blob = new Blob(_peerAudioChunks, { type: mime })
+  _peerAudioChunks = []
+  if (blob.size < 1000) return
+  const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm'
+  const b64 = await fileToBase64(blob)
+  msgMedia.value = { base64: b64, mime, name: `sprachnachricht_${Date.now()}.${ext}`, _isAudio: true }
+}
 
 // ── Blob URL management ────────────────────────────────────────────
 const mediaBlobUrls = []
@@ -3252,6 +3339,15 @@ async function handleImageVision(file, name) {
 // ── Camera pipeline ────────────────────────────────────────────────
 async function handleCameraCapture(capture) {
   cameraOpen.value = false
+
+  // Video: immer als vault_shared Anhang stagieren (kein Vision-Analyse für Video)
+  if (capture.type === 'video') {
+    const ext = (capture.mimeType || '').includes('mp4') ? 'mp4' : 'webm'
+    msgMedia.value = { base64: capture.base64, mime: capture.mimeType || 'video/webm', name: `video_${Date.now()}.${ext}` }
+    return
+  }
+
+  // Foto:
   const base64 = capture.frameBase64 ?? capture.base64 ?? null
   if (!base64) return
 
@@ -4689,6 +4785,27 @@ defineExpose({
   background: rgba(109,184,154,0.22); border-color: var(--accent); color: var(--accent-bright);
 }
 .mp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Peer Audio Recording indicator ── */
+.peer-audio-rec {
+  gap: 8px; align-items: center;
+  border-color: rgba(239,68,68,0.35);
+  background: rgba(239,68,68,0.06);
+}
+.peer-audio-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444; flex-shrink: 0;
+  animation: peer-audio-pulse 1s ease-in-out infinite;
+}
+@keyframes peer-audio-pulse {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+.peer-audio-dur {
+  font-family: var(--mono); font-size: 13px; color: #ef4444;
+  letter-spacing: 0.06em; flex-shrink: 0; min-width: 32px;
+}
+.peer-audio-stop { color: #ef4444 !important; }
+.peer-audio-stop:hover { background: rgba(239,68,68,0.15) !important; }
 
 /* ── @ dock button ── */
 .dock-at { font-size: 15px; font-weight: 600; }
