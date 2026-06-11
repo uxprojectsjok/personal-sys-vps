@@ -3206,6 +3206,22 @@ async function handleCreateMedia(userPrompt) {
 async function runVisionAnalysis(base64, caption, previewUrl) {
   const authHeader = { Authorization: `Bearer ${props.soulCert}` }
 
+  // Vault-Backup: Kamerabild in vault_shared ablegen
+  if (props.soulCert && base64) {
+    const name = `kamerabild_${Date.now()}.jpg`
+    try {
+      const r = await fetch('/api/vault/shared', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ name, data: base64, mime: 'image/jpeg' }),
+      })
+      if (r.ok) {
+        const d = await r.json()
+        sessionSharedFiles.value.push({ filename: d.filename, label: name })
+      }
+    } catch {}
+  }
+
   addMessage('user', caption, { mediaUrl: previewUrl, mediaType: 'image' })
   addMessage('assistant', '', { streaming: true })
   await scrollToBottom()
@@ -3662,16 +3678,62 @@ async function handleSend() {
     return
   }
 
+  // No peer — Video ohne _file (Kamera-Video): nur vault_shared, keine KI-Analyse
+  if (msgMedia.value && !msgMedia.value._file && msgMedia.value.mime?.startsWith('video/')) {
+    const media = msgMedia.value
+    msgMedia.value = null
+    if (props.soulCert && media.base64) {
+      const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
+      const fileName = sanitizeName(media.name || `video_${Date.now()}.webm`)
+      try {
+        const r = await fetch('/api/vault/shared', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+          body: JSON.stringify({ name: fileName, data: media.base64, mime: media.mime }),
+        })
+        if (r.ok) {
+          const d = await r.json()
+          sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
+          if (raw) await dispatchToChat(raw)
+        }
+      } catch {}
+    }
+    return
+  }
+
   // No peer — process staged file for KI
   if (msgMedia.value?._file) {
     const media = msgMedia.value
     msgMedia.value = null
+    // Vault-Backup: Foto/Video auch bei KI-Konversation in vault_shared ablegen
+    if (props.soulCert) {
+      const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
+      const fileName = sanitizeName(media.name || 'kamerabild.jpg')
+      try {
+        const r = await fetch('/api/vault/shared', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+          body: JSON.stringify({ name: fileName, data: media.base64, mime: media.mime || '' }),
+        })
+        if (r.ok) {
+          const d = await r.json()
+          sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
+        }
+      } catch {}
+    }
     await handleImageVision(media._file, raw || media.name || '')
     return
   }
   if (msgDoc.value?.file) {
     const doc = msgDoc.value
     msgDoc.value = null
+    // Vault-Backup: Dokument auch bei KI-Konversation in vault_shared ablegen
+    if (props.soulCert) {
+      try {
+        const stored = await uploadToSharedVault(doc.file)
+        sessionSharedFiles.value.push({ filename: stored, label: doc.name })
+      } catch {}
+    }
     const result = await handleLocalFile(doc.file)
     if (!result) return
     if (result._imageFile) { await handleImageVision(result._imageFile, result.name); return }
