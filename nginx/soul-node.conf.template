@@ -504,6 +504,15 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_peer_inbox.lua;
   }
 
+  # ── Vault Shared MCP Get (eigene + Peer-Dateien via service-token) ───────────
+  location = /api/vault/shared-mcp {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_shared_mcp_get.lua;
+  }
+
   location /api/vault/peer-stream {
     limit_req zone=chat burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
