@@ -7,8 +7,9 @@
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { sharedFileUrl } from '../lib/api.mjs';
 
-export function register(server, soulId) {
+export function register(server, soulId, token) {
   server.tool(
     'vault_shared_upload',
     [
@@ -58,6 +59,7 @@ export function register(server, soulId) {
         await writeFile(filePath, buf);
 
         const vaultUrl  = `vault-shared://${soulId}/${storedName}`;
+        const viewUrl   = token ? sharedFileUrl(soulId, storedName, token) : null;
         const sizeKb    = Math.ceil(buf.length / 1024);
         const descPart  = description ? ` — ${description}` : '';
 
@@ -66,12 +68,12 @@ export function register(server, soulId) {
             type: 'text',
             text: [
               `Datei hochgeladen: ${storedName} (${sizeKb} KB)`,
-              `URL: ${vaultUrl}`,
+              viewUrl ? `Direkt öffnen: ${viewUrl}` : '',
               '',
-              `Jetzt mit peer_send teilen:`,
+              `Mit peer_send teilen:`,
               `  to: "Till" (oder "alle")`,
               `  message: "[${safe}](${vaultUrl})${descPart}"`,
-            ].join('\n'),
+            ].filter(Boolean).join('\n'),
           }],
         };
       } catch (err) {
