@@ -1,0 +1,53 @@
+-- /etc/openresty/lua/vault_shared_list.lua
+-- GET /api/vault/shared-list
+-- Listet alle Dateien in vault_shared/ des authentifizierten Souls auf.
+-- Auth: soul_auth.lua → ngx.ctx.soul_id
+
+local cjson   = require("cjson.safe")
+local soul_id = ngx.ctx.soul_id
+
+ngx.header["Content-Type"]  = "application/json"
+ngx.header["Cache-Control"] = "no-store"
+
+if not soul_id or not soul_id:match("^[a-zA-Z0-9%-]+$") then
+  ngx.status = 403; ngx.say('{"error":"invalid_soul"}'); return
+end
+
+if ngx.req.get_method() ~= "GET" then
+  ngx.status = 405; ngx.say('{"error":"method_not_allowed"}'); return
+end
+
+local dir = "/var/lib/sys/souls/" .. soul_id .. "/vault_shared/"
+
+local handle = io.popen('ls -1 "' .. dir .. '" 2>/dev/null')
+if not handle then
+  ngx.say(cjson.encode({ ok = true, soul_id = soul_id, files = {} })); return
+end
+
+local files = {}
+for line in handle:lines() do
+  local name = line:gsub("^%s+", ""):gsub("%s+$", "")
+  if name ~= "" then
+    local fpath = dir .. name
+    local f = io.open(fpath, "rb")
+    local size = 0
+    if f then
+      size = f:seek("end") or 0
+      f:close()
+    end
+    -- mtime via stat
+    local sh = io.popen('stat -c "%Y" "' .. fpath .. '" 2>/dev/null')
+    local mtime = 0
+    if sh then
+      local s = sh:read("*l"); sh:close()
+      mtime = tonumber(s) or 0
+    end
+    files[#files + 1] = { name = name, size = size, mtime = mtime }
+  end
+end
+handle:close()
+
+-- Neueste zuerst
+table.sort(files, function(a, b) return a.mtime > b.mtime end)
+
+ngx.say(cjson.encode({ ok = true, soul_id = soul_id, files = files }))
