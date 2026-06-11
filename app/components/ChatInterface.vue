@@ -2043,8 +2043,9 @@ async function stopPeerAudioRec() {
   _peerAudioChunks = []
   if (blob.size < 1000) return
   const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm'
+  const blobUrl = URL.createObjectURL(blob)
   const b64 = await fileToBase64(blob)
-  msgMedia.value = { base64: b64, mime, name: `sprachnachricht_${Date.now()}.${ext}`, _isAudio: true }
+  msgMedia.value = { base64: b64, mime, name: `sprachnachricht_${Date.now()}.${ext}`, _isAudio: true, _blobUrl: blobUrl }
 }
 
 // ── Blob URL management ────────────────────────────────────────────
@@ -3381,7 +3382,7 @@ async function handleCameraCapture(capture) {
   // Video: immer als vault_shared Anhang stagieren (kein Vision-Analyse für Video)
   if (capture.type === 'video') {
     const ext = (capture.mimeType || '').includes('mp4') ? 'mp4' : 'webm'
-    msgMedia.value = { base64: capture.base64, mime: capture.mimeType || 'video/webm', name: `video_${Date.now()}.${ext}` }
+    msgMedia.value = { base64: capture.base64, mime: capture.mimeType || 'video/webm', name: `video_${Date.now()}.${ext}`, _blobUrl: capture.url || null }
     return
   }
 
@@ -3707,10 +3708,17 @@ async function handleSend() {
     const isAudio = !!media._isAudio
     const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
     const fileName = sanitizeName(media.name || (isAudio ? `sprachnachricht_${Date.now()}.webm` : `video_${Date.now()}.webm`))
-    // Chat-Bubble sofort zeigen via mediaUrl — atob statt fetch(data:) für mobile Safari Kompatibilität
-    const bytes = Uint8Array.from(atob(media.base64), c => c.charCodeAt(0))
-    const blob = new Blob([bytes], { type: media.mime || 'application/octet-stream' })
-    const mediaUrl = URL.createObjectURL(blob)
+    // Blob-URL direkt verwenden falls vorhanden (Kamera/Mic stagiert sie bereits) —
+    // vermeidet Uint8Array.from(atob(large_base64)) der auf Mobile zu Crashes führt
+    let mediaUrl = media._blobUrl || null
+    if (!mediaUrl && media.base64) {
+      try {
+        const bytes = Uint8Array.from(atob(media.base64), c => c.charCodeAt(0))
+        const blob = new Blob([bytes], { type: media.mime || 'application/octet-stream' })
+        mediaUrl = URL.createObjectURL(blob)
+      } catch { mediaUrl = null }
+    }
+    if (!mediaUrl) return
     addMessage('user', raw || '', { mediaType: isAudio ? 'audio' : 'video', mediaUrl })
     await scrollToBottom()
     // Vault-Backup
