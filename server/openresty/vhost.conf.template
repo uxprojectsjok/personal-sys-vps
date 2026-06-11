@@ -684,6 +684,30 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_shared_delete.lua;
   }
 
+  # ── Vault Shared MCP Get (eigene + Peer-Dateien via service-token) ───────────
+  location = /api/vault/shared-mcp {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_shared_mcp_get.lua;
+  }
+
+  # ── Vault Shared View (Bilder/Dateien/Videos direkt ausliefern, ?token=...) ──
+  location ~ ^/api/vault/shared-view/ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_shared_view.lua;
+  }
+
+  # ── Vault Shared: internes Filesystem-Serving für X-Accel-Redirect ──────────
+  location /internal/vault-shared/ {
+    internal;
+    alias /var/lib/sys/souls/;
+    add_header Cache-Control "private, max-age=3600" always;
+  }
+
   # ── Vault Peer Media Proxy (browser → own node → peer's vault/shared) ─────────
   location = /api/vault/peer-media {
     limit_except GET { deny all; }
@@ -843,6 +867,15 @@ server {
     limit_req zone=chat burst=10 nodelay;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/soul_peer_proxy.lua;
+  }
+
+  # ── Peer Inbox (MCP: aggregiert Nachrichten aller Peers) ─────────────────────
+  location = /api/soul/peer-inbox {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/soul_peer_inbox.lua;
   }
 
   # ── Peer-Cert Verifikation (öffentlich, für Cross-Domain Peer-Auth) ──────────
