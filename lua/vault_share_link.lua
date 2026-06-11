@@ -57,7 +57,7 @@ end
 local function link_url(token)
   local scheme = "https"
   local host   = ngx.var.host or "localhost"
-  return scheme .. "://" .. host .. "/api/vault/link/" .. soul_id .. "/" .. token
+  return scheme .. "://" .. host .. "/link/" .. soul_id .. "/" .. token
 end
 
 -- ── Routing ───────────────────────────────────────────────────────────────────
