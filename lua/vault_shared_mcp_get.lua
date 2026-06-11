@@ -101,6 +101,7 @@ else
   local peer_endpoint = nil
   local is_same_server = false
 
+  local own_host = ngx.var.host or ""
   if cf then
     local raw = cf:read("*a"); cf:close()
     local ok_c, conn_data = pcall(cjson.decode, raw)
@@ -108,8 +109,9 @@ else
       local conns = type(conn_data.connections) == "table" and conn_data.connections or {}
       for _, c in ipairs(conns) do
         if c.soul_id == soul_id then
-          if c.endpoint and c.endpoint ~= "" then
-            peer_endpoint = c.endpoint
+          if type(c.domain) == "string" and c.domain ~= ""
+             and not c.domain:find(own_host, 1, true) then
+            peer_endpoint = c.domain
           else
             is_same_server = true
           end
