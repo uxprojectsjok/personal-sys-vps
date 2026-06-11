@@ -82,17 +82,25 @@ local INLINE_MIME = {
 }
 local disposition = INLINE_MIME[mime] and "inline" or "attachment"
 
--- ── Eigene oder Same-Server-Peer: X-Accel-Redirect ───────────────────────────
+-- ── Eigene oder Same-Server-Peer: direkt streamen ────────────────────────────
+-- X-Accel-Redirect funktioniert nicht in content_by_lua — Datei direkt via ngx.print() senden.
 local function serve_local(soul_id_val)
-  local rel_path = soul_id_val .. "/vault_shared/" .. safe_name
-  local check = io.open(SOULS_DIR .. rel_path, "rb")
-  if not check then return false end
-  check:close()
+  local fpath = SOULS_DIR .. soul_id_val .. "/vault_shared/" .. safe_name
+  local f = io.open(fpath, "rb")
+  if not f then return false end
 
+  local size = f:seek("end"); f:seek("set", 0)
   ngx.header["Content-Type"]        = mime
   ngx.header["Content-Disposition"] = disposition .. '; filename="' .. safe_name .. '"'
+  ngx.header["Content-Length"]      = tostring(size)
   ngx.header["Cache-Control"]       = "private, max-age=3600"
-  ngx.header["X-Accel-Redirect"]    = "/internal/vault-shared/" .. rel_path
+  local CHUNK = 65536
+  while true do
+    local chunk = f:read(CHUNK)
+    if not chunk then break end
+    ngx.print(chunk)
+  end
+  f:close()
   return true
 end
 
