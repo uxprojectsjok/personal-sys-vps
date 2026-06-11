@@ -51,8 +51,8 @@ export function register(server, soulId, token) {
           return { content: [{ type: 'text', text: 'Ungültiges Base64.' }], isError: true };
         }
 
-        if (buf.length > 15 * 1024 * 1024) {
-          return { content: [{ type: 'text', text: 'Datei zu groß (max. 15 MB).' }], isError: true };
+        if (buf.length > 50 * 1024 * 1024) {
+          return { content: [{ type: 'text', text: 'Datei zu groß (max. 50 MB).' }], isError: true };
         }
 
         await mkdir(dir, { recursive: true });
