@@ -50,8 +50,8 @@ if not content then
   ngx.status = 400; ngx.say('{"error":"invalid_base64"}'); return
 end
 
-if #content > 10 * 1024 * 1024 then
-  ngx.status = 413; ngx.say('{"error":"file_too_large_max_10mb"}'); return
+if #content > 50 * 1024 * 1024 then
+  ngx.status = 413; ngx.say('{"error":"file_too_large_max_50mb"}'); return
 end
 
 local dir = "/var/lib/sys/souls/" .. soul_id .. "/vault_shared"

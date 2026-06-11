@@ -158,25 +158,39 @@ if not cert_ok then
   ngx.status = 401; ngx.say('{"error":"invalid_cert"}'); return
 end
 
--- Serve file
+-- Verify file exists before X-Accel-Redirect
 local fpath = SOULS_DIR .. target_soul_id .. "/vault_shared/" .. filename
-local f = io.open(fpath, "rb")
-if not f then
+local ftest = io.open(fpath, "rb")
+if not ftest then
   ngx.header["Content-Type"] = "application/json"
   ngx.status = 404; ngx.say('{"error":"file_not_found"}'); return
 end
-local content = f:read("*a"); f:close()
+ftest:close()
 
 local MIME = {
   jpg="image/jpeg", jpeg="image/jpeg", png="image/png",
   webp="image/webp", gif="image/gif", avif="image/avif",
+  mp4="video/mp4", webm="video/webm", mov="video/quicktime",
+  avi="video/x-msvideo", mkv="video/x-matroska", m4v="video/mp4",
+  mp3="audio/mpeg", wav="audio/wav", ogg="audio/ogg",
+  m4a="audio/mp4", aac="audio/aac", flac="audio/flac",
   pdf="application/pdf", txt="text/plain; charset=utf-8",
   md="text/markdown; charset=utf-8",
+  json="application/json", csv="text/csv; charset=utf-8",
+  zip="application/zip", docx="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 local ext  = (filename:match("%.([^%.]+)$") or ""):lower()
 local mime = MIME[ext] or "application/octet-stream"
-local dispo = (MIME[ext] and ext ~= "pdf") and "inline" or "attachment"
+
+-- Inline für Browser-Playback: Bilder, Video, Audio, PDF, Text
+local INLINE = { jpg=1,jpeg=1,png=1,webp=1,gif=1,avif=1,
+                 mp4=1,webm=1,mov=1,avi=1,mkv=1,m4v=1,
+                 mp3=1,wav=1,ogg=1,m4a=1,aac=1,flac=1,
+                 pdf=1,txt=1,md=1,json=1,csv=1 }
+local dispo = INLINE[ext] and "inline" or "attachment"
 
 ngx.header["Content-Type"]        = mime
 ngx.header["Content-Disposition"] = dispo .. '; filename="' .. filename .. '"'
-ngx.print(content)
+-- X-Accel-Redirect: nginx serviert direkt vom Disk inkl. Range-Support (Video-Seeking)
+ngx.header["X-Accel-Redirect"] = "/internal/vault-shared/" .. target_soul_id .. "/vault_shared/" .. filename
