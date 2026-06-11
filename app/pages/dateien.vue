@@ -39,6 +39,13 @@
                   </svg>
                   Server
                 </button>
+                <button class="dt-tab" :class="{ on: tab === 'geteilt' }" @click="switchToShared">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+                    <circle cx="5" cy="10" r="2.5"/><circle cx="15" cy="5" r="2.5"/><circle cx="15" cy="15" r="2.5"/>
+                    <path stroke-linecap="round" d="M7.2 9 12.8 6M7.2 11 12.8 14"/>
+                  </svg>
+                  Geteilt
+                </button>
               </div>
             </div>
 
@@ -69,8 +76,57 @@
               <input ref="soulServerInput" type="file" accept=".md" class="dt-file-input" @change="replaceSoulOnServer" />
             </div>
 
-            <!-- ── File table ── -->
-            <div class="dt-table">
+            <!-- ── Geteilt Tab ── -->
+            <template v-if="tab === 'geteilt'">
+              <div v-if="!soulToken" class="dt-empty">
+                <p class="dt-empty-text">Soul-Zertifikat benötigt</p>
+              </div>
+              <div v-else-if="sharedLoading" class="dt-empty">
+                <svg class="spin" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4a8 8 0 1 1 0 12"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
+                </svg>
+              </div>
+              <div v-else-if="filteredSharedFiles.length === 0" class="dt-empty">
+                <p class="dt-empty-text">Keine geteilten Dateien</p>
+              </div>
+              <div v-else class="dt-table" style="margin-top:14px">
+                <div class="dt-table-head" style="grid-template-columns: 1fr 90px">
+                  <span class="dt-col-name">Name</span>
+                  <span class="dt-col-actions"></span>
+                </div>
+                <div v-for="f in filteredSharedFiles" :key="f.name"
+                  class="dt-row" :style="'grid-template-columns: 1fr 90px'"
+                  :class="{ busy: !!sharedBusy[f.name] }"
+                >
+                  <div class="dt-name-cell">
+                    <div class="dt-file-icon dt-icon-doc">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
+                        <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+                        <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
+                      </svg>
+                    </div>
+                    <div class="dt-name-info">
+                      <span class="dt-filename">{{ f.name }}</span>
+                      <span class="dt-filetype">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</span>
+                    </div>
+                  </div>
+                  <div class="dt-actions">
+                    <button class="dt-act-btn" @click="downloadSharedFile(f)" :disabled="!!sharedBusy[f.name]" title="Herunterladen">
+                      <svg v-if="sharedBusy[f.name] === 'down'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                    </button>
+                    <button class="dt-act-btn dt-act-del" @click="deleteSharedFile(f.name)" :disabled="!!sharedBusy[f.name]" title="Löschen">
+                      <svg v-if="sharedBusy[f.name] === 'del'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/></svg>
+                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── File table (Lokal/Server) ── -->
+            <div v-if="tab !== 'geteilt'" class="dt-table">
               <div class="dt-table-head">
                 <span class="dt-col-name">Name</span>
                 <span class="dt-col-date">Hinzugefügt</span>
@@ -201,6 +257,11 @@ const syncing          = ref(false)
 const toast            = ref(null)
 let   toastTimer       = null
 
+const sharedFiles   = ref([])
+const sharedSoulId  = ref('')
+const sharedBusy    = reactive({})
+const sharedLoading = ref(false)
+
 const FILTERS = [
   { key: 'all',   label: 'Alle' },
   { key: 'soul',  label: 'sys.md' },
@@ -285,6 +346,15 @@ const filteredFiles = computed(() => {
 
 const localFileCount  = computed(() => localFileList.value.length)
 const serverFileCount = computed(() => serverFileList.value.length)
+
+function sharedFileType(name) {
+  return kindToType((name || '').split('.').pop().toLowerCase())
+}
+const filteredSharedFiles = computed(() => {
+  if (typeFilter.value === 'all') return sharedFiles.value
+  if (typeFilter.value === 'soul') return []
+  return sharedFiles.value.filter(f => sharedFileType(f.name) === typeFilter.value)
+})
 function statsCount(type) {
   const n = activeList.value.filter(f => f.type === type).length
   return n > 0 ? n : '—'
@@ -295,6 +365,7 @@ async function refresh() {
   refreshing.value = true
   try {
     if (tab.value === 'lokal') await scanLocalVault()
+    else if (tab.value === 'geteilt') await loadSharedFiles()
     else await loadContext(soulToken.value)
   } finally { refreshing.value = false }
 }
@@ -303,6 +374,62 @@ async function refresh() {
 async function switchToServer() {
   tab.value = 'server'
   if (soulToken.value) await loadContext(soulToken.value)
+}
+
+// ── Shared tab ─────────────────────────────────────────────────────────────
+function formatSharedSize(bytes) {
+  if (!bytes) return '–'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+function formatSharedDate(mtime) {
+  if (!mtime) return '–'
+  return new Date(mtime * 1000).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+}
+async function loadSharedFiles() {
+  if (!soulToken.value) return
+  try {
+    const r = await fetch('/api/vault/shared-list', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      sharedFiles.value  = d.files || []
+      sharedSoulId.value = d.soul_id || ''
+    }
+  } catch {}
+}
+async function switchToShared() {
+  tab.value = 'geteilt'
+  sharedLoading.value = true
+  await loadSharedFiles()
+  sharedLoading.value = false
+}
+async function downloadSharedFile(f) {
+  if (!soulToken.value || !sharedSoulId.value) return
+  sharedBusy[f.name] = 'down'
+  try {
+    const res = await fetch(`/api/vault/shared/${encodeURIComponent(sharedSoulId.value)}/${encodeURIComponent(f.name)}`, {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (!res.ok) { showToast('Download fehlgeschlagen', 'err'); return }
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a'); a.href = url; a.download = f.name
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  } catch { showToast('Download fehlgeschlagen', 'err') }
+  finally { delete sharedBusy[f.name] }
+}
+async function deleteSharedFile(name) {
+  if (!soulToken.value) return
+  sharedBusy[name] = 'del'
+  try {
+    const res = await fetch(`/api/vault/shared/${encodeURIComponent(name)}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (res.ok) { sharedFiles.value = sharedFiles.value.filter(f => f.name !== name); showToast(`${name} gelöscht ✓`) }
+    else showToast('Löschen fehlgeschlagen', 'err')
+  } catch { showToast('Löschen fehlgeschlagen', 'err') }
+  finally { delete sharedBusy[name] }
 }
 
 // ── Blob download helper ───────────────────────────────────────────────────
