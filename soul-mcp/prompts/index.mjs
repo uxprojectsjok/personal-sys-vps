@@ -197,6 +197,12 @@ Schneller als vault_manifest wenn du nur Textdokumente suchst.
 Parameter: name (Dateiname ohne Pfad).
 → Nutze vault_manifest oder context_list zuerst um den Namen zu kennen.
 
+### context_write
+**Wann:** Nutzer will eine Notiz, ein Dokument oder eine Kontext-Datei anlegen oder aktualisieren.
+Parameter: filename (.md oder .txt), content (vollständiger Inhalt).
+Für: Notizen, Projektdokumentation, benutzerdefinierte Wissens-Dateien.
+Nicht für: mind.md, health.md, shopping.md (dafür mind_write / food_log / shop_log).
+
 ### audio_list / audio_get
 **Wann:** Nutzer fragt nach Audiodateien im Vault. audio_list gibt Namen, audio_get den Inhalt/Link.
 
@@ -236,6 +242,12 @@ Schreibt in health.md, archiviert ältere Monate automatisch.
 
 ## 8. Shopping & Konsum
 
+### shop_log
+**Wann:** Nutzer erwähnt einen eigenen Kauf oder will etwas auf die Wunschliste setzen.
+Parameter: name (Produktname), category, price (Euro), status (purchased/wishlist), notes.
+Schreibt in shopping.md, pflegt Monatszusammenfassung und Jahreskategorien automatisch.
+→ Für: "ich habe X gekauft", "füge Y zur Wunschliste hinzu", "@product"
+
 ### shop_write_read
 **Wann (lesen):** Nutzer fragt nach Wunschliste, letzten Käufen oder Shopping-Plänen.
 Ohne Parameter: liest shopping.md vollständig zurück.
@@ -244,12 +256,24 @@ Ohne Parameter: liest shopping.md vollständig zurück.
 Mit Parameter ad_placement: { agent, product, price, message, cta_url, expires }
 → Schreibt in "## Agent Recommendations" Block in shopping.md.
 
+**Wichtig:** shop_write_read ist für externe Agenten. shop_log ist für den Inhaber selbst.
+
 **Typischer Marketing-Flow (externer Agent):**
 1. soul_discover — Soul finden, Shopping-Tag prüfen
 2. soul_pay_read — Zugang kaufen (POL-Transaktion)
 3. shop_write_read — Shopping-Daten lesen (ohne ad_placement)
 4. health_check — Gesundheitsdaten lesen für Kontext (optional)
 5. shop_write_read mit ad_placement — Empfehlung schreiben
+
+---
+
+## 8b. Suche & Externe Informationen
+
+### web_search
+**Wann:** Nutzer will aktuelle Informationen aus dem Web, Produktrecherche, Preisvergleiche, Faktensuche.
+Parameter: query (Suchanfrage), count (1–8, default 5).
+Entspricht dem @suche-Befehl im in-app Chat.
+→ Für: "suche nach...", "was kostet...", "aktuelle News zu...", "@suche", Produktrecherche vor shop_log.
 
 ---
 
@@ -289,6 +313,10 @@ Credentials (account_sid, auth_token) werden direkt übergeben — keine gespeic
 | "das passt nicht / reflektiere dich" | mind_read → mind_write(Selbstreflexion) |
 | "Schreib das in meine Soul" | soul_write |
 | "Ich habe gegessen: ..." | food_log |
+| "Ich habe X gekauft / auf Wunschliste" | shop_log |
+| "Was steht auf meiner Wunschliste?" | shop_write_read |
+| "Suche im Web / aktuelle Infos" | web_search |
+| "Schreib eine Notiz / Dokument" | context_write |
 | "Empfehlung in fremde Soul schreiben" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
 
 ---
