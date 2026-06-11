@@ -117,15 +117,21 @@
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
               </div>
               <!-- Local blob doc -->
-              <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
-                @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchstart.stop.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
-                @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
-                <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
-                  <span class="msg-doc-icon">📄</span>
-                  <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
-                </a>
-              </div>
+              <template v-if="msgBlobCache.get(item.ts)">
+                <audio v-if="msgBlobCache.get(item.ts).type === 'audio'"
+                  :src="msgBlobCache.get(item.ts).url" controls class="msg-media-audio" preload="metadata" />
+                <video v-else-if="msgBlobCache.get(item.ts).type === 'video'"
+                  :src="msgBlobCache.get(item.ts).url" controls playsinline class="msg-media-video" preload="metadata" />
+                <div v-else class="msg-doc-link"
+                  @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                  @touchstart.stop.passive="e => _startMediaLongPress(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
+                  @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
+                  <a :href="msgBlobCache.get(item.ts).url" :download="msgBlobCache.get(item.ts).name" class="msg-doc-a">
+                    <span class="msg-doc-icon">📄</span>
+                    <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
+                  </a>
+                </div>
+              </template>
               <!-- Vault-shared attachment -->
               <template v-if="getMsgVaultRef(item.content)">
                 <template v-if="VAULT_SHARED_IMAGE.test(getMsgVaultRef(item.content).filename)">
@@ -141,6 +147,20 @@
                   </div>
                   <div v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Bild nicht ladbar</div>
                   <div v-else class="msg-media-loading">Bild wird geladen…</div>
+                </template>
+                <template v-else-if="VAULT_SHARED_AUDIO.test(getMsgVaultRef(item.content).filename)">
+                  <audio v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    controls class="msg-media-audio" preload="metadata" />
+                  <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Audio nicht ladbar</span>
+                  <span v-else class="msg-media-loading">Audio wird geladen…</span>
+                </template>
+                <template v-else-if="VAULT_SHARED_VIDEO.test(getMsgVaultRef(item.content).filename)">
+                  <video v-if="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    :src="vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)"
+                    controls playsinline class="msg-media-video" preload="metadata" />
+                  <span v-else-if="vaultBlobErrors.has(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`)" class="msg-media-error">Video nicht ladbar</span>
+                  <span v-else class="msg-media-loading">Video wird geladen…</span>
                 </template>
                 <div v-else class="msg-doc-link"
                   @contextmenu.prevent.stop="e => vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`) && _openMediaCtx(e, vaultBlobUrls.get(`${getMsgVaultRef(item.content).soul_id}:${getMsgVaultRef(item.content).filename}`), getMsgVaultRef(item.content).label)"
@@ -1527,6 +1547,8 @@ function peerLabelForTo(to) {
 
 // ── Vault Shared: Upload + Inline-Rendering ───────────────────────
 const VAULT_SHARED_IMAGE = /\.(jpe?g|png|webp|gif|avif)$/i
+const VAULT_SHARED_AUDIO = /\.(mp3|m4a|aac|ogg|opus|webm|wav|flac)$/i
+const VAULT_SHARED_VIDEO = /\.(mp4|webm|mov|avi|mkv|m4v)$/i
 
 function getMsgVaultRef(content) {
   const m = String(content || '').match(/\[([^\]]+)\]\(vault-shared:\/\/([^/\)]+)\/([^\)]+)\)/)
@@ -3678,13 +3700,20 @@ async function handleSend() {
     return
   }
 
-  // No peer — Video ohne _file (Kamera-Video): nur vault_shared, keine KI-Analyse
-  if (msgMedia.value && !msgMedia.value._file && msgMedia.value.mime?.startsWith('video/')) {
+  // No peer — Audio (Mic) oder Video (Kamera) ohne _file: vault_shared + Chat-Placement
+  if (msgMedia.value && !msgMedia.value._file && (msgMedia.value._isAudio || msgMedia.value.mime?.startsWith('video/'))) {
     const media = msgMedia.value
     msgMedia.value = null
+    const isAudio = !!media._isAudio
+    const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
+    const fileName = sanitizeName(media.name || (isAudio ? `sprachnachricht_${Date.now()}.webm` : `video_${Date.now()}.webm`))
+    // Chat-Bubble sofort zeigen via mediaUrl (wie Kamera-Foto)
+    const blob = await fetch(`data:${media.mime};base64,${media.base64}`).then(r => r.blob())
+    const mediaUrl = URL.createObjectURL(blob)
+    addMessage('user', raw || '', { mediaType: isAudio ? 'audio' : 'video', mediaUrl })
+    await scrollToBottom()
+    // Vault-Backup
     if (props.soulCert && media.base64) {
-      const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
-      const fileName = sanitizeName(media.name || `video_${Date.now()}.webm`)
       try {
         const r = await fetch('/api/vault/shared', {
           method: 'POST',
@@ -3694,7 +3723,6 @@ async function handleSend() {
         if (r.ok) {
           const d = await r.json()
           sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
-          if (raw) await dispatchToChat(raw)
         }
       } catch {}
     }
@@ -4056,6 +4084,14 @@ defineExpose({
 .msg-media-img {
   display: block; width: 100%; height: auto;
   margin: 0; cursor: zoom-in;
+}
+.msg-media-audio {
+  display: block; width: 100%; max-width: 320px;
+  margin: 4px 0; border-radius: 6px;
+}
+.msg-media-video {
+  display: block; width: 100%; max-width: 320px; max-height: 240px;
+  margin: 4px 0; border-radius: 6px; background: #000;
 }
 .msg-img-actions {
   display: flex;

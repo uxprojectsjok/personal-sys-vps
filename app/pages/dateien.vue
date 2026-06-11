@@ -70,6 +70,16 @@
                 </svg>
                 {{ syncing ? 'Lädt…' : 'Auf Server' }}
               </button>
+              <!-- Geteilt: direkter Upload -->
+              <button v-if="tab === 'geteilt' && soulToken" class="dt-upload-btn" @click="sharedInput?.click()" :disabled="sharedUploading" :title="sharedUploading ? 'Wird hochgeladen…' : 'Datei hochladen'">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" :class="{ spin: sharedUploading }">
+                  <path v-if="!sharedUploading" stroke-linecap="round" stroke-linejoin="round" d="M10 9V2m0 0L6 6m4-4 4 4"/>
+                  <path v-if="!sharedUploading" stroke-linecap="round" stroke-linejoin="round" d="M2 14v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                  <path v-if="sharedUploading" stroke-linecap="round" d="M4 4a8 8 0 1 1 0 12"/>
+                </svg>
+                {{ sharedUploading ? 'Lädt…' : 'Hochladen' }}
+              </button>
+              <input ref="sharedInput" type="file" class="dt-file-input" @change="handleSharedUpload" />
               <!-- sys.md lokal importieren -->
               <input ref="soulInput" type="file" accept=".md" class="dt-file-input" @change="handleSoulImport" />
               <!-- sys.md auf Server ersetzen -->
@@ -257,10 +267,12 @@ const syncing          = ref(false)
 const toast            = ref(null)
 let   toastTimer       = null
 
-const sharedFiles   = ref([])
-const sharedSoulId  = ref('')
-const sharedBusy    = reactive({})
-const sharedLoading = ref(false)
+const sharedFiles     = ref([])
+const sharedSoulId    = ref('')
+const sharedBusy      = reactive({})
+const sharedLoading   = ref(false)
+const sharedUploading = ref(false)
+const sharedInput     = ref(null)
 
 const FILTERS = [
   { key: 'all',   label: 'Alle' },
@@ -430,6 +442,30 @@ async function deleteSharedFile(name) {
     else showToast('Löschen fehlgeschlagen', 'err')
   } catch { showToast('Löschen fehlgeschlagen', 'err') }
   finally { delete sharedBusy[name] }
+}
+
+async function handleSharedUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file || !soulToken.value) return
+  if (file.size > 50 * 1024 * 1024) { showToast('Max. 50 MB', 'err'); e.target.value = ''; return }
+  sharedUploading.value = true
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const r = new FileReader()
+      r.onload = () => res(r.result.split(',')[1])
+      r.onerror = rej
+      r.readAsDataURL(file)
+    })
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'datei'
+    const resp = await fetch('/api/vault/shared', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ name: safeName, data: b64, mime: file.type || '' }),
+    })
+    if (resp.ok) { showToast(`${file.name} hochgeladen ✓`); await loadSharedFiles() }
+    else { const d = await resp.json().catch(() => ({})); showToast(d.error || 'Upload fehlgeschlagen', 'err') }
+  } catch { showToast('Upload fehlgeschlagen', 'err') }
+  finally { sharedUploading.value = false; e.target.value = '' }
 }
 
 // ── Blob download helper ───────────────────────────────────────────────────
