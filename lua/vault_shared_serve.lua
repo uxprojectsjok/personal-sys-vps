@@ -9,8 +9,6 @@ local http  = require("resty.http")
 local cfg   = require("config_reader")
 local hmac  = require("hmac_helper")
 
-ngx.header["Cache-Control"] = "no-store"
-
 if ngx.req.get_method() ~= "GET" then
   ngx.header["Content-Type"] = "application/json"
   ngx.status = 405; ngx.say('{"error":"method_not_allowed"}'); return
@@ -158,14 +156,7 @@ if not cert_ok then
   ngx.status = 401; ngx.say('{"error":"invalid_cert"}'); return
 end
 
--- Verify file exists before X-Accel-Redirect
 local fpath = SOULS_DIR .. target_soul_id .. "/vault_shared/" .. filename
-local ftest = io.open(fpath, "rb")
-if not ftest then
-  ngx.header["Content-Type"] = "application/json"
-  ngx.status = 404; ngx.say('{"error":"file_not_found"}'); return
-end
-ftest:close()
 
 local MIME = {
   jpg="image/jpeg", jpeg="image/jpeg", png="image/png",
@@ -190,7 +181,24 @@ local INLINE = { jpg=1,jpeg=1,png=1,webp=1,gif=1,avif=1,
                  pdf=1,txt=1,md=1,json=1,csv=1 }
 local dispo = INLINE[ext] and "inline" or "attachment"
 
+-- X-Accel-Redirect works only for upstream proxies, not content_by_lua.
+-- Read and stream the file directly so Content-Disposition + auth are enforced.
+local f = io.open(fpath, "rb")
+if not f then
+  ngx.header["Content-Type"] = "application/json"
+  ngx.status = 404; ngx.say('{"error":"file_not_found"}'); return
+end
+local size = f:seek("end"); f:seek("set", 0)
+
 ngx.header["Content-Type"]        = mime
 ngx.header["Content-Disposition"] = dispo .. '; filename="' .. filename .. '"'
--- X-Accel-Redirect: nginx serviert direkt vom Disk inkl. Range-Support (Video-Seeking)
-ngx.header["X-Accel-Redirect"] = "/internal/vault-shared/" .. target_soul_id .. "/vault_shared/" .. filename
+ngx.header["Content-Length"]      = tostring(size)
+ngx.header["Cache-Control"]       = "private, max-age=3600"
+
+local CHUNK = 65536
+while true do
+  local chunk = f:read(CHUNK)
+  if not chunk then break end
+  ngx.print(chunk)
+end
+f:close()

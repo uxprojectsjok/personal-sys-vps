@@ -3707,8 +3707,9 @@ async function handleSend() {
     const isAudio = !!media._isAudio
     const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
     const fileName = sanitizeName(media.name || (isAudio ? `sprachnachricht_${Date.now()}.webm` : `video_${Date.now()}.webm`))
-    // Chat-Bubble sofort zeigen via mediaUrl (wie Kamera-Foto)
-    const blob = await fetch(`data:${media.mime};base64,${media.base64}`).then(r => r.blob())
+    // Chat-Bubble sofort zeigen via mediaUrl — atob statt fetch(data:) für mobile Safari Kompatibilität
+    const bytes = Uint8Array.from(atob(media.base64), c => c.charCodeAt(0))
+    const blob = new Blob([bytes], { type: media.mime || 'application/octet-stream' })
     const mediaUrl = URL.createObjectURL(blob)
     addMessage('user', raw || '', { mediaType: isAudio ? 'audio' : 'video', mediaUrl })
     await scrollToBottom()
