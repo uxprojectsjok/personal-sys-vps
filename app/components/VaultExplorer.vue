@@ -295,17 +295,35 @@
           </div>
         </div>
 
-        <!-- ── Vault Shared ─────────────────────────────────────────────── -->
-        <div v-if="sharedFiles.length > 0">
-          <div class="flex items-center gap-2 px-1 pt-2 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">Chat-Uploads · {{ sharedFiles.length }}</p>
+      </template>
+
+    </template>
+
+    <!-- ── GETEILT ────────────────────────────────────────────────────────── -->
+    <template v-if="tab === 'shared'">
+      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">Soul-Zertifikat benötigt</div>
+      <div v-else-if="sharedLoading" class="py-8 flex items-center justify-center">
+        <svg class="w-4 h-4 animate-spin text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
+        </svg>
+      </div>
+      <template v-else>
+        <p v-if="sharedFiles.length === 0" class="py-5 text-center text-sm text-white/30">
+          Keine geteilten Dateien
+        </p>
+        <div v-else>
+          <div class="flex items-center gap-2 px-1 pt-1 pb-1">
+            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">Dateien · {{ sharedFiles.length }}</p>
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="f in sharedFiles" :key="f.name"
               class="grid items-center px-3 min-h-[44px] hover:bg-white/[0.04] transition-colors"
               style="grid-template-columns: minmax(0,1fr) 2rem 2rem; gap: 0.5rem"
             >
-              <span class="text-sm text-white/70 truncate font-mono py-2">{{ f.name }}</span>
+              <div class="py-2 min-w-0">
+                <p class="text-sm text-white/70 truncate font-mono">{{ f.name }}</p>
+                <p class="text-[10px] text-white/30">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</p>
+              </div>
               <button
                 @click="downloadSharedFile(f)"
                 :disabled="!!sharedBusy[f.name]"
@@ -327,9 +345,7 @@
             </div>
           </div>
         </div>
-
       </template>
-
     </template>
 
     <!-- Dateien importieren (Lokal-Tab, auch ohne Vault-Verbindung für Mobile) -->
@@ -603,7 +619,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["logout-required"]);
 
-const TABS = [{ id: "local", label: "Lokal" }, { id: "server", label: "Server" }];
+const TABS = [{ id: "local", label: "Lokal" }, { id: "server", label: "Server" }, { id: "shared", label: "Geteilt" }];
 const TYPE_LABELS = { audio: "Audio", video: "Video", images: "Bilder", context: "Kontext", profiles: "KI-Profile" };
 const MEDIA_EXTS  = /\.(mp3|wav|ogg|m4a|flac|aac|webm|mp4|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|md|txt|pdf)$/i;
 const SKIP_FILES  = /^(voice_profile\.json|motion_profile\.json)$/i;
@@ -641,9 +657,22 @@ const menuPos        = reactive({ top: 0, right: 0 });
 const menuCtx        = reactive({ tab: "", type: "", name: "" });
 
 // ── Vault Shared ─────────────────────────────────────────────────────────────
-const sharedFiles  = ref([]);
-const sharedSoulId = ref("");
-const sharedBusy   = reactive({});
+const sharedFiles   = ref([]);
+const sharedSoulId  = ref("");
+const sharedBusy    = reactive({});
+const sharedLoading = ref(false);
+
+function formatSharedSize(bytes) {
+  if (!bytes) return "–";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function formatSharedDate(mtime) {
+  if (!mtime) return "–";
+  return new Date(mtime * 1000).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
 
 async function loadSharedFiles() {
   if (!props.soulCert) return;
@@ -655,6 +684,12 @@ async function loadSharedFiles() {
       sharedSoulId.value = d.soul_id || "";
     }
   } catch {}
+}
+
+async function loadSharedTab() {
+  sharedLoading.value = true;
+  await loadSharedFiles();
+  sharedLoading.value = false;
 }
 
 async function downloadSharedFile(f) {
@@ -996,10 +1031,10 @@ function switchTab(id) {
   closePlayer();
   if (id === "server" && props.soulCert) {
     serverLoading.value = true;
-    Promise.all([
-      loadContext(props.soulCert),
-      loadSharedFiles(),
-    ]).finally(() => { serverLoading.value = false; });
+    loadContext(props.soulCert).finally(() => { serverLoading.value = false; });
+  }
+  if (id === "shared" && props.soulCert) {
+    loadSharedTab();
   }
 }
 
@@ -1009,11 +1044,14 @@ async function onRefresh() {
   isScanning.value = true;
   try {
     if (props.soulCert) {
-      await Promise.all([
-        loadContext(props.soulCert),
-        loadPublicShare(props.soulCert),
-        loadSharedFiles(),
-      ]);
+      if (tab.value === "shared") {
+        await loadSharedFiles();
+      } else {
+        await Promise.all([
+          loadContext(props.soulCert),
+          loadPublicShare(props.soulCert),
+        ]);
+      }
     } else {
       await scanApiVault();
     }
