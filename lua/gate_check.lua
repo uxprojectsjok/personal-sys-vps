@@ -17,6 +17,12 @@ if uri == "/connect" then
   return
 end
 
+-- Share-Link Viewer: öffentlich zugänglich (Token = Auth)
+if uri:sub(1, 6) == "/link/" then
+  ngx.ctx.gate_done = true
+  return
+end
+
 -- try_files interne Weiterleitung zu /index.html würde diesen Handler ein zweites
 -- Mal auslösen (uri wäre dann "/index.html"). ngx.ctx bleibt im selben Request
 -- erhalten → einmal geprüft reicht.
