@@ -79,3 +79,8 @@ export async function createServiceToken(soulCert, name, permissions, expires = 
 export function fileUrl(type, filename, token) {
   return `${BASE()}/api/vault/${type}/${encodeURIComponent(filename)}?token=${token}`;
 }
+
+/** Gibt die direkte Browser-URL einer vault_shared Datei zurück (Bild/Video/Datei) */
+export function sharedFileUrl(soulId, filename, token) {
+  return `${BASE()}/api/vault/shared-view/${soulId}/${encodeURIComponent(filename)}?token=${token}`;
+}

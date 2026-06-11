@@ -1,71 +1,71 @@
 /**
  * peer_inbox — Liest Nachrichten von verbundenen Peers.
- * Ruft GET /api/soul/peer-inbox ab, filtert lokal nach Zeit/Absender/Inhalt.
- * vault-shared:// Links in Nachrichten werden automatisch aufgelöst:
- *   Bilder → image-Block (visuell sichtbar)
- *   PDFs   → document-Block (lesbar)
- *   Text   → text-Block
+ * vault-shared:// Links in Nachrichten werden automatisch in klickbare
+ * Browser-URLs umgewandelt (Bilder, Videos, Dateien direkt öffnen).
+ * PDFs und Texte werden zusätzlich als Inhalt zurückgegeben.
  */
 
 import { z } from 'zod';
-import { getJson } from '../lib/api.mjs';
+import { getJson, sharedFileUrl } from '../lib/api.mjs';
 
-// vault-shared://soul_id/filename aus Markdown-Links extrahieren
 const VAULT_LINK_RE = /\[([^\]]*)\]\(vault-shared:\/\/([a-f0-9-]{36})\/([A-Za-z0-9_\-.]+)\)/gi;
 
-const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
-const DOC_MIME   = new Set(['application/pdf']);
+const VIDEO_EXT = new Set(['mp4','webm','mov','avi','mkv','m4v']);
+const AUDIO_EXT = new Set(['mp3','wav','ogg','m4a','flac','aac']);
+const IMAGE_EXT = new Set(['jpg','jpeg','png','webp','gif','avif']);
+const TEXT_EXT  = new Set(['md','txt','json','csv']);
 
-function mimeToBlock(data) {
-  const mime = (data.mime || '').split(';')[0].trim();
-  if (IMAGE_MIME.has(mime)) {
-    return { type: 'image', source: { type: 'base64', media_type: mime, data: data.data_b64 } };
-  }
-  if (DOC_MIME.has(mime)) {
-    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: data.data_b64 } };
-  }
-  if (mime.startsWith('text/') || mime === 'application/json') {
-    const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');
-    return { type: 'text', text: `📄 ${data.filename}\n${text}` };
-  }
-  return null; // Binär — kein nativer Block möglich
+function extLabel(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  if (VIDEO_EXT.has(ext)) return 'Video';
+  if (AUDIO_EXT.has(ext)) return 'Audio';
+  if (IMAGE_EXT.has(ext)) return 'Bild';
+  if (ext === 'pdf')      return 'PDF';
+  if (TEXT_EXT.has(ext))  return 'Text';
+  return 'Datei';
 }
 
-// Löst alle vault-shared:// Links in einem Nachrichtentext auf (max. MAX_FILES gesamt).
-async function resolveAttachments(msgs, token, maxFiles) {
-  // Erst alle Links sammeln (dedup über URL)
-  const seen   = new Set();
-  const jobs   = []; // { msgIdx, url, soulId, filename, label }
+// Ersetzt vault-shared:// Links im Nachrichtentext durch klickbare URLs.
+// Gibt außerdem eine Liste der enthaltenen Dateien zurück.
+function resolveLinks(content, token) {
+  const attachments = [];
+  const resolved = content.replace(VAULT_LINK_RE, (match, label, soulId, filename) => {
+    const viewUrl = sharedFileUrl(soulId, filename, token);
+    const type    = extLabel(filename);
+    attachments.push({ label: label || filename, soulId, filename, viewUrl, type });
+    return `[${label || filename} (${type})](${viewUrl})`;
+  });
+  return { resolved, attachments };
+}
 
-  for (let i = 0; i < msgs.length && jobs.length < maxFiles; i++) {
-    const content = msgs[i].content || '';
-    for (const m of content.matchAll(VAULT_LINK_RE)) {
-      if (jobs.length >= maxFiles) break;
-      const key = `${m[2]}/${m[3]}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      jobs.push({ msgIdx: i, label: m[1], soulId: m[2], filename: m[3] });
-    }
-  }
+// Für PDFs + Texte: Inhalt direkt laden und als extra Block anhängen (max. 3)
+async function fetchReadableContent(attachments, token) {
+  const readable = attachments.filter(a => {
+    const ext = a.filename.split('.').pop().toLowerCase();
+    return ext === 'pdf' || TEXT_EXT.has(ext);
+  }).slice(0, 3);
 
-  if (jobs.length === 0) return null; // nichts aufzulösen
+  if (readable.length === 0) return [];
 
-  // Parallel fetchen
-  const results = await Promise.allSettled(jobs.map(async j => {
-    const params = new URLSearchParams({ soul_id: j.soulId, filename: j.filename });
+  const results = await Promise.allSettled(readable.map(async a => {
+    const params = new URLSearchParams({ soul_id: a.soulId, filename: a.filename });
     const data   = await getJson(`/api/vault/shared-mcp?${params}`, token);
-    return { ...j, data };
+    return { ...a, data };
   }));
 
-  // Map: url-key → content block
-  const blocks = new Map();
+  const blocks = [];
   for (const r of results) {
-    if (r.status === 'fulfilled' && r.value.data?.ok) {
-      const block = mimeToBlock(r.value.data);
-      if (block) blocks.set(`${r.value.soulId}/${r.value.filename}`, { block, label: r.value.label, filename: r.value.data.filename, sizeKb: r.value.data.size_kb });
+    if (r.status !== 'fulfilled' || !r.value.data?.ok) continue;
+    const { filename, data } = r.value;
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'pdf') {
+      blocks.push({ type: 'text', text: `--- ${filename} ---` });
+      blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: data.data_b64 } });
+    } else {
+      const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');
+      blocks.push({ type: 'text', text: `--- ${filename} ---\n${text}` });
     }
   }
-
   return blocks;
 }
 
@@ -73,75 +73,69 @@ export function register(server, token) {
   server.tool(
     'peer_inbox',
     [
-      'Liest Nachrichten von verbundenen Peers (wie WhatsApp-Posteingang).',
-      'Bilder und Dateien in Nachrichten werden automatisch geladen und angezeigt.',
+      'Liest Nachrichten von verbundenen Peers.',
+      'Dateien und Videos in Nachrichten → direkt klickbare URLs (Browser öffnet/spielt ab).',
+      'PDFs und Texte werden zusätzlich als Inhalt zurückgegeben.',
       '',
       'Beispiele:',
-      '- "Zeige Nachrichten der letzten 3 Tage" → days=3',
+      '- "Nachrichten der letzten 3 Tage" → days=3',
       '- "Was hat Till geschrieben?" → from="Till"',
-      '- "Suche Nachrichten über SYS" → search="SYS"',
-      '- "Nachrichten von Till über das Projekt" → from="Till" + search="Projekt"',
+      '- "Suche Nachrichten über das Projekt" → search="Projekt"',
       '',
-      'Hinweis: Bei externen Peers (anderer Server) maximal 48h verfügbar.',
+      'Hinweis: Externe Peers maximal 48h verfügbar.',
     ].join('\n'),
     {
       days:   z.number().int().min(1).max(30).default(1).optional()
                .describe('Nachrichten der letzten N Tage (default 1, max 30)'),
       from:   z.string().max(100).optional()
-               .describe('Nur Nachrichten von diesem Peer (Name oder Teil davon)'),
+               .describe('Nur Nachrichten von diesem Peer'),
       search: z.string().max(200).optional()
-               .describe('Volltextsuche im Nachrichteninhalt (Groß-/Kleinschreibung egal)'),
+               .describe('Volltextsuche im Nachrichteninhalt'),
       limit:  z.number().int().min(1).max(100).default(50).optional()
-               .describe('Maximale Anzahl Nachrichten (default 50, neueste zuerst wenn gekürzt)'),
+               .describe('Maximale Anzahl Nachrichten (default 50)'),
     },
     async ({ days = 1, from, search, limit = 50 }) => {
       try {
         const data = await getJson(`/api/soul/peer-inbox?days=${days}`, token);
-
         if (!data.ok) {
-          return { content: [{ type: 'text', text: `Fehler vom Server: ${JSON.stringify(data)}` }], isError: true };
+          return { content: [{ type: 'text', text: `Fehler: ${JSON.stringify(data)}` }], isError: true };
         }
 
         const peerList = (data.peers || []).join(', ') || '(keine)';
 
-        if (!data.messages || data.messages.length === 0) {
-          return {
-            content: [{ type: 'text', text: `Keine Nachrichten der letzten ${days} Tag(e).\nVerbundene Peers: ${peerList}` }],
-          };
+        if (!data.messages?.length) {
+          return { content: [{ type: 'text', text: `Keine Nachrichten der letzten ${days} Tag(e).\nPeers: ${peerList}` }] };
         }
 
         let msgs = data.messages;
 
-        // Filter: Absender
         if (from) {
           const q = from.toLowerCase();
-          msgs = msgs.filter(m =>
-            m.peer?.toLowerCase().includes(q) ||
-            m.from_label?.toLowerCase().includes(q) ||
-            m.from_id?.toLowerCase().includes(q)
-          );
+          msgs = msgs.filter(m => m.peer?.toLowerCase().includes(q) || m.from_label?.toLowerCase().includes(q));
         }
-
-        // Filter: Volltextsuche
         if (search) {
           const q = search.toLowerCase();
           msgs = msgs.filter(m => m.content?.toLowerCase().includes(q));
         }
-
-        // Limit: die neuesten behalten
         if (msgs.length > limit) msgs = msgs.slice(-limit);
 
         if (msgs.length === 0) {
-          const filterDesc = [from && `von "${from}"`, search && `mit "${search}"`].filter(Boolean).join(' ');
-          return {
-            content: [{ type: 'text', text: `Keine Nachrichten ${filterDesc} in den letzten ${days} Tag(en).\nVerbundene Peers: ${peerList}` }],
-          };
+          const desc = [from && `von "${from}"`, search && `mit "${search}"`].filter(Boolean).join(' ');
+          return { content: [{ type: 'text', text: `Keine Nachrichten ${desc} (letzte ${days} Tage).\nPeers: ${peerList}` }] };
         }
 
-        // ── vault-shared:// Links parallel auflösen (max. 6 Dateien) ──────────
-        const attachmentBlocks = await resolveAttachments(msgs, token, 6).catch(() => null);
+        // ── vault-shared:// → klickbare URLs + Readable-Content sammeln ────────
+        const allAttachments = [];
+        const resolvedMsgs = msgs.map(m => {
+          const { resolved, attachments } = resolveLinks(m.content || '', token);
+          allAttachments.push(...attachments);
+          return { ...m, content: resolved };
+        });
 
-        // ── Content-Blocks zusammenstellen ────────────────────────────────────
+        // PDFs und Texte direkt laden
+        const readableBlocks = await fetchReadableContent(allAttachments, token).catch(() => []);
+
+        // ── Output aufbauen ───────────────────────────────────────────────────
         const filterParts = [
           `letzte ${days} Tag(e)`,
           from   && `von "${from}"`,
@@ -152,36 +146,16 @@ export function register(server, token) {
           { type: 'text', text: `${msgs.length} Nachricht(en) · ${filterParts}\nPeers: ${peerList}\n` },
         ];
 
-        const seenAttachments = new Set();
-
-        for (const m of msgs) {
+        for (const m of resolvedMsgs) {
           const date = m.ts.replace('T', ' ').slice(0, 16) + ' UTC';
-          let direction;
-          if (m.outgoing) {
-            const toLabel = m.to === 'peer'      ? 'alle Peers'
-                          : m.to === 'community' ? 'Community'
-                          : m.to === 'agent'     ? 'Agent'
-                          : `→ ${m.to.slice(0, 8)}`;
-            direction = `Du → ${toLabel}`;
-          } else {
-            direction = m.from_label || m.peer;
-          }
-
+          const direction = m.outgoing
+            ? `Du → ${ m.to === 'peer' ? 'alle' : m.to === 'community' ? 'Community' : m.to === 'agent' ? 'Agent' : m.to.slice(0, 8) }`
+            : (m.from_label || m.peer);
           contentBlocks.push({ type: 'text', text: `[${date}] ${direction}\n${m.content}` });
-
-          // Inline-Attachments dieser Nachricht hinzufügen
-          if (attachmentBlocks) {
-            for (const match of (m.content || '').matchAll(VAULT_LINK_RE)) {
-              const key = `${match[2]}/${match[3]}`;
-              if (seenAttachments.has(key)) continue;
-              const entry = attachmentBlocks.get(key);
-              if (entry) {
-                seenAttachments.add(key);
-                contentBlocks.push(entry.block);
-              }
-            }
-          }
         }
+
+        // Lesbarer Inhalt (PDFs, Texte) ans Ende
+        contentBlocks.push(...readableBlocks);
 
         return { content: contentBlocks };
 

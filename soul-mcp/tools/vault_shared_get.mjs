@@ -1,11 +1,12 @@
 /**
- * vault_shared_get — Holt eine Datei aus vault_shared (eigene oder Peer).
- * Gibt Bild/PDF/Text als nativen Claude-AI-Content-Block zurück —
- * Claude AI kann Bilder sehen, PDFs lesen, Texte verarbeiten.
+ * vault_shared_get — Gibt eine direkt klickbare URL für eine vault_shared Datei zurück.
+ * Für Text/PDFs optional auch Inhalt lesbar.
+ * Bilder, Videos, Audio → Browser-URL zum Öffnen/Abspielen.
+ * PDFs, Text           → Inhalt direkt lesbar (+ URL).
  */
 
 import { z } from 'zod';
-import { getJson } from '../lib/api.mjs';
+import { getJson, sharedFileUrl } from '../lib/api.mjs';
 
 // vault-shared://soul_id/filename → { soulId, filename }
 function parseVaultUrl(url) {
@@ -14,110 +15,86 @@ function parseVaultUrl(url) {
   return { soulId: m[1], filename: m[2] };
 }
 
-const IMAGE_MIME  = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
-const DOC_MIME    = new Set(['application/pdf']);
-const TEXT_MIME   = new Set(['text/plain', 'text/plain; charset=utf-8', 'text/markdown', 'text/csv', 'application/json']);
-const AUDIO_MIME  = new Set(['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/flac']);
+const TEXT_MIME = ['text/plain', 'text/markdown', 'text/csv', 'application/json'];
 
 export function register(server, token) {
   server.tool(
     'vault_shared_get',
     [
-      'Holt eine Datei aus vault_shared — eigene oder von einem verbundenen Peer.',
-      'Bilder werden visuell angezeigt, PDFs und Texte direkt gelesen.',
+      'Gibt eine klickbare URL für eine vault_shared Datei zurück (Bild, Video, PDF, Dokument).',
+      'Für Texte/PDFs wird zusätzlich der Inhalt direkt zurückgegeben.',
       '',
       'Anwendungsfälle:',
-      '- Peer-Nachricht enthält "[bild.jpg](vault-shared://...)" → hier abrufen und ansehen',
-      '- PDF von Peer lesen und zusammenfassen',
-      '- Eigene hochgeladene Datei überprüfen',
+      '- Peer-Nachricht mit "[bild.jpg](vault-shared://...)" → URL zum Öffnen im Browser',
+      '- Video von Peer → URL zum Abspielen',
+      '- PDF lesen + Inhalt zusammenfassen',
       '',
       'url-Format: vault-shared://soul_id/filename',
-      'Alternativ soul_id + filename separat angeben.',
     ].join('\n'),
     {
       url: z.string().optional()
-            .describe('vault-shared:// URL aus einer Peer-Nachricht, z.B. "vault-shared://abc.../bild.jpg"'),
-      soul_id: z.string().optional()
-                .describe('Soul-ID des Besitzers (alternativ zu url)'),
-      filename: z.string().optional()
-                 .describe('Dateiname (alternativ zu url)'),
+            .describe('vault-shared:// URL aus einer Peer-Nachricht'),
+      soul_id:  z.string().optional().describe('Soul-ID des Besitzers (alternativ zu url)'),
+      filename: z.string().optional().describe('Dateiname (alternativ zu url)'),
     },
     async ({ url, soul_id, filename }) => {
       try {
-        // URL oder soul_id+filename auflösen
         let resolved;
         if (url) {
           resolved = parseVaultUrl(url.trim());
-          if (!resolved) {
-            return { content: [{ type: 'text', text: `Ungültige vault-shared:// URL: "${url}"` }], isError: true };
-          }
+          if (!resolved) return { content: [{ type: 'text', text: `Ungültige vault-shared:// URL: "${url}"` }], isError: true };
         } else if (soul_id && filename) {
           resolved = { soulId: soul_id.trim(), filename: filename.trim() };
         } else {
-          return { content: [{ type: 'text', text: 'Bitte url oder (soul_id + filename) angeben.' }], isError: true };
+          return { content: [{ type: 'text', text: 'Bitte url oder soul_id + filename angeben.' }], isError: true };
         }
 
-        const params = new URLSearchParams({ soul_id: resolved.soulId, filename: resolved.filename });
-        const data = await getJson(`/api/vault/shared-mcp?${params}`, token);
+        const viewUrl  = sharedFileUrl(resolved.soulId, resolved.filename, token);
+        const ext      = resolved.filename.split('.').pop().toLowerCase();
+        const isVideo  = ['mp4','webm','mov','avi','mkv','m4v'].includes(ext);
+        const isAudio  = ['mp3','wav','ogg','m4a','flac','aac'].includes(ext);
+        const isImage  = ['jpg','jpeg','png','webp','gif','avif'].includes(ext);
+        const isPdf    = ext === 'pdf';
+        const isText   = ['md','txt','json','csv'].includes(ext);
 
-        if (!data.ok) {
-          return { content: [{ type: 'text', text: `Fehler: ${data.error || JSON.stringify(data)}` }], isError: true };
+        // Für Text + PDF: Inhalt direkt lesen
+        if (isPdf || isText) {
+          try {
+            const params = new URLSearchParams({ soul_id: resolved.soulId, filename: resolved.filename });
+            const data   = await getJson(`/api/vault/shared-mcp?${params}`, token);
+            if (data.ok) {
+              const mime = (data.mime || '').split(';')[0].trim();
+              if (isPdf) {
+                return {
+                  content: [
+                    { type: 'text', text: `PDF: ${resolved.filename} (${data.size_kb} KB)\nURL: ${viewUrl}` },
+                    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: data.data_b64 } },
+                  ],
+                };
+              }
+              if (TEXT_MIME.some(m => mime.startsWith(m)) || mime.startsWith('text/')) {
+                const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');
+                return { content: [{ type: 'text', text: `${resolved.filename} (${data.size_kb} KB)\nURL: ${viewUrl}\n\n${text}` }] };
+              }
+            }
+          } catch { /* Fallback auf URL */ }
         }
 
-        const mime     = (data.mime || 'application/octet-stream').split(';')[0].trim();
-        const b64      = data.data_b64;
-        const sizeInfo = `${data.filename} (${data.size_kb} KB)`;
+        // Für Bilder, Videos, Audio, sonstiges → URL zurückgeben
+        const typeLabel = isVideo ? 'Video'
+                        : isAudio ? 'Audio'
+                        : isImage ? 'Bild'
+                        : 'Datei';
 
-        // ── Bild → visueller Content-Block ───────────────────────────────────
-        if (IMAGE_MIME.has(mime)) {
-          return {
-            content: [
-              { type: 'text', text: `Bild: ${sizeInfo}` },
-              { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
-            ],
-          };
-        }
+        const hint = isVideo ? 'Im Browser abspielen (Range-Seeking unterstützt)'
+                   : isAudio ? 'Im Browser abspielen'
+                   : isImage ? 'Im Browser öffnen'
+                   : 'Herunterladen oder öffnen';
 
-        // ── PDF → Document-Block (Claude AI liest Inhalt) ─────────────────────
-        if (DOC_MIME.has(mime)) {
-          return {
-            content: [
-              { type: 'text', text: `PDF: ${sizeInfo}` },
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-            ],
-          };
-        }
-
-        // ── Text/Markdown/JSON/CSV → direkt als Text ──────────────────────────
-        if (TEXT_MIME.has(mime) || mime.startsWith('text/')) {
-          const text = Buffer.from(b64, 'base64').toString('utf-8');
-          return {
-            content: [{
-              type: 'text',
-              text: `Datei: ${sizeInfo}\n\n${text}`,
-            }],
-          };
-        }
-
-        // ── Audio → Hinweis (Claude AI kann Audio nicht direkt wiedergeben) ───
-        if (AUDIO_MIME.has(mime)) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Audio-Datei: ${sizeInfo} (${mime})\nAudio kann in Claude AI nicht direkt abgespielt werden.\nDatei ist verfügbar unter: ${url || `vault-shared://${resolved.soulId}/${resolved.filename}`}`,
-            }],
-          };
-        }
-
-        // ── Sonstige Binärdateien ─────────────────────────────────────────────
         return {
           content: [{
             type: 'text',
-            text: [
-              `Datei: ${sizeInfo} (${mime})`,
-              `Base64-Daten verfügbar (${b64.length} Zeichen).`,
-              `Format wird von Claude AI nicht nativ angezeigt.`,
-            ].join('\n'),
+            text: `${typeLabel}: ${resolved.filename}\n${hint}\nURL: ${viewUrl}`,
           }],
         };
 

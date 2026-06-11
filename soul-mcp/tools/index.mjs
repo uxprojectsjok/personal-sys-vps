@@ -107,7 +107,7 @@ export function registerTools(server, token, soulId = null) {
   peerInbox(server, token);
   peerSend(server, token);
   vaultSharedGet(server, token);
-  if (soulId) vaultSharedUpload(server, soulId);
+  if (soulId) vaultSharedUpload(server, soulId, token);
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
   if (soulId) contextWrite(server, soulId);
