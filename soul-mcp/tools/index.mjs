@@ -44,6 +44,10 @@ import { register as webSearch }             from './web_search.mjs';
 import { register as peerInbox }             from './peer_inbox.mjs';
 import { register as peerSend }              from './peer_send.mjs';
 
+// ── Vault Shared (Datei-Austausch über Peer-Nachrichten) ──────────────────────
+import { register as vaultSharedGet }        from './vault_shared_get.mjs';
+import { register as vaultSharedUpload }     from './vault_shared_upload.mjs';
+
 // ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
 import { register as healthCheckPayed }      from './health_check_payed.mjs';
 
@@ -102,6 +106,8 @@ export function registerTools(server, token, soulId = null) {
   twilioCallConfig(server, token);
   peerInbox(server, token);
   peerSend(server, token);
+  vaultSharedGet(server, token);
+  if (soulId) vaultSharedUpload(server, soulId);
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
   if (soulId) contextWrite(server, soulId);
