@@ -162,6 +162,7 @@ local conn_path = SOULS_DIR .. own_soul_id .. "/soul_connections.json"
 local cf = io.open(conn_path, "r")
 local peer_endpoint  = nil
 local is_same_server = false
+local own_host = ngx.var.host or ""
 
 if cf then
   local raw = cf:read("*a"); cf:close()
@@ -169,8 +170,9 @@ if cf then
   if ok_c and type(conn_data) == "table" then
     for _, c in ipairs(type(conn_data.connections) == "table" and conn_data.connections or {}) do
       if c.soul_id == target_soul_id then
-        if c.endpoint and c.endpoint ~= "" then
-          peer_endpoint = c.endpoint
+        if type(c.domain) == "string" and c.domain ~= ""
+           and not c.domain:find(own_host, 1, true) then
+          peer_endpoint = c.domain
         else
           is_same_server = true
         end
