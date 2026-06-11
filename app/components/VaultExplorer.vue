@@ -475,6 +475,15 @@
           </svg>
           {{ PROFILE_LABELS[PROFILE_TYPE_MAP[menuCtx.type]] }} erstellen
         </button>
+        <button v-if="props.soulCert"
+          @click="onCreateShareLink(menuCtx.type, menuCtx.name); closeMenu()"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+        >
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
+          </svg>
+          Link erzeugen
+        </button>
         <div class="my-1 border-t border-white/8"/>
         <button
           @click="onDeleteServer(menuCtx.type, menuCtx.name); closeMenu()"
@@ -487,6 +496,64 @@
         </button>
       </template>
     </div>
+  </Teleport>
+
+  <!-- ── Share-Link Modal ─────────────────────────────────────────────────── -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="shareLinkOpen"
+        class="fixed inset-0 z-[400] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+        @click.self="shareLinkOpen = false"
+        role="dialog" aria-modal="true"
+      >
+        <div class="relative w-full max-w-sm bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl overflow-hidden">
+          <div class="flex items-center justify-between px-5 pt-5 pb-3">
+            <h2 class="text-sm font-semibold text-white">Share-Links</h2>
+            <button @click="shareLinkOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition">✕</button>
+          </div>
+
+          <!-- Neu erstellter Link -->
+          <div v-if="newShareLink" class="mx-5 mb-4 p-3 rounded-xl bg-[var(--accent-dim)] border border-[rgba(109,184,154,0.3)]">
+            <p class="text-xs text-[var(--accent)] font-medium mb-1.5">Link erstellt für <span class="text-white/80">{{ newShareLink.label }}</span></p>
+            <div class="flex items-center gap-2">
+              <input
+                :value="newShareLink.url"
+                readonly
+                class="flex-1 bg-transparent text-xs text-white/70 font-mono outline-none truncate"
+              />
+              <button
+                @click="copyShareLink(newShareLink.url)"
+                class="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition"
+                :class="copyDone ? 'bg-[var(--accent)] text-black' : 'bg-white/10 text-white hover:bg-white/20'"
+              >{{ copyDone ? 'Kopiert ✓' : 'Kopieren' }}</button>
+            </div>
+          </div>
+
+          <!-- Alle aktiven Links -->
+          <div class="px-5 pb-4 space-y-2 max-h-64 overflow-y-auto">
+            <p v-if="shareLinks.length === 0 && !newShareLink" class="text-xs text-white/35 text-center py-4">Keine aktiven Links</p>
+            <div v-for="l in shareLinks" :key="l.id"
+              class="flex items-center gap-2 py-2 border-b border-white/6 last:border-0"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-white/70 truncate font-mono">{{ l.label }}</p>
+                <p class="text-[10px] text-white/30">{{ new Date(l.created * 1000).toLocaleDateString('de-DE') }}</p>
+              </div>
+              <button @click="copyShareLink(l.url)" class="shrink-0 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/8 transition" title="Kopieren">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <button @click="deactivateShareLink(l.id)" class="shrink-0 p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-950/30 transition" title="Deaktivieren">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -539,6 +606,57 @@ const selectedServer = ref(new Set());
 const openMenuKey    = ref(null);              // "type::name"
 const menuPos        = reactive({ top: 0, right: 0 });
 const menuCtx        = reactive({ tab: "", type: "", name: "" });
+
+// ── Share-Links ───────────────────────────────────────────────────────────────
+const shareLinkOpen  = ref(false);
+const shareLinks     = ref([]);
+const newShareLink   = ref(null);
+const copyDone       = ref(false);
+let   _copyTimer     = null;
+
+async function loadShareLinks() {
+  if (!props.soulCert) return;
+  try {
+    const r = await fetch('/api/vault/share-links', { headers: { Authorization: `Bearer ${props.soulCert}` } });
+    if (r.ok) { const d = await r.json(); shareLinks.value = d.links || []; }
+  } catch {}
+}
+
+async function onCreateShareLink(type, name) {
+  if (!props.soulCert) return;
+  newShareLink.value = null;
+  try {
+    const r = await fetch('/api/vault/share-links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
+      body: JSON.stringify({ file: name, type, label: name }),
+    });
+    const d = await r.json();
+    if (!d.ok) { showError(d.error || 'Link-Erstellung fehlgeschlagen'); return; }
+    newShareLink.value = d;
+    await loadShareLinks();
+    shareLinkOpen.value = true;
+  } catch (e) { showError(`Fehler: ${e.message}`); }
+}
+
+async function deactivateShareLink(id) {
+  if (!props.soulCert) return;
+  try {
+    await fetch(`/api/vault/share-links/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${props.soulCert}` },
+    });
+    await loadShareLinks();
+    if (newShareLink.value?.id === id) newShareLink.value = null;
+  } catch {}
+}
+
+function copyShareLink(url) {
+  navigator.clipboard?.writeText(url).catch(() => {});
+  clearTimeout(_copyTimer);
+  copyDone.value = true;
+  _copyTimer = setTimeout(() => { copyDone.value = false; }, 2000);
+}
 
 function toggleSelect(tabId, name) {
   const s = tabId === "local" ? selectedLocal : selectedServer;
