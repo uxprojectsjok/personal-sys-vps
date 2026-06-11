@@ -67,12 +67,12 @@ export function register(server, token) {
             // Peer-Name → soul_id auflösen
             const { connections } = await getJson('/api/vault/connections', token);
             const match = (connections || []).find(c =>
-              c.label?.toLowerCase() === toNorm ||
-              c.label?.toLowerCase().startsWith(toNorm) ||
+              c.alias?.toLowerCase() === toNorm ||
+              c.alias?.toLowerCase().startsWith(toNorm) ||
               c.soul_id?.toLowerCase().startsWith(toNorm)
             );
             if (!match) {
-              const available = (connections || []).map(c => c.label).filter(Boolean).join(', ') || '(keine)';
+              const available = (connections || []).map(c => c.alias).filter(Boolean).join(', ') || '(keine)';
               return {
                 content: [{ type: 'text', text: `Peer "${to}" nicht gefunden.\nVerfügbare Peers: ${available}` }],
                 isError: true,
