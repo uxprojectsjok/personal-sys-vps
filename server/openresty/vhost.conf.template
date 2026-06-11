@@ -656,6 +656,15 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_social_read.lua;
   }
 
+  # ── Vault Shared — List (owner only) ─────────────────────────────────────────
+  location = /api/vault/shared-list {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_list.lua;
+  }
+
   # ── Vault Shared — Upload (owner only) ───────────────────────────────────────
   location = /api/vault/shared {
     limit_except POST { deny all; }
