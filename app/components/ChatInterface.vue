@@ -261,19 +261,19 @@
       <Transition name="cmd-strip">
         <div v-show="mediaPickerOpen" class="media-picker">
           <button class="mp-btn" @click="mediaPickerOpen = false; cameraOpen = true" :disabled="visionLoading || props.growthLocked">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
             </svg>
             Foto / Video
           </button>
           <button class="mp-btn" @click="mediaPickerOpen = false; onFileIconClick()" :disabled="props.growthLocked">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
             </svg>
             Datei
           </button>
           <button class="mp-btn" @click="mediaPickerOpen = false; startPeerAudioRec()" :disabled="props.growthLocked">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
             </svg>
@@ -437,7 +437,7 @@
             <button class="clear-cancel" @click="clearAllConfirm = false">Abbrechen</button>
           </span>
           <button v-else class="clear-all-btn" @click="clearAllConfirm = true" title="Alle Nachrichten löschen">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
             </svg>
           </button>
@@ -1818,7 +1818,7 @@ async function handlePeerSend(text, recipient) {
         const r = await fetch('/api/vault/shared', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-          body: JSON.stringify({ name: fileName, data: b64 }),
+          body: JSON.stringify({ name: fileName, data: b64, mime: msgMedia.value.mime || '' }),
         })
         if (!r.ok) throw new Error(`Upload ${r.status}`)
         const d = await r.json()
@@ -4771,14 +4771,17 @@ defineExpose({
 
 /* ── Media picker (compact chip row) ── */
 .media-picker {
-  display: flex; flex-wrap: nowrap; gap: 6px; padding: 6px 2px 2px;
+  display: flex; flex-wrap: nowrap; gap: 5px; padding: 6px 2px 2px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.media-picker::-webkit-scrollbar { display: none; }
 .mp-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 13px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 999px; flex-shrink: 0;
   background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
   color: var(--accent); cursor: pointer;
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.03em;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .mp-btn:hover:not(:disabled) {
