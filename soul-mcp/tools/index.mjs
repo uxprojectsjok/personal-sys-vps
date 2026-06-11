@@ -40,6 +40,10 @@ import { register as twilioCallConfig }      from './twilio_call_config.mjs';
 // ── Owner API-Tools (neu) ─────────────────────────────────────────────────────
 import { register as webSearch }             from './web_search.mjs';
 
+// ── Peer Messaging (MCP-WhatsApp) ─────────────────────────────────────────────
+import { register as peerInbox }             from './peer_inbox.mjs';
+import { register as peerSend }              from './peer_send.mjs';
+
 // ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
 import { register as healthCheckPayed }      from './health_check_payed.mjs';
 
@@ -96,6 +100,8 @@ export function registerTools(server, token, soulId = null) {
   healthSync(server, token);
   webSearch(server, token);
   twilioCallConfig(server, token);
+  peerInbox(server, token);
+  peerSend(server, token);
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
   if (soulId) contextWrite(server, soulId);

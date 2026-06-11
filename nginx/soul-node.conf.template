@@ -495,6 +495,15 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_peer_proxy.lua;
   }
 
+  # ── Peer Inbox (MCP: aggregiert Nachrichten aller Peers) ─────────────────────
+  location = /api/soul/peer-inbox {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/soul_peer_inbox.lua;
+  }
+
   location /api/vault/peer-stream {
     limit_req zone=chat burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
