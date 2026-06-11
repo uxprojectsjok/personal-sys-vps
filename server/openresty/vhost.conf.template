@@ -756,10 +756,10 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_peer_stream.lua;
   }
 
-  # ── Vault Connections — eigene Liste + Peer-Dateien (soul_auth) ──────────────
+  # ── Vault Connections — eigene Liste + Peer-Dateien (vault_auth: soul_cert + service-token) ──
   location = /api/vault/connections {
     limit_req zone=api burst=20 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_connections.lua;
