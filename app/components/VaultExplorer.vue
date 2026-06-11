@@ -7,7 +7,7 @@
       <button
         v-for="t in TABS" :key="t.id"
         @click="switchTab(t.id)"
-        class="flex-1 h-8 rounded-none text-sm font-medium transition-all"
+        class="flex-1 h-8 rounded-none text-xs font-medium transition-all min-w-0"
         :class="tab === t.id ? 'bg-white/12 text-white' : 'text-white/40 hover:text-white/65'"
       >{{ t.label }}</button>
       <button
