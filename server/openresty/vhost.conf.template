@@ -660,8 +660,8 @@ server {
   location = /api/vault/shared {
     limit_except POST { deny all; }
     limit_req zone=vault_upload burst=5 nodelay;
-    client_max_body_size 15M;
-    client_body_buffer_size 15M;
+    client_max_body_size 70M;
+    client_body_buffer_size 1M;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/vault_shared_upload.lua;
