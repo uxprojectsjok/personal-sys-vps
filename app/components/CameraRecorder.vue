@@ -524,7 +524,7 @@ function bestMime() {
 function blobToBase64(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result.split(",")[1]);
+    reader.onload = (e) => resolve(e.target.result.split(";base64,")[1]);
     reader.readAsDataURL(blob);
   });
 }
