@@ -424,10 +424,15 @@ async function downloadSharedFile(f) {
       headers: { Authorization: `Bearer ${soulToken.value}` }
     })
     if (!res.ok) { showToast('Download fehlgeschlagen', 'err'); return }
-    const url = URL.createObjectURL(await res.blob())
-    const a = document.createElement('a'); a.href = url; a.download = f.name
-    document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    const blob = await res.blob()
+    if (!blob.size) { showToast('Download fehlgeschlagen', 'err'); return }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = f.name; a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 5000)
+    showToast(`${f.name} wird heruntergeladen`)
   } catch { showToast('Download fehlgeschlagen', 'err') }
   finally { delete sharedBusy[f.name] }
 }
