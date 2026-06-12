@@ -105,7 +105,7 @@ export function registerTools(server, token, soulId = null) {
   webSearch(server, token);
   twilioCallConfig(server, token);
   peerInbox(server, token);
-  peerSend(server, token);
+  peerSend(server, token, soulId);
   vaultSharedGet(server, token);
   if (soulId) vaultSharedUpload(server, soulId, token);
   if (soulId) shopWriteRead(server, soulId);
