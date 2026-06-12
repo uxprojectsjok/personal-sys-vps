@@ -47,6 +47,7 @@ import { register as peerSend }              from './peer_send.mjs';
 // ── Vault Shared (Datei-Austausch über Peer-Nachrichten) ──────────────────────
 import { register as vaultSharedGet }        from './vault_shared_get.mjs';
 import { register as vaultSharedUpload }     from './vault_shared_upload.mjs';
+import { register as vaultSharedList }       from './vault_shared_list.mjs';
 
 // ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
 import { register as healthCheckPayed }      from './health_check_payed.mjs';
@@ -107,6 +108,7 @@ export function registerTools(server, token, soulId = null) {
   peerInbox(server, token);
   peerSend(server, token, soulId);
   vaultSharedGet(server, token);
+  vaultSharedList(server, token);
   if (soulId) vaultSharedUpload(server, soulId, token);
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
