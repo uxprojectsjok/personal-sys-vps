@@ -301,8 +301,8 @@ function kindToType(kind) {
 }
 function nameToApiType(name) {
   const ext = (name || '').split('.').pop().toLowerCase()
-  if (/^(mp3|wav|ogg|flac|aac|m4a|opus|weba|webm)$/.test(ext)) return 'audio'
-  if (/^(mp4|mov|avi|mkv|m4v)$/.test(ext)) return 'video'
+  if (/^(mp3|wav|ogg|flac|aac|m4a|opus|weba)$/.test(ext)) return 'audio'
+  if (/^(mp4|webm|mov|avi|mkv|m4v)$/.test(ext)) return 'video'
   if (/^(jpg|jpeg|png|webp|gif|avif|heic)$/.test(ext)) return 'image'
   return 'context'
 }
