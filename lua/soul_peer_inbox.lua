@@ -94,14 +94,18 @@ local all_msgs  = {}
 local peer_list = {}
 
 for _, conn in ipairs(connections) do
-  local peer_label      = (type(conn.label) == "string" and conn.label ~= "") and conn.label or conn.soul_id:sub(1, 8)
+  local peer_label      = (type(conn.alias) == "string" and conn.alias ~= "") and conn.alias or conn.soul_id:sub(1, 8)
   local peer_soul_id_v  = conn.soul_id
   local is_mutual       = type(conn.peer_token) == "string" and conn.peer_token ~= ""
 
   if not is_mutual then goto continue end
   table.insert(peer_list, peer_label)
 
-  if not conn.endpoint or conn.endpoint == "" then
+  local own_host = ngx.var.host or ""
+  local is_same_server = not (type(conn.domain) == "string" and conn.domain ~= ""
+    and not conn.domain:find(own_host, 1, true))
+
+  if is_same_server then
     -- Same-Server-Peer: Dateisystem direkt lesen
     local sys_path = SOULS_DIR .. peer_soul_id_v .. "/sys.md"
     local sf = io.open(sys_path, "r")
@@ -119,7 +123,7 @@ for _, conn in ipairs(connections) do
   else
     -- Cross-Domain-Peer: HTTP mit eigenem HMAC-Cert
     -- stage=2 → 48h; für days>2 wird cross-domain auf 48h begrenzt (API-Limitation)
-    local upstream = conn.endpoint:gsub("/+$", "")
+    local upstream = conn.domain:gsub("/+$", "")
       .. "/api/soul/social-read?soul_id=" .. ngx.escape_uri(peer_soul_id_v)
       .. "&raw=1&stage=2"
 
