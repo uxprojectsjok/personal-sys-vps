@@ -209,7 +209,8 @@ async function onSilence(soulId, soul, apiKey, silenceDays) {
 
 async function onAgent(soulId, soul, apiKey) {
   const agentBlock = soul.match(/<!-- AGENT:START -->([\s\S]*?)<!-- AGENT:END -->/)?.[1] || '';
-  const lastMsg = agentBlock.trim().split('\n').filter(l => l.includes('@msg')).slice(-1)[0] || '';
+  const msgMatches = [...agentBlock.matchAll(/<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g)];
+  const lastMsg = msgMatches.length ? msgMatches[msgMatches.length - 1][0] : '';
   if (!lastMsg) return;
   const text = await callClaude(
     apiKey,
