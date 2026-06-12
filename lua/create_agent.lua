@@ -26,6 +26,7 @@ ngx.req.read_body()
 local vault_key_hex       = ""
 local body_audio_base64   = nil
 local body_audio_filename = nil
+local body_voice_id       = nil
 do
   local body_raw = ngx.req.get_body_data()
   if not body_raw then
@@ -47,6 +48,9 @@ do
         if type(body.audio_filename) == "string" then
           body_audio_filename = body.audio_filename
         end
+      end
+      if type(body.voice_id) == "string" and #body.voice_id > 0 then
+        body_voice_id = body.voice_id
       end
     end
   end
@@ -290,8 +294,20 @@ if not audio_data then
 end
 
 -- ── Voice Clone: bestehende ID wiederverwenden oder neu klonen ───────────────
--- Vorhandene voice_id aus sys.md → kein erneuter Clone nötig (Vault nicht erforderlich)
-local voice_id = existing_voice_id
+-- body_voice_id (aus Request) hat höchste Priorität → sofort übernehmen + persistieren
+local voice_id = body_voice_id or existing_voice_id
+
+if body_voice_id and body_voice_id ~= (existing_voice_id or "") then
+  local cfg_r = read_file(BASE_DIR .. "/config.json")
+  if cfg_r then
+    local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+    if ok_c and type(cfg_d) == "table" then
+      cfg_d.elevenlabs_voice_id = body_voice_id
+      local wok, wjs = pcall(cjson.encode, cfg_d)
+      if wok then write_file(BASE_DIR .. "/config.json", wjs) end
+    end
+  end
+end
 
 if not voice_id and audio_data then
   local mime = "audio/webm"
