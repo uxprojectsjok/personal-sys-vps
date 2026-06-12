@@ -611,7 +611,7 @@ local resp_ok, resp_js = pcall(cjson.encode, {
   soul_name       = soul_name,
   has_voice_clone = voice_id ~= nil,
   published       = published,
-  agent_url       = "https://elevenlabs.io/app/conversational-ai/" .. agent_id,
+  agent_url       = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id,
 })
 if not resp_ok then
   ngx.status = 500
