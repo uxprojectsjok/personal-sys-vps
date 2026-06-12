@@ -255,9 +255,10 @@ export function useApiContext() {
     // Metadaten/Config-Dateien niemals syncen
     if (ext === "json") return null;
 
-    // WebM ist dual-use (Audio + Video) → Ordner entscheidet
+    // WebM ist dual-use (Audio + Video) → Ordner, dann Dateiname entscheidet
     if (/\.webm$/.test(lower)) {
       if (folder === "motion_samples" || folder === "video_samples" || folder === "videos") return "video";
+      if (/(?:^|\/)motion[_\-]/.test(lower)) return "video"; // motion_*.webm immer Video
       return "audio"; // voice_samples oder unbekannt → Audio
     }
 
