@@ -118,6 +118,29 @@ No third-party messaging service involved. No WhatsApp, no Telegram. The AI is t
 - File viewer, audio player, video player built in
 - Calendar view — vault-based event entries
 
+**Local Vault Folder Structure**
+```
+vault/
+├── jan.md              ← Soul identity file (SYS frontmatter, soul_cert) — stays at root
+├── sys.md              ← Soul content — stays at root
+├── profile.png         ← Profile image — stays at root (jpg/png/webp)
+├── vault-share.json    ← Vault metadata — stays at root, never synced
+│
+├── context/            ← All context files for AI (.md, .txt, .pdf)
+│   ├── health.md       managed by health_sync / food_log
+│   ├── mind.md         managed by mind_write (AI personality config)
+│   ├── prompts.md      managed by generate-prompts.mjs on build
+│   ├── shopping.md     managed by shop_write_read
+│   └── *.md / *.pdf    any additional context (milestones, notes, CV…)
+│
+├── audio/              ← Voice recordings (.mp3, .webm)
+├── images/             ← Additional images, not the profile photo
+├── motion_samples/     ← Motion capture videos (.webm → synced as video type)
+├── profile/            ← AI profile JSON files (personality profiles)
+└── video/              ← Video files (.mp4)
+```
+Root `.md` files without SYS frontmatter are also picked up as context — but keeping them in `context/` is cleaner. The sync strips the folder path; the server always receives only the filename.
+
 **Networking**
 - MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
 - Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
