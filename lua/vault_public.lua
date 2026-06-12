@@ -107,9 +107,9 @@ end
 
 local function file_type_of(name)
   local ext = (name:match("%.([^%.]+)$") or ""):lower()
-  if ext == "mp3" or ext == "wav" or ext == "ogg" or ext == "webm" or
+  if ext == "mp3" or ext == "wav" or ext == "ogg" or
      ext == "m4a" or ext == "opus" or ext == "flac" or ext == "aac" then return "audio" end
-  if ext == "mp4" or ext == "mov" or ext == "avi" or ext == "mkv" then return "video" end
+  if ext == "mp4" or ext == "webm" or ext == "mov" or ext == "avi" or ext == "mkv" then return "video" end
   if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "webp" or
      ext == "gif" or ext == "avif" then return "images" end
   if ext == "md" or ext == "txt" or ext == "pdf" then return "context_files" end

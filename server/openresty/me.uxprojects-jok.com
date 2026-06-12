@@ -656,12 +656,21 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_social_read.lua;
   }
 
+  # ── Vault Shared — List (owner only) ─────────────────────────────────────────
+  location = /api/vault/shared-list {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_shared_list.lua;
+  }
+
   # ── Vault Shared — Upload (owner only) ───────────────────────────────────────
   location = /api/vault/shared {
     limit_except POST { deny all; }
     limit_req zone=vault_upload burst=5 nodelay;
-    client_max_body_size 15M;
-    client_body_buffer_size 15M;
+    client_max_body_size 70M;
+    client_body_buffer_size 1M;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/vault_shared_upload.lua;
@@ -684,6 +693,52 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_shared_delete.lua;
   }
 
+  # ── Share-Links verwalten (soul_cert Auth) ───────────────────────────────────
+  location = /api/vault/share-links {
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_share_link.lua;
+  }
+  location ~ ^/api/vault/share-links/ {
+    limit_except DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_share_link.lua;
+  }
+
+  # ── Share-Link öffentlich abrufen (Token = Auth) ──────────────────────────────
+  location ~ ^/api/vault/link/[^/]+/[a-f0-9]+ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    content_by_lua_file /etc/openresty/lua/vault_share_link_serve.lua;
+  }
+
+  # ── Vault Shared MCP Get (eigene + Peer-Dateien via service-token) ───────────
+  location = /api/vault/shared-mcp {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_shared_mcp_get.lua;
+  }
+
+  # ── Vault Shared View (Bilder/Dateien/Videos direkt ausliefern, ?token=...) ──
+  location ~ ^/api/vault/shared-view/ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/vault_shared_view.lua;
+  }
+
+  # ── Vault Shared: internes Filesystem-Serving für X-Accel-Redirect ──────────
+  location /internal/vault-shared/ {
+    internal;
+    alias /var/lib/sys/souls/;
+    add_header Cache-Control "private, max-age=3600" always;
+  }
+
   # ── Vault Peer Media Proxy (browser → own node → peer's vault/shared) ─────────
   location = /api/vault/peer-media {
     limit_except GET { deny all; }
@@ -701,10 +756,10 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_peer_stream.lua;
   }
 
-  # ── Vault Connections — eigene Liste + Peer-Dateien (soul_auth) ──────────────
+  # ── Vault Connections — eigene Liste + Peer-Dateien (vault_auth: soul_cert + service-token) ──
   location = /api/vault/connections {
     limit_req zone=api burst=20 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_connections.lua;
@@ -843,6 +898,15 @@ server {
     limit_req zone=chat burst=10 nodelay;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/soul_peer_proxy.lua;
+  }
+
+  # ── Peer Inbox (MCP: aggregiert Nachrichten aller Peers) ─────────────────────
+  location = /api/soul/peer-inbox {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/soul_peer_inbox.lua;
   }
 
   # ── Peer-Cert Verifikation (öffentlich, für Cross-Domain Peer-Auth) ──────────
