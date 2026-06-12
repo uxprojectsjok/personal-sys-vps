@@ -59,6 +59,17 @@ async function startCall() {
   errorMsg.value = ''
 
   try {
+    // Öffentliche Agent-URL bevorzugen (kein signed URL nötig)
+    const cfgRes = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json()
+      if (cfg.elevenlabs_agent_url) {
+        window.location.href = cfg.elevenlabs_agent_url
+        return
+      }
+    }
+
+    // Fallback: signed URL via /api/elevenlabs-token
     const res = await fetch('/api/elevenlabs-token', {
       method: 'POST',
       headers: { Authorization: `Bearer ${soulToken.value}` },
