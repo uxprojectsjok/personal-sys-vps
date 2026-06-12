@@ -191,10 +191,15 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ── Voice Clone (nur wenn Audio verfügbar) ────────────────────────────────
-  let voiceId = null
+  // ── Optionale voice_id aus Request-Body (Override) ───────────────────────
+  const body = await readBody(event).catch(() => ({}))
+  const overrideVoiceId = typeof body?.voice_id === 'string' && body.voice_id.length > 0
+    ? body.voice_id : null
 
-  if (audioBuffer) {
+  // ── Voice Clone (nur wenn Audio verfügbar und kein Override) ─────────────
+  let voiceId = overrideVoiceId
+
+  if (!voiceId && audioBuffer) {
     const form = new FormData()
     const mime = audioFilename.endsWith('.mp3') ? 'audio/mpeg'
                 : audioFilename.endsWith('.wav') ? 'audio/wav'
