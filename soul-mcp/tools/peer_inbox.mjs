@@ -7,7 +7,14 @@
  */
 
 import { z } from 'zod';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { tmpdir } from 'os';
+import { writeFileSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { getJson, sharedFileUrl } from '../lib/api.mjs';
+
+const execFileAsync = promisify(execFile);
 
 const VAULT_LINK_RE = /\[([^\]]*)\]\(vault-shared:\/\/([a-f0-9-]{36})\/([A-Za-z0-9_\-.]+)\)/gi;
 
@@ -43,8 +50,22 @@ function resolveLinks(content, token) {
 const CLAUDE_IMAGE_MIME = new Set(['image/jpeg','image/png','image/gif','image/webp']);
 // avif → nicht unterstützt von Claude, wird übersprungen
 
-// Für PDFs + Texte: Inhalt direkt laden und als extra Block anhängen (max. 3)
+// PDF-Text via pdftotext extrahieren (temp-Datei, dann aufräumen)
+async function pdfToText(base64Data) {
+  const tmp = join(tmpdir(), `mcp_pdf_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`);
+  try {
+    writeFileSync(tmp, Buffer.from(base64Data, 'base64'));
+    const { stdout } = await execFileAsync('pdftotext', [tmp, '-'], { maxBuffer: 4 * 1024 * 1024, timeout: 15000 });
+    return stdout.trim();
+  } finally {
+    try { unlinkSync(tmp); } catch {}
+  }
+}
+
+// Für PDFs + Texte: Inhalt direkt laden und als text-Block anhängen (max. 3)
 async function fetchReadableContent(attachments, token) {
+  const MAX_PDF_B64 = 10_000_000; // ~7,5 MB raw
+
   const readable = attachments.filter(a => {
     const ext = a.filename.split('.').pop().toLowerCase();
     return ext === 'pdf' || TEXT_EXT.has(ext);
@@ -64,8 +85,16 @@ async function fetchReadableContent(attachments, token) {
     const { filename, data } = r.value;
     const ext = filename.split('.').pop().toLowerCase();
     if (ext === 'pdf') {
-      blocks.push({ type: 'text', text: `--- ${filename} ---` });
-      blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: data.data_b64 } });
+      if (data.data_b64.length > MAX_PDF_B64) {
+        blocks.push({ type: 'text', text: `--- ${filename} (PDF zu groß für Textextraktion, ${data.size_kb} KB) ---` });
+      } else {
+        try {
+          const text = await pdfToText(data.data_b64);
+          blocks.push({ type: 'text', text: `--- ${filename} ---\n${text || '(kein Textinhalt)'}` });
+        } catch {
+          blocks.push({ type: 'text', text: `--- ${filename} (PDF-Textextraktion fehlgeschlagen) ---` });
+        }
+      }
     } else {
       const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');
       blocks.push({ type: 'text', text: `--- ${filename} ---\n${text}` });
