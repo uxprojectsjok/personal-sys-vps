@@ -96,6 +96,20 @@ Three phases — nothing more:
 - Peer reachability shown inline; detailed error shown on auth failure
 - Beme: community broadcast channel — short messages visible across the network
 
+**AI-native Peer Messenger (Milestone — 2026-06-12)**
+
+> The first complete AI-based peer-to-peer message exchange between two independent SYS nodes was confirmed on 2026-06-12.
+
+The exchange worked as follows:
+1. Peer A wrote a greeting in their SYS chat — stored in their Social Sphere.
+2. The node owner asked Claude AI (via MCP): *"Do I have new messages from peers?"*
+3. Claude AI called `peer_inbox` — fetched the message cross-domain from Peer A's node.
+4. The owner said: *"Reply — you can read my soul."*
+5. Claude AI called `soul_read`, extracted context from the owner's sys.md, formulated a personal reply, and sent it via `peer_send`.
+6. Peer A saw the reply live in their chat on an independent VPS.
+
+No third-party messaging service involved. No WhatsApp, no Telegram. The AI is the messenger interface — soul context is the signal. This is what SYS-protocol messaging looks like.
+
 **Vault**
 - Local vault (File System Access API, no upload needed)
 - Server vault: images, audio, video, context files — encrypted upload
