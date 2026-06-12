@@ -22,6 +22,7 @@ import { register as profileGet }            from './profile_get.mjs';
 import { register as profileSave }           from './profile_save.mjs';
 import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as elevenLabsAgentUpdate } from './elevenlabs_agent_update.mjs';
+import { register as callMe }                from './call_me.mjs';
 import { register as soulPayRead }           from './soul_pay_read.mjs';
 import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
@@ -95,6 +96,7 @@ export function registerTools(server, token, soulId = null) {
   soulSkills(server, token);
   soulCloudPush(server, token);
   elevenLabsAgentUpdate(server, token);
+  callMe(server, token);
   soulPayRead(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
