@@ -96,7 +96,7 @@ export function registerTools(server, token, soulId = null) {
   soulSkills(server, token);
   soulCloudPush(server, token);
   elevenLabsAgentUpdate(server, token);
-  callMe(server, token);
+  callMe(server, token, soulId);
   soulPayRead(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
