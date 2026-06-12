@@ -47,22 +47,33 @@ async function uploadToVaultShared(soulId, filename, data_b64) {
 }
 
 export function register(server, token, soulId = null) {
+  const sysUrl = process.env.SYS_API_URL || 'https://me.uxprojects-jok.com';
+
   server.tool(
     'peer_send',
     [
-      'Sendet eine Nachricht oder Datei an einen oder alle Peers.',
-      'Textnachrichten landen im SOCIAL-Block von sys.md.',
-      'Dateien (Bilder, PDFs, Dokumente) werden automatisch in vault_shared hochgeladen',
-      'und als Link in der Nachricht eingebettet — Peers können sie direkt öffnen.',
+      'Sendet Text oder Datei an einen Peer (wie ein Messenger).',
       '',
-      'Beispiele:',
-      '- "Schreibe an Till: Bis morgen!" → to="Till", message="Bis morgen!"',
-      '- "@alle Wer ist dabei?" → to="alle", message="Wer ist dabei?"',
-      '- PDF an Till → Erst im VaultExplorer der App hochladen → dann: to="Till", vault_filename="1234_bericht.pdf"',
-      '- Bild mit Base64 → to="Till", filename="foto.jpg", data_b64="..." (nur wenn raw bytes verfügbar)',
+      '── TEXT ────────────────────────────────────────────────────────────────',
+      'Direkt senden: to + message → fertig.',
+      'Beispiel: "@peer Till Bis morgen!" → to="Till", message="Bis morgen!"',
       '',
-      'WICHTIG: Dateien aus dem Claude AI Chat (PDF, Bild) können NICHT als raw bytes extrahiert werden.',
-      'Workflow für Datei-Versand: 1) Datei im App-VaultExplorer hochladen → 2) vault_filename verwenden.',
+      '── DATEI / BILD ────────────────────────────────────────────────────────',
+      'Claude AI kann keine Datei-Bytes aus dem Chat extrahieren.',
+      'Workflow (automatisch ausführen, keine Rückfrage ob der User zustimmt):',
+      '',
+      'SCHRITT 1: Frage den User:',
+      `  "Für die Datei brauche ich den SYS Chat. Öffne kurz: ${sysUrl}`,
+      '   Schick die Datei dort — ich warte auf dein OK."',
+      '',
+      'SCHRITT 2: Warte bis User "ok", "fertig" oder "done" schreibt.',
+      '',
+      'SCHRITT 3: vault_shared_list aufrufen → neueste Datei zeigen:',
+      '  "Gefunden: foto.jpg (2.1 MB, vor 30 Sek.) — an Till schicken?"',
+      '',
+      'SCHRITT 4: Nach Bestätigung → peer_send mit vault_filename aufrufen.',
+      '',
+      'vault_filename = bereits hochgeladene Datei in vault_shared (z.B. "1749123_foto.jpg")',
     ].join('\n'),
     {
       to: z.string().min(1).max(200)
