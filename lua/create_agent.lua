@@ -527,12 +527,28 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
     end
     local fm = sys_text:match("^---\n([^\1]-)\n---")
     if fm then
+      local agent_url = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
       fm = patch_field(fm, "elevenlabs_agent_id", agent_id)
+      fm = patch_field(fm, "elevenlabs_agent_url", agent_url)
       if voice_id then
         fm = patch_field(fm, "elevenlabs_voice_id", voice_id)
       end
       local updated = sys_text:gsub("^---\n[^\1]-\n---", function() return "---\n" .. fm .. "\n---" end, 1)
       write_file(BASE_DIR .. "/sys.md", updated)
+    end
+  end
+end
+
+-- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────
+do
+  local cfg_r = read_file(BASE_DIR .. "/config.json")
+  if cfg_r then
+    local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+    if ok_c and type(cfg_d) == "table" then
+      cfg_d.elevenlabs_agent_id  = agent_id
+      cfg_d.elevenlabs_agent_url = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
+      local wok, wjs = pcall(cjson.encode, cfg_d)
+      if wok then write_file(BASE_DIR .. "/config.json", wjs) end
     end
   end
 end
