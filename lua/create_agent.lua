@@ -538,31 +538,6 @@ if not agent_id then
   return
 end
 
--- ── agent_id + voice_id in sys.md registrieren ────────────────────────────────
-if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
-  local fm_match = sys_text:match("^(---%s*\n[^\1]-)(\n---)")
-  if fm_match then
-    local function patch_field(text, key, val)
-      if text:match("\n" .. key .. ":") then
-        return text:gsub("(\n" .. key .. ":)[^\n]*", "%1 " .. val)
-      else
-        return text .. "\n" .. key .. ": " .. val
-      end
-    end
-    local fm = sys_text:match("^---\n([^\1]-)\n---")
-    if fm then
-      local agent_url = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
-      fm = patch_field(fm, "elevenlabs_agent_id", agent_id)
-      fm = patch_field(fm, "elevenlabs_agent_url", agent_url)
-      if voice_id then
-        fm = patch_field(fm, "elevenlabs_voice_id", voice_id)
-      end
-      local updated = sys_text:gsub("^---\n[^\1]-\n---", function() return "---\n" .. fm .. "\n---" end, 1)
-      write_file(BASE_DIR .. "/sys.md", updated)
-    end
-  end
-end
-
 -- ── ownagent.md in vault_shared schreiben (für Peers abrufbar) ──────────────────
 do
   local shared_dir = BASE_DIR .. "/vault_shared"
