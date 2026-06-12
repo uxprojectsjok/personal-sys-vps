@@ -967,7 +967,10 @@ const hasServerFiles = computed(() => Object.keys(serverArchive.value).length > 
 function typeFromName(name) {
   const lower = name.toLowerCase();
   if (/\.(mp3|wav|ogg|m4a|opus|flac|aac)$/.test(lower))       return "audio";
-  if (/\.(mp4|webm|mov|avi|mkv)$/.test(lower))                return "video";
+  if (/\.webm$/.test(lower)) {
+    return /(?:^|\/)motion[_-]/.test(lower) ? "video" : "audio";
+  }
+  if (/\.(mp4|mov|avi|mkv)$/.test(lower))                     return "video";
   if (/\.(jpe?g|png|webp|gif|avif)$/.test(lower))             return "image";
   if (/\.(md|txt|pdf)$/.test(lower))                           return "context";
   return null;

@@ -125,8 +125,13 @@ end
 
 local function file_type_of(name)
   local ext = (name:match("%.([^%.]+)$") or ""):lower()
-  if ext == "mp3" or ext == "wav" or ext == "ogg" or ext == "webm" or
+  if ext == "mp3" or ext == "wav" or ext == "ogg" or
      ext == "m4a" or ext == "opus" or ext == "flac" or ext == "aac" then return "audio", "audio/mpeg" end
+  if ext == "webm" then
+    local base = (name:match("[^/\\]+$") or name):lower()
+    if base:match("^motion[_%-]") then return "video", "video/webm" end
+    return "audio", "audio/webm"
+  end
   if ext == "mp4" or ext == "mov" or ext == "avi" or ext == "mkv" then return "video", "video/mp4" end
   if ext == "jpg" or ext == "jpeg" then return "images", "image/jpeg" end
   if ext == "png"  then return "images", "image/png" end
