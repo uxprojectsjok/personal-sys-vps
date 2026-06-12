@@ -3,6 +3,7 @@
  * vault-shared:// Links in Nachrichten werden automatisch in klickbare
  * Browser-URLs umgewandelt (Bilder, Videos, Dateien direkt öffnen).
  * PDFs und Texte werden zusätzlich als Inhalt zurückgegeben.
+ * Bilder werden als image-Blöcke an Claude übergeben (Vision).
  */
 
 import { z } from 'zod';
@@ -38,6 +39,10 @@ function resolveLinks(content, token) {
   return { resolved, attachments };
 }
 
+// Claude-API unterstützt jpeg/png/gif/webp als image-Blöcke
+const CLAUDE_IMAGE_MIME = new Set(['image/jpeg','image/png','image/gif','image/webp']);
+// avif → nicht unterstützt von Claude, wird übersprungen
+
 // Für PDFs + Texte: Inhalt direkt laden und als extra Block anhängen (max. 3)
 async function fetchReadableContent(attachments, token) {
   const readable = attachments.filter(a => {
@@ -69,12 +74,49 @@ async function fetchReadableContent(attachments, token) {
   return blocks;
 }
 
+// Für Bilder: als image-Blöcke laden damit Claude sie sehen kann (max. 3, max. 4 MB/Bild)
+async function fetchImageBlocks(attachments, token) {
+  const MAX_IMAGES   = 3;
+  const MAX_B64_CHARS = 5_600_000; // ~4 MB raw
+
+  const images = attachments
+    .filter(a => IMAGE_EXT.has(a.filename.split('.').pop().toLowerCase()))
+    .slice(0, MAX_IMAGES);
+
+  if (images.length === 0) return [];
+
+  const results = await Promise.allSettled(images.map(async a => {
+    const params = new URLSearchParams({ soul_id: a.soulId, filename: a.filename });
+    const data   = await getJson(`/api/vault/shared-mcp?${params}`, token);
+    return { ...a, data };
+  }));
+
+  const blocks = [];
+  let skipped = 0;
+  for (const r of results) {
+    if (r.status !== 'fulfilled' || !r.value.data?.ok) continue;
+    const { label, filename, data } = r.value;
+    const mime = data.mime || 'image/jpeg';
+
+    if (!CLAUDE_IMAGE_MIME.has(mime)) { skipped++; continue; } // avif o.ä. → skip
+    if (data.data_b64.length > MAX_B64_CHARS) { skipped++; continue; } // zu groß
+
+    blocks.push({ type: 'text', text: `Bild von Peer: ${label || filename}` });
+    blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data: data.data_b64 } });
+  }
+  if (skipped > 0) {
+    blocks.push({ type: 'text', text: `(${skipped} Bild(er) übersprungen: Format nicht unterstützt oder zu groß)` });
+  }
+  return blocks;
+}
+
 export function register(server, token) {
   server.tool(
     'peer_inbox',
     [
       'Liest Nachrichten von verbundenen Peers.',
       'Dateien und Videos in Nachrichten → direkt klickbare URLs (Browser öffnet/spielt ab).',
+      'Bilder werden als image-Block übergeben — Claude kann sie direkt sehen und analysieren (max. 3, jpeg/png/gif/webp).',
       'PDFs und Texte werden zusätzlich als Inhalt zurückgegeben.',
       '',
       'Beispiele:',
@@ -132,8 +174,11 @@ export function register(server, token) {
           return { ...m, content: resolved };
         });
 
-        // PDFs und Texte direkt laden
-        const readableBlocks = await fetchReadableContent(allAttachments, token).catch(() => []);
+        // PDFs/Texte + Bilder parallel laden
+        const [readableBlocks, imageBlocks] = await Promise.all([
+          fetchReadableContent(allAttachments, token).catch(() => []),
+          fetchImageBlocks(allAttachments, token).catch(() => []),
+        ]);
 
         // ── Output aufbauen ───────────────────────────────────────────────────
         const filterParts = [
@@ -154,7 +199,8 @@ export function register(server, token) {
           contentBlocks.push({ type: 'text', text: `[${date}] ${direction}\n${m.content}` });
         }
 
-        // Lesbarer Inhalt (PDFs, Texte) ans Ende
+        // Bilder zuerst (Vision) — dann PDFs/Texte
+        contentBlocks.push(...imageBlocks);
         contentBlocks.push(...readableBlocks);
 
         return { content: contentBlocks };
