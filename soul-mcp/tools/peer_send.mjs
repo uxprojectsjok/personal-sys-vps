@@ -58,22 +58,27 @@ export function register(server, token, soulId = null) {
       'Beispiele:',
       '- "Schreibe an Till: Bis morgen!" → to="Till", message="Bis morgen!"',
       '- "@alle Wer ist dabei?" → to="alle", message="Wer ist dabei?"',
-      '- Bild an Till → to="Till", filename="foto.jpg", data_b64="..."',
-      '- PDF an Till → to="Till", filename="bericht.pdf", data_b64="...", message="Hier ist der Bericht"',
+      '- PDF an Till → Erst im VaultExplorer der App hochladen → dann: to="Till", vault_filename="1234_bericht.pdf"',
+      '- Bild mit Base64 → to="Till", filename="foto.jpg", data_b64="..." (nur wenn raw bytes verfügbar)',
+      '',
+      'WICHTIG: Dateien aus dem Claude AI Chat (PDF, Bild) können NICHT als raw bytes extrahiert werden.',
+      'Workflow für Datei-Versand: 1) Datei im App-VaultExplorer hochladen → 2) vault_filename verwenden.',
     ].join('\n'),
     {
       to: z.string().min(1).max(200)
            .describe('Empfänger: Peer-Name (z.B. "Till"), "alle" für alle Peers, "community", "agent"'),
       message: z.string().max(5000).optional()
                 .describe('Nachrichtentext (optional wenn Datei angegeben)'),
+      vault_filename: z.string().max(200).optional()
+                      .describe('Dateiname einer bereits in vault_shared hochgeladenen Datei (z.B. "1749123456789_bericht.pdf") — Peer erhält direkten Download-Link'),
       filename: z.string().max(120).optional()
-                 .describe('Dateiname inkl. Endung (z.B. "foto.jpg", "bericht.pdf") — nur zusammen mit data_b64'),
+                 .describe('Dateiname inkl. Endung — nur zusammen mit data_b64 für programmatischen Upload'),
       data_b64: z.string().optional()
-                 .describe('Dateiinhalt als Base64 — löst automatisch Upload in vault_shared aus'),
+                 .describe('Dateiinhalt als Base64 — nur verwenden wenn raw bytes wirklich verfügbar sind, nicht für Claude AI Chat-Uploads'),
     },
-    async ({ to, message, filename, data_b64 }) => {
-      if (!message && !data_b64) {
-        return { content: [{ type: 'text', text: 'message oder data_b64 erforderlich.' }], isError: true };
+    async ({ to, message, vault_filename, filename, data_b64 }) => {
+      if (!message && !data_b64 && !vault_filename) {
+        return { content: [{ type: 'text', text: 'message, vault_filename oder data_b64 erforderlich.' }], isError: true };
       }
       try {
         return await withSoulLock(token, async () => {
@@ -103,10 +108,20 @@ export function register(server, token, soulId = null) {
             toField = match.soul_id;
           }
 
-          // Datei hochladen wenn angegeben
+          // Datei referenzieren oder hochladen
           let fileLink = '';
           let uploadInfo = '';
-          if (data_b64 && filename) {
+          if (vault_filename) {
+            // Bereits hochgeladene Datei referenzieren
+            if (!soulId) {
+              return { content: [{ type: 'text', text: 'vault_filename nicht verfügbar (kein soulId).' }], isError: true };
+            }
+            const safe = vault_filename.replace(/[^A-Za-z0-9_\-.]/g, '_');
+            const displayName = vault_filename.replace(/^\d+_/, ''); // Timestamp-Prefix entfernen
+            fileLink = `[${displayName}](vault-shared://${soulId}/${safe})`;
+            uploadInfo = ` + Datei (vault_shared)`;
+          } else if (data_b64 && filename) {
+            // Neue Datei hochladen
             if (!soulId) {
               return { content: [{ type: 'text', text: 'Datei-Upload nicht verfügbar (kein soulId).' }], isError: true };
             }
