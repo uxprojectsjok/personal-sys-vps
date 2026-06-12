@@ -563,20 +563,15 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   end
 end
 
--- ── elevenlabs_agent_url direkt in sys.md patchen (via MCP-Server, handle encrypt) ──
+-- ── ownagent.md in vault_shared schreiben (für Peers abrufbar) ──────────────────
 do
-  local patch_ok, patch_js = pcall(cjson.encode, {
-    tool  = "soul_patch_field",
-    input = { key = "elevenlabs_agent_url", value = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id }
-  })
-  if patch_ok then
-    local hcp = http.new(); hcp:set_timeout(10000)
-    hcp:request_uri("http://127.0.0.1:3098/internal/run-tool", {
-      method  = "POST",
-      headers = { ["Content-Type"] = "application/json", ["x-soul-id"] = soul_id },
-      body    = patch_js,
-    })
-  end
+  local shared_dir = BASE_DIR .. "/vault_shared"
+  os.execute("mkdir -p " .. shared_dir)
+  local agent_url = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
+  local vid_line  = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
+  local content   = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. os.date("!%Y-%m-%dT%TZ") .. "\n---\n"
+  local wf = io.open(shared_dir .. "/ownagent.md", "w")
+  if wf then wf:write(content); wf:close() end
 end
 
 -- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────
