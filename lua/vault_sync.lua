@@ -186,6 +186,19 @@ if not safe_name or #safe_name < 1 or #safe_name > 120 then
   return
 end
 
+-- WebM dual-use: Dateiname-Präfix korrigiert fehlklassifizierten Client-Typ
+-- (motion_*.webm → video, voice_*.webm → audio), Server bleibt autoritativ
+if safe_name:lower():match("%.webm$") then
+  local base = safe_name:lower()
+  if base:match("^motion[_%-]") and data.type == "audio" then
+    data.type = "video"
+    sub_dir = TYPE_DIRS.video
+  elseif base:match("^voice[_%-]") and data.type == "video" then
+    data.type = "audio"
+    sub_dir = TYPE_DIRS.audio
+  end
+end
+
 -- Base64 dekodieren
 if type(data.data) ~= "string" then
   ngx.status = 400
@@ -345,7 +358,7 @@ elseif not data.encrypted and data.type == "video" then
   local shell_out  = out_path:gsub("'", "'\\''")
   local cmd = string.format(
     "ffmpeg -y -i '%s'"
-    .. " -c:v libx264 -crf 23 -preset medium -movflags +faststart"
+    .. " -c:v libx264 -crf 23 -preset veryfast -movflags +faststart"
     .. " -c:a aac -b:a 128k"
     .. " '%s' >/dev/null 2>&1",
     shell_file, shell_out
