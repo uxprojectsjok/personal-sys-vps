@@ -1,13 +1,14 @@
 /**
- * peer_send — Sendet eine Nachricht an einen oder alle Peers.
+ * peer_send — Sendet eine Nachricht (Text oder Datei) an einen oder alle Peers.
  * Schreibt <!-- @msg --> in den SOCIAL-Block von sys.md.
- * Gleicher Mechanismus wie der sys-Chat im Browser.
+ * Bei Datei-Anhang: Upload in vault_shared → vault-shared:// Link in Nachricht.
  */
 
 import { z } from 'zod';
+import { writeFile, mkdir } from 'fs/promises';
 import { getText, putJson, getJson } from '../lib/api.mjs';
+import { SOULS_DIR } from '../lib/vault_fs.mjs';
 
-// Race-Condition-Schutz (identisch zu soul_write.mjs)
 const _queues = new Map();
 async function withSoulLock(token, fn) {
   const key = token.slice(0, 16);
@@ -33,25 +34,47 @@ function appendToBlock(md, startMarker, endMarker, entry) {
   return md.trimEnd() + '\n\n' + startMarker + entry + '\n' + endMarker + '\n';
 }
 
-export function register(server, token) {
+async function uploadToVaultShared(soulId, filename, data_b64) {
+  const safe = filename.replace(/[^A-Za-z0-9_\-.]/g, '_').replace(/_{2,}/g, '_');
+  if (!safe) throw new Error('Ungültiger Dateiname');
+  const buf = Buffer.from(data_b64, 'base64');
+  if (buf.length > 50 * 1024 * 1024) throw new Error('Datei zu groß (max. 50 MB)');
+  const storedName = `${Date.now()}_${safe}`;
+  const dir = `${SOULS_DIR}${soulId}/vault_shared`;
+  await mkdir(dir, { recursive: true });
+  await writeFile(`${dir}/${storedName}`, buf);
+  return { storedName, sizeKb: Math.ceil(buf.length / 1024) };
+}
+
+export function register(server, token, soulId = null) {
   server.tool(
     'peer_send',
     [
-      'Sendet eine Nachricht an einen oder alle Peers (wie WhatsApp-Nachricht).',
-      'Die Nachricht landet im SOCIAL-Block von sys.md und ist für verbundene Peers sichtbar.',
+      'Sendet eine Nachricht oder Datei an einen oder alle Peers.',
+      'Textnachrichten landen im SOCIAL-Block von sys.md.',
+      'Dateien (Bilder, PDFs, Dokumente) werden automatisch in vault_shared hochgeladen',
+      'und als Link in der Nachricht eingebettet — Peers können sie direkt öffnen.',
       '',
       'Beispiele:',
       '- "Schreibe an Till: Bis morgen!" → to="Till", message="Bis morgen!"',
       '- "@alle Wer ist dabei?" → to="alle", message="Wer ist dabei?"',
-      '- Nachricht an den Agent-Sandbox → to="agent"',
+      '- Bild an Till → to="Till", filename="foto.jpg", data_b64="..."',
+      '- PDF an Till → to="Till", filename="bericht.pdf", data_b64="...", message="Hier ist der Bericht"',
     ].join('\n'),
     {
       to: z.string().min(1).max(200)
            .describe('Empfänger: Peer-Name (z.B. "Till"), "alle" für alle Peers, "community", "agent"'),
-      message: z.string().min(1).max(5000)
-                .describe('Die Nachricht'),
+      message: z.string().max(5000).optional()
+                .describe('Nachrichtentext (optional wenn Datei angegeben)'),
+      filename: z.string().max(120).optional()
+                 .describe('Dateiname inkl. Endung (z.B. "foto.jpg", "bericht.pdf") — nur zusammen mit data_b64'),
+      data_b64: z.string().optional()
+                 .describe('Dateiinhalt als Base64 — löst automatisch Upload in vault_shared aus'),
     },
-    async ({ to, message }) => {
+    async ({ to, message, filename, data_b64 }) => {
+      if (!message && !data_b64) {
+        return { content: [{ type: 'text', text: 'message oder data_b64 erforderlich.' }], isError: true };
+      }
       try {
         return await withSoulLock(token, async () => {
           const toNorm = to.trim().toLowerCase();
@@ -64,7 +87,6 @@ export function register(server, token) {
           } else if (toNorm === 'agent') {
             toField = 'agent';
           } else {
-            // Peer-Name → soul_id auflösen
             const { connections } = await getJson('/api/vault/connections', token);
             const match = (connections || []).find(c =>
               c.alias?.toLowerCase() === toNorm ||
@@ -81,23 +103,34 @@ export function register(server, token) {
             toField = match.soul_id;
           }
 
+          // Datei hochladen wenn angegeben
+          let fileLink = '';
+          let uploadInfo = '';
+          if (data_b64 && filename) {
+            if (!soulId) {
+              return { content: [{ type: 'text', text: 'Datei-Upload nicht verfügbar (kein soulId).' }], isError: true };
+            }
+            const { storedName, sizeKb } = await uploadToVaultShared(soulId, filename, data_b64);
+            fileLink = `[${filename}](vault-shared://${soulId}/${storedName})`;
+            uploadInfo = ` + Datei (${sizeKb} KB)`;
+          }
+
           const ts      = new Date().toISOString();
-          // --> in Nachrichten escapen damit der HTML-Kommentar nicht gebrochen wird
-          const safeMsg = message.trim().replace(/-->/g, '-- >');
+          const textPart = message?.trim() || '';
+          const fullMsg  = [textPart, fileLink].filter(Boolean).join('\n');
+          if (!fullMsg) {
+            return { content: [{ type: 'text', text: 'Leere Nachricht.' }], isError: true };
+          }
+          const safeMsg = fullMsg.replace(/-->/g, '-- >');
           const entry   = `\n<!-- @msg ${ts} me ${toField} ${safeMsg} -->`;
 
-          // sys.md lesen
           const current = await getText('/api/soul', token);
-
-          // In SOCIAL-Block schreiben
           let updated = appendToBlock(current, SOCIAL_START, SOCIAL_END, entry);
 
-          // Bei community/agent zusätzlich in AGENT-Block
           if (toField === 'agent' || toField === 'community') {
             updated = appendToBlock(updated, AGENT_START, AGENT_END, entry);
           }
 
-          // Zurückschreiben
           const result = await putJson('/api/context', token, { soul_content: updated });
           if (!result?.ok) {
             return {
@@ -107,13 +140,13 @@ export function register(server, token) {
           }
 
           const recipientLabel =
-            toField === 'peer'      ? 'alle Peers'
+            toField === 'peer'        ? 'alle Peers'
             : toField === 'community' ? 'Community'
             : toField === 'agent'     ? 'Agent-Sandbox'
             : `Peer ${to}`;
 
           return {
-            content: [{ type: 'text', text: `Nachricht an ${recipientLabel} gesendet.\n[${ts}] Du → ${recipientLabel}\n${message}` }],
+            content: [{ type: 'text', text: `Gesendet an ${recipientLabel}${uploadInfo}.\n[${ts}] Du → ${recipientLabel}\n${fullMsg}` }],
           };
         });
       } catch (err) {
@@ -121,7 +154,7 @@ export function register(server, token) {
         try {
           const body = JSON.parse(err.body || '{}');
           if (body.error === 'vault_locked' || body.error === 'encrypted') {
-            msg = `Vault gesperrt — Vault in der App entsperren, dann erneut versuchen.`;
+            msg = 'Vault gesperrt — Vault in der App entsperren, dann erneut versuchen.';
           }
         } catch { /* kein JSON */ }
         return { content: [{ type: 'text', text: `Fehler: ${msg}` }], isError: true };
