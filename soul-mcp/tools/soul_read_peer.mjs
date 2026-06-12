@@ -11,7 +11,7 @@ import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from '../lib/va
 const SOCIAL_START = '<!-- SOCIAL:START -->';
 const SOCIAL_END   = '<!-- SOCIAL:END -->';
 const MAGIC        = Buffer.from([0x53, 0x59, 0x53, 0x01]);
-const MSG_RE_G     = () => /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)-->/g;
+const MSG_RE_G     = () => /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g;
 const DAY_MS       = 86400000;
 
 function migratev1(md) {
