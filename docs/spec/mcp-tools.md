@@ -1,8 +1,9 @@
 # MCP Tools Specification
 
-**Version:** 1.4
+**Version:** 2.0
 **Protocol:** Model Context Protocol (MCP) — Streamable HTTP transport
 **Auth:** OAuth 2.0 + PKCE
+**Tools:** 41
 
 ---
 
@@ -38,455 +39,389 @@ The MCP server runs as a Node.js process proxied by OpenResty at `/mcp`.
 4. All MCP tool calls      Authorization: Bearer {access_token}
 ```
 
-The access token is a SYS service-token. It is validated by the same
-mechanism as direct API service-tokens (see `spec/auth.md` §3).
+The access token is a SYS service-token validated by `vault_auth.lua`
+(accepts 64-hex service-tokens, `uuid.32hex` peer certs, 48-hex pol_access tokens).
 
 ---
 
 ## 3. Token Types and Tool Access
 
-The MCP server distinguishes callers by token format:
-
 | Token format | Caller | Tool set |
 |---|---|---|
-| 64 hex chars | Owner (OAuth service-token) | All registered tools |
+| 64 hex chars | Owner (OAuth service-token) | All 41 registered tools |
 | 48 hex chars | Paid agent (pol_access_token) | `amortization.agent_tools` only |
 | `uuid.32hex` | Trusted peer (peer soul_cert) | `amortization.agent_tools` only |
 
-**Available tools for paid agents and peers (14 tools, must be explicitly enabled per soul):**
-`soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `calendar_read`, `verify_human`
-
-**Important:** When a peer connects via `uuid.32hex`, `soul_read` reads the **Social Sphere** block (`<!-- SOCIAL:START/END -->`), not the full sys.md. When an owner connects, `soul_read` returns the full sys.md content.
+**Peer soul_read** returns only the Social Sphere block (`<!-- SOCIAL:START/END -->`).
+**Owner soul_read** returns full sys.md.
 
 ---
 
 ## 4. Tool Catalog
 
-### 4.1 soul_read
+### Soul
 
-Read sys.md content. Behavior differs by caller:
-
-- **Owner:** Returns full sys.md content.
-- **Peer (trusted soul):** Returns only the Social Sphere block (`<!-- SOCIAL:START/END -->`), filtered by stage. Auto-migrates v1 files to v2 on first access.
-- **Paid agent (pol_access_token):** Not used — paid agents use `soul_paid_read` HTTP endpoint directly.
-
-**Requires:** `soul` permission (owner) or trusted peer cert
-
-**Input:**
-```json
-{ "stage": 1 }
-```
+#### soul_read
+Read sys.md. Owner gets full content; peer gets Social Sphere block only.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `stage` | integer | `1` | `1` = last 24 h. `2` = last 48 h with every-other sampling for 24–48 h range. Only use stage 2 when the user explicitly asks for more history. |
-
-**Output (owner):**
-```json
-{ "content": "---\nsoul_id: ...\n---\n\n## Core Identity\n..." }
-```
-
-**Output (peer, structured messages):**
-```
-[2026-05-09 10:00 UTC] You → @peers
-Hello, peers!
-
-[2026-05-09 10:01 UTC] alice_abc
-Deep in spec work right now.
-```
-
-If the Social Sphere block contains legacy static content (no `<!-- @msg -->` entries), it is returned as-is.
+| `stage` | integer | `1` | `1` = last 24 h · `2` = last 48 h with sampling |
 
 ---
 
-### 4.2 soul_write
+#### soul_write
+Update a `## Section` in sys.md (owner) or write into Social Sphere block (peer).
 
-Update content in sys.md. Behavior differs by caller:
-
-- **Owner:** Updates any `## Section` by name.
-- **Peer:** Writes only into the Social Sphere block (`<!-- SOCIAL:START/END -->`). Cannot touch the Private Sphere or Agent Sandbox.
-
-**Requires:** `soul` permission (owner) or trusted peer cert with `soul_write` enabled
-
-**Input (owner):**
-```json
-{
-  "section": "Session Log (compressed)",
-  "content": "### 2026-04-10\nNew session content...",
-  "mode": "append"
-}
-```
-
-**Input (peer):**
-```json
-{
-  "content": "Content to write into Social Sphere",
-  "mode": "append"
-}
-```
-
-| `mode` | Behavior |
-|---|---|
-| `replace` | Replace entire block/section content |
-| `append` | Add content after existing content |
-| `prepend` | Add content before existing content |
+| Parameter | Type | Description |
+|---|---|---|
+| `section` | string | Section name (owner only) |
+| `content` | string | New content |
+| `mode` | `replace`\|`append`\|`prepend` | Write mode |
 
 ---
 
-### 4.3 soul_comment
-
-Append a comment to the Social Sphere block. For trusted peer souls only.
-The peer's soul_id is automatically attributed.
-
-**Input:**
-```json
-{
-  "comment": "Great to connect!",
-  "author": "Optional display name"
-}
-```
-
-Comment format written to the Social Sphere:
-```
----
-**Optional display name · soul:peer-uuid** · 2026-05-09
-Great to connect!
-```
+#### soul_delete
+Permanently delete the soul from this node. Requires `verify_human` confirmation first.
 
 ---
 
-### 4.4 soul_maturity
+#### soul_maturity
+Compute maturity score from sys.md. Optionally persist.
 
-Compute and optionally persist the maturity score. Reads full sys.md internally; returns only computed values.
+| Parameter | Type | Description |
+|---|---|---|
+| `save` | boolean | Persist score to sys.md |
 
-**Requires:** `soul` permission
-
-**Input:**
-```json
-{ "save": true }
-```
-
-**Output:**
-```json
-{ "score": 72, "breakdown": { "core_identity": 1, "values": 1, "session_log": 1, ... } }
-```
+Output: `{ score, breakdown }` — score 0–100.
 
 ---
 
-### 4.5 soul_skills
+#### soul_skills
+List or invoke skills declared in the `## Skills` section.
 
-List declared skills or invoke a skill handler. Reads full sys.md internally; returns only skill data.
-
-**Requires:** `soul` permission
-
-**Input (list):**
-```json
-{ "action": "list" }
-```
-
-**Input (invoke):**
-```json
-{ "action": "invoke", "skill": "skill-name", "params": {} }
-```
-
-Skills are declared in the `## Skills` section of sys.md as structured YAML blocks.
+| Parameter | Type | Description |
+|---|---|---|
+| `action` | `list`\|`invoke` | List skills or run one |
+| `skill` | string | Skill name (for invoke) |
+| `params` | object | Skill parameters |
 
 ---
 
-### 4.6 soul_discover
+#### soul_discover
+Search the Soul Registry (IPFS + Polygon blockchain).
 
-Discover registered souls from the Agent Marketplace. Searches both Pinata/IPFS and Polygon blockchain simultaneously (dual-source merge).
+| Parameter | Type | Description |
+|---|---|---|
+| `query` | string | Free-text search |
 
-**Requires:** No permission required (always available)
-
-**Input:**
-```json
-{ "query": "designer" }
-```
-
-**Output:**
-```json
-{
-  "souls": [
-    {
-      "soul_id": "uuid-v4",
-      "name": "Jan",
-      "mcp_endpoint": "https://domain/mcp",
-      "source": "ipfs+chain",
-      "source_label": "Registered on IPFS + verified on Polygon blockchain",
-      "chain_verified": true,
-      "amortization": {
-        "enabled": true,
-        "pol_per_request": "0.001",
-        "agent_tools": ["soul_read", "verify_human"]
-      }
-    }
-  ]
-}
-```
-
-**Source values:**
-| `source` | Meaning |
-|---|---|
-| `ipfs` | Found in Pinata/IPFS registry only |
-| `chain` | Found on Polygon blockchain only |
-| `ipfs+chain` | Found in both — strongest trust signal |
+Output: `{ souls: [{ soul_id, name, mcp_endpoint, chain_verified, amortization }] }`
 
 ---
 
-### 4.7 vault_manifest
+#### soul_read_by_token
+Read another soul's AGENT block using a pol_access_token (from `soul_pay_read`).
 
-Return the full vault index.
-
-**Requires:** Any vault permission
-
-**Input:** none
-
-**Output:**
-```json
-{
-  "soul_id": "...",
-  "enabled": true,
-  "cipher_mode": "ciphered",
-  "permissions": { "soul": true, "audio": true, ... },
-  "synced_files": { "audio": ["file.mp3"], "images": [], ... },
-  "active_files": { "audio": "file.mp3" },
-  "endpoints": { "soul": "/api/soul", "audio": "/api/vault/audio", ... }
-}
-```
+| Parameter | Type | Description |
+|---|---|---|
+| `pay_endpoint` | string | Target soul's pay endpoint |
+| `access_token` | string | pol_access_token |
 
 ---
 
-### 4.8 audio_list / audio_get
+#### soul_paid_comment
+Post a comment to another soul's Social Sphere via pol_access_token.
 
+---
+
+#### soul_earnings
+Read all incoming POL payments from AI agents.
+
+Output: `{ total_pol, total_requests, entries: [{ tx_hash, from, pol_amount, confirmed_at }] }`
+
+---
+
+#### soul_pay_read
+Pay (via Polygon tx hash) and read another soul's AGENT block.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `pay_endpoint` | string | Target soul's `/api/pay` endpoint |
+| `soul_id` | string | Target soul UUID |
+| `tx_hash` | string | Polygon transaction hash |
+
+---
+
+#### soul_cloud_push
+Push encrypted soul bundle to external storage (Arweave / HTTPS endpoint).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `target` | string | `arweave` or HTTPS URL |
+| `include_vault` | boolean | Include vault files in bundle |
+
+---
+
+#### beme_chat
+Talk to the soul — AI responds as the soul owner would.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `message` | string | User message |
+| `history` | array | `[{ role, content }]` prior turns |
+| `max_tokens` | integer | Response length cap |
+
+Output: `{ response, soul_name, model }`
+
+---
+
+#### verify_human
+Human-in-the-loop confirmation. Call before any destructive operation.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `prompt` | string | Confirmation question |
+| `timeout_seconds` | integer | Wait timeout |
+
+Output: `{ confirmed: true|false }`
+
+---
+
+### Vault
+
+#### vault_manifest
+Return the full vault index — cipher mode, permissions, file lists, endpoints.
+
+---
+
+#### audio_list / audio_get
 List or retrieve audio vault files.
 
-**Requires:** `audio` permission
-
-**audio_list output:**
-```json
-{
-  "files": [
-    { "name": "voice.mp3", "url": "...", "url_with_token": "...", "mime": "audio/mpeg", "active": true }
-  ],
-  "active_url": "https://..."
-}
-```
-
-**audio_get input:**
-```json
-{ "filename": "voice.mp3" }
-```
-
-Returns a signed direct URL for download (Token already embedded — no Auth header needed).
+`audio_get` input: `{ filename }` → signed direct URL (no Auth header needed).
 
 ---
 
-### 4.9 image_list / image_get
-
+#### image_list / image_get
 List or retrieve image vault files.
 
-**Requires:** `images` permission
-
-**image_get output:** Returns the image as a base64-encoded MCP `image` content block plus metadata:
-```json
-{ "filename": "profile.jpg", "size_kb": 420, "hint": "Bild direkt analysieren, dann profile_save face aufrufen." }
-```
-
-The image content block is directly visible to Claude — no fetch required.
+`image_get` returns the image as a base64 MCP `image` block — directly visible to Claude.
 
 ---
 
-### 4.10 video_list / video_get
-
+#### video_list / video_get
 List or retrieve video vault files.
 
-**Requires:** `video` permission
-
-**video_get input:**
-```json
-{ "filename": "bewegung.webm", "max_frames": 6 }
-```
-
-`max_frames` — number of frames to extract, equally spaced over the video duration (1–12, default 6).
-
-**video_get output:** ffmpeg extracts frames and returns each as a base64-encoded MCP `image` block.
+`video_get` input: `{ filename, max_frames }` — extracts up to 12 frames via ffmpeg, returns each as a base64 MCP `image` block.
 
 ---
 
-### 4.11 context_list / context_get
-
-List or retrieve text context files from `vault/context/`.
-
-**Requires:** `context_files` permission
-
-Same interface as `audio_list` / `audio_get` for text types (`.md`, `.txt`).
+#### context_list / context_get
+List or retrieve text files from `vault/context/`.
 
 ---
 
-### 4.12 profile_get / profile_save
+#### context_write
+Write or create a `.md` or `.txt` file in `vault/context/`. Protected files (`mind.md`, `health.md`, `shopping.md`) are blocked — use dedicated tools instead.
 
-Read or write structured analysis profiles stored in `vault/profile/{type}.json`.
-Profiles are always AES-256-CBC encrypted on disk.
-
-**Requires:** `soul` permission + unlocked vault
-
-**Profile types (fixed enum):** `face` · `voice` · `motion` · `expertise`
-
-**profile_get input:**
-```json
-{ "type": "face" }
-```
-
-**profile_save input:**
-```json
-{
-  "type": "face",
-  "data": {
-    "description": "...",
-    "features": { "glasses": "...", "hair": "...", "beard": "..." },
-    "expression": "neutral-ruhig",
-    "estimated_age": "47–50",
-    "notes": "..."
-  }
-}
-```
+| Parameter | Type | Description |
+|---|---|---|
+| `filename` | string | e.g. `"notizen.md"` |
+| `content` | string | Full file content (overwrites) |
 
 ---
 
-### 4.13 network_list
+#### profile_get / profile_save
+Read or write encrypted analysis profiles in `vault/profile/{type}.json`.
 
-List all connected souls in the Soul Network.
-
-**Requires:** `soul` permission
-
-**Output:**
-```json
-{
-  "connections": [
-    { "soul_id": "...", "alias": "...", "grant_level": "read", "connected_at": "..." }
-  ]
-}
-```
+Profile types: `face` · `voice` · `motion` · `expertise`
 
 ---
 
-### 4.14 network_peer_get
+### Mind & Health
 
-Read shared content from a connected peer's Public Vault.
+#### mind_read
+Read `mind.md` — identity, communication style, intellect config, tools, network, self-reflection, limits.
 
-**Requires:** `soul` permission + peer must have granted `soul_grant` access
-
-**Input:**
-```json
-{ "soul_id": "uuid-v4" }
-```
-
-Optional — read a single file:
-```json
-{ "soul_id": "uuid-v4", "file": "report.pdf" }
-```
-
-**Output (manifest mode):**
-- `soul_content` — peer's sys.md (if `soul` scope granted)
-- Text/Markdown files — inline as text blocks
-- **PDF files — as MCP `resource` blob (application/pdf, directly readable)**
-- Images, Audio, Video — listed by name
-
-**Peer Stream Endpoint (direct access):**
-
-```
-GET /api/vault/peer-stream?soul_id={id}&file={name}&token={service-token}
-```
+Read-only sections: Identity, Limits.
 
 ---
 
-### 4.15 soul_cloud_push
+#### mind_write
+Update writable sections of `mind.md`.
 
-Push an encrypted bundle to external storage (Arweave, HTTPS endpoint).
-
-**Requires:** `soul` permission
-
-**Input:**
-```json
-{
-  "target": "arweave",
-  "include_vault": false
-}
-```
-
-The bundle is always AES-256-CBC encrypted before upload.
+| Parameter | Type | Description |
+|---|---|---|
+| `section` | string | Section name |
+| `content` | string | New content |
 
 ---
 
-### 4.16 verify_human
+#### health_check
+Read `health.md` and return a complete health overview:
+- Weekly metrics: resting HR, sleep, steps, active days
+- Evidence-based classifications (WHO/ESC/NSF)
+- Food log: current meals, monthly stats, annual journal
 
-Human-in-the-loop confirmation step. The AI client MUST pause and
-wait for explicit user confirmation before proceeding.
-
-**Input:**
-```json
-{
-  "prompt": "Are you sure you want to delete all VPS data?",
-  "timeout_seconds": 60
-}
-```
-
-**Output:**
-```json
-{ "confirmed": true }
-```
-
-Call before any destructive or irreversible operation.
+Requires health-sync to be active (`bash /opt/sys/health-sync/install.sh`).
 
 ---
 
-### 4.17 beme_chat
+#### food_log
+Log a meal to `health.md`.
 
-Talk to the soul — the AI responds as the soul owner would.
-
-**Requires:** `soul` permission + unlocked vault
-
-**Input:**
-```json
-{
-  "message": "What do you think about this project?",
-  "history": [
-    { "role": "user",      "content": "Hello!" },
-    { "role": "assistant", "content": "Hey, great to have you here." }
-  ],
-  "max_tokens": 1024
-}
-```
-
-**Output:**
-```json
-{ "response": "...", "soul_name": "Till", "model": "claude-sonnet-4-6" }
-```
+| Parameter | Type | Description |
+|---|---|---|
+| `meal` | string | Description of what was eaten |
+| `type` | string | `breakfast`\|`lunch`\|`dinner`\|`snack` |
+| `kcal` | number | Optional calorie estimate |
 
 ---
 
-### 4.18 calendar_read
+#### health_sync
+Trigger a manual Garmin health data sync. Pulls latest activity from Garmin Connect → updates `health.md`.
 
+---
+
+### Calendar & Profile
+
+#### calendar_read
 Read the `## Calendar` section of sys.md.
 
-**Requires:** `calendar` permission
+---
+
+#### profile_get / profile_save
+See Vault section above.
 
 ---
 
-### 4.19 elevenlabs_agent_update
+### Shopping
 
+#### shop_log
+Log a purchase or wishlist item to `shopping.md`. Auto-maintains monthly summary and yearly categories.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | string | Product name |
+| `category` | enum | `Electronics`\|`Kleidung`\|`Sport`\|`Wohnen`\|`Bücher`\|`Lebensmittel`\|`Sonstiges` |
+| `price` | number | Price in EUR |
+| `status` | `purchased`\|`wishlist` | Default: `purchased` |
+| `notes` | string | Optional note |
+
+---
+
+#### shop_write_read
+Read `shopping.md` (wishlist, recent purchases, monthly/yearly summary, agent recommendations).
+Optionally write a product recommendation to the Agent Recommendations block.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `ad_placement` | object | `{ agent, product, price, message }` — write ad |
+
+---
+
+### Peers & Messaging
+
+#### peer_inbox
+Read incoming peer messages from the SOCIAL block. Resolves `vault-shared://` links to clickable URLs. PDFs and text files are returned as readable content.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `days` | integer | Messages from last N days (default 1, max 30) |
+| `from` | string | Filter by peer name |
+| `search` | string | Full-text search |
+| `limit` | integer | Max messages (default 50) |
+
+---
+
+#### peer_send
+Send a text message or file to a peer. Writes `<!-- @msg -->` entries into the SOCIAL block.
+
+**Text:** `to` + `message` → sent immediately.
+
+**File/Image — workflow (automatic, no explanation needed):**
+1. Reply: *"Öffne kurz den SYS Chat: {sysUrl} — nimm das Bild auf oder lade die Datei hoch, dann sag ok."*
+2. Wait for user "ok" / "fertig".
+3. Call `vault_shared_list` → show newest file → confirm with user.
+4. Call `peer_send` with `vault_filename`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `to` | string | Peer name, `"alle"`, `"community"`, `"agent"` |
+| `message` | string | Text content (optional if file given) |
+| `vault_filename` | string | Already-uploaded file in `vault_shared` (e.g. `"1749123_foto.jpg"`) |
+| `filename` | string | Filename for `data_b64` upload |
+| `data_b64` | string | Raw base64 — only when bytes are programmatically available |
+
+---
+
+### Vault Shared
+
+#### vault_shared_list
+List files in `vault_shared/` — newest first. Used by `peer_send` workflow to find just-uploaded media.
+
+Output per file: `name`, display name (timestamp prefix stripped), type, size KB, "vor X Sek." age, `vault_filename` for use in `peer_send`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `limit` | integer | Max files (default 10, max 50) |
+
+---
+
+#### vault_shared_get
+Retrieve a file from `vault_shared` as base64. Works for own files, same-server peers, and cross-domain peers.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `soul_id` | string | Owner soul UUID |
+| `filename` | string | Exact stored filename |
+
+Output: `{ ok, filename, mime, size_kb, data_b64 }`
+
+---
+
+#### vault_shared_upload
+Upload a file to `vault_shared`. Returns `vault-shared://` link for use in `peer_send`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `filename` | string | Display filename incl. extension |
+| `data_b64` | string | File content as base64 |
+| `description` | string | Optional description |
+
+---
+
+### Integrations
+
+#### web_search
+Web search via Brave Search API. For current information, product research, fact-checking.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `query` | string | Search query |
+| `count` | integer | Results (default 5, max 8) |
+
+---
+
+#### twilio_call_config
+Configure a Twilio phone number for incoming calls or SMS. Without `voice_url`/`sms_url`: shows current status.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `account_sid` | string | Twilio Account SID |
+| `auth_token` | string | Twilio Auth Token |
+| `phone_sid` | string | Phone Number SID (PN...) |
+| `voice_url` | string | Webhook for incoming calls |
+| `sms_url` | string | Webhook for incoming SMS |
+
+---
+
+#### elevenlabs_agent_update
 Update the ElevenLabs conversational AI agent configuration.
 
-**Requires:** `soul` permission + `ELEVENLABS_API_KEY` configured
-
-**Input:**
-```json
-{
-  "system_prompt": "...",
-  "first_message": "..."
-}
-```
+| Parameter | Type | Description |
+|---|---|---|
+| `system_prompt` | string | New system prompt |
+| `first_message` | string | Agent greeting |
 
 ---
 
@@ -498,21 +433,19 @@ See [architecture/vault.md](../architecture/vault.md) for full details.
 
 ## 6. Error Responses
 
-All tools return structured errors:
-
 ```json
 { "error": "error_code", "message": "Human-readable description." }
 ```
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `vault_locked` | 403 | Vault key not in active session |
-| `encrypted` | 403 | Content is encrypted, no key available |
-| `permission_denied` | 403 | Service-token lacks required permission |
-| `not_found` | 404 | Resource does not exist |
-| `soul_not_synced` | 404 | No sys.md uploaded to VPS |
-| `api_disabled` | 403 | API context not enabled by user |
-| `no_social_content` | 404 | Social Sphere block missing (v1 soul) |
+| Code | Meaning |
+|---|---|
+| `vault_locked` | Vault key not in active session |
+| `encrypted` | Content encrypted, no key available |
+| `permission_denied` | Token lacks required permission |
+| `not_found` | Resource does not exist |
+| `soul_not_synced` | No sys.md on this node |
+| `api_disabled` | API context not enabled |
+| `no_social_content` | Social Sphere block missing (v1 soul) |
 
 ---
 
@@ -522,4 +455,4 @@ All tools return structured errors:
 |---|---|---|---|
 | `mcp` | 5 r/s | 10 | `/mcp` |
 | `oauth` | 3 r/s | 5 | `/oauth/` |
-| `chat` | 2 r/s | 20 | `/api/vault/connections/*`, `/api/vault/peer-stream` |
+| `api` | 10 r/s | 20 | `/api/vault/*` |
