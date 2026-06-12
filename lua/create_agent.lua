@@ -133,6 +133,30 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   end
 end
 
+-- Gespeicherte voice_id gegen ElevenLabs validieren — bei voice_not_found löschen
+-- damit der Clone-Schritt neu aus Vault-Audio läuft (z.B. nach Agent-Löschung)
+if existing_voice_id and eleven_key ~= "" then
+  local hc_v = http.new(); hc_v:set_timeout(8000)
+  local vchk = hc_v:request_uri(ELEVEN .. "/voices/" .. existing_voice_id, {
+    method = "GET", ssl_verify = true,
+    headers = { ["xi-api-key"] = eleven_key },
+  })
+  if not vchk or vchk.status ~= 200 then
+    ngx.log(ngx.WARN, "[create_agent] voice_id ungültig (", existing_voice_id, ") – neu klonen")
+    existing_voice_id = nil
+    -- Auch aus config.json entfernen
+    local cfg_r = read_file(BASE_DIR .. "/config.json")
+    if cfg_r then
+      local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+      if ok_c and type(cfg_d) == "table" then
+        cfg_d.elevenlabs_voice_id = nil
+        local wok, wjs = pcall(cjson.encode, cfg_d)
+        if wok then write_file(BASE_DIR .. "/config.json", wjs) end
+      end
+    end
+  end
+end
+
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
