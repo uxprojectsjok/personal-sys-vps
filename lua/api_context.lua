@@ -130,17 +130,27 @@ if ngx.req.get_method() == "GET" then
       end
     end
     if not has_file then
-      local new_ctx = { filename }
+      local new_ctx = {}
       if type(existing_ctx) == "table" then
         for _, n in ipairs(existing_ctx) do new_ctx[#new_ctx + 1] = n end
       end
+      new_ctx[#new_ctx + 1] = filename
       synced.context = new_ctx
     end
   end
-  ensure_in_context("mind.md")
-  ensure_in_context("health.md")
-  ensure_in_context("prompts.md")
-  ensure_in_context("shopping.md")
+  -- Alle physisch vorhandenen context-Dateien auto-includen (nicht nur hardcoded Liste)
+  local ctx_dir = base_dir .. "/vault/context"
+  local ls_handle = io.popen("ls -- '" .. ctx_dir:gsub("'", "'\\''") .. "' 2>/dev/null")
+  if ls_handle then
+    for fname in ls_handle:lines() do
+      if type(fname) == "string" and #fname >= 3 and #fname <= 120
+         and not fname:find("%.%.") and not fname:find("/")
+         and (fname:match("%.md$") or fname:match("%.txt$") or fname:match("%.pdf$")) then
+        ensure_in_context(fname)
+      end
+    end
+    ls_handle:close()
+  end
 
   local safe = {
     enabled      = ctx.enabled      or false,
