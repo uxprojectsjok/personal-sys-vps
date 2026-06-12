@@ -1,38 +1,31 @@
-import { z } from 'zod';
 import { getJson } from '../lib/api.mjs';
+
+const FALLBACK_CALL_URL = 'https://me.uxprojects-jok.com/call';
 
 export function register(server, token) {
   server.tool(
     'call_me',
     [
-      'Öffnet ein Gespräch mit deinem digitalen Agenten (ElevenLabs Conversational AI).',
+      'Startet ein Gespräch mit deinem digitalen Agenten (ElevenLabs Conversational AI).',
       'Gibt einen direkten Link zurück — im Browser öffnen, Mikrofon erlauben, sofort sprechen.',
       '',
-      'Voraussetzung: ElevenLabs Agent muss eingerichtet sein (elevenlabs_agent_update oder @create-agent).',
-      'Das Tool prüft ob ein Agent vorhanden ist bevor es den Link zurückgibt.',
+      'Voraussetzung: ElevenLabs Agent muss eingerichtet sein (@create-agent oder elevenlabs_agent_update).',
     ].join('\n'),
     {},
     async () => {
       try {
-        // Agent-Verfügbarkeit via /api/get-config prüfen
         const cfg = await getJson('/api/get-config', token).catch(() => null);
 
-        const callUrl = 'https://me.uxprojects-jok.com/call';
-
-        if (!cfg || !cfg.elevenlabs_key_set) {
+        if (!cfg?.elevenlabs_key_set) {
           return {
-            content: [{
-              type: 'text',
-              text: [
-                'Kein ElevenLabs-Key konfiguriert.',
-                'Bitte zuerst den API-Key in den Einstellungen hinterlegen.',
-                '',
-                'Dann: `elevenlabs_agent_update` aufrufen um den Agenten einzurichten.',
-              ].join('\n'),
-            }],
+            content: [{ type: 'text', text: 'Kein ElevenLabs-Key konfiguriert. Bitte in den Einstellungen hinterlegen und dann @create-agent ausführen.' }],
             isError: true,
           };
         }
+
+        // Bevorzuge gespeicherte öffentliche Agent-URL, Fallback: /call-Seite (signed URL)
+        const agentUrl = cfg.elevenlabs_agent_url || FALLBACK_CALL_URL;
+        const isPublic = !!cfg.elevenlabs_agent_url;
 
         return {
           content: [{
@@ -40,9 +33,12 @@ export function register(server, token) {
             text: [
               `**Gespräch mit deinem digitalen Agenten starten:**`,
               '',
-              `[Jetzt sprechen → ${callUrl}](${callUrl})`,
+              `[Jetzt sprechen →](${agentUrl})`,
+              agentUrl,
               '',
-              'Klicke den Link, erlaube das Mikrofon — der Agent verbindet sich automatisch.',
+              isPublic
+                ? 'Link öffnet ElevenLabs direkt — Mikrofon erlauben, sofort sprechen.'
+                : 'Link öffnet die SYS-App — Mikrofon erlauben, Agent verbindet sich automatisch.',
             ].join('\n'),
           }],
         };
