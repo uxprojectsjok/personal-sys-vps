@@ -297,6 +297,29 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         return res.json({ content: [{ type: 'text', text: `Sektion "${section}" ${verb}.` }] });
       }
 
+      // Ersetzt/fügt ein Feld im Klartextinhalt von sys.md ein (key: value — überall im Dokument)
+      case 'soul_patch_field': {
+        const { key: pfKey, value: pfVal } = input;
+        if (!pfKey || pfVal === undefined)
+          return res.status(400).json({ error: 'key und value erforderlich' });
+        const rawBuf       = await readFile(soulPath);
+        const wasEncrypted = rawBuf.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
+        let   md           = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
+        const re           = new RegExp(`(${pfKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:)[^\\n]*`, 'g');
+        if (re.test(md)) {
+          md = md.replace(re, `$1 ${pfVal}`);
+        } else {
+          // Nicht gefunden → ans Ende des Frontmatter oder des Dokuments
+          const fmEnd = md.indexOf('\n---\n');
+          if (fmEnd !== -1) md = md.slice(0, fmEnd) + `\n${pfKey}: ${pfVal}` + md.slice(fmEnd);
+          else md = md.trimEnd() + `\n${pfKey}: ${pfVal}\n`;
+        }
+        let writeBuf = Buffer.from(md, 'utf8');
+        if (wasEncrypted && vaultKeyHex) writeBuf = encryptBuf(writeBuf, vaultKeyHex);
+        await writeFile(soulPath, writeBuf);
+        return res.json({ content: [{ type: 'text', text: `${pfKey} aktualisiert.` }] });
+      }
+
       case 'vault_manifest': {
         const vaultDir = `${SOULS_DIR}${soulId}/vault/`;
         const files = [];

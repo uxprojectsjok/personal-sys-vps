@@ -563,6 +563,22 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   end
 end
 
+-- ── elevenlabs_agent_url direkt in sys.md patchen (via MCP-Server, handle encrypt) ──
+do
+  local patch_ok, patch_js = pcall(cjson.encode, {
+    tool  = "soul_patch_field",
+    input = { key = "elevenlabs_agent_url", value = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id }
+  })
+  if patch_ok then
+    local hcp = http.new(); hcp:set_timeout(10000)
+    hcp:request_uri("http://127.0.0.1:3098/internal/run-tool", {
+      method  = "POST",
+      headers = { ["Content-Type"] = "application/json", ["x-soul-id"] = soul_id },
+      body    = patch_js,
+    })
+  end
+end
+
 -- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────
 do
   local cfg_r = read_file(BASE_DIR .. "/config.json")
