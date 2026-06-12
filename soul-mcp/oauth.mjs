@@ -246,18 +246,18 @@ function consentHtml({ client_id, redirect_uri, state, response_type, scope, cod
     body{background:#000;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
     .card{background:#0a0a0a;border:1px solid rgba(255,255,255,.08);border-radius:1.25rem;padding:2rem;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.6)}
     .logo{display:flex;align-items:center;gap:.625rem;margin-bottom:1.75rem}
-    .dot{width:8px;height:8px;background:#8b5cf6;border-radius:50%;box-shadow:0 0 6px #8b5cf6}
+    .dot{width:8px;height:8px;background:#6db89a;border-radius:50%;box-shadow:0 0 6px #6db89a}
     .logo-text{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);font-weight:500}
     h1{font-size:1.125rem;font-weight:700;margin-bottom:.375rem;letter-spacing:-.01em}
     .sub{color:rgba(255,255,255,.4);font-size:.8125rem;margin-bottom:1.5rem;line-height:1.5}
     .scopes{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:.75rem;padding:.875rem 1rem;margin-bottom:1.5rem}
     .scope{font-size:.8125rem;color:rgba(255,255,255,.6);padding:.2rem 0;display:flex;align-items:center;gap:.5rem}
-    .scope::before{content:'✓';color:#fff;font-size:.625rem;background:#8b5cf6;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex-none;font-weight:700}
+    .scope::before{content:'✓';color:#0c1410;font-size:.625rem;background:#6db89a;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex-none;font-weight:700}
     label{display:block;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:.5rem;font-weight:500}
     input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.75rem 1rem;color:#e2e8f0;font-size:.8125rem;font-family:monospace;margin-bottom:1.25rem;transition:border-color .15s}
-    input:focus{outline:none;border-color:rgba(139,92,246,.6);background:rgba(255,255,255,.06)}
-    .btn-connect{width:100%;background:#8b5cf6;color:#fff;border:none;border-radius:3rem;padding:.875rem 1.5rem;font-size:.9375rem;font-weight:700;cursor:pointer;margin-bottom:.875rem;letter-spacing:.01em;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:.5rem}
-    .btn-connect:hover{background:#7c3aed;transform:translateY(-1px)}
+    input:focus{outline:none;border-color:rgba(109,184,154,.6);background:rgba(255,255,255,.06)}
+    .btn-connect{width:100%;background:#6db89a;color:#0c1410;border:none;border-radius:3rem;padding:.875rem 1.5rem;font-size:.9375rem;font-weight:700;cursor:pointer;margin-bottom:.875rem;letter-spacing:.01em;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+    .btn-connect:hover{background:#8ad0b3;transform:translateY(-1px)}
     .btn-connect:active{transform:translateY(0)}
     .cancel{display:block;text-align:center;color:rgba(255,255,255,.3);font-size:.8125rem;text-decoration:none;padding:.5rem;transition:color .15s}
     .cancel:hover{color:rgba(255,255,255,.6)}
