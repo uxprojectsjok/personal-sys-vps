@@ -213,7 +213,7 @@ async function handleSave() {
   isSaving.value = true
   try {
     const { blob, mimeType, duration: dur, date, ts } = lastSample.value
-    const ext      = mimeType?.includes('webm') ? 'webm' : mimeType?.includes('mp4') ? 'm4a' : 'webm'
+    const ext      = mimeType?.includes('mp4') ? 'm4a' : 'ogg'
     const speakerId = soulMeta.value?.id?.slice(0, 8) || 'user'
     const filename  = `voice_${speakerId}_${date}.${ext}`
 
