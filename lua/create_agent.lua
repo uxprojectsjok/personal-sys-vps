@@ -137,18 +137,18 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   end
 end
 
--- Gespeicherte voice_id gegen ElevenLabs validieren — bei voice_not_found löschen
--- damit der Clone-Schritt neu aus Vault-Audio läuft (z.B. nach Agent-Löschung)
-if existing_voice_id and eleven_key ~= "" then
+-- Gespeicherte voice_id nur validieren wenn KEIN body_voice_id gesetzt ist.
+-- Validation nur bei explizitem 404 (Voice wirklich gelöscht) — Timeout/Netzfehler
+-- sollen die vorhandene voice_id NICHT löschen.
+if not body_voice_id and existing_voice_id and eleven_key ~= "" then
   local hc_v = http.new(); hc_v:set_timeout(8000)
   local vchk = hc_v:request_uri(ELEVEN .. "/voices/" .. existing_voice_id, {
     method = "GET", ssl_verify = true,
     headers = { ["xi-api-key"] = eleven_key },
   })
-  if not vchk or vchk.status ~= 200 then
-    ngx.log(ngx.WARN, "[create_agent] voice_id ungültig (", existing_voice_id, ") – neu klonen")
+  if vchk and vchk.status == 404 then
+    ngx.log(ngx.WARN, "[create_agent] voice_id nicht gefunden (", existing_voice_id, ") – neu klonen")
     existing_voice_id = nil
-    -- Auch aus config.json entfernen
     local cfg_r = read_file(BASE_DIR .. "/config.json")
     if cfg_r then
       local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
@@ -293,23 +293,23 @@ if not audio_data then
   end
 end
 
--- ── Voice Clone: bestehende ID wiederverwenden oder neu klonen ───────────────
--- body_voice_id (aus Request) hat höchste Priorität → sofort übernehmen + persistieren
+-- ── Voice: Override (body) → bestehend → neu klonen ─────────────────────────
 local voice_id = body_voice_id or existing_voice_id
 
-if body_voice_id and body_voice_id ~= (existing_voice_id or "") then
-  local cfg_r = read_file(BASE_DIR .. "/config.json")
-  if cfg_r then
-    local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
-    if ok_c and type(cfg_d) == "table" then
-      cfg_d.elevenlabs_voice_id = body_voice_id
-      local wok, wjs = pcall(cjson.encode, cfg_d)
-      if wok then write_file(BASE_DIR .. "/config.json", wjs) end
+if body_voice_id then
+  -- Override aus Request: direkt verwenden, kein Clone
+  if body_voice_id ~= (existing_voice_id or "") then
+    local cfg_r = read_file(BASE_DIR .. "/config.json")
+    if cfg_r then
+      local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+      if ok_c and type(cfg_d) == "table" then
+        cfg_d.elevenlabs_voice_id = body_voice_id
+        local wok, wjs = pcall(cjson.encode, cfg_d)
+        if wok then write_file(BASE_DIR .. "/config.json", wjs) end
+      end
     end
   end
-end
-
-if not voice_id and audio_data then
+elseif not voice_id and audio_data then
   local mime = "audio/webm"
   if audio_filename:match("%.mp3$") then mime = "audio/mpeg"
   elseif audio_filename:match("%.wav$") then mime = "audio/wav"
@@ -555,14 +555,25 @@ if not agent_id then
 end
 
 -- ── ownagent.md in vault_shared schreiben (für Peers abrufbar) ──────────────────
+-- Alte Dateien löschen, dann neu anlegen: ownagent.md (fix, für call_me)
+-- + ownagent_YYYY-MM-DD.md (datiert, für vault_shared-Anzeige).
 do
   local shared_dir = BASE_DIR .. "/vault_shared"
   os.execute("mkdir -p " .. shared_dir)
-  local agent_url = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
-  local vid_line  = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
-  local content   = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. os.date("!%Y-%m-%dT%TZ") .. "\n---\n"
+  -- Alte ownagent-Dateien entfernen
+  os.execute("rm -f " .. shared_dir .. "/ownagent.md")
+  os.execute("rm -f " .. shared_dir .. "/ownagent_*.md")
+  local agent_url  = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
+  local vid_line   = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
+  local date_str   = os.date("!%Y-%m-%d")
+  local updated_at = os.date("!%Y-%m-%dT%TZ")
+  local content    = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. updated_at .. "\n---\n"
+  -- Fester Name für call_me
   local wf = io.open(shared_dir .. "/ownagent.md", "w")
   if wf then wf:write(content); wf:close() end
+  -- Datierter Name für vault_shared-Anzeige
+  local wf2 = io.open(shared_dir .. "/ownagent_" .. date_str .. ".md", "w")
+  if wf2 then wf2:write(content); wf2:close() end
 end
 
 -- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────

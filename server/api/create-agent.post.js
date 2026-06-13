@@ -247,12 +247,6 @@ export default defineEventHandler(async (event) => {
   const agentData = await elevenPost('/convai/agents/create', elevenKey, agentPayload)
   const agentId = agentData.agent_id
 
-  // ── agent_id + voice_id in sys.md registrieren ────────────────────────────
-  const sysMdPath = join(baseDir, 'sys.md')
-  const sysPatch = { elevenlabs_agent_id: agentId }
-  if (voiceId) sysPatch.elevenlabs_voice_id = voiceId
-  patchSysMd(sysMdPath, sysPatch)
-
   return {
     ok: true,
     agent_id: agentId,
