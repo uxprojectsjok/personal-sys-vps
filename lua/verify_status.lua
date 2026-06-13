@@ -5,6 +5,7 @@
 local cjson      = require("cjson.safe")
 local soul_id    = ngx.ctx.soul_id
 local VERIFY_DIR = "/var/lib/sys/verify/"
+os.execute("mkdir -p " .. VERIFY_DIR)
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
