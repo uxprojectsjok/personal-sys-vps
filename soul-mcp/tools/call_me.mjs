@@ -28,7 +28,7 @@ export function register(server, token, soulId = null) {
           try {
             const sharedDir = join(SOULS_DIR, soulId, 'vault_shared');
             const files = readdirSync(sharedDir)
-              .filter(f => /^ownagent_\d{4}-\d{2}-\d{2}\.md$/.test(f))
+              .filter(f => f.includes('ownagent') && f.endsWith('.md'))
               .sort();
             const latest = files[files.length - 1];
             if (latest) {

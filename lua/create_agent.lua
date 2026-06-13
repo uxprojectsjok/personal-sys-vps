@@ -512,14 +512,13 @@ do
   local shared_dir = BASE_DIR .. "/vault_shared"
   os.execute("mkdir -p " .. shared_dir)
   -- Alte ownagent-Dateien entfernen
-  os.execute("rm -f " .. shared_dir .. "/ownagent.md")
-  os.execute("rm -f " .. shared_dir .. "/ownagent_*.md")
+  os.execute("rm -f " .. shared_dir .. "/*ownagent*.md")
   local agent_url  = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
   local vid_line   = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
-  local date_str   = os.date("!%Y-%m-%d")
   local updated_at = os.date("!%Y-%m-%dT%TZ")
+  local ts         = tostring(math.floor(ngx.now() * 1000))
   local content    = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. updated_at .. "\n---\n"
-  local wf = io.open(shared_dir .. "/ownagent_" .. date_str .. ".md", "w")
+  local wf = io.open(shared_dir .. "/" .. ts .. "_ownagent.md", "w")
   if wf then wf:write(content); wf:close() end
 end
 
