@@ -568,12 +568,8 @@ do
   local date_str   = os.date("!%Y-%m-%d")
   local updated_at = os.date("!%Y-%m-%dT%TZ")
   local content    = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. updated_at .. "\n---\n"
-  -- Fester Name für call_me
-  local wf = io.open(shared_dir .. "/ownagent.md", "w")
+  local wf = io.open(shared_dir .. "/ownagent_" .. date_str .. ".md", "w")
   if wf then wf:write(content); wf:close() end
-  -- Datierter Name für vault_shared-Anzeige
-  local wf2 = io.open(shared_dir .. "/ownagent_" .. date_str .. ".md", "w")
-  if wf2 then wf2:write(content); wf2:close() end
 end
 
 -- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────
