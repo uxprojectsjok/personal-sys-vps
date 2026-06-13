@@ -1,5 +1,8 @@
+import { readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { getJson } from '../lib/api.mjs';
 
+const SOULS_DIR      = process.env.SOULS_DIR || '/var/lib/sys/souls';
 const FALLBACK_CALL_URL = 'https://me.uxprojects-jok.com/call';
 
 function parseAgentMd(text) {
@@ -15,18 +18,21 @@ export function register(server, token, soulId = null) {
       'Startet ein Gespräch mit deinem digitalen Agenten (ElevenLabs Conversational AI).',
       'Gibt einen direkten Link zurück — im Browser öffnen, Mikrofon erlauben, sofort sprechen.',
       '',
-      'Voraussetzung: ElevenLabs Agent muss eingerichtet sein (@create-agent oder elevenlabs_agent_update).',
+      'Voraussetzung: ElevenLabs Agent muss eingerichtet sein (@create-agent).',
     ].join('\n'),
     {},
     async () => {
       try {
-        // Primär: ownagent.md aus vault-shared lesen (single source of truth)
+        // Primär: ownagent_*.md aus vault_shared lesen (neueste datierte Datei)
         if (soulId) {
           try {
-            const params = new URLSearchParams({ soul_id: soulId, filename: 'ownagent.md' });
-            const data   = await getJson(`/api/vault/shared-mcp?${params}`, token);
-            if (data?.ok && data.data_b64) {
-              const text   = Buffer.from(data.data_b64, 'base64').toString('utf-8');
+            const sharedDir = join(SOULS_DIR, soulId, 'vault_shared');
+            const files = readdirSync(sharedDir)
+              .filter(f => /^ownagent_\d{4}-\d{2}-\d{2}\.md$/.test(f))
+              .sort();
+            const latest = files[files.length - 1];
+            if (latest) {
+              const text   = readFileSync(join(sharedDir, latest), 'utf-8');
               const parsed = parseAgentMd(text);
               if (parsed.agent_url) {
                 return {
