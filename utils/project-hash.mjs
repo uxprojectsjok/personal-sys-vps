@@ -13,7 +13,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template"]);
 const EXCLUDE_DIRS = new Set([
   "node_modules", ".output", ".nuxt", ".git", ".claude",
-  "soul-whatsapp", "soul-voice-clone", "soul-mcp",
+  "soul-whatsapp", "soul-voice-clone",
   "browser-extension", "test", "dist",
 ]);
 const EXCLUDE_FILES = new Set([
