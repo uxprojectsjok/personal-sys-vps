@@ -18,7 +18,7 @@ Stand: 2026-06-13 · Seite: `/verbindung`
 
 **Bewegungs-Verifikation** (`motion_face_*.mp4`, `motion_body_*.mp4`) — diskutiert, aber vorerst zurückgestellt. Begründung: Liveness-Check via Blinzel-Detection (noch offen) deckt den Anwendungsfall ausreichend ab.
 
-**2FA Wallet** — erscheint nach jeder erfolgreichen Biometrik. Nutzt `window.ethereum` (MetaMask/Reown) direkt via `ethers.BrowserProvider`, ohne den bestehenden `useChainAnchor`-Composable zu ändern. Signatur und Adresse werden in der Challenge-Datei gespeichert. Kryptografische Verifikation (ethers `verifyMessage`) ist im MCP-Tool vorbereitet, aber noch nicht aktiviert (ethers fehlt als direkte soul-mcp-Dependency).
+**2FA Wallet → Soul Identity Proof** — ersetzt einfaches `signMessage` durch `proveIdentity()` aus `useChainAnchor`. Der Proof prüft on-chain via `contract.soulOwner(soulIdBytes32)`, dass die verbundene Wallet tatsächlich diese Soul auf Polygon besitzt. Das MCP-Tool verifiziert kryptografisch: `verifyMessage(nonce, signature) === wallet` + on-chain Abgleich via Polygon RPC.
 
 **MCP-Tool `verify_identity`** — erstellt Challenges und gibt Status zurück inkl. `verified_level: "2fa"`. Zwei-Schritt-Flow: zuerst Challenge erstellen, dann nach Nutzer-Aktion Status prüfen.
 
@@ -31,7 +31,7 @@ Stand: 2026-06-13 · Seite: `/verbindung`
 | Stimme-Verifikation | Web Audio FFT (lokal) | ElevenLabs Speaker Verification | kein externer Dienst, kein API-Call |
 | Gesicht-Verifikation | Claude Haiku Vision (server) | face-api.js + Modelle | präziser, kein 25 MB Download, Key vorhanden |
 | Bewegung | zurückgestellt | MediaPipe Pose | Liveness-Check reicht für MVP |
-| 2FA Wallet | window.ethereum direkt | useChainAnchor erweitern | minimaler Eingriff, keine Änderung an bestehendem Code |
+| 2FA Wallet | `proveIdentity()` via useChainAnchor | window.ethereum direkt | on-chain soulOwner-Check statt beliebiger Wallet |
 | Liveness | noch offen | Blinzel-EAR (face-api.js) | face-api.js-Dependency vermieden |
 
 ### Commits dieser Session
@@ -200,17 +200,21 @@ verifiedLevel = '2fa', walletShort anzeigen
 
 `activeChallengeId` = entweder MCP-Challenge-ID oder frisch erstellte Challenge (aus `POST /api/verify/challenge`).
 
-**Kryptografische Verifikation (noch offen):**  
-Lua kann kein secp256k1 `ecrecover`. Aktuell vertraut der Server der übermittelten Adresse. Die Verifikation liegt beim MCP-Tool (`verify_identity.mjs`):
+**Kryptografische Verifikation** läuft im MCP-Tool (`verify_identity.mjs`):
 
 ```js
-import { verifyMessage } from 'ethers'
-const recovered = verifyMessage(challenge_id, wallet_2fa.signature)
-const valid = recovered.toLowerCase() === wallet_2fa.address.toLowerCase()
-// Optional: gegen status.registered_wallet abgleichen
+// 1. Signatur-Check
+const recovered = ethers.verifyMessage(ethers.getBytes(proof.nonce), proof.signature)
+const signatureValid = recovered.toLowerCase() === proof.wallet.toLowerCase()
+
+// 2. On-chain: Besitzt diese Wallet die Soul auf Polygon?
+const contract = new ethers.Contract(SOUL_REGISTRY, OWNER_ABI, provider)
+const owner = await contract.soulOwner(proof.soulId)
+const onChainMatch = owner.toLowerCase() === proof.wallet.toLowerCase()
 ```
 
-→ **TODO**: In `verify_identity.mjs` ethers.js `verifyMessage` aktivieren sobald ethers als direkte soul-mcp Dependency verfügbar ist (aktuell transitiv über @reown/appkit-adapter-ethers im Frontend).
+Ethers ist direkte Dependency in `soul-mcp/package.json` (`^6.13.4`).  
+Lua vertraut dem übermittelten Proof — die kryptografische Verifikation findet bewusst im MCP-Tool (Node.js) statt.
 
 ---
 
@@ -262,7 +266,7 @@ Typischer Claude-Flow:
 
 - [ ] **Liveness-Check Gesicht** — Blinzel-Detection (s. o.)
 - [ ] **MFCC-Stimme** — Mel-Filterbank für bessere Sprecheridentifikation
-- [ ] **ethers.js verifyMessage** in `verify_identity.mjs` aktivieren (soul-mcp package.json)
+- [x] **ethers.js verifyMessage** aktiviert + on-chain `soulOwner` Check implementiert
 - [ ] **Vault-Audio Fallback** — wenn vault gesperrt: Fehler mit Anleitung zum Entsperren
 - [ ] **Challenge-Cleanup** — abgelaufene JSON-Dateien in `/var/lib/sys/verify/` löschen (Cron oder bei `verify_pending`)
 - [ ] **Bewegungs-Verifikation** (motion_face / motion_body aus Vault) — verschoben, da Liveness via Blinzeln ausreichend

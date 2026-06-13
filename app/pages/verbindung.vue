@@ -198,7 +198,11 @@
                 </div>
                 <div v-if="verifiedLevel === '2fa'" class="cn-2fa-verified">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                  2FA verifiziert · {{ walletShort }}
+                  <div>
+                    <div>2FA verifiziert · {{ walletShort }}</div>
+                    <div class="cn-2fa-anchor" v-if="twoFaAnchorCount > 0">{{ twoFaAnchorCount }} Blockchain-Anker · seit {{ twoFaFirstAnchor }}</div>
+                    <div class="cn-2fa-anchor cn-2fa-anchor--warn" v-else>Noch nicht geankert — einfache Wallet-Verifikation</div>
+                  </div>
                 </div>
                 <div v-else-if="twoFaState === 'signing'" class="cn-2fa-pending">
                   <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
@@ -207,7 +211,7 @@
                 <div v-else-if="twoFaError" class="cn-2fa-error">{{ twoFaError }}</div>
                 <button v-else class="cn-2fa-btn" @click="do2FA">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/></svg>
-                  Wallet verbinden &amp; signieren
+                  Identität nachweisen
                 </button>
               </div>
             </Transition>
@@ -226,6 +230,7 @@ import { ref, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
+import { useChainAnchor } from '~/composables/useChainAnchor.js'
 
 definePageMeta({ layout: false })
 const router = useRouter()
@@ -447,33 +452,43 @@ async function doVoice(challengeId) {
   } catch(_) { verifyState.voice = 'failed' }
 }
 
-// ── 2FA Wallet (ethers signMessage) ──────────────────────────────────────────
-const twoFaState = ref('idle') // idle | signing | done
-const twoFaError = ref('')
-const verifiedLevel = ref('') // '' | 'biometric' | '2fa'
-const walletShort = ref('')
+// ── 2FA · Soul Identity Proof (geankerte Soul auf Polygon) ───────────────────
+const { connectWallet, proveIdentity, isConnected, anchorError } = useChainAnchor()
+
+const twoFaState       = ref('idle')
+const twoFaError       = ref('')
+const verifiedLevel    = ref('')
+const walletShort      = ref('')
+const twoFaAnchorCount = ref(0)
+const twoFaFirstAnchor = ref('')
 
 async function do2FA() {
   twoFaError.value = ''; twoFaState.value = 'signing'
   try {
-    const { BrowserProvider } = await import('ethers')
-    if (!window.ethereum) throw new Error('Kein Web3-Wallet gefunden. MetaMask oder kompatibles Wallet installieren.')
-    const provider = new BrowserProvider(window.ethereum)
-    await provider.send('eth_requestAccounts', [])
-    const signer  = await provider.getSigner()
-    const address = await signer.getAddress()
-    const cid     = activeChallengeId || ('vc_' + Date.now().toString(16))
-    const signature = await signer.signMessage(cid)
+    if (!isConnected.value) {
+      await connectWallet()
+      if (!isConnected.value) throw new Error('Wallet-Verbindung abgebrochen.')
+    }
 
-    const r = await fetch('/api/verify/2fa', { method:'POST', headers:authHeaders(), body:JSON.stringify({ challenge_id:cid, signature, address }) })
+    const proof = await proveIdentity()
+    if (!proof) throw new Error(anchorError.value || 'Identity Proof fehlgeschlagen.')
+
+    const cid = activeChallengeId || ('vc_' + Date.now().toString(16))
+    const r   = await fetch('/api/verify/2fa', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ challenge_id: cid, identity_proof: proof }),
+    })
     const d = await r.json()
     if (!r.ok) throw new Error(d.error || 'Fehler')
 
-    verifiedLevel.value = '2fa'
-    walletShort.value   = address.slice(0,6) + '…' + address.slice(-4)
-    twoFaState.value    = 'done'
+    verifiedLevel.value    = '2fa'
+    walletShort.value      = proof.wallet.slice(0,6) + '…' + proof.wallet.slice(-4)
+    twoFaAnchorCount.value = proof.anchorCount ?? 0
+    twoFaFirstAnchor.value = proof.firstAnchor ?? ''
+    twoFaState.value       = 'done'
   } catch(e) {
-    twoFaError.value = e.message || 'Wallet-Signatur fehlgeschlagen'
+    twoFaError.value = e.message || 'Identity Proof fehlgeschlagen'
     twoFaState.value = 'idle'
   }
 }
@@ -625,7 +640,9 @@ function onNav(id) {
 .cn-2fa-verified svg { width:18px; height:18px; flex:none; }
 .cn-2fa-pending { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--fg-3); }
 .cn-2fa-pending svg { width:16px; height:16px; flex:none; }
-.cn-2fa-error { font-family:var(--mono); font-size:12px; color:#e06c75; }
+.cn-2fa-error  { font-family:var(--mono); font-size:12px; color:#e06c75; }
+.cn-2fa-anchor { font-family:var(--mono); font-size:11px; color:var(--fg-3); margin-top:3px; }
+.cn-2fa-anchor--warn { color:rgba(184,154,109,0.9); }
 
 /* Animations */
 .spin { animation:cn-spin 1s linear infinite; }
