@@ -193,7 +193,9 @@ local size = f:seek("end"); f:seek("set", 0)
 ngx.header["Content-Type"]        = mime
 ngx.header["Content-Disposition"] = dispo .. '; filename="' .. filename .. '"'
 ngx.header["Content-Length"]      = tostring(size)
-ngx.header["Cache-Control"]       = "private, max-age=3600"
+local ext_check = filename:match("%.([^%.]+)$") or ""
+local no_cache_exts = { md=true, txt=true, json=true }
+ngx.header["Cache-Control"] = no_cache_exts[ext_check] and "no-store" or "private, max-age=3600"
 
 local CHUNK = 65536
 while true do
