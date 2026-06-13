@@ -4,6 +4,46 @@ Stand: 2026-06-13 · Seite: `/verbindung`
 
 ---
 
+## Aktuelle Entwicklung (2026-06-13)
+
+### Was gebaut wurde (diese Session)
+
+**Verbindung-Seite als Verifikations-Hub** — die bestehende QR-Connect-Seite wurde zum Hub erweitert. QR-Connect bleibt unverändert. Neu darunter: drei Verifikations-Tiles (Fingerabdruck, Gesicht, Stimme) + 2FA-Wallet-Karte.
+
+**Fingerabdruck** war bereits als Tile angelegt (WebAuthn via `useSoulPasskey.js`). Vollständig funktionsfähig.
+
+**Stimme** — lokale Spektralanalyse ohne externe Dienste. Entscheidung gegen ElevenLabs Speaker Verification zugunsten einer vollständig selbst gehosteten Lösung (Web Audio FFT). Vault-Audio (`vault/audio/*.mp3`) dient als Referenz, wird via Auth-Token geladen und im Browser dekodiert. Score wird in % angezeigt.
+
+**Gesicht** — ursprünglich als `face-api.js`-Lösung geplant (~25 MB Modelle, CDN-Abhängigkeit). Umgeschwenkt auf **Claude Haiku Vision** server-seitig, weil: präziser, kein Modell-Download, Anthropic-Key bereits in `config.json`. Profil-PNG aus `vault/images/` wird server-seitig entschlüsselt und direkt an Claude übergeben.
+
+**Bewegungs-Verifikation** (`motion_face_*.mp4`, `motion_body_*.mp4`) — diskutiert, aber vorerst zurückgestellt. Begründung: Liveness-Check via Blinzel-Detection (noch offen) deckt den Anwendungsfall ausreichend ab.
+
+**2FA Wallet** — erscheint nach jeder erfolgreichen Biometrik. Nutzt `window.ethereum` (MetaMask/Reown) direkt via `ethers.BrowserProvider`, ohne den bestehenden `useChainAnchor`-Composable zu ändern. Signatur und Adresse werden in der Challenge-Datei gespeichert. Kryptografische Verifikation (ethers `verifyMessage`) ist im MCP-Tool vorbereitet, aber noch nicht aktiviert (ethers fehlt als direkte soul-mcp-Dependency).
+
+**MCP-Tool `verify_identity`** — erstellt Challenges und gibt Status zurück inkl. `verified_level: "2fa"`. Zwei-Schritt-Flow: zuerst Challenge erstellen, dann nach Nutzer-Aktion Status prüfen.
+
+**Pending-Challenge-Banner** — App pollt `/api/verify/pending` alle 8 Sekunden. Wenn Claude eine Challenge erstellt, erscheint ein Banner mit direktem "Jetzt verifizieren"-Button für die richtige Methode.
+
+### Architektur-Entscheidungen
+
+| Entscheidung | Gewählt | Verworfen | Grund |
+|---|---|---|---|
+| Stimme-Verifikation | Web Audio FFT (lokal) | ElevenLabs Speaker Verification | kein externer Dienst, kein API-Call |
+| Gesicht-Verifikation | Claude Haiku Vision (server) | face-api.js + Modelle | präziser, kein 25 MB Download, Key vorhanden |
+| Bewegung | zurückgestellt | MediaPipe Pose | Liveness-Check reicht für MVP |
+| 2FA Wallet | window.ethereum direkt | useChainAnchor erweitern | minimaler Eingriff, keine Änderung an bestehendem Code |
+| Liveness | noch offen | Blinzel-EAR (face-api.js) | face-api.js-Dependency vermieden |
+
+### Commits dieser Session
+
+```
+8695f45  feat: complete verification stack — voice FFT, face Claude Vision, 2FA wallet
+d8aff0d  style: brighten all text on verbindung page to var(--fg)
+e582ef1  feat: verification hub — biometric identity via fingerprint, face, voice
+```
+
+---
+
 ## Überblick
 
 Die Verbindung-Seite ist ein **Verifikations-Hub**: Der Soul-Inhaber kann seine Identität biometrisch nachweisen — entweder auf eigene Initiative oder ausgelöst durch ein MCP-Tool (Claude AI).
