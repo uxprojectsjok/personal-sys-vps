@@ -93,7 +93,7 @@ local function serve_local(soul_id_val)
   ngx.header["Content-Type"]        = mime
   ngx.header["Content-Disposition"] = disposition .. '; filename="' .. safe_name .. '"'
   ngx.header["Content-Length"]      = tostring(size)
-  ngx.header["Cache-Control"]       = "private, max-age=3600"
+  local _nc_ext = safe_name:match("%.([^%.]+)$") or ""; local _nc = ({md=true,txt=true,json=true})[_nc_ext]; ngx.header["Cache-Control"] = _nc and "no-store" or "private, max-age=3600"
   local CHUNK = 65536
   while true do
     local chunk = f:read(CHUNK)
@@ -143,7 +143,7 @@ local function serve_remote(endpoint)
   ngx.header["Content-Range"]       = res.headers["Content-Range"]  or nil
   ngx.header["Accept-Ranges"]       = res.headers["Accept-Ranges"]  or "bytes"
   ngx.header["Content-Disposition"] = disposition .. '; filename="' .. safe_name .. '"'
-  ngx.header["Cache-Control"]       = "private, max-age=3600"
+  local _nc_ext = safe_name:match("%.([^%.]+)$") or ""; local _nc = ({md=true,txt=true,json=true})[_nc_ext]; ngx.header["Cache-Control"] = _nc and "no-store" or "private, max-age=3600"
   ngx.print(res.body or "")
 end
 
