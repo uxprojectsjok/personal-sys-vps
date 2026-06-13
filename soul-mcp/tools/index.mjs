@@ -1,7 +1,6 @@
 // ── Owner-Tools (service_token / OAuth) ──────────────────────────────────────
 import { register as soulRead }              from './soul_read.mjs';
 import { register as soulWrite }             from './soul_write.mjs';
-import { register as soulDelete }            from './soul_delete.mjs';
 import { register as bemeChat }              from './beme_chat.mjs';
 import { register as vaultManifest }         from './vault_manifest.mjs';
 import { register as audioList }             from './audio_list.mjs';
@@ -76,7 +75,6 @@ import { register as soulCommentPeer }       from './soul_comment_peer.mjs';
 export function registerTools(server, token, soulId = null) {
   soulRead(server, token);
   soulWrite(server, token);
-  soulDelete(server, token);
   bemeChat(server, token);
   soulMaturity(server, token);
   verifyHuman(server, token);
