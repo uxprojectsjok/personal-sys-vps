@@ -13,6 +13,7 @@ import { register as contextList }           from './context_list.mjs';
 import { register as contextGet }            from './context_get.mjs';
 import { register as calendarRead }          from './calendar_read.mjs';
 import { register as verifyHuman }           from './verify_human.mjs';
+import { register as verifyIdentity }        from './verify_identity.mjs';
 import { register as soulEarnings }          from './soul_earnings.mjs';
 import { register as soulDiscover }          from './soul_discover.mjs';
 import { register as soulMaturity }          from './soul_maturity.mjs';
@@ -78,6 +79,7 @@ export function registerTools(server, token, soulId = null) {
   bemeChat(server, token);
   soulMaturity(server, token);
   verifyHuman(server, token);
+  verifyIdentity(server, token);
   soulEarnings(server, token);
   soulDiscover(server, token);
   vaultManifest(server, token);
