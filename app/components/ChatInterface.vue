@@ -1011,7 +1011,7 @@ const AT_COMMANDS = [
   { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',                direct: true                                                  },
   { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',               direct: true                                                  },
   { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',              direct: true                                                  },
-  { cmd: '@create-agent', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: true                                                  },
+  { cmd: '@create-agent ', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: false, hint: 'Voice-ID (optional) …'                   },
   { cmd: '@sprechen',     label: 'sprechen',     desc: 'Sprachaufnahme starten',          direct: true                                                  },
   { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
   { cmd: '@session-end',  label: 'session-end',  desc: 'Session jetzt analysieren & eintragen', direct: true                                              },
@@ -2233,8 +2233,9 @@ function detectIntent(text) {
   if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
   if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
   if (/^@body\b|^@bewegung\b/i.test(t)) return { type: 'capture-body' }
-  // @create-agent → ElevenLabs Voice Clone + Agent erstellen
-  if (/^@create-agent\b/i.test(t)) return { type: 'create-agent' }
+  // @create-agent [voice-id] → ElevenLabs Agent erstellen, optionale Voice-ID
+  const agentMatch = t.match(/^@create-agent\b\s*(.*)/i)
+  if (agentMatch) return { type: 'create-agent', voiceId: agentMatch[1].trim() || null }
   // @sprechen → Voice-Agent Aufnahme starten
   if (/^@sprechen\b/i.test(t)) return { type: 'voice-agent' }
   // @abbruch → laufende Chat-Aktion abbrechen
@@ -2473,11 +2474,11 @@ async function handleWebSearch(query) {
 }
 
 // ── @create-agent ─────────────────────────────────────────────────
-async function handleCreateAgent() {
+async function handleCreateAgent(overrideVoiceId = null) {
   const preErr = preflightCheck('create-agent')
   if (preErr) { addMessage('user', '@create-agent'); addMessage('assistant', preErr); return }
   const signal = startJob('@create-agent')
-  addMessage('user', '@create-agent')
+  addMessage('user', overrideVoiceId ? `@create-agent ${overrideVoiceId}` : '@create-agent')
   const statusMsg = addMessage('assistant', 'ElevenLabs Agent wird erstellt…', { streaming: true })
   await scrollToBottom()
 
@@ -2532,6 +2533,7 @@ async function handleCreateAgent() {
       body: JSON.stringify({
         vault_key: _vaultKey.value || '',
         ...(audioBase64 ? { audio_base64: audioBase64, audio_filename: audioFilename } : {}),
+        ...(overrideVoiceId ? { voice_id: overrideVoiceId } : {}),
       }),
       signal,
     })
@@ -2547,27 +2549,9 @@ async function handleCreateAgent() {
       return
     }
 
-    // agent_id + voice_id in localStorage (zuverlässig für @sprechen, unabhängig vom Lade-Zustand der soul)
+    // agent_id + voice_id in localStorage (für @sprechen)
     if (data.agent_id) localStorage.setItem('sys_elevenlabs_agent_id', data.agent_id)
     if (data.voice_id) localStorage.setItem('sys_elevenlabs_voice_id', data.voice_id)
-
-    // agent_id + voice_id lokal patchen + zum Server pushen
-    if (data.agent_id && soulContentAgent.value) {
-      let patched = soulContentAgent.value
-      const agentRe = /^(elevenlabs_agent_id:\s*).*$/m
-      patched = agentRe.test(patched)
-        ? patched.replace(agentRe, `$1${data.agent_id}`)
-        : patched.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_agent_id: ${data.agent_id}\n$2`)
-      if (data.voice_id) {
-        const voiceRe = /^(elevenlabs_voice_id:\s*).*$/m
-        patched = voiceRe.test(patched)
-          ? patched.replace(voiceRe, `$1${data.voice_id}`)
-          : patched.replace(/^(---\n[\s\S]*?)(---)/m, `$1elevenlabs_voice_id: ${data.voice_id}\n$2`)
-      }
-      updateContent(patched)
-      pushToServer().catch(() => {})
-      if (vaultConnected.value) writeSoulMd(patched, 'sys').catch(() => {})
-    }
 
     const voiceNote = data.has_voice_clone
       ? `Voice-ID: \`${data.voice_id}\``
@@ -2575,7 +2559,7 @@ async function handleCreateAgent() {
 
     const talkUrl = `https://elevenlabs.io/app/talk-to?agent_id=${data.agent_id}`
     const lines = [
-      `Agent **${data.soul_name}** erstellt und in sys.md gespeichert.`,
+      `Agent **${data.soul_name}** erstellt.`,
       '',
       `Agent-ID: \`${data.agent_id}\``,
       voiceNote,
@@ -3625,7 +3609,7 @@ async function handleSend() {
   }
 
   if (intent.type === 'create-agent') {
-    await handleCreateAgent()
+    await handleCreateAgent(intent.voiceId)
     return
   }
 
