@@ -5,62 +5,99 @@ export function register(server, token) {
   server.tool(
     'verify_identity',
     [
-      'Fordert eine biometrische Verifikation der Person an.',
+      'Fordert eine biometrische Verifikation der Person an oder prüft den Status einer laufenden Challenge.',
       '',
       'Ablauf:',
-      '1. Tool erstellt eine Challenge (method: fingerprint/face/voice).',
-      '2. Person öffnet die App unter verify_url und verifiziert sich biometrisch.',
-      '3. Tool erneut aufrufen mit challenge_id um Status zu prüfen.',
+      '1. Tool aufrufen (method wählen) → Challenge erstellen → verify_url ausgeben',
+      '2. Person öffnet die App, verifiziert sich biometrisch',
+      '3. Tool erneut mit challenge_id aufrufen → Status prüfen',
       '',
-      'Fingerabdruck = WebAuthn/Face ID/Touch ID (stärkste Sicherheit)',
-      'Gesicht       = Kamera-Selfie + Bestätigung',
-      'Stimme        = Sprach-Sample + Bestätigung',
+      'Methoden (Stufen):',
+      '  fingerprint  Stufe 1 · WebAuthn/Face ID/Touch ID — kryptografisch, kein Datentransfer',
+      '  face         Stufe 2 · Claude Vision vergleicht Live-Frame mit Vault-Profilbild',
+      '  voice        Stufe 3 · Spektralanalyse Live-Aufnahme vs. Vault-Audio',
       '',
-      'Immer aufrufen wenn sichergestellt werden muss, dass die Person persönlich anwesend ist.',
+      'verified_level in der Antwort:',
+      '  "biometric"  → eine Stufe verifiziert',
+      '  "2fa"        → Biometrik + Wallet-Signatur (höchster Grad)',
     ].join('\n'),
     {
-      method:       z.enum(['fingerprint', 'face', 'voice']).default('fingerprint').describe('Biometrische Methode'),
-      challenge_id: z.string().length(32).optional().describe('Bestehende Challenge-ID zum Status-Check (32 Hex-Zeichen)'),
+      method:       z.enum(['fingerprint', 'face', 'voice']).default('fingerprint'),
+      challenge_id: z.string().length(32).optional().describe('Bestehende Challenge-ID zum Status-Check'),
     },
     async ({ method, challenge_id }) => {
       try {
-        // Status einer laufenden Challenge prüfen
-        if (challenge_id) {
-          const pending = await getJson('/api/verify/pending', token);
-          const match = pending.pending?.find(c => c.challenge_id === challenge_id);
-          if (match) {
-            return { content: [{ type: 'text', text: JSON.stringify({
-              status: 'pending',
-              challenge_id,
-              method: match.method,
-              message: `Verifikation ausstehend — Person muss die App öffnen und sich via ${match.method} verifizieren.`,
-              expires_at: match.expires_at,
-            }, null, 2) }] };
-          }
-          // Nicht mehr in pending → abgeschlossen oder abgelaufen
-          return { content: [{ type: 'text', text: JSON.stringify({
-            status: 'completed_or_expired',
-            challenge_id,
-            message: 'Challenge nicht mehr aktiv — abgeschlossen, abgelaufen oder abgelehnt.',
-          }, null, 2) }] };
+        const methodLabels = {
+          fingerprint: 'Fingerabdruck/Face ID',
+          face:        'Gesichtserkennung (Claude Vision)',
+          voice:       'Stimm-Spektralanalyse',
         }
 
-        // Neue Challenge erstellen
-        const data = await postJson('/api/verify/challenge', token, { method });
-        const methodLabels = { fingerprint: 'Fingerabdruck/Face ID', face: 'Gesicht', voice: 'Stimme' };
+        // ── Status einer bestehenden Challenge prüfen ──────────────────────────
+        if (challenge_id) {
+          let status
+          try {
+            status = await getJson(`/api/verify/status?id=${challenge_id}`, token)
+          } catch {
+            return { content: [{ type: 'text', text: JSON.stringify({
+              status: 'not_found',
+              challenge_id,
+              message: 'Challenge nicht gefunden — abgelaufen oder ungültige ID.',
+            }, null, 2) }] }
+          }
+
+          if (status.status === 'pending') {
+            return { content: [{ type: 'text', text: JSON.stringify({
+              status:      'pending',
+              challenge_id,
+              method:      status.method,
+              expires_at:  status.expires_at,
+              message:     `Warte auf Verifikation — Person muss /verbindung öffnen und sich via ${methodLabels[status.method] ?? status.method} verifizieren.`,
+            }, null, 2) }] }
+          }
+
+          const level = status.verified_level || (status.status === 'verified' ? 'biometric' : null)
+
+          if (status.status === 'verified' || level) {
+            const wallet2fa = status.wallet_2fa
+            return { content: [{ type: 'text', text: JSON.stringify({
+              status:          'verified',
+              verified_level:  level ?? 'biometric',
+              challenge_id,
+              method:          status.method,
+              verified_at:     status.verified_at,
+              wallet_2fa:      wallet2fa ? {
+                address:   wallet2fa.address,
+                signed_at: wallet2fa.signed_at,
+              } : null,
+              message: level === '2fa'
+                ? `2FA verifiziert — Biometrik + Wallet ${wallet2fa?.address?.slice(0,6)}…${wallet2fa?.address?.slice(-4)}.`
+                : `Biometrisch verifiziert via ${methodLabels[status.method] ?? status.method}.`,
+            }, null, 2) }] }
+          }
+
+          return { content: [{ type: 'text', text: JSON.stringify({
+            status:      status.status,
+            challenge_id,
+            message:     status.status === 'failed' ? 'Verifikation fehlgeschlagen.' : 'Challenge abgelaufen.',
+          }, null, 2) }] }
+        }
+
+        // ── Neue Challenge erstellen ───────────────────────────────────────────
+        const data = await postJson('/api/verify/challenge', token, { method })
         return {
           content: [{ type: 'text', text: JSON.stringify({
-            ok: true,
-            challenge_id:  data.challenge_id,
-            method:        data.method,
-            status:        'pending',
-            expires_at:    data.expires_at,
-            verify_url:    data.verify_url,
-            message:       `Verifikationsanfrage erstellt. Person muss ${data.verify_url} öffnen und sich via ${methodLabels[data.method] ?? data.method} verifizieren. challenge_id für Status-Check merken: ${data.challenge_id}`,
+            ok:           true,
+            challenge_id: data.challenge_id,
+            method:       data.method,
+            status:       'pending',
+            expires_at:   data.expires_at,
+            verify_url:   data.verify_url,
+            message:      `Challenge erstellt. Person muss ${data.verify_url} öffnen → "${methodLabels[data.method]}" Tile → Verifizieren. challenge_id für Status-Check: ${data.challenge_id}`,
           }, null, 2) }],
-        };
+        }
       } catch (err) {
-        return { content: [{ type: 'text', text: err.message }], isError: true };
+        return { content: [{ type: 'text', text: err.message }], isError: true }
       }
     }
   );
