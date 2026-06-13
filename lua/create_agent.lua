@@ -74,9 +74,8 @@ local function try_decrypt_vault(data, key_hex)
   return aes:decrypt(ciphertext)
 end
 
--- ── ElevenLabs-Key + gespeicherte Voice-ID ────────────────────────────────────
+-- ── ElevenLabs-Key ───────────────────────────────────────────────────────────
 local eleven_key = ""
-local existing_voice_id = nil
 local f = io.open(BASE_DIR .. "/config.json", "r")
 if f then
   local raw = f:read("*a"); f:close()
@@ -84,9 +83,6 @@ if f then
   if ok and type(cfg) == "table" then
     if type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
       eleven_key = cfg.elevenlabs_key
-    end
-    if type(cfg.elevenlabs_voice_id) == "string" and cfg.elevenlabs_voice_id ~= "" then
-      existing_voice_id = cfg.elevenlabs_voice_id
     end
   end
 end
@@ -130,35 +126,6 @@ local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
   if m and m ~= '""' and m ~= "" then soul_name = m end
-  -- Fallback: sys.md voice_id nur wenn config.json keinen Eintrag hat
-  if not existing_voice_id then
-    local vm = sys_text:match("elevenlabs_voice_id:%s*([a-zA-Z0-9_%-]+)")
-    if vm and vm ~= "null" then existing_voice_id = vm end
-  end
-end
-
--- Gespeicherte voice_id nur validieren wenn KEIN body_voice_id gesetzt ist.
--- Validation nur bei explizitem 404 (Voice wirklich gelöscht) — Timeout/Netzfehler
--- sollen die vorhandene voice_id NICHT löschen.
-if not body_voice_id and existing_voice_id and eleven_key ~= "" then
-  local hc_v = http.new(); hc_v:set_timeout(8000)
-  local vchk = hc_v:request_uri(ELEVEN .. "/voices/" .. existing_voice_id, {
-    method = "GET", ssl_verify = true,
-    headers = { ["xi-api-key"] = eleven_key },
-  })
-  if vchk and vchk.status == 404 then
-    ngx.log(ngx.WARN, "[create_agent] voice_id nicht gefunden (", existing_voice_id, ") – neu klonen")
-    existing_voice_id = nil
-    local cfg_r = read_file(BASE_DIR .. "/config.json")
-    if cfg_r then
-      local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
-      if ok_c and type(cfg_d) == "table" then
-        cfg_d.elevenlabs_voice_id = nil
-        local wok, wjs = pcall(cjson.encode, cfg_d)
-        if wok then write_file(BASE_DIR .. "/config.json", wjs) end
-      end
-    end
-  end
 end
 
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
@@ -293,23 +260,19 @@ if not audio_data then
   end
 end
 
--- ── Voice: Override (body) → bestehend → neu klonen ─────────────────────────
-local voice_id = body_voice_id or existing_voice_id
+-- ── Voice: Override (body) oder neuer Clone aus Vault-Audio ─────────────────
+-- Kein Wiederverwenden alter IDs — immer frisch starten.
+local voice_id = body_voice_id
 
-if body_voice_id then
-  -- Override aus Request: direkt verwenden, kein Clone
-  if body_voice_id ~= (existing_voice_id or "") then
-    local cfg_r = read_file(BASE_DIR .. "/config.json")
-    if cfg_r then
-      local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
-      if ok_c and type(cfg_d) == "table" then
-        cfg_d.elevenlabs_voice_id = body_voice_id
-        local wok, wjs = pcall(cjson.encode, cfg_d)
-        if wok then write_file(BASE_DIR .. "/config.json", wjs) end
-      end
-    end
-  end
-elseif not voice_id and audio_data then
+if not voice_id and not audio_data then
+  -- Kein Audio im Vault und keine voice_id angegeben → Fehler mit Hinweis
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"no_voice_source","message":"Kein Vault-Audio und keine Voice-ID. Bitte zuerst eine Sprachaufnahme im Vault hinterlegen (@audio) oder eine ElevenLabs Voice-ID angeben: @create-agent <voice-id>"}')
+  return
+end
+
+if not voice_id and audio_data then
   local mime = "audio/webm"
   if audio_filename:match("%.mp3$") then mime = "audio/mpeg"
   elseif audio_filename:match("%.wav$") then mime = "audio/wav"
@@ -354,18 +317,6 @@ elseif not voice_id and audio_data then
     local vok, vdata = pcall(cjson.decode, vres.body)
     if vok and type(vdata) == "table" then
       voice_id = vdata.voice_id
-      -- voice_id in config.json persistieren für zukünftige @create-agent Aufrufe
-      if voice_id then
-        local cfg_r = read_file(BASE_DIR .. "/config.json")
-        if cfg_r then
-          local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
-          if ok_c and type(cfg_d) == "table" then
-            cfg_d.elevenlabs_voice_id = voice_id
-            local wok, wjs = pcall(cjson.encode, cfg_d)
-            if wok then write_file(BASE_DIR .. "/config.json", wjs) end
-          end
-        end
-      end
     end
   else
     ngx.log(ngx.WARN, "[create_agent] voice clone failed: ",

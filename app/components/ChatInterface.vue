@@ -2543,6 +2543,8 @@ async function handleCreateAgent(overrideVoiceId = null) {
       const msg = data.message || data.error || `HTTP ${res.status}`
       const text = msg === 'elevenlabs_key_missing'
         ? 'ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.'
+        : data.error === 'no_voice_source'
+        ? 'Kein Vault-Audio und keine Voice-ID.\n\n**Option 1:** Sprachaufnahme im Vault hinterlegen → `@audio` tippen, aufnehmen, dann `@create-agent` erneut.\n**Option 2:** Bestehende ElevenLabs Voice-ID direkt angeben: `@create-agent <voice-id>`'
         : `Fehler: ${msg}`
       setMessageMetaById(statusMsg.id, 'text', text)
       setMessageMetaById(statusMsg.id, 'streaming', false)
