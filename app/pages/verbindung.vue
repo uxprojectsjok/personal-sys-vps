@@ -535,7 +535,7 @@ function onNav(id) {
 /* ── Section label ── */
 .cn-section-label {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--fg-4); margin-bottom: 12px;
+  text-transform: uppercase; color: var(--fg); margin-bottom: 12px;
 }
 
 /* ── MCP Banner ── */
@@ -575,7 +575,7 @@ function onNav(id) {
 }
 .cn-action-ic svg { width: 22px; height: 22px; }
 .cn-action-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--fg); }
-.cn-action-sub   { font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin-top: 2px; }
+.cn-action-sub   { font-family: var(--mono); font-size: 12px; color: var(--fg); margin-top: 2px; }
 .cn-action-btn {
   display: inline-flex; align-items: center; gap: 8px; flex: none;
   height: 40px; padding: 0 18px;
@@ -671,13 +671,13 @@ function onNav(id) {
 .cn-tile-ic--face  { background: rgba(109,154,184,0.12); color: #6d9ab8; }
 .cn-tile-ic--voice { background: rgba(184,154,109,0.12); color: #b89a6d; }
 .cn-tile-title { font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--fg); }
-.cn-tile-sub   { font-family: var(--mono); font-size: 11px; color: var(--fg-4); margin-top: 2px; }
+.cn-tile-sub   { font-family: var(--mono); font-size: 11px; color: var(--fg); margin-top: 2px; }
 
 .cn-tile-body {
   padding: 16px 18px 20px;
   display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
 }
-.cn-tile-desc { font-family: var(--mono); font-size: 12px; color: var(--fg-3); line-height: 1.6; margin: 0; }
+.cn-tile-desc { font-family: var(--mono); font-size: 12px; color: var(--fg); line-height: 1.6; margin: 0; }
 
 .cn-tile-btn {
   display: inline-flex; align-items: center; gap: 6px;
