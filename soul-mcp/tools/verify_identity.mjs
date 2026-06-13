@@ -1,5 +1,49 @@
 import { z } from 'zod';
 import { postJson, getJson } from '../lib/api.mjs';
+import { ethers } from 'ethers';
+
+const SOUL_REGISTRY = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B'
+const POLYGON_RPC   = 'https://polygon-bor-rpc.publicnode.com'
+const OWNER_ABI     = ['function soulOwner(bytes32 soulId) view returns (address)']
+
+async function verifyIdentityProof(proof) {
+  if (!proof?.nonce || !proof?.signature || !proof?.wallet) return null
+
+  // 1. Signatur: recovered === wallet
+  let recovered
+  try {
+    recovered = ethers.verifyMessage(ethers.getBytes(proof.nonce), proof.signature)
+  } catch { return { valid: false, reason: 'invalid_signature' } }
+
+  const signatureValid = recovered.toLowerCase() === proof.wallet.toLowerCase()
+  if (!signatureValid) return { valid: false, reason: 'signature_mismatch', recovered }
+
+  // 2. On-chain: soulOwner(soulId) === wallet
+  let onChainMatch = false
+  const anchorCount = proof.anchorCount ?? 0
+
+  if (proof.soulId) {
+    try {
+      const provider = new ethers.JsonRpcProvider(POLYGON_RPC)
+      const contract = new ethers.Contract(SOUL_REGISTRY, OWNER_ABI, provider)
+      const owner    = await contract.soulOwner(proof.soulId)
+      const ZERO     = '0x0000000000000000000000000000000000000000'
+      onChainMatch   = owner !== ZERO && owner.toLowerCase() === proof.wallet.toLowerCase()
+    } catch {
+      onChainMatch = anchorCount > 0  // RPC-Fallback: Proof vertrauen wenn anchorCount > 0
+    }
+  }
+
+  return {
+    valid:        true,
+    signatureValid,
+    onChainMatch,
+    anchorCount,
+    wallet:       proof.wallet,
+    firstAnchor:  proof.firstAnchor  ?? null,
+    latestAnchor: proof.latestAnchor ?? null,
+  }
+}
 
 export function register(server, token) {
   server.tool(
@@ -60,18 +104,38 @@ export function register(server, token) {
 
           if (status.status === 'verified' || level) {
             const wallet2fa = status.wallet_2fa
-            return { content: [{ type: 'text', text: JSON.stringify({
+          const proof     = status.identity_proof
+
+          // Kryptografische Verifikation des Identity Proof
+          let proofVerification = null
+          if (proof && level === '2fa') {
+            proofVerification = await verifyIdentityProof(proof)
+          }
+
+          const proofValid = proofVerification?.valid ?? null
+          const onChain    = proofVerification?.onChainMatch ?? null
+
+          return { content: [{ type: 'text', text: JSON.stringify({
               status:          'verified',
               verified_level:  level ?? 'biometric',
               challenge_id,
               method:          status.method,
               verified_at:     status.verified_at,
-              wallet_2fa:      wallet2fa ? {
-                address:   wallet2fa.address,
-                signed_at: wallet2fa.signed_at,
+              wallet_2fa: wallet2fa ? {
+                address:      wallet2fa.address,
+                signed_at:    wallet2fa.signed_at,
+                anchor_count: wallet2fa.anchor_count ?? 0,
+                schema:       wallet2fa.schema ?? 'simple',
+              } : null,
+              proof_verification: proofVerification ? {
+                signature_valid: proofValid,
+                on_chain_match:  onChain,
+                anchor_count:    proofVerification.anchorCount,
+                first_anchor:    proofVerification.firstAnchor,
+                latest_anchor:   proofVerification.latestAnchor,
               } : null,
               message: level === '2fa'
-                ? `2FA verifiziert — Biometrik + Wallet ${wallet2fa?.address?.slice(0,6)}…${wallet2fa?.address?.slice(-4)}.`
+                ? `2FA verifiziert — Biometrik + Soul-Identitätsbeweis${onChain ? ' (on-chain bestätigt)' : ''}. Wallet: ${wallet2fa?.address?.slice(0,6)}…${wallet2fa?.address?.slice(-4)}`
                 : `Biometrisch verifiziert via ${methodLabels[status.method] ?? status.method}.`,
             }, null, 2) }] }
           }

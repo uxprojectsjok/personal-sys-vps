@@ -27,9 +27,11 @@ if not ok_b or type(body) ~= "table" then
   ngx.status = 400; ngx.say('{"error":"invalid_body"}'); return
 end
 
-local challenge_id = body.challenge_id
-local signature    = body.signature
-local address      = body.address
+local challenge_id    = body.challenge_id
+local identity_proof  = body.identity_proof  -- vollständiger proveIdentity()-Proof
+-- Fallback: altes Format { signature, address }
+local signature = (type(identity_proof) == "table" and identity_proof.signature) or body.signature
+local address   = (type(identity_proof) == "table" and identity_proof.wallet)    or body.address
 
 if type(challenge_id) ~= "string" or #challenge_id ~= 32 then
   ngx.status = 400; ngx.say('{"error":"invalid_challenge_id"}'); return
@@ -55,7 +57,14 @@ if not f then
     verified_level = "2fa",
     created_at     = now,
     verified_at    = now,
-    wallet_2fa     = { address=address, signature=signature, signed_at=now },
+    identity_proof = identity_proof,
+    wallet_2fa     = {
+      address      = address,
+      signature    = signature,
+      signed_at    = now,
+      anchor_count = (type(identity_proof)=="table" and identity_proof.anchorCount) or 0,
+      schema       = (type(identity_proof)=="table" and identity_proof.schema) or "simple",
+    },
   })
   local fw = io.open(fpath, "w"); if fw then fw:write(data_new); fw:close() end
   ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa" }))
@@ -72,8 +81,15 @@ if d.soul_id ~= soul_id then
 end
 
 local now = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
-d.verified_level = "2fa"
-d.wallet_2fa = { address=address, signature=signature, signed_at=now }
+d.verified_level  = "2fa"
+d.identity_proof  = identity_proof  -- vollständiger Proof inkl. soulId, anchorCount, etc.
+d.wallet_2fa = {
+  address     = address,
+  signature   = signature,
+  signed_at   = now,
+  anchor_count = (type(identity_proof)=="table" and identity_proof.anchorCount) or 0,
+  schema      = (type(identity_proof)=="table" and identity_proof.schema) or "simple",
+}
 
 local ok_e, updated = pcall(cjson.encode, d)
 if not ok_e then ngx.status=500; ngx.say('{"error":"encode_failed"}'); return end
