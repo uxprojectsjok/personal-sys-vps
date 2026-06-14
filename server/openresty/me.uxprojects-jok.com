@@ -879,6 +879,62 @@ server {
     content_by_lua_file /etc/openresty/lua/connect_hello.lua;
   }
 
+  # ── Biometric Verify (vault_auth: soul_cert + service_token) ────────────────
+  location = /api/verify/challenge {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_challenge.lua;
+  }
+
+  location = /api/verify/pending {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_pending.lua;
+  }
+
+  location = /api/verify/complete {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_complete.lua;
+  }
+
+  location = /api/verify/face-check {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    client_max_body_size 4m;
+    content_by_lua_file /etc/openresty/lua/verify_face_check.lua;
+  }
+
+  location = /api/verify/2fa {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_2fa.lua;
+  }
+
+  location = /api/verify/status {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_status.lua;
+  }
+
   # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
   location = /api/peer/verify {
     add_header Access-Control-Allow-Origin  "*"                    always;
