@@ -23,6 +23,25 @@ if uri:sub(1, 6) == "/link/" then
   return
 end
 
+-- Biometrie-Verify: QR-Scan-Flow — gültige verify_token im ?vt= Param bypassen Gate
+if uri == "/verify" then
+  local args = ngx.req.get_uri_args()
+  local vt = (args.vt or ""):lower()
+  if #vt == 48 and vt:match("^[a-f0-9]+$") then
+    local valid = false
+    local vc = ngx.shared.verify_cache
+    if vc and vc:get("vt:" .. vt) then valid = true end
+    if not valid then
+      local f = io.open("/var/lib/sys/verify/vt_" .. vt, "r")
+      if f then f:close(); valid = true end
+    end
+    if valid then
+      ngx.ctx.gate_done = true
+      return
+    end
+  end
+end
+
 -- try_files interne Weiterleitung zu /index.html würde diesen Handler ein zweites
 -- Mal auslösen (uri wäre dann "/index.html"). ngx.ctx bleibt im selben Request
 -- erhalten → einmal geprüft reicht.

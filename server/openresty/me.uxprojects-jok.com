@@ -879,6 +879,14 @@ server {
     content_by_lua_file /etc/openresty/lua/connect_hello.lua;
   }
 
+  # ── QR-Code PNG (öffentlich, durch 32-hex challenge_id geschützt) ──────────
+  location ~ "^/api/verify/qr/([a-f0-9]{32})\.png$" {
+    alias /var/lib/sys/verify/qr_$1.png;
+    default_type image/png;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+  }
+
   # ── Biometric Verify (vault_auth: soul_cert + service_token) ────────────────
   location = /api/verify/challenge {
     limit_except POST { deny all; }
@@ -933,6 +941,14 @@ server {
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/verify_status.lua;
+  }
+
+  location = /api/verify/reown {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_reown.lua;
   }
 
   # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
@@ -1181,6 +1197,18 @@ server {
   # Gate-Seite: kein Gate-Check (wäre rekursiv)
   # Exact-match und Prefix-match haben Vorrang vor location /
   ################################
+
+  # /verify: gate_check läuft, direkte Auslieferung ohne /index.html-Fallback
+  # (verhindert ngx.ctx-Reset durch try_files internal redirect)
+  location = /verify {
+    root /var/www/me.uxprojects-jok.com;
+    access_by_lua_file /etc/openresty/lua/gate_check.lua;
+    try_files /verify/index.html /200.html =404;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+  }
+
   location = /gate {
     root /var/www/me.uxprojects-jok.com;
     add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;

@@ -67,7 +67,7 @@ if not f then
     },
   })
   local fw = io.open(fpath, "w"); if fw then fw:write(data_new); fw:close() end
-  ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa" }))
+  ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa", score=1 }))
   return
 end
 local raw = f:read("*a"); f:close()
@@ -80,8 +80,13 @@ if d.soul_id ~= soul_id then
   ngx.status = 403; ngx.say('{"error":"forbidden"}'); return
 end
 
+if d.verified_level == "2fa" then
+  ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa", cached=true }))
+  return
+end
 local now = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
 d.verified_level  = "2fa"
+d.score           = (type(d.score) == "number" and d.score or 0) + 1
 d.identity_proof  = identity_proof  -- vollständiger Proof inkl. soulId, anchorCount, etc.
 d.wallet_2fa = {
   address     = address,
@@ -95,4 +100,4 @@ local ok_e, updated = pcall(cjson.encode, d)
 if not ok_e then ngx.status=500; ngx.say('{"error":"encode_failed"}'); return end
 local fw = io.open(fpath, "w"); if fw then fw:write(updated); fw:close() end
 
-ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa" }))
+ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, verified_level="2fa", score=d.score }))
