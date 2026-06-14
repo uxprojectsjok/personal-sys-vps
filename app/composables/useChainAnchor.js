@@ -254,7 +254,11 @@ function readAddress() {
 
 // Liest den aktuellen EIP-1193 Provider aus dem AppKit-Instance (public API)
 function readProvider() {
-  return _appKit?.getWalletProvider() ?? null;
+  const p = _appKit?.getWalletProvider();
+  if (p) return p;
+  // Fallback: injected provider (MetaMask Extension, Brave Wallet etc.)
+  if (typeof window !== "undefined" && window.ethereum) return window.ethereum;
+  return null;
 }
 
 // Liest den Netzwerk-Namen aus der CAIP-Adresse
@@ -315,25 +319,29 @@ export function useChainAnchor() {
 
   // Öffnet das AppKit-Modal. State-Updates laufen über die persistenten
   // onMounted-Subscriptions – kein eigenes Warten / Promise nötig.
-  async function connectWallet() {
+  async function connectWallet(authToken, knownProjectId) {
     if (typeof window === "undefined") return;
     if (isConnected.value) return;
     anchorError.value = "";
 
-    // Project ID: Runtime (config.json) hat Priorität, dann Build-Time-Env-Fallback
-    let projectId = "";
-    try {
-      const r = await fetch("/api/get-config", {
-        headers: { Authorization: `Bearer ${soulToken.value}` },
-      });
-      if (r.ok) {
-        const d = await r.json();
-        projectId = d.reown_project_id || "";
-      }
-    } catch { /* ignore */ }
+    // Project ID: direkt übergeben, oder API-Fetch, oder Runtime-Config
+    let projectId = knownProjectId || "";
     if (!projectId) {
-      const config = useRuntimeConfig();
-      projectId = config.public.reownProjectId || "";
+      try {
+        const r = await fetch("/api/get-config", {
+          headers: { Authorization: `Bearer ${authToken || soulToken.value}` },
+        });
+        if (r.ok) {
+          const d = await r.json();
+          projectId = d.reown_project_id || "";
+        }
+      } catch { /* ignore */ }
+    }
+    if (!projectId) {
+      try {
+        const config = useRuntimeConfig();
+        projectId = config.public.reownProjectId || "";
+      } catch { /* ignore */ }
     }
 
     if (!projectId) {
@@ -932,6 +940,16 @@ export function useChainAnchor() {
 
   // ── Identity Proof ────────────────────────────────────────────────────────
 
+  // Einfache Nachricht signieren — ohne Soul-ID / on-chain-Verifikation
+  async function signSimple(message) {
+    if (!isConnected.value) throw new Error("Kein Wallet verbunden.");
+    const provider  = getSignerProvider();
+    const signer    = await withSigner(provider);
+    const signature = await signer.signMessage(message);
+    const address   = await signer.getAddress();
+    return { signature, address };
+  }
+
   async function proveIdentity() {
     if (!CONTRACT_ADDRESS || !soulMeta.value?.id) return null;
     if (!isConnected.value) {
@@ -1162,6 +1180,7 @@ export function useChainAnchor() {
     syncAnchorFromChain,
     cancelAnchor,
     proveIdentity,
+    signSimple,
     recheckWallet: () => _recheckWallet(),
   };
 }

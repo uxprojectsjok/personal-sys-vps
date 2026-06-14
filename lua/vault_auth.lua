@@ -267,6 +267,36 @@ local function check_pol_access_token(token)
   return soul_id
 end
 
+-- ── 4. verify_token: "vt:{48hex}" — Kurzzeit-Auth für /verify QR-Flow ─────────
+
+local function check_verify_token(tok)
+  local vt = tok:match("^vt:([a-f0-9]+)$")
+  if not vt or #vt ~= 48 then return nil end
+  -- Cache-Check
+  local vc = ngx.shared.verify_cache
+  local sid = vc and vc:get("vt:" .. vt)
+  -- Datei-Fallback wenn Cache leer (z.B. nach Reload)
+  if not sid then
+    local f = io.open("/var/lib/sys/verify/vt_" .. vt, "r")
+    if f then sid = f:read("*a"); f:close() end
+  end
+  if not sid or sid == "" then return nil end
+  local ctx_path = "/var/lib/sys/souls/" .. sid .. "/api_context.json"
+  local cf = io.open(ctx_path, "r")
+  local vault_key = ""
+  if cf then
+    local raw = cf:read("*a"); cf:close()
+    local ok_j, ctx = pcall(cjson.decode, raw)
+    if ok_j and type(ctx) == "table" and type(ctx.vault_key_hex) == "string"
+       and #ctx.vault_key_hex == 64 then
+      vault_key = ctx.vault_key_hex
+    end
+  end
+  ngx.ctx.soul_id   = sid
+  ngx.ctx.vault_key = vault_key
+  return sid
+end
+
 -- ── Auth Flow ──────────────────────────────────────────────────────────────────
 
 -- CORS Preflight: OPTIONS-Requests brauchen keine Auth
@@ -285,6 +315,7 @@ if token == "" then
 end
 
 if not check_soul_cert(token) then
+  if not check_verify_token(token) then
   if not check_pol_access_token(token) then
     if not check_service_token(token) then
       if ngx.ctx.vault_locked then
@@ -296,5 +327,6 @@ if not check_soul_cert(token) then
       end
       return ngx.exit(401)
     end
+  end
   end
 end
