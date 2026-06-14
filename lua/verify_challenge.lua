@@ -59,5 +59,5 @@ ngx.say(cjson.encode({
   method       = method,
   status       = "pending",
   expires_at   = expires_at,
-  verify_url   = base_url .. "/verbindung",
+  verify_url   = base_url .. "/verify?id=" .. challenge_id .. "&m=" .. method,
 }))
