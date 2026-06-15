@@ -1491,16 +1491,13 @@ onMounted(() => { if (props.inline) initSettings() })
 /* Override: Rail scrollbar auf Mobile */
 @media (max-width: 640px) {
   :deep(.sys-rail) {
-    display: flex;
+    grid-template-columns: repeat(6, minmax(80px, 1fr));
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
   }
-  :deep(.sys-rail::-webkit-scrollbar) { display: none; }
   :deep(.sys-rail-item) {
-    flex: 0 0 auto;
-    min-width: 88px;
-    padding: 12px 10px;
+    display: flex !important;
+    padding: 10px 6px;
     justify-content: center;
   }
 }
