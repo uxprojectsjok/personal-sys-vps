@@ -296,12 +296,6 @@
               </div>
             </div>
 
-            <div v-if="syncStatus.shown" class="hl-sync-result" :class="{ 'hl-sr-ok': syncStatus.ok, 'hl-sr-err': !syncStatus.ok }">
-              <svg v-if="syncStatus.ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" stroke-linejoin="round" d="m4 10 4 4 8-8"/></svg>
-              <svg v-else viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" d="M10 6v4m0 4h.01M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2Z"/></svg>
-              <span>{{ syncStatus.message }}</span>
-              <span v-if="syncStatus.last_run" class="hl-sr-time">{{ syncStatus.last_run }}</span>
-            </div>
           </div>
 
           <!-- ── Setup ─────────────────────────────────────────────────────────── -->
