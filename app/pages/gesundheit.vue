@@ -225,9 +225,10 @@
                   <label class="hl-label">Provider</label>
                   <div class="hl-radio-row">
                     <button v-for="p in PROVIDERS" :key="p.id"
-                      class="hl-radio-btn" :class="{ active: form.adapter === p.id }"
-                      @click="form.adapter = p.id">
-                      {{ p.label }}
+                      class="hl-radio-btn" :class="{ active: form.adapter === p.id, soon: p.soon }"
+                      :disabled="p.soon"
+                      @click="!p.soon && (form.adapter = p.id)">
+                      {{ p.label }}<span v-if="p.soon" class="hl-soon">bald</span>
                     </button>
                   </div>
                 </div>
@@ -336,9 +337,9 @@ const form   = reactive({ adapter: 'garmin', garmin_model: 'garmin_fr235', garmi
 const health = reactive({ configured: false, source: null, lastSync: null, raw: '' })
 
 const PROVIDERS = [
-  { id: 'garmin',       label: 'Garmin' },
-  { id: 'apple_health', label: 'Apple Health' },
-  { id: 'oura',         label: 'Oura Ring' },
+  { id: 'garmin',       label: 'Garmin',       soon: false },
+  { id: 'apple_health', label: 'Apple Health', soon: true  },
+  { id: 'oura',         label: 'Oura Ring',    soon: true  },
 ]
 
 const DEVICE_LABELS = {
@@ -628,6 +629,8 @@ function onNav(id) {
 .hl-radio-row { display:flex; gap:8px; flex-wrap:wrap; }
 .hl-radio-btn { height:38px; padding:0 16px; border:1px solid var(--line-2); border-radius:var(--r-xs); background:var(--surface-2); font-family:var(--sans); font-size:15px; color:var(--fg); cursor:pointer; transition:all 0.15s; }
 .hl-radio-btn.active { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); font-weight:600; }
+.hl-radio-btn.soon  { opacity:0.4; cursor:not-allowed; }
+.hl-soon { font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; margin-left:8px; opacity:0.7; }
 .hl-select { height:44px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:15px; color:var(--fg); width:100%; cursor:pointer; }
 .hl-input  { height:44px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:15px; color:var(--fg); width:100%; }
 .hl-input:focus, .hl-select:focus { outline:none; border-color:var(--accent); }
