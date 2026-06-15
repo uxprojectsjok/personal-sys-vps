@@ -65,10 +65,21 @@
               </ol>
             </div>
 
-            <!-- Last sync info -->
-            <div v-if="health.lastSync || health.source" class="hl-sync-meta">
+            <!-- Last sync info + sync button -->
+            <div class="hl-sync-meta">
               <span v-if="health.source" class="hl-source-badge">{{ deviceLabel(health.source) }}</span>
               <span v-if="health.lastSync" class="hl-sync-date">Letzter Sync: {{ health.lastSync }}</span>
+              <div class="hl-sync-meta-actions">
+                <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
+                  Aktualisieren
+                </button>
+                <button class="hl-btn hl-btn--saphir" :disabled="syncing" @click="triggerSync">
+                  <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
+                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
+                  {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
+                </button>
+              </div>
             </div>
 
             <!-- Stat Cards -->
@@ -230,8 +241,6 @@
                     <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#6db89a" stroke-width="2.5" />
                     <circle :cx="pt.x" :cy="pt.y" r="2" fill="#6db89a" />
                   </g>
-                  <text v-for="lb in healthChart.xLabels" :key="lb.label" :x="lb.x" y="145"
-                    text-anchor="middle" style="font-family:monospace;font-size:10px;fill:rgba(245,241,234,0.45)">{{ lb.label }}</text>
                   <text v-if="!healthChart.line" x="300" y="70" text-anchor="middle"
                     style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Aktivitäten im Zeitraum</text>
                 </svg>
@@ -256,8 +265,6 @@
                     <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#b8a56d" stroke-width="2.5" />
                     <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
                   </g>
-                  <text v-for="lb in foodChart.xLabels" :key="lb.label" :x="lb.x" y="145"
-                    text-anchor="middle" style="font-family:monospace;font-size:10px;fill:rgba(245,241,234,0.45)">{{ lb.label }}</text>
                   <text v-if="!foodChart.line" x="300" y="70" text-anchor="middle"
                     style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Einträge im Zeitraum</text>
                 </svg>
@@ -277,6 +284,16 @@
                 <span class="hl-summary-tip">{{ item.tip }}</span>
               </div>
             </div>
+            <div v-if="tips.length" class="hl-tips-section">
+              <div class="hl-tips-head">Tipps</div>
+              <div class="hl-tips-rows">
+                <div v-for="t in tips" :key="t.cat" class="hl-tip-row">
+                  <span class="hl-tip-cat">{{ t.cat }}</span>
+                  <span class="hl-tip-text">{{ t.text }}</span>
+                </div>
+              </div>
+            </div>
+
             <div v-if="syncStatus.shown" class="hl-sync-result" :class="{ 'hl-sr-ok': syncStatus.ok, 'hl-sr-err': !syncStatus.ok }">
               <svg v-if="syncStatus.ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" stroke-linejoin="round" d="m4 10 4 4 8-8"/></svg>
               <svg v-else viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" d="M10 6v4m0 4h.01M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2Z"/></svg>
@@ -367,14 +384,6 @@
                   <button class="hl-btn hl-btn--primary" :disabled="saving" @click="saveConfig">
                     <svg v-if="saving" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                     {{ saving ? 'Speichern…' : 'Einstellungen speichern' }}
-                  </button>
-                  <button class="hl-btn hl-btn--secondary" :disabled="syncing" @click="triggerSync">
-                    <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                    {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
-                  </button>
-                  <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
-                    Aktualisieren
                   </button>
                 </div>
 
@@ -732,7 +741,49 @@ const healthSummary = computed(() => {
       tip:    activeDays + ' von 7 Tagen' + (activeDays >= 5 ? ' — stark' : activeDays >= 3 ? ' — gut, mehr ist besser' : ' — mehr Bewegung hilft'),
     })
   }
+  if (foodChartRaw.value.length) {
+    const avg = Math.round(foodChartRaw.value.reduce((a, b) => a + b.score, 0) / foodChartRaw.value.length)
+    rows.push({
+      label:  'Ernährung',
+      status: avg >= 88 ? 'Ausgezeichnet' : avg >= 70 ? 'Gut' : avg >= 45 ? 'Ausgewogen' : avg >= 28 ? 'Verbesserbar' : 'Kritisch',
+      color:  avg >= 70 ? 'green' : avg >= 45 ? 'yellow' : 'red',
+      tip:    avg >= 88 ? 'Sehr gute Qualität — weiter so' : avg >= 70 ? 'Solide Basis, mehr Vollwertkost hilft' : avg >= 45 ? 'Mehr Gemüse & Wasser, weniger Fertigprodukte' : 'Mehr frische Mahlzeiten einplanen',
+    })
+  }
   return rows
+})
+
+// ── Tipps ──────────────────────────────────────────────────────────────────────
+const tips = computed(() => {
+  const result = []
+  const { rhr, sleepH, steps } = parsed.value
+
+  if (rhr != null) {
+    if (rhr >= 100) result.push({ cat: 'Herzfrequenz', text: 'Über 100 bpm Ruhepuls — Tachykardie-Bereich, ärztliche Abklärung empfehlenswert.' })
+    else if (rhr >= 80) result.push({ cat: 'Herzfrequenz', text: 'Ruhepuls erhöht. Aerobic-Training (3× wöchentlich) und Schlafhygiene senken ihn langfristig.' })
+    else if (rhr >= 70) result.push({ cat: 'Herzfrequenz', text: '2–3× Ausdauertraining pro Woche kann den Ruhepuls weiter senken.' })
+  }
+
+  if (sleepH != null) {
+    const m = sleepH * 60
+    if (m < 300) result.push({ cat: 'Schlaf', text: 'Unter 5h — schweres Defizit. Kognition, Immunsystem und Herzgesundheit sind messbar beeinträchtigt. Dringend priorisieren.' })
+    else if (m < 360) result.push({ cat: 'Schlaf', text: 'Unter 6h — unter Mindestempfehlung. Konsistente Schlafzeiten und bildschirmfreies Abendritual helfen.' })
+    else if (m < 420) result.push({ cat: 'Schlaf', text: '6–7h Schlaf — leicht unter Empfehlung. Frühere Schlafenszeit oder weniger Abendscreen anstreben.' })
+  }
+
+  if (steps != null) {
+    if (steps < 3000) result.push({ cat: 'Bewegung', text: 'Unter 3.000 Schritte — kurze Gehpausen von 5 Min/Stunde machen einen messbaren Unterschied.' })
+    else if (steps < 5000) result.push({ cat: 'Bewegung', text: '3.000–5.000 Schritte. Treppe statt Aufzug, 10-Min-Spaziergang nach dem Mittagessen.' })
+    else if (steps < 7500) result.push({ cat: 'Bewegung', text: 'WHO-Ziel: 7.500+ Schritte. Ein zusätzlicher 15-Min-Spaziergang täglich reicht oft.' })
+  }
+
+  if (foodChartRaw.value.length) {
+    const avg = foodChartRaw.value.reduce((a, b) => a + b.score, 0) / foodChartRaw.value.length
+    if (avg < 45) result.push({ cat: 'Ernährung', text: 'Ernährungsqualität hat Potenzial. Täglich eine selbst zubereitete Mahlzeit und mehr Wasser als Einstieg.' })
+    else if (avg < 70) result.push({ cat: 'Ernährung', text: 'Mittlere Ernährungsqualität. Mehr frisches Gemüse und weniger verarbeitete Produkte verbessern den Score.' })
+  }
+
+  return result
 })
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -791,9 +842,13 @@ function onNav(id) {
 .hl-lv-range{ font-size:15px; color:var(--fg); white-space:nowrap; }
 
 /* Sync meta */
-.hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
+.hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
 .hl-source-badge { font-family:var(--mono); font-size:13px; letter-spacing:0.08em; padding:3px 10px; background:var(--accent-dim); border:1px solid rgba(109,184,154,0.25); border-radius:4px; color:var(--accent); }
 .hl-sync-date { font-family:var(--mono); font-size:13px; color:var(--fg); }
+.hl-sync-meta-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.hl-btn--saphir { background:rgba(112,153,184,0.12); border:1px solid rgba(112,153,184,0.35); color:#7099b8; }
+.hl-btn--saphir:hover:not(:disabled) { background:rgba(112,153,184,0.22); border-color:#7099b8; color:#92b8d6; }
+.hl-btn--saphir:disabled { opacity:0.4; cursor:not-allowed; }
 
 /* Section head */
 .hl-section-head { font-family:var(--serif); font-size:20px; font-weight:400; color:var(--fg); letter-spacing:-0.01em; margin-bottom:20px; }
@@ -895,4 +950,13 @@ function onNav(id) {
 .hl-sr-ok  { border-color:rgba(109,184,154,0.3); color:#6db89a; background:rgba(109,184,154,0.06); }
 .hl-sr-err { border-color:rgba(224,108,117,0.3); color:#e06c75; background:rgba(224,108,117,0.06); }
 .hl-sr-time { margin-left:auto; font-size:11px; white-space:nowrap; }
+
+/* Tips section */
+.hl-tips-section { margin-top:20px; }
+.hl-tips-head { font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--fg-3); margin-bottom:10px; }
+.hl-tips-rows { display:flex; flex-direction:column; gap:0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
+.hl-tip-row { display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:baseline; padding:12px 18px; border-bottom:1px solid var(--line); }
+.hl-tip-row:last-child { border-bottom:none; }
+.hl-tip-cat { font-family:var(--mono); font-size:11px; letter-spacing:0.10em; text-transform:uppercase; color:var(--fg-3); white-space:nowrap; }
+.hl-tip-text { font-family:var(--mono); font-size:14px; color:var(--fg); line-height:1.6; }
 </style>
