@@ -72,7 +72,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.es-page { max-width: 560px; }
+.es-page { max-width: 560px; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 .es-header { margin-bottom: 28px; }
 .es-title {
   font-family: var(--serif); font-size: 26px; font-weight: 400;
