@@ -5,7 +5,7 @@ the weekly health sync does not wipe manually logged meals.
 """
 
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -70,7 +70,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
     content = (
         f"---\n"
         f"source: {data.get('source', 'unknown')}\n"
-        f"last_sync: {today.isoformat()}\n"
+        f"last_sync: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         f"---\n"
         f"\n"
         f"## This Week ({week_label})\n"
