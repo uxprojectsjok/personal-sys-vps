@@ -885,12 +885,12 @@ function onNav(id) {
 .hl-summary-dot.hl-c-green  { background:#6db89a; }
 .hl-summary-dot.hl-c-yellow { background:#b8a56d; }
 .hl-summary-dot.hl-c-red    { background:#e06c75; }
-.hl-summary-label  { font-family:var(--mono); font-size:13px; color:var(--fg); letter-spacing:0.04em; }
-.hl-summary-status { font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; text-align:right; white-space:nowrap; }
+.hl-summary-label  { font-family:var(--mono); font-size:15px; color:var(--fg); letter-spacing:0.04em; }
+.hl-summary-status { font-family:var(--mono); font-size:14px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; text-align:right; white-space:nowrap; }
 .hl-summary-status.hl-c-green  { color:#6db89a; }
 .hl-summary-status.hl-c-yellow { color:#b8a56d; }
 .hl-summary-status.hl-c-red    { color:#e06c75; }
-.hl-summary-tip    { font-family:var(--mono); font-size:12px; color:var(--fg-3); line-height:1.5; }
+.hl-summary-tip    { font-family:var(--mono); font-size:14px; color:var(--fg); line-height:1.5; }
 .hl-sync-result    { display:flex; align-items:center; gap:10px; padding:11px 18px; border-radius:var(--r-xs); border:1px solid var(--line); font-family:var(--mono); font-size:13px; }
 .hl-sr-ok  { border-color:rgba(109,184,154,0.3); color:#6db89a; background:rgba(109,184,154,0.06); }
 .hl-sr-err { border-color:rgba(224,108,117,0.3); color:#e06c75; background:rgba(224,108,117,0.06); }
