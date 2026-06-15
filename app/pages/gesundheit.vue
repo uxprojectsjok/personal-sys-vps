@@ -287,7 +287,7 @@
               </div>
             </div>
             <div v-if="tips.length" class="hl-tips-section">
-              <div class="hl-tips-head">Tipps</div>
+              <div class="hl-section-head">Tipps</div>
               <div class="hl-tips-list">
                 <p v-for="t in tips" :key="t.cat" class="hl-tip-text">{{ t.text }}</p>
               </div>
@@ -821,7 +821,6 @@ function onNav(id) {
 
 /* Tips section */
 .hl-tips-section { margin-top:20px; }
-.hl-tips-head { font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--fg-3); margin-bottom:12px; }
-.hl-tips-list { display:flex; flex-direction:column; gap:10px; }
+.hl-tips-list { display:flex; flex-direction:column; gap:20px; }
 .hl-tip-text { font-size:15px; color:var(--fg); line-height:1.6; margin:0; }
 </style>
