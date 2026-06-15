@@ -127,6 +127,7 @@ function lockSoul() {
 
 function onNav(id) {
   if (id === 'maturity') return
+  if (id === 'health')   { router.push('/gesundheit'); return }
   if (id === 'chat')     { router.push('/session');     return }
   if (id === 'setup')    { router.push('/einrichten');   return }
   if (id === 'soul')     { router.push('/soul');        return }
