@@ -70,6 +70,7 @@ const NAV = [
     { id: 'soul',     icon: 'soul',    label: 'Inhalte' },
     { id: 'chronik',  icon: 'history', label: 'Chronik' },
     { id: 'maturity', icon: 'spark',   label: 'Reife' },
+    { id: 'health',   icon: 'pulse',   label: 'Gesundheit' },
   ]},
   { group: 'Vault', items: [
     { id: 'files', icon: 'files', label: 'Dateien' },
