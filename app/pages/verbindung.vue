@@ -11,9 +11,9 @@
 
             <!-- Header -->
             <div class="cn-head">
-              <div class="eyebrow">VERIFIKATIONS-HUB</div>
+              <div class="eyebrow">VERBINDUNG</div>
               <h1 class="cn-title">Verbindung &amp; <em>Verifikation</em></h1>
-              <p class="cn-lede">Teile deinen MCP-Endpoint per QR-Code oder verifiziere deine Identität — per Fingerabdruck, Gesicht oder Stimme.</p>
+              <p class="cn-lede">Teile deinen MCP-Endpoint per QR-Code. Wenn eine KI deine Identität bestätigen möchte, erscheint hier die Anfrage.</p>
             </div>
 
             <!-- Pending MCP challenge banner -->
@@ -28,7 +28,7 @@
                     <div class="cn-mcp-sub">Claude AI bittet um {{ methodLabel(pendingChallenge.method) }}</div>
                   </div>
                 </div>
-                <button class="cn-mcp-btn" @click="startVerify(pendingChallenge.method, pendingChallenge.challenge_id)">Jetzt verifizieren</button>
+                <button class="cn-mcp-btn" @click="openVerify(pendingChallenge)">Jetzt verifizieren</button>
               </div>
             </Transition>
 
@@ -96,125 +96,17 @@
               </div>
             </Transition>
 
-            <!-- VERIFIZIEREN tiles -->
-            <div class="cn-section-label" style="margin-top:40px">VERIFIZIEREN</div>
-            <div class="cn-tiles">
-
-              <!-- Fingerabdruck -->
-              <div class="cn-tile" :class="tileClass('fingerprint')">
-                <div class="cn-tile-head">
-                  <div class="cn-tile-ic cn-tile-ic--fp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.459 7.459 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33"/></svg></div>
-                  <div><div class="cn-tile-title">Fingerabdruck</div><div class="cn-tile-sub">Face ID · Touch ID · Windows Hello</div></div>
-                </div>
-                <div class="cn-tile-body">
-                  <p class="cn-tile-desc">Kryptografisch sicher — beweist Gerätezugehörigkeit via Secure Enclave.</p>
-                  <div v-if="verifyState.fingerprint === 'verified'" class="cn-tile-result cn-tile-result--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Verifiziert</div>
-                  <div v-else-if="verifyState.fingerprint === 'failed'" class="cn-tile-result cn-tile-result--err">Fehlgeschlagen</div>
-                  <button v-else class="cn-tile-btn" :disabled="verifyState.fingerprint === 'verifying'" @click="startVerify('fingerprint')">
-                    <svg v-if="verifyState.fingerprint === 'verifying'" class="spin cn-btn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                    <span>{{ verifyState.fingerprint === 'verifying' ? 'Warte…' : 'Verifizieren' }}</span>
-                  </button>
-                  <button v-if="['verified','failed'].includes(verifyState.fingerprint)" class="cn-tile-reset" @click="resetVerify('fingerprint')">Neu</button>
-                </div>
+            <!-- Verifikation info -->
+            <div class="cn-section-label" style="margin-top:40px">VERIFIKATION</div>
+            <div class="cn-info-card">
+              <div class="cn-info-ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
               </div>
-
-              <!-- Gesicht -->
-              <div class="cn-tile" :class="tileClass('face')">
-                <div class="cn-tile-head">
-                  <div class="cn-tile-ic cn-tile-ic--face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M11.25 11.25h.008v.008h-.008V11.25Zm1.5 0h.008v.008H12.75V11.25Zm-6 3.75A6.75 6.75 0 0 1 12 5.25a6.75 6.75 0 0 1 6.75 6.75c0 .966-.204 1.885-.568 2.715"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div>
-                  <div><div class="cn-tile-title">Gesicht</div><div class="cn-tile-sub">Kamera-Selfie · Live-Aufnahme</div></div>
-                </div>
-                <div class="cn-tile-body">
-                  <template v-if="verifyState.face === 'capturing'">
-                    <div class="cn-cam-wrap"><video ref="faceVideo" class="cn-cam-preview" autoplay muted playsinline /><canvas ref="faceCanvas" style="display:none" /></div>
-                    <div class="cn-cam-hint">Schau direkt in die Kamera</div>
-                    <div class="cn-cam-actions">
-                      <button class="cn-tile-btn" @click="captureFace">Aufnehmen</button>
-                      <button class="cn-tile-reset" @click="stopCamera(); verifyState.face = 'idle'">Abbrechen</button>
-                    </div>
-                  </template>
-                  <template v-else-if="verifyState.face === 'comparing'">
-                    <div class="cn-comparing-ring"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg></div>
-                    <div class="cn-tile-desc">Claude vergleicht…</div>
-                  </template>
-                  <template v-else>
-                    <p class="cn-tile-desc">Bestätigt physische Anwesenheit durch eine Live-Aufnahme.</p>
-                    <div v-if="verifyState.face === 'verified'" class="cn-tile-result cn-tile-result--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Erkannt</div>
-                    <div v-else-if="verifyState.face === 'failed'" class="cn-tile-result cn-tile-result--err">Nicht erkannt</div>
-                    <button v-else class="cn-tile-btn" :disabled="verifyState.face === 'verifying'" @click="startVerify('face')">
-                      <svg v-if="verifyState.face === 'verifying'" class="spin cn-btn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                      <span>{{ verifyState.face === 'verifying' ? 'Kamera öffnen…' : 'Verifizieren' }}</span>
-                    </button>
-                    <button v-if="['verified','failed'].includes(verifyState.face)" class="cn-tile-reset" @click="resetVerify('face')">Neu</button>
-                  </template>
-                </div>
+              <div class="cn-info-body">
+                <div class="cn-info-title">Verifikation durch KI</div>
+                <p class="cn-info-desc">Wenn eine KI-Anwendung deine Identität bestätigen möchte, erscheint oben eine Anfrage. Die Verifikation — per Fingerabdruck, Gesicht oder Stimme — öffnet sich dann in einem sicheren Fenster.</p>
               </div>
-
-              <!-- Stimme -->
-              <div class="cn-tile" :class="tileClass('voice')">
-                <div class="cn-tile-head">
-                  <div class="cn-tile-ic cn-tile-ic--voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></div>
-                  <div><div class="cn-tile-title">Stimme</div><div class="cn-tile-sub">Sprach-Sample · 3 Sekunden</div></div>
-                </div>
-                <div class="cn-tile-body">
-                  <template v-if="verifyState.voice === 'recording'">
-                    <div class="cn-rec-ring"><span class="cn-rec-dot" /><span class="cn-rec-label">Aufnahme… {{ recCountdown }}s</span></div>
-                  </template>
-                  <template v-else-if="verifyState.voice === 'comparing'">
-                    <div class="cn-comparing-ring"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg></div>
-                    <div class="cn-tile-desc">Spektralanalyse…</div>
-                  </template>
-                  <template v-else>
-                    <p class="cn-tile-desc">Sprich einen kurzen Satz — bestätigt Anwesenheit durch Stimmabdruck.</p>
-                    <div v-if="verifyState.voice === 'verified'" class="cn-tile-result cn-tile-result--ok">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                      Erkannt<span v-if="voiceScore > 0" class="cn-score"> · {{ Math.round(voiceScore * 100) }}%</span>
-                    </div>
-                    <div v-else-if="verifyState.voice === 'failed'" class="cn-tile-result cn-tile-result--err">
-                      Nicht erkannt<span v-if="voiceScore > 0" class="cn-score"> · {{ Math.round(voiceScore * 100) }}%</span>
-                    </div>
-                    <button v-else class="cn-tile-btn" :disabled="verifyState.voice === 'verifying'" @click="startVerify('voice')">
-                      <svg v-if="verifyState.voice === 'verifying'" class="spin cn-btn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                      <span>{{ verifyState.voice === 'verifying' ? 'Mikrofon…' : 'Verifizieren' }}</span>
-                    </button>
-                    <button v-if="['verified','failed'].includes(verifyState.voice)" class="cn-tile-reset" @click="resetVerify('voice')">Neu</button>
-                  </template>
-                </div>
-              </div>
-
             </div>
-
-            <!-- 2FA Wallet -->
-            <Transition name="slide-down">
-              <div v-if="anyBiometricVerified" class="cn-2fa-card">
-                <div class="cn-2fa-head">
-                  <div class="cn-2fa-ic">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/></svg>
-                  </div>
-                  <div>
-                    <div class="cn-2fa-title">2FA · Wallet-Signatur</div>
-                    <div class="cn-2fa-sub">Biometrik + Wallet = höchster Verifikationsgrad</div>
-                  </div>
-                </div>
-                <div v-if="verifiedLevel === '2fa'" class="cn-2fa-verified">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                  <div>
-                    <div>2FA verifiziert · {{ walletShort }}</div>
-                    <div class="cn-2fa-anchor" v-if="twoFaAnchorCount > 0">{{ twoFaAnchorCount }} Blockchain-Anker · seit {{ twoFaFirstAnchor }}</div>
-                    <div class="cn-2fa-anchor cn-2fa-anchor--warn" v-else>Noch nicht geankert — einfache Wallet-Verifikation</div>
-                  </div>
-                </div>
-                <div v-else-if="twoFaState === 'signing'" class="cn-2fa-pending">
-                  <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                  Warte auf Wallet-Signatur…
-                </div>
-                <div v-else-if="twoFaError" class="cn-2fa-error">{{ twoFaError }}</div>
-                <button v-else class="cn-2fa-btn" @click="do2FA">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/></svg>
-                  Identität nachweisen
-                </button>
-              </div>
-            </Transition>
 
           </div>
         </div>
@@ -226,16 +118,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
-import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
-import { useChainAnchor } from '~/composables/useChainAnchor.js'
 
 definePageMeta({ layout: false })
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken } = useSoul()
-const { authenticatePasskey } = useSoulPasskey()
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 
@@ -285,212 +174,8 @@ async function pollPendingChallenge() {
   try { const r = await fetch('/api/verify/pending',{headers:authHeaders()}); const d=await r.json(); pendingChallenge.value=d.pending?.length?d.pending[0]:null } catch(_){}
 }
 function methodLabel(m) { return { fingerprint:'Fingerabdruck/Face ID', face:'Gesichtserkennung', voice:'Stimm-Verifikation' }[m] ?? m }
-
-// ── Biometric state ───────────────────────────────────────────────────────────
-const verifyState = reactive({ fingerprint:'idle', face:'idle', voice:'idle' })
-const faceVideo = ref(null), faceCanvas = ref(null)
-const recCountdown = ref(3), voiceScore = ref(0)
-let faceCamStream = null, activeChallengeId = null
-
-const anyBiometricVerified = computed(() => Object.values(verifyState).some(s => s === 'verified'))
-function tileClass(m) {
-  const s = verifyState[m]
-  return { 'cn-tile--active': ['verifying','capturing','recording','comparing'].includes(s), 'cn-tile--verified': s==='verified', 'cn-tile--failed': s==='failed' }
-}
-function resetVerify(m) { verifyState[m]='idle'; if(m==='face') stopCamera(); if(m==='voice') voiceScore.value=0 }
-
-async function startVerify(method, challengeId = null) {
-  if (!challengeId) {
-    try {
-      const r = await fetch('/api/verify/challenge', { method:'POST', headers:authHeaders(), body:JSON.stringify({ method }) })
-      const d = await r.json()
-      challengeId = d.challenge_id
-    } catch(_) {}
-  }
-  activeChallengeId = challengeId
-  if (method === 'fingerprint') await doFingerprint(challengeId)
-  else if (method === 'face')   await doFace(challengeId)
-  else if (method === 'voice')  await doVoice(challengeId)
-  // Dismiss pending challenge banner if it was the one being verified
-  if (pendingChallenge.value?.challenge_id === challengeId) pendingChallenge.value = null
-}
-
-async function submitResult(method, verified, challengeId) {
-  if (!challengeId) return
-  try { await fetch('/api/verify/complete',{method:'POST',headers:authHeaders(),body:JSON.stringify({challenge_id:challengeId,method,verified})}) } catch(_){}
-}
-
-// ── Fingerabdruck (WebAuthn) ──────────────────────────────────────────────────
-async function doFingerprint(challengeId) {
-  verifyState.fingerprint = 'verifying'
-  try {
-    const prf = await authenticatePasskey()
-    const ok  = !!prf
-    verifyState.fingerprint = ok ? 'verified' : 'failed'
-    await submitResult('fingerprint', ok, challengeId)
-  } catch(_) { verifyState.fingerprint = 'failed' }
-}
-
-// ── Gesicht (Claude Vision) ───────────────────────────────────────────────────
-async function doFace(challengeId) {
-  verifyState.face = 'verifying'
-  try {
-    faceCamStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false })
-    await nextTick()
-    if (faceVideo.value) { faceVideo.value.srcObject = faceCamStream; await faceVideo.value.play() }
-    verifyState.face = 'capturing'
-  } catch(_) { verifyState.face = 'failed' }
-}
-
-async function captureFace() {
-  if (!faceVideo.value || !faceCanvas.value) return
-  const v = faceVideo.value
-  faceCanvas.value.width = v.videoWidth || 640
-  faceCanvas.value.height = v.videoHeight || 480
-  faceCanvas.value.getContext('2d').drawImage(v, 0, 0)
-  stopCamera()
-  verifyState.face = 'comparing'
-  try {
-    const b64 = faceCanvas.value.toDataURL('image/jpeg', 0.85).split(',')[1]
-    const r = await fetch('/api/verify/face-check', { method:'POST', headers:authHeaders(), body:JSON.stringify({ image_base64:b64, mime:'image/jpeg' }) })
-    const d = await r.json()
-    const ok = d.match === true
-    verifyState.face = ok ? 'verified' : 'failed'
-    await submitResult('face', ok, activeChallengeId)
-  } catch(_) { verifyState.face = 'failed' }
-}
-
-function stopCamera() { if(faceCamStream){ faceCamStream.getTracks().forEach(t=>t.stop()); faceCamStream=null } }
-
-// ── Stimme (Web Audio FFT) ────────────────────────────────────────────────────
-
-function fftMags(samples) {
-  let n = 256; while (n < Math.min(samples.length, 4096)) n <<= 1
-  const re = new Float32Array(n), im = new Float32Array(n)
-  for (let i = 0; i < n; i++) re[i] = (samples[i]||0) * (0.5*(1-Math.cos(2*Math.PI*i/(n-1))))
-  // bit-reversal
-  for (let i=1,j=0; i<n; i++) { let b=n>>1; for(;j&b;b>>=1)j^=b; j^=b; if(i<j){let t=re[i];re[i]=re[j];re[j]=t} }
-  // butterfly
-  for (let len=2; len<=n; len<<=1) {
-    const ang = -2*Math.PI/len
-    const wr0 = Math.cos(ang), wi0 = Math.sin(ang)
-    for (let i=0; i<n; i+=len) {
-      let wr=1, wi=0
-      for (let j=0; j<(len>>1); j++) {
-        const k=i+j, l=k+(len>>1), tr=re[l]*wr-im[l]*wi, ti=re[l]*wi+im[l]*wr
-        re[l]=re[k]-tr; im[l]=im[k]-ti; re[k]+=tr; im[k]+=ti
-        const nw=wr*wr0-wi*wi0; wi=wr*wi0+wi*wr0; wr=nw
-      }
-    }
-  }
-  const mags = new Float32Array(n>>1)
-  for (let i=0; i<n>>1; i++) mags[i]=Math.sqrt(re[i]*re[i]+im[i]*im[i])
-  return mags
-}
-
-function spectralEnvelope(buf) {
-  const s = buf.getChannelData(0), frameSize=2048, hop=512
-  const env = new Float64Array(frameSize>>1); let cnt=0
-  for (let start=0; start+frameSize<=s.length; start+=hop, cnt++) {
-    const frame = s.slice(start, start+frameSize)
-    const mags = fftMags(frame)
-    for (let i=0; i<env.length; i++) env[i] += Math.log1p(mags[i])
-  }
-  if (cnt>0) for (let i=0; i<env.length; i++) env[i]/=cnt
-  return env
-}
-
-function cosineSim(a, b) {
-  let dot=0, na=0, nb=0; const n=Math.min(a.length,b.length)
-  for (let i=0;i<n;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i]}
-  return dot/(Math.sqrt(na*nb)+1e-10)
-}
-
-function recordAudio(stream, ms) {
-  return new Promise((resolve, reject) => {
-    const chunks=[]; const mr=new MediaRecorder(stream)
-    mr.ondataavailable = e => e.data.size && chunks.push(e.data)
-    mr.onstop = () => new Blob(chunks).arrayBuffer().then(resolve).catch(reject)
-    mr.onerror = reject; mr.start(); setTimeout(()=>mr.stop(), ms)
-  })
-}
-
-async function doVoice(challengeId) {
-  verifyState.voice = 'verifying'; voiceScore.value = 0
-  try {
-    // 1. Vault-Audio laden
-    const listRes = await fetch('/api/vault/audio', { headers: authHeaders() })
-    const listData = await listRes.json()
-    const refUrl = listData.active_url || listData.files?.[0]?.url
-    if (!refUrl) throw new Error('Keine Stimme im Vault')
-
-    const refBuf = await fetch(refUrl, { headers: authHeaders() }).then(r => r.arrayBuffer())
-
-    // 2. Mikrofon aufnehmen
-    const stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:false })
-    verifyState.voice = 'recording'; recCountdown.value = 3
-    const recTimer = setInterval(() => { recCountdown.value--; if(recCountdown.value<=0) clearInterval(recTimer) }, 1000)
-    const recBuf = await recordAudio(stream, 3000)
-    clearInterval(recTimer)
-    stream.getTracks().forEach(t => t.stop())
-
-    verifyState.voice = 'comparing'
-
-    // 3. Spektralvergleich
-    const ctx = new AudioContext()
-    const [refDecoded, recDecoded] = await Promise.all([
-      ctx.decodeAudioData(refBuf),
-      ctx.decodeAudioData(recBuf),
-    ])
-    ctx.close()
-
-    const score = cosineSim(spectralEnvelope(refDecoded), spectralEnvelope(recDecoded))
-    voiceScore.value = score
-    const ok = score > 0.78
-    verifyState.voice = ok ? 'verified' : 'failed'
-    await submitResult('voice', ok, challengeId)
-  } catch(_) { verifyState.voice = 'failed' }
-}
-
-// ── 2FA · Soul Identity Proof (geankerte Soul auf Polygon) ───────────────────
-const { connectWallet, proveIdentity, isConnected, anchorError } = useChainAnchor()
-
-const twoFaState       = ref('idle')
-const twoFaError       = ref('')
-const verifiedLevel    = ref('')
-const walletShort      = ref('')
-const twoFaAnchorCount = ref(0)
-const twoFaFirstAnchor = ref('')
-
-async function do2FA() {
-  twoFaError.value = ''; twoFaState.value = 'signing'
-  try {
-    if (!isConnected.value) {
-      await connectWallet()
-      if (!isConnected.value) throw new Error('Wallet-Verbindung abgebrochen.')
-    }
-
-    const proof = await proveIdentity()
-    if (!proof) throw new Error(anchorError.value || 'Identity Proof fehlgeschlagen.')
-
-    const cid = activeChallengeId || ('vc_' + Date.now().toString(16))
-    const r   = await fetch('/api/verify/2fa', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ challenge_id: cid, identity_proof: proof }),
-    })
-    const d = await r.json()
-    if (!r.ok) throw new Error(d.error || 'Fehler')
-
-    verifiedLevel.value    = '2fa'
-    walletShort.value      = proof.wallet.slice(0,6) + '…' + proof.wallet.slice(-4)
-    twoFaAnchorCount.value = proof.anchorCount ?? 0
-    twoFaFirstAnchor.value = proof.firstAnchor ?? ''
-    twoFaState.value       = 'done'
-  } catch(e) {
-    twoFaError.value = e.message || 'Identity Proof fehlgeschlagen'
-    twoFaState.value = 'idle'
-  }
+function openVerify(challenge) {
+  router.push(`/verify?id=${challenge.challenge_id}&m=${challenge.method}`)
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -499,7 +184,6 @@ challengePollTimer = setInterval(pollPendingChallenge, 8000)
 
 onUnmounted(() => {
   clearInterval(pollTimer); clearInterval(countdownTimer); clearInterval(challengePollTimer)
-  stopCamera()
 })
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -587,62 +271,13 @@ function onNav(id) {
 .cn-verified-row { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px; color:var(--fg-3); }
 .cn-verified-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent-glow); flex:none; }
 
-/* Tiles */
-.cn-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-.cn-tile { border:1px solid var(--line); border-radius:var(--r); background:var(--surface); overflow:hidden; transition:border-color 0.2s; }
-.cn-tile--active   { border-color:rgba(109,184,154,0.45); }
-.cn-tile--verified { border-color:var(--accent); }
-.cn-tile--failed   { border-color:rgba(224,108,117,0.45); }
-.cn-tile-head { display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); }
-.cn-tile-ic { width:40px; height:40px; flex:none; border-radius:var(--r-xs); display:flex; align-items:center; justify-content:center; }
-.cn-tile-ic svg { width:20px; height:20px; }
-.cn-tile-ic--fp    { background:rgba(109,184,154,0.12); color:var(--accent); }
-.cn-tile-ic--face  { background:rgba(109,154,184,0.12); color:#6d9ab8; }
-.cn-tile-ic--voice { background:rgba(184,154,109,0.12); color:#b89a6d; }
-.cn-tile-title { font-family:var(--sans); font-size:14px; font-weight:600; color:var(--fg); }
-.cn-tile-sub   { font-family:var(--mono); font-size:11px; color:var(--fg); margin-top:2px; }
-.cn-tile-body { padding:16px 18px 20px; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
-.cn-tile-desc { font-family:var(--mono); font-size:12px; color:var(--fg); line-height:1.6; margin:0; }
-.cn-tile-btn { display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; background:var(--accent-dim); border:1px solid rgba(109,184,154,0.35); border-radius:var(--r-xs); font-family:var(--sans); font-size:13px; font-weight:500; color:var(--accent-bright); cursor:pointer; transition:all 0.15s; }
-.cn-tile-btn:hover:not(:disabled) { background:rgba(109,184,154,0.16); }
-.cn-tile-btn:disabled { opacity:0.45; cursor:not-allowed; }
-.cn-tile-reset { font-family:var(--mono); font-size:11px; color:var(--fg-4); background:none; border:none; cursor:pointer; padding:0; }
-.cn-tile-reset:hover { color:var(--fg-2); }
-.cn-tile-result { display:flex; align-items:center; gap:6px; font-family:var(--sans); font-size:13px; font-weight:600; }
-.cn-tile-result svg { width:16px; height:16px; flex:none; }
-.cn-tile-result--ok  { color:var(--accent); }
-.cn-tile-result--err { color:#e06c75; }
-.cn-score { font-weight:400; font-family:var(--mono); font-size:11px; }
-/* Camera */
-.cn-cam-wrap { width:100%; border-radius:var(--r-xs); overflow:hidden; background:#000; }
-.cn-cam-preview { width:100%; height:150px; object-fit:cover; display:block; transform:scaleX(-1); }
-.cn-cam-hint { font-family:var(--mono); font-size:11px; color:var(--fg-3); }
-.cn-cam-actions { display:flex; align-items:center; gap:12px; }
-/* Comparing spinner */
-.cn-comparing-ring { display:flex; align-items:center; gap:10px; }
-.cn-comparing-ring svg { width:20px; height:20px; color:var(--accent); }
-/* Recording */
-.cn-rec-ring { display:flex; align-items:center; gap:10px; }
-.cn-rec-dot { width:10px; height:10px; border-radius:50%; background:#e06c75; flex:none; animation:rec-blink 1s ease-in-out infinite; }
-@keyframes rec-blink { 0%,100%{opacity:1}50%{opacity:0.2} }
-.cn-rec-label { font-family:var(--mono); font-size:12px; color:var(--fg); }
-
-/* 2FA card */
-.cn-2fa-card { margin-top:24px; padding:20px 22px; border:1px solid rgba(109,184,154,0.3); border-radius:var(--r); background:var(--surface); }
-.cn-2fa-head { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
-.cn-2fa-ic { width:40px; height:40px; flex:none; border-radius:var(--r-xs); background:var(--accent-dim); display:flex; align-items:center; justify-content:center; color:var(--accent); }
-.cn-2fa-ic svg { width:20px; height:20px; }
-.cn-2fa-title { font-family:var(--sans); font-size:15px; font-weight:600; color:var(--fg); }
-.cn-2fa-sub   { font-family:var(--mono); font-size:11px; color:var(--fg); margin-top:2px; }
-.cn-2fa-btn { display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 18px; background:var(--accent); border:none; border-radius:var(--r-xs); font-family:var(--sans); font-size:14px; font-weight:600; color:var(--on-accent); cursor:pointer; transition:background 0.15s; }
-.cn-2fa-btn:hover { background:var(--accent-bright); }
-.cn-2fa-verified { display:flex; align-items:center; gap:8px; font-family:var(--sans); font-size:14px; font-weight:600; color:var(--accent); }
-.cn-2fa-verified svg { width:18px; height:18px; flex:none; }
-.cn-2fa-pending { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--fg-3); }
-.cn-2fa-pending svg { width:16px; height:16px; flex:none; }
-.cn-2fa-error  { font-family:var(--mono); font-size:12px; color:#e06c75; }
-.cn-2fa-anchor { font-family:var(--mono); font-size:11px; color:var(--fg-3); margin-top:3px; }
-.cn-2fa-anchor--warn { color:rgba(184,154,109,0.9); }
+/* Verifikation info card */
+.cn-info-card { display:flex; align-items:flex-start; gap:16px; padding:20px 22px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); }
+.cn-info-ic { width:40px; height:40px; flex:none; border-radius:var(--r-xs); background:var(--accent-dim); border:1px solid rgba(109,184,154,0.2); display:flex; align-items:center; justify-content:center; color:var(--accent); margin-top:2px; }
+.cn-info-ic svg { width:20px; height:20px; }
+.cn-info-body { flex:1; min-width:0; }
+.cn-info-title { font-family:var(--sans); font-size:15px; font-weight:600; color:var(--fg); margin-bottom:6px; }
+.cn-info-desc { font-family:var(--mono); font-size:12px; color:var(--fg-3); line-height:1.7; margin:0; }
 
 /* Animations */
 .spin { animation:cn-spin 1s linear infinite; }
@@ -652,6 +287,6 @@ function onNav(id) {
 .slide-down-enter-from, .slide-down-leave-to { opacity:0; transform:translateY(-8px); }
 
 /* Mobile */
-@media (max-width:860px) { .cn-tiles{grid-template-columns:1fr} .cn-dual{grid-template-columns:1fr} .cn-panel--owner{border-right:none;border-bottom:1px solid var(--line)} .cn-mcp-banner{flex-direction:column;align-items:flex-start} }
+@media (max-width:860px) { .cn-dual{grid-template-columns:1fr} .cn-panel--owner{border-right:none;border-bottom:1px solid var(--line)} .cn-mcp-banner{flex-direction:column;align-items:flex-start} }
 @media (max-width:600px) { .cn-action-card{flex-direction:column;align-items:flex-start} }
 </style>
