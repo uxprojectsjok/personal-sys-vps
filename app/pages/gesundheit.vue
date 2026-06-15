@@ -65,21 +65,23 @@
               </ol>
             </div>
 
-            <!-- Last sync info + sync button -->
-            <div class="hl-sync-meta">
+            <!-- Last sync info -->
+            <div v-if="health.lastSync || health.source" class="hl-sync-meta">
               <span v-if="health.source" class="hl-source-badge">{{ deviceLabel(health.source) }}</span>
               <span v-if="health.lastSync" class="hl-sync-date">Letzter Sync: {{ health.lastSync }}</span>
-              <div class="hl-sync-meta-actions">
-                <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
-                  Aktualisieren
-                </button>
-                <button class="hl-btn hl-btn--saphir" :disabled="syncing" @click="triggerSync">
-                  <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
-                  {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
-                </button>
-              </div>
+            </div>
+
+            <!-- Sync button -->
+            <div class="hl-sync-action">
+              <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
+                Aktualisieren
+              </button>
+              <button class="hl-btn hl-btn--primary hl-btn--full" :disabled="syncing" @click="triggerSync">
+                <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
+                {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
+              </button>
             </div>
 
             <!-- Stat Cards -->
@@ -842,13 +844,11 @@ function onNav(id) {
 .hl-lv-range{ font-size:15px; color:var(--fg); white-space:nowrap; }
 
 /* Sync meta */
-.hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+.hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
 .hl-source-badge { font-family:var(--mono); font-size:13px; letter-spacing:0.08em; padding:3px 10px; background:var(--accent-dim); border:1px solid rgba(109,184,154,0.25); border-radius:4px; color:var(--accent); }
 .hl-sync-date { font-family:var(--mono); font-size:13px; color:var(--fg); }
-.hl-sync-meta-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
-.hl-btn--saphir { background:rgba(112,153,184,0.12); border:1px solid rgba(112,153,184,0.35); color:#7099b8; }
-.hl-btn--saphir:hover:not(:disabled) { background:rgba(112,153,184,0.22); border-color:#7099b8; color:#92b8d6; }
-.hl-btn--saphir:disabled { opacity:0.4; cursor:not-allowed; }
+.hl-sync-action { display:flex; gap:10px; margin-bottom:32px; }
+.hl-btn--full { flex:1; justify-content:center; }
 
 /* Section head */
 .hl-section-head { font-family:var(--serif); font-size:20px; font-weight:400; color:var(--fg); letter-spacing:-0.01em; margin-bottom:20px; }
