@@ -605,10 +605,10 @@ function onNav(id) {
 .hl-card-desc  { font-size:13px; color:var(--fg-2); line-height:1.55; font-family:var(--mono); flex:1; }
 
 /* Mini ring */
-.hl-mini-ring-wrap { position:relative; display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px; align-self:flex-end; }
-.hl-mini-ring { width:56px; height:56px; }
-.hl-mini-pct  { position:absolute; font-family:var(--mono); font-size:12px; color:var(--fg); font-weight:600; line-height:1; }
-.hl-mini-pct small { font-size:9px; color:var(--fg-3); vertical-align:super; }
+.hl-mini-ring-wrap { position:relative; display:inline-flex; align-items:center; justify-content:center; width:76px; height:76px; align-self:flex-end; }
+.hl-mini-ring { width:76px; height:76px; }
+.hl-mini-pct  { position:absolute; font-family:var(--mono); font-size:14px; color:var(--fg); font-weight:600; line-height:1; }
+.hl-mini-pct small { font-size:10px; color:var(--fg-3); vertical-align:super; }
 
 /* Progress bar (for cards without mini ring) */
 .hl-card-bar  { height:2px; background:var(--line); margin-top:6px; border-radius:1px; overflow:hidden; }
@@ -624,15 +624,15 @@ function onNav(id) {
 
 /* Form elements */
 .hl-field-group { display:flex; flex-direction:column; gap:6px; }
-.hl-label { font-family:var(--mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg-2); }
+.hl-label { font-family:var(--mono); font-size:13px; letter-spacing:0.08em; text-transform:uppercase; color:var(--fg); }
 .hl-radio-row { display:flex; gap:8px; flex-wrap:wrap; }
-.hl-radio-btn { height:34px; padding:0 14px; border:1px solid var(--line-2); border-radius:var(--r-xs); background:var(--surface-2); font-family:var(--sans); font-size:13px; color:var(--fg); cursor:pointer; transition:all 0.15s; }
+.hl-radio-btn { height:38px; padding:0 16px; border:1px solid var(--line-2); border-radius:var(--r-xs); background:var(--surface-2); font-family:var(--sans); font-size:15px; color:var(--fg); cursor:pointer; transition:all 0.15s; }
 .hl-radio-btn.active { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); font-weight:600; }
-.hl-select { height:40px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:14px; color:var(--fg); width:100%; cursor:pointer; }
-.hl-input  { height:40px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:14px; color:var(--fg); width:100%; }
+.hl-select { height:44px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:15px; color:var(--fg); width:100%; cursor:pointer; }
+.hl-input  { height:44px; padding:0 12px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-xs); font-family:var(--sans); font-size:15px; color:var(--fg); width:100%; }
 .hl-input:focus, .hl-select:focus { outline:none; border-color:var(--accent); }
-.hl-field-hint { font-family:var(--mono); font-size:11px; color:var(--fg-3); line-height:1.6; margin:0; }
-.hl-info-box { font-family:var(--mono); font-size:12px; color:var(--fg-2); line-height:1.7; padding:12px 14px; background:var(--surface-3); border:1px solid var(--line); border-radius:var(--r-xs); }
+.hl-field-hint { font-family:var(--mono); font-size:13px; color:var(--fg-2); line-height:1.6; margin:0; }
+.hl-info-box { font-family:var(--mono); font-size:13px; color:var(--fg); line-height:1.7; padding:14px 16px; background:var(--surface-3); border:1px solid var(--line); border-radius:var(--r-xs); }
 
 /* Actions */
 .hl-setup-actions { display:flex; gap:10px; flex-wrap:wrap; }
