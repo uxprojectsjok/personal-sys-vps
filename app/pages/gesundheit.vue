@@ -268,7 +268,7 @@
                     <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
                   </g>
                   <text v-if="!foodChart.line" x="300" y="70" text-anchor="middle"
-                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Einträge im Zeitraum</text>
+                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">{{ foodChart.dots.length === 1 ? 'Erst ein Tag geloggt — Linie wächst mit weiteren Einträgen' : 'Keine Einträge im Zeitraum' }}</text>
                 </svg>
               </div>
 
@@ -685,6 +685,7 @@ function buildChart(rawData, filter) {
   const yFor = s => CB - (s / 100) * CH
   const mapped = pts.map(p => ({ ...p, x: xFor(p.date), y: yFor(p.score) })).filter(p => p.x !== null)
   if (!mapped.length) return { line: '', area: '', dots: [], xLabels: [] }
+  if (mapped.length < 2) return { line: '', area: '', dots: mapped, xLabels: [] }
   const line = 'M ' + mapped.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')
   const area = line + ` L ${mapped[mapped.length-1].x.toFixed(1)},${CB} L ${mapped[0].x.toFixed(1)},${CB} Z`
   const step = Math.max(1, Math.floor(range.length / 5))
