@@ -894,5 +894,5 @@ function onNav(id) {
 .hl-sync-result    { display:flex; align-items:center; gap:10px; padding:11px 18px; border-radius:var(--r-xs); border:1px solid var(--line); font-family:var(--mono); font-size:13px; }
 .hl-sr-ok  { border-color:rgba(109,184,154,0.3); color:#6db89a; background:rgba(109,184,154,0.06); }
 .hl-sr-err { border-color:rgba(224,108,117,0.3); color:#e06c75; background:rgba(224,108,117,0.06); }
-.hl-sr-time { margin-left:auto; font-size:11px; opacity:0.55; white-space:nowrap; }
+.hl-sr-time { margin-left:auto; font-size:11px; white-space:nowrap; }
 </style>
