@@ -294,6 +294,10 @@
                     <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                     {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
                   </button>
+                  <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
+                    Aktualisieren
+                  </button>
                 </div>
 
                 <p v-if="saveMsg" class="hl-save-msg" :class="{ error: saveMsgError }">{{ saveMsg }}</p>
@@ -326,6 +330,7 @@ const loading    = ref(true)
 const setupOpen  = ref(false)
 const saving     = ref(false)
 const syncing    = ref(false)
+const syncDone   = ref(false)
 const saveMsg    = ref('')
 const saveMsgError = ref(false)
 
@@ -375,13 +380,15 @@ const parsed = computed(() => {
     if (hm) sleepH = parseFloat(hm[1]) + (hm[2] ? parseInt(hm[2]) / 60 : 0)
   }
 
-  // Last activity
+  // Last activity — distance optional, try each line until one matches
   let lastActivity = null
   const actMatch = raw.match(/##\s*Recent Activities\n([\s\S]*?)(?:\n##|$)/)
   if (actMatch) {
-    const firstLine = actMatch[1].trim().split('\n')[0]
-    const am = firstLine.match(/[-–]\s*(\S+)\s+(\S+)\s+(\d+)\s*min\s+([\d.]+)\s*km(?:\s+♥\s*([\d.]+)\s*bpm)?/)
-    if (am) lastActivity = { date: am[1], type: am[2], duration: am[3] + ' min', distance: am[4] + ' km', hr: am[5] ? am[5] + ' bpm' : null }
+    const lines = actMatch[1].trim().split('\n').filter(l => l.trim().startsWith('-'))
+    for (const line of lines) {
+      const am = line.match(/[-–]\s*(\d{4}-\d{2}-\d{2})\s+(\S+)\s+(\d+)\s*min(?:\s+([\d.]+)\s*km)?(?:\s+♥\s*([\d.]+)\s*bpm)?/)
+      if (am) { lastActivity = { date: am[1], type: am[2], duration: am[3] + ' min', distance: am[4] ? am[4] + ' km' : null, hr: am[5] ? am[5] + ' bpm' : null }; break }
+    }
   }
 
   // Monthly
@@ -510,12 +517,13 @@ async function saveConfig() {
 }
 
 async function triggerSync() {
-  syncing.value = true; saveMsg.value = ''; saveMsgError.value = false
+  syncing.value = true; saveMsg.value = ''; saveMsgError.value = false; syncDone.value = false
   try {
     const r = await fetch('/api/health-sync', { method: 'POST', headers: authHeaders() })
     if (r.ok) {
-      saveMsg.value = 'Sync gestartet — Daten in ca. 30 Sekunden aktualisiert.'
-      setTimeout(loadAll, 35000)
+      saveMsg.value = 'Sync läuft…'
+      setTimeout(async () => { await loadAll(); saveMsg.value = 'Sync abgeschlossen.'; syncDone.value = false }, 35000)
+      syncDone.value = true
     } else {
       const d = await r.json().catch(() => ({}))
       saveMsgError.value = true
@@ -645,6 +653,8 @@ function onNav(id) {
 .hl-btn--primary:hover:not(:disabled) { background:var(--accent-bright); }
 .hl-btn--secondary { background:var(--surface-2); border:1px solid var(--line-2); color:var(--fg-2); }
 .hl-btn--secondary:hover:not(:disabled) { color:var(--fg); border-color:var(--fg-3); }
+.hl-btn--reload { background:var(--surface-2); border:1px solid var(--accent); color:var(--accent); }
+.hl-btn--reload:hover { background:var(--accent-dim); }
 .hl-save-msg { font-family:var(--mono); font-size:12px; color:var(--accent); margin:0; }
 .hl-save-msg.error { color:#e06c75; }
 
