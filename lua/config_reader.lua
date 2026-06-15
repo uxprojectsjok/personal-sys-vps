@@ -224,4 +224,10 @@ function M.get_node_soul_id()
   return nil
 end
 
+-- ── Multi-Hoster-Flag lesen ───────────────────────────────────────────────
+function M.get_multi_hoster()
+  local m = read_master()
+  return m and m.multi_hoster == true
+end
+
 return M
