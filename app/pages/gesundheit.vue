@@ -811,12 +811,12 @@ function onNav(id) {
 .hl-card-val small { font-family:var(--mono); font-size:12px; color:var(--fg-3); vertical-align:super; margin-left:2px; }
 .hl-card-val-sm { font-family:var(--mono); font-size:15px; color:var(--accent); font-weight:600; text-transform:capitalize; line-height:1.2; }
 .hl-card-title { font-size:15px; font-weight:600; color:var(--fg); line-height:1.2; }
-.hl-card-desc  { font-size:13px; color:var(--fg-2); line-height:1.55; font-family:var(--mono); flex:1; }
+.hl-card-desc  { font-size:15px; color:var(--fg); line-height:1.55; font-family:var(--mono); flex:1; }
 
 /* Mini ring */
 .hl-mini-ring-wrap { position:relative; display:inline-flex; align-items:center; justify-content:center; width:76px; height:76px; align-self:flex-end; }
 .hl-mini-ring { width:76px; height:76px; }
-.hl-mini-pct  { position:absolute; font-family:var(--mono); font-size:14px; color:var(--fg); font-weight:600; line-height:1; }
+.hl-mini-pct  { position:absolute; font-family:var(--mono); font-size:17px; color:var(--fg); font-weight:600; line-height:1; }
 .hl-mini-pct small { font-size:10px; color:var(--fg-3); vertical-align:super; }
 
 /* Progress bar (for cards without mini ring) */
