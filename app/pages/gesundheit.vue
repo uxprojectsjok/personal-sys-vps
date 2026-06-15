@@ -266,6 +266,25 @@
             </div>
           </template>
 
+          <!-- ── Health Check Summary ──────────────────────────────────────────── -->
+          <div v-if="healthSummary.length || syncStatus.shown" class="hl-summary-section">
+            <div class="hl-section-head">Auswertung</div>
+            <div v-if="healthSummary.length" class="hl-summary-rows">
+              <div v-for="item in healthSummary" :key="item.label" class="hl-summary-row">
+                <span class="hl-summary-dot" :class="'hl-c-' + item.color"></span>
+                <span class="hl-summary-label">{{ item.label }}</span>
+                <span class="hl-summary-status" :class="'hl-c-' + item.color">{{ item.status }}</span>
+                <span class="hl-summary-tip">{{ item.tip }}</span>
+              </div>
+            </div>
+            <div v-if="syncStatus.shown" class="hl-sync-result" :class="{ 'hl-sr-ok': syncStatus.ok, 'hl-sr-err': !syncStatus.ok }">
+              <svg v-if="syncStatus.ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" stroke-linejoin="round" d="m4 10 4 4 8-8"/></svg>
+              <svg v-else viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex:none"><path stroke-linecap="round" d="M10 6v4m0 4h.01M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2Z"/></svg>
+              <span>{{ syncStatus.message }}</span>
+              <span v-if="syncStatus.last_run" class="hl-sr-time">{{ syncStatus.last_run }}</span>
+            </div>
+          </div>
+
           <!-- ── Setup ─────────────────────────────────────────────────────────── -->
           <div class="hl-setup-section">
             <button class="hl-setup-header" @click="setupOpen = !setupOpen">
@@ -392,6 +411,7 @@ const syncing    = ref(false)
 const syncDone   = ref(false)
 const saveMsg    = ref('')
 const saveMsgError = ref(false)
+const syncStatus = reactive({ shown: false, ok: false, message: '', last_run: null })
 
 // ── Config (provider/device) ──────────────────────────────────────────────────
 const config = reactive({ configured: false, adapter: 'garmin', garmin_model: 'garmin_fr235', garmin_email: '', has_password: false, last_sync: null })
@@ -555,6 +575,20 @@ async function loadAll() {
     }
   } catch { /**/ }
   loading.value = false
+  await fetchSyncStatus()
+}
+
+async function fetchSyncStatus() {
+  try {
+    const r = await fetch('/api/health/sync-status', { headers: authHeaders() })
+    if (r.ok) {
+      const d = await r.json()
+      syncStatus.shown    = true
+      syncStatus.ok       = d.ok
+      syncStatus.message  = d.message
+      syncStatus.last_run = d.last_run || null
+    }
+  } catch { /**/ }
 }
 
 async function saveConfig() {
@@ -581,7 +615,7 @@ async function triggerSync() {
     const r = await fetch('/api/health-sync', { method: 'POST', headers: authHeaders() })
     if (r.ok) {
       saveMsg.value = 'Sync läuft…'
-      setTimeout(async () => { await loadAll(); saveMsg.value = 'Sync abgeschlossen.'; syncDone.value = false }, 35000)
+      setTimeout(async () => { await loadAll(); await fetchSyncStatus(); saveMsg.value = 'Sync abgeschlossen.'; syncDone.value = false }, 35000)
       syncDone.value = true
     } else {
       const d = await r.json().catch(() => ({}))
@@ -625,7 +659,8 @@ const foodChartRaw = computed(() => {
   m[1].trim().split('\n').filter(l => l.trim().startsWith('-')).forEach(line => {
     const fm = line.match(/[-–]\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([A-E])\s*\|/)
     if (!fm) return
-    ;(byDate[fm[1]] ??= []).push(S[fm[2]] ?? 50)
+    if (!byDate[fm[1]]) byDate[fm[1]] = []
+    byDate[fm[1]].push(S[fm[2]] !== undefined ? S[fm[2]] : 50)
   })
   return Object.entries(byDate)
     .map(([date, scores]) => ({ date, score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) }))
@@ -655,6 +690,50 @@ function buildChart(rawData, filter) {
 
 const healthChart = computed(() => buildChart(healthChartRaw.value, hFilter.value))
 const foodChart   = computed(() => buildChart(foodChartRaw.value,   fFilter.value))
+
+// ── Health Summary ─────────────────────────────────────────────────────────────
+const healthSummary = computed(() => {
+  const rows = []
+  const { rhr, sleepH, steps, activeDays } = parsed.value
+
+  if (rhr != null) {
+    const s = rhrScore.value
+    rows.push({
+      label:  'Ruhepuls',
+      status: s >= 95 ? 'Athletisch' : s >= 78 ? 'Gut' : s >= 50 ? 'Normal' : 'Erhöht',
+      color:  s >= 78 ? 'green' : s >= 50 ? 'yellow' : 'red',
+      tip:    s >= 78 ? rhr + ' bpm — ausgezeichnet' : s >= 50 ? rhr + ' bpm — Normalbereich' : rhr + ' bpm — Ausdauertraining empfohlen',
+    })
+  }
+  if (sleepH != null) {
+    const s = sleepScore.value
+    rows.push({
+      label:  'Schlaf',
+      status: s >= 92 ? 'Optimal' : s >= 68 ? 'Ausreichend' : s >= 38 ? 'Zu wenig' : 'Kritisch',
+      color:  s >= 68 ? 'green' : s >= 38 ? 'yellow' : 'red',
+      tip:    s >= 82 ? sleepH + 'h — Ziel erreicht' : s >= 52 ? sleepH + 'h — unter Ziel (8h)' : sleepH + 'h — Schlafqualität verbessern',
+    })
+  }
+  if (steps != null) {
+    const s = stepsScore.value
+    rows.push({
+      label:  'Schritte',
+      status: s >= 100 ? 'Ziel erreicht' : s >= 75 ? 'Fast am Ziel' : s >= 50 ? 'Unter Ziel' : 'Inaktiv',
+      color:  s >= 75 ? 'green' : s >= 50 ? 'yellow' : 'red',
+      tip:    Math.round(steps).toLocaleString('de-DE') + ' Schritte/Tag' + (steps >= 10000 ? ' — Top!' : ' — Ziel: 10.000'),
+    })
+  }
+  if (activeDays != null) {
+    const s = activeDaysScore.value
+    rows.push({
+      label:  'Aktive Tage',
+      status: s >= 71 ? 'Sehr aktiv' : s >= 43 ? 'Aktiv' : s >= 14 ? 'Wenig aktiv' : 'Inaktiv',
+      color:  s >= 43 ? 'green' : s >= 14 ? 'yellow' : 'red',
+      tip:    activeDays + ' von 7 Tagen' + (activeDays >= 5 ? ' — stark' : activeDays >= 3 ? ' — gut, mehr ist besser' : ' — mehr Bewegung hilft'),
+    })
+  }
+  return rows
+})
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/gate' }
@@ -795,4 +874,25 @@ function onNav(id) {
 .hl-chart-filters button { height:26px; padding:0 10px; border:1px solid var(--line-2); border-radius:4px; background:none; font-family:var(--mono); font-size:11px; letter-spacing:0.06em; color:var(--fg-3); cursor:pointer; transition:all 0.15s; }
 .hl-chart-filters button.act { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
 .hl-chart-svg { width:100%; height:auto; display:block; overflow:visible; }
+
+/* Summary section */
+.hl-summary-section { margin-bottom:32px; }
+.hl-summary-rows { border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-bottom:16px; }
+.hl-summary-row { display:grid; grid-template-columns:10px 1fr auto 1fr; gap:14px; align-items:center; padding:11px 18px; border-bottom:1px solid var(--line); }
+.hl-summary-row:last-child { border-bottom:none; }
+@media(max-width:560px){ .hl-summary-row{ grid-template-columns:10px 1fr auto; } .hl-summary-tip{ display:none; } }
+.hl-summary-dot { width:8px; height:8px; border-radius:50%; background:var(--fg-4); flex:none; }
+.hl-summary-dot.hl-c-green  { background:#6db89a; }
+.hl-summary-dot.hl-c-yellow { background:#b8a56d; }
+.hl-summary-dot.hl-c-red    { background:#e06c75; }
+.hl-summary-label  { font-family:var(--mono); font-size:13px; color:var(--fg); letter-spacing:0.04em; }
+.hl-summary-status { font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; text-align:right; white-space:nowrap; }
+.hl-summary-status.hl-c-green  { color:#6db89a; }
+.hl-summary-status.hl-c-yellow { color:#b8a56d; }
+.hl-summary-status.hl-c-red    { color:#e06c75; }
+.hl-summary-tip    { font-family:var(--mono); font-size:12px; color:var(--fg-3); line-height:1.5; }
+.hl-sync-result    { display:flex; align-items:center; gap:10px; padding:11px 18px; border-radius:var(--r-xs); border:1px solid var(--line); font-family:var(--mono); font-size:13px; }
+.hl-sr-ok  { border-color:rgba(109,184,154,0.3); color:#6db89a; background:rgba(109,184,154,0.06); }
+.hl-sr-err { border-color:rgba(224,108,117,0.3); color:#e06c75; background:rgba(224,108,117,0.06); }
+.hl-sr-time { margin-left:auto; font-size:11px; opacity:0.55; white-space:nowrap; }
 </style>
