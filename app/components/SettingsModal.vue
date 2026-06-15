@@ -42,7 +42,7 @@
           </div>
 
           <!-- Body -->
-          <div :class="inline ? 'settings-inline-body' : 'sys-modal-body'" style="padding:24px 28px;overflow-y:auto">
+          <div :class="inline ? 'settings-inline-body' : 'sys-modal-body'" :style="inline ? 'padding:24px 28px' : 'padding:24px 28px;overflow-y:auto'">
 
             <!-- ── Tab: Dienste ── -->
             <template v-if="tab === 'dienste'">
@@ -1538,5 +1538,5 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
 .archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
 .archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
-.settings-inline-body { max-height: calc(100dvh - 290px); overflow-y: auto; }
+.settings-inline-body { max-height: none; overflow: visible; }
 </style>
