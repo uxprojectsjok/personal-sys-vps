@@ -71,10 +71,13 @@ if not matched then
 end
 
 -- 3. Single-Soul-Lock: nur der registrierte Node-Inhaber darf sich authentifizieren
-local node_soul_id = cfg.get_node_soul_id()
-if node_soul_id and node_soul_id ~= soul_id then
-  ngx.log(ngx.WARN, "[sys/auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
-  return ngx.exit(403)
+-- Im Multi-Hoster-Modus entfällt dieser Lock (mehrere Souls erlaubt).
+if not cfg.get_multi_hoster() then
+  local node_soul_id = cfg.get_node_soul_id()
+  if node_soul_id and node_soul_id ~= soul_id then
+    ngx.log(ngx.WARN, "[sys/auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
+    return ngx.exit(403)
+  end
 end
 
 ngx.ctx.soul_id   = soul_id
