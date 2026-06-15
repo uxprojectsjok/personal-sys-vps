@@ -584,7 +584,7 @@ function onNav(id) {
 /* Sync meta */
 .hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
 .hl-source-badge { font-family:var(--mono); font-size:13px; letter-spacing:0.08em; padding:3px 10px; background:var(--accent-dim); border:1px solid rgba(109,184,154,0.25); border-radius:4px; color:var(--accent); }
-.hl-sync-date { font-family:var(--mono); font-size:13px; color:var(--fg-4); }
+.hl-sync-date { font-family:var(--mono); font-size:13px; color:var(--fg); }
 
 /* Section head */
 .hl-section-head { font-family:var(--serif); font-size:20px; font-weight:400; color:var(--fg); letter-spacing:-0.01em; margin-bottom:20px; }
