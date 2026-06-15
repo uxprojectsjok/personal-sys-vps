@@ -20,7 +20,7 @@
           </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail sys-rail--5">
+          <div class="sys-rail sys-rail--6">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">API</span></span>
             </button>
@@ -35,6 +35,9 @@
             </button>
             <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">Archivar</span></span>
+            </button>
+            <button @click="tab = 'gesundheit'; loadHealthConfig()" class="sys-rail-item" :class="tab === 'gesundheit' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">Gesundheit</span></span>
             </button>
           </div>
 
@@ -506,6 +509,81 @@
 
             </template>
 
+            <!-- ── Tab: Gesundheit ── -->
+            <template v-if="tab === 'gesundheit'">
+
+              <div class="sys-field" style="gap:10px;margin-bottom:20px">
+                <label class="sys-field-label">Provider</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button v-for="p in HEALTH_PROVIDERS" :key="p.id"
+                    class="sys-btn-ed" :class="healthAdapter === p.id ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                    :disabled="p.soon" :style="p.soon ? 'opacity:0.4;cursor:not-allowed' : ''"
+                    @click="!p.soon && (healthAdapter = p.id)">
+                    {{ p.label }}<span v-if="p.soon" style="font-size:10px;margin-left:6px;opacity:0.6">bald</span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
+                <label class="sys-field-label">Gerät</label>
+                <select class="sys-input" v-model="healthGarminModel" style="cursor:pointer">
+                  <optgroup label="Venu / Vivoactive">
+                    <option value="garmin_vivoactive2">Vivoactive 2</option>
+                    <option value="garmin_vivoactive3">Vivoactive 3</option>
+                    <option value="garmin_vivoactive4">Vivoactive 4</option>
+                    <option value="garmin_venu">Venu</option>
+                    <option value="garmin_venu2">Venu 2</option>
+                  </optgroup>
+                  <optgroup label="Forerunner">
+                    <option value="garmin_fr235">Forerunner 235</option>
+                    <option value="garmin_fr245">Forerunner 245</option>
+                    <option value="garmin_fr255">Forerunner 255</option>
+                    <option value="garmin_fr265">Forerunner 265</option>
+                    <option value="garmin_fr945">Forerunner 945</option>
+                  </optgroup>
+                  <optgroup label="Fenix">
+                    <option value="garmin_fenix5">Fenix 5</option>
+                    <option value="garmin_fenix6">Fenix 6</option>
+                    <option value="garmin_fenix7">Fenix 7</option>
+                  </optgroup>
+                  <optgroup label="Instinct / Epix">
+                    <option value="garmin_instinct">Instinct</option>
+                    <option value="garmin_epix">Epix</option>
+                  </optgroup>
+                </select>
+                <span class="sm-desc">Das Gerät beeinflusst wie Daten interpretiert werden. Alle Modelle nutzen die Garmin Connect API.</span>
+              </div>
+
+              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
+                <label class="sys-field-label">Garmin Connect E-Mail</label>
+                <input class="sys-input" type="email" v-model="healthGarminEmail" placeholder="deine@email.de" autocomplete="off" />
+              </div>
+
+              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
+                <label class="sys-field-label">Garmin Connect Passwort</label>
+                <input class="sys-input" type="password" v-model="healthGarminPassword"
+                  :placeholder="healthHasPassword ? '•••••••• (leer lassen = behalten)' : 'Passwort eingeben'"
+                  autocomplete="new-password" />
+              </div>
+
+              <div v-if="healthAdapter === 'apple_health'" class="sys-field" style="gap:10px;margin-bottom:20px">
+                <div class="sm-infoblock">Für Apple Health muss die Health-Sync App auf deinem iPhone installiert sein. Die Einrichtung erfolgt über SSH (install.sh).</div>
+              </div>
+
+              <div v-if="healthAdapter === 'oura'" class="sys-field" style="gap:10px;margin-bottom:20px">
+                <div class="sm-infoblock">Oura Ring API-Token wird über SSH in der health_sync Konfiguration hinterlegt.</div>
+              </div>
+
+              <Transition name="sys-modal-fade">
+                <div v-if="healthMsg" style="margin-top:4px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="healthMsgError
+                    ? 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'
+                    : 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'"
+                >{{ healthMsg }}</div>
+              </Transition>
+
+            </template>
+
             <!-- ── Tab: Archivar ── -->
             <template v-if="tab === 'archivar'">
 
@@ -582,11 +660,20 @@
                 <span class="sys-dot" :class="longmemFacts > 0 ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ longmemFacts > 0 ? longmemFacts + ' Fakten im Langzeitgedächtnis' : 'Langzeitgedächtnis leer' }}
               </template>
+              <template v-else-if="tab === 'gesundheit'">
+                <span class="sys-dot" :class="healthHasPassword ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
+                {{ healthHasPassword ? 'Garmin verbunden' : 'Noch nicht eingerichtet' }}
+              </template>
             </div>
             <div class="sys-foot-actions">
               <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
                   {{ saving ? 'Speichert…' : 'Speichern' }}
+                </button>
+              </template>
+              <template v-else-if="tab === 'gesundheit'">
+                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
+                  {{ healthSaving ? 'Speichert…' : 'Speichern' }}
                 </button>
               </template>
             </div>
@@ -663,6 +750,56 @@ function detectAdmin() {
 
 // ── Tab ──────────────────────────────────────────────────────────────────────
 const tab = ref('api')
+
+// ── Gesundheit Tab State ──────────────────────────────────────────────────────
+const HEALTH_PROVIDERS = [
+  { id: 'garmin',       label: 'Garmin',       soon: false },
+  { id: 'apple_health', label: 'Apple Health', soon: true  },
+  { id: 'oura',         label: 'Oura Ring',    soon: true  },
+]
+const healthAdapter       = ref('garmin')
+const healthGarminModel   = ref('garmin_fr235')
+const healthGarminEmail   = ref('')
+const healthGarminPassword = ref('')
+const healthHasPassword   = ref(false)
+const healthSaving        = ref(false)
+const healthMsg           = ref('')
+const healthMsgError      = ref(false)
+
+async function loadHealthConfig() {
+  try {
+    const r = await fetch('/api/health/config', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      healthAdapter.value     = d.adapter     || 'garmin'
+      healthGarminModel.value = d.garmin_model || 'garmin_fr235'
+      healthGarminEmail.value = d.garmin_email || ''
+      healthHasPassword.value = !!d.has_password
+    }
+  } catch {}
+}
+
+async function saveHealthConfig() {
+  healthSaving.value = true; healthMsg.value = ''; healthMsgError.value = false
+  try {
+    const body = { adapter: healthAdapter.value, garmin_model: healthGarminModel.value, garmin_email: healthGarminEmail.value }
+    if (healthGarminPassword.value) body.garmin_password = healthGarminPassword.value
+    const r = await fetch('/api/health/config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (r.ok) {
+      healthMsg.value = 'Gespeichert ✓'
+      healthGarminPassword.value = ''
+      healthHasPassword.value = true
+    } else {
+      healthMsgError.value = true; healthMsg.value = 'Fehler beim Speichern.'
+    }
+  } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
+  healthSaving.value = false
+  setTimeout(() => { healthMsg.value = '' }, 4000)
+}
 
 // ── API-Key Tab State ─────────────────────────────────────────────────────────
 const apiKey    = ref('')
@@ -1354,7 +1491,7 @@ onMounted(() => { if (props.inline) initSettings() })
 /* Override: Rail als Tab-Navigation — 5 Items immer sichtbar */
 @media (max-width: 640px) {
   :deep(.sys-rail) {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
   }
   :deep(.sys-rail-item) {
     display: flex !important;

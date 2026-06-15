@@ -24,7 +24,7 @@
               </div>
               <div class="hl-empty-title">Health-Sync noch nicht eingerichtet</div>
               <p class="hl-empty-desc">Verbinde deinen Fitness-Tracker um Vitaldaten automatisch zu synchronisieren.</p>
-              <button class="hl-setup-toggle-btn" @click="setupOpen = true">Einrichten</button>
+              <button class="hl-setup-toggle-btn" @click="router.push('/einstellungen')">Einrichten in Einstellungen</button>
             </div>
           </template>
 
@@ -298,96 +298,6 @@
 
           </div>
 
-          <!-- ── Setup ─────────────────────────────────────────────────────────── -->
-          <div class="hl-setup-section">
-            <button class="hl-setup-header" @click="setupOpen = !setupOpen">
-              <span class="hl-setup-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm8.4 3a8.4 8.4 0 0 0-.14-1.5l2-1.55-2-3.46-2.36.95a8.4 8.4 0 0 0-2.6-1.5L14.5 2h-5l-.4 2.44a8.4 8.4 0 0 0-2.6 1.5L4.14 5 2.14 8.45l2 1.55a8.5 8.5 0 0 0 0 3l-2 1.55 2 3.46 2.36-.95a8.4 8.4 0 0 0 2.6 1.5L9.5 22h5l.4-2.44a8.4 8.4 0 0 0 2.6-1.5l2.36.95 2-3.46-2-1.55c.09-.49.14-.99.14-1.5Z"/></svg>
-                Einrichtung
-              </span>
-              <svg class="hl-chevron" :class="{ open: setupOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
-            </button>
-
-            <Transition name="setup-slide">
-              <div v-if="setupOpen" class="hl-setup-body">
-
-                <!-- Provider -->
-                <div class="hl-field-group">
-                  <label class="hl-label">Provider</label>
-                  <div class="hl-radio-row">
-                    <button v-for="p in PROVIDERS" :key="p.id"
-                      class="hl-radio-btn" :class="{ active: form.adapter === p.id, soon: p.soon }"
-                      :disabled="p.soon"
-                      @click="!p.soon && (form.adapter = p.id)">
-                      {{ p.label }}<span v-if="p.soon" class="hl-soon">bald</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Device (Garmin) -->
-                <div v-if="form.adapter === 'garmin'" class="hl-field-group">
-                  <label class="hl-label">Gerät</label>
-                  <select class="hl-select" v-model="form.garmin_model">
-                    <optgroup label="Venu / Vivoactive">
-                      <option value="garmin_vivoactive2">Vivoactive 2</option>
-                      <option value="garmin_vivoactive3">Vivoactive 3</option>
-                      <option value="garmin_vivoactive4">Vivoactive 4</option>
-                      <option value="garmin_venu">Venu</option>
-                      <option value="garmin_venu2">Venu 2</option>
-                    </optgroup>
-                    <optgroup label="Forerunner">
-                      <option value="garmin_fr235">Forerunner 235</option>
-                      <option value="garmin_fr245">Forerunner 245</option>
-                      <option value="garmin_fr255">Forerunner 255</option>
-                      <option value="garmin_fr265">Forerunner 265</option>
-                      <option value="garmin_fr945">Forerunner 945</option>
-                    </optgroup>
-                    <optgroup label="Fenix">
-                      <option value="garmin_fenix5">Fenix 5</option>
-                      <option value="garmin_fenix6">Fenix 6</option>
-                      <option value="garmin_fenix7">Fenix 7</option>
-                    </optgroup>
-                    <optgroup label="Instinct / Epix">
-                      <option value="garmin_instinct">Instinct</option>
-                      <option value="garmin_epix">Epix</option>
-                    </optgroup>
-                  </select>
-                  <p class="hl-field-hint">Das Gerät beeinflusst wie Daten interpretiert werden. Alle Modelle nutzen die Garmin Connect API.</p>
-                </div>
-
-                <!-- Garmin Credentials -->
-                <div v-if="form.adapter === 'garmin'" class="hl-field-group">
-                  <label class="hl-label">Garmin Connect E-Mail</label>
-                  <input class="hl-input" type="email" v-model="form.garmin_email" placeholder="deine@email.de" autocomplete="off" />
-                </div>
-                <div v-if="form.adapter === 'garmin'" class="hl-field-group">
-                  <label class="hl-label">Garmin Connect Passwort</label>
-                  <input class="hl-input" type="password" v-model="form.garmin_password" :placeholder="config.has_password ? '••••••••  (unverändert lassen um beizubehalten)' : 'Passwort eingeben'" autocomplete="new-password" />
-                </div>
-
-                <!-- Apple Health hint -->
-                <div v-if="form.adapter === 'apple_health'" class="hl-field-group">
-                  <div class="hl-info-box">Für Apple Health muss die Health-Sync App auf deinem iPhone installiert sein. Die Einrichtung erfolgt über SSH (install.sh).</div>
-                </div>
-
-                <!-- Oura hint -->
-                <div v-if="form.adapter === 'oura'" class="hl-field-group">
-                  <div class="hl-info-box">Oura Ring API-Token wird über SSH in der health_sync Konfiguration hinterlegt.</div>
-                </div>
-
-                <!-- Actions -->
-                <div class="hl-setup-actions">
-                  <button class="hl-btn hl-btn--primary" :disabled="saving" @click="saveConfig">
-                    <svg v-if="saving" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                    {{ saving ? 'Speichern…' : 'Einstellungen speichern' }}
-                  </button>
-                </div>
-
-                <p v-if="saveMsg" class="hl-save-msg" :class="{ error: saveMsgError }">{{ saveMsg }}</p>
-
-              </div>
-            </Transition>
-          </div>
 
         </div>
         </div><!-- /scroll -->
@@ -410,26 +320,12 @@ const { hasSoul, soulMeta, soulToken } = useSoul()
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 const loading    = ref(true)
-const setupOpen  = ref(false)
-const saving     = ref(false)
 const syncing    = ref(false)
 const syncDone   = ref(false)
-const saveMsg    = ref('')
-const saveMsgError = ref(false)
 const syncStatus = reactive({ shown: false, ok: false, message: '', last_run: null })
-
-// ── Config (provider/device) ──────────────────────────────────────────────────
-const config = reactive({ configured: false, adapter: 'garmin', garmin_model: 'garmin_fr235', garmin_email: '', has_password: false, last_sync: null })
-const form   = reactive({ adapter: 'garmin', garmin_model: 'garmin_fr235', garmin_email: '', garmin_password: '' })
 
 // ── Health data (from health.md) ──────────────────────────────────────────────
 const health = reactive({ configured: false, source: null, lastSync: null, raw: '' })
-
-const PROVIDERS = [
-  { id: 'garmin',       label: 'Garmin',       soon: false },
-  { id: 'apple_health', label: 'Apple Health', soon: true  },
-  { id: 'oura',         label: 'Oura Ring',    soon: true  },
-]
 
 const DEVICE_LABELS = {
   garmin_fr235: 'Forerunner 235', garmin_fr245: 'Forerunner 245',
@@ -564,10 +460,6 @@ async function loadAll() {
 
     if (cfgRes.ok) {
       const c = await cfgRes.json()
-      Object.assign(config, c)
-      form.adapter      = c.adapter      || 'garmin'
-      form.garmin_model = c.garmin_model || 'garmin_fr235'
-      form.garmin_email = c.garmin_email || ''
       health.configured = c.configured
     }
 
@@ -596,38 +488,15 @@ async function fetchSyncStatus() {
   } catch { /**/ }
 }
 
-async function saveConfig() {
-  saving.value = true; saveMsg.value = ''; saveMsgError.value = false
-  try {
-    const body = { adapter: form.adapter, garmin_model: form.garmin_model, garmin_email: form.garmin_email }
-    if (form.garmin_password) body.garmin_password = form.garmin_password
-    const r = await fetch('/api/health/config', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) })
-    if (r.ok) {
-      saveMsg.value = 'Gespeichert.'
-      form.garmin_password = ''
-      config.has_password = true
-      health.configured = true
-    } else {
-      saveMsgError.value = true; saveMsg.value = 'Fehler beim Speichern.'
-    }
-  } catch { saveMsgError.value = true; saveMsg.value = 'Netzwerkfehler.' }
-  saving.value = false
-}
-
 async function triggerSync() {
-  syncing.value = true; saveMsg.value = ''; saveMsgError.value = false; syncDone.value = false
+  syncing.value = true; syncDone.value = false
   try {
     const r = await fetch('/api/health-sync', { method: 'POST', headers: authHeaders() })
     if (r.ok) {
-      saveMsg.value = 'Sync läuft…'
-      setTimeout(async () => { await loadAll(); await fetchSyncStatus(); saveMsg.value = 'Sync abgeschlossen.'; syncDone.value = false }, 35000)
+      setTimeout(async () => { await loadAll(); await fetchSyncStatus(); syncDone.value = false }, 35000)
       syncDone.value = true
-    } else {
-      const d = await r.json().catch(() => ({}))
-      saveMsgError.value = true
-      saveMsg.value = d.error || 'Sync fehlgeschlagen.'
     }
-  } catch { saveMsgError.value = true; saveMsg.value = 'Netzwerkfehler.' }
+  } catch { /**/ }
   syncing.value = false
 }
 
