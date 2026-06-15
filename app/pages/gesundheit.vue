@@ -579,7 +579,7 @@ function onNav(id) {
 .hl-level.active .hl-lv-check { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
 .hl-lv-num  { font-size:10px; color:inherit; }
 .hl-lv-name { flex:1; text-transform:uppercase; font-size:17px; letter-spacing:0.08em; color:var(--fg); }
-.hl-lv-range{ font-size:15px; color:var(--fg-2); white-space:nowrap; }
+.hl-lv-range{ font-size:15px; color:var(--fg); white-space:nowrap; }
 
 /* Sync meta */
 .hl-sync-meta { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
