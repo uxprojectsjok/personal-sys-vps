@@ -437,6 +437,7 @@ function onNav(id) {
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');  return }
   if (id === 'maturity') { router.push('/reife');       return }
+  if (id === 'health')   { router.push('/gesundheit'); return }
   if (id === 'calendar') { router.push('/kalender');    return }
   drawerOpen.value = false
   router.push('/')

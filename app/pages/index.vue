@@ -665,6 +665,7 @@ function onNav(id) {
   if (id === 'soul')     { navigateTo('/soul');       return }
   if (id === 'chronik')  { navigateTo('/chronik');    return }
   if (id === 'maturity') { navigateTo('/reife');      return }
+  if (id === 'health')   { navigateTo('/gesundheit'); return }
   if (id === 'calendar') { navigateTo('/kalender');   return }
   if (id === 'files')    { navigateTo('/dateien');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
