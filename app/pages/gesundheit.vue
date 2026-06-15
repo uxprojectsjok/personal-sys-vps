@@ -288,11 +288,8 @@
             </div>
             <div v-if="tips.length" class="hl-tips-section">
               <div class="hl-tips-head">Tipps</div>
-              <div class="hl-tips-rows">
-                <div v-for="t in tips" :key="t.cat" class="hl-tip-row">
-                  <span class="hl-tip-cat">{{ t.cat }}</span>
-                  <span class="hl-tip-text">{{ t.text }}</span>
-                </div>
+              <div class="hl-tips-list">
+                <p v-for="t in tips" :key="t.cat" class="hl-tip-text">{{ t.text }}</p>
               </div>
             </div>
 
@@ -824,10 +821,7 @@ function onNav(id) {
 
 /* Tips section */
 .hl-tips-section { margin-top:20px; }
-.hl-tips-head { font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--fg-3); margin-bottom:10px; }
-.hl-tips-rows { display:flex; flex-direction:column; gap:0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
-.hl-tip-row { display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:baseline; padding:12px 18px; border-bottom:1px solid var(--line); }
-.hl-tip-row:last-child { border-bottom:none; }
-.hl-tip-cat { font-family:var(--mono); font-size:11px; letter-spacing:0.10em; text-transform:uppercase; color:var(--fg-3); white-space:nowrap; }
-.hl-tip-text { font-family:var(--mono); font-size:14px; color:var(--fg); line-height:1.6; }
+.hl-tips-head { font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--fg-3); margin-bottom:12px; }
+.hl-tips-list { display:flex; flex-direction:column; gap:10px; }
+.hl-tip-text { font-size:15px; color:var(--fg); line-height:1.6; margin:0; }
 </style>
