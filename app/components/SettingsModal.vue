@@ -1488,14 +1488,19 @@ onMounted(() => { if (props.inline) initSettings() })
   letter-spacing: 0.06em; color: var(--fg-2);
 }
 
-/* Override: Rail als Tab-Navigation — 5 Items immer sichtbar */
+/* Override: Rail scrollbar auf Mobile */
 @media (max-width: 640px) {
   :deep(.sys-rail) {
-    grid-template-columns: repeat(6, 1fr);
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  :deep(.sys-rail::-webkit-scrollbar) { display: none; }
   :deep(.sys-rail-item) {
-    display: flex !important;
-    padding: 10px 6px;
+    flex: 0 0 auto;
+    min-width: 88px;
+    padding: 12px 10px;
     justify-content: center;
   }
 }
