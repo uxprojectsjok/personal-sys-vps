@@ -628,6 +628,8 @@ const tips = computed(() => {
     if (rhr >= 100) result.push({ cat: 'Herzfrequenz', text: 'Über 100 bpm Ruhepuls — Tachykardie-Bereich, ärztliche Abklärung empfehlenswert.' })
     else if (rhr >= 80) result.push({ cat: 'Herzfrequenz', text: 'Ruhepuls erhöht. Aerobic-Training (3× wöchentlich) und Schlafhygiene senken ihn langfristig.' })
     else if (rhr >= 70) result.push({ cat: 'Herzfrequenz', text: '2–3× Ausdauertraining pro Woche kann den Ruhepuls weiter senken.' })
+    else if (rhr >= 60) result.push({ cat: 'Herzfrequenz', text: 'Guter Ruhepuls. Mit regelmäßigem Ausdauertraining weiter optimierbar.' })
+    else result.push({ cat: 'Herzfrequenz', text: 'Unter 60 bpm — Zeichen ausgezeichneter kardiovaskulärer Fitness. So weitermachen.' })
   }
 
   if (sleepH != null) {
@@ -635,18 +637,23 @@ const tips = computed(() => {
     if (m < 300) result.push({ cat: 'Schlaf', text: 'Unter 5h — schweres Defizit. Kognition, Immunsystem und Herzgesundheit sind messbar beeinträchtigt. Dringend priorisieren.' })
     else if (m < 360) result.push({ cat: 'Schlaf', text: 'Unter 6h — unter Mindestempfehlung. Konsistente Schlafzeiten und bildschirmfreies Abendritual helfen.' })
     else if (m < 420) result.push({ cat: 'Schlaf', text: '6–7h Schlaf — leicht unter Empfehlung. Frühere Schlafenszeit oder weniger Abendscreen anstreben.' })
+    else result.push({ cat: 'Schlaf', text: '7–9h — idealer Bereich. Kognition, Erholung und Stimmung profitieren. Beibehalten.' })
   }
 
   if (steps != null) {
     if (steps < 3000) result.push({ cat: 'Bewegung', text: 'Unter 3.000 Schritte — kurze Gehpausen von 5 Min/Stunde machen einen messbaren Unterschied.' })
     else if (steps < 5000) result.push({ cat: 'Bewegung', text: '3.000–5.000 Schritte. Treppe statt Aufzug, 10-Min-Spaziergang nach dem Mittagessen.' })
     else if (steps < 7500) result.push({ cat: 'Bewegung', text: 'WHO-Ziel: 7.500+ Schritte. Ein zusätzlicher 15-Min-Spaziergang täglich reicht oft.' })
+    else if (steps < 10000) result.push({ cat: 'Bewegung', text: '7.500–10.000 Schritte — im empfohlenen Bereich. Signifikant reduziertes Risiko für Herzerkrankungen und Diabetes.' })
+    else result.push({ cat: 'Bewegung', text: 'Über 10.000 Schritte — ausgezeichnete Alltagsaktivität. Du übertriffst den WHO-Standard.' })
   }
 
   if (foodChartRaw.value.length) {
     const avg = foodChartRaw.value.reduce((a, b) => a + b.score, 0) / foodChartRaw.value.length
     if (avg < 45) result.push({ cat: 'Ernährung', text: 'Ernährungsqualität hat Potenzial. Täglich eine selbst zubereitete Mahlzeit und mehr Wasser als Einstieg.' })
     else if (avg < 70) result.push({ cat: 'Ernährung', text: 'Mittlere Ernährungsqualität. Mehr frisches Gemüse und weniger verarbeitete Produkte verbessern den Score.' })
+    else if (avg < 88) result.push({ cat: 'Ernährung', text: 'Gute Ernährungsqualität. Mehr Vollwertkost und Hülsenfrüchte als nächster Schritt.' })
+    else result.push({ cat: 'Ernährung', text: 'Ausgezeichnete Ernährungsqualität — im Spitzenbereich. So weitermachen.' })
   }
 
   return result
