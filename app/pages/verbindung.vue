@@ -277,7 +277,7 @@ function onNav(id) {
 .cn-info-ic svg { width:20px; height:20px; }
 .cn-info-body { flex:1; min-width:0; }
 .cn-info-title { font-family:var(--sans); font-size:15px; font-weight:600; color:var(--fg); margin-bottom:6px; }
-.cn-info-desc { font-family:var(--mono); font-size:12px; color:var(--fg-3); line-height:1.7; margin:0; }
+.cn-info-desc { font-family:var(--mono); font-size:15px; color:var(--fg); line-height:1.7; margin:0; }
 
 /* Animations */
 .spin { animation:cn-spin 1s linear infinite; }
