@@ -207,6 +207,65 @@
             <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
           </div>
 
+          <!-- ── Liniendiagramme ────────────────────────────────────────────────── -->
+          <template v-if="healthChartRaw.length || foodChartRaw.length">
+            <div class="hl-charts-grid">
+
+              <!-- Health Index -->
+              <div class="hl-chart-box" v-if="healthChartRaw.length">
+                <div class="hl-chart-head">
+                  <span class="hl-chart-title">Health Index</span>
+                  <div class="hl-chart-filters">
+                    <button :class="{ act: hFilter === 'week' }"  @click="hFilter = 'week'">Woche</button>
+                    <button :class="{ act: hFilter === 'month' }" @click="hFilter = 'month'">Monat</button>
+                  </div>
+                </div>
+                <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
+                  <line v-for="s in [0,25,50,75,100]" :key="s"
+                    x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
+                    stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                  <path v-if="healthChart.area" :d="healthChart.area" fill="rgba(109,184,154,0.10)" />
+                  <path v-if="healthChart.line" :d="healthChart.line" fill="none" stroke="#6db89a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <g v-for="pt in healthChart.dots" :key="pt.date">
+                    <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#6db89a" stroke-width="2.5" />
+                    <circle :cx="pt.x" :cy="pt.y" r="2" fill="#6db89a" />
+                  </g>
+                  <text v-for="lb in healthChart.xLabels" :key="lb.label" :x="lb.x" y="145"
+                    text-anchor="middle" style="font-family:monospace;font-size:10px;fill:rgba(245,241,234,0.45)">{{ lb.label }}</text>
+                  <text v-if="!healthChart.line" x="300" y="70" text-anchor="middle"
+                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Aktivitäten im Zeitraum</text>
+                </svg>
+              </div>
+
+              <!-- Food Index -->
+              <div class="hl-chart-box" v-if="foodChartRaw.length">
+                <div class="hl-chart-head">
+                  <span class="hl-chart-title">Food Index</span>
+                  <div class="hl-chart-filters">
+                    <button :class="{ act: fFilter === 'week' }"  @click="fFilter = 'week'">Woche</button>
+                    <button :class="{ act: fFilter === 'month' }" @click="fFilter = 'month'">Monat</button>
+                  </div>
+                </div>
+                <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
+                  <line v-for="s in [0,25,50,75,100]" :key="s"
+                    x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
+                    stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                  <path v-if="foodChart.area" :d="foodChart.area" fill="rgba(184,165,109,0.10)" />
+                  <path v-if="foodChart.line" :d="foodChart.line" fill="none" stroke="#b8a56d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <g v-for="pt in foodChart.dots" :key="pt.date">
+                    <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#b8a56d" stroke-width="2.5" />
+                    <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
+                  </g>
+                  <text v-for="lb in foodChart.xLabels" :key="lb.label" :x="lb.x" y="145"
+                    text-anchor="middle" style="font-family:monospace;font-size:10px;fill:rgba(245,241,234,0.45)">{{ lb.label }}</text>
+                  <text v-if="!foodChart.line" x="300" y="70" text-anchor="middle"
+                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Einträge im Zeitraum</text>
+                </svg>
+              </div>
+
+            </div>
+          </template>
+
           <!-- ── Setup ─────────────────────────────────────────────────────────── -->
           <div class="hl-setup-section">
             <button class="hl-setup-header" @click="setupOpen = !setupOpen">
@@ -535,6 +594,68 @@ async function triggerSync() {
 
 onMounted(loadAll)
 
+// ── Charts ────────────────────────────────────────────────────────────────────
+const hFilter = ref('week')
+const fFilter = ref('week')
+
+const healthChartRaw = computed(() => {
+  const raw = health.raw
+  if (!raw) return []
+  const m = raw.match(/##\s*Recent Activities\n([\s\S]*?)(?:\n##|$)/)
+  if (!m) return []
+  const TYPE_BASE = { running: 85, cycling: 80, swimming: 82, hiking: 72, strength: 70, other: 60 }
+  return m[1].trim().split('\n').filter(l => l.trim().startsWith('-')).map(line => {
+    const am = line.match(/[-–]\s*(\d{4}-\d{2}-\d{2})\s+(\S+)\s+(\d+)\s*min(?:\s+[\d.]+\s*km)?(?:\s+♥\s*([\d.]+)\s*bpm)?/)
+    if (!am) return null
+    const base = TYPE_BASE[am[2]] ?? 65
+    const dur  = parseInt(am[3]) || 0
+    const hr   = parseFloat(am[4]) || null
+    const score = Math.min(100, base + (dur >= 45 ? 10 : dur >= 30 ? 5 : 0) + (hr && hr >= 130 ? 5 : 0))
+    return { date: am[1], score }
+  }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date))
+})
+
+const foodChartRaw = computed(() => {
+  const raw = health.raw
+  if (!raw) return []
+  const m = raw.match(/##\s*Food Log\n([\s\S]*?)(?:\n##|$)/)
+  if (!m) return []
+  const S = { A: 100, B: 78, C: 55, D: 35, E: 15 }
+  const byDate = {}
+  m[1].trim().split('\n').filter(l => l.trim().startsWith('-')).forEach(line => {
+    const fm = line.match(/[-–]\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([A-E])\s*\|/)
+    if (!fm) return
+    ;(byDate[fm[1]] ??= []).push(S[fm[2]] ?? 50)
+  })
+  return Object.entries(byDate)
+    .map(([date, scores]) => ({ date, score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+})
+
+function buildChart(rawData, filter) {
+  const CL = 20, CR = 580, CT = 10, CB = 120, CW = CR - CL, CH = CB - CT
+  const now = new Date()
+  const from = new Date(now); from.setDate(from.getDate() - (filter === 'week' ? 6 : 29))
+  const range = []
+  for (let d = new Date(from); d <= now; d.setDate(d.getDate() + 1))
+    range.push(d.toISOString().slice(0, 10))
+  const pts = rawData.filter(p => p.date >= range[0] && p.date <= range[range.length - 1])
+  if (!pts.length) return { line: '', area: '', dots: [], xLabels: [] }
+  const xFor = d => { const i = range.indexOf(d); return i < 0 ? null : CL + (range.length > 1 ? i / (range.length - 1) : 0.5) * CW }
+  const yFor = s => CB - (s / 100) * CH
+  const mapped = pts.map(p => ({ ...p, x: xFor(p.date), y: yFor(p.score) })).filter(p => p.x !== null)
+  if (!mapped.length) return { line: '', area: '', dots: [], xLabels: [] }
+  const line = 'M ' + mapped.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')
+  const area = line + ` L ${mapped[mapped.length-1].x.toFixed(1)},${CB} L ${mapped[0].x.toFixed(1)},${CB} Z`
+  const step = Math.max(1, Math.floor(range.length / 5))
+  const xLabels = range.filter((_, i) => i % step === 0 || i === range.length - 1)
+    .map(d => ({ x: xFor(d), label: d.slice(5).replace('-', '.') }))
+  return { line, area, dots: mapped, xLabels }
+}
+
+const healthChart = computed(() => buildChart(healthChartRaw.value, hFilter.value))
+const foodChart   = computed(() => buildChart(foodChartRaw.value,   fFilter.value))
+
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/gate' }
 function onNav(id) {
@@ -663,4 +784,15 @@ function onNav(id) {
 @keyframes hl-spin { to{ transform:rotate(360deg) } }
 .setup-slide-enter-active, .setup-slide-leave-active { transition:all 0.22s ease; }
 .setup-slide-enter-from, .setup-slide-leave-to { opacity:0; transform:translateY(-6px); }
+
+/* Charts */
+.hl-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:40px; }
+@media(max-width:680px){ .hl-charts-grid{ grid-template-columns:1fr; } }
+.hl-chart-box { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 16px 12px; }
+.hl-chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.hl-chart-title { font-family:var(--mono); font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg); }
+.hl-chart-filters { display:flex; gap:4px; }
+.hl-chart-filters button { height:26px; padding:0 10px; border:1px solid var(--line-2); border-radius:4px; background:none; font-family:var(--mono); font-size:11px; letter-spacing:0.06em; color:var(--fg-3); cursor:pointer; transition:all 0.15s; }
+.hl-chart-filters button.act { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+.hl-chart-svg { width:100%; height:auto; display:block; overflow:visible; }
 </style>
