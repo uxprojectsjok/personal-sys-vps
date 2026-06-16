@@ -46,9 +46,6 @@
                 </svg>
                 <div class="hl-ring-inner">
                   <span class="hl-pct">{{ score }}</span>
-                  <span class="hl-unit">%</span>
-                  <span class="hl-level-name">{{ currentLevel?.name }}</span>
-                  <span v-if="nextHint" class="hl-next-hint">{{ nextHint }} bis {{ nextLevel?.name }}</span>
                 </div>
               </div>
 
@@ -73,7 +70,7 @@
 
             <!-- Sync button -->
             <div class="hl-sync-action">
-              <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false; saveMsg = ''">
+              <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
                 Aktualisieren
               </button>
@@ -233,19 +230,20 @@
                     <button :class="{ act: hFilter === 'month' }" @click="hFilter = 'month'">Monat</button>
                   </div>
                 </div>
-                <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
-                  <line v-for="s in [0,25,50,75,100]" :key="s"
-                    x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
-                    stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
-                  <path v-if="healthChart.area" :d="healthChart.area" fill="rgba(109,184,154,0.10)" />
-                  <path v-if="healthChart.line" :d="healthChart.line" fill="none" stroke="#6db89a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                  <g v-for="pt in healthChart.dots" :key="pt.date">
-                    <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#6db89a" stroke-width="2.5" />
-                    <circle :cx="pt.x" :cy="pt.y" r="2" fill="#6db89a" />
-                  </g>
-                  <text v-if="!healthChart.line" x="300" y="70" text-anchor="middle"
-                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">Keine Aktivitäten im Zeitraum</text>
-                </svg>
+                <div class="hl-chart-wrap">
+                  <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
+                    <line v-for="s in [0,25,50,75,100]" :key="s"
+                      x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
+                      stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                    <path v-if="healthChart.area" :d="healthChart.area" fill="rgba(109,184,154,0.10)" />
+                    <path v-if="healthChart.line" :d="healthChart.line" fill="none" stroke="#6db89a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <g v-for="pt in healthChart.dots" :key="pt.date">
+                      <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#6db89a" stroke-width="2.5" />
+                      <circle :cx="pt.x" :cy="pt.y" r="2" fill="#6db89a" />
+                    </g>
+                  </svg>
+                  <div v-if="!healthChart.line" class="hl-chart-empty">Keine Aktivitäten im Zeitraum</div>
+                </div>
               </div>
 
               <!-- Food Index -->
@@ -257,19 +255,20 @@
                     <button :class="{ act: fFilter === 'month' }" @click="fFilter = 'month'">Monat</button>
                   </div>
                 </div>
-                <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
-                  <line v-for="s in [0,25,50,75,100]" :key="s"
-                    x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
-                    stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
-                  <path v-if="foodChart.area" :d="foodChart.area" fill="rgba(184,165,109,0.10)" />
-                  <path v-if="foodChart.line" :d="foodChart.line" fill="none" stroke="#b8a56d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                  <g v-for="pt in foodChart.dots" :key="pt.date">
-                    <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#b8a56d" stroke-width="2.5" />
-                    <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
-                  </g>
-                  <text v-if="!foodChart.line" x="300" y="70" text-anchor="middle"
-                    style="font-family:monospace;font-size:11px;fill:rgba(245,241,234,0.25)">{{ foodChart.dots.length === 1 ? 'Erst ein Tag geloggt — Linie wächst mit weiteren Einträgen' : 'Keine Einträge im Zeitraum' }}</text>
-                </svg>
+                <div class="hl-chart-wrap">
+                  <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
+                    <line v-for="s in [0,25,50,75,100]" :key="s"
+                      x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
+                      stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                    <path v-if="foodChart.area" :d="foodChart.area" fill="rgba(184,165,109,0.10)" />
+                    <path v-if="foodChart.line" :d="foodChart.line" fill="none" stroke="#b8a56d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <g v-for="pt in foodChart.dots" :key="pt.date">
+                      <circle :cx="pt.x" :cy="pt.y" r="5" fill="var(--surface)" stroke="#b8a56d" stroke-width="2.5" />
+                      <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
+                    </g>
+                  </svg>
+                  <div v-if="!foodChart.line" class="hl-chart-empty">{{ foodChart.dots.length === 1 ? 'Erst ein Tag geloggt — Linie wächst mit weiteren Einträgen' : 'Keine Einträge im Zeitraum' }}</div>
+                </div>
               </div>
 
             </div>
@@ -445,7 +444,7 @@ const LEVELS = [
 const currentLevel = computed(() => LEVELS.find(l => score.value >= l.min && score.value <= l.max) ?? LEVELS[0])
 const nextLevel    = computed(() => LEVELS.find(l => l.min > score.value))
 const nextHint     = computed(() => nextLevel.value ? (nextLevel.value.min - score.value) + ' Punkte' : null)
-const ringColor    = computed(() => score.value >= 88 ? '#6db89a' : score.value >= 69 ? '#6d9ab8' : score.value >= 46 ? '#b8a56d' : 'rgba(245,241,234,0.3)')
+const ringColor    = computed(() => score.value >= 46 ? '#6db89a' : score.value >= 21 ? '#b8a56d' : 'rgba(245,241,234,0.3)')
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -498,14 +497,41 @@ async function fetchSyncStatus() {
 
 async function triggerSync() {
   syncing.value = true; syncDone.value = false
+  const prevLastSync = health.lastSync
   try {
     const r = await fetch('/api/health-sync', { method: 'POST', headers: authHeaders() })
-    if (r.ok) {
-      setTimeout(async () => { await loadAll(); await fetchSyncStatus(); syncDone.value = false }, 35000)
-      syncDone.value = true
+    if (!r.ok) { syncing.value = false; return }
+    // Pollt health.md alle 5 Sek. bis last_sync sich geändert hat
+    const started = Date.now()
+    const poll = async () => {
+      try {
+        const mr = await fetch('/api/vault/context/health.md', { headers: authHeaders() })
+        if (mr.ok) {
+          const text = await mr.text()
+          const newSync = text.match(/last_sync:\s*([^\n]+)/)?.[1]?.trim() || null
+          if (newSync && newSync !== prevLastSync) {
+            health.raw      = text
+            health.source   = text.match(/source:\s*(\S+)/)?.[1] || null
+            health.lastSync = newSync
+            if (!health.configured && health.source) health.configured = true
+            await fetchSyncStatus()
+            syncing.value  = false
+            syncDone.value = false
+            return
+          }
+        }
+      } catch { /**/ }
+      if (Date.now() - started < 90000) {
+        setTimeout(poll, 5000)
+      } else {
+        syncing.value  = false
+        syncDone.value = true
+      }
     }
-  } catch { /**/ }
-  syncing.value = false
+    setTimeout(poll, 5000)
+  } catch {
+    syncing.value = false
+  }
 }
 
 onMounted(loadAll)
@@ -762,15 +788,18 @@ function onNav(id) {
 .setup-slide-enter-from, .setup-slide-leave-to { opacity:0; transform:translateY(-6px); }
 
 /* Charts */
-.hl-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:40px; }
+.hl-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:40px; }
 @media(max-width:680px){ .hl-charts-grid{ grid-template-columns:1fr; } }
-.hl-chart-box { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 16px 12px; }
-.hl-chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-.hl-chart-title { font-family:var(--mono); font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg); }
-.hl-chart-filters { display:flex; gap:4px; }
-.hl-chart-filters button { height:26px; padding:0 10px; border:1px solid var(--line-2); border-radius:4px; background:none; font-family:var(--mono); font-size:11px; letter-spacing:0.06em; color:var(--fg-3); cursor:pointer; transition:all 0.15s; }
-.hl-chart-filters button.act { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+.hl-chart-box { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px 20px 16px; }
+.hl-chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.hl-chart-title { font-family:var(--serif); font-size:16px; font-weight:400; letter-spacing:-0.01em; color:var(--fg); }
+.hl-chart-filters { display:flex; gap:6px; }
+.hl-chart-filters button { height:28px; padding:0 12px; border:1px solid var(--line); border-radius:var(--r-xs); background:none; font-family:var(--sans); font-size:12px; color:var(--fg-2); cursor:pointer; transition:all 0.15s; }
+.hl-chart-filters button:hover { color:var(--fg); border-color:var(--fg-3); }
+.hl-chart-filters button.act { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); font-weight:600; }
+.hl-chart-wrap { position: relative; }
 .hl-chart-svg { width:100%; height:auto; display:block; overflow:visible; }
+.hl-chart-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:13px; color:var(--fg); text-align:center; padding:0 16px; pointer-events:none; }
 
 /* Summary section */
 .hl-summary-section { margin-bottom:32px; }

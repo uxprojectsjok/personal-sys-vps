@@ -21,21 +21,7 @@
               <div class="sp-avatar">{{ initial }}</div>
               <div class="sp-identity">
                 <h1 class="sp-name">{{ soulMeta?.name || 'Soul' }}</h1>
-                <div class="sp-addr">soul://{{ shortId }} · sys.md v{{ soulMeta?.version || '1' }}</div>
-                <div class="sp-stats">
-                  <span>{{ soulMeta?.chainCount ?? 0 }} Sessions</span>
-                  <span class="sp-dot-sep">·</span>
-                  <span>{{ liveMaturity }}% Reife</span>
-                  <span class="sp-dot-sep">·</span>
-                  <span>seit {{ soulMeta?.created || '—' }}</span>
-                </div>
               </div>
-            </div>
-
-            <!-- ── Status ── -->
-            <div class="sp-status">
-              <span class="live-dot" />
-              <span>Lebendige Datei · der Soul-Archivar schreibt still mit</span>
             </div>
 
             <!-- ── Sections ── -->
@@ -260,7 +246,7 @@ function onNav(id) {
 }
 
 .sp-addr {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
   letter-spacing: 0.02em; margin-bottom: 8px;
 }
 
@@ -276,7 +262,7 @@ function onNav(id) {
 .sp-status {
   display: flex; align-items: center; gap: 10px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg-2);
   padding-bottom: 24px;
 }
 
@@ -312,12 +298,12 @@ function onNav(id) {
 .sp-section:hover .sp-edit-btn { opacity: 1; }
 
 .sp-sec-text {
-  font-size: 15px; line-height: 1.65; color: var(--fg-2);
+  font-size: 15px; line-height: 1.65; color: var(--fg);
   margin: 0; white-space: pre-wrap; word-break: break-word;
 }
 
 .sp-sec-empty {
-  font-size: 13px; color: var(--fg-4); margin: 0; font-style: italic;
+  font-size: 13px; color: var(--fg-3); margin: 0; font-style: italic;
 }
 
 /* ── Edit form ── */

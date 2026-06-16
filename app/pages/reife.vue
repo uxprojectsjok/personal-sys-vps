@@ -31,9 +31,6 @@
               </svg>
               <div class="rf-ring-inner">
                 <span class="rf-pct">{{ data.score }}</span>
-                <span class="rf-unit">%</span>
-                <span class="rf-level-name">{{ currentDisplayLevel?.name }}</span>
-                <span v-if="nextLevelHint" class="rf-next-hint">{{ nextLevelHint }}</span>
               </div>
             </div>
 
@@ -275,7 +272,7 @@ function cardDesc(card) {
   font-family: var(--serif); font-size: 52px; font-weight: 400;
   letter-spacing: -0.03em; color: var(--fg); line-height: 1;
 }
-.rf-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-3); letter-spacing: 0.06em; }
+.rf-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-2); letter-spacing: 0.06em; }
 .rf-level-name {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--accent); margin-top: 4px;
@@ -289,11 +286,11 @@ function cardDesc(card) {
 .rf-levels { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .rf-level {
   display: flex; align-items: center; gap: 12px;
-  padding: 9px 14px; border-radius: 6px;
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
-  color: var(--fg-2); transition: background 0.15s, color 0.15s;
+  padding: 10px 14px; border-radius: 6px;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.06em;
+  color: var(--fg); transition: background 0.15s, color 0.15s;
 }
-.rf-level.done { color: var(--fg-2); }
+.rf-level.done { color: var(--fg); }
 .rf-level.done .rf-lv-name { color: var(--fg); }
 .rf-level.active {
   background: rgba(109,184,154,0.10);
@@ -302,16 +299,16 @@ function cardDesc(card) {
 }
 .rf-level.active .rf-lv-name { color: var(--accent); font-weight: 600; }
 .rf-lv-check {
-  width: 20px; height: 20px; flex: none; display: grid; place-items: center;
+  width: 22px; height: 22px; flex: none; display: grid; place-items: center;
   border: 1px solid var(--rule-2); border-radius: 50%;
   color: var(--fg-3); font-size: 10px;
 }
 .rf-level.done .rf-lv-check { border-color: var(--accent); color: var(--accent); }
-.rf-level.done .rf-lv-check svg { width: 12px; height: 12px; }
+.rf-level.done .rf-lv-check svg { width: 13px; height: 13px; }
 .rf-level.active .rf-lv-check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.rf-lv-num { font-size: 9px; color: inherit; }
-.rf-lv-name { flex: 1; text-transform: uppercase; font-size: 13px; letter-spacing: 0.08em; }
-.rf-lv-range { font-size: 11px; color: var(--fg-3); white-space: nowrap; }
+.rf-lv-num { font-size: 10px; color: inherit; }
+.rf-lv-name { flex: 1; text-transform: uppercase; font-size: 17px; letter-spacing: 0.08em; }
+.rf-lv-range { font-size: 15px; color: var(--fg); white-space: nowrap; }
 
 /* ── Stat cards ── */
 .rf-section-head {
@@ -331,15 +328,15 @@ function cardDesc(card) {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   margin-bottom: 2px;
 }
-.rf-card-icon { width: 18px; height: 18px; color: var(--fg-3); flex: none; }
+.rf-card-icon { width: 18px; height: 18px; color: var(--fg-2); flex: none; }
 .rf-card-icon svg { width: 18px; height: 18px; }
 .rf-card-pct {
   font-family: var(--serif); font-size: 22px; color: var(--fg); line-height: 1;
   letter-spacing: -0.02em;
 }
-.rf-card-pct small { font-family: var(--mono); font-size: 10px; color: var(--fg-3); vertical-align: super; }
-.rf-card-title { font-size: 13px; font-weight: 600; color: var(--fg); line-height: 1.2; }
-.rf-card-desc { font-size: 13px; color: var(--fg-2); line-height: 1.5; font-family: var(--mono); flex: 1; }
+.rf-card-pct small { font-family: var(--mono); font-size: 13px; color: var(--fg-2); vertical-align: super; }
+.rf-card-title { font-size: 14px; font-weight: 600; color: var(--fg); line-height: 1.2; }
+.rf-card-desc { font-size: 14px; color: var(--fg); line-height: 1.55; font-family: var(--sans); flex: 1; }
 .rf-card-bar {
   height: 2px; background: var(--line); margin-top: 6px; border-radius: 1px; overflow: hidden;
 }

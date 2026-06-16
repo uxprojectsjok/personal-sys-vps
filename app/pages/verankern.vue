@@ -385,22 +385,22 @@ function onNav(id) {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-2);
+  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+  color: var(--fg);
 }
-.vank-card--on .vank-status-row { color: var(--fg-2); background: rgba(109,184,154,0.04); }
+.vank-card--on .vank-status-row { color: var(--fg); background: rgba(109,184,154,0.04); }
 .vank-status-label { flex: 1; }
 .vank-chain-ic { width: 14px; height: 14px; flex: none; opacity: 0.35; }
 
 .vank-wallet-row {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 20px;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--sans); font-size: 14px; color: var(--fg);
   min-height: 44px;
 }
-.vank-wallet-addr { flex: 1; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vank-wallet-net  { flex: none; font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--fg-3); }
-.vank-wallet-hint { color: var(--fg-3); }
+.vank-wallet-addr { flex: 1; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vank-wallet-net  { flex: none; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg); }
+.vank-wallet-hint { color: var(--fg); }
 
 /* ── Dot ── */
 .vank-dot {
@@ -444,14 +444,14 @@ function onNav(id) {
 
 /* ── Tags ── */
 .vank-hint {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
-  letter-spacing: 0.06em; margin: 0; line-height: 1.5;
+  font-family: var(--sans); font-size: 14px; color: var(--fg);
+  margin: 0; line-height: 1.55;
 }
 .vank-input {
   width: 100%; box-sizing: border-box;
   background: var(--surface-2); border: 1px solid var(--line-2);
   border-radius: var(--r-xs); color: var(--fg);
-  font-family: var(--mono); font-size: 13px;
+  font-family: var(--sans); font-size: 14px;
   padding: 9px 12px; outline: none; transition: border-color 0.15s;
 }
 .vank-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
@@ -475,14 +475,14 @@ function onNav(id) {
   min-height: 44px; padding: 0 16px;
   border: 1px solid var(--line-2); border-radius: var(--r-xs);
   background: transparent; cursor: pointer;
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-2);
+  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+  color: var(--fg);
   transition: all 0.15s; white-space: nowrap;
 }
 .vank-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); border-color: var(--line-2); }
 .vank-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-.vank-btn--ghost { color: var(--fg-3); }
+.vank-btn--ghost { color: var(--fg); }
 .vank-btn--ghost:hover:not(:disabled) { color: var(--fg); }
 
 .vank-btn--primary {
@@ -500,10 +500,10 @@ function onNav(id) {
 
 /* ── Notes ── */
 .vank-note {
-  font-family: var(--serif); font-size: 13.5px; line-height: 1.6; color: var(--fg-3); margin: 0;
+  font-family: var(--sans); font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0;
 }
-.vank-note--muted { color: var(--fg-4); font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; }
-.vank-note--info { display: flex; align-items: center; gap: 8px; color: var(--fg-3); }
+.vank-note--muted { color: var(--fg); font-family: var(--sans); font-size: 14px; }
+.vank-note--info { display: flex; align-items: center; gap: 8px; color: var(--fg); }
 .vank-note--warn {
   padding: 10px 14px; border-radius: var(--r-xs);
   background: rgba(109,184,154,0.06); border: 1px solid rgba(109,184,154,0.18);
@@ -528,7 +528,7 @@ function onNav(id) {
 }
 .vank-tx-hash {
   display: flex; align-items: flex-start; gap: 6px;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 12px; color: var(--fg);
   text-decoration: none; word-break: break-all;
 }
 .vank-tx-hash:hover { color: var(--accent-bright); text-decoration: underline; }
@@ -553,11 +553,11 @@ function onNav(id) {
 .vank-proof-copy:hover { color: var(--fg); border-color: var(--line-2); }
 .vank-proof-data { display: flex; flex-direction: column; gap: 5px; }
 .vank-proof-row { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; }
-.vank-proof-key { color: var(--fg-4); min-width: 56px; }
-.vank-proof-val { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.vank-proof-key { color: var(--fg-2); min-width: 56px; }
+.vank-proof-val { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .vank-proof-text {
   font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em;
-  line-height: 1.6; color: var(--fg-3); margin: 0;
+  line-height: 1.6; color: var(--fg); margin: 0;
 }
 
 /* ── Shared ── */

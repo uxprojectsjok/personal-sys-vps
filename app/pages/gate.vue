@@ -64,7 +64,7 @@
           <p v-if="certAutoFilled" class="gate-autofill">✓ Cert aus aktiver Session geladen</p>
           <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
             <span v-if="loading" class="gate-spinner" />
-            {{ loading ? 'Lädt…' : 'Login with Soul' }}
+            {{ loading ? 'Lädt…' : 'Einloggen' }}
           </button>
         </form>
         <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">Mit Biometrik entsperren</button>
@@ -271,8 +271,8 @@ const showPw = ref(false)
 .gate-error { font-size: 12px; color: var(--c-err, #e06c75); border-left: 2px solid currentColor; padding-left: 10px; line-height: 1.6; margin: 0 0 14px; text-align: left; }
 .gate-hint { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0 0 14px; }
 .gate-autofill { font-size: 12px; color: var(--accent); margin: -8px 0 12px; text-align: left; }
-.gate-link { background: none; border: none; padding: 0; font-size: 12px; color: var(--fg-3); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; margin-top: 12px; }
-.gate-link:hover { color: var(--fg); }
+.gate-link { background: none; border: none; padding: 0; font-size: 15px; color: var(--fg); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; margin-top: 12px; }
+.gate-link:hover { color: var(--accent-bright); }
 .gate-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: gate-spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
 @keyframes gate-spin { to { transform: rotate(360deg); } }
 </style>
