@@ -697,24 +697,24 @@ onMounted(() => {
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
 .dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; flex: none; }
-.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 14px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
+.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 14px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
 .dt-tab:last-child { border-right: none; }
 .dt-tab.on { background: var(--surface); color: var(--fg); }
 .dt-tab:hover:not(.on) { color: var(--fg-2); }
-.dt-tab-desc { font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
+.dt-tab-desc { font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; }
 
 /* ── Storage ── */
 .dt-storage { display: flex; align-items: center; gap: 10px; padding: 9px 14px; margin-bottom: 14px; border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--r-xs); flex-wrap: wrap; }
 .dt-storage-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-.dt-storage-label { font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; }
+.dt-storage-label { font-family: var(--mono); font-size: 11px; color: var(--fg); letter-spacing: 0.04em; }
 .dt-storage-sync { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
 .dt-storage-bar-wrap { flex: 1; min-width: 80px; max-width: 180px; }
 .dt-storage-bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
 .dt-storage-fill { height: 100%; background: var(--accent); border-radius: 2px; }
-.dt-storage-size { font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; flex: none; }
+.dt-storage-size { font-family: var(--mono); font-size: 11px; color: var(--fg); letter-spacing: 0.04em; flex: none; }
 
 /* ── Stats ── */
-.dt-stats { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; margin-bottom: 18px; flex-wrap: wrap; }
+.dt-stats { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg); letter-spacing: 0.04em; margin-bottom: 18px; flex-wrap: wrap; }
 .dt-stat { display: flex; align-items: center; gap: 5px; }
 .dt-stat-sep { color: var(--fg-4); }
 .dt-stat-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
@@ -763,10 +763,10 @@ onMounted(() => {
 .dt-icon-doc   { background: rgba(244,241,234,0.07); color: var(--fg-3); }
 .dt-name-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .dt-filename { font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dt-filetype { font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.04em; }
+.dt-filetype { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.04em; }
 
 /* ── Meta / status ── */
-.dt-meta { font-family: var(--mono); font-size: 13px; color: var(--fg-3); }
+.dt-meta { font-family: var(--mono); font-size: 13px; color: var(--fg-2); }
 .dt-status-sync { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
 .dt-status-local { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
 
@@ -784,7 +784,7 @@ onMounted(() => {
 
 /* ── Empty ── */
 .dt-empty { padding: 40px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.dt-empty-text { font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.06em; margin: 0; }
+.dt-empty-text { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.06em; margin: 0; }
 .dt-connect-btn { padding: 7px 18px; border: 1px solid var(--line-2); border-radius: var(--r-xs); background: transparent; color: var(--fg-2); font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all 0.15s; }
 .dt-connect-btn:hover { border-color: var(--accent); color: var(--accent); }
 

@@ -707,7 +707,7 @@ onMounted(() => {
 .mat-ring-wrap { position: relative; display: grid; place-items: center; }
 .mat-ring-inner { position: absolute; text-align: center; }
 .mat-pct { font-family: var(--serif); font-size: 32px; color: var(--fg); }
-.mat-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-3); margin-left: 2px; }
+.mat-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-2); margin-left: 2px; }
 .mat-meta { flex: 1; min-width: 200px; }
 .mat-level-label { font-family: var(--serif); font-size: 22px; color: var(--fg); margin-bottom: 20px; }
 .mat-bar-wrap { margin-bottom: 16px; }
@@ -732,7 +732,7 @@ onMounted(() => {
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: clamp(28px,4vw,36px); letter-spacing: -0.025em; margin: 0 0 10px; color: var(--fg); line-height: 1; }
 .login-title em { font-style: italic; color: var(--accent); }
-.login-sub { font-size: 15px; color: var(--fg-2); line-height: 1.5; margin: 0 0 20px; }
+.login-sub { font-size: 15px; color: var(--fg); line-height: 1.5; margin: 0 0 20px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .login-divider span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }

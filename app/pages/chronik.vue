@@ -310,8 +310,8 @@ function onNav(id) {
 .ch-feed { display: flex; flex-direction: column; }
 
 .ch-date-sep {
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-3);
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.01em; color: var(--fg);
   padding: 24px 0 12px;
 }
 .ch-date-sep:first-child { padding-top: 0; }
@@ -357,7 +357,7 @@ function onNav(id) {
   color: var(--fg); letter-spacing: -0.015em;
 }
 .ch-time {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-4);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
   letter-spacing: 0.04em;
 }
 .ch-badge {
@@ -372,7 +372,7 @@ function onNav(id) {
 .ch-badge-genesis { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .ch-entry-body {
-  font-size: 15px; line-height: 1.65; color: var(--fg-2);
+  font-size: 15px; line-height: 1.65; color: var(--fg);
   margin: 0; word-break: break-word;
 }
 

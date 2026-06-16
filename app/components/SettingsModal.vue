@@ -325,7 +325,7 @@
                   <input
                     v-model="pinataJwt"
                     :type="showPinataJwt ? 'text' : 'password'"
-                    class="sys-input sys-input--mono"
+                    class="sys-input"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="pinataJwtSet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="pinataJwtSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
@@ -342,8 +342,7 @@
                     <i :class="showPinataJwt ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
-                <div v-if="pinataJwt || pinataJwtSet" style="display:flex;align-items:center;gap:8px">
-                  <button v-if="pinataJwt" @click="savePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">Speichern</button>
+                <div v-if="pinataJwtSet || pinataFeedback" style="display:flex;align-items:center;gap:8px">
                   <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
                   <span v-if="pinataFeedback" class="sm-feedback"
                     :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
@@ -1048,6 +1047,7 @@ async function testKey(type, key, useStored = false) {
 async function saveConfig() {
   saving.value  = true
   feedback.value = null
+  if (pinataJwt.value.trim()) await savePinataJwt()
   try {
     const body = {}
     if (apiKey.value) body.anthropic_key = sanitizeKey(apiKey.value)
