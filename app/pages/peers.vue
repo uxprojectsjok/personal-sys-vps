@@ -487,7 +487,7 @@ function onNav(id) {
   font-family: var(--sans); font-size: 13px; font-weight: 500;
   color: var(--fg); letter-spacing: 0;
 }
-.f-label-opt { font-weight: 400; color: var(--fg-3); font-size: 12px; }
+.f-label-opt { font-weight: 400; color: var(--fg-2); font-size: 12px; }
 .f-inp {
   width: 100%; padding: 10px 13px;
   background: var(--surface-3); border: 1px solid var(--line-2);
@@ -593,7 +593,7 @@ function onNav(id) {
 .pr-removed:last-child { border-bottom: none; }
 .pr-removed-alias { color: var(--fg); font-weight: 600; }
 .pr-removed-text { flex: 1; }
-.pr-removed-ts { color: var(--fg-3); font-size: 13px; }
+.pr-removed-ts { color: var(--fg-2); font-size: 13px; }
 
 /* ── Empty ── */
 .pr-empty {

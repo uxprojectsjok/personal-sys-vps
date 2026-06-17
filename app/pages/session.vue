@@ -472,7 +472,7 @@ function onNav(id) {
   display: flex; flex-direction: column; gap: 12px;
 }
 .sfp-group { display: flex; flex-direction: column; gap: 6px; }
-.sfp-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); margin: 0; }
+.sfp-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); margin: 0; }
 .sfp-chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .sfp-chips button {
   font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em;
@@ -492,9 +492,9 @@ function onNav(id) {
 .banner {
   padding: 10px clamp(16px,3vw,32px); border-bottom: 1px solid var(--line);
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--fg-3); display: flex; align-items: center; gap: 14px;
+  color: var(--fg-2); display: flex; align-items: center; gap: 14px;
 }
-.banner.b-loading { color: var(--fg-3); }
+.banner.b-loading { color: var(--fg-2); }
 .banner.b-success { color: var(--accent); }
 .banner.b-error   { color: #e06c75; border-color: rgba(224,108,117,0.25); }
 .banner.b-warn    { color: var(--accent-bright); border-color: rgba(138,208,179,0.25); }
