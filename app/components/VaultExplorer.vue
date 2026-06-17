@@ -333,21 +333,8 @@
                 <svg v-if="sharedBusy[f.name] === 'down'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                 <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/></svg>
               </button>
-              <template v-if="pendingDeleteShared === f.name">
-                <button
-                  @click="requestDeleteShared(f.name)"
-                  :disabled="!pendingDeleteReady || !!sharedBusy[f.name]"
-                  class="h-8 px-2 text-[11px] font-medium rounded-none transition bg-red-950/40 text-red-400 hover:bg-red-950/70 whitespace-nowrap disabled:opacity-30"
-                  title="Bestätigen zum Löschen"
-                >Sicher?</button>
-                <button
-                  @click="pendingDeleteShared = null"
-                  class="w-8 h-8 flex items-center justify-center rounded-none transition text-white/30 hover:text-white/60"
-                  title="Abbrechen"
-                >✕</button>
-              </template>
-              <button v-else
-                @click="requestDeleteShared(f.name)"
+              <button
+                @click="deleteSharedFile(f.name)"
                 :disabled="!!sharedBusy[f.name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 text-white/40 hover:text-red-400 hover:bg-red-950/30"
                 title="Löschen"
@@ -654,9 +641,6 @@ const {
 const { vaultKey } = useVaultSession();
 const { clearMindCache } = useMind();
 const { ask: confirmAsk } = useConfirm();
-const pendingDeleteShared = ref(null);
-const pendingDeleteReady  = ref(false);
-let pendingDeleteTimer = null;
 
 const tab          = ref("local");
 const isScanning   = ref(false);
@@ -727,27 +711,16 @@ async function downloadSharedFile(f) {
   finally { delete sharedBusy[f.name]; }
 }
 
-function requestDeleteShared(name) {
-  if (pendingDeleteShared.value === name && pendingDeleteReady.value) {
-    clearTimeout(pendingDeleteTimer);
-    pendingDeleteShared.value = null;
-    pendingDeleteReady.value  = false;
-    doDeleteSharedFile(name);
-  } else if (pendingDeleteShared.value !== name) {
-    pendingDeleteShared.value = name;
-    pendingDeleteReady.value  = false;
-    clearTimeout(pendingDeleteTimer);
-    // 200ms Delay damit Browser-Click-Through nicht sofort bestätigt
-    setTimeout(() => { pendingDeleteReady.value = true; }, 200);
-    pendingDeleteTimer = setTimeout(() => {
-      pendingDeleteShared.value = null;
-      pendingDeleteReady.value  = false;
-    }, 4000);
-  }
-}
-
-async function doDeleteSharedFile(name) {
+async function deleteSharedFile(name) {
   if (!props.soulCert) return;
+  const ok = await confirmAsk({
+    title:       'Datei löschen?',
+    message:     `„${name}" wird unwiderruflich aus dem geteilten Bereich gelöscht.`,
+    confirmText: 'Löschen',
+    cancelText:  'Abbrechen',
+    danger:      true,
+  });
+  if (!ok) return;
   sharedBusy[name] = "del";
   try {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(name)}`, {
