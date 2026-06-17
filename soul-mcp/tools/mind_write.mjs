@@ -1,9 +1,13 @@
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { z } from 'zod';
 import { putJson } from '../lib/api.mjs';
+import { SOULS_DIR } from '../lib/vault_fs.mjs';
 
 const WRITE_PROTECTED = new Set(['Identität', 'Grenzen']);
 
-export function register(server, token) {
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+export function register(server, token, soulId = null) {
   server.tool(
     'mind_write',
     [
@@ -54,7 +58,53 @@ export function register(server, token) {
           isError: true,
         };
       }
+
       try {
+        if (soulId) {
+          const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
+          let md;
+          try {
+            md = await readFile(mindPath, 'utf8');
+          } catch {
+            // mind.md existiert noch nicht → leer starten
+            md = '';
+          }
+
+          const re = new RegExp(
+            `(## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
+          );
+
+          if (re.test(md)) {
+            md = md.replace(re, (_, h, existing) => {
+              const trim = existing.trim();
+              let body;
+              if (mode === 'prepend')     body = trim ? `${content}\n\n${trim}` : content;
+              else if (mode === 'append') body = trim ? `${trim}\n\n${content}` : content;
+              else                        body = content;
+              return `${h}${body.trim()}\n\n`;
+            });
+          } else {
+            md = md.trimEnd() + `\n\n## ${section}\n${content.trim()}\n`;
+          }
+
+          await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+          await writeFile(mindPath, md, 'utf8');
+
+          const verb = mode === 'replace' ? 'ersetzt' : mode === 'append' ? 'erweitert (Ende)' : 'erweitert (Anfang)';
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                ok: true,
+                section,
+                mode,
+                message: `Sektion "${section}" in mind.md ${verb}.`,
+              }, null, 2),
+            }],
+          };
+        }
+
+        // Fallback: API (nur wenn kein soulId bekannt)
         const result = await putJson('/api/mind', token, { section, content, mode });
         if (!result?.ok) {
           return {

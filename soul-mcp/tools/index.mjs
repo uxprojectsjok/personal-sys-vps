@@ -103,8 +103,8 @@ export function registerTools(server, token, soulId = null) {
   soulPayRead(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
-  mindRead(server, token);
-  mindWrite(server, token);
+  mindRead(server, token, soulId);
+  mindWrite(server, token, soulId);
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
