@@ -129,30 +129,14 @@
                   spellcheck="false"
                   @keyup.enter="saveAgentUrl"
                 />
-                <div v-if="agentUrl || agentUrlSet" style="display:flex;align-items:center;gap:8px">
+                <div v-if="agentUrl || agentUrlSet" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <button v-if="agentUrl" @click="saveAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">Speichern</button>
                   <button v-if="agentUrlSet" @click="deleteAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="confirmRotateWebhook" :disabled="webhookRotateBusy" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-warn)">{{ webhookRotateBusy ? 'Erneuert…' : 'Token erneuern' }}</button>
                   <span v-if="agentUrlFeedback" class="sm-feedback"
                     :style="agentUrlFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ agentUrlFeedback.message }}
                   </span>
-                </div>
-              </div>
-
-              <!-- Webhook-Token -->
-              <div class="sys-field" style="gap:12px;margin-top:24px;padding-top:24px;border-top:1px solid var(--sys-rule)">
-                <label class="sys-field-label">
-                  Webhook-Token
-                  <span v-if="webhookTokenPreview" class="sm-key-ok">{{ webhookTokenPreview }}</span>
-                </label>
-                <p class="sm-desc" style="margin:0">Wird von ElevenLabs für Webhook-Aufrufe genutzt (<code style="font-size:11px">/api/soul?token=…</code>). Bei Verdacht oder regelmäßig rotieren.</p>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button
-                    @click="confirmRotateWebhook"
-                    :disabled="webhookRotateBusy"
-                    class="sys-btn-ed sys-btn-ed--ghost sm-test-btn"
-                    style="color:var(--sys-warn)"
-                  >{{ webhookRotateBusy ? 'Erneuert…' : 'Token erneuern' }}</button>
                   <span v-if="webhookFeedback" class="sm-feedback"
                     :style="webhookFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ webhookFeedback.message }}
