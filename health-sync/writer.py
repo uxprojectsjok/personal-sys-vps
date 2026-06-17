@@ -70,7 +70,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
     content = (
         f"---\n"
         f"source: {data.get('source', 'unknown')}\n"
-        f"last_sync: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+        f"last_sync: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         f"---\n"
         f"\n"
         f"## This Week ({week_label})\n"
