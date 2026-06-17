@@ -139,6 +139,27 @@
                 </div>
               </div>
 
+              <!-- Webhook-Token -->
+              <div class="sys-field" style="gap:12px;margin-top:24px;padding-top:24px;border-top:1px solid var(--sys-rule)">
+                <label class="sys-field-label">
+                  Webhook-Token
+                  <span v-if="webhookTokenPreview" class="sm-key-ok">{{ webhookTokenPreview }}</span>
+                </label>
+                <p class="sm-desc" style="margin:0">Wird von ElevenLabs für Webhook-Aufrufe genutzt (<code style="font-size:11px">/api/soul?token=…</code>). Bei Verdacht oder regelmäßig rotieren.</p>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button
+                    @click="confirmRotateWebhook"
+                    :disabled="webhookRotateBusy"
+                    class="sys-btn-ed sys-btn-ed--ghost sm-test-btn"
+                    style="color:var(--sys-warn)"
+                  >{{ webhookRotateBusy ? 'Erneuert…' : 'Token erneuern' }}</button>
+                  <span v-if="webhookFeedback" class="sm-feedback"
+                    :style="webhookFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
+                    {{ webhookFeedback.message }}
+                  </span>
+                </div>
+              </div>
+
               <!-- Feedback -->
               <Transition name="sys-modal-fade">
                 <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
@@ -849,6 +870,10 @@ const showPinataJwt  = ref(false)
 const pinataJwtSet   = ref(false)
 const pinataPreview  = ref('')
 const pinataFeedback = ref(null)
+const webhookTokenPreview = ref('')
+const webhookRotateBusy   = ref(false)
+const webhookFeedback     = ref(null)
+
 const agentUrl         = ref('')
 const showAgentUrl     = ref(false)
 const agentUrlSet      = ref(false)
@@ -895,6 +920,45 @@ async function loadStatus() {
       pinataPreview.value = pd.preview || ''
     }
   } catch {}
+  try {
+    const wr = await fetch('/api/soul/webhook-token-info', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (wr.ok) {
+      const wd = await wr.json()
+      webhookTokenPreview.value = wd.preview || ''
+    }
+  } catch {}
+}
+
+async function confirmRotateWebhook() {
+  if (!window.confirm('Webhook-Token jetzt erneuern?\n\nDer ElevenLabs-Agent wird automatisch aktualisiert. Falls das fehlschlägt, erscheint ein Hinweis.')) return
+  webhookRotateBusy.value = true
+  webhookFeedback.value   = null
+  try {
+    const res = await fetch('/api/soul/rotate-webhook-token', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok && d.ok) {
+      webhookTokenPreview.value = d.token_preview || ''
+      if (d.agent_patched) {
+        webhookFeedback.value = { ok: true, message: 'Token erneuert ✓ · ElevenLabs-Agent aktualisiert' }
+      } else if (d.agent_err) {
+        webhookFeedback.value = { ok: true, message: `Token erneuert ✓ · Agent-Update fehlgeschlagen (${d.agent_err}) — Agent neu erstellen` }
+      } else {
+        webhookFeedback.value = { ok: true, message: 'Token erneuert ✓' }
+      }
+    } else {
+      webhookFeedback.value = { ok: false, message: d.error || `Fehler ${res.status}` }
+    }
+  } catch (e) {
+    webhookFeedback.value = { ok: false, message: e.message }
+  } finally {
+    webhookRotateBusy.value = false
+    setTimeout(() => { webhookFeedback.value = null }, 8000)
+  }
 }
 
 async function savePinataJwt() {
