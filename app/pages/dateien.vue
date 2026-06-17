@@ -443,6 +443,14 @@ async function downloadSharedFile(f) {
 }
 async function deleteSharedFile(name) {
   if (!soulToken.value) return
+  const ok = await confirmAsk({
+    title:       'Datei löschen?',
+    message:     `„${name}" wird unwiderruflich aus dem geteilten Bereich gelöscht.`,
+    confirmText: 'Löschen',
+    cancelText:  'Abbrechen',
+    danger:      true,
+  })
+  if (!ok) return
   sharedBusy[name] = 'del'
   try {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(name)}`, {
