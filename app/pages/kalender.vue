@@ -101,14 +101,6 @@
               </Transition>
             </div>
 
-            <!-- Legend -->
-            <div class="kal-legend">
-              <span v-for="t in ENTRY_TYPES" :key="t.type" class="kal-leg-item">
-                <span class="kal-dot" :class="`dot-${t.type}`" />
-                {{ t.label }}
-              </span>
-            </div>
-
           </div><!-- /kal-page -->
         </div><!-- /scroll -->
       </div><!-- /main -->
@@ -385,7 +377,7 @@ function onNav(id) {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--fg-3);
+  color: var(--fg-2);
   border: 1px solid var(--line);
   padding: 5px 12px;
   background: transparent;
@@ -413,10 +405,10 @@ function onNav(id) {
 }
 .kal-dh {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: var(--fg-4);
+  color: var(--fg-2);
   text-align: center;
   padding: 4px 0;
 }
@@ -496,10 +488,10 @@ function onNav(id) {
 }
 .kd-count {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: var(--fg-4);
+  color: var(--fg-2);
   margin-top: 3px;
 }
 .kd-entries { padding: 8px 0; flex: 1; }
@@ -524,10 +516,10 @@ function onNav(id) {
 .kd-entry-text { font-size: 13px; color: var(--fg); line-height: 1.4; }
 .kd-entry-type {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--fg-3);
+  color: var(--fg-2);
   margin-top: 3px;
 }
 .kd-del {
@@ -569,10 +561,10 @@ function onNav(id) {
   align-items: center;
   gap: 5px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--fg-4);
+  color: var(--fg-2);
 }
 
 /* ── Detail panel transition ── */
@@ -597,20 +589,20 @@ function onNav(id) {
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
-  text-transform: uppercase; color: var(--fg-3);
+  text-transform: uppercase; color: var(--fg);
 }
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .modal-row { display: flex; flex-direction: column; gap: 8px; }
 .modal-label {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--fg-4);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-2);
 }
 .modal-types { display: flex; gap: 6px; flex-wrap: wrap; }
 .modal-type-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 11px; border: 1px solid var(--line);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
-  color: var(--fg-3); background: transparent; cursor: pointer;
+  color: var(--fg-2); background: transparent; cursor: pointer;
   transition: all 0.15s;
 }
 .modal-type-btn.active { border-color: rgba(109,184,154,0.4); color: var(--accent); background: rgba(109,184,154,0.07); }
@@ -629,7 +621,7 @@ function onNav(id) {
 .btn-ghost {
   padding: 7px 16px; background: transparent; border: 1px solid var(--line);
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
-  color: var(--fg-3); cursor: pointer;
+  color: var(--fg-2); cursor: pointer;
 }
 .btn-accent {
   padding: 7px 16px; background: rgba(109,184,154,0.12);

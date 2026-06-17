@@ -289,7 +289,7 @@ function onNav(id) {
 .earn-table-head {
   display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
   padding: 10px 18px;
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-2);
   border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
@@ -309,7 +309,7 @@ function onNav(id) {
 .earn-tx-date { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-status { font-family: var(--mono); font-size: 12px; }
 .earn-status--on  { color: var(--accent); }
-.earn-status--off { color: var(--fg-4); }
+.earn-status--off { color: var(--fg-3); }
 
 .earn-empty {
   padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);

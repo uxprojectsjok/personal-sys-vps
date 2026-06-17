@@ -302,7 +302,7 @@ function onNav(id) {
 
 /* ── Empty ── */
 .ch-empty {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
   letter-spacing: 0.06em; padding: 32px 0;
 }
 
@@ -357,7 +357,7 @@ function onNav(id) {
   color: var(--fg); letter-spacing: -0.015em;
 }
 .ch-time {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
   letter-spacing: 0.04em;
 }
 .ch-badge {

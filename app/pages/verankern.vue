@@ -546,7 +546,7 @@ function onNav(id) {
 }
 .vank-proof-copy {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase;
-  color: var(--fg-3); background: transparent;
+  color: var(--fg-2); background: transparent;
   border: 1px solid var(--line); border-radius: var(--r-xs); padding: 3px 10px; cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }

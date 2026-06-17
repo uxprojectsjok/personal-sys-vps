@@ -768,7 +768,7 @@ onMounted(() => {
 /* ── Meta / status ── */
 .dt-meta { font-family: var(--mono); font-size: 13px; color: var(--fg-2); }
 .dt-status-sync { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.04em; }
-.dt-status-local { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.04em; }
+.dt-status-local { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; color: var(--fg-2); letter-spacing: 0.04em; }
 
 /* ── Row actions ── */
 .dt-actions { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }

@@ -228,7 +228,7 @@ function onNav(id) {
 .cn-action-btn { display:inline-flex; align-items:center; gap:8px; flex:none; height:40px; padding:0 18px; border:1px solid rgba(109,184,154,0.40); border-radius:var(--r-xs); background:var(--accent-dim); cursor:pointer; font-family:var(--sans); font-size:14px; font-weight:500; color:var(--accent-bright); transition:all 0.15s; }
 .cn-action-btn:hover:not(:disabled) { background:rgba(109,184,154,0.18); color:var(--fg); }
 .cn-action-btn:disabled { opacity:0.4; cursor:not-allowed; }
-.cn-action-btn--active { background:var(--surface-2); border-color:var(--line-2); color:var(--fg-3); }
+.cn-action-btn--active { background:var(--surface-2); border-color:var(--line-2); color:var(--fg-2); }
 .cn-btn-ic { width:16px; height:16px; flex:none; }
 
 /* QR Dual panel */
@@ -242,13 +242,13 @@ function onNav(id) {
 .cn-qr-canvas { image-rendering:pixelated; border-radius:4px; }
 .cn-countdown { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .cn-countdown-num   { font-family:var(--mono); font-size:28px; color:var(--fg); line-height:1; }
-.cn-countdown-label { font-family:var(--mono); font-size:11px; color:var(--fg-4); letter-spacing:0.1em; }
-.cn-hint { font-family:var(--mono); font-size:12px; color:var(--fg-3); margin:0; }
+.cn-countdown-label { font-family:var(--mono); font-size:12px; color:var(--fg-2); letter-spacing:0.1em; }
+.cn-hint { font-family:var(--mono); font-size:12px; color:var(--fg-2); margin:0; }
 .cn-probe-ring { width:52px; height:52px; border-radius:50%; border:2px solid rgba(138,208,179,0.35); display:flex; align-items:center; justify-content:center; color:var(--accent-bright); animation:probe-pulse 1.8s ease-in-out infinite; }
 .cn-probe-ring svg { width:22px; height:22px; }
 @keyframes probe-pulse { 0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.08)} }
 .cn-probe-title { font-family:var(--serif); font-size:20px; font-weight:400; color:var(--fg); }
-.cn-probe-hint  { font-family:var(--mono); font-size:12px; color:var(--fg-3); margin:0; }
+.cn-probe-hint  { font-family:var(--mono); font-size:12px; color:var(--fg-2); margin:0; }
 .cn-approve-actions { display:flex; gap:10px; }
 .cn-btn { height:40px; padding:0 20px; font-family:var(--sans); font-size:14px; font-weight:500; border-radius:var(--r-xs); cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
 .cn-btn--reject { background:transparent; border:1px solid var(--line-2); color:var(--fg-2); }
@@ -264,11 +264,11 @@ function onNav(id) {
 .cn-stranger-body { background:rgba(0,0,0,0.12); }
 .cn-sys-logo { font-family:var(--sans); font-size:22px; font-weight:700; color:var(--fg); letter-spacing:-0.04em; }
 .cn-sys-logo span { color:var(--accent); }
-.cn-stranger-hint { font-family:var(--mono); font-size:13px; color:var(--fg-3); }
+.cn-stranger-hint { font-family:var(--mono); font-size:13px; color:var(--fg); }
 .cn-stranger-ring { width:40px; height:40px; display:flex; align-items:center; justify-content:center; }
-.cn-stranger-ring svg { width:40px; height:40px; color:var(--fg-4); }
+.cn-stranger-ring svg { width:40px; height:40px; color:var(--fg-3); }
 .cn-hello-msg { font-family:var(--serif); font-style:italic; font-size:18px; color:var(--accent); }
-.cn-verified-row { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px; color:var(--fg-3); }
+.cn-verified-row { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px; color:var(--fg-2); }
 .cn-verified-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent-glow); flex:none; }
 
 /* Verifikation info card */
