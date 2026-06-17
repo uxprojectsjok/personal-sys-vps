@@ -612,6 +612,7 @@ import { useVault } from "~/composables/useVault.js";
 import { useApiContext } from "~/composables/useApiContext.js";
 import { useVaultSession } from "~/composables/useVaultSession.js";
 import { useMind } from "~/composables/useMind.js";
+import { useConfirm } from "~/composables/useConfirm.js";
 
 const props = defineProps({
   soulCert:    { type: String, default: "" },
@@ -639,6 +640,7 @@ const {
 
 const { vaultKey } = useVaultSession();
 const { clearMindCache } = useMind();
+const { ask: confirmAsk } = useConfirm();
 
 const tab          = ref("local");
 const isScanning   = ref(false);
@@ -711,6 +713,14 @@ async function downloadSharedFile(f) {
 
 async function deleteSharedFile(name) {
   if (!props.soulCert) return;
+  const ok = await confirmAsk({
+    title:       'Datei löschen?',
+    message:     `„${name}" wird unwiderruflich aus dem geteilten Bereich gelöscht.`,
+    confirmText: 'Löschen',
+    cancelText:  'Abbrechen',
+    danger:      true,
+  });
+  if (!ok) return;
   sharedBusy[name] = "del";
   try {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(name)}`, {

@@ -234,6 +234,7 @@
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
     </div>
     <SysPageLoading v-else />
+    <ConfirmModal />
 </ClientOnly>
 </template>
 
@@ -244,6 +245,8 @@ import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useApiContext } from '~/composables/useApiContext.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
+import { useConfirm } from '~/composables/useConfirm.js'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 
@@ -252,6 +255,7 @@ const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul,
 const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
 const { vaultKey } = useVaultSession()
+const { ask: confirmAsk } = useConfirm()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
@@ -577,7 +581,14 @@ async function uploadToServer(file) {
 
 // ── Delete file ────────────────────────────────────────────────────────────
 async function deleteFile(file) {
-  if (!confirm(`„${file.displayName}" wirklich löschen?`)) return
+  const ok = await confirmAsk({
+    title:       'Datei löschen?',
+    message:     `„${file.displayName}" wird unwiderruflich gelöscht.`,
+    confirmText: 'Löschen',
+    cancelText:  'Abbrechen',
+    danger:      true,
+  })
+  if (!ok) return
   busy[file.id] = true
   try {
     if (tab.value === 'lokal') {
