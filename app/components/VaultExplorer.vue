@@ -547,6 +547,8 @@
     </div>
   </Teleport>
 
+  <ConfirmModal />
+
   <!-- ── Share-Link Modal ─────────────────────────────────────────────────── -->
   <Teleport to="body">
     <Transition name="fade">
@@ -613,6 +615,7 @@ import { useApiContext } from "~/composables/useApiContext.js";
 import { useVaultSession } from "~/composables/useVaultSession.js";
 import { useMind } from "~/composables/useMind.js";
 import { useConfirm } from "~/composables/useConfirm.js";
+import ConfirmModal from "~/components/ConfirmModal.vue";
 
 const props = defineProps({
   soulCert:    { type: String, default: "" },
