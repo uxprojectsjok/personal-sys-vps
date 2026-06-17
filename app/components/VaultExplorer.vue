@@ -336,8 +336,8 @@
               <template v-if="pendingDeleteShared === f.name">
                 <button
                   @click="requestDeleteShared(f.name)"
-                  :disabled="!!sharedBusy[f.name]"
-                  class="h-8 px-2 text-[11px] font-medium rounded-none transition bg-red-950/40 text-red-400 hover:bg-red-950/70 whitespace-nowrap"
+                  :disabled="!pendingDeleteReady || !!sharedBusy[f.name]"
+                  class="h-8 px-2 text-[11px] font-medium rounded-none transition bg-red-950/40 text-red-400 hover:bg-red-950/70 whitespace-nowrap disabled:opacity-30"
                   title="Bestätigen zum Löschen"
                 >Sicher?</button>
                 <button
@@ -655,6 +655,7 @@ const { vaultKey } = useVaultSession();
 const { clearMindCache } = useMind();
 const { ask: confirmAsk } = useConfirm();
 const pendingDeleteShared = ref(null);
+const pendingDeleteReady  = ref(false);
 let pendingDeleteTimer = null;
 
 const tab          = ref("local");
@@ -727,16 +728,21 @@ async function downloadSharedFile(f) {
 }
 
 function requestDeleteShared(name) {
-  if (pendingDeleteShared.value === name) {
-    // Zweiter Klick → tatsächlich löschen
+  if (pendingDeleteShared.value === name && pendingDeleteReady.value) {
     clearTimeout(pendingDeleteTimer);
     pendingDeleteShared.value = null;
+    pendingDeleteReady.value  = false;
     doDeleteSharedFile(name);
-  } else {
-    // Erster Klick → Bestätigung anfordern, nach 4s auto-cancel
+  } else if (pendingDeleteShared.value !== name) {
     pendingDeleteShared.value = name;
+    pendingDeleteReady.value  = false;
     clearTimeout(pendingDeleteTimer);
-    pendingDeleteTimer = setTimeout(() => { pendingDeleteShared.value = null; }, 4000);
+    // 200ms Delay damit Browser-Click-Through nicht sofort bestätigt
+    setTimeout(() => { pendingDeleteReady.value = true; }, 200);
+    pendingDeleteTimer = setTimeout(() => {
+      pendingDeleteShared.value = null;
+      pendingDeleteReady.value  = false;
+    }, 4000);
   }
 }
 
