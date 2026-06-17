@@ -696,6 +696,7 @@ import { useVault } from '~/composables/useVault.js'
 import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
+import { useConfirm } from '~/composables/useConfirm.js'
 
 const props = defineProps({ open: Boolean, inline: { type: Boolean, default: false } })
 const emit  = defineEmits(['close', 'master-rotated'])
@@ -705,6 +706,7 @@ const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
 const { clearMcpCache, loadMcpTools } = useMcpTools()
+const { ask: confirmAsk } = useConfirm()
 
 // ── Admin-Erkennung ───────────────────────────────────────────────────────────
 const ADMIN_KEY    = 'sys_admin_token'
@@ -916,7 +918,14 @@ async function loadStatus() {
 }
 
 async function confirmRotateWebhook() {
-  if (!window.confirm('Webhook-Token jetzt erneuern?\n\nDer ElevenLabs-Agent wird automatisch aktualisiert. Falls das fehlschlägt, erscheint ein Hinweis.')) return
+  const ok = await confirmAsk({
+    title:       'Webhook-Token erneuern?',
+    message:     'Der ElevenLabs-Agent wird automatisch auf den neuen Token aktualisiert. Falls das fehlschlägt, erscheint ein Hinweis.',
+    confirmText: 'Erneuern',
+    cancelText:  'Abbrechen',
+    danger:      true,
+  })
+  if (!ok) return
   webhookRotateBusy.value = true
   webhookFeedback.value   = null
   try {
