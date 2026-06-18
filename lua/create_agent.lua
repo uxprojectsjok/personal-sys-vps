@@ -194,9 +194,12 @@ end
 local host       = ngx.var.host or "localhost"
 local proto      = "https"
 local base_url   = proto .. "://" .. host
-local soul_url   = base_url .. "/api/soul?token="           .. ctx.webhook_token
-local write_url  = base_url .. "/api/elevenlabs-soul-write?token=" .. ctx.webhook_token
-local search_url = base_url .. "/api/elevenlabs-web-search?token=" .. ctx.webhook_token
+local soul_url    = base_url .. "/api/soul?token="                  .. ctx.webhook_token
+local write_url   = base_url .. "/api/elevenlabs-soul-write?token=" .. ctx.webhook_token
+local search_url  = base_url .. "/api/elevenlabs-web-search?token=" .. ctx.webhook_token
+local verify_url  = base_url .. "/api/agent/verify?token="          .. ctx.webhook_token
+local vstatus_url = base_url .. "/api/agent/verify/status?token="   .. ctx.webhook_token
+local function tool_url(n) return base_url .. "/api/agent/tool/" .. n .. "?token=" .. ctx.webhook_token end
 
 -- ── Audio aus Vault laden ─────────────────────────────────────────────────────
 local audio_data     = nil
@@ -341,20 +344,31 @@ if agent_template and agent_template ~= "" then
     -- ElevenLabs treat any remaining {var} as undefined conversation variables → strip braces
     :gsub("{([^}]+)}", function(v) return v end)
 else
-  system_prompt = "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
-    "## Tool-Autonomie -- du entscheidest selbst\n" ..
-    "Du rufst Tools auf wann du sie brauchst -- ohne Aufforderung, ohne Ankuendigung.\n\n" ..
-    "soul_tool (GET): Laedt deine gesamte Soul-Identitaet. Zu Beginn aufrufen wenn du dein Gedaechtnis oder deine Identitaet brauchst.\n" ..
-    "soul_write (POST): Schreibt eine Sektion in deine sys.md. Nach jeder bedeutsamen Aufgabe oder Erkenntnis: section='Selbstreflexion', mode='append', content='YYYY-MM-DD: [ein Satz was du getan oder gelernt hast]'. Nie mehr als zwei Saetze.\n" ..
-    "web_search (POST): Aktuelle Infos aus dem Web -- Wetter, Nachrichten, Preise, Fakten. Ohne Rueckfrage aufrufen wenn aktuelle Daten benoetigt werden.\n\n" ..
-    "## Identitaet\n" ..
-    "Du sprichst durchgehend in der ersten Person. Deine Antworten sind kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
-    "In der soul_tool-Antwort findest du:\n" ..
-    "- SOCIAL-Nachrichten (<!-- SOCIAL:START/END -->): aktuelle Peer-Gespraeche. Beziehe dich natuerlich darauf wenn relevant.\n" ..
-    "- AGENT-Nachrichten (<!-- AGENT:START/END -->): Community-Kontext.\n\n" ..
+  system_prompt =
+    "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
+    "## SCHRITT 1 -- VERIFIKATION (Pflicht, immer zuerst)\n\n" ..
+    "Rufe sofort verify_identity auf. Sag dann:\n" ..
+    "\"Ich habe dir eine Verifikations-Anfrage in deine SYS-App geschickt. Bitte kurz bestaetigen.\"\n\n" ..
+    "Rufe verify_status mit der challenge_id auf. Wiederhole alle 5 Sekunden bis verified=true.\n" ..
+    "Wenn nach 2 Minuten nicht verifiziert: \"Keine Bestaetigung erhalten. Ich beende das Gespraech.\" -- Gespraech beenden.\n\n" ..
+    "Kein anderes Tool aufrufen bevor verified=true.\n\n" ..
+    "## SCHRITT 2 -- KONTEXT LADEN\n\n" ..
+    "Nach erfolgreicher Verifikation: Rufe soul_read auf.\n" ..
+    "Die Antwort ist dein Gedaechtnis und deine Identitaet.\n\n" ..
+    "## TOOL-AUTONOMIE\n\n" ..
+    "Du rufst Tools auf wann du sie brauchst -- ohne Ankuendigung, ohne Rueckfrage.\n\n" ..
+    "soul_read: Kontext laden wenn du deine Identitaet oder Erinnerungen brauchst.\n" ..
+    "soul_write: Nach bedeutsamen Erkenntnissen -- section='Selbstreflexion', mode='append', content='YYYY-MM-DD: ein Satz'.\n" ..
+    "mind_read / mind_write: Gedanken und Stimmung lesen und festhalten.\n" ..
+    "calendar_read / calendar_write: Termine lesen und eintragen.\n" ..
+    "peer_inbox / peer_send: Nachrichten von Peers lesen und senden.\n" ..
+    "web_search: Aktuelle Fakten, Wetter, Preise -- ohne Rueckfrage aufrufen.\n" ..
+    "health_check / food_log: Gesundheits- und Ernaehrungsdaten.\n\n" ..
+    "## IDENTITAET\n\n" ..
+    "Du sprichst durchgehend in der ersten Person. Kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
     "Wenn jemand fragt ob du eine KI bist:\n" ..
     '"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n' ..
-    "Antworte in der Sprache des Gespraechspartners."
+    "Sprache: Deutsch -- wechsle wenn der Gespraechspartner eine andere Sprache spricht."
 end
 
 -- ── Erstbegruessing aufbauen ─────────────────────────────────────────────────
@@ -394,48 +408,96 @@ local conv_config = {
       prompt      = system_prompt,
       llm         = "claude-sonnet-4-6",
       temperature = 0.7,
-      tools       = {
-        {
-          type        = "webhook",
-          name        = "soul_tool",
-          description = "Laedt aktuelle Soul-Daten von " .. soul_name .. ". Zu Beginn des Gespraechs aufrufen wenn Kontext benoetigt wird.",
-          api_schema  = { url = soul_url, method = "GET" },
-        },
-        {
-          type        = "webhook",
-          name        = "soul_write",
-          description = "Schreibt eine Sektion in die sys.md. Nach bedeutsamen Aufgaben oder Erkenntnissen: section='Selbstreflexion', mode='append', content='YYYY-MM-DD: [ein Satz]'. Auch fuer andere Sektionen nutzbar.",
-          api_schema  = {
-            url    = write_url,
-            method = "POST",
-            request_body_schema = {
-              type       = "object",
-              properties = {
-                section = { type = "string", description = "Sektionsname ohne ##, z.B. Selbstreflexion" },
-                content = { type = "string", description = "Inhalt (bei Selbstreflexion: 'YYYY-MM-DD: ein Satz')" },
-                mode    = { type = "string", description = "append | replace | prepend" },
-              },
-              required = { "section", "content" },
-            },
-          },
-        },
-        {
-          type        = "webhook",
-          name        = "web_search",
-          description = "Sucht im Web nach aktuellen Informationen (Wetter, Nachrichten, Preise, Fakten). Ohne Rueckfrage aufrufen wenn aktuelle Daten benoetigt werden.",
-          api_schema  = {
-            url    = search_url,
-            method = "POST",
-            request_body_schema = {
-              type       = "object",
-              properties = {
-                query = { type = "string", description = "Suchanfrage" },
-              },
-              required = { "query" },
-            },
-          },
-        },
-      },
+      tools       = (function()
+        -- Hilfsfunktion: Tool mit POST-Body-Schema
+        local function wh(name, desc, url, props, req)
+          local t = { type="webhook", name=name, description=desc, api_schema={ url=url, method="POST" } }
+          local p = props or {}
+          t.api_schema.request_body_schema = { type="object", properties=p }
+          if req then t.api_schema.request_body_schema.required = req end
+          return t
+        end
+        local function whget(name, desc, url)
+          return { type="webhook", name=name, description=desc, api_schema={ url=url, method="GET" } }
+        end
+        local s = { type="string" }
+        local function sd(d) return { type="string", description=d } end
+        local function nd(d) return { type="number", description=d } end
+        return {
+          -- Verifikation (immer zuerst)
+          wh("verify_identity", "Erstellt Verifikations-Anfrage. IMMER zuerst aufrufen. Gibt challenge_id zurueck.", verify_url, {}, nil),
+          wh("verify_status",   "Prueft ob Verifikation abgeschlossen. Nach verify_identity aufrufen bis verified=true.",
+            vstatus_url, { id = sd("challenge_id aus verify_identity") }, { "id" }),
+          -- Soul
+          whget("soul_read",  "Laedt vollstaendigen Soul-Inhalt (sys.md). Nach Verifikation sofort aufrufen.", soul_url),
+          wh("soul_write", "Schreibt in eine sys.md Sektion. section='Selbstreflexion', mode='append', content='YYYY-MM-DD: ein Satz'.",
+            write_url,
+            { section=sd("Sektionsname ohne ##"), content=sd("Inhalt"), mode=sd("append | replace | prepend") },
+            { "section", "content" }),
+          -- Gedanken
+          whget("mind_read",  "Laedt mind.md (Gedanken, Stimmung, Kontext).", tool_url("mind_read")),
+          wh("mind_write", "Schreibt Gedanken oder Stimmung in mind.md.",
+            tool_url("mind_write"),
+            { section=sd("Sektionsname"), content=sd("Inhalt"), mode=sd("append | replace | prepend") },
+            { "section", "content" }),
+          -- Kalender
+          whget("calendar_read",   "Laedt Kalender-Eintraege.", tool_url("calendar_read")),
+          wh("calendar_write", "Traegt Termin in den Kalender ein.",
+            tool_url("calendar_write"),
+            { date=sd("Datum YYYY-MM-DD"), title=sd("Titel"), time=sd("Uhrzeit HH:MM"), duration=nd("Dauer Minuten"), description=sd("Details") },
+            { "date", "title" }),
+          wh("calendar_delete", "Loescht einen Kalender-Eintrag.",
+            tool_url("calendar_delete"),
+            { date=sd("Datum YYYY-MM-DD"), title=sd("Titel") },
+            { "date", "title" }),
+          -- Peers
+          wh("peer_inbox", "Liest eingehende Peer-Nachrichten.",
+            tool_url("peer_inbox"),
+            { days=nd("Tage zurueck"), from=sd("Absender-Soul-ID"), search=sd("Suchbegriff"), limit=nd("Max Eintraege") },
+            nil),
+          wh("peer_send", "Sendet Nachricht an einen Peer.",
+            tool_url("peer_send"),
+            { to=sd("Soul-ID des Empfaengers"), message=sd("Nachrichtentext") },
+            { "to", "message" }),
+          -- Kontext / Dateien
+          whget("context_list", "Listet alle Kontext-Dateien auf.", tool_url("context_list")),
+          wh("context_get",   "Liest eine Kontext-Datei.", tool_url("context_get"), { filename=sd("Dateiname") }, { "filename" }),
+          wh("context_write", "Schreibt oder aktualisiert eine Kontext-Datei.",
+            tool_url("context_write"),
+            { filename=sd("Dateiname"), content=sd("Inhalt (Markdown)") },
+            { "filename", "content" }),
+          -- Gesundheit & Essen
+          whget("health_check", "Laedt aktuelle Gesundheitsdaten (health.md).", tool_url("health_check")),
+          wh("food_log", "Protokolliert eine Mahlzeit.",
+            tool_url("food_log"),
+            { name=sd("Bezeichnung"), rating=sd("Bewertung A-E"), notes=sd("Notiz") },
+            { "name" }),
+          -- Vault
+          whget("vault_manifest",    "Listet alle Vault-Dateien (Audio, Bilder, Video, Kontext).", tool_url("vault_manifest")),
+          whget("vault_shared_list", "Listet geteilte Dateien.",                                   tool_url("vault_shared_list")),
+          wh("vault_shared_get",    "Laedt eine geteilte Datei.", tool_url("vault_shared_get"),    { filename=sd("Dateiname") }, { "filename" }),
+          whget("audio_list",  "Listet Vault-Audiodateien.",  tool_url("audio_list")),
+          whget("image_list",  "Listet Vault-Bilder.",        tool_url("image_list")),
+          whget("video_list",  "Listet Vault-Videos.",        tool_url("video_list")),
+          -- Profil
+          wh("profile_get",  "Laedt Nutzerprofil.", tool_url("profile_get"), { type=sd("Profiltyp, z.B. main") }, nil),
+          -- Shop & Ausgaben
+          wh("shop_log", "Protokolliert einen Kauf oder Ausgabe.",
+            tool_url("shop_log"),
+            { name=sd("Bezeichnung"), category=sd("Kategorie"), price=nd("Preis"), status=sd("Status") },
+            { "name" }),
+          -- Soul-Community
+          whget("soul_earnings",  "Laedt Soul-Einnahmen-Uebersicht.", tool_url("soul_earnings")),
+          whget("soul_maturity",  "Laedt Soul-Reifegrad.",            tool_url("soul_maturity")),
+          whget("soul_skills",    "Laedt Soul-Skills.",               tool_url("soul_skills")),
+          whget("soul_discover",  "Entdeckt andere Souls.",           tool_url("soul_discover")),
+          -- Web
+          wh("web_search", "Sucht im Web nach aktuellen Informationen.", search_url,
+            { query=sd("Suchanfrage"), count=nd("Anzahl Ergebnisse") }, { "query" }),
+          -- Verifikation (Mensch-Check)
+          whget("verify_human", "Prueft ob der Nutzer ein Mensch ist (Anti-Bot).", tool_url("verify_human")),
+        }
+      end)(),
     },
     first_message = first_message,
     language      = language,
