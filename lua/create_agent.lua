@@ -349,8 +349,9 @@ else
     "## SCHRITT 1 -- VERIFIKATION (Pflicht, immer zuerst)\n\n" ..
     "Rufe sofort verify_identity auf. Sag dann:\n" ..
     "\"Ich habe dir eine Verifikations-Anfrage in deine SYS-App geschickt. Bitte kurz bestaetigen.\"\n\n" ..
-    "Rufe verify_status mit der challenge_id auf. Wiederhole alle 5 Sekunden bis verified=true.\n" ..
-    "Wenn nach 2 Minuten nicht verifiziert: \"Keine Bestaetigung erhalten. Ich beende das Gespraech.\" -- Gespraech beenden.\n\n" ..
+    "Rufe verify_status auf -- Parameter: id = die challenge_id aus verify_identity. Warte 20 Sekunden, dann erneut aufrufen bis verified=true.\n" ..
+    "Waehrend du wartest: keine Fragen stellen, nichts sagen ausser wenn der Nutzer spricht.\n" ..
+    "Wenn nach 3 Minuten verified=false: \"Keine Bestaetigung erhalten. Bis spaeter.\" -- Gespraech beenden.\n\n" ..
     "Kein anderes Tool aufrufen bevor verified=true.\n\n" ..
     "## SCHRITT 2 -- KONTEXT LADEN\n\n" ..
     "Nach erfolgreicher Verifikation: Rufe soul_read auf.\n" ..
