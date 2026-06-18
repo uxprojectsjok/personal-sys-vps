@@ -47,6 +47,7 @@ local data = cjson.encode({
   score             = 0,
   created_at        = created_at,
   expires_at        = expires_at,
+  expires_unix      = now + TTL,
   verified_at       = cjson.null,
   verify_token      = verify_token,
 })
