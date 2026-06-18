@@ -132,9 +132,9 @@ end
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
   if text == "" then return nil end
-  local m = text:match("## " .. section .. "%s*\n([^\1]-)\n##")
+  local m = text:match("## " .. section .. ":?%s*\n([^\1]-)\n## [^#]")
   if not m then
-    m = text:match("## " .. section .. "%s*\n([^\1]-)$")
+    m = text:match("## " .. section .. ":?%s*\n([^\1]-)$")
   end
   if m then return m:match("^%s*(.-)%s*$") end
   return nil
