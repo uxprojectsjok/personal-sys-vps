@@ -23,6 +23,33 @@ self.addEventListener('activate', e => {
   )
 })
 
+self.addEventListener('push', e => {
+  let data = { title: 'SYS', body: '', url: '/verbindung' }
+  try { data = e.data?.json() ?? data } catch {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-96.png',
+      tag: 'sys-verify',
+      renotify: true,
+      data: { url: data.url },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  const url = e.notification.data?.url || '/verbindung'
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const match = list.find(c => c.url.includes(self.location.origin))
+      if (match) return match.focus().then(c => c.navigate(url))
+      return clients.openWindow(url)
+    })
+  )
+})
+
 self.addEventListener('fetch', e => {
   const { request } = e
   if (request.method !== 'GET') return

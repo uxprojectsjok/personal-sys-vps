@@ -879,6 +879,23 @@ server {
     content_by_lua_file /etc/openresty/lua/connect_hello.lua;
   }
 
+  # ── Web Push ─────────────────────────────────────────────────────────────────
+  location = /api/push/vapid-key {
+    limit_except GET OPTIONS { deny all; }
+    add_header Access-Control-Allow-Origin "*" always;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vapid_key.lua;
+  }
+
+  location = /api/push/subscribe {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/push_subscribe.lua;
+  }
+
   # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
   location = /api/peer/verify {
     add_header Access-Control-Allow-Origin  "*"                    always;
