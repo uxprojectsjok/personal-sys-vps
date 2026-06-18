@@ -1130,7 +1130,7 @@ server {
 
   # Generischer MCP-Tool-Proxy: /api/agent/tool/<tool_name>
   location ~ "^/api/agent/tool/([a-z][a-z0-9_]{1,59})$" {
-    limit_except POST OPTIONS { deny all; }
+    limit_except GET POST OPTIONS { deny all; }
     set $agent_tool $1;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
