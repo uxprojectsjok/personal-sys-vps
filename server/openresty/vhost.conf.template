@@ -1109,6 +1109,72 @@ server {
     content_by_lua_file /etc/openresty/lua/elevenlabs_stt.lua;
   }
 
+  # ── Voice Agent Webhooks (vault_auth = webhook_token) ─────────────────────────
+
+  location = /api/agent/verify {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_verify.lua;
+  }
+
+  location = /api/agent/verify/status {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_verify_status.lua;
+  }
+
+  location = /api/agent/context {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_context.lua;
+  }
+
+  location = /api/agent/soul-write {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_soul_write.lua;
+  }
+
+  location = /api/agent/mind-write {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_mind_write.lua;
+  }
+
+  location = /api/agent/calendar {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_calendar.lua;
+  }
+
+  location = /api/agent/peer-send {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_peer_send.lua;
+  }
+
+  location = /api/agent/post-call {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_post_call.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }
