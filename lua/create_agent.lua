@@ -382,7 +382,7 @@ if first_msg_tpl and first_msg_tpl ~= "" then
   end
 end
 if not first_message then
-  first_message = "Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Was kann ich fuer dich tun?"
+  first_message = "Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Verifikation bitte."
 end
 
 -- ── Agent erstellen ───────────────────────────────────────────────────────────
