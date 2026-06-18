@@ -55,7 +55,7 @@
             </div>
           </div>
           <div class="vfy-score-large">Score {{ verifyScore }}</div>
-          <p class="vfy-desc" style="margin-top:4px">Ergebnis gespeichert — über MCP abrufbar.</p>
+          <p class="vfy-desc" style="margin-top:4px;color:var(--accent)">✓ Verifikation abgeschlossen — der Agent erkennt dich jetzt.</p>
           <!-- Human-Check noch nachholbar -->
           <template v-if="!humanVerified">
             <button class="btn btn-primary btn-lg" :disabled="humanChecking" @click="doHumanCheck" style="margin-bottom:4px">
@@ -358,7 +358,11 @@ function authHeaders() {
 }
 
 function goGate()   { window.location.href = `/gate?next=${encodeURIComponent(route.fullPath)}` }
-function closePage() { window.close() }
+function closePage() {
+  if (window.opener) { window.close(); return }
+  if (window.history.length > 1) { window.history.back(); return }
+  window.location.href = '/verbindung'
+}
 
 function lockAndClose() {
   stopStatusPoll()
