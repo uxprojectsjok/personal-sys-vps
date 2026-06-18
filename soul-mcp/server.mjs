@@ -673,8 +673,49 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         }, null, 2) }] });
       }
 
-      default:
-        return res.status(400).json({ error: `Unbekanntes Tool: ${tool}` });
+      default: {
+        // Generic MCP fallback: get soul's service token → call /mcp locally
+        try {
+          const authRaw = await readFile(`${SOULS_DIR}${soulId}/authorized_services.json`, 'utf8').catch(() => '{}');
+          const authData = JSON.parse(authRaw);
+          const serviceToken = Object.keys(authData).find(k => /^[a-f0-9]{64}$/.test(k));
+          if (!serviceToken) return res.status(400).json({ error: `Tool nicht verfügbar: ${tool}` });
+
+          const mcpRes = await fetch(`http://127.0.0.1:${PORT}/mcp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json, text/event-stream',
+              'Authorization': `Bearer ${serviceToken}`,
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'tools/call',
+              params: { name: tool, arguments: input },
+              id: 1,
+            }),
+            signal: AbortSignal.timeout(25000),
+          });
+
+          const text = await mcpRes.text();
+          // StreamableHTTP kann SSE oder JSON zurückgeben
+          // JSON-Zeilen parsen: letzte gültige Zeile mit "result" oder "error" nehmen
+          let result = null;
+          for (const line of text.split('\n')) {
+            const l = line.startsWith('data: ') ? line.slice(6) : line;
+            if (!l.trim()) continue;
+            try {
+              const parsed = JSON.parse(l);
+              if (parsed.result !== undefined || parsed.error !== undefined) result = parsed;
+            } catch {}
+          }
+          if (!result) return res.status(502).json({ error: 'MCP-Antwort nicht parsebar' });
+          if (result.error) return res.status(400).json({ error: result.error.message || JSON.stringify(result.error) });
+          return res.json(result.result ?? { ok: true });
+        } catch (e) {
+          return res.status(500).json({ error: `Tool-Fallback-Fehler: ${e.message}` });
+        }
+      }
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
