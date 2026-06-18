@@ -14,12 +14,19 @@ if ngx.req.get_method() ~= "GET" then
   ngx.status = 405; ngx.say('{"error":"method_not_allowed"}'); return
 end
 
+local function utc_offset()
+  local d = os.date("*t"); local u = os.date("!*t")
+  return (d.hour - u.hour) * 3600 + (d.min - u.min) * 60 + (d.sec - u.sec)
+end
+local _utc_offset = utc_offset()
+
 local function parse_iso(ts)
   if not ts then return 0 end
   local y,mo,d,h,mi,s = ts:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
   if not y then return 0 end
+  -- os.time interprets as local time, but ts is UTC → add offset to correct
   return os.time({ year=tonumber(y), month=tonumber(mo), day=tonumber(d),
-                   hour=tonumber(h), min=tonumber(mi), sec=tonumber(s) })
+                   hour=tonumber(h), min=tonumber(mi), sec=tonumber(s) }) + _utc_offset
 end
 
 local pending = {}
@@ -32,9 +39,10 @@ if pipe then
       if f then
         local raw = f:read("*a"); f:close()
         local ok, d = pcall(cjson.decode, raw)
+        local expiry = d.expires_unix and tonumber(d.expires_unix) or parse_iso(d.expires_at)
         if ok and type(d) == "table"
            and d.status == "pending"
-           and parse_iso(d.expires_at) > os.time() then
+           and expiry > os.time() then
           table.insert(pending, {
             challenge_id = d.challenge_id,
             method       = d.method,
