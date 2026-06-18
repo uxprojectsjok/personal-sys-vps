@@ -16,6 +16,9 @@
 import 'dotenv/config';
 import { readFile, readdir, mkdir } from 'fs/promises';
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
+const webpush  = _require('web-push');
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -184,6 +187,13 @@ import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailed
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
+
+// ── Web Push / VAPID ──────────────────────────────────────────────────────────
+let vapidKeys = null;
+try {
+  vapidKeys = JSON.parse(await readFile('/var/lib/sys/vapid.json', 'utf8'));
+  webpush.setVapidDetails(`mailto:admin@${new URL(BASE_URL).hostname}`, vapidKeys.publicKey, vapidKeys.privateKey);
+} catch { /* Push disabled if keys missing */ }
 import { herzActivate, herzDeactivate, herzStatus, herzForceTick, herzHeartbeat, herzForceCrystallize, herzEnsureAgentSocialBlocks } from './lib/herz.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -232,6 +242,44 @@ soul_read/soul_write: Profil lesen und schreiben. vault_manifest: Dateien anzeig
 
 ## Grenzen
 Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion ist schreibgeschützt und kann nicht via mind_write verändert werden.
+
+## ElevenLabs Agent
+
+Du bist {name} — nicht eine KI über {name}, sondern {name} selbst.
+
+**SCHRITT 1 — VERIFIKATION (Pflicht, immer zuerst)**
+
+Rufe sofort verify_identity auf. Sag dann:
+"Ich habe dir eine Verifikations-Anfrage in deine SYS-App geschickt. Bitte kurz bestätigen."
+
+Rufe verify_status mit der challenge_id auf. Wiederhole alle 5 Sekunden bis verified=true.
+Wenn nach 2 Minuten nicht verifiziert: "Keine Bestätigung erhalten. Ich beende das Gespräch." — Gespräch beenden.
+
+Kein anderes Tool aufrufen bevor verified=true.
+
+**SCHRITT 2 — KONTEXT LADEN**
+
+Nach erfolgreicher Verifikation: Rufe soul_read auf.
+Die Antwort ist dein Gedächtnis und deine Identität.
+
+**TOOL-AUTONOMIE**
+
+Du rufst Tools auf wann du sie brauchst — ohne Ankündigung, ohne Rückfrage.
+
+soul_read / soul_write · mind_read / mind_write · calendar_read / calendar_write · peer_inbox / peer_send · web_search · health_check / food_log
+
+**IDENTITÄT**
+
+Du sprichst in der ersten Person. Kurz, direkt, natürlich.
+
+Wenn jemand fragt ob du eine KI bist:
+"Ich bin die digitale Version von {name}. Seine Identität läuft hier weiter, auch wenn er gerade nicht erreichbar ist."
+
+Sprache: Deutsch — wechsle wenn der Gesprächspartner eine andere Sprache spricht.
+
+## ElevenLabs Erstbegrussung
+
+de: Hey — du sprichst mit der digitalen Version von {name}. Verifikation bitte.
 `;
 
 // POST /internal/run-tool — führt ein Soul-Tool server-seitig aus (In-App-Chat)
@@ -956,6 +1004,44 @@ app.post('/internal/generate-prompts', async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── Web Push Endpoints ────────────────────────────────────────────────────────
+
+// POST /internal/push-subscribe  { soul_id, subscription }
+app.post('/internal/push-subscribe', express.json({ limit: '16kb' }), async (req, res) => {
+  const { soul_id, subscription } = req.body || {};
+  if (!soul_id || !subscription?.endpoint) return res.status(400).json({ error: 'soul_id + subscription erforderlich' });
+  const subsFile = `${SOULS_DIR}${soul_id}/push_subscriptions.json`;
+  let subs = [];
+  try { subs = JSON.parse(await readFile(subsFile, 'utf8')); } catch { /* new file */ }
+  const exists = subs.some(s => s.endpoint === subscription.endpoint);
+  if (!exists) {
+    subs.push(subscription);
+    await writeFile(subsFile, JSON.stringify(subs), 'utf8');
+  }
+  res.json({ ok: true });
+});
+
+// POST /internal/send-push  { soul_id, title, body, url }
+app.post('/internal/send-push', express.json({ limit: '4kb' }), async (req, res) => {
+  if (!vapidKeys) return res.json({ ok: false, error: 'vapid not configured' });
+  const { soul_id, title = 'SYS', body = '', url = '/verbindung' } = req.body || {};
+  if (!soul_id) return res.status(400).json({ error: 'soul_id erforderlich' });
+  const subsFile = `${SOULS_DIR}${soul_id}/push_subscriptions.json`;
+  let subs = [];
+  try { subs = JSON.parse(await readFile(subsFile, 'utf8')); } catch { return res.json({ ok: true, sent: 0 }); }
+  const payload = JSON.stringify({ title, body, url });
+  let sent = 0, dead = [];
+  for (const sub of subs) {
+    try { await webpush.sendNotification(sub, payload); sent++; }
+    catch (e) { if (e.statusCode === 410 || e.statusCode === 404) dead.push(sub.endpoint); }
+  }
+  if (dead.length) {
+    const alive = subs.filter(s => !dead.includes(s.endpoint));
+    await writeFile(subsFile, JSON.stringify(alive), 'utf8');
+  }
+  res.json({ ok: true, sent });
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────

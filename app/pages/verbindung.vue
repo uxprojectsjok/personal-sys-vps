@@ -178,9 +178,46 @@ function openVerify(challenge) {
   router.push(`/verify?id=${challenge.challenge_id}&m=${challenge.method}`)
 }
 
+// ── Web Push Subscription ─────────────────────────────────────────────────────
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const existing = await reg.pushManager.getSubscription()
+    if (existing) { await saveSub(existing); return }
+    const r = await fetch('/api/push/vapid-key')
+    const { publicKey } = await r.json()
+    if (!publicKey) return
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: publicKey,
+    })
+    await saveSub(sub)
+  } catch {}
+}
+async function saveSub(sub) {
+  try {
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(sub.toJSON()),
+    })
+  } catch {}
+}
+async function requestAndSubscribe() {
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+  if (Notification.permission === 'default') {
+    const perm = await Notification.requestPermission()
+    if (perm !== 'granted') return
+  }
+  await subscribeToPush()
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 pollPendingChallenge()
 challengePollTimer = setInterval(pollPendingChallenge, 8000)
+if (import.meta.client) requestAndSubscribe()
 
 onUnmounted(() => {
   clearInterval(pollTimer); clearInterval(countdownTimer); clearInterval(challengePollTimer)
