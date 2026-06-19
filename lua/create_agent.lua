@@ -599,26 +599,98 @@ do
   end
 end
 
--- ── Agent öffentlich schalten (enable_auth=false) ─────────────────────────────
+-- ── Post-Call Webhook registrieren + Agent verknüpfen ──────────────────────
+local webhook_secret = ""
+do
+  local post_call_url = base_url .. "/api/agent/post-call"
+  -- Alten Webhook-Secret aus config.json lesen (idempotent: nicht neu anlegen wenn vorhanden)
+  local existing_secret = (type(ctx.elevenlabs_webhook_secret) == "string")
+                          and ctx.elevenlabs_webhook_secret or ""
+  local webhook_id = (type(ctx.elevenlabs_webhook_id) == "string")
+                     and ctx.elevenlabs_webhook_id or ""
+
+  -- Webhook neu anlegen wenn noch keiner konfiguriert
+  if existing_secret == "" or webhook_id == "" then
+    local wh_payload_ok, wh_payload = pcall(cjson.encode, {
+      settings = {
+        name        = "SYS Post-Call",
+        webhook_url = post_call_url,
+        auth_type   = "hmac",
+        events      = { "post_call" },
+      }
+    })
+    if wh_payload_ok then
+      local hcw = http.new(); hcw:set_timeout(10000)
+      local wres = hcw:request_uri("https://api.elevenlabs.io/v1/workspace/webhooks", {
+        method     = "POST",
+        ssl_verify = true,
+        headers    = { ["Content-Type"] = "application/json", ["xi-api-key"] = eleven_key },
+        body       = wh_payload,
+      })
+      if wres and wres.status == 200 then
+        local wok, wdata = pcall(cjson.decode, wres.body)
+        if wok and type(wdata) == "table" then
+          webhook_id     = wdata.webhook_id or ""
+          webhook_secret = wdata.webhook_secret or ""
+          -- In config.json persistieren
+          ctx.elevenlabs_webhook_id     = webhook_id
+          ctx.elevenlabs_webhook_secret = webhook_secret
+          local _ok, _js = pcall(cjson.encode, ctx)
+          if _ok and _js then write_file(ctx_path, _js) end
+        end
+      end
+    end
+  else
+    webhook_secret = existing_secret
+    webhook_id     = webhook_id
+  end
+
+  -- Agent mit Webhook verknüpfen (+ enable_auth=false in einem PATCH)
+  if webhook_id ~= "" then
+    local patch_ok, patch_payload = pcall(cjson.encode, {
+      platform_settings = {
+        auth = { enable_auth = false },
+        workspace_overrides = {
+          webhooks = {
+            post_call_webhook_id = webhook_id,
+            events               = { "transcript" },
+            transcript_format    = "json",
+          }
+        }
+      }
+    })
+    if patch_ok then
+      local hcp = http.new(); hcp:set_timeout(10000)
+      hcp:request_uri(ELEVEN .. "/convai/agents/" .. agent_id, {
+        method     = "PATCH",
+        ssl_verify = true,
+        headers    = { ["Content-Type"] = "application/json", ["xi-api-key"] = eleven_key },
+        body       = patch_payload,
+      })
+    end
+  end
+end
+
+-- ── Agent öffentlich schalten (enable_auth=false, falls webhook_id leer) ──────
 local published = false
 do
-  local pub_payload_ok, pub_payload = pcall(cjson.encode, {
-    platform_settings = { auth = { enable_auth = false } }
-  })
-  if pub_payload_ok then
-    local hc3 = http.new()
-    hc3:set_timeout(10000)
-    local pres = hc3:request_uri(ELEVEN .. "/convai/agents/" .. agent_id, {
-      method     = "PATCH",
-      ssl_verify = true,
-      headers    = {
-        ["Content-Type"] = "application/json",
-        ["xi-api-key"]   = eleven_key,
-      },
-      body = pub_payload,
+  -- Wenn webhook_id gesetzt wurde, hat der PATCH oben enable_auth=false bereits gesetzt
+  if webhook_secret ~= "" then
+    published = true
+  else
+    local pub_payload_ok, pub_payload = pcall(cjson.encode, {
+      platform_settings = { auth = { enable_auth = false } }
     })
-    if pres and pres.status == 200 then
-      published = true
+    if pub_payload_ok then
+      local hc3 = http.new()
+      hc3:set_timeout(10000)
+      local pres = hc3:request_uri(ELEVEN .. "/convai/agents/" .. agent_id, {
+        method     = "PATCH",
+        ssl_verify = true,
+        headers    = { ["Content-Type"] = "application/json", ["xi-api-key"] = eleven_key },
+        body       = pub_payload,
+      })
+      if pres and pres.status == 200 then published = true end
     end
   end
 end
