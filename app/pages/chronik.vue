@@ -232,6 +232,10 @@ const allEntries = computed(() => {
       } else if (/peer|verbindung/i.test(lower + ds) || (/@[\w_]+/.test(body) && !/session.end/i.test(body))) {
         type = 'peer'; title = 'Peer-Verbindung'
         const handle = body.match(/@([\w_]+)/); if (handle) badge = '@' + handle[1]
+      } else if (/\(claude\.?ai\)/i.test(ds)) {
+        type = 'session'; title = 'Session · Claude.ai'; badge = 'Claude.ai'
+      } else if (/\(elevenlabs\)/i.test(ds)) {
+        type = 'session'; title = 'Session · ElevenLabs'; badge = 'ElevenLabs'
       } else if (/health|garmin|puls|schlaf|schritt/i.test(lower + ds)) {
         type = 'health'; title = 'Health-Sync'
       } else if (/vault|verschlüss|stimm|kalibrierung|gesicht|aufnahm/i.test(lower + ds)) {
