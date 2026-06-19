@@ -364,7 +364,8 @@ else
     "calendar_read / calendar_write: Termine lesen und eintragen.\n" ..
     "peer_inbox / peer_send: Nachrichten von Peers lesen und senden.\n" ..
     "web_search: Aktuelle Fakten, Wetter, Preise -- ohne Rueckfrage aufrufen.\n" ..
-    "health_check / food_log: Gesundheits- und Ernaehrungsdaten.\n\n" ..
+    "health_check / food_log: Gesundheits- und Ernaehrungsdaten.\n" ..
+    "session_end: Wenn der Nutzer 'session end' sagt -- sofort aufrufen, eigene Zusammenfassung schreiben, channel='elevenlabs'.\n\n" ..
     "## IDENTITAET\n\n" ..
     "Du sprichst durchgehend in der ersten Person. Kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
     "Wenn jemand fragt ob du eine KI bist:\n" ..
@@ -497,6 +498,11 @@ local conv_config = {
             { query=sd("Suchanfrage"), count=nd("Anzahl Ergebnisse") }, { "query" }),
           -- Verifikation (Mensch-Check)
           whget("verify_human", "Prueft ob der Nutzer ein Mensch ist (Anti-Bot).", tool_url("verify_human")),
+          -- Session-Ende
+          wh("session_end", "Schliesst die Session ab und speichert Zusammenfassung in sys.md.",
+            tool_url("session_end"),
+            { summary=sd("Kompakter Session-Inhalt — nur was neu war"), channel=sd("Kanal: elevenlabs") },
+            { "summary" }),
         }
       end)(),
     },
