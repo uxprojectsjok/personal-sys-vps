@@ -38,6 +38,7 @@ import { register as healthSync }            from './health_sync.mjs';
 import { register as shopWriteRead }         from './shop_write_read.mjs';
 import { register as shopLog }               from './shop_log.mjs';
 import { register as contextWrite }          from './context_write.mjs';
+import { register as sessionEnd }            from './session_end.mjs';
 
 // ── Owner API-Tools (neu) ─────────────────────────────────────────────────────
 import { register as webSearch }             from './web_search.mjs';
@@ -118,6 +119,7 @@ export function registerTools(server, token, soulId = null) {
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
   if (soulId) contextWrite(server, soulId);
+  if (soulId) sessionEnd(server, soulId);
 }
 
 /**
