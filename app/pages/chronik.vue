@@ -112,6 +112,44 @@ const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 const query            = ref('')
+const sessionEntries   = ref([])
+
+// Lädt alle session_YYYY-MM-DD.md aus vault/context und parst die Blöcke
+async function loadSessionFiles() {
+  if (!soulToken.value) return
+  const auth = { Authorization: `Bearer ${soulToken.value}` }
+  try {
+    const listRes = await fetch('/api/vault/context', { headers: auth })
+    if (!listRes.ok) return
+    const { files } = await listRes.json()
+    const sessionFiles = (files || [])
+      .map(f => f.name)
+      .filter(n => /^session_\d{4}-\d{2}-\d{2}\.md$/.test(n))
+      .sort()
+    const results = []
+    for (const name of sessionFiles) {
+      try {
+        const r = await fetch(`/api/vault/context/${encodeURIComponent(name)}`, { headers: auth })
+        if (!r.ok) continue
+        const text = await r.text()
+        // Datum aus Dateinamen: session_2026-06-19.md → 2026-06-19
+        const fileDate = name.match(/session_(\d{4}-\d{2}-\d{2})\.md/)?.[1] ?? ''
+        // Blöcke trennen: ## HH:MM UTC — Channel\n\ncontent\n\n---
+        const blocks = text.split(/\n---\n/).filter(b => b.trim())
+        for (const block of blocks) {
+          const headMatch = block.match(/^##+\s+(\d{2}:\d{2}\s+UTC)\s+—\s+(.+)$/m)
+          if (!headMatch) continue
+          const timeStr    = headMatch[1]
+          const channel    = headMatch[2].trim()
+          const body       = block.replace(/^##+[^\n]+\n/, '').replace(/^\*\*Neue Erkenntnisse:\*\*\n/, '').trim()
+          const isoStr     = fileDate + 'T' + timeStr.replace(' UTC', ':00Z')
+          results.push({ isoStr, fileDate, timeStr, channel, body })
+        }
+      } catch { /* einzelne Datei überspringen */ }
+    }
+    sessionEntries.value = results
+  } catch { /* kein Vault verbunden → kein Problem */ }
+}
 
 // Beim Öffnen immer aktuellen Stand vom Server holen — Soul-KI-Einträge sind nur dort
 onMounted(async () => {
@@ -122,28 +160,61 @@ onMounted(async () => {
     const serverDate = serverContent.value.match(/last_session:\s*(.+)/)?.[1]?.trim() ?? ''
     if (serverDate >= localDate) acceptServerVersion()
   }
+  loadSessionFiles()
 })
+
+// ── Hilfsfunktion: Datum-Label aus ISO-String ──────────────────────────────
+function makeDateLabel(isoStr) {
+  let dateLabel = isoStr
+  let time = ''
+  try {
+    const d = new Date(isoStr)
+    if (!isNaN(d)) {
+      const today     = new Date()
+      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+      if (d.toDateString() === today.toDateString()) {
+        dateLabel = 'Heute'
+      } else if (d.toDateString() === yesterday.toDateString()) {
+        dateLabel = 'Gestern'
+      } else {
+        dateLabel = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
+      }
+      time = /[T ]/.test(isoStr) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
+    }
+  } catch {}
+  return { dateLabel, time }
+}
 
 // ── Parse all journal entries ──────────────────────────────────────────────
 const allEntries = computed(() => {
-  if (!soulContent.value) return []
-  const { sections } = parseSoul(soulContent.value)
-  const raw = (sections['Session-Log (komprimiert)'] || sections['Session-Log'] || '').replace(/\r/g, '')
-  if (!raw.trim()) return []
-
   const entries = []
-  const lines = raw.split('\n')
-  let current = null
-  for (const line of lines) {
-    const m = line.match(/^-\s+\*\*([^*:]+):?\*\*:?\s*(.*)/)
-    if (m) {
+
+  // 1. Einträge aus sys.md → ## Session-Log
+  if (soulContent.value) {
+    const { sections } = parseSoul(soulContent.value)
+    const raw = (sections['Session-Log (komprimiert)'] || sections['Session-Log'] || '').replace(/\r/g, '')
+    if (raw.trim()) {
+      const lines = raw.split('\n')
+      let current = null
+      for (const line of lines) {
+        const m = line.match(/^-\s+\*\*([^*:]+):?\*\*:?\s*(.*)/)
+        if (m) {
+          if (current) entries.push(current)
+          current = { dateStr: m[1].trim(), body: m[2].trim(), src: 'soul' }
+        } else if (current && line.trim() && !line.trim().startsWith('-')) {
+          current.body += ' ' + line.trim()
+        }
+      }
       if (current) entries.push(current)
-      current = { dateStr: m[1].trim(), body: m[2].trim() }
-    } else if (current && line.trim() && !line.trim().startsWith('-')) {
-      current.body += ' ' + line.trim()
     }
   }
-  if (current) entries.push(current)
+
+  // 2. Einträge aus session_*.md Context-Dateien
+  for (const s of sessionEntries.value) {
+    const channelLabel = s.channel
+    entries.push({ dateStr: s.isoStr, body: s.body, src: 'session', channelLabel })
+  }
+
   if (!entries.length) return []
 
   return entries.map((e, i) => {
@@ -151,52 +222,36 @@ const allEntries = computed(() => {
     const lower = body.toLowerCase()
     const ds    = e.dateStr
 
-    // infer type
-    let type  = 'log'
-    let title = 'Log-Eintrag'
-    let badge = null
+    let type  = e.src === 'session' ? 'session' : 'log'
+    let title = e.src === 'session' ? ('Session · ' + (e.channelLabel || 'Claude.ai')) : 'Log-Eintrag'
+    let badge = e.src === 'session' ? (e.channelLabel || null) : null
 
-    if (/soul erschaff|genesis|initialisiert/i.test(lower + ds)) {
-      type = 'genesis'; title = 'Soul erschaffen'; badge = 'genesis'
-    } else if (/peer|verbindung/i.test(lower + ds) || (/@[\w_]+/.test(body) && !/session.end/i.test(body))) {
-      type = 'peer'; title = 'Peer-Verbindung'
-      const handle = body.match(/@([\w_]+)/); if (handle) badge = '@' + handle[1]
-    } else if (/health|garmin|puls|schlaf|schritt/i.test(lower + ds)) {
-      type = 'health'; title = 'Health-Sync'
-    } else if (/vault|verschlüss|stimm|kalibrierung|gesicht|aufnahm/i.test(lower + ds)) {
-      type = 'vault'; title = 'Vault erweitert'
-    } else if (/polygon|anchor|verankert|on-chain|onchain/i.test(lower + ds)) {
-      type = 'anchor'; title = 'Verankerung'; badge = 'on-chain'
-    } else if (/session\s*\d+|session #/i.test(lower + ds)) {
-      type = 'session'
-      const num = (lower + ds).match(/session\s*#?(\d+)/i);
-      title = 'Session ' + (num ? num[1] : '')
-      badge = num ? String(num[1]) : null
-    } else if (/session/i.test(lower + ds)) {
-      type = 'session'; title = 'Session'
+    if (e.src !== 'session') {
+      if (/soul erschaff|genesis|initialisiert/i.test(lower + ds)) {
+        type = 'genesis'; title = 'Soul erschaffen'; badge = 'genesis'
+      } else if (/peer|verbindung/i.test(lower + ds) || (/@[\w_]+/.test(body) && !/session.end/i.test(body))) {
+        type = 'peer'; title = 'Peer-Verbindung'
+        const handle = body.match(/@([\w_]+)/); if (handle) badge = '@' + handle[1]
+      } else if (/health|garmin|puls|schlaf|schritt/i.test(lower + ds)) {
+        type = 'health'; title = 'Health-Sync'
+      } else if (/vault|verschlüss|stimm|kalibrierung|gesicht|aufnahm/i.test(lower + ds)) {
+        type = 'vault'; title = 'Vault erweitert'
+      } else if (/polygon|anchor|verankert|on-chain|onchain/i.test(lower + ds)) {
+        type = 'anchor'; title = 'Verankerung'; badge = 'on-chain'
+      } else if (/session\s*\d+|session #/i.test(lower + ds)) {
+        type = 'session'
+        const num = (lower + ds).match(/session\s*#?(\d+)/i)
+        title = 'Session ' + (num ? num[1] : ''); badge = num ? String(num[1]) : null
+      } else if (/session/i.test(lower + ds)) {
+        type = 'session'; title = 'Session'
+      }
     }
 
-    // parse date/time
-    let dateLabel = ds
-    let time = ''
-    try {
-      const d = new Date(ds)
-      if (!isNaN(d)) {
-        const today     = new Date()
-        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
-        if (d.toDateString() === today.toDateString()) {
-          dateLabel = 'Heute'
-        } else if (d.toDateString() === yesterday.toDateString()) {
-          dateLabel = 'Gestern'
-        } else {
-          dateLabel = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
-        }
-        // Nur Zeit anzeigen wenn der Eintrag einen expliziten Zeitstempel hat (T oder Leerzeichen im String)
-        time = /[T ]/.test(ds) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
-      }
-    } catch {}
-
+    const { dateLabel, time } = makeDateLabel(ds)
     return { id: i, dateLabel, time, type, title, badge, body }
+  }).sort((a, b) => {
+    // Neueste zuerst innerhalb jeder Gruppe — bei gleicher Gruppe nach Zeit
+    return 0
   })
 })
 
