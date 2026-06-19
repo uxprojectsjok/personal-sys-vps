@@ -37,7 +37,7 @@ export function register(server, _soulId, token) {
       try {
         const now    = new Date();
         const date   = now.toISOString().slice(0, 10);
-        const suffix = channel === 'elevenlabs' ? ' (ElevenLabs)' : channel === 'other' ? ' (extern)' : '';
+        const suffix = channel === 'elevenlabs' ? ' (ElevenLabs)' : channel === 'other' ? ' (extern)' : ' (Claude.ai)';
         const first  = summary.trim().split('\n')[0].replace(/^[-*#\s]+/, '').trim();
         const entry  = `- **${date}${suffix}:** ${first}`;
 
