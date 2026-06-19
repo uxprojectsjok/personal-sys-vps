@@ -119,7 +119,7 @@ export function registerTools(server, token, soulId = null) {
   if (soulId) shopWriteRead(server, soulId);
   if (soulId) shopLog(server, soulId);
   if (soulId) contextWrite(server, soulId);
-  if (soulId) sessionEnd(server, soulId);
+  if (soulId) sessionEnd(server, soulId, token);
 }
 
 /**
