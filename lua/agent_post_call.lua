@@ -90,11 +90,16 @@ end
 if transcript == "" then transcript = raw end
 
 -- ── Als context_write speichern ───────────────────────────────────────────────
-local filename = "agent_call_" .. tostring(math.floor(ngx.now())) .. ".md"
-local content  = "# Agent Call " .. os.date("!%Y-%m-%d %H:%M UTC") .. "\n\n" .. transcript
+local now_ts   = math.floor(ngx.now())
+local date_str = os.date("!%Y-%m-%d", now_ts)
+local time_str = os.date("!%H:%M", now_ts)
+local filename = "agent_call_" .. tostring(now_ts) .. ".md"
+local content  = "# Agent Call " .. date_str .. " " .. time_str .. " UTC\n\n" .. transcript
 
 local httpc = http.new()
 httpc:set_timeout(15000)
+local mcp_headers = { ["Content-Type"] = "application/json", ["x-soul-id"] = soul_id }
+
 local pl_ok, payload = pcall(cjson.encode, {
   tool  = "context_write",
   input = { filename = filename, content = content }
@@ -103,7 +108,7 @@ if not pl_ok then ngx.status=500; ngx.say('{"error":"encode_failed"}'); return e
 
 local res, err = httpc:request_uri("http://127.0.0.1:3098/internal/run-tool", {
   method  = "POST",
-  headers = { ["Content-Type"] = "application/json", ["x-soul-id"] = soul_id },
+  headers = mcp_headers,
   body    = payload,
 })
 
@@ -111,6 +116,20 @@ if not res then
   ngx.status = 502
   ngx.say('{"error":"mcp_unreachable","message":"' .. (err or "timeout"):gsub('"','\\"') .. '"}')
   return
+end
+
+-- ── Session-Log Eintrag in sys.md (gleicher Workflow wie @session-end) ────────
+local log_entry = "- **" .. date_str .. " (ElevenLabs):** Sprachsession " .. time_str .. " UTC — Transkript: " .. filename
+local pl2_ok, payload2 = pcall(cjson.encode, {
+  tool  = "soul_write",
+  input = { section = "Session-Log", content = log_entry, mode = "prepend" }
+})
+if pl2_ok then
+  httpc:request_uri("http://127.0.0.1:3098/internal/run-tool", {
+    method  = "POST",
+    headers = mcp_headers,
+    body    = payload2,
+  })
 end
 
 ngx.status = 200
