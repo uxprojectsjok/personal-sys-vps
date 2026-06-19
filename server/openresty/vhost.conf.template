@@ -1196,7 +1196,6 @@ server {
 
   location = /api/agent/post-call {
     limit_except POST OPTIONS { deny all; }
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/agent_post_call.lua;
