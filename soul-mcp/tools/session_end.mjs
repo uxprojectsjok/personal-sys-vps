@@ -108,7 +108,7 @@ export function register(server, soulId, token) {
           const firstLine = summary.trim().split('\n')[0].replace(/^[-*#\s]+/, '').trim();
           const logEntry  = `- **${dateStr}${channelSuffix}:** ${firstLine}`;
 
-          const section   = 'Session-Log (komprimiert)';
+          const section   = 'Session-Log';
           const current   = await getText('/api/soul', token);
           // Sektion anlegen/erweitern — neue Einträge oben (prepend)
           const updated   = updateSection(current, section, logEntry, 'prepend');
