@@ -196,12 +196,14 @@ local TYPE_DIRS = {
   audio   = "vault/audio",
   video   = "vault/video",
   images  = "vault/images",
+  image   = "vault/images",
   context = "vault/context"
 }
 local PERM_KEYS = {
   audio   = "audio",
   video   = "video",
   images  = "images",
+  image   = "images",
   context = "context_files"
 }
 local MIME_MAP = {
@@ -242,21 +244,24 @@ if ngx.req.get_method() == "DELETE" then
   -- Datei physisch löschen (kein Fehler wenn nicht vorhanden)
   local fpath = base_dir .. "/" .. TYPE_DIRS[del_type] .. "/" .. safe_del
   os.remove(fpath)
+  -- "image" → "images": synced_files nutzt immer den Plural-Schlüssel
+  local SYNCED_NORM = { audio="audio", video="video", images="images", image="images", context="context" }
+  local synced_key  = SYNCED_NORM[del_type] or del_type
   -- synced_files aktualisieren
   local new_synced = {}
-  for _, n in ipairs(type(synced[del_type]) == "table" and synced[del_type] or {}) do
+  for _, n in ipairs(type(synced[synced_key]) == "table" and synced[synced_key] or {}) do
     if n ~= safe_del then table.insert(new_synced, n) end
   end
-  synced[del_type] = new_synced
+  synced[synced_key] = new_synced
   -- active_files bereinigen
-  if type(actives[del_type]) == "string" and actives[del_type] == safe_del then
-    actives[del_type] = ""
-  elseif type(actives[del_type]) == "table" then
+  if type(actives[synced_key]) == "string" and actives[synced_key] == safe_del then
+    actives[synced_key] = ""
+  elseif type(actives[synced_key]) == "table" then
     local new_active = {}
-    for _, n in ipairs(actives[del_type]) do
+    for _, n in ipairs(actives[synced_key]) do
       if n ~= safe_del then table.insert(new_active, n) end
     end
-    actives[del_type] = new_active
+    actives[synced_key] = new_active
   end
   -- api_context.json zurückschreiben
   ctx.synced_files = synced
@@ -301,12 +306,16 @@ if perm_key and not perm[perm_key] then
   return
 end
 
+-- "image" → "images": synced_files nutzt immer den Plural-Schlüssel
+local SYNCED_NORM_GET = { audio="audio", video="video", images="images", image="images", context="context" }
+local synced_type = SYNCED_NORM_GET[type_name] or type_name
+
 if not file_name or file_name == "" then
   -- Dateiliste
   local base_url   = ngx.var.scheme .. "://" .. ngx.var.host
-  local raw_files  = synced[type_name] or {}
+  local raw_files  = synced[synced_type] or {}
   local files      = type(raw_files) == "table" and raw_files or {}
-  local active_raw  = type(actives) == "table" and (actives[type_name] or "") or ""
+  local active_raw  = type(actives) == "table" and (actives[synced_type] or "") or ""
   local active_name = type(active_raw) == "string" and active_raw or ""
   local list = {}
   -- mind.md: immer in der Context-Liste anzeigen, beim ersten Aufruf auto-anlegen
