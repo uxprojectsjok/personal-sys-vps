@@ -168,7 +168,8 @@ function makeDateLabel(isoStr) {
   let dateLabel = isoStr
   let time = ''
   try {
-    const d = new Date(isoStr)
+    const cleanStr = isoStr.replace(/\s*\([^)]*\)\s*/g, '').trim()
+    const d = new Date(cleanStr)
     if (!isNaN(d)) {
       const today     = new Date()
       const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
@@ -179,7 +180,7 @@ function makeDateLabel(isoStr) {
       } else {
         dateLabel = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
       }
-      time = /[T ]/.test(isoStr) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
+      time = /[T ]\d{2}:\d{2}/.test(cleanStr) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
     }
   } catch {}
   return { dateLabel, time }
