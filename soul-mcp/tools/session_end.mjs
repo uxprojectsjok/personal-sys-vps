@@ -5,6 +5,7 @@
  */
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
+import { z } from 'zod';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
 
 async function ensureContextRegistered(soulId, filename) {
@@ -32,20 +33,9 @@ export function register(server, soulId) {
       'kein Kontext der bereits in der Soul bekannt war.',
     ].join(' '),
     {
-      summary: {
-        type: 'string',
-        description: 'Zusammenfassung dieser Session: was wurde besprochen, entschieden, gelernt. Nur neue Erkenntnisse — kein bekannter Soul-Kontext.',
-      },
-      insights: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Optionale Liste konkreter neuer Fakten oder Entscheidungen (je ein kurzer Satz)',
-      },
-      channel: {
-        type: 'string',
-        enum: ['claude_ai', 'elevenlabs', 'other'],
-        description: 'Kanal der Session (Standard: claude_ai)',
-      },
+      summary:  z.string().describe('Zusammenfassung dieser Session: was wurde besprochen, entschieden, gelernt. Nur neue Erkenntnisse — kein bekannter Soul-Kontext.'),
+      insights: z.array(z.string()).optional().describe('Optionale Liste konkreter neuer Fakten oder Entscheidungen (je ein kurzer Satz)'),
+      channel:  z.enum(['claude_ai', 'elevenlabs', 'other']).optional().describe('Kanal der Session (Standard: claude_ai)'),
     },
     async ({ summary, insights = [], channel = 'claude_ai' }) => {
       if (!soulId) return { content: [{ type: 'text', text: 'Fehler: soulId nicht verfügbar' }], isError: true };
