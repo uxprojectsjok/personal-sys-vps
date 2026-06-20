@@ -310,7 +310,9 @@
     "search_brave_key": "Brave Search API-Key fehlt — bitte in Einstellungen hinterlegen (brave.com/search/api · Free: 2.000/Monat).",
     "search_error": "Suchfehler: {msg}",
     "elevenlabs_key_inline": "ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.",
-    "wavespeed_key_inline": "WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen."
+    "wavespeed_key_inline": "WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen.",
+    "input_placeholder": "Schreiben…",
+    "pin_tools_select": "**Tools auswählen** — anklicken zum Auswählen, nochmal für Abwahl:"
   },
   "common": {
     "cancel": "Abbrechen",

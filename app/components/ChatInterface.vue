@@ -1130,9 +1130,7 @@ const canSend = computed(() =>
   !isLoading.value && !isSavingAgent.value && !props.growthLocked
 )
 
-const inputPlaceholder = computed(() => {
-  return 'Schreiben…'
-})
+const inputPlaceholder = computed(() => t('chat.input_placeholder'))
 
 // ── Messaging / Social sphere state ───────────────────────────────
 const { soulContent: soulContentAgent, soulMeta, updateContent, pushToServer, fetchFromServer, syncStatus, serverContent, syncLongmemFromServer } = useSoul()
@@ -2947,9 +2945,7 @@ async function handlePin(query) {
     if (!toolsArg) {
       pinSelectedTools.value = []
       addMessage('user', '@pin tools')
-      const msg = addMessage('assistant', [
-        '**Tools auswählen** — anklicken zum Auswählen, nochmal für Abwahl:',
-      ].join('\n'))
+      const msg = addMessage('assistant', t('chat.pin_tools_select'))
       setMessageMetaById(msg.id, 'actions', toolPickerActions)
       return
     }
