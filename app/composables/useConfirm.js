@@ -3,8 +3,8 @@ import { ref } from 'vue';
 const open        = ref(false);
 const title       = ref('');
 const message     = ref('');
-const confirmText = ref('Bestätigen');
-const cancelText  = ref('Abbrechen');
+const confirmText = ref('Confirm');
+const cancelText  = ref('Cancel');
 const danger      = ref(true);
 let _resolve = null;
 
@@ -16,8 +16,8 @@ function ask(opts) {
   if (typeof opts === 'string') opts = { message: opts };
   title.value       = opts.title       ?? '';
   message.value     = opts.message     ?? '';
-  confirmText.value = opts.confirmText ?? 'Bestätigen';
-  cancelText.value  = opts.cancelText  ?? 'Abbrechen';
+  confirmText.value = opts.confirmText ?? 'Confirm';
+  cancelText.value  = opts.cancelText  ?? 'Cancel';
   danger.value      = opts.danger      !== false;
   open.value        = true;
   return new Promise((resolve) => { _resolve = resolve; });

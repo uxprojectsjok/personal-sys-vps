@@ -359,7 +359,7 @@ async function handleRetryHandshake(peer) {
 }
 
 async function handleRemove(soulId, alias) {
-  const ok = await ask(t('peers.confirm_remove', { alias }), { confirm: t('peers.btn_disconnect_confirm'), cancel: t('common.cancel'), danger: true })
+  const ok = await ask({ message: t('peers.confirm_remove', { alias }), confirmText: t('peers.btn_disconnect_confirm'), cancelText: t('common.cancel'), danger: true })
   if (!ok) return
   try {
     await fetch(`/api/vault/connections/${encodeURIComponent(soulId)}`, {
