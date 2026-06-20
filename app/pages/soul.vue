@@ -193,7 +193,7 @@ function onNav(id) {
   if (id === 'setup')    { router.push('/einrichten'); return }
   if (id === 'chat')     { router.push('/session');  return }
   if (id === 'chronik')  { router.push('/chronik');  return }
-  if (id === 'files')    { router.push('/dateien');    return }
+  if (id === 'files')    { router.push('/vault');    return }
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'earnings') { router.push('/einnahmen');   return }
   if (id === 'maturity') { router.push('/reife');    return }
@@ -201,7 +201,7 @@ function onNav(id) {
   if (id === 'calendar') { router.push('/kalender'); return }
   if (id === 'settings') { router.push('/einstellungen'); return }
   if (id === 'anchor')   { router.push('/verankern');    return }
-  if (id === 'export')   { router.push('/exportieren'); return }
+  if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');  return }
   drawerOpen.value = false

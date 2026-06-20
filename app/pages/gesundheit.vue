@@ -663,7 +663,7 @@ const tips = computed(() => apiTips.value)
 function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/gate' }
 function onNav(id) {
   if (id === 'health') return
-  const routes = { chat:'/session', setup:'/einrichten', soul:'/soul', chronik:'/chronik', files:'/dateien', maturity:'/reife', calendar:'/kalender', anchor:'/verankern', export:'/exportieren', peers:'/peers', connect:'/verbindung', market:'/marketplace', earnings:'/einnahmen', settings:'/einstellungen' }
+  const routes = { chat:'/session', setup:'/einrichten', soul:'/soul', chronik:'/chronik', files:'/vault', maturity:'/reife', calendar:'/kalender', anchor:'/verankern', export:'/export', peers:'/peers', connect:'/verbindung', market:'/marketplace', earnings:'/einnahmen', settings:'/einstellungen' }
   if (routes[id]) { router.push(routes[id]); return }
   drawerOpen.value = false; router.push('/')
 }

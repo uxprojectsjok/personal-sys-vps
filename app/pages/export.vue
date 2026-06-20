@@ -314,7 +314,7 @@ function onNav(id) {
   if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');        return }
   if (id === 'chronik')  { router.push('/chronik');     return }
-  if (id === 'files')    { router.push('/dateien');     return }
+  if (id === 'files')    { router.push('/vault');     return }
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'earnings') { router.push('/einnahmen');   return }
   if (id === 'maturity') { router.push('/reife');       return }
