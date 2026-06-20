@@ -73,30 +73,39 @@ elevenlabs_voice_id: ""
 ---
 
 ## Kern-Identität
+<!-- Core Identity — who this person is: age, profession, origin, life situation -->
 ${idea ? idea : "*Noch nicht beschrieben.*"}
 
 ## Werte & Überzeugungen
+<!-- Values & Beliefs — what this person stands for, convictions, meaning -->
 *Noch nicht beschrieben.*
 
 ## Ästhetik & Resonanz
+<!-- Aesthetics & Resonance — style, taste, what moves this person -->
 *Noch nicht beschrieben.*
 
 ## Sprachmuster & Ausdruck
+<!-- Communication Patterns — how this person speaks, writes, formulates -->
 *Noch nicht beschrieben.*
 
 ## Wiederkehrende Themen & Obsessionen
+<!-- Recurring Themes & Obsessions — subjects that keep coming up -->
 *Noch nicht beschrieben.*
 
 ## Emotionale Signatur
+<!-- Emotional Signature — feelings, drives, energy, mood patterns -->
 *Noch nicht beschrieben.*
 
 ## Weltbild
+<!-- Worldview — how this person sees the world, philosophy, outlook -->
 *Noch nicht beschrieben.*
 
 ## Offene Fragen dieser Person
+<!-- Open Questions — unresolved topics, goals, hopes, plans -->
 *Noch nicht beschrieben.*
 
 ## Session-Log (komprimiert)
+<!-- Session Log — automatic record of all AI conversations -->
 *Noch keine Sessions.*
 
 ## Sozialsphäre
