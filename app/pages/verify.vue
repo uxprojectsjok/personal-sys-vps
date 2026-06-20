@@ -364,7 +364,7 @@ function goGate()   { window.location.href = `/gate?next=${encodeURIComponent(ro
 function closePage() {
   if (window.opener) { window.close(); return }
   if (window.history.length > 1) { window.history.back(); return }
-  window.location.href = '/verbindung'
+  window.location.href = '/connection'
 }
 
 function lockAndClose() {

@@ -656,24 +656,24 @@ const cmdkOpen         = ref(false)
 const MODAL_MAP = {
   soul: () => { setupOpen.value    = true },
   files: () => { filesOpen.value   = true },
-  anchor: () => { navigateTo('/verankern') },
+  anchor: () => { navigateTo('/anchor') },
   export: () => { navigateTo('/export') },
-  settings: () => { navigateTo('/einstellungen') },
+  settings: () => { navigateTo('/settings') },
   market: () => { navigateTo('/marketplace') },
 }
 
 function onNav(id) {
   if (id === 'chat')     { navigateTo('/session');    return }
-  if (id === 'setup')    { navigateTo('/einrichten'); return }
+  if (id === 'setup')    { navigateTo('/setup'); return }
   if (id === 'soul')     { navigateTo('/soul');       return }
-  if (id === 'chronik')  { navigateTo('/chronik');    return }
-  if (id === 'maturity') { navigateTo('/reife');      return }
-  if (id === 'health')   { navigateTo('/gesundheit'); return }
-  if (id === 'calendar') { navigateTo('/kalender');   return }
+  if (id === 'chronik')  { navigateTo('/chronicle');    return }
+  if (id === 'maturity') { navigateTo('/maturity');      return }
+  if (id === 'health')   { navigateTo('/health'); return }
+  if (id === 'calendar') { navigateTo('/calendar');   return }
   if (id === 'files')    { navigateTo('/vault');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
-  if (id === 'connect')  { navigateTo('/verbindung'); return }
-  if (id === 'earnings') { navigateTo('/einnahmen');  return }
+  if (id === 'connect')  { navigateTo('/connection'); return }
+  if (id === 'earnings') { navigateTo('/earnings');  return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id

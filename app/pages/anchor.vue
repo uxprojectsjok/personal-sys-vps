@@ -330,18 +330,18 @@ function onNav(id) {
   if (id === 'anchor')   return
   if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
-  if (id === 'connect')  { router.push('/verbindung');  return }
+  if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'chat')     { router.push('/session');     return }
-  if (id === 'setup')    { router.push('/einrichten');  return }
+  if (id === 'setup')    { router.push('/setup');  return }
   if (id === 'soul')     { router.push('/soul');        return }
-  if (id === 'chronik')  { router.push('/chronik');     return }
+  if (id === 'chronik')  { router.push('/chronicle');     return }
   if (id === 'files')    { router.push('/vault');     return }
   if (id === 'market')   { router.push('/marketplace'); return }
-  if (id === 'earnings') { router.push('/einnahmen');   return }
-  if (id === 'maturity') { router.push('/reife');       return }
-  if (id === 'health')   { router.push('/gesundheit'); return }
-  if (id === 'calendar') { router.push('/kalender');    return }
-  if (id === 'settings') { router.push('/einstellungen'); return }
+  if (id === 'earnings') { router.push('/earnings');   return }
+  if (id === 'maturity') { router.push('/maturity');       return }
+  if (id === 'health')   { router.push('/health'); return }
+  if (id === 'calendar') { router.push('/calendar');    return }
+  if (id === 'settings') { router.push('/settings'); return }
   drawerOpen.value = false
   router.push('/')
 }

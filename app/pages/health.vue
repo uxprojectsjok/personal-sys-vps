@@ -24,7 +24,7 @@
               </div>
               <div class="hl-empty-title">{{ $t('health.not_configured') }}</div>
               <p class="hl-empty-desc">{{ $t('health.not_configured_desc') }}</p>
-              <button class="hl-setup-toggle-btn" @click="router.push('/einstellungen')">{{ $t('health.go_settings') }}</button>
+              <button class="hl-setup-toggle-btn" @click="router.push('/settings')">{{ $t('health.go_settings') }}</button>
             </div>
           </template>
 
@@ -663,7 +663,7 @@ const tips = computed(() => apiTips.value)
 function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/gate' }
 function onNav(id) {
   if (id === 'health') return
-  const routes = { chat:'/session', setup:'/einrichten', soul:'/soul', chronik:'/chronik', files:'/vault', maturity:'/reife', calendar:'/kalender', anchor:'/verankern', export:'/export', peers:'/peers', connect:'/verbindung', market:'/marketplace', earnings:'/einnahmen', settings:'/einstellungen' }
+  const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', calendar:'/calendar', anchor:'/anchor', export:'/export', peers:'/peers', connect:'/connection', market:'/marketplace', earnings:'/earnings', settings:'/settings' }
   if (routes[id]) { router.push(routes[id]); return }
   drawerOpen.value = false; router.push('/')
 }
