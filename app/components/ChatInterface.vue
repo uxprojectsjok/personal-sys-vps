@@ -746,64 +746,30 @@ function preflightCheck(type) {
   if (!s) return null // noch nicht geladen → API-Fehler übernimmt
 
   if (type === 'web-search' && !s.brave_key_set) {
-    return [
-      '**Brave Search API-Key fehlt**',
-      '',
-      'Damit die KI-Websuche funktioniert:',
-      '1. brave.com/search/api → kostenloser Key (2.000 Suchen/Monat)',
-      '2. Einstellungen → API-Keys → Brave Search eintragen',
-    ].join('\n')
+    return [t('chat.preflight_brave_title'), '', t('chat.preflight_brave_body')].join('\n')
   }
 
   if (type === 'create-media' && !s.wavespeed_key_set) {
-    return [
-      '**WaveSpeed API-Key fehlt**',
-      '',
-      'Damit Bilder generiert werden können:',
-      '1. wavespeed.ai → Account erstellen → API-Key kopieren',
-      '2. Einstellungen → API-Keys → WaveSpeed Key eintragen',
-    ].join('\n')
+    return [t('chat.preflight_wavespeed_title'), '', t('chat.preflight_wavespeed_body')].join('\n')
   }
 
   if (type === 'create-agent' && !s.elevenlabs_key_set) {
-    return [
-      '**ElevenLabs API-Key fehlt**',
-      '',
-      'Damit dein Sprach-Agent erstellt werden kann:',
-      '1. elevenlabs.io → Account erstellen → API-Key kopieren',
-      '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
-    ].join('\n')
+    return [t('chat.preflight_elevenlabs_title'), '', t('chat.preflight_agent_body')].join('\n')
   }
 
   if (type === 'voice-stt' && !s.elevenlabs_key_set) {
-    return [
-      '**ElevenLabs API-Key fehlt**',
-      '',
-      '1. elevenlabs.io → API-Key kopieren',
-      '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
-    ].join('\n')
+    return [t('chat.preflight_elevenlabs_title'), '', t('chat.preflight_stt_body')].join('\n')
   }
 
   if (type === 'voice-agent') {
     if (!s.elevenlabs_key_set) {
-      return [
-        '**ElevenLabs API-Key fehlt**',
-        '',
-        'Richte zuerst deinen Sprach-Agent ein:',
-        '1. elevenlabs.io → Account erstellen → API-Key kopieren',
-        '2. Einstellungen → API-Keys → ElevenLabs Key eintragen',
-        '3. `@create-agent` eingeben um deinen Agent zu erstellen',
-      ].join('\n')
+      return [t('chat.preflight_elevenlabs_title'), '', t('chat.preflight_voice_agent_body')].join('\n')
     }
     const hasAgent = /elevenlabs_agent_id:\s*\S+/.test(props.soulContent || '') ||
                      /elevenlabs_agent_id:\s*\S+/.test(soulContentAgent.value || '') ||
                      !!localStorage.getItem('sys_elevenlabs_agent_id')
     if (!hasAgent) {
-      return [
-        '**Kein Agent vorhanden**',
-        '',
-        'Erstelle zuerst deinen persönlichen Sprach-Agent mit `@create-agent`.',
-      ].join('\n')
+      return [t('chat.preflight_no_agent_title'), '', t('chat.preflight_no_agent_body')].join('\n')
     }
   }
 
@@ -834,7 +800,7 @@ async function startVoiceRecord() {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
   } catch (e) {
     const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
-      ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
+      ? t('chat.mic_denied')
       : e?.name === 'NotFoundError'
         ? t('chat.mic_not_found')
         : t('chat.mic_error', { name: e?.name || 'unknown' })
@@ -1006,22 +972,22 @@ function insertEmoji(emoji) {
 // ── @-Command strip ─────────────────────────────────────────────────
 const cmdsOpen = ref(false)
 
-const AT_COMMANDS = [
-  { cmd: '@food-log ',    label: 'food-log',     desc: 'Mahlzeit / Getränk loggen',       direct: false, hint: 'Vollkornbrot mit Butter …'              },
-  { cmd: '@product ',     label: 'product',      desc: 'Produkt erfassen',                direct: false, hint: 'Nike Sneakers …'                        },
-  { cmd: '@suche ',       label: 'suche',        desc: 'KI-Websuche',                     direct: false, hint: 'Was ist …'                              },
-  { cmd: '@create-media ',label: 'create-media', desc: 'KI-Bild generieren',              direct: false, hint: 'Beschreibe das Bild …'                  },
-  { cmd: '@audio',        label: 'audio',        desc: 'Stimme aufnehmen',                direct: true                                                  },
-  { cmd: '@gesicht',      label: 'gesicht',      desc: 'Gesicht aufnehmen',               direct: true                                                  },
-  { cmd: '@bewegung',     label: 'bewegung',     desc: 'Bewegung aufnehmen',              direct: true                                                  },
-  { cmd: '@create-agent ', label: 'create-agent', desc: 'ElevenLabs Agent erstellen',      direct: false, hint: 'Voice-ID (optional) …'                   },
-  { cmd: '@sprechen',     label: 'sprechen',     desc: 'Sprachaufnahme starten',          direct: true                                                  },
-  { cmd: '@abbruch',      label: 'abbruch',      desc: 'Aktion abbrechen & zurücksetzen', direct: true                                                  },
-  { cmd: '@session-end',  label: 'session-end',  desc: 'Session jetzt analysieren & eintragen', direct: true                                              },
-  { cmd: '@alle ',        label: 'alle',         desc: 'Nachricht an alle Peers',         direct: false, hint: 'Nachricht …'                            },
-  { cmd: '@peer ',        label: 'peer',         desc: 'Direkt an Peer (explizit)',       direct: false, hint: 'Name Nachricht …'                       },
-  { cmd: '@agent ',       label: 'agent',        desc: 'Agent Sandbox',                   direct: false, hint: 'Frage an den Agent …'                  },
-]
+const AT_COMMANDS = computed(() => [
+  { cmd: '@food-log ',    label: 'food-log',     desc: t('chat.cmd_food_log_desc'),     direct: false, hint: t('chat.cmd_food_log_hint')     },
+  { cmd: '@product ',     label: 'product',      desc: t('chat.cmd_product_desc'),      direct: false, hint: t('chat.cmd_product_hint')      },
+  { cmd: '@suche ',       label: 'suche',        desc: t('chat.cmd_search_desc'),       direct: false, hint: t('chat.cmd_search_hint')       },
+  { cmd: '@create-media ',label: 'create-media', desc: t('chat.cmd_create_media_desc'), direct: false, hint: t('chat.cmd_create_media_hint') },
+  { cmd: '@audio',        label: 'audio',        desc: t('chat.cmd_audio_desc'),        direct: true                                         },
+  { cmd: '@gesicht',      label: 'gesicht',      desc: t('chat.cmd_face_desc'),         direct: true                                         },
+  { cmd: '@bewegung',     label: 'bewegung',     desc: t('chat.cmd_motion_desc'),       direct: true                                         },
+  { cmd: '@create-agent ', label: 'create-agent', desc: t('chat.cmd_create_agent_desc'), direct: false, hint: t('chat.cmd_create_agent_hint') },
+  { cmd: '@sprechen',     label: 'sprechen',     desc: t('chat.cmd_speak_desc'),        direct: true                                         },
+  { cmd: '@abbruch',      label: 'abbruch',      desc: t('chat.cmd_abort_desc'),        direct: true                                         },
+  { cmd: '@session-end',  label: 'session-end',  desc: t('chat.cmd_session_end_desc'),  direct: true                                         },
+  { cmd: '@alle ',        label: 'alle',         desc: t('chat.cmd_all_desc'),          direct: false, hint: t('chat.cmd_all_hint')          },
+  { cmd: '@peer ',        label: 'peer',         desc: t('chat.cmd_peer_desc'),         direct: false, hint: t('chat.cmd_peer_hint')         },
+  { cmd: '@agent ',       label: 'agent',        desc: t('chat.cmd_agent_desc'),        direct: false, hint: t('chat.cmd_agent_hint')        },
+])
 
 function insertCommand(cmd) {
   cmdsOpen.value = false
@@ -1758,13 +1724,13 @@ async function uploadToSharedVault(file) {
   } else {
     b64 = await fileToBase64(file)
   }
-  if (file.size > 50 * 1024 * 1024) throw new Error('Datei zu groß (max 50 MB)')
+  if (file.size > 50 * 1024 * 1024) throw new Error(t('chat.file_too_large'))
   const r = await fetch('/api/vault/shared', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
     body: JSON.stringify({ name: file.name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file', data: b64 }),
   })
-  if (!r.ok) throw new Error(`Upload fehlgeschlagen (${r.status})`)
+  if (!r.ok) throw new Error(t('chat.upload_failed', { status: r.status }))
   const d = await r.json()
   return d.filename
 }
@@ -2015,7 +1981,7 @@ async function startPeerAudioRec() {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
   } catch (e) {
     const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
-      ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
+      ? t('chat.mic_denied')
       : t('chat.mic_unavailable')
     addMessage('assistant', msg); await scrollToBottom(); return
   }
@@ -2155,7 +2121,7 @@ async function handleLocalFile(file) {
     return { _imageFile: file, name }
   }
   if (PDF_EXT.test(name)) {
-    if (file.size > 5 * 1024 * 1024) return { text: `[PDF: "${name}" – zu groß (max 5 MB)]`, contentBlocks: null }
+    if (file.size > 5 * 1024 * 1024) return { text: t('chat.pdf_too_large', { name }), contentBlocks: null }
     const base64 = await fileToBase64(file)
     return {
       text: `[PDF: "${name}"]`,
@@ -2482,7 +2448,7 @@ async function handleCreateAgent(overrideVoiceId = null) {
   if (preErr) { addMessage('user', '@create-agent'); addMessage('assistant', preErr); return }
   const signal = startJob('@create-agent')
   addMessage('user', overrideVoiceId ? `@create-agent ${overrideVoiceId}` : '@create-agent')
-  const statusMsg = addMessage('assistant', 'ElevenLabs Agent wird erstellt…', { streaming: true })
+  const statusMsg = addMessage('assistant', t('chat.agent_creating'), { streaming: true })
   await scrollToBottom()
 
   try {
@@ -2547,8 +2513,8 @@ async function handleCreateAgent(overrideVoiceId = null) {
       const text = msg === 'elevenlabs_key_missing'
         ? 'ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.'
         : data.error === 'no_voice_source'
-        ? 'Kein Vault-Audio und keine Voice-ID.\n\n**Option 1:** Sprachaufnahme im Vault hinterlegen → `@audio` tippen, aufnehmen, dann `@create-agent` erneut.\n**Option 2:** Bestehende ElevenLabs Voice-ID direkt angeben: `@create-agent <voice-id>`'
-        : `Fehler: ${msg}`
+        ? t('chat.agent_no_voice_clone')
+        : t('chat.error_prefix', { msg })
       setMessageMetaById(statusMsg.id, 'text', text)
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
@@ -2559,25 +2525,25 @@ async function handleCreateAgent(overrideVoiceId = null) {
     if (data.voice_id) localStorage.setItem('sys_elevenlabs_voice_id', data.voice_id)
 
     const voiceNote = data.has_voice_clone
-      ? `Voice-ID: \`${data.voice_id}\``
-      : 'Kein Stimm-Clone — kein Audio im Vault oder Vault war beim Erstellen gesperrt. Vault entsperren und `@create-agent` erneut ausführen.'
+      ? t('chat.agent_voice_id', { id: data.voice_id })
+      : t('chat.agent_no_voice_clone')
 
     const talkUrl = `https://elevenlabs.io/app/talk-to?agent_id=${data.agent_id}`
     const lines = [
-      `Agent **${data.soul_name}** erstellt.`,
+      t('chat.agent_created', { name: data.soul_name }),
       '',
       `Agent-ID: \`${data.agent_id}\``,
       voiceNote,
       '',
       data.published
-        ? `Öffentlich erreichbar: ${talkUrl}`
-        : `**Manuell veröffentlichen:** ${data.agent_url} → Security → "Publicly available"`,
+        ? t('chat.agent_published', { url: talkUrl })
+        : t('chat.agent_publish_manual', { url: data.agent_url }),
     ]
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
     if (err.name !== 'AbortError') {
-      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'text', t('chat.agent_net_error', { msg: err.message }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
     }
   } finally { endJob() }
@@ -2588,7 +2554,7 @@ async function handleCreateAgent(overrideVoiceId = null) {
 async function handleDiagnose() {
   const signal = startJob('@diagnose')
   addMessage('user', '@diagnose')
-  const statusMsg = addMessage('assistant', 'Fehlerlog wird gelesen…', { streaming: true })
+  const statusMsg = addMessage('assistant', t('chat.diagnose_loading'), { streaming: true })
   await scrollToBottom()
 
   try {
@@ -2599,26 +2565,26 @@ async function handleDiagnose() {
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      setMessageMetaById(statusMsg.id, 'text', `Fehler: ${data.error || `HTTP ${res.status}`}`)
+      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: data.error || `HTTP ${res.status}` }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
 
     const lines = Array.isArray(data.lines) ? data.lines : []
     if (lines.length === 0) {
-      setMessageMetaById(statusMsg.id, 'text', `Keine Fehler im Log gefunden. ✓\n\n_Geprüft: \`${data.log_path || '/var/log/openresty/error.log'}\` — ${data.checked_at || '–'}_`)
+      setMessageMetaById(statusMsg.id, 'text', t('chat.diagnose_no_errors', { path: data.log_path || '/var/log/openresty/error.log', date: data.checked_at || '–' }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
 
-    const header = `**${data.total_found || lines.length} Einträge** im OpenResty-Fehlerlog (neueste zuerst):\n\n`
+    const header = t('chat.diagnose_errors', { n: data.total_found || lines.length })
     const body = lines.map(l => `\`\`\`\n${l}\n\`\`\``).join('\n')
-    const footer = `\n\n_Geprüft: \`${data.log_path}\` — ${data.checked_at}_`
+    const footer = t('chat.diagnose_footer', { path: data.log_path, date: data.checked_at })
     setMessageMetaById(statusMsg.id, 'text', header + body + footer)
     setMessageMetaById(statusMsg.id, 'streaming', false)
   } catch (err) {
     if (err.name !== 'AbortError') {
-      setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: err.message }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
     }
   } finally { endJob() }
@@ -2651,7 +2617,7 @@ async function handleContact(query) {
 
   if (!/^[a-f0-9-]{36}$/i.test(soulId)) {
     addMessage('user', `@contact ${query}`)
-    addMessage('assistant', `Ungültige Soul-ID: \`${soulId}\`\n\nErwartet: UUID-Format \`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\`\n\n${GUIDE}`)
+    addMessage('assistant', t('chat.contact_invalid_id', { id: soulId, guide: GUIDE }))
     return
   }
 
@@ -2667,12 +2633,12 @@ async function handleContact(query) {
 
   if (!label) {
     addMessage('user', `@contact ${query}`)
-    addMessage('assistant', `Name fehlt.\n\n${GUIDE}`)
+    addMessage('assistant', t('chat.contact_name_missing', { guide: GUIDE }))
     return
   }
 
   addMessage('user', `@contact ${query}`)
-  const statusMsg = addMessage('assistant', `Peer **${label}** wird hinzugefügt…`, { streaming: true })
+  const statusMsg = addMessage('assistant', t('chat.contact_adding', { label }), { streaming: true })
   await scrollToBottom()
 
   try {
@@ -2734,38 +2700,38 @@ async function handleContact(query) {
       } catch { /* ignore */ }
     }
 
-    const lines = [`Peer **${label}** hinzugefügt ✓`, '', `Soul-ID: \`${soulId}\``]
-    if (endpoint) lines.push(`Endpoint: \`${endpoint}\``)
-    lines.push('', `Ab jetzt mit \`@${label}\` erreichbar.`)
+    const lines = [t('chat.contact_added', { label, id: soulId })]
+    if (endpoint) lines.push(t('chat.contact_added_endpoint', { endpoint }))
+    lines.push('', t('chat.contact_reachable', { label }))
     setMessageMetaById(statusMsg.id, 'text', lines.join('\n'))
     setMessageMetaById(statusMsg.id, 'streaming', false)
     await loadPeerIds()
   } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: err.message }))
     setMessageMetaById(statusMsg.id, 'streaming', false)
   }
   await scrollToBottom()
 }
 
 // ── @pin — Pinata JWT hinterlegen / Soul veröffentlichen ──────────
-const PIN_TOOLS = [
-  { id: 'soul_read',     name: 'Soul lesen',           desc: 'sys.md, Identität, Werte, Session-Log' },
-  { id: 'soul_maturity', name: 'Reifegrad',             desc: 'Reife-Score 0–100 der Soul' },
-  { id: 'soul_skills',   name: 'Skills',                desc: 'Fähigkeiten & Kenntnisse aus der Soul' },
-  { id: 'verify_human',  name: 'Menschlichkeit',        desc: 'Bestätigt, dass hinter der Soul ein Mensch steht' },
-  { id: 'audio_get',     name: 'Audio abrufen',         desc: 'Einzelne Audio-Datei aus dem Vault' },
-  { id: 'audio_list',    name: 'Audio auflisten',       desc: 'Alle Audio-Dateien im Vault' },
-  { id: 'image_get',     name: 'Bild abrufen',          desc: 'Einzelnes Bild aus dem Vault' },
-  { id: 'image_list',    name: 'Bilder auflisten',      desc: 'Alle Bilder im Vault' },
-  { id: 'video_get',     name: 'Video abrufen',         desc: 'Einzelnes Video aus dem Vault' },
-  { id: 'video_list',    name: 'Videos auflisten',      desc: 'Alle Videos im Vault' },
-  { id: 'context_get',   name: 'Kontext-Datei lesen',   desc: 'mind.md oder andere Kontext-Dateien' },
-  { id: 'context_list',  name: 'Kontext auflisten',     desc: 'Alle Kontext-Dateien im Vault' },
-  { id: 'profile_get',   name: 'Profil abrufen',        desc: 'Profilfoto, biometrische Metadaten' },
-  { id: 'calendar_read',       name: 'Kalender lesen',   desc: 'Kalender-Einträge der Soul' },
-  { id: 'health_check_payed', name: 'Gesundheit',        desc: 'Körpermetriken, Schlaf, Aktivität aus health.md' },
-  { id: 'shop_write_read',    name: 'Shopping',          desc: 'Wunschliste & Käufe aus shopping.md' },
-]
+const PIN_TOOLS = computed(() => [
+  { id: 'soul_read',           name: t('pin_tools.soul_read_name'),     desc: t('pin_tools.soul_read_desc')     },
+  { id: 'soul_maturity',       name: t('pin_tools.soul_maturity_name'), desc: t('pin_tools.soul_maturity_desc') },
+  { id: 'soul_skills',         name: t('pin_tools.soul_skills_name'),   desc: t('pin_tools.soul_skills_desc')   },
+  { id: 'verify_human',        name: t('pin_tools.verify_human_name'),  desc: t('pin_tools.verify_human_desc')  },
+  { id: 'audio_get',           name: t('pin_tools.audio_get_name'),     desc: t('pin_tools.audio_get_desc')     },
+  { id: 'audio_list',          name: t('pin_tools.audio_list_name'),    desc: t('pin_tools.audio_list_desc')    },
+  { id: 'image_get',           name: t('pin_tools.image_get_name'),     desc: t('pin_tools.image_get_desc')     },
+  { id: 'image_list',          name: t('pin_tools.image_list_name'),    desc: t('pin_tools.image_list_desc')    },
+  { id: 'video_get',           name: t('pin_tools.video_get_name'),     desc: t('pin_tools.video_get_desc')     },
+  { id: 'video_list',          name: t('pin_tools.video_list_name'),    desc: t('pin_tools.video_list_desc')    },
+  { id: 'context_get',         name: t('pin_tools.context_get_name'),   desc: t('pin_tools.context_get_desc')   },
+  { id: 'context_list',        name: t('pin_tools.context_list_name'),  desc: t('pin_tools.context_list_desc')  },
+  { id: 'profile_get',         name: t('pin_tools.profile_get_name'),   desc: t('pin_tools.profile_get_desc')   },
+  { id: 'calendar_read',       name: t('pin_tools.calendar_read_name'), desc: t('pin_tools.calendar_read_desc') },
+  { id: 'health_check_payed',  name: t('pin_tools.health_check_name'),  desc: t('pin_tools.health_check_desc')  },
+  { id: 'shop_write_read',     name: t('pin_tools.shop_name'),          desc: t('pin_tools.shop_desc')          },
+])
 
 async function handlePin(query) {
   const auth  = { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
@@ -2778,31 +2744,31 @@ async function handlePin(query) {
     if (namePart)       body.name_override = namePart
     if (descPart)       body.description   = descPart
     if (tagsArr.length) body.tags = tagsArr
-    const msg = addMessage('assistant', 'Soul wird auf IPFS veröffentlicht…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_publishing'), { streaming: true })
     await scrollToBottom()
     try {
       const pinRes  = await fetch('/api/soul/pinata-config', { headers: authH })
       const pinData = await pinRes.json().catch(() => ({}))
       if (!pinData.configured) {
-        setMessageMetaById(msg.id, 'text', ['Pinata JWT fehlt.', '', '1. JWT holen: [app.pinata.cloud](https://app.pinata.cloud/keys)', '2. Hinterlegen: `@pin <jwt>`', '3. Dann: `@pin publish <name>`'].join('\n'))
+        setMessageMetaById(msg.id, 'text', [t('chat.pin_jwt_missing'), '', t('chat.pin_jwt_steps')].join('\n'))
         setMessageMetaById(msg.id, 'streaming', false)
         return
       }
       const r = await fetch('/api/soul/register', { method: 'POST', headers: auth, body: JSON.stringify(body) })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) { setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || d.message || `HTTP ${r.status}`}`); setMessageMetaById(msg.id, 'streaming', false); return }
+      if (!r.ok) { setMessageMetaById(msg.id, 'text', t('chat.error_prefix', { msg: d.error || d.message || `HTTP ${r.status}` })); setMessageMetaById(msg.id, 'streaming', false); return }
       const pubCid = d.cid || ''
       if (pubCid) await putAmort({ agent_registry_cid: pubCid }).catch(() => {})
-      const lines = ['Soul veröffentlicht ✓', '']
-      if (namePart)       lines.push(`Name: **${namePart}**`)
-      if (descPart)       lines.push(`Beschreibung: ${descPart}`)
-      if (tagsArr.length) lines.push(`Tags: ${tagsArr.join(', ')}`)
-      if (pubCid) { lines.push('', `CID: \`${pubCid}\``, `[Gateway öffnen ↗](https://gateway.pinata.cloud/ipfs/${pubCid})`) }
-      else { lines.push('', 'IPFS: kein CID erhalten') }
-      lines.push('', 'Zugang & Status: `@pin status`')
+      const lines = [t('chat.pin_published'), '']
+      if (namePart)       lines.push(t('chat.pin_confirm_name', { name: namePart }))
+      if (descPart)       lines.push(t('chat.pin_description', { desc: descPart }))
+      if (tagsArr.length) lines.push(t('chat.pin_tags', { tags: tagsArr.join(', ') }))
+      if (pubCid) { lines.push('', t('chat.pin_cid', { cid: pubCid }), t('chat.pin_gateway', { url: `https://gateway.pinata.cloud/ipfs/${pubCid}` })) }
+      else { lines.push('', t('chat.pin_no_cid')) }
+      lines.push('', t('chat.pin_status_next'))
       setMessageMetaById(msg.id, 'text', lines.join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
-    } catch (err) { setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`); setMessageMetaById(msg.id, 'streaming', false) }
+    } catch (err) { setMessageMetaById(msg.id, 'text', t('chat.net_error', { msg: err.message })); setMessageMetaById(msg.id, 'streaming', false) }
     await scrollToBottom()
     return
   }
@@ -2862,7 +2828,7 @@ async function handlePin(query) {
   // ── @pin / @pin status — vollständiger Status ──────────────────
   if (!q || /^status$/i.test(q)) {
     addMessage('user', q ? '@pin status' : '@pin')
-    const msg = addMessage('assistant', 'Wird geprüft…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_checking'), { streaming: true })
     await scrollToBottom()
     try {
       const [pinRes, amortRes] = await Promise.all([
@@ -2873,36 +2839,37 @@ async function handlePin(query) {
       const amort = (await amortRes.json().catch(() => ({}))).amortization || {}
 
       const jwtLine = pin.configured
-        ? `Pinata JWT: \`${pin.preview}\` ✓`
-        : 'Pinata JWT: fehlt  →  `@pin <jwt>`'
+        ? t('chat.pin_jwt_ok', { preview: pin.preview })
+        : t('chat.pin_jwt_missing_hint')
 
       const cid = amort.agent_registry_cid
       const cidLine = cid
-        ? `IPFS: veröffentlicht ✓  [${cid}](https://gateway.pinata.cloud/ipfs/${cid})`
-        : 'IPFS: noch nicht veröffentlicht  →  `@pin publish <name>`'
+        ? t('chat.pin_ipfs_ok', { cid, url: `https://gateway.pinata.cloud/ipfs/${cid}` })
+        : t('chat.pin_ipfs_missing')
 
       let accessLine
       if (amort.enabled === true) {
         const rate   = amort.pol_per_request || '?'
-        const wallet = amort.wallet ? `\`${amort.wallet.slice(0, 10)}…\`` : 'Wallet fehlt'
+        const wallet = amort.wallet ? `\`${amort.wallet.slice(0, 10)}…\`` : t('chat.pin_wallet_missing')
         const days   = amort.token_duration_days || 1
         const tools  = Array.isArray(amort.agent_tools) && amort.agent_tools.length
-          ? amort.agent_tools.map(t => {
-              const meta = PIN_TOOLS.find(pt => pt.id === t)
-              return meta ? `${t} (${meta.name})` : t
+          ? amort.agent_tools.map(ti => {
+              const meta = PIN_TOOLS.value.find(pt => pt.id === ti)
+              return meta ? `${ti} (${meta.name})` : ti
             }).join(', ')
-          : '(keine)  →  `@pin tools` für Liste'
-        accessLine = `Zugang: Bezahlt  ${rate} POL · ${wallet} · ${days}d\nTools: ${tools}`
+          : t('chat.pin_tools_none')
+        accessLine = t('chat.pin_access_paid', { pol: rate, wallet, days })
+        accessLine += `\nTools: ${tools}`
       } else {
         accessLine = amort.hasOwnProperty?.('enabled')
-          ? 'Zugang: Frei (alle KI-Agenten können deine Soul lesen)'
-          : 'Zugang: nicht konfiguriert  →  `@pin free` oder `@pin paid …`'
+          ? t('chat.pin_access_free')
+          : t('chat.pin_access_unconfigured')
       }
 
       setMessageMetaById(msg.id, 'text', [jwtLine, cidLine, accessLine].join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'text', t('chat.net_error', { msg: err.message }))
       setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
@@ -2911,28 +2878,23 @@ async function handlePin(query) {
 
   // Wiederverwendbare Tool-Auswahl-Actions
   const toolPickerActions = [
-    ...PIN_TOOLS.map(t => ({ label: t.name, title: t.desc, pin_tool_id: t.id })),
-    { label: 'Fertig →', primary: true, pin_tool_confirm: true },
-    { label: '✕ Abbrechen', type: 'abbruch' },
+    ...PIN_TOOLS.value.map(pt => ({ label: pt.name, title: pt.desc, pin_tool_id: pt.id })),
+    { label: t('chat.pin_tool_done'), primary: true, pin_tool_confirm: true },
+    { label: t('chat.pin_cancel'), type: 'abbruch' },
   ]
 
   // ── @pin free ──────────────────────────────────────────────────
   if (/^free$/i.test(q)) {
     addMessage('user', '@pin free')
-    const msg = addMessage('assistant', 'Freier Zugang wird aktiviert…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_free_activating'), { streaming: true })
     await scrollToBottom()
     try {
       await putAmort({ enabled: false })
-      setMessageMetaById(msg.id, 'text', [
-        'Zugang: Frei ✓',
-        '',
-        'Jeder KI-Assistent kann deine Soul lesen.',
-        'Welche Tools sollen freigegeben werden?',
-      ].join('\n'))
+      setMessageMetaById(msg.id, 'text', [t('chat.pin_free_ok'), '', t('chat.pin_free_body')].join('\n'))
       setMessageMetaById(msg.id, 'actions', toolPickerActions)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'text', t('chat.error_prefix', { msg: err.message }))
       setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
@@ -2958,20 +2920,20 @@ async function handlePin(query) {
     const days   = Math.min(30, Math.max(1, parseInt(paidM[3] || '1', 10)))
     const walletShort = wallet.length > 12 ? wallet.slice(0, 10) + '…' : wallet
     addMessage('user', `@pin paid ${pol} ${walletShort} ${days}d`)
-    const msg = addMessage('assistant', 'Bezahlter Zugang wird konfiguriert…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_paid_configuring'), { streaming: true })
     await scrollToBottom()
     try {
       await putAmort({ enabled: true, pol_per_request: pol, wallet, token_duration_days: days })
       setMessageMetaById(msg.id, 'text', [
-        'Bezahlter Zugang ✓',
-        `Rate: ${pol} POL · Wallet: \`${wallet}\` · Gültigkeit: ${days} ${days === 1 ? 'Tag' : 'Tage'}`,
+        t('chat.pin_paid_ok'),
+        t('chat.pin_paid_rate', { pol, wallet, days, unit: days === 1 ? t('chat.pin_paid_day') : t('chat.pin_paid_days') }),
         '',
-        'Welche Tools sollen freigegeben werden?',
+        t('chat.pin_tools_which'),
       ].join('\n'))
       setMessageMetaById(msg.id, 'actions', toolPickerActions)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'text', t('chat.error_prefix', { msg: err.message }))
       setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
@@ -2996,30 +2958,29 @@ async function handlePin(query) {
     // Mit Args → setzen + Klarnamen in Bestätigung
     pinSelectedTools.value = []
     const tools = toolsArg.split(',').map(t => t.trim()).filter(Boolean)
-    const unknown = tools.filter(t => !PIN_TOOLS.some(pt => pt.id === t))
+    const unknown = tools.filter(t => !PIN_TOOLS.value.some(pt => pt.id === t))
     addMessage('user', `@pin tools ${tools.join(', ')}`)
-    const msg = addMessage('assistant', 'Tools werden gesetzt…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_tools_setting'), { streaming: true })
     await scrollToBottom()
     try {
       await putAmort({ agent_tools: tools })
-      const named = tools.map(t => {
-        const meta = PIN_TOOLS.find(pt => pt.id === t)
-        return meta ? `\`${t}\` — ${meta.name}` : `\`${t}\``
+      const named = tools.map(ti => {
+        const meta = PIN_TOOLS.value.find(pt => pt.id === ti)
+        return meta ? `\`${ti}\` — ${meta.name}` : `\`${ti}\``
       })
       const warnLine = unknown.length
-        ? `\n\n⚠ Unbekannte Tools (werden ignoriert): ${unknown.map(t => `\`${t}\``).join(', ')}`
+        ? `\n\n${t('chat.pin_tools_unknown', { list: unknown.map(ti => `\`${ti}\``).join(', ') })}`
         : ''
       setMessageMetaById(msg.id, 'text', [
-        'Tools gesetzt ✓',
+        t('chat.pin_tools_set'),
         '',
         ...named,
         '',
-        'Veröffentlichen: `@pin publish <name>`',
-        '_Dauert ca. 5–15 Sekunden._',
+        t('chat.pin_tools_publish_hint'),
       ].join('\n') + warnLine)
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Fehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'text', t('chat.error_prefix', { msg: err.message }))
       setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
@@ -3035,14 +2996,14 @@ async function handlePin(query) {
     addMessage('user', namePart ? `@pin publish ${namePart}` : '@pin publish')
 
     // Bestätigungsschritt — zeigt was veröffentlicht wird
-    const confirmLines = ['**Veröffentlichen bestätigen:**', '']
-    confirmLines.push(`Name: **${namePart || '(aus sys.md)'}**`)
-    if (descPart) confirmLines.push(`Beschreibung: ${descPart}`)
-    confirmLines.push(tagsArr.length ? `Tags: \`${tagsArr.join('`, `')}\`` : 'Tags: *(keine)* — für soul_discover wichtig: `@pin publish Name | Desc | Tag1,Tag2`')
+    const confirmLines = [t('chat.pin_confirm_title'), '']
+    confirmLines.push(t('chat.pin_confirm_name', { name: namePart || t('chat.pin_name_fallback') }))
+    if (descPart) confirmLines.push(t('chat.pin_confirm_desc', { desc: descPart }))
+    confirmLines.push(tagsArr.length ? t('chat.pin_confirm_tags', { tags: tagsArr.join('`, `') }) : t('chat.pin_confirm_no_tags'))
     const confirmMsg = addMessage('assistant', confirmLines.join('\n'))
     setMessageMetaById(confirmMsg.id, 'actions', [
-      { label: 'Veröffentlichen ✓', primary: true, type: 'pin_publish_confirm', _publishData: { namePart, descPart, tagsArr } },
-      { label: '✕ Abbrechen', type: 'abbruch' },
+      { label: t('chat.pin_confirm_publish'), primary: true, type: 'pin_publish_confirm', _publishData: { namePart, descPart, tagsArr } },
+      { label: t('chat.pin_cancel'), type: 'abbruch' },
     ])
     await scrollToBottom()
     return
@@ -3051,7 +3012,7 @@ async function handlePin(query) {
   // ── @pin <jwt> — JWT hinterlegen (20+ Zeichen, kein bekannter Subbefehl) ──
   if (q.length >= 20) {
     addMessage('user', `@pin ${q.substring(0, 8)}…`)
-    const msg = addMessage('assistant', 'Pinata JWT wird gespeichert…', { streaming: true })
+    const msg = addMessage('assistant', t('chat.pin_jwt_saving'), { streaming: true })
     await scrollToBottom()
     try {
       const r = await fetch('/api/soul/pinata-config', {
@@ -3059,22 +3020,14 @@ async function handlePin(query) {
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) {
-        setMessageMetaById(msg.id, 'text', `Fehler: ${d.error || `HTTP ${r.status}`}`)
+        setMessageMetaById(msg.id, 'text', t('chat.error_prefix', { msg: d.error || `HTTP ${r.status}` }))
         setMessageMetaById(msg.id, 'streaming', false)
         return
       }
-      setMessageMetaById(msg.id, 'text', [
-        'Pinata JWT gespeichert ✓',
-        '',
-        'Nächste Schritte:',
-        '1. Zugang: `@pin free` oder `@pin paid 0.001 0xWallet [7d]`',
-        '   → Zahl = Token-Gültigkeit in Tagen (1–30, Standard: 1)',
-        '2. Veröffentlichen: `@pin publish <dein-name>`',
-        '   → Dauert ca. 5–15 Sekunden (IPFS-Upload)',
-      ].join('\n'))
+      setMessageMetaById(msg.id, 'text', [t('chat.pin_jwt_saved'), '', t('chat.pin_jwt_next')].join('\n'))
       setMessageMetaById(msg.id, 'streaming', false)
     } catch (err) {
-      setMessageMetaById(msg.id, 'text', `Netzwerkfehler: ${err.message}`)
+      setMessageMetaById(msg.id, 'text', t('chat.net_error', { msg: err.message }))
       setMessageMetaById(msg.id, 'streaming', false)
     }
     await scrollToBottom()
@@ -3083,7 +3036,7 @@ async function handlePin(query) {
 
   // ── Unbekannter Subbefehl → Kurzhinweis
   addMessage('user', `@pin ${q}`)
-  addMessage('assistant', `Unbekannter Befehl. Hilfe: \`@pin help\``)
+  addMessage('assistant', t('chat.pin_unknown_cmd'))
 }
 
 // ── @create-media — KI-Bildgenerierung ────────────────────────────
@@ -3092,7 +3045,7 @@ async function handleCreateMedia(userPrompt) {
   if (preErr) { addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media'); addMessage('assistant', preErr); return }
   const authHeader = { Authorization: `Bearer ${props.soulCert}` }
   addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media')
-  const statusMsg = addMessage('assistant', 'Bild wird generiert…', { streaming: true })
+  const statusMsg = addMessage('assistant', t('chat.img_generating'), { streaming: true })
   await scrollToBottom()
 
   let imagePrompt = userPrompt
@@ -3121,7 +3074,7 @@ async function handleCreateMedia(userPrompt) {
         const cd = await checkRes.json()
         const verdict = (cd?.content?.[0]?.text || '').trim().toUpperCase()
         if (verdict.startsWith('JA')) {
-          setMessageMetaById(statusMsg.id, 'text', 'Dieser Prompt verstößt gegen die in mind.md definierten Grenzen.')
+          setMessageMetaById(statusMsg.id, 'text', t('chat.img_boundary_violation'))
           setMessageMetaById(statusMsg.id, 'streaming', false)
           return
         }
@@ -3131,7 +3084,7 @@ async function handleCreateMedia(userPrompt) {
 
   // Kein Prompt → Claude erzeugt einen soul-basierten visuellen Prompt
   if (!imagePrompt) {
-    setMessageMetaById(statusMsg.id, 'text', 'Soul-Inhalt wird analysiert…')
+    setMessageMetaById(statusMsg.id, 'text', t('chat.img_analysing_soul'))
     const soulSnippet = (props.soulContent || '').slice(0, 1200)
     const grenzenHint = grenzenSection ? `\n\nVerbotene Inhalte laut Grenzen:\n${grenzenSection}` : ''
     try {
@@ -3153,7 +3106,7 @@ async function handleCreateMedia(userPrompt) {
     } catch { /* weiter ohne soul-prompt */ }
 
     if (!imagePrompt) {
-      setMessageMetaById(statusMsg.id, 'text', 'Prompt-Generierung fehlgeschlagen.')
+      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'prompt generation failed' }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
@@ -3172,7 +3125,7 @@ async function handleCreateMedia(userPrompt) {
       const err = await submitRes.json().catch(() => ({}))
       const msg = err.message === 'wavespeed_key_missing'
         ? 'WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen.'
-        : `Fehler: ${err.message || submitRes.status}`
+        : t('chat.error_prefix', { msg: err.message || submitRes.status })
       setMessageMetaById(statusMsg.id, 'text', msg)
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
@@ -3180,7 +3133,7 @@ async function handleCreateMedia(userPrompt) {
 
     const { taskId } = await submitRes.json()
     if (!taskId) {
-      setMessageMetaById(statusMsg.id, 'text', 'Keine Task-ID erhalten.')
+      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'no task ID received' }))
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
@@ -3204,10 +3157,10 @@ async function handleCreateMedia(userPrompt) {
       setMessageMetaById(statusMsg.id, 'mediaUrl',  imageUrl)
       setMessageMetaById(statusMsg.id, 'mediaType', 'image')
     } else {
-      setMessageMetaById(statusMsg.id, 'text', 'Bildgenerierung: kein Ergebnis erhalten.')
+      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'no image result received' }))
     }
   } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${err.message}`)
+    setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: err.message }))
   }
 
   setMessageMetaById(statusMsg.id, 'streaming', false)
@@ -3344,8 +3297,8 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
     setLastMessageMeta('genPrompt',     genPrompt)
     setLastMessageMeta('pendingBase64', base64)
     setLastMessageMeta('actions', [
-      { label: 'Bild generieren', primary: true,  type: 'wavespeed-generate' },
-      { label: 'Überspringen',    primary: false,  type: 'skip' },
+      { label: t('chat.img_generate_btn'), primary: true,  type: 'wavespeed-generate' },
+      { label: t('chat.img_skip_btn'),    primary: false,  type: 'skip' },
     ])
   }
 
@@ -3627,7 +3580,7 @@ async function handleSend() {
     addMessage('user', '@abbruch')
     addMessage('assistant', jobName
       ? `Abgebrochen: \`${jobName}\` ✓`
-      : 'Kein laufender Job — alles zurückgesetzt.')
+      : t('chat.job_none'))
     return
   }
 
@@ -3653,7 +3606,7 @@ async function handleSend() {
 
   if (intent.type === 'ambiguous') {
     const names = intent.candidates.map(p => `@${p.label}`).join(', ')
-    addMessage('assistant', `Mehrdeutig: ${names} — bitte den vollständigen Namen verwenden.`)
+    addMessage('assistant', t('chat.peer_ambiguous', { names }))
     return
   }
 
