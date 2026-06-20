@@ -4,7 +4,7 @@
       <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Session']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
+        <SysTopbar :crumbs="[$t('nav.group_soul'), $t('nav.session')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, active: filter !== 'all' || timeFilter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
@@ -23,23 +23,23 @@
         <Transition name="filter-drop">
           <div v-if="filterOpen" class="sess-filter-panel">
             <div class="sfp-group">
-              <p class="sfp-label">Bereich</p>
+              <p class="sfp-label">{{ $t('session_page.filter_area') }}</p>
               <div class="sfp-chips">
-                <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">Alle</button>
-                <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">SoulKI</button>
-                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">Peers</button>
-                <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">Agent</button>
+                <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">{{ $t('session_page.filter_all') }}</button>
+                <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">{{ $t('session_page.filter_soul') }}</button>
+                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">{{ $t('session_page.filter_peers') }}</button>
+                <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">{{ $t('session_page.filter_agents') }}</button>
               </div>
             </div>
             <div class="sfp-divider" />
             <div class="sfp-group">
-              <p class="sfp-label">Zeitraum</p>
+              <p class="sfp-label">{{ $t('session_page.filter_period') }}</p>
               <div class="sfp-chips">
-                <button :class="{ on: timeFilter === '1d' }"  @click="timeFilter = '1d'">1 Tag</button>
-                <button :class="{ on: timeFilter === '3d' }"  @click="timeFilter = '3d'">3 Tage</button>
-                <button :class="{ on: timeFilter === '7d' }"  @click="timeFilter = '7d'">7 Tage</button>
-                <button :class="{ on: timeFilter === '14d' }" @click="timeFilter = '14d'">14 Tage</button>
-                <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">Alle</button>
+                <button :class="{ on: timeFilter === '1d' }"  @click="timeFilter = '1d'">{{ $t('session_page.filter_1d') }}</button>
+                <button :class="{ on: timeFilter === '3d' }"  @click="timeFilter = '3d'">{{ $t('session_page.filter_3d') }}</button>
+                <button :class="{ on: timeFilter === '7d' }"  @click="timeFilter = '7d'">{{ $t('session_page.filter_7d') }}</button>
+                <button :class="{ on: timeFilter === '14d' }" @click="timeFilter = '14d'">{{ $t('session_page.filter_14d') }}</button>
+                <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">{{ $t('session_page.filter_all') }}</button>
               </div>
             </div>
           </div>
@@ -54,12 +54,12 @@
           </Transition>
           <Transition name="slide-up">
             <div v-if="vaultStatus" class="banner b-success">
-              <span>Vault neu geladen &middot; Soul aktiv</span>
+              <span>{{ $t('session_page.vault_reloaded') }}</span>
             </div>
           </Transition>
           <Transition name="slide-up">
             <div v-if="serverVaultEncrypted" class="banner b-warn">
-              <span>Soul am Server verschluesselt &middot; Vault mit Schlusselwoertern entsperren</span>
+              <span>{{ $t('session_page.vault_encrypted') }}</span>
               <button @click="serverVaultEncrypted = false" class="banner-close">&#x2715;</button>
             </div>
           </Transition>
@@ -83,16 +83,16 @@
           <aside v-if="soulPanelOpen" class="soulpanel">
             <div class="sp-head">
               <div>
-                <div class="eyebrow">Lebendige Datei</div>
+                <div class="eyebrow">{{ $t('session_page.sp_living_file') }}</div>
                 <h3>sys<em>.</em>md</h3>
               </div>
-              <button class="icon-btn sp-close" @click="soulPanelOpen = false" aria-label="Panel schliessen">
+              <button class="icon-btn sp-close" @click="soulPanelOpen = false" :aria-label="$t('common.close')">
                 <SysIcon name="close" style="width:16px;height:16px" />
               </button>
             </div>
             <div class="sp-grow">
               <span class="live-dot" />
-              {{ isGrowingQuietly ? 'Seele waechst...' : 'Lebendige Seele aktiv' }}
+              {{ isGrowingQuietly ? $t('session_page.sp_soul_growing') : $t('session_page.sp_soul_active') }}
             </div>
             <div class="sp-scroll"><SoulViewer /></div>
           </aside>

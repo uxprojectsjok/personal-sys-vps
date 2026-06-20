@@ -11,11 +11,6 @@
     </div>
     <div class="tb-spacer" />
     <slot />
-    <button class="searchbtn" @click="$emit('open-cmdk')" aria-label="Befehle">
-      <SysIcon name="search" style="width:17px;height:17px;flex:none" />
-      <span class="label-txt">Suchen oder Befehl…</span>
-      <span class="kbd">⌘K</span>
-    </button>
   </header>
 </template>
 

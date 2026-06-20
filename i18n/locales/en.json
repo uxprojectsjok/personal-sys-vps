@@ -321,6 +321,23 @@
     "cmd_all_label": "all",
     "search_no_query": "Please enter a search query: `{'@'}search What is …`"
   },
+  "session_page": {
+    "filter_area": "Scope",
+    "filter_all": "All",
+    "filter_soul": "SoulAI",
+    "filter_peers": "Peers",
+    "filter_agents": "Agents",
+    "filter_period": "Period",
+    "filter_1d": "1 day",
+    "filter_3d": "3 days",
+    "filter_7d": "7 days",
+    "filter_14d": "14 days",
+    "sp_living_file": "Living File",
+    "sp_soul_active": "Living Soul active",
+    "sp_soul_growing": "Soul growing…",
+    "vault_reloaded": "Vault reloaded · Soul active",
+    "vault_encrypted": "Soul encrypted on server · unlock Vault with key phrases"
+  },
   "common": {
     "cancel": "Cancel",
     "close": "Close",
