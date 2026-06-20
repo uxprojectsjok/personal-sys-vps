@@ -5,13 +5,13 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Einrichten']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[t('setup.crumb_soul'), t('setup.crumb_setup')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page er-page">
 
             <div class="er-head">
-              <div class="eyebrow">Ersteinrichtung</div>
-              <h1 class="er-title">Soul <em>aktivieren</em></h1>
+              <div class="eyebrow">{{ $t('setup.eyebrow') }}</div>
+              <h1 class="er-title">Soul <em>{{ $t('setup.activate') }}</em></h1>
             </div>
 
             <div class="er-wizard">
@@ -38,7 +38,9 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+const { t } = useI18n()
 
 definePageMeta({ layout: false })
 

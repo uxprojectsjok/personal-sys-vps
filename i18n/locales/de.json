@@ -997,7 +997,14 @@
     "cfg_network_error": "Netzwerkfehler: {msg}",
     "back": "Zurück",
     "next": "Weiter",
-    "done": "Fertig"
+    "done": "Fertig",
+    "eyebrow": "Ersteinrichtung",
+    "activate": "aktivieren",
+    "crumb_soul": "Seele",
+    "crumb_setup": "Einrichten",
+    "model_powerful": "Claude Opus 4.6 — leistungsstark",
+    "model_balanced": "Claude Sonnet 4.6 — ausgewogen",
+    "model_fast": "Claude Haiku 4.5 — schnell"
   },
   "marketplace": {
     "aria_label": "Agent Marketplace einrichten",
@@ -1475,7 +1482,24 @@
     "public_vault_desc": "Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.",
     "save_permissions": "Berechtigungen speichern",
     "saving_permissions": "Speichern …",
-    "saved_ok": "Berechtigungen gespeichert ✓"
+    "saved_ok": "Berechtigungen gespeichert ✓",
+    "title": "API-Kontext",
+    "active": "aktiv",
+    "inactive": "inaktiv",
+    "enable": "API-Zugriff aktivieren",
+    "permissions": "Freigaben",
+    "perm_soul": "Soul-Inhalt",
+    "perm_soul_hint": "sys.md",
+    "perm_calendar": "Kalender",
+    "perm_calendar_hint": "## Kalender aus sys.md",
+    "perm_audio": "Audio-Dateien",
+    "perm_audio_hint": "→ MP3 (ffmpeg)",
+    "perm_video": "Video-Dateien",
+    "perm_video_hint": "→ MP4 (ffmpeg)",
+    "perm_images": "Bilder",
+    "perm_images_hint": ".jpg/.png/…",
+    "perm_context": "Text-Kontext",
+    "perm_context_hint": ".md/.txt"
   },
   "audio_capture": {
     "consent_label": "Stimme aufnehmen",

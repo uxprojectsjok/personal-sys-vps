@@ -9,9 +9,9 @@
       :aria-expanded="open"
     >
       <div style="display:flex;align-items:center;gap:10px">
-        <span class="api-panel-title">API-Kontext</span>
+        <span class="api-panel-title">{{ $t('api_context.title') }}</span>
         <span class="api-panel-badge" :class="enabled ? 'is-active' : ''">
-          {{ enabled ? 'aktiv' : 'inaktiv' }}
+          {{ enabled ? $t('api_context.active') : $t('api_context.inactive') }}
         </span>
       </div>
       <svg
@@ -33,14 +33,14 @@
             <div class="api-toggle-thumb" :class="enabled ? 'is-on' : ''"></div>
           </div>
           <input type="checkbox" v-model="enabled" class="sr-only" @change="onToggleEnabled" />
-          <span class="api-panel-row-label">API-Zugriff aktivieren</span>
+          <span class="api-panel-row-label">{{ $t('api_context.enable') }}</span>
         </label>
 
         <p v-if="saveError && !enabled" class="api-panel-error">{{ saveError }}</p>
 
         <template v-if="enabled">
           <div class="sys-field" style="margin-bottom:0">
-            <span class="sys-field-label">Freigaben</span>
+            <span class="sys-field-label">{{ $t('api_context.permissions') }}</span>
             <p class="api-panel-prose">{{ $t('api_context.public_vault_desc') }}</p>
             <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
               <label
@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useI18n } from 'vue-i18n'
 import { useApiContext } from "~/composables/useApiContext.js";
 const { t } = useI18n()
@@ -100,14 +100,14 @@ const open        = ref(false);
 const isSaving    = ref(false);
 const saveSuccess = ref(false);
 
-const permLabels = {
-  soul:          { label: "Soul-Inhalt",   hint: "sys.md" },
-  calendar:      { label: "Kalender",      hint: "## Kalender aus sys.md" },
-  audio:         { label: "Audio-Dateien", hint: "→ MP3 (ffmpeg)" },
-  video:         { label: "Video-Dateien", hint: "→ MP4 (ffmpeg)" },
-  images:        { label: "Bilder",        hint: ".jpg/.png/…" },
-  context_files: { label: "Text-Kontext",  hint: ".md/.txt" }
-};
+const permLabels = computed(() => ({
+  soul:          { label: t('api_context.perm_soul'),     hint: t('api_context.perm_soul_hint')    },
+  calendar:      { label: t('api_context.perm_calendar'), hint: t('api_context.perm_calendar_hint') },
+  audio:         { label: t('api_context.perm_audio'),    hint: t('api_context.perm_audio_hint')   },
+  video:         { label: t('api_context.perm_video'),    hint: t('api_context.perm_video_hint')   },
+  images:        { label: t('api_context.perm_images'),   hint: t('api_context.perm_images_hint')  },
+  context_files: { label: t('api_context.perm_context'),  hint: t('api_context.perm_context_hint') },
+}));
 
 watch(() => props.soulCert, async (cert, oldCert) => {
   if (cert) {
