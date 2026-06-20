@@ -11,7 +11,7 @@
 
             <!-- ── Header ── -->
             <div class="vank-head">
-              <div class="eyebrow">Polygon · Blockchain</div>
+              <div class="eyebrow">{{ $t('anchor.kicker') }}</div>
               <h1 class="vank-title">{{ $t('anchor.title_prefix') }} <em>{{ $t('anchor.title_em') }}</em></h1>
               <p class="vank-lede">{{ $t('anchor.lede') }}</p>
             </div>

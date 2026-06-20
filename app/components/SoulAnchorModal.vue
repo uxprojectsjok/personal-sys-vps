@@ -11,7 +11,7 @@
           <!-- Header -->
           <header class="anc-head">
             <div class="anc-head-labels">
-              <div class="anc-kicker">Polygon · Blockchain</div>
+              <div class="anc-kicker">{{ $t('anchor.kicker') }}</div>
               <h2 class="anc-title">{{ $t('anchor.title') }}<em>.</em></h2>
             </div>
             <button class="anc-close" @click="handleClose" :aria-label="$t('common.close')"><span aria-hidden="true">×</span></button>
