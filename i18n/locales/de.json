@@ -1151,7 +1151,9 @@
     "err_no_connection": "Keine Verbindung zum Server",
     "revoke_title": "Dienst widerrufen",
     "revoke_msg": "\"{name}\" wirklich widerrufen? Der Token wird sofort ungültig.",
-    "revoke_confirm": "Widerrufen"
+    "revoke_confirm": "Widerrufen",
+    "no_expiry": "Unbegrenzt",
+    "btn_token": "Token"
   },
   "calendar": {
     "prev_month": "Vorheriger Monat",

@@ -68,7 +68,7 @@
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
               <p class="text-xs text-[var(--sys-fg-muted)] mt-1 font-mono">
-                {{ $t('services.expires_at', { date: formatExpiry(svc.expires_at) }) }}
+                {{ $t('services.expires_at', { date: formatExpiry(svc.expires_at, $t('services.no_expiry')) }) }}
               </p>
             </div>
             <div class="flex flex-col items-end gap-2 flex-none">
@@ -77,7 +77,7 @@
                 @click="tokenModal = svc"
                 :aria-label="$t('services.show_token_aria', { name: svc.name })"
               >
-                Token
+                {{ $t('services.btn_token') }}
               </button>
               <button
                 class="text-xs px-2 py-1 rounded border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
