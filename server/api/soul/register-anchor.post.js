@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "tx_hash (64-hex-string) erforderlich." });
   }
 
+  const blockNumber = typeof body.block_number === 'number' ? Math.floor(body.block_number) : null;
+  const soulSize    = typeof body.soul_size    === 'number' ? Math.floor(body.soul_size)    : 0;
+
   const anchor = {
     tx:       body.tx_hash,
     date:     body.date     ?? new Date().toISOString().split("T")[0],
@@ -33,7 +36,26 @@ export default defineEventHandler(async (event) => {
     if (ctx?.agent_registry_cid) anchor.cid = ctx.agent_registry_cid;
   } catch { /* kein context vorhanden */ }
 
-  const dir  = `/var/lib/sys/souls/${soul_id}`;
+  const dir      = `/var/lib/sys/souls/${soul_id}`;
+  const histPath = `${dir}/anchor_history.json`;
+
+  // anchor_history.json: wachsende Liste aller Blockchain-Anchors mit Block + Größe
+  let history = [];
+  try {
+    history = JSON.parse(await readFile(histPath, 'utf8'));
+    if (!Array.isArray(history)) history = [];
+  } catch { /* noch keine History */ }
+
+  const entry = { tx: body.tx_hash, ts: new Date().toISOString(), size: soulSize };
+  if (blockNumber) entry.block = blockNumber;
+  if (history.length === 0) entry.genesis = true;
+  history.push(entry);
+
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(histPath, JSON.stringify(history), 'utf8');
+  } catch { /* Dev: ignorieren */ }
+
   const path = `${dir}/chain_anchor.json`;
 
   try {

@@ -1127,7 +1127,15 @@
     "connect_wallet_note": "Connect a wallet first to anchor. At least one real session is required.",
     "kicker": "Polygon · Blockchain",
     "crumb_own": "Own",
-    "crumb_anchor": "Anchor"
+    "crumb_anchor": "Anchor",
+    "chain_genesis_title": "Genesis Chain",
+    "chain_genesis_badge": "Genesis",
+    "chain_age_label": "Chain Age",
+    "chain_blocks_suffix": "blocks",
+    "chain_knowledge_label": "Knowledge",
+    "chain_knowledge_suffix": "KB+",
+    "chain_anchors_label": "Anchors",
+    "chain_since_label": "On Polygon since"
   },
   "services": {
     "title": "Connected services",
