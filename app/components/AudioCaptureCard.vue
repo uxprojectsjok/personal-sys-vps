@@ -5,21 +5,16 @@
     <template v-if="state === 'consent'">
       <div class="cc-head">
         <span class="cc-dot cc-dot--idle"></span>
-        <span class="cc-label">Stimme aufnehmen</span>
+        <span class="cc-label">{{ $t('audio_capture.consent_label') }}</span>
       </div>
-      <p class="cc-desc">
-        Deine Stimmprobe wird lokal in deinem Vault gespeichert und verlässt dein Gerät nur wenn du es explizit freigibst.
-      </p>
+      <p class="cc-desc">{{ $t('audio_capture.consent_desc') }}</p>
       <label class="cc-check">
         <input type="checkbox" v-model="consentChecked" class="cc-checkbox" />
-        <span class="cc-check-label">
-          Ich stimme der Aufnahme und ggf. Verarbeitung zur Stimmklon-Erstellung zu
-          (EU AI Act Art. 50, DSGVO Art. 9)
-        </span>
+        <span class="cc-check-label">{{ $t('audio_capture.consent_checkbox') }}</span>
       </label>
       <div class="cc-actions">
         <button :disabled="!consentChecked" @click="giveConsent" class="cc-btn cc-btn--primary">
-          Weiter →
+          {{ $t('audio_capture.btn_continue') }}
         </button>
       </div>
     </template>
@@ -28,14 +23,14 @@
     <template v-else-if="state === 'idle'">
       <div class="cc-head">
         <span class="cc-dot cc-dot--idle"></span>
-        <span class="cc-label">Stimme</span>
+        <span class="cc-label">{{ $t('audio_capture.idle_label') }}</span>
       </div>
-      <p class="cc-hint">Mindestens 30 Sek. frei sprechen für optimale Qualität</p>
+      <p class="cc-hint">{{ $t('audio_capture.idle_hint') }}</p>
       <p v-if="voiceError" class="cc-error">{{ voiceError }}</p>
       <div class="cc-actions">
         <button @click="handleStart" class="cc-btn cc-btn--record">
           <span class="cc-rec-dot"></span>
-          Aufnehmen
+          {{ $t('audio_capture.btn_record') }}
         </button>
       </div>
     </template>
@@ -44,7 +39,7 @@
     <template v-else-if="state === 'recording'">
       <div class="cc-head">
         <span class="cc-dot cc-dot--rec soul-pulse"></span>
-        <span class="cc-label cc-label--rec">Aufnahme</span>
+        <span class="cc-label cc-label--rec">{{ $t('audio_capture.recording_label') }}</span>
         <span class="cc-dur">{{ formatDuration(duration) }}</span>
       </div>
       <div class="cc-meter">
@@ -56,7 +51,7 @@
       </div>
       <div class="cc-countdown-row">
         <span v-if="duration < 30" class="cc-countdown">{{ Math.ceil(30 - duration) }}</span>
-        <span v-else class="cc-countdown cc-countdown--done">Fertig</span>
+        <span v-else class="cc-countdown cc-countdown--done">{{ $t('audio_capture.done_label') }}</span>
         <div class="cc-progress">
           <div
             class="cc-progress-fill"
@@ -68,7 +63,7 @@
       <div class="cc-actions">
         <button @click="handleStop" class="cc-btn cc-btn--stop">
           <span class="cc-stop-sq"></span>
-          Stopp
+          {{ $t('audio_capture.btn_stop') }}
         </button>
       </div>
     </template>
@@ -77,7 +72,7 @@
     <template v-else-if="state === 'preview'">
       <div class="cc-head">
         <span class="cc-dot cc-dot--preview"></span>
-        <span class="cc-label">Vorschau</span>
+        <span class="cc-label">{{ $t('audio_capture.preview_label') }}</span>
         <span class="cc-dur">{{ formatDuration(lastSample?.duration || 0) }}</span>
       </div>
       <div class="cc-actions cc-actions--preview">
@@ -89,9 +84,9 @@
               <rect x="14" y="4" width="4" height="16" rx="1"/>
             </g>
           </svg>
-          {{ isPlaying ? 'Pause' : 'Anhören' }}
+          {{ isPlaying ? $t('audio_capture.btn_pause') : $t('audio_capture.btn_listen') }}
         </button>
-        <button @click="handleDiscard" class="cc-btn cc-btn--discard" title="Verwerfen">
+        <button @click="handleDiscard" class="cc-btn cc-btn--discard" :title="$t('common.discard')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
           </svg>
@@ -111,11 +106,11 @@
           <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
           </svg>
-          {{ saved ? 'Gespeichert' : isSaving ? '…' : 'Speichern' }}
+          {{ saved ? $t('audio_capture.btn_save_saved') : isSaving ? '…' : $t('audio_capture.btn_save') }}
         </button>
       </div>
       <p v-if="!vaultConnected && !soulToken" class="cc-warn">
-        Vault verbinden um dauerhaft zu speichern
+        {{ $t('audio_capture.no_vault_warn') }}
       </p>
       <audio ref="previewAudio" @ended="isPlaying = false" preload="auto"></audio>
     </template>
@@ -124,7 +119,7 @@
     <template v-else-if="state === 'saved'">
       <div class="cc-head">
         <span class="cc-dot cc-dot--saved"></span>
-        <span class="cc-label">Stimmprobe gespeichert</span>
+        <span class="cc-label">{{ $t('audio_capture.saved_label') }}</span>
       </div>
     </template>
 
@@ -133,7 +128,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useVoice }      from '~/composables/useVoice.js'
+const { t } = useI18n()
 import { useVault }      from '~/composables/useVault.js'
 import { useSoul }       from '~/composables/useSoul.js'
 import { useApiContext } from '~/composables/useApiContext.js'

@@ -41,7 +41,7 @@
         <template v-if="enabled">
           <div class="sys-field" style="margin-bottom:0">
             <span class="sys-field-label">Freigaben</span>
-            <p class="api-panel-prose">Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.</p>
+            <p class="api-panel-prose">{{ $t('api_context.public_vault_desc') }}</p>
             <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
               <label
                 v-for="(perm, key) in permLabels"

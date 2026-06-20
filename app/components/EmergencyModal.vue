@@ -9,8 +9,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
             </svg>
             <div>
-              <span class="em-kicker">Notfall-Protokoll</span>
-              <h2 class="em-title">{{ lockActive ? `Level ${lockLevel} aktiv` : 'Node isolieren' }}</h2>
+              <span class="em-kicker">{{ $t('emergency.kicker') }}</span>
+              <h2 class="em-title">{{ lockActive ? $t('emergency.title_active', { level: lockLevel }) : $t('emergency.title_idle') }}</h2>
             </div>
           </div>
           <button class="em-close" @click="$emit('close')">×</button>
@@ -19,7 +19,7 @@
         <!-- Aktiver Lock -->
         <div v-if="lockActive" class="em-active-banner">
           <span class="em-active-dot soul-pulse"></span>
-          <span>Level {{ lockLevel }} seit {{ formatTime(activatedAt) }}</span>
+          <span>{{ $t('emergency.banner', { level: lockLevel, time: formatTime(activatedAt) }) }}</span>
         </div>
 
         <!-- Level-Auswahl -->
@@ -45,7 +45,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
             </svg>
-            Node entsperren
+            {{ $t('emergency.btn_restore') }}
           </button>
         </div>
 
@@ -57,7 +57,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   soulCert: { type: String, default: '' }
@@ -70,11 +73,11 @@ const activatedAt  = ref(null)
 const isLoading    = ref(false)
 const error        = ref(null)
 
-const levels = [
-  { n: 1, name: 'KI-Sperre',    desc: 'Chat, Soul-Update und BeME werden blockiert. Alle anderen Funktionen laufen weiter.' },
-  { n: 2, name: 'AI-Blackout',  desc: 'Level 1 + WaveSpeed-Bildgenerierung gestoppt. Keine KI-Anfragen mehr möglich.' },
-  { n: 3, name: 'Isolierung',   desc: 'Level 2 + MCP-Server gestoppt. Node antwortet noch, aber vollständig KI-frei.' },
-]
+const levels = computed(() => [
+  { n: 1, name: t('emergency.lvl1_name'), desc: t('emergency.lvl1_desc') },
+  { n: 2, name: t('emergency.lvl2_name'), desc: t('emergency.lvl2_desc') },
+  { n: 3, name: t('emergency.lvl3_name'), desc: t('emergency.lvl3_desc') },
+])
 
 const headers = () => ({
   'Content-Type':  'application/json',
@@ -103,7 +106,7 @@ async function activate(level) {
       body: JSON.stringify({ level })
     })
     const data = await res.json()
-    if (!data.ok) throw new Error(data.error || 'Fehler')
+    if (!data.ok) throw new Error(data.error || t('emergency.err_generic'))
     lockActive.value  = true
     lockLevel.value   = data.level
     activatedAt.value = data.activated_at
@@ -124,7 +127,7 @@ async function restore() {
       method: 'POST', headers: headers()
     })
     const data = await res.json()
-    if (!data.ok) throw new Error(data.error || 'Fehler')
+    if (!data.ok) throw new Error(data.error || t('emergency.err_generic'))
     lockActive.value  = false
     lockLevel.value   = 0
     activatedAt.value = null
@@ -138,7 +141,7 @@ async function restore() {
 
 function formatTime(iso) {
   if (!iso) return '—'
-  try { return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }
+  try { return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) }
   catch { return iso }
 }
 </script>

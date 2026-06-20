@@ -5,15 +5,15 @@
         @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Körper', 'Gesundheit']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('health.crumb_body'), $t('health.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
         <div class="page hl-page">
 
           <!-- Header -->
           <div class="hl-head">
-            <div class="eyebrow">Körper</div>
-            <h1 class="hl-title">Wie dein Körper <em>lebt</em></h1>
-            <p class="hl-lede">Gesundheit misst vitale Signale deines Alltags — Herzfrequenz, Schlaf, Bewegung. Nicht Perfektion, sondern Kontinuität.</p>
+            <div class="eyebrow">{{ $t('health.eyebrow') }}</div>
+            <h1 class="hl-title">{{ $t('health.title') }} <em>{{ $t('health.title_em') }}</em></h1>
+            <p class="hl-lede">{{ $t('health.lede') }}</p>
           </div>
 
           <!-- Not configured -->
@@ -22,9 +22,9 @@
               <div class="hl-empty-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h3l2-7 4 14 3-8 2 3h4"/></svg>
               </div>
-              <div class="hl-empty-title">Health-Sync noch nicht eingerichtet</div>
-              <p class="hl-empty-desc">Verbinde deinen Fitness-Tracker um Vitaldaten automatisch zu synchronisieren.</p>
-              <button class="hl-setup-toggle-btn" @click="router.push('/einstellungen')">Einrichten in Einstellungen</button>
+              <div class="hl-empty-title">{{ $t('health.not_configured') }}</div>
+              <p class="hl-empty-desc">{{ $t('health.not_configured_desc') }}</p>
+              <button class="hl-setup-toggle-btn" @click="router.push('/einstellungen')">{{ $t('health.go_settings') }}</button>
             </div>
           </template>
 
@@ -65,24 +65,24 @@
             <!-- Last sync info -->
             <div v-if="health.lastSync || health.source" class="hl-sync-meta">
               <span v-if="health.source" class="hl-source-badge">{{ deviceLabel(health.source) }}</span>
-              <span v-if="health.lastSync" class="hl-sync-date">Letzter Sync: {{ health.lastSync }}</span>
+              <span v-if="health.lastSync" class="hl-sync-date">{{ $t('health.last_sync', { date: health.lastSync }) }}</span>
             </div>
 
             <!-- Sync button -->
             <div class="hl-sync-action">
               <button v-if="syncDone" class="hl-btn hl-btn--reload" @click="loadAll(); syncDone = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
-                Aktualisieren
+                {{ $t('health.refresh') }}
               </button>
               <button class="hl-btn hl-btn--primary hl-btn--full" :disabled="syncing" @click="triggerSync">
                 <svg v-if="syncing" class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0 1 15-2.7M20 15a9 9 0 0 1-15 2.7"/></svg>
-                {{ syncing ? 'Sync läuft…' : 'Jetzt synchronisieren' }}
+                {{ syncing ? $t('health.syncing') : $t('health.sync_now') }}
               </button>
             </div>
 
             <!-- Stat Cards -->
-            <div class="hl-section-head">Was dein Körper zeigt</div>
+            <div class="hl-section-head">{{ $t('health.section_vitals') }}</div>
             <div class="hl-cards">
 
               <!-- Ruhepuls -->
@@ -91,7 +91,7 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2-7 4 14 3-8 2 3h4"/></svg></span>
                   <span class="hl-card-val">{{ parsed.rhr != null ? parsed.rhr : '—' }}<small v-if="parsed.rhr">bpm</small></span>
                 </div>
-                <div class="hl-card-title">Ruhepuls</div>
+                <div class="hl-card-title">{{ $t('health.rhr') }}</div>
                 <div class="hl-card-desc">{{ rhrDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
@@ -114,7 +114,7 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg></span>
                   <span class="hl-card-val">{{ parsed.sleepH != null ? parsed.sleepH : '—' }}<small v-if="parsed.sleepH">h</small></span>
                 </div>
-                <div class="hl-card-title">Schlaf</div>
+                <div class="hl-card-title">{{ $t('health.sleep') }}</div>
                 <div class="hl-card-desc">{{ sleepDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
@@ -137,7 +137,7 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0m-2 3 2 1 1 4-3 2m2-7-2 3-3 1"/></svg></span>
                   <span class="hl-card-val">{{ parsed.steps != null ? (parsed.steps >= 1000 ? (parsed.steps/1000).toFixed(1)+'k' : parsed.steps) : '—' }}</span>
                 </div>
-                <div class="hl-card-title">Schritte</div>
+                <div class="hl-card-title">{{ $t('health.steps') }}</div>
                 <div class="hl-card-desc">{{ stepsDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
@@ -160,7 +160,7 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"/></svg></span>
                   <span class="hl-card-val">{{ parsed.activeDays != null ? parsed.activeDays : '—' }}<small v-if="parsed.activeDays != null">/7</small></span>
                 </div>
-                <div class="hl-card-title">Aktive Tage</div>
+                <div class="hl-card-title">{{ $t('health.active_days') }}</div>
                 <div class="hl-card-desc">{{ activeDaysDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
@@ -183,12 +183,12 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7Z"/></svg></span>
                   <span class="hl-card-val-sm">{{ parsed.lastActivity?.type || '—' }}</span>
                 </div>
-                <div class="hl-card-title">Letzte Aktivität</div>
+                <div class="hl-card-title">{{ $t('health.last_activity') }}</div>
                 <div class="hl-card-desc" v-if="parsed.lastActivity">
                   {{ parsed.lastActivity.date }} · {{ parsed.lastActivity.duration }} · {{ parsed.lastActivity.distance }}
                   <span v-if="parsed.lastActivity.hr"> · ♥ {{ parsed.lastActivity.hr }}</span>
                 </div>
-                <div class="hl-card-desc" v-else>Noch keine Aktivitäten</div>
+                <div class="hl-card-desc" v-else>{{ $t('health.no_activities') }}</div>
                 <div class="hl-card-bar"><div class="hl-card-fill" :style="{ width: activeDaysScore + '%' }" /></div>
               </div>
 
@@ -198,12 +198,12 @@
                   <span class="hl-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6ZM4 9h16M8 3v4m8-4v4"/></svg></span>
                   <span class="hl-card-val">{{ parsed.monthlyActiveDays != null ? parsed.monthlyActiveDays : '—' }}<small v-if="parsed.monthlyActiveDays != null">d</small></span>
                 </div>
-                <div class="hl-card-title">Monat</div>
+                <div class="hl-card-title">{{ $t('health.month') }}</div>
                 <div class="hl-card-desc">
                   <span v-if="parsed.monthlyRhr">♥ {{ parsed.monthlyRhr }} bpm · </span>
-                  <span v-if="parsed.monthlySleepH">{{ parsed.monthlySleepH }}h Schlaf · </span>
-                  <span v-if="parsed.monthlyActiveDays">{{ parsed.monthlyActiveDays }} aktive Tage</span>
-                  <span v-if="!parsed.monthlyRhr && !parsed.monthlySleepH">Noch keine Monatsdaten</span>
+                  <span v-if="parsed.monthlySleepH">{{ $t('health.monthly_sleep', { n: parsed.monthlySleepH }) }} · </span>
+                  <span v-if="parsed.monthlyActiveDays">{{ $t('health.monthly_active_days', { n: parsed.monthlyActiveDays }) }}</span>
+                  <span v-if="!parsed.monthlyRhr && !parsed.monthlySleepH">{{ $t('health.no_monthly') }}</span>
                 </div>
                 <div class="hl-card-bar"><div class="hl-card-fill" :style="{ width: monthScore + '%' }" /></div>
               </div>
@@ -226,8 +226,8 @@
                 <div class="hl-chart-head">
                   <span class="hl-chart-title">Health Index</span>
                   <div class="hl-chart-filters">
-                    <button :class="{ act: hFilter === 'week' }"  @click="hFilter = 'week'">Woche</button>
-                    <button :class="{ act: hFilter === 'month' }" @click="hFilter = 'month'">Monat</button>
+                    <button :class="{ act: hFilter === 'week' }"  @click="hFilter = 'week'">{{ $t('health.week') }}</button>
+                    <button :class="{ act: hFilter === 'month' }" @click="hFilter = 'month'">{{ $t('health.month') }}</button>
                   </div>
                 </div>
                 <div class="hl-chart-wrap">
@@ -242,7 +242,7 @@
                       <circle :cx="pt.x" :cy="pt.y" r="2" fill="#6db89a" />
                     </g>
                   </svg>
-                  <div v-if="!healthChart.line" class="hl-chart-empty">Keine Aktivitäten im Zeitraum</div>
+                  <div v-if="!healthChart.line" class="hl-chart-empty">{{ $t('health.no_chart_data') }}</div>
                 </div>
               </div>
 
@@ -251,8 +251,8 @@
                 <div class="hl-chart-head">
                   <span class="hl-chart-title">Food Index</span>
                   <div class="hl-chart-filters">
-                    <button :class="{ act: fFilter === 'week' }"  @click="fFilter = 'week'">Woche</button>
-                    <button :class="{ act: fFilter === 'month' }" @click="fFilter = 'month'">Monat</button>
+                    <button :class="{ act: fFilter === 'week' }"  @click="fFilter = 'week'">{{ $t('health.week') }}</button>
+                    <button :class="{ act: fFilter === 'month' }" @click="fFilter = 'month'">{{ $t('health.month') }}</button>
                   </div>
                 </div>
                 <div class="hl-chart-wrap">
@@ -267,7 +267,7 @@
                       <circle :cx="pt.x" :cy="pt.y" r="2" fill="#b8a56d" />
                     </g>
                   </svg>
-                  <div v-if="!foodChart.line" class="hl-chart-empty">{{ foodChart.dots.length === 1 ? 'Erst ein Tag geloggt — Linie wächst mit weiteren Einträgen' : 'Keine Einträge im Zeitraum' }}</div>
+                  <div v-if="!foodChart.line" class="hl-chart-empty">{{ foodChart.dots.length === 1 ? $t('health.food_one_day') : $t('health.no_food_data') }}</div>
                 </div>
               </div>
 
@@ -276,7 +276,7 @@
 
           <!-- ── Health Check Summary ──────────────────────────────────────────── -->
           <div v-if="healthSummary.length || syncStatus.shown" class="hl-summary-section">
-            <div class="hl-section-head">Auswertung</div>
+            <div class="hl-section-head">{{ $t('health.section_analysis') }}</div>
             <div v-if="healthSummary.length" class="hl-summary-rows">
               <div v-for="item in healthSummary" :key="item.label" class="hl-summary-row">
                 <span class="hl-summary-dot" :class="'hl-c-' + item.color"></span>
@@ -286,7 +286,7 @@
               </div>
             </div>
             <div v-if="tips.length" class="hl-tips-section">
-              <div class="hl-section-head">Tipps</div>
+              <div class="hl-section-head">{{ $t('health.section_tips') }}</div>
               <div class="hl-tips-list">
                 <p v-for="(t, i) in tips" :key="i" class="hl-tip-text">{{ t }}</p>
               </div>
@@ -309,8 +309,10 @@
 definePageMeta({ layout: false })
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 
+const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken } = useSoul()
 
@@ -333,7 +335,7 @@ const DEVICE_LABELS = {
   garmin_fenix5: 'Fenix 5', garmin_fenix6: 'Fenix 6', garmin_fenix7: 'Fenix 7',
   garmin_instinct: 'Instinct', garmin_epix: 'Epix',
 }
-function deviceLabel(src) { return DEVICE_LABELS[src] || src || 'Unbekannt' }
+function deviceLabel(src) { return DEVICE_LABELS[src] || src || t('health.unknown_device') }
 
 function authHeaders() { return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' } }
 
@@ -425,24 +427,24 @@ const score = computed(() => {
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
 })
 
-const rhrDesc    = computed(() => { const r = parsed.value.rhr; if (!r) return 'Keine Daten'; if (r < 60) return r + ' bpm · Ausgezeichnet'; if (r < 70) return r + ' bpm · Gut'; if (r < 80) return r + ' bpm · Normal'; return r + ' bpm · Erhöht' })
-const sleepDesc  = computed(() => { const h = parsed.value.sleepH; if (!h) return 'Keine Daten diese Woche'; if (h >= 7) return h + 'h · Ausreichend (Ziel 8h)'; if (h >= 6) return h + 'h · Etwas wenig'; return h + 'h · Zu wenig Schlaf' })
-const stepsDesc  = computed(() => { const s = parsed.value.steps; if (!s) return 'Keine Daten'; return (s >= 10000 ? 'Ziel erreicht · ' : (s >= 7500 ? 'Fast am Ziel · ' : 'Unter Tagesziel · ')) + Math.round(s).toLocaleString('de-DE') + ' Schritte/Tag' })
-const activeDaysDesc = computed(() => { const d = parsed.value.activeDays; if (d == null) return 'Keine Daten'; return d + ' von 7 Tagen aktiv' + (d >= 5 ? ' · Stark' : d >= 3 ? ' · Gut' : ' · Ausbaufähig') })
+const rhrDesc    = computed(() => { const r = parsed.value.rhr; if (!r) return t('health.no_data'); if (r < 60) return t('health.rhr_excellent', { n: r }); if (r < 70) return t('health.rhr_good', { n: r }); if (r < 80) return t('health.rhr_normal', { n: r }); return t('health.rhr_high', { n: r }) })
+const sleepDesc  = computed(() => { const h = parsed.value.sleepH; if (!h) return t('health.no_data_week'); if (h >= 7) return t('health.sleep_ok', { n: h }); if (h >= 6) return t('health.sleep_low', { n: h }); return t('health.sleep_poor', { n: h }) })
+const stepsDesc  = computed(() => { const s = parsed.value.steps; if (!s) return t('health.no_data'); const n = Math.round(s).toLocaleString(); return s >= 10000 ? t('health.steps_goal', { n }) : s >= 7500 ? t('health.steps_close', { n }) : t('health.steps_under', { n }) })
+const activeDaysDesc = computed(() => { const d = parsed.value.activeDays; if (d == null) return t('health.no_data'); return d >= 5 ? t('health.active_days_strong', { n: d }) : d >= 3 ? t('health.active_days_good', { n: d }) : t('health.active_days_weak', { n: d }) })
 
 // ── Levels ────────────────────────────────────────────────────────────────────
 const CIRC      = 2 * Math.PI * 66
 const MINI_CIRC = 2 * Math.PI * 24
 
-const LEVELS = [
-  { num: '01', name: 'Sedentär',   range: '0 – 20 %',   min: 0,  max: 20  },
-  { num: '02', name: 'Aktiv',      range: '21 – 45 %',  min: 21, max: 45  },
-  { num: '03', name: 'Fit',        range: '46 – 68 %',  min: 46, max: 68  },
-  { num: '04', name: 'Athletisch', range: '69 – 87 %',  min: 69, max: 87  },
-  { num: '05', name: 'Vital',      range: '88 – 100 %', min: 88, max: 100 },
-]
-const currentLevel = computed(() => LEVELS.find(l => score.value >= l.min && score.value <= l.max) ?? LEVELS[0])
-const nextLevel    = computed(() => LEVELS.find(l => l.min > score.value))
+const LEVELS = computed(() => [
+  { num: '01', name: t('health.level_sedentary'), range: '0 – 20 %',   min: 0,  max: 20  },
+  { num: '02', name: t('health.level_active'),    range: '21 – 45 %',  min: 21, max: 45  },
+  { num: '03', name: t('health.level_fit'),       range: '46 – 68 %',  min: 46, max: 68  },
+  { num: '04', name: t('health.level_athletic'),  range: '69 – 87 %',  min: 69, max: 87  },
+  { num: '05', name: t('health.level_vital'),     range: '88 – 100 %', min: 88, max: 100 },
+])
+const currentLevel = computed(() => LEVELS.value.find(l => score.value >= l.min && score.value <= l.max) ?? LEVELS.value[0])
+const nextLevel    = computed(() => LEVELS.value.find(l => l.min > score.value))
 const nextHint     = computed(() => nextLevel.value ? (nextLevel.value.min - score.value) + ' Punkte' : null)
 const ringColor    = computed(() => score.value >= 46 ? '#6db89a' : score.value >= 21 ? '#b8a56d' : 'rgba(245,241,234,0.3)')
 
@@ -608,46 +610,47 @@ const healthSummary = computed(() => {
   if (rhr != null) {
     const s = rhrScore.value
     rows.push({
-      label:  'Ruhepuls',
-      status: s >= 95 ? 'Athletisch' : s >= 78 ? 'Gut' : s >= 50 ? 'Normal' : 'Erhöht',
+      label:  t('health.rhr'),
+      status: s >= 95 ? t('health.status_athletic') : s >= 78 ? t('health.status_good') : s >= 50 ? t('health.status_normal') : t('health.status_elevated'),
       color:  s >= 78 ? 'green' : s >= 50 ? 'yellow' : 'red',
-      tip:    s >= 78 ? rhr + ' bpm — ausgezeichnet' : s >= 50 ? rhr + ' bpm — Normalbereich' : rhr + ' bpm — Ausdauertraining empfohlen',
+      tip:    s >= 78 ? t('health.tip_rhr_excellent', { n: rhr }) : s >= 50 ? t('health.tip_rhr_normal', { n: rhr }) : t('health.tip_rhr_high', { n: rhr }),
     })
   }
   if (sleepH != null) {
     const s = sleepScore.value
     rows.push({
-      label:  'Schlaf',
-      status: s >= 92 ? 'Optimal' : s >= 68 ? 'Ausreichend' : s >= 38 ? 'Zu wenig' : 'Kritisch',
+      label:  t('health.sleep'),
+      status: s >= 92 ? t('health.status_optimal') : s >= 68 ? t('health.status_sufficient') : s >= 38 ? t('health.status_too_little') : t('health.status_critical'),
       color:  s >= 68 ? 'green' : s >= 38 ? 'yellow' : 'red',
-      tip:    s >= 82 ? sleepH + 'h — Ziel erreicht' : s >= 52 ? sleepH + 'h — unter Ziel (8h)' : sleepH + 'h — Schlafqualität verbessern',
+      tip:    s >= 82 ? t('health.tip_sleep_ok', { n: sleepH }) : s >= 52 ? t('health.tip_sleep_close', { n: sleepH }) : t('health.tip_sleep_poor', { n: sleepH }),
     })
   }
   if (steps != null) {
     const s = stepsScore.value
+    const n = Math.round(steps).toLocaleString()
     rows.push({
-      label:  'Schritte',
-      status: s >= 100 ? 'Ziel erreicht' : s >= 75 ? 'Fast am Ziel' : s >= 50 ? 'Unter Ziel' : 'Inaktiv',
+      label:  t('health.steps'),
+      status: s >= 100 ? t('health.status_goal_reached') : s >= 75 ? t('health.status_almost') : s >= 50 ? t('health.status_under_goal') : t('health.status_inactive'),
       color:  s >= 75 ? 'green' : s >= 50 ? 'yellow' : 'red',
-      tip:    Math.round(steps).toLocaleString('de-DE') + ' Schritte/Tag' + (steps >= 10000 ? ' — Top!' : ' — Ziel: 10.000'),
+      tip:    steps >= 10000 ? t('health.tip_steps_goal', { n }) : t('health.tip_steps_target', { n }),
     })
   }
   if (activeDays != null) {
     const s = activeDaysScore.value
     rows.push({
-      label:  'Aktive Tage',
-      status: s >= 71 ? 'Sehr aktiv' : s >= 43 ? 'Aktiv' : s >= 14 ? 'Wenig aktiv' : 'Inaktiv',
+      label:  t('health.active_days'),
+      status: s >= 71 ? t('health.status_very_active') : s >= 43 ? t('health.status_active') : s >= 14 ? t('health.status_little_active') : t('health.status_inactive'),
       color:  s >= 43 ? 'green' : s >= 14 ? 'yellow' : 'red',
-      tip:    activeDays + ' von 7 Tagen' + (activeDays >= 5 ? ' — stark' : activeDays >= 3 ? ' — gut, mehr ist besser' : ' — mehr Bewegung hilft'),
+      tip:    activeDays >= 5 ? t('health.tip_active_strong', { n: activeDays }) : activeDays >= 3 ? t('health.tip_active_good', { n: activeDays }) : t('health.tip_active_weak', { n: activeDays }),
     })
   }
   if (foodChartRaw.value.length) {
     const avg = Math.round(foodChartRaw.value.reduce((a, b) => a + b.score, 0) / foodChartRaw.value.length)
     rows.push({
-      label:  'Ernährung',
-      status: avg >= 88 ? 'Ausgezeichnet' : avg >= 70 ? 'Gut' : avg >= 45 ? 'Ausgewogen' : avg >= 28 ? 'Verbesserbar' : 'Kritisch',
+      label:  t('health.nutrition'),
+      status: avg >= 88 ? t('health.status_excellent') : avg >= 70 ? t('health.status_good') : avg >= 45 ? t('health.status_balanced') : avg >= 28 ? t('health.status_improvable') : t('health.status_critical'),
       color:  avg >= 70 ? 'green' : avg >= 45 ? 'yellow' : 'red',
-      tip:    avg >= 88 ? 'Sehr gute Qualität — weiter so' : avg >= 70 ? 'Solide Basis, mehr Vollwertkost hilft' : avg >= 45 ? 'Mehr Gemüse & Wasser, weniger Fertigprodukte' : 'Mehr frische Mahlzeiten einplanen',
+      tip:    avg >= 88 ? t('health.tip_nutrition_excellent') : avg >= 70 ? t('health.tip_nutrition_good') : avg >= 45 ? t('health.tip_nutrition_mid') : t('health.tip_nutrition_poor'),
     })
   }
   return rows

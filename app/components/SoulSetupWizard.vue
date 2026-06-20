@@ -26,9 +26,9 @@
           </svg>
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-sm font-semibold text-[var(--sys-fg)] leading-none">Soul einrichten</span>
+          <span class="text-sm font-semibold text-[var(--sys-fg)] leading-none">{{ $t('setup.title') }}</span>
           <span class="text-xs text-[var(--sys-fg-dim)] tracking-wider uppercase leading-none">
-            {{ doneCount }}/{{ steps.length }} abgeschlossen
+            {{ $t('setup.done_count', { done: doneCount, total: steps.length }) }}
           </span>
         </div>
       </div>
@@ -102,17 +102,17 @@
               <span style="width:8px;height:8px;border-radius:50%;flex:none" :style="vaultConnected ? 'background:var(--accent)' : 'background:var(--fg-4)'"></span>
               <div class="flex-1 min-w-0">
                 <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
-                  {{ vaultConnected ? (vaultMemoryMode ? 'Cloud-Modus aktiv' : 'Lokal verbunden') : 'Kein Vault verbunden' }}
+                  {{ vaultConnected ? (vaultMemoryMode ? $t('setup.vault_cloud_active') : $t('setup.vault_local_connected')) : $t('setup.vault_none') }}
                 </p>
                 <p style="font-size:13px;color:var(--fg-3);margin:0" class="truncate">
-                  {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : 'Lokaler Ordner') : 'Vault über Lokal oder Cloud verbinden' }}
+                  {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : $t('setup.vault_local_folder')) : $t('setup.vault_connect_hint') }}
                 </p>
               </div>
               <button
                 v-if="vaultConnected"
                 @click="clearVault()"
                 style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--sys-fg-dim);line-height:1;flex:none;padding:0;opacity:0.6"
-                title="Vault trennen"
+                :title="$t('setup.vault_disconnect')"
               >✕</button>
             </div>
 
@@ -127,7 +127,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none;opacity:0.7">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
               </svg>
-              <span style="flex:1; text-align:left">{{ connectingLocal ? 'Wählen…' : 'Lokal' }}</span>
+              <span style="flex:1; text-align:left">{{ connectingLocal ? $t('setup.vault_selecting') : $t('setup.vault_local_btn') }}</span>
               <span style="font-size:11px;color:var(--fg-3)">FileSystem API</span>
             </button>
 
@@ -144,8 +144,8 @@
                 </svg>
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-medium" style="color:#e06c75">{{ deleteLoading ? 'Wird gelöscht…' : 'Cloud-Vault löschen' }}</p>
-                <p class="text-xs mt-0.5" style="color:rgba(224,108,117,0.65)">Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden.</p>
+                <p class="text-xs font-medium" style="color:#e06c75">{{ deleteLoading ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</p>
+                <p class="text-xs mt-0.5" style="color:rgba(224,108,117,0.65)">{{ $t('setup.vault_delete_desc') }}</p>
               </div>
             </button>
 
@@ -171,9 +171,9 @@
 
             <!-- Modell -->
             <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">Modell</label>
+              <label class="sys-field-label">{{ $t('setup.label_model') }}</label>
               <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
-                <option value="">Server-Standard</option>
+                <option value="">{{ $t('setup.model_default') }}</option>
                 <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
                 <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
                 <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
@@ -183,8 +183,8 @@
             <!-- Anthropic -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                Anthropic API-Key
-                <span v-if="cfgAnthSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_anthropic') }}
+                <span v-if="cfgAnthSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
                 placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
@@ -194,11 +194,11 @@
             <!-- WaveSpeed -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                WaveSpeed API-Key
-                <span v-if="cfgWaveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_wavespeed') }}
+                <span v-if="cfgWaveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgWaveSet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                :placeholder="cfgWaveSet ? $t('setup.placeholder_overwrite') : 'WaveSpeed API-Key…'"
                 autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true"
                 :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
@@ -206,11 +206,11 @@
             <!-- ElevenLabs -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                ElevenLabs API-Key
-                <span v-if="cfgLabsSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_elevenlabs') }}
+                <span v-if="cfgLabsSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgLabsSet ? 'Neu eingeben zum Überschreiben…' : 'sk_…'"
+                :placeholder="cfgLabsSet ? $t('setup.placeholder_overwrite') : 'sk_…'"
                 autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true"
                 :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
@@ -218,8 +218,8 @@
             <!-- ElevenLabs Agent-URL -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                ElevenLabs Agent-URL
-                <span v-if="cfgAgentSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_agent_url') }}
+                <span v-if="cfgAgentSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgAgentUrl" type="text" class="sys-input sys-input--mono"
                 placeholder="https://elevenlabs.io/app/talk-to?agent_id=…"
@@ -230,11 +230,11 @@
             <!-- Brave Search -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                Brave Search API-Key
-                <span v-if="cfgBraveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_brave') }}
+                <span v-if="cfgBraveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgBraveKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgBraveSet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
+                :placeholder="cfgBraveSet ? $t('setup.placeholder_overwrite') : 'BSA…'"
                 autocomplete="off" spellcheck="false" @input="cfgBraveDirty = true"
                 :style="cfgBraveSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
@@ -242,15 +242,15 @@
             <!-- Pinata JWT -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
-                Pinata JWT
-                <span v-if="cfgPinataSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">gespeichert</span>
+                {{ $t('setup.label_pinata') }}
+                <span v-if="cfgPinataSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgPinataJwt" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgPinataSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
+                :placeholder="cfgPinataSet ? $t('setup.placeholder_overwrite') : 'eyJ…'"
                 autocomplete="off" spellcheck="false"
                 :style="cfgPinataSet ? 'border-color:var(--sys-ok)' : ''" />
               <p style="font-size:11px;color:var(--fg-3);letter-spacing:0.04em;margin:0">
-                Für IPFS-Veröffentlichung und Blockchain-Anchoring.
+                {{ $t('setup.pinata_desc') }}
                 <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--accent-bright)">app.pinata.cloud</a>
               </p>
             </div>
@@ -261,7 +261,7 @@
               :disabled="cfgSaving"
               class="sys-btn-ed sys-btn-ed--primary"
               style="width:100%;justify-content:center"
-            >{{ cfgSaving ? 'Speichert…' : 'Speichern' }}</button>
+            >{{ cfgSaving ? $t('setup.cfg_saving') : $t('setup.cfg_save') }}</button>
             <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:10px;margin:0"
               :style="cfgFeedback.ok === true ? 'color:var(--sys-ok)' : cfgFeedback.ok === false ? 'color:var(--sys-err)' : 'color:var(--sys-fg-muted)'">
               {{ cfgFeedback.message }}
@@ -281,7 +281,7 @@
             <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
             </svg>
-            Zurück
+            {{ $t('setup.back') }}
           </button>
           <div v-else />
 
@@ -296,7 +296,7 @@
             :class="steps[currentStep].done ? 'btn-primary' : 'btn-ghost'"
             @click="currentStep++"
           >
-            Weiter
+            {{ $t('setup.next') }}
             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
             </svg>
@@ -307,7 +307,7 @@
             class="btn btn-sm btn-primary"
             @click="modal ? $emit('close') : (open = false)"
           >
-            Fertig
+            {{ $t('setup.done') }}
             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
             </svg>
@@ -321,8 +321,10 @@
 
 <script setup>
 import { ref, computed, watch, defineComponent, h } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useConfirm } from '../composables/useConfirm.js'
 const { ask } = useConfirm();
+const { t } = useI18n()
 import { useColorScheme }       from '../composables/useColorScheme.js'
 import { useVaultSession }     from '../composables/useVaultSession.js'
 import { useApiContext }        from '../composables/useApiContext.js'
@@ -355,10 +357,10 @@ const connectingLocal = ref(false)
 async function connectLocalVault() {
   if (!props.soulId) return
   const ok = await ask({
-    title:       'Lokalen Vault verbinden',
-    message:     'Der Browser erhält dauerhaften Lese- und Schreibzugriff auf den gewählten Ordner. Du kannst die Verbindung jederzeit trennen.',
-    confirmText: 'Ordner wählen',
-    cancelText:  'Abbrechen',
+    title:       t('setup.connect_vault_title'),
+    message:     t('setup.connect_vault_msg'),
+    confirmText: t('setup.connect_vault_confirm'),
+    cancelText:  t('common.cancel'),
     danger:      false,
   })
   if (!ok) return
@@ -392,11 +394,11 @@ const IconSettings = defineComponent({ render: () => h('svg', { fill:'none', vie
 
 
 const steps = computed(() => [
-  { label: 'Vault',    done: vaultConnected.value,         color: 'rgba(255,255,255,0.75)', icon: IconConnect  },
-  { label: 'Dienste',  done: isUnlocked.value,             color: 'rgba(255,255,255,0.75)', icon: IconVault    },
-  { label: 'API',      done: enabled.value,                color: 'rgba(255,255,255,0.75)', icon: IconApi      },
-  { label: 'Plugins',  done: services.value.length > 0,    color: 'rgba(255,255,255,0.75)', icon: IconServices },
-  { label: 'Config',   done: false,                        color: 'rgba(255,255,255,0.75)', icon: IconSettings },
+  { label: t('setup.step_vault'),    done: vaultConnected.value,         color: 'rgba(255,255,255,0.75)', icon: IconConnect  },
+  { label: t('setup.step_services'), done: isUnlocked.value,             color: 'rgba(255,255,255,0.75)', icon: IconVault    },
+  { label: t('setup.step_api'),      done: enabled.value,                color: 'rgba(255,255,255,0.75)', icon: IconApi      },
+  { label: t('setup.step_plugins'),  done: services.value.length > 0,    color: 'rgba(255,255,255,0.75)', icon: IconServices },
+  { label: t('setup.step_config'),   done: false,                        color: 'rgba(255,255,255,0.75)', icon: IconSettings },
 ])
 
 const stepColor  = computed(() => 'rgba(255,255,255,0.75)')
@@ -422,7 +424,7 @@ async function onDownloadApiExport() {
 }
 
 async function handleDeleteVault() {
-  if (!await ask({ title: 'Cloud-Vault löschen', message: 'Die Soul auf dem Server wird gelöscht und kann nicht wiederhergestellt werden. Die lokale Vault-Verbindung wird ebenfalls getrennt.', confirmText: 'Löschen', danger: true })) return
+  if (!await ask({ title: t('setup.delete_vault_title'), message: t('setup.delete_vault_msg'), confirmText: t('setup.delete_vault_confirm'), danger: true })) return
   deleteLoading.value = true
   try {
     const res = await fetch('/api/vault', {
@@ -435,7 +437,7 @@ async function handleDeleteVault() {
     document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
     window.location.href = '/'
   } catch (e) {
-    alert('Fehler beim Löschen: ' + e.message)
+    alert(t('setup.delete_vault_error', { msg: e.message }))
   } finally {
     deleteLoading.value = false
   }
@@ -505,7 +507,7 @@ async function saveCfgStep() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body:    JSON.stringify(body)
     })
-    if (!res.ok) { cfgFeedback.value = { ok: false, message: 'Fehler beim Speichern' }; return }
+    if (!res.ok) { cfgFeedback.value = { ok: false, message: t('setup.cfg_save_error') }; return }
 
     if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
     if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
@@ -525,7 +527,7 @@ async function saveCfgStep() {
 
     // Anthropic-Verbindung testen (immer wenn Key vorhanden)
     if (cfgAnthSet.value) {
-      cfgFeedback.value = { ok: null, message: 'Verbindung wird geprüft…' }
+      cfgFeedback.value = { ok: null, message: t('setup.cfg_testing') }
       try {
         const tr = await fetch('/api/test-key', {
           method:  'POST',
@@ -534,21 +536,21 @@ async function saveCfgStep() {
         })
         const td = await tr.json()
         if (td.ok) {
-          cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindung OK ✓' }
+          cfgFeedback.value = { ok: true, message: t('setup.cfg_ok') }
         } else if (td.status === 0 || td.error === 'no_stored_key') {
-          cfgFeedback.value = { ok: null, message: 'Gespeichert · Server-Verbindungstest fehlgeschlagen — Key kann trotzdem gültig sein' }
+          cfgFeedback.value = { ok: null, message: t('setup.cfg_test_failed') }
         } else {
-          cfgFeedback.value = { ok: false, message: `Gespeichert, aber Anthropic antwortet ${td.status} — Key prüfen` }
+          cfgFeedback.value = { ok: false, message: t('setup.cfg_wrong_status', { status: td.status }) }
         }
       } catch {
-        cfgFeedback.value = { ok: true, message: 'Gespeichert · Verbindungstest nicht möglich' }
+        cfgFeedback.value = { ok: true, message: t('setup.cfg_test_impossible') }
       }
     } else {
-      cfgFeedback.value = { ok: true, message: 'Konfiguration gespeichert ✓' }
+      cfgFeedback.value = { ok: true, message: t('setup.cfg_saved_ok') }
     }
     setTimeout(() => { cfgFeedback.value = null }, 5000)
   } catch (e) {
-    cfgFeedback.value = { ok: false, message: 'Netzwerkfehler: ' + e.message }
+    cfgFeedback.value = { ok: false, message: t('setup.cfg_network_error', { msg: e.message }) }
   } finally {
     cfgSaving.value = false
   }

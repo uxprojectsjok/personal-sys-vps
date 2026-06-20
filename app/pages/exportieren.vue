@@ -11,12 +11,12 @@
 
             <!-- ── Header ── -->
             <div class="exp-head">
-              <div class="eyebrow">Vault · Sicherung</div>
-              <h1 class="exp-title">Soul <em>exportieren</em></h1>
+              <div class="eyebrow">{{ $t('encrypt.kicker') }}</div>
+              <h1 class="exp-title">{{ $t('encrypt.title') }}</h1>
             </div>
 
             <!-- ── Step rail ── -->
-            <nav class="exp-rail" aria-label="Schritte">
+            <nav class="exp-rail" :aria-label="$t('encrypt.steps_aria')">
               <div
                 v-for="(s, i) in STEPS"
                 :key="i"
@@ -41,11 +41,8 @@
 
               <!-- Step 0: 12 Wörter eingeben -->
               <template v-if="step === 0">
-                <h2 class="exp-section-title">Deine 12 <em>Schlüsselwörter</em></h2>
-                <p class="exp-prose">
-                  Wähle 12 Wörter — auf Deutsch, Englisch oder gemischt.
-                  Nur Buchstaben, keine Zahlen. Nur du kennst sie.
-                </p>
+                <h2 class="exp-section-title">{{ $t('encrypt.words_title') }}</h2>
+                <p class="exp-prose">{{ $t('encrypt.words_prose') }}</p>
 
                 <datalist id="bip39-words">
                   <option v-for="w in BIP39" :key="w" :value="w" />
@@ -64,11 +61,11 @@
                     <span class="exp-word-num">{{ i + 1 }}</span>
                     <input
                       :id="`word-${i}`"
-                      :aria-label="`Schlüsselwort ${i + 1} von 12`"
+                      :aria-label="$t('encrypt.word_aria', { n: i + 1 })"
                       list="bip39-words"
                       :value="userWords[i]"
                       autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-                      maxlength="12" placeholder="wort…"
+                      maxlength="12" :placeholder="$t('encrypt.word_placeholder')"
                       class="exp-word-input"
                       @input="sanitizeWord(i, $event)"
                     />
@@ -84,13 +81,13 @@
                 <div class="exp-meta-row">
                   <span class="exp-count">
                     <span :class="{ 'exp-count--full': validCount === 12 }">{{ validCount }}</span>
-                    / 12 gültig
+                    {{ $t('encrypt.valid_count_suffix') }}
                   </span>
                   <button class="exp-random" @click="fillRandom">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
-                    Zufällig füllen
+                    {{ $t('encrypt.fill_random') }}
                   </button>
                 </div>
 
@@ -98,20 +95,14 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                   </svg>
-                  <p>
-                    Diese 12 Wörter sind dein einziger Schlüssel. Notiere sie offline —
-                    sie können nicht wiederhergestellt werden.
-                  </p>
+                  <p>{{ $t('encrypt.warning') }}</p>
                 </div>
               </template>
 
               <!-- Step 1: Bestätigen -->
               <template v-else-if="step === 1">
-                <h2 class="exp-section-title"><em>Bestätigen</em></h2>
-                <p class="exp-prose">
-                  Letzte Prüfung. Danach wird der Vault verschlüsselt und als
-                  <code class="exp-code">.soul</code>-Datei gespeichert.
-                </p>
+                <h2 class="exp-section-title">{{ $t('encrypt.confirm_title') }}</h2>
+                <p class="exp-prose">{{ $t('encrypt.confirm_prose') }}</p>
 
                 <div class="exp-words-grid exp-words-grid--ro">
                   <div v-for="(word, i) in Array.from(userWords)" :key="i" class="exp-word-row-ro">
@@ -133,7 +124,7 @@
                     </svg>
                   </div>
                   <span class="exp-confirm-text" @click="confirmed = !confirmed">
-                    Ich habe alle 12 Wörter sicher offline notiert.
+                    {{ $t('encrypt.confirmed_text') }}
                   </span>
                 </label>
               </template>
@@ -146,7 +137,7 @@
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.2"/>
                     <path fill="currentColor" fill-opacity="0.7" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
-                  <p class="exp-state-lbl">{{ isFetchingVps ? 'VPS-Vault wird geladen…' : 'Soul & Vault werden verschlüsselt…' }}</p>
+                  <p class="exp-state-lbl">{{ isFetchingVps ? $t('encrypt.fetching_vps') : $t('encrypt.encrypting_soul') }}</p>
                 </div>
 
                 <!-- Fehler -->
@@ -157,7 +148,7 @@
                     </svg>
                   </div>
                   <p class="exp-state-lbl exp-state-lbl--err">{{ encryptError }}</p>
-                  <button class="exp-btn exp-btn--ghost" @click="step = 1; encryptError = null">← Zurück</button>
+                  <button class="exp-btn exp-btn--ghost" @click="step = 1; encryptError = null">{{ $t('encrypt.back_btn') }}</button>
                 </div>
 
                 <!-- Erfolg -->
@@ -168,14 +159,11 @@
                     </svg>
                   </div>
                   <div class="exp-success-text">
-                    <p class="exp-success-title">Vault gesichert</p>
-                    <p class="exp-success-sub">sys.md · Bilder · Stimme · Motion · AES-256-GCM · 12 Wörter</p>
+                    <p class="exp-success-title">{{ $t('encrypt.success_title') }}</p>
+                    <p class="exp-success-sub">{{ $t('encrypt.success_sub') }}</p>
                   </div>
                   <div class="exp-info-box">
-                    <p>
-                      Deine <code class="exp-code">.soul</code>-Datei wurde heruntergeladen.
-                      Bewahre sie sicher auf — sie enthält deinen verschlüsselten Vault.
-                    </p>
+                    <p>{{ $t('encrypt.soul_downloaded') }}</p>
                   </div>
                   <div v-if="vpsWarning" class="exp-warn-box exp-warn-box--yellow">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -191,16 +179,16 @@
             <!-- ── Footer ── -->
             <div class="exp-foot">
               <template v-if="step === 0">
-                <button class="exp-btn exp-btn--ghost" @click="onNav('soul')">Abbrechen</button>
-                <button class="exp-btn exp-btn--primary" :disabled="!allValid" @click="step = 1">Weiter →</button>
+                <button class="exp-btn exp-btn--ghost" @click="onNav('soul')">{{ $t('common.cancel') }}</button>
+                <button class="exp-btn exp-btn--primary" :disabled="!allValid" @click="step = 1">{{ $t('encrypt.next_btn') }}</button>
               </template>
               <template v-else-if="step === 1">
-                <button class="exp-btn exp-btn--ghost" @click="step = 0">← Zurück</button>
-                <button class="exp-btn exp-btn--primary" :disabled="!confirmed" @click="handleEncrypt">Verschlüsseln</button>
+                <button class="exp-btn exp-btn--ghost" @click="step = 0">{{ $t('encrypt.back_btn') }}</button>
+                <button class="exp-btn exp-btn--primary" :disabled="!confirmed" @click="handleEncrypt">{{ $t('encrypt.encrypt_btn') }}</button>
               </template>
               <template v-else-if="step === 2 && !isEncrypting && !encryptError">
                 <span />
-                <button class="exp-btn exp-btn--primary" @click="onNav('soul')">Fertig</button>
+                <button class="exp-btn exp-btn--primary" @click="onNav('soul')">{{ $t('common.done') }}</button>
               </template>
             </div>
 
@@ -217,6 +205,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { BIP39, generateMnemonicWords, useSoulEncrypt } from '~/composables/useSoulEncrypt.js'
@@ -224,6 +213,7 @@ import { useApiContext } from '~/composables/useApiContext.js'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, isLoaded } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles } = useApiContext()
@@ -242,11 +232,11 @@ const isFetchingVps = ref(false)
 const vpsWarning    = ref('')
 const userWords     = reactive(new Array(12).fill(''))
 
-const STEPS = [
-  { title: 'Schlüssel', sub: 'Wörter wählen' },
-  { title: 'Prüfen',    sub: 'Bestätigen'    },
-  { title: 'Fertig',    sub: 'Gesichert'     },
-]
+const STEPS = computed(() => [
+  { title: t('encrypt.rail_key'),    sub: t('encrypt.rail_key_sub')    },
+  { title: t('encrypt.rail_verify'), sub: t('encrypt.rail_verify_sub') },
+  { title: t('encrypt.rail_done'),   sub: t('encrypt.rail_done_sub')   },
+])
 
 // ── 12-Wörter-Logik ───────────────────────────────────────────────────────────
 const WORD_RE = /^[a-zäöüß]{3,12}$/
@@ -292,7 +282,7 @@ async function handleEncrypt() {
       isFetchingVps.value = false
       const skipped = vpsOnlyCount - vpsFiles.length
       if (skipped > 0) {
-        vpsWarning.value = `${skipped} VPS-Datei(en) konnten nicht geladen werden (Vault-Session abgelaufen oder Timeout). Nur lokale Dateien wurden eingebunden.`
+        vpsWarning.value = t('encrypt.vps_warning', { n: skipped })
       }
     }
 
@@ -301,7 +291,7 @@ async function handleEncrypt() {
     const name  = soulMeta.value?.name || 'soul'
     const clean = Array.from(userWords).map(sanitize)
     if (clean.length !== 12 || !clean.every(w => isValid(w))) {
-      encryptError.value = 'Alle 12 Felder müssen gültige Wörter enthalten.'
+      encryptError.value = t('encrypt.words_required')
       return
     }
     mnemonic.value = clean

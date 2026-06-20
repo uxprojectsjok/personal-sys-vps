@@ -31,7 +31,7 @@
       </main>
 
       <footer class="link-footer">
-        <span>Geteilt über Personal SYS</span>
+        <span>{{ $t('link.footer') }}</span>
       </footer>
     </template>
   </div>
@@ -40,13 +40,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 definePageMeta({ layout: false })
 
 const route    = useRoute()
+const { t }    = useI18n()
 const loading  = ref(true)
 const error    = ref(false)
-const errorTitle = ref('Link nicht verfügbar')
+const errorTitle = ref('')
 const errorSub   = ref('')
 const rawContent = ref('')
 const fileLabel  = ref('')
@@ -145,23 +147,24 @@ onMounted(async () => {
     if (!res.ok) {
       error.value = true
       if (res.status === 403) {
-        errorTitle.value = 'Link deaktiviert'
-        errorSub.value   = 'Dieser Link wurde vom Inhaber deaktiviert.'
+        errorTitle.value = t('link.err_disabled')
+        errorSub.value   = t('link.err_disabled_sub')
       } else if (res.status === 401) {
-        errorTitle.value = 'Ungültiger Link'
-        errorSub.value   = 'Der Link ist nicht gültig oder abgelaufen.'
+        errorTitle.value = t('link.err_invalid')
+        errorSub.value   = t('link.err_invalid_sub')
       } else {
-        errorTitle.value = 'Nicht gefunden'
+        errorTitle.value = t('link.err_not_found')
         errorSub.value   = `Status ${res.status}`
       }
       return
     }
     rawContent.value = await res.text()
-    fileLabel.value  = res.headers.get('x-soul-label') || res.headers.get('x-soul-file') || 'Dokument'
+    fileLabel.value  = res.headers.get('x-soul-label') || res.headers.get('x-soul-file') || t('link.file_label_default')
     fileExt.value    = (fileLabel.value.split('.').pop() || 'md').toLowerCase()
   } catch (e) {
     error.value    = true
-    errorSub.value = 'Verbindung fehlgeschlagen.'
+    errorTitle.value = t('link.err_unavailable')
+    errorSub.value   = t('link.err_connection')
   } finally {
     loading.value = false
   }

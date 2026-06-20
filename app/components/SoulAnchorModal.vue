@@ -12,15 +12,15 @@
           <header class="anc-head">
             <div class="anc-head-labels">
               <div class="anc-kicker">Polygon · Blockchain</div>
-              <h2 class="anc-title">Soul verankern<em>.</em></h2>
+              <h2 class="anc-title">{{ $t('anchor.title') }}<em>.</em></h2>
             </div>
-            <button class="anc-close" @click="handleClose" aria-label="Schließen"><span aria-hidden="true">×</span></button>
+            <button class="anc-close" @click="handleClose" :aria-label="$t('common.close')"><span aria-hidden="true">×</span></button>
           </header>
 
           <!-- Anchor status bar -->
           <div class="anc-status" :class="{ anchored: hasAnchor }">
             <span class="anc-dot" :class="{ pulse: hasAnchor }"></span>
-            <span class="anc-status-label">{{ hasAnchor ? 'On-chain verankert' : 'Noch nicht verankert' }}</span>
+            <span class="anc-status-label">{{ hasAnchor ? $t('anchor.status_anchored') : $t('anchor.status_not_anchored') }}</span>
             <svg class="anc-chain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
             </svg>
@@ -30,7 +30,7 @@
           <div class="anc-wallet">
             <template v-if="walletRestoring">
               <svg class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-              <span>Wallet-Session prüfen…</span>
+              <span>{{ $t('anchor.wallet_checking') }}</span>
             </template>
             <template v-else-if="isConnected">
               <span class="anc-wallet-dot pulse"></span>
@@ -38,22 +38,22 @@
               <span class="anc-wallet-net">{{ currentNetwork || 'Wallet' }}</span>
             </template>
             <template v-else>
-              <span class="anc-wallet-empty">Keine Wallet verbunden</span>
+              <span class="anc-wallet-empty">{{ $t('anchor.wallet_none') }}</span>
             </template>
           </div>
 
           <!-- Mobile-Hinweis -->
           <div class="anc-mobile-hint">
             <svg class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-            <span>Wallet-Verbindung auf Mobile kann verzögert reagieren — wir arbeiten daran. Für die beste Erfahrung empfehlen wir einen Desktop-Browser.</span>
+            <span>{{ $t('anchor.mobile_hint') }}</span>
           </div>
 
           <!-- Divider -->
-          <div class="anc-rule"><span>Discovery-Tags</span></div>
+          <div class="anc-rule"><span>{{ $t('marketplace.field_tags') }}</span></div>
 
           <!-- Tags -->
           <div class="anc-tags-wrap">
-            <p class="anc-tags-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</p>
+            <p class="anc-tags-hint">{{ $t('marketplace.field_tags_hint') }}</p>
             <input
               v-model="tagsRaw"
               type="text"
@@ -67,12 +67,12 @@
           </div>
 
           <!-- Divider -->
-          <div class="anc-rule"><span>Aktionen</span></div>
+          <div class="anc-rule"><span>{{ $t('anchor.divider_actions') }}</span></div>
 
           <!-- Actions -->
           <div class="anc-actions">
             <div v-if="!canAnchor" class="anc-note info">
-              Mindestens eine echte Session erforderlich. Führe ein Enrichment durch.
+              {{ $t('anchor.need_session') }}
             </div>
 
             <button
@@ -83,7 +83,7 @@
               <svg class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/>
               </svg>
-              {{ isConnected ? 'Wallet verwalten' : 'Wallet verbinden' }}
+              {{ isConnected ? $t('anchor.wallet_manage') : $t('anchor.wallet_connect') }}
             </button>
 
             <button
@@ -96,17 +96,17 @@
               <svg v-else class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
               </svg>
-              {{ isCheckingRateLimit ? 'Prüfung… Abbrechen' : isAnchoring ? 'Transaktion… Abbrechen' : 'Soul verankern' }}
+              {{ isCheckingRateLimit ? $t('anchor.btn_checking_cancel') : isAnchoring ? $t('anchor.btn_tx_cancel') : $t('anchor.btn_anchor') }}
             </button>
           </div>
 
           <div v-if="isAnchoring" class="anc-note info">
             <svg class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-            Transaktion läuft — bitte in der Wallet-App bestätigen.
+            {{ $t('anchor.tx_pending') }}
           </div>
           <div v-if="rateLimitActive" class="anc-note warn">
-            Rate-Limit aktiv — nächster Anker möglich:<br>
-            <strong>{{ new Date(rateLimitUntil * 1000).toLocaleString('de-DE') }}</strong>
+            {{ $t('anchor.rate_limit_active') }}<br>
+            <strong>{{ new Date(rateLimitUntil * 1000).toLocaleString() }}</strong>
           </div>
           <div v-if="anchorError" class="anc-note error">{{ anchorError }}</div>
 
@@ -115,7 +115,7 @@
             <div v-if="anchorTx" class="anc-tx">
               <div class="anc-tx-head">
                 <svg class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                <span>Transaktion · {{ anchorNetwork }}</span>
+                <span>{{ $t('anchor.tx_label', { network: anchorNetwork }) }}</span>
               </div>
               <a :href="anchorExplorerUrl" target="_blank" rel="noopener noreferrer" class="anc-tx-hash">
                 <span>{{ anchorTx }}</span>
@@ -126,32 +126,31 @@
 
           <!-- Identity proof -->
           <template v-if="hasAnchor">
-            <div class="anc-rule"><span>Identität</span></div>
+            <div class="anc-rule"><span>{{ $t('anchor.divider_identity') }}</span></div>
             <button class="anc-btn ghost" :class="{ busy: isProvingIdentity || isConnectingForProof }" @click="isProvingIdentity ? cancelProveIdentity() : handleProveIdentity()">
               <svg v-if="isProvingIdentity || isConnectingForProof" class="spin anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
               <svg v-else class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
               </svg>
-              {{ isProvingIdentity ? 'Signiert… Abbrechen' : isConnectingForProof ? 'Wallet verbinden…' : isConnected ? 'Identität nachweisen' : 'Wallet verbinden · Identität nachweisen' }}
+              {{ isProvingIdentity ? $t('anchor.btn_signing_cancel') : isConnectingForProof ? $t('anchor.btn_connecting_wallet') : isConnected ? $t('anchor.btn_prove_identity') : $t('anchor.btn_connect_prove') }}
             </button>
             <Transition name="slide-up">
               <div v-if="identityProof" class="anc-proof">
                 <div class="anc-proof-head">
                   <div class="anc-proof-title">
                     <svg class="anc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                    Proof generiert
+                    {{ $t('anchor.proof_generated') }}
                   </div>
-                  <button class="anc-proof-copy" @click="copyProof">{{ proofCopied ? '✓ Kopiert' : 'Kopieren' }}</button>
+                  <button class="anc-proof-copy" @click="copyProof">{{ proofCopied ? $t('anchor.proof_copied') : $t('anchor.proof_copy') }}</button>
                 </div>
                 <div class="anc-proof-data">
-                  <div>Anker <span>{{ identityProof.anchorCount }}</span></div>
-                  <div>Seit <span>{{ identityProof.firstAnchor }}</span></div>
-                  <div>Letzter <span>{{ identityProof.latestAnchor }}</span></div>
-                  <div class="truncate">Wallet <span>{{ identityProof.wallet }}</span></div>
+                  <div>{{ $t('anchor.proof_count_label') }} <span>{{ identityProof.anchorCount }}</span></div>
+                  <div>{{ $t('anchor.proof_since_label') }} <span>{{ identityProof.firstAnchor }}</span></div>
+                  <div>{{ $t('anchor.proof_last_label') }} <span>{{ identityProof.latestAnchor }}</span></div>
+                  <div class="truncate">{{ $t('anchor.proof_wallet_label') }} <span>{{ identityProof.wallet }}</span></div>
                 </div>
                 <p class="anc-proof-text">
-                  Kryptographischer Beweis: Diese Wallet besitzt diese Soul ·
-                  {{ identityProof.anchorCount }} Anker seit {{ identityProof.firstAnchor }}
+                  {{ $t('anchor.proof_text', { count: identityProof.anchorCount, since: identityProof.firstAnchor }) }}
                 </p>
               </div>
             </Transition>
@@ -165,6 +164,7 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
+import { useI18n } from 'vue-i18n'
 import { useChainAnchor } from "~/composables/useChainAnchor.js";
 import { useSoul } from "~/composables/useSoul.js";
 
@@ -173,6 +173,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close"]);
+
+const { t } = useI18n()
 
 // ── Tags ─────────────────────────────────────────────────────────────────────
 const tagsRaw   = ref('');

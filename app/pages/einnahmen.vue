@@ -5,15 +5,15 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Netzwerk', 'Einnahmen']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('common.network'), $t('earnings.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="earn-page">
 
             <!-- ── Hero ── -->
             <div class="earn-hero">
-              <div class="eyebrow">Agent Commerce Protocol</div>
-              <h1 class="earn-title">Agent <em>Einnahmen</em></h1>
-              <p class="earn-sub">Jeder Zugriff externer KI-Agenten auf deine Soul wird on-chain verifiziert. Hier siehst du alle Transaktionen, Einnahmen und den Status deiner Freigabe.</p>
+              <div class="eyebrow">{{ $t('earnings.eyebrow') }}</div>
+              <h1 class="earn-title">Agent <em>{{ $t('earnings.title_em') }}</em></h1>
+              <p class="earn-sub">{{ $t('earnings.lede') }}</p>
             </div>
 
             <!-- ── Status-Schritt ── -->
@@ -24,53 +24,53 @@
                   <span v-else>1</span>
                 </div>
                 <div class="earn-step-lbl">
-                  <span class="earn-step-t">Zugang</span>
-                  <span class="earn-step-s">{{ amort.enabled ? 'Bezahlt · ' + amort.pol_per_request + ' POL' : 'Frei oder bezahlt' }}</span>
+                  <span class="earn-step-t">{{ $t('earnings.step_access') }}</span>
+                  <span class="earn-step-s">{{ amort.enabled ? $t('earnings.step_access_paid', { pol: amort.pol_per_request }) : $t('earnings.step_access_free') }}</span>
                 </div>
-                <button class="btn btn-sm btn-ghost" @click="onNav('market')">Konfigurieren</button>
+                <button class="btn btn-sm btn-ghost" @click="onNav('market')">{{ $t('earnings.btn_configure') }}</button>
               </div>
             </div>
 
             <!-- ── Stat-Kacheln ── -->
             <div class="earn-stats">
               <div class="earn-stat">
-                <div class="earn-stat-label">Status</div>
+                <div class="earn-stat-label">{{ $t('earnings.stat_status') }}</div>
                 <div class="earn-stat-value" :class="amort.enabled ? 'earn-stat--on' : 'earn-stat--off'">
                   <span class="earn-dot" />
-                  {{ amort.enabled ? 'Aktiv' : 'Inaktiv' }}
+                  {{ amort.enabled ? $t('earnings.stat_active') : $t('earnings.stat_inactive') }}
                 </div>
                 <div v-if="amort.enabled && amort.wallet" class="earn-stat-sub">
                   {{ amort.wallet.slice(0,6) }}…{{ amort.wallet.slice(-4) }}
                 </div>
               </div>
               <div class="earn-stat">
-                <div class="earn-stat-label">Preis pro Zugriff</div>
+                <div class="earn-stat-label">{{ $t('earnings.stat_price') }}</div>
                 <div class="earn-stat-value">{{ amort.enabled ? amort.pol_per_request + ' POL' : '—' }}</div>
               </div>
               <div class="earn-stat">
-                <div class="earn-stat-label">Zugriffe gesamt</div>
+                <div class="earn-stat-label">{{ $t('earnings.stat_total_requests') }}</div>
                 <div class="earn-stat-value">{{ earnings.total_requests }}</div>
               </div>
               <div class="earn-stat">
-                <div class="earn-stat-label">Einnahmen gesamt</div>
+                <div class="earn-stat-label">{{ $t('earnings.stat_total_earnings') }}</div>
                 <div class="earn-stat-value earn-stat--pol">{{ parseFloat(earnings.total_pol || 0).toFixed(6) }} POL</div>
               </div>
             </div>
 
             <!-- ── Restore-Banner ── -->
             <div v-if="earnings.restored_from" class="earn-restored-banner">
-              Daten aus <strong>vault/context/income.md</strong> wiederhergestellt — earnings.json war nicht vorhanden.
+              {{ $t('earnings.restored_banner_1') }} <strong>vault/context/income.md</strong> {{ $t('earnings.restored_banner_2') }}
             </div>
 
             <!-- ── TX-Tabelle ── -->
             <div class="earn-table-wrap">
               <div v-if="sortedEntries.length" class="earn-table">
                 <div class="earn-table-head">
-                  <span>TX-Hash</span>
-                  <span>Von (Wallet)</span>
-                  <span>Betrag</span>
-                  <span>Zeitraum</span>
-                  <span>Status</span>
+                  <span>{{ $t('earnings.col_tx') }}</span>
+                  <span>{{ $t('earnings.col_from') }}</span>
+                  <span>{{ $t('earnings.col_amount') }}</span>
+                  <span>{{ $t('earnings.col_period') }}</span>
+                  <span>{{ $t('earnings.col_status') }}</span>
                 </div>
                 <div v-for="e in sortedEntries" :key="e.tx_hash" class="earn-table-row">
                   <span class="earn-tx-hash">
@@ -82,27 +82,27 @@
                   <span class="earn-tx-pol">{{ e.pol_amount }} POL</span>
                   <span class="earn-tx-date">{{ formatPeriod(e.redeemed_at) }}</span>
                   <span class="earn-tx-status" :class="isActive(e) ? 'earn-status--on' : 'earn-status--off'">
-                    {{ isActive(e) ? '● Aktiv' : '○ Abgelaufen' }}
+                    {{ isActive(e) ? $t('earnings.status_active') : $t('earnings.status_expired') }}
                   </span>
                 </div>
               </div>
               <div v-else class="earn-empty">
-                <p>{{ amort.enabled ? 'Noch keine Zugriffe. Agenten finden deine Soul über soul_discover und greifen per soul_pay_read zu.' : 'Agent-Zugriff ist noch nicht aktiviert. Konfiguriere deinen Zugang im Marketplace.' }}</p>
-                <button v-if="!amort.enabled" class="btn btn-primary" @click="onNav('market')" style="margin-top:12px">Zum Marketplace</button>
+                <p>{{ amort.enabled ? $t('earnings.empty_enabled') : $t('earnings.empty_disabled') }}</p>
+                <button v-if="!amort.enabled" class="btn btn-primary" @click="onNav('market')" style="margin-top:12px">{{ $t('earnings.btn_to_marketplace') }}</button>
               </div>
             </div>
 
             <!-- ── CSV-Export ── -->
             <div v-if="sortedEntries.length" class="earn-export">
               <div>
-                <div class="earn-export-title">Steuer-Export</div>
-                <div class="earn-export-sub">Alle Einnahmen als CSV — enthält TX-Hash, Wallet, POL-Betrag, Datum. Geeignet für die Steuererklärung.</div>
+                <div class="earn-export-title">{{ $t('earnings.export_title') }}</div>
+                <div class="earn-export-sub">{{ $t('earnings.export_sub') }}</div>
               </div>
               <button class="btn btn-ghost" @click="exportCSV">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 15V3m0 12-4-4m4 4 4-4M4 19h16"/>
                 </svg>
-                CSV exportieren
+                {{ $t('earnings.btn_export_csv') }}
               </button>
             </div>
 
@@ -118,10 +118,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
 
@@ -149,7 +151,7 @@ onMounted(async () => {
 
 function formatDate(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function formatPeriod(redeemedAt) {
@@ -158,7 +160,7 @@ function formatPeriod(redeemedAt) {
   const from   = new Date(redeemedAt)
   const to     = new Date(from.getTime() + days * 86400 * 1000)
   const opts   = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }
-  return from.toLocaleString('de-DE', opts) + ' – ' + to.toLocaleString('de-DE', opts)
+  return from.toLocaleString(undefined, opts) + ' – ' + to.toLocaleString(undefined, opts)
 }
 
 function isActive(entry) {
@@ -169,7 +171,7 @@ function isActive(entry) {
 }
 
 function exportCSV() {
-  const rows = [['TX-Hash', 'Von (Wallet)', 'POL-Betrag', 'Gültig von (UTC)', 'Gültig bis (UTC)', 'Status']]
+  const rows = [[t('earnings.col_tx'), t('earnings.col_from'), t('earnings.csv_pol'), t('earnings.csv_valid_from'), t('earnings.csv_valid_to'), t('earnings.col_status')]]
   for (const e of earnings.value.entries || []) {
     const days   = amort.value.token_duration_days || 1
     const from   = e.redeemed_at || ''
@@ -180,7 +182,7 @@ function exportCSV() {
       e.pol_amount || '',
       from,
       to,
-      isActive(e) ? 'Aktiv' : 'Abgelaufen',
+      isActive(e) ? t('earnings.csv_status_active') : t('earnings.csv_status_expired'),
     ])
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -188,7 +190,7 @@ function exportCSV() {
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
   a.href = url
-  a.download = `sys-einnahmen-${new Date().toISOString().slice(0,10)}.csv`
+  a.download = `sys-earnings-${new Date().toISOString().slice(0,10)}.csv`
   document.body.appendChild(a); a.click()
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 10000)

@@ -42,7 +42,7 @@
     <!-- Schließen -->
     <button
       @click="$emit('close')"
-      aria-label="Player schließen"
+      :aria-label="$t('common.close')"
       class="w-11 h-11 flex items-center justify-center text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] transition"
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">

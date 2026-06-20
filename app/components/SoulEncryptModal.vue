@@ -7,28 +7,28 @@
         @click.self="handleClose"
         role="dialog"
         aria-modal="true"
-        aria-label="Soul verschlüsseln"
+        :aria-label="$t('encrypt.aria_label')"
       >
         <div class="senc-panel">
 
           <!-- ═══════════ HEADER ═══════════ -->
           <header class="senc-head">
             <div class="senc-head-labels">
-              <div class="senc-head-kicker">Vault · Sicherung</div>
-              <h2 class="senc-head-title">Soul exportieren<em>.</em></h2>
+              <div class="senc-head-kicker">{{ $t('encrypt.kicker') }}</div>
+              <h2 class="senc-head-title">{{ $t('encrypt.title') }}<em>.</em></h2>
             </div>
-            <button class="senc-close" @click="handleClose" aria-label="Schließen">
+            <button class="senc-close" @click="handleClose" :aria-label="$t('common.close')">
               <span aria-hidden="true">×</span>
             </button>
           </header>
 
           <!-- ═══════════ STEP RAIL ═══════════ -->
-          <nav class="senc-rail" aria-label="Schritte">
+          <nav class="senc-rail" :aria-label="$t('encrypt.steps_aria')">
             <div
               v-for="(s, i) in [
-                { title: 'Schlüssel', sub: 'Wörter wählen' },
-                { title: 'Prüfen', sub: 'Bestätigen' },
-                { title: 'Fertig', sub: 'Gesichert' },
+                { title: $t('encrypt.rail_key'), sub: $t('encrypt.rail_key_sub') },
+                { title: $t('encrypt.rail_verify'), sub: $t('encrypt.rail_verify_sub') },
+                { title: $t('encrypt.rail_done'), sub: $t('encrypt.rail_done_sub') },
               ]"
               :key="i"
               class="senc-rail-item"
@@ -48,14 +48,11 @@
           <!-- ═══════════ BODY ═══════════ -->
           <div class="senc-body">
 
-            <!-- ── Schritt 0: 12 Wörter eingeben ── -->
+            <!-- ── Step 0: enter 12 words ── -->
             <template v-if="step === 0">
-              <p class="senc-kicker">Schritt 1 / 3</p>
-              <h2 class="senc-title">Deine 12 <em>Schlüsselwörter</em></h2>
-              <p class="senc-prose">
-                Wähle 12 Wörter — auf Deutsch, Englisch oder gemischt.
-                Nur Buchstaben, keine Zahlen. Nur du kennst sie.
-              </p>
+              <p class="senc-kicker">{{ $t('encrypt.step_1') }}</p>
+              <h2 class="senc-title">{{ $t('encrypt.words_title') }}</h2>
+              <p class="senc-prose">{{ $t('encrypt.words_prose') }}</p>
 
               <datalist id="bip39-words">
                 <option v-for="w in BIP39" :key="w" :value="w" />
@@ -74,11 +71,11 @@
                   <span class="senc-word-num">{{ i + 1 }}</span>
                   <input
                     :id="`word-${i}`"
-                    :aria-label="`Schlüsselwort ${i + 1} von 12`"
+                    :aria-label="$t('encrypt.word_aria', { n: i + 1 })"
                     list="bip39-words"
                     :value="userWords[i]"
                     autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-                    maxlength="12" placeholder="wort…"
+                    maxlength="12" :placeholder="$t('encrypt.word_placeholder')"
                     class="senc-word-input"
                     @input="sanitizeWord(i, $event)"
                   />
@@ -94,13 +91,13 @@
               <div class="senc-meta-row">
                 <span class="senc-count">
                   <span :class="{ 'senc-count-full': validCount === 12 }">{{ validCount }}</span>
-                  / 12 gültig
+                  {{ $t('encrypt.valid_count_suffix') }}
                 </span>
                 <button class="senc-random" @click="fillRandom">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                   </svg>
-                  Zufällig füllen
+                  {{ $t('encrypt.fill_random') }}
                 </button>
               </div>
 
@@ -108,20 +105,16 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                 </svg>
-                <p>
-                  Diese 12 Wörter sind dein einziger Schlüssel. Notiere sie offline –
-                  sie können nicht wiederhergestellt werden.
-                </p>
+                <p>{{ $t('encrypt.warning') }}</p>
               </div>
             </template>
 
-            <!-- ── Schritt 1: Bestätigen ── -->
+            <!-- ── Step 1: confirm ── -->
             <template v-else-if="step === 1">
-              <p class="senc-kicker">Schritt 2 / 3</p>
-              <h2 class="senc-title"><em>Bestätigen</em></h2>
+              <p class="senc-kicker">{{ $t('encrypt.step_2') }}</p>
+              <h2 class="senc-title"><em>{{ $t('encrypt.confirm_title') }}</em></h2>
               <p class="senc-prose">
-                Letzte Prüfung. Danach wird der Vault verschlüsselt und als
-                <code class="senc-code">.soul</code>-Datei gespeichert.
+                {{ $t('encrypt.confirm_prose') }}
               </p>
 
               <div class="senc-words-grid readonly">
@@ -148,16 +141,16 @@
                   </svg>
                 </div>
                 <span class="senc-confirm-text" @click="confirmed = !confirmed">
-                  Ich habe alle 12 Wörter sicher offline notiert.
+                  {{ $t('encrypt.confirmed_text') }}
                 </span>
               </label>
             </template>
 
-            <!-- ── Schritt 2: Ergebnis ── -->
+            <!-- ── Step 2: result ── -->
             <template v-else-if="step === 2">
-              <p class="senc-kicker">Schritt 3 / 3</p>
+              <p class="senc-kicker">{{ $t('encrypt.step_3') }}</p>
               <h2 class="senc-title">
-                <em>{{ isEncrypting ? 'Verschlüsseln…' : encryptError ? 'Fehler' : 'Vault gesichert' }}</em>
+                <em>{{ isEncrypting ? $t('encrypt.encrypting') : encryptError ? $t('common.error') : $t('encrypt.vault_secured') }}</em>
               </h2>
 
               <!-- Spinner -->
@@ -167,11 +160,11 @@
                   <path fill="currentColor" fill-opacity="0.75" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
                 <p class="senc-state-label">
-                  {{ isFetchingVps ? 'VPS-Vault wird geladen…' : 'Soul & Vault werden verschlüsselt…' }}
+                  {{ isFetchingVps ? $t('encrypt.fetching_vps') : $t('encrypt.encrypting_soul') }}
                 </p>
               </div>
 
-              <!-- Fehler -->
+              <!-- Error -->
               <div v-else-if="encryptError" class="senc-state-center">
                 <div class="senc-icon-wrap err">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -179,10 +172,10 @@
                   </svg>
                 </div>
                 <p class="senc-state-label err">{{ encryptError }}</p>
-                <button class="senc-back-btn" @click="step = 1; encryptError = null">Zurück</button>
+                <button class="senc-back-btn" @click="step = 1; encryptError = null">{{ $t('common.back') }}</button>
               </div>
 
-              <!-- Erfolg -->
+              <!-- Success -->
               <div v-else class="senc-success">
                 <div class="senc-icon-wrap ok">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -190,15 +183,12 @@
                   </svg>
                 </div>
                 <div class="senc-success-text">
-                  <p class="senc-success-title">Vault gesichert</p>
-                  <p class="senc-success-sub">sys.md · Bilder · Stimme · Motion · AES-256-GCM · 12 Wörter</p>
+                  <p class="senc-success-title">{{ $t('encrypt.success_title') }}</p>
+                  <p class="senc-success-sub">{{ $t('encrypt.success_sub') }}</p>
                 </div>
 
                 <div class="senc-info-box">
-                  <p>
-                    Deine <code class="senc-code">.soul</code>-Datei wurde heruntergeladen.
-                    Bewahre sie sicher auf – sie enthält deinen verschlüsselten Vault.
-                  </p>
+                  <p>{{ $t('encrypt.soul_downloaded') }}</p>
                 </div>
 
                 <div v-if="vpsWarning" class="senc-warning warn">
@@ -217,23 +207,23 @@
             <!-- Step 0 -->
             <template v-if="step === 0">
               <div class="senc-foot-left">
-                <button class="senc-btn senc-btn-ghost" @click="handleClose">Abbrechen</button>
+                <button class="senc-btn senc-btn-ghost" @click="handleClose">{{ $t('common.cancel') }}</button>
               </div>
-              <button class="senc-btn senc-btn-primary" :disabled="!allValid" @click="step = 1">Weiter →</button>
+              <button class="senc-btn senc-btn-primary" :disabled="!allValid" @click="step = 1">{{ $t('encrypt.next_btn') }}</button>
             </template>
 
             <!-- Step 1 -->
             <template v-else-if="step === 1">
               <div class="senc-foot-left">
-                <button class="senc-btn senc-btn-ghost" @click="step = 0">← Zurück</button>
+                <button class="senc-btn senc-btn-ghost" @click="step = 0">{{ $t('encrypt.back_btn') }}</button>
               </div>
-              <button class="senc-btn senc-btn-primary" :disabled="!confirmed" @click="handleEncrypt">Verschlüsseln</button>
+              <button class="senc-btn senc-btn-primary" :disabled="!confirmed" @click="handleEncrypt">{{ $t('encrypt.encrypt_btn') }}</button>
             </template>
 
             <!-- Step 2 done -->
             <template v-else-if="step === 2 && !isEncrypting && !encryptError">
               <div class="senc-foot-left"></div>
-              <button class="senc-btn senc-btn-primary" @click="handleClose">Fertig</button>
+              <button class="senc-btn senc-btn-primary" @click="handleClose">{{ $t('common.done') }}</button>
             </template>
 
             <!-- Step 2 loading / error — no footer buttons -->
@@ -251,11 +241,13 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { BIP39, generateMnemonicWords, useSoulEncrypt } from '~/composables/useSoulEncrypt.js'
 import { useApiContext } from '~/composables/useApiContext.js'
 
+const { t } = useI18n()
 const { soulContent, soulMeta, soulToken } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles } = useApiContext()
 
@@ -332,7 +324,7 @@ async function handleEncrypt() {
       isFetchingVps.value = false
       const skipped = vpsOnlyCount - vpsFiles.length
       if (skipped > 0) {
-        vpsWarning.value = `${skipped} VPS-Datei(en) konnten nicht geladen werden (Vault-Session abgelaufen oder Timeout). Nur lokale Dateien wurden eingebunden.`
+        vpsWarning.value = t('encrypt.vps_warning', { n: skipped })
       }
     }
 
@@ -344,7 +336,7 @@ async function handleEncrypt() {
     const name  = soulMeta.value?.name || 'soul'
     const clean = Array.from(userWords).map(sanitize)
     if (clean.length !== 12 || !clean.every(w => isValid(w))) {
-      encryptError.value = 'Alle 12 Felder müssen gültige Wörter enthalten.'
+      encryptError.value = t('encrypt.words_required')
       return
     }
     mnemonic.value = clean

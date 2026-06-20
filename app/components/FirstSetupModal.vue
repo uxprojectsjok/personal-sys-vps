@@ -21,16 +21,14 @@
             <div class="head-icon" aria-hidden="true">
               <i class="ri-shield-keyhole-line" />
             </div>
-            <span class="sys-kicker">{{ postImportConfirmOnly ? 'Soul importiert · §00' : 'Erste Instanz · §00' }}</span>
-            <h1 id="first-setup-title" class="sys-display">Admin-Token <em>sichern</em>.</h1>
+            <span class="sys-kicker">{{ postImportConfirmOnly ? $t('first_setup.kicker_import') : $t('first_setup.kicker_new') }}</span>
+            <h1 id="first-setup-title" class="sys-display">{{ $t('first_setup.token_label') }} <em>{{ $t('first_setup.title_token_em') }}</em>.</h1>
             <p class="sys-lede">
               <template v-if="postImportConfirmOnly">
-                Deine importierte Soul hat einen neuen Admin-Token für diesen VPS erhalten —
-                er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+                {{ $t('first_setup.lede_import_1') }} <em>{{ $t('first_setup.lede_once') }}</em> {{ $t('first_setup.lede_suffix') }}
               </template>
               <template v-else>
-                Diese Instanz wurde gerade initialisiert. Dein Admin-Token wurde generiert —
-                er wird <em>nur dieses eine Mal</em> angezeigt und ist nicht wiederherstellbar.
+                {{ $t('first_setup.lede_init_1') }} <em>{{ $t('first_setup.lede_once') }}</em> {{ $t('first_setup.lede_suffix') }}
               </template>
             </p>
           </header>
@@ -38,10 +36,10 @@
           <div class="sys-modal-body">
             <div class="token-card">
               <div class="token-card-head">
-                <span class="sys-kicker" style="margin:0;padding:0;border:0">Admin-Token</span>
-                <button class="token-copy" :class="{ copied }" type="button" aria-label="Token kopieren" @click="copyToken">
+                <span class="sys-kicker" style="margin:0;padding:0;border:0">{{ $t('first_setup.token_label') }}</span>
+                <button class="token-copy" :class="{ copied }" type="button" :aria-label="$t('first_setup.btn_copy_aria')" @click="copyToken">
                   <i :class="copied ? 'ri-check-line' : 'ri-clipboard-line'" />
-                  <span>{{ copied ? 'Kopiert' : 'Kopieren' }}</span>
+                  <span>{{ copied ? $t('first_setup.btn_copied') : $t('first_setup.btn_copy') }}</span>
                 </button>
               </div>
               <code class="token-value">{{ token }}</code>
@@ -49,23 +47,23 @@
 
             <div class="warn-row">
               <i class="ri-error-warning-line warn-icon" aria-hidden="true" />
-              <p>Speichere den Token jetzt in einem Passwort-Manager. Ohne ihn kannst du keine Schlüssel rotieren oder die Instanz administrieren.</p>
+              <p>{{ $t('first_setup.warn_text') }}</p>
             </div>
 
             <label class="confirm-row">
               <input type="checkbox" v-model="confirmed" class="confirm-cbx" />
-              <span>Ich habe den Token sicher gespeichert.</span>
+              <span>{{ $t('first_setup.confirm_label') }}</span>
             </label>
           </div>
 
           <footer class="sys-modal-foot">
             <div class="sys-foot-meta">
               <span class="sys-dot" :class="confirmed ? 'sys-dot--ok' : 'sys-dot--warn'" />
-              {{ confirmed ? 'Token bestätigt' : 'Bestätigung erforderlich' }}
+              {{ confirmed ? $t('first_setup.status_confirmed') : $t('first_setup.status_pending') }}
             </div>
             <div class="sys-foot-actions">
               <button type="button" class="sys-btn-ed sys-btn-ed--primary" :disabled="!confirmed" @click="postImportConfirmOnly ? emitDismiss() : (step = 2)">
-                {{ postImportConfirmOnly ? 'Fertig' : 'Weiter →' }}
+                {{ postImportConfirmOnly ? $t('common.done') : $t('common.next') }}
               </button>
             </div>
           </footer>
@@ -78,12 +76,9 @@
             <div class="head-icon" aria-hidden="true">
               <i class="ri-user-heart-line" />
             </div>
-            <span class="sys-kicker">{{ isSingle ? 'Neue Instanz' : 'Neue VPS · Soul' }}</span>
-            <h1 class="sys-display">Soul <em>einrichten</em>.</h1>
-            <p class="sys-lede">
-              Deine neu generierte sys.md enthält den Cert für diesen Server.
-              Du kannst sie jetzt sichern — oder eine bestehende Soul einspielen.
-            </p>
+            <span class="sys-kicker">{{ isSingle ? $t('first_setup.kicker_new_single') : $t('first_setup.kicker_new_vps') }}</span>
+            <h1 class="sys-display">Soul <em>{{ $t('first_setup.title_soul_em') }}</em>.</h1>
+            <p class="sys-lede">{{ $t('first_setup.lede_soul') }}</p>
           </header>
 
           <div class="sys-modal-body">
@@ -92,29 +87,29 @@
             <div class="action-card" @click="emitDownload">
               <div class="action-icon"><i class="ri-download-2-line" /></div>
               <div class="action-text">
-                <strong>Soul erstellen und sys.md herunterladen</strong>
-                <span>Neue Soul für diesen VPS — Cert wird automatisch eingetragen.</span>
+                <strong>{{ $t('first_setup.dl_title') }}</strong>
+                <span>{{ $t('first_setup.dl_desc') }}</span>
               </div>
               <i class="ri-arrow-right-line action-arr" />
             </div>
 
-            <div class="sep-or">oder</div>
+            <div class="sep-or">{{ $t('common.or') }}</div>
 
             <!-- Import existing -->
             <div class="action-card" @click="triggerFilePicker">
               <div class="action-icon"><i class="ri-upload-2-line" /></div>
               <div class="action-text">
-                <strong>Bestehende Soul einspielen</strong>
-                <span>sys.md von einem früheren VPS hochladen — Cert wird für diesen VPS neu ausgestellt.</span>
+                <strong>{{ $t('first_setup.import_title') }}</strong>
+                <span>{{ $t('first_setup.import_desc') }}</span>
               </div>
               <i class="ri-arrow-right-line action-arr" />
             </div>
             <input ref="fileInput" type="file" accept=".md,text/plain" hidden @change="handleFile" />
             <p v-if="importError" class="import-error">{{ importError }}</p>
-            <p v-if="importing" class="import-status">Importiert…</p>
+            <p v-if="importing" class="import-status">{{ $t('first_setup.importing') }}</p>
 
             <!-- Skip -->
-            <button class="skip-link" @click="emitDismiss">Überspringen — später einrichten</button>
+            <button class="skip-link" @click="emitDismiss">{{ $t('first_setup.btn_skip') }}</button>
           </div>
         </template>
 
@@ -125,6 +120,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   token: { type: String, default: null },
@@ -185,13 +183,13 @@ async function handleFile(e) {
   try {
     const text = await file.text()
     if (!text.includes('soul_id:')) {
-      importError.value = 'Keine gültige sys.md — soul_id fehlt.'
+      importError.value = t('first_setup.err_invalid')
       importing.value = false
       return
     }
     emit('import-soul', text)
   } catch {
-    importError.value = 'Datei konnte nicht gelesen werden.'
+    importError.value = t('first_setup.err_read')
   } finally {
     importing.value = false
     if (fileInput.value) fileInput.value.value = ''

@@ -7,19 +7,19 @@
           <div class="gate-mark">SYS<span class="dot">.</span></div>
           <div class="gate-sub">{{ config.public.nodeName }}</div>
           <h1>Save Your Soul<em>.</em></h1>
-          <p class="welcome">{{ config.public.nodeTagline || 'Persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt.' }}</p>
+          <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
           <div style="display:flex;flex-direction:column;gap:12px;width:100%">
             <button v-if="allowCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
-              Soul erstellen
+              {{ $t('index.create_soul') }}
               <SysIcon name="arrow" style="width:18px;height:18px" />
             </button>
             <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
-              Login with Soul
+              {{ $t('index.login_with_soul') }}
             </button>
           </div>
           <div class="gate-foot">
             <span class="live-dot" />
-            Privater Node · {{ config.public.nodeName }}
+            {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
         </div>
       </div>
@@ -54,100 +54,100 @@
 
               <!-- Hero -->
               <div class="hero">
-                <div class="greet">Willkommen zurück</div>
+                <div class="greet">{{ $t('home.welcome') }}</div>
                 <h1>{{ soulMeta?.name || 'Soul' }}<em>.</em></h1>
-                <div class="hero-sub">Dein Knoten im Internet. Als Mensch. Sprich mit deiner KI, verbinde dich mit Peers — der Soul-Archivar schreibt still mit.</div>
+                <div class="hero-sub">{{ $t('home.hero_sub') }}</div>
                 <div class="hero-actions">
                   <button class="btn btn-primary" @click="onNav('chat')">
-                    Session starten
+                    {{ $t('home.start_session') }}
                     <SysIcon name="arrow" style="width:16px;height:16px" />
                   </button>
                 </div>
               </div>
 
-              <!-- Überblick -->
+              <!-- Overview -->
               <div class="section-head">
-                <h3>Überblick</h3>
+                <h3>{{ $t('home.overview') }}</h3>
               </div>
               <div class="stat-grid">
                 <div class="stat">
                   <div class="stat-val">{{ maturity }}<small>%</small></div>
-                  <div class="stat-label">Soul-Reife</div>
+                  <div class="stat-label">{{ $t('home.soul_maturity') }}</div>
                   <div class="mat-bar" style="margin-top:10px">
                     <div class="mat-fill" :style="{ width: maturity + '%' }" />
                   </div>
                   <div class="stat-foot" :class="{ off: !hasAnchor }">
-                    <span class="d" />{{ hasAnchor ? 'Verankert' : 'Kein Anker' }}
+                    <span class="d" />{{ hasAnchor ? $t('home.anchored') : $t('home.no_anchor') }}
                   </div>
                 </div>
                 <div class="stat">
                   <div class="stat-val">{{ chainCount }}</div>
-                  <div class="stat-label">Sessions in der Chain</div>
+                  <div class="stat-label">{{ $t('home.sessions_in_chain') }}</div>
                   <div class="stat-foot">
-                    <span class="d" />Bereit
+                    <span class="d" />{{ $t('home.ready') }}
                   </div>
                 </div>
                 <div class="stat">
-                  <div class="stat-val" style="font-size:20px">Lokal</div>
-                  <div class="stat-label">Soul-Datei</div>
+                  <div class="stat-val" style="font-size:20px">{{ $t('home.local') }}</div>
+                  <div class="stat-label">{{ $t('home.soul_file') }}</div>
                   <div class="stat-foot" :class="{ off: !vaultConnected }">
-                    <span class="d" />{{ vaultConnected ? 'Bereit' : 'Offline' }}
+                    <span class="d" />{{ vaultConnected ? $t('home.ready') : $t('home.offline') }}
                   </div>
                 </div>
                 <div class="stat">
                   <div class="stat-val" style="font-size:20px">{{ soulMeta?.version || 'v1' }}</div>
-                  <div class="stat-label">Soul-Version</div>
+                  <div class="stat-label">{{ $t('home.soul_version') }}</div>
                   <div class="stat-foot">
-                    <span class="d" />{{ shortCert }} · signiert
+                    <span class="d" />{{ shortCert }} · {{ $t('home.signed') }}
                   </div>
                 </div>
               </div>
 
-              <!-- Weiter mit -->
+              <!-- Continue with -->
               <div class="section-head">
-                <h3>Weiter mit</h3>
+                <h3>{{ $t('home.continue_with') }}</h3>
               </div>
               <ul class="action-list">
                 <li class="action" @click="onNav('setup')">
                   <div class="act-ic"><SysIcon name="settings" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Soul einrichten</div>
-                    <div class="act-sub">Wizard · Vault · Verschlüsselung</div>
+                    <div class="act-title">{{ $t('home.soul_setup') }}</div>
+                    <div class="act-sub">{{ $t('home.soul_setup_sub') }}</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
                 <li class="action" @click="onNav('files')">
                   <div class="act-ic"><SysIcon name="files" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Dateien verwalten</div>
-                    <div class="act-sub">Audio · Video · Bilder · Kontext</div>
+                    <div class="act-title">{{ $t('home.manage_files') }}</div>
+                    <div class="act-sub">{{ $t('home.manage_files_sub') }}</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
                 <li class="action" @click="onNav('export')">
                   <div class="act-ic"><SysIcon name="export" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Soul exportieren</div>
-                    <div class="act-sub">.soul · AES-GCM · 12 Wörter</div>
+                    <div class="act-title">{{ $t('home.export_soul') }}</div>
+                    <div class="act-sub">{{ $t('home.export_soul_sub') }}</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
                 <li class="action" @click="onNav('anchor')">
                   <div class="act-ic"><SysIcon name="anchor" style="width:20px;height:20px" /></div>
                   <div class="act-body">
-                    <div class="act-title">Polygon verankern</div>
-                    <div class="act-sub">SHA-256 · Zeitstempel · irreversibel</div>
+                    <div class="act-title">{{ $t('home.anchor_polygon') }}</div>
+                    <div class="act-sub">{{ $t('home.anchor_polygon_sub') }}</div>
                   </div>
                   <SysIcon name="arrow" style="width:15px;height:15px" class="act-arr" />
                 </li>
               </ul>
 
-              <!-- Chronik preview -->
+              <!-- Chronicle preview -->
               <div class="section-head">
-                <h3>Chronik<em>.</em></h3>
-                <button class="more" @click="onNav('chronik')">Alle Einträge →</button>
+                <h3>{{ $t('home.chronicle_title') }}<em>.</em></h3>
+                <button class="more" @click="onNav('chronik')">{{ $t('home.all_entries') }}</button>
               </div>
-              <div v-if="journal.length === 0" class="empty-hint">Noch keine Session-Einträge.</div>
+              <div v-if="journal.length === 0" class="empty-hint">{{ $t('home.no_entries') }}</div>
               <div v-else class="chronik">
                 <div v-for="n in journal" :key="n.id" class="chron-item">
                   <div class="chron-when">{{ n.when[0] }}</div>
@@ -156,13 +156,13 @@
               </div>
             </div>
 
-            <!-- ── Chronik ────────────────────────────────────────────── -->
+            <!-- ── Chronicle ─────────────────────────────────────────── -->
             <div v-else-if="route === 'chronik'" class="page">
               <div class="page-hero">
-                <h2>Chronik<em>.</em></h2>
-                <span class="page-sub">Session-Log · {{ journal.length }} Einträge</span>
+                <h2>{{ $t('chronicle.title') }}<em>.</em></h2>
+                <span class="page-sub">{{ $t('chronicle.subtitle') }} · {{ journal.length }} {{ $t('chronicle.entries', { count: journal.length }) }}</span>
               </div>
-              <div v-if="journal.length === 0" class="empty-hint">Noch keine Session-Einträge.</div>
+              <div v-if="journal.length === 0" class="empty-hint">{{ $t('chronicle.no_entries') }}</div>
               <div v-else class="chronik">
                 <div v-for="n in journal" :key="n.id" class="chron-item">
                   <div class="chron-when">{{ n.when[0] }}</div>
@@ -171,11 +171,11 @@
               </div>
             </div>
 
-            <!-- ── Reife ──────────────────────────────────────────────── -->
+            <!-- ── Maturity ───────────────────────────────────────────── -->
             <div v-else-if="route === 'maturity'" class="page">
               <div class="page-hero">
-                <h2>Soul-Reife<em>.</em></h2>
-                <span class="page-sub">Wachstum & Entwicklung</span>
+                <h2>{{ $t('home.soul_maturity') }}<em>.</em></h2>
+                <span class="page-sub">Growth &amp; Development</span>
               </div>
               <div class="mat-view">
                 <div class="mat-ring-wrap">
@@ -196,7 +196,12 @@
                     <div class="mat-bar-track">
                       <div class="mat-fill" :style="{ width: maturity + '%' }" />
                     </div>
-                    <div class="mat-ticks"><span>Genesis</span><span>Aufbau</span><span>Etabliert</span><span>Premium</span></div>
+                    <div class="mat-ticks">
+                      <span>{{ $t('home.maturity_levels.genesis') }}</span>
+                      <span>{{ $t('home.maturity_levels.building') }}</span>
+                      <span>{{ $t('home.maturity_levels.established') }}</span>
+                      <span>{{ $t('home.maturity_levels.premium') }}</span>
+                    </div>
                   </div>
                   <div class="mat-soul-id">Soul: {{ shortId }}</div>
                 </div>
@@ -207,32 +212,32 @@
             <div v-else-if="route === 'peers'" class="page">
               <div class="page-hero">
                 <h2>Peers<em>.</em></h2>
-                <span class="page-sub">Vertraute Souls</span>
+                <span class="page-sub">{{ $t('home.peers_sub') }}</span>
               </div>
-              <div class="empty-hint">Peer-Verwaltung wird bald hier verfügbar sein.</div>
+              <div class="empty-hint">{{ $t('home.peers_coming_soon') }}</div>
             </div>
 
-            <!-- ── Kalender ───────────────────────────────────────────── -->
+            <!-- ── Calendar ───────────────────────────────────────────── -->
             <div v-else-if="route === 'calendar'" class="page">
               <div class="page-hero">
-                <h2>Kalender<em>.</em></h2>
-                <span class="page-sub">Termine & Einträge</span>
+                <h2>{{ $t('nav.calendar') }}<em>.</em></h2>
+                <span class="page-sub">{{ $t('home.calendar_sub') }}</span>
               </div>
-              <div class="empty-hint">Kalender wird bald hier verfügbar sein.</div>
+              <div class="empty-hint">{{ $t('home.calendar_coming_soon') }}</div>
             </div>
 
-            <!-- ── QR-Connect ─────────────────────────────────────────── -->
+            <!-- ── Connect ────────────────────────────────────────────── -->
             <div v-else-if="route === 'connect'" class="page">
               <div class="page-hero">
-                <h2>Verbindung<em>.</em></h2>
-                <span class="page-sub">QR-Connect · MCP-Endpoint teilen</span>
+                <h2>{{ $t('nav.connect') }}<em>.</em></h2>
+                <span class="page-sub">{{ $t('home.connect_sub') }}</span>
               </div>
-              <div class="empty-hint">QR-Connect wird bald hier verfügbar sein.</div>
+              <div class="empty-hint">{{ $t('home.connect_coming_soon') }}</div>
             </div>
 
             <!-- ── Fallback ───────────────────────────────────────────── -->
             <div v-else class="page">
-              <div class="empty-hint">Diese Ansicht ist noch nicht verfügbar.</div>
+              <div class="empty-hint">{{ $t('home.not_available') }}</div>
             </div>
 
           </div><!-- .scroll -->
@@ -262,42 +267,39 @@
         <div
           v-if="loginOpen"
           class="fixed inset-0 z-50 flex flex-col justify-end items-center"
-          role="dialog" aria-modal="true" aria-label="Soul laden"
+          role="dialog" aria-modal="true" :aria-label="$t('index.load_soul_title')"
           @click.self="loginOpen = false"
         >
           <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="loginOpen = false" />
           <div class="login-sheet">
             <div class="login-handle">
               <div class="login-bar" />
-              <button class="login-close" @click="loginOpen = false" aria-label="Schließen">✕</button>
+              <button class="login-close" @click="loginOpen = false" :aria-label="$t('index.close')">✕</button>
             </div>
-            <div class="login-kicker">Soul laden</div>
-            <h2 class="login-title">Mit sys<em>.</em>md einloggen</h2>
+            <div class="login-kicker">{{ $t('index.login_modal_kicker') }}</div>
+            <h2 class="login-title">{{ $t('index.login_modal_title') }}</h2>
             <p class="login-sub">
-              Lade deine Soul-Datei — lokal gespeichert, verlässt dieses Gerät nicht.
+              {{ $t('index.login_modal_sub') }}
               <template v-if="allowCreateSoul">
-                <br><em>Auf diesem Node ist noch keine Soul registriert. Deine bestehende sys.md wird importiert und hier neu verankert.</em>
+                <br><em>{{ $t('index.login_modal_sub_import') }}</em>
               </template>
             </p>
             <div class="sys-field" style="margin-bottom:0">
-              <span class="sys-field-label">Soul-Datei</span>
+              <span class="sys-field-label">{{ $t('index.soul_file_label') }}</span>
               <SoulUpload @uploaded="(text, name) => handleLoginUpload(text, name)" />
             </div>
 
             <div v-if="pendingResetSoulId" class="login-recovery">
-              <p class="login-recovery-msg">
-                Diese Soul ist bereits auf diesem Server registriert, aber der Cert in der Datei ist veraltet.
-                Du kannst die Registrierung zurücksetzen — Vault-Daten bleiben erhalten.
-              </p>
+              <p class="login-recovery-msg">{{ $t('index.recovery_msg') }}</p>
               <button class="login-recovery-btn" @click="handleResetRegistration" :disabled="resetBusy">
-                {{ resetBusy ? 'Wird zurückgesetzt…' : 'Registrierung zurücksetzen und erneut importieren' }}
+                {{ resetBusy ? $t('index.resetting') : $t('index.reset_registration') }}
               </button>
             </div>
 
-            <div class="login-divider"><span>oder</span></div>
+            <div class="login-divider"><span>{{ $t('index.or') }}</span></div>
             <button class="login-alt" @click="openDecryptFromLogin">
-              <span>Verschlüsselten Vault laden</span>
-              <span class="login-alt-sub">.soul-Bundle · 12 Schlüsselwörter</span>
+              <span>{{ $t('index.load_encrypted_vault') }}</span>
+              <span class="login-alt-sub">{{ $t('index.load_encrypted_sub') }}</span>
               <span class="login-arr">→</span>
             </button>
           </div>
@@ -308,17 +310,17 @@
     <!-- .soul Bundle -->
     <SoulDecryptModal :is-open="decryptOpen" @close="decryptOpen = false" @uploaded="decryptOpen = false" />
 
-    <!-- Soul einrichten -->
+    <!-- Soul Setup -->
     <Teleport to="body">
       <Transition name="sys-modal">
         <div v-if="setupOpen" class="sys-modal-wrap" role="dialog" aria-modal="true" @click.self="setupOpen = false">
           <div class="sys-modal-panel">
             <div class="sys-modal-head">
               <div>
-                <div class="sys-modal-kicker">Konfiguration</div>
-                <h2 class="sys-modal-title">Soul einrichten<em>.</em></h2>
+                <div class="sys-modal-kicker">{{ $t('index.kicker_config') }}</div>
+                <h2 class="sys-modal-title">{{ $t('index.modal_setup_title') }}<em>.</em></h2>
               </div>
-              <button class="sys-modal-close" @click="setupOpen = false" aria-label="Schließen"><span>×</span></button>
+              <button class="sys-modal-close" @click="setupOpen = false" :aria-label="$t('index.close')"><span>×</span></button>
             </div>
             <div class="sys-modal-body">
               <SoulSetupWizard
@@ -334,17 +336,17 @@
       </Transition>
     </Teleport>
 
-    <!-- Dateien -->
+    <!-- Files -->
     <Teleport to="body">
       <Transition name="sys-modal">
         <div v-if="filesOpen" class="sys-modal-wrap" role="dialog" aria-modal="true" @click.self="filesOpen = false">
           <div class="sys-modal-panel sys-modal-panel--wide">
             <div class="sys-modal-head">
               <div>
-                <div class="sys-modal-kicker">Vault</div>
-                <h2 class="sys-modal-title">Dateien verwalten<em>.</em></h2>
+                <div class="sys-modal-kicker">{{ $t('index.modal_vault_kicker') }}</div>
+                <h2 class="sys-modal-title">{{ $t('index.modal_files_title') }}<em>.</em></h2>
               </div>
-              <button class="sys-modal-close" @click="filesOpen = false" aria-label="Schließen"><span>×</span></button>
+              <button class="sys-modal-close" @click="filesOpen = false" :aria-label="$t('index.close')"><span>×</span></button>
             </div>
             <div class="sys-modal-body">
               <VaultExplorer :soul-cert="soulToken" :soul-content="soulContent" @encrypt="encryptOpen = true" />
@@ -371,12 +373,12 @@
         <div v-if="pwa.isInstallable.value" class="pwa-banner" role="banner">
           <div class="pwa-banner-inner">
             <div class="pwa-banner-text">
-              <span class="pwa-banner-title">SYS als App installieren</span>
-              <span v-if="pwa.isIos.value" class="pwa-banner-sub">Safari → Teilen → Zum Startbildschirm</span>
-              <span v-else class="pwa-banner-sub">Offline-fähig · Kein Gate bei nächster Nutzung</span>
+              <span class="pwa-banner-title">{{ $t('index.pwa_install') }}</span>
+              <span v-if="pwa.isIos.value" class="pwa-banner-sub">{{ $t('index.pwa_ios_hint') }}</span>
+              <span v-else class="pwa-banner-sub">{{ $t('index.pwa_hint') }}</span>
             </div>
-            <button v-if="!pwa.isIos.value" class="pwa-banner-btn" @click="pwa.promptInstall()">Installieren</button>
-            <button class="pwa-banner-dismiss" @click="pwa.dismiss()" aria-label="Schließen">×</button>
+            <button v-if="!pwa.isIos.value" class="pwa-banner-btn" @click="pwa.promptInstall()">{{ $t('index.install') }}</button>
+            <button class="pwa-banner-dismiss" @click="pwa.dismiss()" :aria-label="$t('index.close')">×</button>
           </div>
         </div>
       </Transition>
@@ -407,6 +409,7 @@ import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 
 const config = useRuntimeConfig()
+const { t } = useI18n()
 const { ask: confirmAsk } = useConfirm()
 const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken, refreshCert, soulFilename, setSoulFilename } = useSoul()
 const { isConnected: vaultConnected } = useVault()
@@ -480,10 +483,10 @@ function lockGate() {
 
 async function confirmReset() {
   const ok = await confirmAsk({
-    title: 'Ausloggen',
-    message: 'Soul aus dem Browser entfernen? Deine Datei bleibt erhalten.',
-    confirmText: 'Ausloggen',
-    cancelText: 'Abbrechen',
+    title: t('index.logout_title'),
+    message: t('index.logout_msg'),
+    confirmText: t('index.logout_confirm'),
+    cancelText: t('index.cancel'),
     danger: true,
   })
   if (ok) lockGate()
@@ -548,10 +551,10 @@ async function handleLoginUpload(text, filename) {
         }
       } else {
         const msg = result.error === 'node_locked'
-          ? 'Dieser Node ist bereits einer anderen Soul zugewiesen.'
+          ? t('index.error.node_locked')
           : result.error === 'no_soul_id'
-          ? 'Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.'
-          : `Import fehlgeschlagen (${result.error}).`
+          ? t('index.error.no_soul_id')
+          : t('index.error.import_failed', { error: result.error })
         alert(msg)
       }
       return
@@ -583,7 +586,7 @@ async function handleResetRegistration() {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      alert(`Reset fehlgeschlagen: ${err.error || res.status}`)
+      alert(t('index.error.reset_failed', { error: err.error || res.status }))
       return
     }
     const text = pendingResetText.value
@@ -591,7 +594,7 @@ async function handleResetRegistration() {
     pendingResetSoulId.value = ''
     await handleLoginUpload(text)
   } catch (e) {
-    alert(`Reset fehlgeschlagen: ${e.message}`)
+    alert(t('index.error.reset_failed', { error: e.message }))
   } finally {
     resetBusy.value = false
   }
@@ -632,11 +635,11 @@ const journal = computed(() => {
         const today = new Date()
         const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
         if (d.toDateString() === today.toDateString()) {
-          when = ['Heute', '']
+          when = [t('chronicle.today'), '']
         } else if (d.toDateString() === yesterday.toDateString()) {
-          when = ['Gestern', '']
+          when = [t('chronicle.yesterday'), '']
         } else {
-          when = [d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' }), '']
+          when = [d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' }), '']
         }
       }
     } catch {}
@@ -677,12 +680,12 @@ function onNav(id) {
   drawerOpen.value = false
 }
 
-const NAV_LABELS = {
-  home: 'Start', chat: 'Session', soul: 'sys.md', chronik: 'Chronik', maturity: 'Reife',
-  files: 'Dateien', calendar: 'Kalender', peers: 'Peers', connect: 'Verbindung',
-  market: 'Marketplace', anchor: 'Verankern', export: 'Exportieren', settings: 'Einstellungen',
-}
-const crumbs = computed(() => ['SYS', NAV_LABELS[route.value] || 'Start'])
+const navLabels = computed(() => ({
+  home: t('nav.home'), chat: t('nav.session'), soul: 'sys.md', chronik: t('nav.chronik'), maturity: t('nav.maturity'),
+  files: t('nav.files'), calendar: t('nav.calendar'), peers: t('nav.peers'), connect: t('nav.connect'),
+  market: t('nav.marketplace'), anchor: t('nav.anchor'), export: t('nav.export'), settings: t('nav.settings'),
+}))
+const crumbs = computed(() => ['SYS', navLabels.value[route.value] || t('nav.home')])
 
 onMounted(() => {
   if (!import.meta.client) return

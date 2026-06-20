@@ -14,7 +14,7 @@
         @click="onRefresh"
         :disabled="isScanning"
         class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-lg leading-none"
-        title="Aktualisieren"
+        :title="$t('common.refresh')"
       >
         <span :class="isScanning ? 'animate-spin inline-block' : ''">↻</span>
       </button>
@@ -28,7 +28,7 @@
         <svg class="w-8 h-8 text-white/15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
         </svg>
-        <p class="text-sm text-white/35">Vault nicht verbunden</p>
+        <p class="text-sm text-white/35">{{ $t('vault.not_connected') }}</p>
       </div>
 
       <!-- Cloud-Modus-Badge (nur Status, keine v-else-Abhängigkeit) -->
@@ -36,7 +36,7 @@
         <svg class="w-3.5 h-3.5 flex-none text-white/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/>
         </svg>
-        <span class="flex-1 truncate">Cloud-Modus{{ cloudSource ? ' · ' + cloudSource.split('/').pop() : '' }}</span>
+        <span class="flex-1 truncate">{{ $t('vault.cloud_mode') }}{{ cloudSource ? ' · ' + cloudSource.split('/').pop() : '' }}</span>
         <span class="text-white/30">in-memory</span>
       </div>
 
@@ -47,7 +47,7 @@
           @click="openSyncModal"
           :disabled="isSyncing || isScanning"
           class="w-full h-9 flex items-center justify-center gap-1.5 rounded-none border border-white/10 text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-xs font-medium"
-          title="sys.md und alle lokalen Vault-Dateien auf den Server hochladen"
+          :title="$t('vault.sync_button')"
         >
           <svg v-if="isSyncing" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -55,7 +55,7 @@
           <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
           </svg>
-          <span>{{ isSyncing ? 'Lädt…' : 'Vault syncen' }}</span>
+          <span>{{ isSyncing ? $t('vault.syncing') : $t('vault.sync_button') }}</span>
         </button>
 
         <!-- Identity-Datei als eigene Gruppe (beliebiger *.md Name) -->
@@ -72,25 +72,25 @@
 
         </div>
 
-        <p v-if="!hasLocalFiles" class="py-3 text-center text-sm text-white/30">Noch keine Dateien im Vault</p>
+        <p v-if="!hasLocalFiles" class="py-3 text-center text-sm text-white/30">{{ $t('vault.no_local_files') }}</p>
 
         <!-- Bulk-Aktionsleiste Lokal -->
         <div v-if="selectedLocal.size > 0"
           class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-none bg-white/5 border border-white/10"
         >
-          <span class="text-xs text-white/60 sm:flex-1">{{ selectedLocal.size }} ausgewählt</span>
+          <span class="text-xs text-white/60 sm:flex-1">{{ selectedLocal.size }} {{ $t('common.selected') }}</span>
           <div class="flex items-center gap-1.5">
             <button @click="uploadSelectedLocal"
               class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-              Hochladen
+              {{ $t('common.upload') }}
             </button>
             <button @click="deleteSelectedLocal"
               class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-red-950/30 text-red-400/70 hover:text-red-400 hover:bg-red-950/50 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-              Löschen
+              {{ $t('common.delete') }}
             </button>
             <button @click="clearSelection('local')"
               class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition text-xs"
@@ -129,15 +129,15 @@
                 <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">{{ $t('vault.active') }}</span>
               </button>
               <div class="absolute right-0 top-0 bottom-0 flex items-center" style="right:12px">
                 <button
                   @click.stop="uploadToServer(type, name)"
                   :disabled="!!localBusy[name]"
                   style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.65);flex-shrink:0"
-                  title="Auf Server hochladen"
-                  aria-label="Auf Server hochladen"
+                  :title="$t('vault.upload_server')"
+                  :aria-label="$t('vault.upload_server')"
                 >
                   <svg v-if="localBusy[name] === 'up'" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -151,7 +151,7 @@
                   :disabled="!!localBusy[name]"
                   style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
                   :style="isMenuOpen(type, name) ? 'background:rgba(255,255,255,0.1);color:#fff' : 'color:rgba(255,255,255,0.65)'"
-                  aria-label="Aktionen"
+                  :aria-label="$t('vault.actions')"
                 >
                   <svg v-if="localBusy[name] === 'del'" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -170,7 +170,7 @@
 
     <!-- ── SERVER ────────────────────────────────────────────────────────── -->
     <template v-if="tab === 'server'">
-      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">Soul-Zertifikat benötigt</div>
+      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">{{ $t('vault.soul_cert_required') }}</div>
       <div v-else-if="serverLoading" class="py-8 flex items-center justify-center">
         <svg class="w-4 h-4 animate-spin text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -178,26 +178,26 @@
       </div>
       <template v-else>
         <p v-if="!hasServerFiles" class="py-5 text-center text-sm text-white/30">
-          Keine Dateien auf dem Server
+          {{ $t('vault.no_server_files') }}
         </p>
 
         <!-- Bulk-Aktionsleiste Server -->
         <div v-if="selectedServer.size > 0"
           class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-none bg-white/5 border border-white/10"
         >
-          <span class="text-xs text-white/60 sm:flex-1">{{ selectedServer.size }} ausgewählt</span>
+          <span class="text-xs text-white/60 sm:flex-1">{{ selectedServer.size }} {{ $t('common.selected') }}</span>
           <div class="flex items-center gap-1.5">
             <button v-if="vaultConnected" @click="downloadSelectedServer"
               class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/></svg>
-              Lokal speichern
+              {{ $t('vault.save_local') }}
             </button>
             <button v-if="soulCert" @click="deleteSelectedServer"
               class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-red-950/30 text-red-400/70 hover:text-red-400 hover:bg-red-950/50 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-              Löschen
+              {{ $t('common.delete') }}
             </button>
             <button @click="clearSelection('server')"
               class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition text-xs"
@@ -261,14 +261,14 @@
                 <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
                 <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">aktiv</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">{{ $t('vault.active') }}</span>
               </button>
               <button
                 @click.stop="downloadToLocal(type, name)"
                 :disabled="!!serverBusy[name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
-                title="Lokal speichern"
-                aria-label="Lokal speichern"
+                :title="$t('vault.save_local')"
+                :aria-label="$t('vault.save_local')"
               >
                 <svg v-if="serverBusy[name] === 'down'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -282,7 +282,7 @@
                 :disabled="!!serverBusy[name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25"
                 :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/8'"
-                aria-label="Aktionen"
+                :aria-label="$t('vault.actions')"
               >
                 <svg v-if="serverBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -301,7 +301,7 @@
 
     <!-- ── GETEILT ────────────────────────────────────────────────────────── -->
     <template v-if="tab === 'shared'">
-      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">Soul-Zertifikat benötigt</div>
+      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">{{ $t('vault.soul_cert_required') }}</div>
       <div v-else-if="sharedLoading" class="py-8 flex items-center justify-center">
         <svg class="w-4 h-4 animate-spin text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -309,11 +309,11 @@
       </div>
       <template v-else>
         <p v-if="sharedFiles.length === 0" class="py-5 text-center text-sm text-white/30">
-          Keine geteilten Dateien
+          {{ $t('vault.no_shared_files') }}
         </p>
         <div v-else>
           <div class="flex items-center gap-2 px-1 pt-1 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">Dateien · {{ sharedFiles.length }}</p>
+            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">{{ $t('common.files') }} · {{ sharedFiles.length }}</p>
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="f in sharedFiles" :key="f.name"
@@ -328,7 +328,7 @@
                 @click="downloadSharedFile(f)"
                 :disabled="!!sharedBusy[f.name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
-                title="Herunterladen"
+                :title="$t('vault.download_file')"
               >
                 <svg v-if="sharedBusy[f.name] === 'down'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                 <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/></svg>
@@ -337,7 +337,7 @@
                 @click="deleteSharedFile(f.name)"
                 :disabled="!!sharedBusy[f.name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 text-white/40 hover:text-red-400 hover:bg-red-950/30"
-                title="Löschen"
+                :title="$t('common.delete')"
               >
                 <svg v-if="sharedBusy[f.name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
                 <svg v-else class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
@@ -352,12 +352,12 @@
     <label
       v-if="tab === 'local' && soulCert"
       class="w-full flex items-center justify-center gap-1.5 py-2 rounded-none border border-dashed border-white/15 text-white/40 hover:text-white/70 hover:border-white/30 transition cursor-pointer text-xs"
-      title="Dateien aus dem Gerät importieren"
+      :title="$t('vault.import_files')"
     >
       <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
       </svg>
-      Dateien importieren
+      {{ $t('vault.import_files') }}
       <input
         ref="fileInputRef"
         type="file"
@@ -406,14 +406,14 @@
 
           <!-- Header -->
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
-            <h2 id="sync-modal-title" class="text-sm font-semibold text-white">Vault auf Server syncen</h2>
-            <button @click="syncModalOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition" aria-label="Schließen">✕</button>
+            <h2 id="sync-modal-title" class="text-sm font-semibold text-white">{{ $t('vault.sync_confirm_title') }}</h2>
+            <button @click="syncModalOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition" :aria-label="$t('common.close')">✕</button>
           </div>
 
           <!-- Body -->
           <div class="px-5 pb-2 space-y-3">
             <p class="text-xs text-white/55 leading-relaxed">
-              Du bist dabei, deinen lokalen Vault auf den Server hochzuladen. Dabei werden folgende Inhalte übertragen und bereits vorhandene Server-Dateien ersetzt:
+              {{ $t('vault.sync_confirm_text') }}
             </p>
 
             <!-- Was wird hochgeladen -->
@@ -421,14 +421,14 @@
               <li v-if="soulContent" class="flex items-center gap-2 text-xs text-white/70">
                 <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0"/>
                 <span class="font-mono">sys.md</span>
-                <span class="text-white/35 ml-auto">Dein Soul-Profil</span>
+                <span class="text-white/35 ml-auto">{{ $t('vault.soul_label') }}</span>
               </li>
               <li v-for="(files, type) in localArchive" :key="type" class="flex items-center gap-2 text-xs text-white/70">
                 <span class="w-1.5 h-1.5 rounded-full bg-white/30 shrink-0"/>
-                <span>{{ files.length }} {{ TYPE_LABELS[type] }}-Datei{{ files.length !== 1 ? 'en' : '' }}</span>
+                <span>{{ files.length }} {{ TYPE_LABELS[type] }} {{ files.length !== 1 ? $t('common.files') : $t('common.file') }}</span>
               </li>
               <li v-if="!soulContent && Object.keys(localArchive).length === 0" class="text-xs text-white/35 italic">
-                Keine lokalen Dateien vorhanden
+                {{ $t('vault.no_local_files') }}
               </li>
             </ul>
 
@@ -437,12 +437,8 @@
               <svg class="w-3.5 h-3.5 shrink-0 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
               </svg>
-              <span v-if="vaultKey && vaultKey !== '__encrypted__'" class="text-white/60">
-                Upload <strong class="text-white/80">verschlüsselt</strong> (AES-256-CBC)
-              </span>
-              <span v-else class="text-white/60">
-                Upload <strong class="text-white/80">unverschlüsselt</strong>
-              </span>
+              <span v-if="vaultKey && vaultKey !== '__encrypted__'" class="text-white/60">{{ $t('vault.encrypted_upload') }}</span>
+              <span v-else class="text-white/60">{{ $t('vault.unencrypted_upload') }}</span>
             </div>
           </div>
 
@@ -451,11 +447,11 @@
             <button
               @click="syncModalOpen = false"
               class="flex-1 py-2.5 rounded-none border border-white/12 text-white/55 text-xs hover:bg-white/6 hover:text-white transition"
-            >Abbrechen</button>
+            >{{ $t('vault.cancel') }}</button>
             <button
               @click="confirmSync"
               class="flex-1 py-2.5 rounded-none bg-[var(--sys-violet)] text-white text-xs font-medium hover:opacity-90 active:scale-[0.97] transition"
-            >Jetzt syncen</button>
+            >{{ $t('vault.sync_now') }}</button>
           </div>
 
         </div>
@@ -476,7 +472,7 @@
           class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          {{ playerName === menuCtx.name && playerTab === 'local' ? 'Stop' : 'Abspielen' }}
+          {{ playerName === menuCtx.name && playerTab === 'local' ? $t('vault.stop') : $t('vault.play') }}
         </button>
         <button v-if="soulCert"
           @click="uploadToServer(menuCtx.type, menuCtx.name); closeMenu()"
@@ -485,7 +481,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
           </svg>
-          Auf Server hochladen
+          {{ $t('vault.upload_server') }}
         </button>
         <div class="my-1 border-t border-white/8"/>
         <button
@@ -495,7 +491,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
           </svg>
-          Lokal löschen
+          {{ $t('vault.delete_local') }}
         </button>
       </template>
       <template v-else-if="menuCtx.tab === 'server'">
@@ -504,7 +500,7 @@
           class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          {{ playerName === menuCtx.name && playerTab === 'server' ? 'Stop' : 'Abspielen' }}
+          {{ playerName === menuCtx.name && playerTab === 'server' ? $t('vault.stop') : $t('vault.play') }}
         </button>
         <button v-if="vaultConnected"
           @click="downloadToLocal(menuCtx.type, menuCtx.name); closeMenu()"
@@ -513,7 +509,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/>
           </svg>
-          Lokal speichern
+          {{ $t('vault.save_local') }}
         </button>
         <button v-if="PROFILE_TYPE_MAP[menuCtx.type]"
           @click="onCreateProfile(menuCtx.type, menuCtx.name); closeMenu()"
@@ -522,7 +518,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>
           </svg>
-          {{ PROFILE_LABELS[PROFILE_TYPE_MAP[menuCtx.type]] }} erstellen
+          {{ profileLabels[PROFILE_TYPE_MAP[menuCtx.type]] }} {{ $t('vault.profile_create_suffix') }}
         </button>
         <button v-if="props.soulCert"
           @click="onCreateShareLink(menuCtx.type, menuCtx.name); closeMenu()"
@@ -531,7 +527,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
           </svg>
-          Link erzeugen
+          {{ $t('vault.create_link') }}
         </button>
         <div class="my-1 border-t border-white/8"/>
         <button
@@ -541,7 +537,7 @@
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
           </svg>
-          Vom Server löschen
+          {{ $t('vault.delete_server') }}
         </button>
       </template>
     </div>
@@ -557,13 +553,13 @@
       >
         <div class="relative w-full max-w-sm bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl overflow-hidden">
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
-            <h2 class="text-sm font-semibold text-white">Share-Links</h2>
+            <h2 class="text-sm font-semibold text-white">Share Links</h2>
             <button @click="shareLinkOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition">✕</button>
           </div>
 
           <!-- Neu erstellter Link -->
           <div v-if="newShareLink" class="mx-5 mb-4 p-3 rounded-xl bg-[var(--accent-dim)] border border-[rgba(109,184,154,0.3)]">
-            <p class="text-xs text-[var(--accent)] font-medium mb-1.5">Link erstellt für <span class="text-white/80">{{ newShareLink.label }}</span></p>
+            <p class="text-xs text-[var(--accent)] font-medium mb-1.5">{{ $t('vault.share_link_created') }} <span class="text-white/80">{{ newShareLink.label }}</span></p>
             <div class="flex items-center gap-2">
               <input
                 :value="newShareLink.url"
@@ -574,13 +570,13 @@
                 @click="copyShareLink(newShareLink.url)"
                 class="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition"
                 :class="copyDone ? 'bg-[var(--accent)] text-black' : 'bg-white/10 text-white hover:bg-white/20'"
-              >{{ copyDone ? 'Kopiert ✓' : 'Kopieren' }}</button>
+              >{{ copyDone ? $t('vault.copy_done') : $t('vault.copy') }}</button>
             </div>
           </div>
 
           <!-- Alle aktiven Links -->
           <div class="px-5 pb-4 space-y-2 max-h-64 overflow-y-auto">
-            <p v-if="shareLinks.length === 0 && !newShareLink" class="text-xs text-white/35 text-center py-4">Keine aktiven Links</p>
+            <p v-if="shareLinks.length === 0 && !newShareLink" class="text-xs text-white/35 text-center py-4">{{ $t('vault.no_active_links') }}</p>
             <div v-for="l in shareLinks" :key="l.id"
               class="flex items-center gap-2 py-2 border-b border-white/6 last:border-0"
             >
@@ -608,6 +604,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useVault } from "~/composables/useVault.js";
 import { useApiContext } from "~/composables/useApiContext.js";
 import { useVaultSession } from "~/composables/useVaultSession.js";
@@ -620,8 +617,20 @@ const props = defineProps({
 });
 const emit = defineEmits(["logout-required"]);
 
-const TABS = [{ id: "local", label: "Lokal" }, { id: "server", label: "Server" }, { id: "shared", label: "Geteilt" }];
-const TYPE_LABELS = { audio: "Audio", video: "Video", images: "Bilder", context: "Kontext", profiles: "KI-Profile" };
+const { t } = useI18n();
+
+const TABS = computed(() => [
+  { id: "local",  label: t("vault.tab_local") },
+  { id: "server", label: t("vault.tab_server") },
+  { id: "shared", label: t("vault.tab_shared") },
+]);
+const TYPE_LABELS = computed(() => ({
+  audio:    t("vault.type_audio"),
+  video:    t("vault.type_video"),
+  images:   t("vault.type_images"),
+  context:  t("vault.type_context"),
+  profiles: t("vault.type_profiles"),
+}));
 const MEDIA_EXTS  = /\.(mp3|wav|ogg|m4a|flac|aac|webm|mp4|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|md|txt|pdf)$/i;
 const SKIP_FILES  = /^(voice_profile\.json|motion_profile\.json)$/i;
 
@@ -699,7 +708,7 @@ async function downloadSharedFile(f) {
   sharedBusy[f.name] = "down";
   try {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(sharedSoulId.value)}/${encodeURIComponent(f.name)}`, { headers: authH.value });
-    if (!res.ok) { showError("Download fehlgeschlagen"); return; }
+    if (!res.ok) { showError(t('vault.download_failed')); return; }
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -707,17 +716,17 @@ async function downloadSharedFile(f) {
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-  } catch { showError("Download fehlgeschlagen"); }
+  } catch { showError(t('vault.download_failed')); }
   finally { delete sharedBusy[f.name]; }
 }
 
 async function deleteSharedFile(name) {
   if (!props.soulCert) return;
   const ok = await confirmAsk({
-    title:       'Datei löschen?',
-    message:     `„${name}" wird unwiderruflich aus dem geteilten Bereich gelöscht.`,
-    confirmText: 'Löschen',
-    cancelText:  'Abbrechen',
+    title:       t('vault.confirm_delete_title'),
+    message:     t('vault.confirm_delete_msg', { name }),
+    confirmText: t('common.delete'),
+    cancelText:  t('common.cancel'),
     danger:      true,
   });
   if (!ok) return;
@@ -729,9 +738,9 @@ async function deleteSharedFile(name) {
     });
     if (res.ok) {
       sharedFiles.value = sharedFiles.value.filter(f => f.name !== name);
-      showSuccess(`${name} gelöscht ✓`);
-    } else { showError("Löschen fehlgeschlagen"); }
-  } catch { showError("Löschen fehlgeschlagen"); }
+      showSuccess(t('vault.deleted_ok', { name }));
+    } else { showError(t('vault.delete_failed')); }
+  } catch { showError(t('vault.delete_failed')); }
   finally { delete sharedBusy[name]; }
 }
 
@@ -760,7 +769,7 @@ async function onCreateShareLink(type, name) {
       body: JSON.stringify({ file: name, type, label: name }),
     });
     const d = await r.json();
-    if (!d.ok) { showError(d.error || 'Link-Erstellung fehlgeschlagen'); return; }
+    if (!d.ok) { showError(d.error || t('vault.create_link') + ' failed'); return; }
     newShareLink.value = d;
     await loadShareLinks();
     shareLinkOpen.value = true;
@@ -847,9 +856,9 @@ async function uploadSelectedLocal() {
   await loadContext(props.soulCert);
   await scanLocalVault();
   selectedLocal.value = new Set();
-  if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} hochgeladen ✓`);
-  else if (ok === 0) showError(`Upload fehlgeschlagen (${fail} Fehler)`);
-  else showError(`${ok} hochgeladen, ${fail} fehlgeschlagen`);
+  if (fail === 0) showSuccess(t('vault.upload_ok', { ok, plural: ok !== 1 ? 's' : '' }));
+  else if (ok === 0) showError(t('vault.upload_failed_all', { fail }));
+  else showError(t('vault.upload_partial', { ok, fail }));
 }
 
 async function deleteSelectedLocal() {
@@ -865,9 +874,9 @@ async function deleteSelectedLocal() {
   }
   await scanLocalVault();
   await scanApiVault();
-  if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} gelöscht ✓`);
-  else if (ok === 0) showError(`Löschen fehlgeschlagen (${fail} Fehler)`);
-  else showError(`${ok} gelöscht, ${fail} fehlgeschlagen`);
+  if (fail === 0) showSuccess(t('vault.bulk_deleted_ok', { ok, plural: ok !== 1 ? 's' : '' }));
+  else if (ok === 0) showError(t('vault.bulk_delete_failed', { fail }));
+  else showError(t('vault.bulk_delete_partial', { ok, fail }));
 }
 
 async function downloadSelectedServer() {
@@ -893,9 +902,9 @@ async function downloadSelectedServer() {
   }
   await loadContext(props.soulCert);
   selectedServer.value = new Set();
-  if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} lokal gespeichert ✓`);
-  else if (ok === 0) showError(`Download fehlgeschlagen (${fail} Fehler)`);
-  else showError(`${ok} gespeichert, ${fail} fehlgeschlagen`);
+  if (fail === 0) showSuccess(t('vault.download_ok', { ok, plural: ok !== 1 ? 's' : '' }));
+  else if (ok === 0) showError(t('vault.download_failed_all', { fail }));
+  else showError(t('vault.download_partial', { ok, fail }));
 }
 
 async function deleteSelectedServer() {
@@ -914,9 +923,9 @@ async function deleteSelectedServer() {
       }
     }
   }
-  if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} vom Server gelöscht ✓`);
-  else if (ok === 0) showError(`Löschen fehlgeschlagen (${fail} Fehler)`);
-  else showError(`${ok} gelöscht, ${fail} fehlgeschlagen`);
+  if (fail === 0) showSuccess(t('vault.bulk_deleted_ok', { ok, plural: ok !== 1 ? 's' : '' }));
+  else if (ok === 0) showError(t('vault.bulk_delete_failed', { fail }));
+  else showError(t('vault.bulk_delete_partial', { ok, fail }));
 }
 
 // Inline-Player
@@ -1001,7 +1010,11 @@ function showSuccess(msg, ms = 2500) {
 // ── Profil-Analyse ─────────────────────────────────────────────────────────
 
 const PROFILE_TYPE_MAP = { images: 'face', audio: 'voice', video: 'motion' };
-const PROFILE_LABELS   = { face: 'Gesichtsprofil', voice: 'Stimmprofil', motion: 'Bewegungsprofil' };
+const profileLabels = computed(() => ({
+  face:   t("vault.profile_face"),
+  voice:  t("vault.profile_voice"),
+  motion: t("vault.profile_motion"),
+}));
 
 async function onCreateProfile(fileType, filename) {
   const ptype = PROFILE_TYPE_MAP[fileType];
@@ -1019,11 +1032,11 @@ async function onCreateProfile(fileType, filename) {
 
     if (data.manual) {
       // Audio/Video: Anleitung anzeigen
-      showError(data.hint || `${PROFILE_LABELS[ptype]} über Claude MCP erstellen.`, 6000);
+      showError(data.hint || `${profileLabels.value[ptype]} via Claude MCP`, 6000);
     } else if (data.ok) {
-      showSuccess(`${PROFILE_LABELS[ptype]} erstellt ✓`);
+      showSuccess(`${profileLabels.value[ptype]} ${t('vault.profile_create_suffix')} ✓`);
     } else {
-      showError(data.error || 'Analyse fehlgeschlagen');
+      showError(data.error || t('vault.analysis_failed'));
     }
   } catch (e) {
     showError('Analyse-Fehler: ' + e.message);
@@ -1071,7 +1084,7 @@ async function onRefresh() {
   } catch { /* silent */ } finally {
     isScanning.value = false;
   }
-  showSuccess("Aktualisiert ✓");
+  showSuccess(t('vault.refreshed'));
 }
 
 // ── Alle hochladen ─────────────────────────────────────────────────────────
@@ -1080,12 +1093,12 @@ async function onSyncAll() {
   if (!props.soulCert || isSyncing.value) return;
   // Kein Schlüssel im Speicher → Vault muss zuerst geöffnet werden
   if (!vaultKey.value || vaultKey.value === "__encrypted__") {
-    showError("Vault ist gesperrt oder Schlüssel fehlt. Bitte zuerst den Vault öffnen (Vault-Zugang → entsperren).");
+    showError(t('vault.vault_locked'));
     return;
   }
   await syncAll(props.soulCert, composableSoulContent.value || props.soulContent, vaultKey.value || "");
   if (syncError.value) { showError(syncError.value); return; }
-  showSuccess("sys.md + Vault-Dateien auf Server hochgeladen ✓");
+  showSuccess(t('vault.sync_success'));
   // prompts.md nach Sync neu generieren (fire-and-forget)
   fetch('/api/soul/generate-prompts', { method: 'POST', headers: { Authorization: `Bearer ${props.soulCert}` } }).catch(() => {});
 }
@@ -1130,9 +1143,9 @@ async function addLocalFiles(event) {
   }
   await scanLocalVault();
   await scanApiVault();
-  if (fail === 0) showSuccess(`${ok} Datei${ok !== 1 ? "en" : ""} importiert ✓`);
-  else if (ok === 0) showError(`Import fehlgeschlagen (${fail} Fehler)`);
-  else showError(`${ok} importiert, ${fail} fehlgeschlagen`);
+  if (fail === 0) showSuccess(t('vault.import_ok', { ok, plural: ok !== 1 ? 's' : '' }));
+  else if (ok === 0) showError(t('vault.import_failed_all', { fail }));
+  else showError(t('vault.import_partial', { ok, fail }));
 }
 
 // ── Lokal: Datei löschen ───────────────────────────────────────────────────
@@ -1145,9 +1158,9 @@ async function deleteLocalFileEntry(name) {
     await scanLocalVault();
     await scanApiVault();
     if (playerName.value === name && playerTab.value === "local") closePlayer();
-    showSuccess(`${name} gelöscht ✓`);
+    showSuccess(t('vault.local_deleted', { name }));
   } else {
-    showError("Lokales Löschen fehlgeschlagen");
+    showError(t('vault.local_delete_failed'));
   }
   delete localBusy[name];
 }
@@ -1159,7 +1172,7 @@ async function uploadToServer(type, name) {
   localBusy[name] = "up";
   try {
     const file = await readVaultFile(name);
-    if (!file) { showError("Datei nicht lesbar"); return; }
+    if (!file) { showError(t('vault.file_not_readable')); return; }
     const serverType = type === "images" ? "image" : type;
     // mind.md und health.md sind unverschlüsselt — Key weglassen damit kein Ciphertext entsteht
     const plainContextFiles = ["mind.md", "health.md", "income.md"];
@@ -1171,11 +1184,11 @@ async function uploadToServer(type, name) {
       if (name.toLowerCase() === "mind.md") clearMindCache();
       await loadContext(props.soulCert);
       await scanLocalVault();
-      showSuccess(`${name} hochgeladen ✓`);
+      showSuccess(t('vault.file_uploaded_ok', { name }));
     } else {
-      showError(res.error || "Upload fehlgeschlagen");
+      showError(res.error || t('vault.upload_failed_all', { fail: 1 }));
     }
-  } catch { showError("Upload fehlgeschlagen"); }
+  } catch { showError(t('vault.upload_failed_all', { fail: 1 })); }
   finally { delete localBusy[name]; }
 }
 
@@ -1189,17 +1202,17 @@ async function downloadToLocal(type, name) {
       ? `/api/vault/profile/${encodeURIComponent(name)}`
       : `/api/vault/${encodeURIComponent(type)}/${encodeURIComponent(name)}`;
     const res = await fetch(url, { headers: authH.value });
-    if (!res.ok) { showError("Download fehlgeschlagen"); return; }
+    if (!res.ok) { showError(t('vault.download_failed')); return; }
     const buf = await res.arrayBuffer();
     // Profile lokal als profile/{name}.json ablegen (Unterordner + Extension)
     const localPath = type === 'profiles' ? `profile/${name}.json` : name;
     const ok  = await writeFile(localPath, buf);
-    if (ok) { await loadContext(props.soulCert); showSuccess(`${name} lokal gespeichert ✓`); }
+    if (ok) { await loadContext(props.soulCert); showSuccess(t('vault.download_ok', { ok: name, plural: '' })); }
     else {
       // Fallback: Browser-Download (Mobile / kein Vault geöffnet)
       triggerBlobDownload(buf, name);
     }
-  } catch { showError("Download fehlgeschlagen"); }
+  } catch { showError(t('vault.download_failed')); }
   finally { delete serverBusy[name]; }
 }
 
@@ -1245,7 +1258,7 @@ async function downloadSoulServer() {
   soulServerDownloading.value = true;
   try {
     const res = await fetch("/api/soul", { headers: authH.value });
-    if (!res.ok) { showError("Server-Download fehlgeschlagen"); return; }
+    if (!res.ok) { showError(t('vault.server_download_failed')); return; }
     const text = await res.text();
     const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
     const url  = URL.createObjectURL(blob);
@@ -1253,7 +1266,7 @@ async function downloadSoulServer() {
     a.href = url; a.download = "sys.md";
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
-  } catch { showError("Server-Download fehlgeschlagen"); }
+  } catch { showError(t('vault.server_download_failed')); }
   finally { soulServerDownloading.value = false; }
 }
 
@@ -1263,8 +1276,8 @@ async function onDeleteServer(type, name) {
   if (!props.soulCert) return;
   serverBusy[name] = "del";
   const ok = await deleteVaultFile(props.soulCert, type, name);
-  if (ok) showSuccess(`${name} vom Server gelöscht ✓`);
-  else showError("Löschen fehlgeschlagen");
+  if (ok) showSuccess(t('vault.server_deleted', { name }));
+  else showError(t('vault.delete_failed'));
   if (playerName.value === name) closePlayer();
   delete serverBusy[name];
 }
@@ -1281,7 +1294,7 @@ async function onPlayLocal(type, name) {
   if (playerName.value === name && playerTab.value === "local") { closePlayer(); return; }
   closePlayer();
   const file = await readVaultFile(name);
-  if (!file) { showError("Datei nicht lesbar"); return; }
+  if (!file) { showError(t('vault.file_not_readable')); return; }
   playerBlobUrl = URL.createObjectURL(file);
   playerKind.value = type === "video" ? "video" : "audio";
   playerTab.value  = "local";
@@ -1294,14 +1307,14 @@ async function onPlayServer(type, name) {
   closePlayer();
   try {
     const res = await fetch(`/api/vault/${encodeURIComponent(type)}/${encodeURIComponent(name)}`, { headers: authH.value });
-    if (!res.ok) { showError("Datei nicht abspielbar"); return; }
+    if (!res.ok) { showError(t('vault.file_not_playable')); return; }
     const blob = await res.blob();
     playerBlobUrl = URL.createObjectURL(blob);
     playerKind.value = type === "video" ? "video" : "audio";
     playerTab.value  = "server";
     playerName.value = name;
     playerSrc.value  = playerBlobUrl;
-  } catch { showError("Abspielen fehlgeschlagen"); }
+  } catch { showError(t('vault.play_failed')); }
 }
 
 onMounted(() => document.addEventListener("click", closeMenu));

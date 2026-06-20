@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Chronik']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
+        <SysTopbar :crumbs="[$t('chronicle.crumb_soul'), $t('chronicle.crumb_chronik')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <div class="ch-search-wrap">
             <svg class="ch-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
               <circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/>
@@ -14,7 +14,7 @@
               v-model="query"
               class="ch-search"
               type="search"
-              placeholder="Suchen oder Befehl…"
+              :placeholder="$t('chronicle.search_placeholder')"
               autocomplete="off"
               spellcheck="false"
             />
@@ -27,14 +27,14 @@
             <!-- ── Hero ── -->
             <div class="ch-hero">
               <div class="ch-eyebrow">CHRONO</div>
-              <h1 class="ch-title">Deine <em>Geschichte</em></h1>
-              <p class="ch-sub">Jede Session, chronologisch. Verankerte Einträge sind kryptographisch auf Polygon signiert — unwiderruflich.</p>
+              <h1 class="ch-title">{{ $t('chronicle.hero_prefix') }} <em>{{ $t('chronicle.hero_em') }}</em></h1>
+              <p class="ch-sub">{{ $t('chronicle.lede') }}</p>
             </div>
 
             <!-- ── Feed ── -->
             <div v-if="filtered.length === 0" class="ch-empty">
-              <span v-if="query">Keine Einträge für „{{ query }}"</span>
-              <span v-else>Noch keine Einträge im Session-Log.</span>
+              <span v-if="query">{{ $t('chronicle.empty_query', { query }) }}</span>
+              <span v-else>{{ $t('chronicle.no_entries') }}</span>
             </div>
 
             <div v-else class="ch-feed">
@@ -100,10 +100,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { parseSoul } from '#shared/utils/soulParser.js'
 
 definePageMeta({ layout: false })
+
+const { t } = useI18n()
 
 const router = useRouter()
 const { soulContent, soulMeta, hasSoul, isLoaded, fetchFromServer, acceptServerVersion, syncStatus, serverContent, soulToken } = useSoul()
@@ -174,13 +177,13 @@ function makeDateLabel(isoStr) {
       const today     = new Date()
       const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
       if (d.toDateString() === today.toDateString()) {
-        dateLabel = 'Heute'
+        dateLabel = t('chronicle.today')
       } else if (d.toDateString() === yesterday.toDateString()) {
-        dateLabel = 'Gestern'
+        dateLabel = t('chronicle.yesterday')
       } else {
-        dateLabel = d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
+        dateLabel = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
       }
-      time = /[T ]\d{2}:\d{2}/.test(cleanStr) ? d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''
+      time = /[T ]\d{2}:\d{2}/.test(cleanStr) ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
     }
   } catch {}
   return { dateLabel, time }
@@ -224,31 +227,31 @@ const allEntries = computed(() => {
     const ds    = e.dateStr
 
     let type  = e.src === 'session' ? 'session' : 'log'
-    let title = e.src === 'session' ? ('Session · ' + (e.channelLabel || 'Claude.ai')) : 'Log-Eintrag'
+    let title = e.src === 'session' ? t('chronicle.entry_session_ch', { channel: e.channelLabel || 'Claude.ai' }) : t('chronicle.entry_log')
     let badge = e.src === 'session' ? (e.channelLabel || null) : null
 
     if (e.src !== 'session') {
       if (/soul erschaff|genesis|initialisiert/i.test(lower + ds)) {
-        type = 'genesis'; title = 'Soul erschaffen'; badge = 'genesis'
+        type = 'genesis'; title = t('chronicle.entry_genesis'); badge = 'genesis'
       } else if (/peer|verbindung/i.test(lower + ds) || (/@[\w_]+/.test(body) && !/session.end/i.test(body))) {
-        type = 'peer'; title = 'Peer-Verbindung'
+        type = 'peer'; title = t('chronicle.entry_peer')
         const handle = body.match(/@([\w_]+)/); if (handle) badge = '@' + handle[1]
       } else if (/\(claude\.?ai\)/i.test(ds)) {
-        type = 'session'; title = 'Session · Claude.ai'; badge = 'Claude.ai'
+        type = 'session'; title = t('chronicle.entry_session_ch', { channel: 'Claude.ai' }); badge = 'Claude.ai'
       } else if (/\(elevenlabs\)/i.test(ds)) {
-        type = 'session'; title = 'Session · ElevenLabs'; badge = 'ElevenLabs'
+        type = 'session'; title = t('chronicle.entry_session_ch', { channel: 'ElevenLabs' }); badge = 'ElevenLabs'
       } else if (/health|garmin|puls|schlaf|schritt/i.test(lower + ds)) {
-        type = 'health'; title = 'Health-Sync'
+        type = 'health'; title = t('chronicle.entry_health')
       } else if (/vault|verschlüss|stimm|kalibrierung|gesicht|aufnahm/i.test(lower + ds)) {
-        type = 'vault'; title = 'Vault erweitert'
+        type = 'vault'; title = t('chronicle.entry_vault')
       } else if (/polygon|anchor|verankert|on-chain|onchain/i.test(lower + ds)) {
-        type = 'anchor'; title = 'Verankerung'; badge = 'on-chain'
+        type = 'anchor'; title = t('chronicle.entry_anchor'); badge = 'on-chain'
       } else if (/session\s*\d+|session #/i.test(lower + ds)) {
         type = 'session'
         const num = (lower + ds).match(/session\s*#?(\d+)/i)
-        title = 'Session ' + (num ? num[1] : ''); badge = num ? String(num[1]) : null
+        title = num ? t('chronicle.entry_session_n', { n: num[1] }) : t('chronicle.entry_session'); badge = num ? String(num[1]) : null
       } else if (/session/i.test(lower + ds)) {
-        type = 'session'; title = 'Session'
+        type = 'session'; title = t('chronicle.entry_session')
       }
     }
 

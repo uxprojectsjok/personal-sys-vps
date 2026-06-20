@@ -24,7 +24,7 @@
             <button
               @click="handleClose"
               class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full border border-[var(--sys-border)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:border-white/20 transition-all"
-              aria-label="Schließen"
+              :aria-label="$t('common.close')"
             >✕</button>
           </div>
 
@@ -38,13 +38,13 @@
             ></div>
           </div>
 
-          <!-- ── Schritt 1: .soul-Datei wählen ──────────────────────── -->
+          <!-- ── Step 1: choose .soul file ──────────────────────── -->
           <template v-if="step === 1">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">Schritt 1 / 3</p>
-            <h2 class="text-base font-bold text-[var(--sys-fg)] mb-3">Vault importieren</h2>
+            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_1') }}</p>
+            <h2 class="text-base font-bold text-[var(--sys-fg)] mb-3">{{ $t('decrypt.title') }}</h2>
 
             <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-5">
-              Wähle deine verschlüsselte <code class="text-white/60">.soul</code>-Datei aus.
+              {{ $t('decrypt.choose_soul') }}
             </p>
 
             <label
@@ -64,11 +64,11 @@
                 <div class="text-center">
                   <p class="text-sm font-semibold text-[var(--sys-fg)]">{{ bundleFile.name }}</p>
                   <p v-if="bundle" class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
-                    {{ bundle.files?.length }} Datei(en) · {{ bundle.created }}
+                    {{ $t('decrypt.bundle_info', { n: bundle.files?.length, created: bundle.created }) }}
                   </p>
                 </div>
                 <button type="button" @click.prevent="clearBundle" class="text-xs text-[var(--sys-fg-dim)] hover:text-red-400 transition-colors underline underline-offset-2">
-                  Andere wählen
+                  {{ $t('decrypt.choose_other') }}
                 </button>
               </template>
               <template v-else>
@@ -78,8 +78,8 @@
                   </svg>
                 </div>
                 <div class="text-center">
-                  <p class="text-sm text-[var(--sys-fg-muted)]">Datei hier ablegen</p>
-                  <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">oder klicken zum Auswählen</p>
+                  <p class="text-sm text-[var(--sys-fg-muted)]">{{ $t('decrypt.drop_file') }}</p>
+                  <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">{{ $t('decrypt.click_to_select') }}</p>
                 </div>
               </template>
               <input ref="fileInputEl" type="file" accept=".soul,application/json" class="hidden" @change="handleFileSelect" />
@@ -90,17 +90,17 @@
             <div class="shad-separator mb-4"></div>
             <div class="flex gap-3">
               <button @click="step = 2" :disabled="!bundle" class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white/85 disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all">
-                Weiter →
+                {{ $t('common.next') }}
               </button>
             </div>
           </template>
 
-          <!-- ── Schritt 2: 12 Wörter eingeben ─────────────────────────── -->
+          <!-- ── Step 2: enter 12 words ─────────────────────────── -->
           <template v-else-if="step === 2">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">Schritt 2 / 3</p>
-            <h2 class="text-base font-bold text-[var(--sys-fg)] mb-1">Deine 12 Schlüsselwörter</h2>
+            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_2') }}</p>
+            <h2 class="text-base font-bold text-[var(--sys-fg)] mb-1">{{ $t('encrypt.words_title') }}</h2>
             <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-4">
-              Gib deine 12 Wörter in der richtigen Reihenfolge ein – genauso wie beim Verschlüsseln.
+              {{ $t('decrypt.words_prose') }}
             </p>
 
             <datalist id="bip39-dec">
@@ -119,11 +119,11 @@
                 >{{ i + 1 }}</span>
                 <input
                   :id="`dec-word-${i}`"
-                  :aria-label="`Schlüsselwort ${i + 1} von 12`"
+                  :aria-label="$t('encrypt.word_aria', { n: i + 1 })"
                   list="bip39-dec"
                   :value="userWords[i]"
                   autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-                  maxlength="12" placeholder="wort…"
+                  maxlength="12" :placeholder="$t('encrypt.word_placeholder')"
                   class="flex-1 min-w-0 bg-transparent text-sm font-bold text-[var(--sys-fg)] outline-none placeholder-[var(--sys-fg-dim)]/30"
                   @input="sanitizeWord(i, $event)"
                 />
@@ -138,25 +138,25 @@
 
             <div class="flex items-center justify-end mb-5">
               <span class="text-xs text-[var(--sys-fg-dim)]">
-                <span :class="validCount === 12 ? 'text-white' : 'text-[var(--sys-fg)]'">{{ validCount }}</span> / 12 gültig
+                <span :class="validCount === 12 ? 'text-white' : 'text-[var(--sys-fg)]'">{{ validCount }}</span> {{ $t('encrypt.valid_count_suffix') }}
               </span>
             </div>
 
             <div class="flex gap-3">
               <button @click="step = 1" class="flex-1 h-12 rounded-xl border border-[var(--sys-border)] text-sm text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.15)] transition-all">
-                ← Zurück
+                {{ $t('encrypt.back_btn') }}
               </button>
               <button @click="handleDecrypt" :disabled="!allValid"
                 class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white/85 disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all"
-              >Entschlüsseln</button>
+              >{{ $t('decrypt.decrypt_btn') }}</button>
             </div>
           </template>
 
-          <!-- ── Schritt 3: Ergebnis ──────────────────────────────────── -->
+          <!-- ── Step 3: result ──────────────────────────────────── -->
           <template v-else-if="step === 3">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">Schritt 3 / 3</p>
+            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_3') }}</p>
             <h2 class="text-base font-bold text-[var(--sys-fg)] mb-6">
-              {{ isDecrypting ? 'Entschlüsseln…' : decryptError ? 'Fehler' : 'Vault entschlüsselt' }}
+              {{ isDecrypting ? $t('decrypt.decrypting') : decryptError ? $t('common.error') : $t('decrypt.vault_decrypted') }}
             </h2>
 
             <!-- Spinner -->
@@ -165,10 +165,10 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              <p class="text-sm text-[var(--sys-fg-muted)]">Dateien werden entschlüsselt…</p>
+              <p class="text-sm text-[var(--sys-fg-muted)]">{{ $t('decrypt.files_decrypting') }}</p>
             </div>
 
-            <!-- Fehler -->
+            <!-- Error -->
             <div v-else-if="decryptError" class="flex flex-col items-center gap-4 py-6">
               <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                 <svg class="w-6 h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -180,40 +180,43 @@
                 @click="step = 2"
                 class="h-10 px-5 rounded-xl border border-[var(--sys-border)] text-sm text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] transition"
               >
-                Zurück
+                {{ $t('common.back') }}
               </button>
             </div>
 
-            <!-- Erfolg -->
+            <!-- Success -->
             <div v-else class="flex flex-col gap-3">
 
-              <!-- Eingeloggt status -->
+              <!-- Logged in status -->
               <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.04)] border border-white/15">
                 <svg class="w-4 h-4 flex-none text-emerald-400/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                 </svg>
                 <div>
-                  <p class="text-xs font-semibold text-white/75">Eingeloggt</p>
-                  <p class="text-xs text-white/45">sys.md geladen · Cloud-Vault bereit</p>
+                  <p class="text-xs font-semibold text-white/75">{{ $t('decrypt.logged_in') }}</p>
+                  <p class="text-xs text-white/45">{{ $t('decrypt.logged_in_sub') }}</p>
                 </div>
               </div>
 
-              <!-- Lokaler Vault verbinden -->
+              <!-- Connect local vault -->
               <div class="rounded-xl border border-[var(--sys-border)] bg-[var(--sys-bg)] px-4 py-3">
-                <p class="text-xs font-semibold text-[var(--sys-fg)] mb-0.5">Lokaler Vault</p>
-                <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-3">
-                  Wähle einen lokalen Ordner um{{ otherFiles.length ? ` ${otherFiles.length} Vault-Datei(en) zu speichern und` : '' }} das Dashboard zu verknüpfen.
+                <p class="text-xs font-semibold text-[var(--sys-fg)] mb-0.5">{{ $t('decrypt.local_vault') }}</p>
+                <p v-if="!otherFiles.length" class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-3">
+                  {{ $t('decrypt.local_vault_prose') }}
+                </p>
+                <p v-else class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-3">
+                  {{ $t('decrypt.local_vault_prose_files', { n: otherFiles.length }) }}
                 </p>
 
-                <!-- Verbunden -->
+                <!-- Connected -->
                 <div v-if="localVaultStatus === 'done'" class="flex items-center gap-2 text-emerald-400/80">
                   <svg class="w-4 h-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                   </svg>
-                  <span class="text-xs font-semibold">Lokaler Vault verbunden</span>
+                  <span class="text-xs font-semibold">{{ $t('decrypt.local_vault_connected') }}</span>
                 </div>
 
-                <!-- Verbinden / Retry -->
+                <!-- Connect / Retry -->
                 <button
                   v-else
                   @click="connectLocalVault"
@@ -227,16 +230,16 @@
                   <svg v-else class="w-3.5 h-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"/>
                   </svg>
-                  {{ localVaultStatus === 'connecting' ? 'Ordner wird verbunden…' : localVaultStatus === 'error' ? 'Erneut versuchen' : 'Lokalen Ordner wählen' }}
+                  {{ localVaultStatus === 'connecting' ? $t('decrypt.vault_connecting') : localVaultStatus === 'error' ? $t('decrypt.vault_retry') : $t('decrypt.vault_choose_folder') }}
                 </button>
               </div>
 
-              <!-- Zum Dashboard -->
+              <!-- To dashboard -->
               <button
                 @click="goToSession"
                 class="sys-cta-primary w-full h-12 flex items-center justify-between px-5 rounded-xl active:scale-[0.98] transition-all group"
               >
-                <span class="text-sm font-bold text-white">Zum Dashboard →</span>
+                <span class="text-sm font-bold text-white">{{ $t('decrypt.go_to_dashboard') }}</span>
                 <svg class="w-4 h-4 text-white/60 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
                 </svg>
@@ -254,6 +257,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useSoul } from "~/composables/useSoul.js";
 import { useVault } from "~/composables/useVault.js";
@@ -267,6 +271,7 @@ const props = defineProps({
 });
 const emit  = defineEmits(["close", "uploaded", "openFaq"]);
 
+const { t } = useI18n()
 const router = useRouter();
 const { importFromText, resetCertToV0, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
 const { clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();

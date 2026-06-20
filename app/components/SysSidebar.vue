@@ -3,14 +3,14 @@
     <div class="sb-head">
       <div class="sb-head-top">
         <span class="sb-mark">SYS<span class="dot">.</span></span>
-        <button class="sb-collapse" @click="$emit('collapse')" title="Seitenleiste" aria-label="Seitenleiste einklappen">
+        <button class="sb-collapse" @click="$emit('collapse')" :title="$t('nav.sidebar_toggle')" :aria-label="$t('nav.sidebar_collapse')">
           <SysIcon name="panel" style="width:17px;height:17px" />
         </button>
       </div>
       <div class="sb-node">
         <span class="live-dot" />
         <span>Private Node</span>
-        <button class="lock" title="Node sperren" aria-label="Node sperren" @click="$emit('lock')">
+        <button class="lock" :title="$t('nav.lock_node')" :aria-label="$t('nav.lock_node')" @click="$emit('lock')">
           <SysIcon name="lock" style="width:16px;height:16px" />
         </button>
       </div>
@@ -25,7 +25,7 @@
     </button>
 
     <nav class="sb-nav">
-      <div v-for="(grp, gi) in NAV" :key="gi" class="sb-group">
+      <div v-for="(grp, gi) in nav" :key="gi" class="sb-group">
         <div v-if="grp.group" class="sb-group-label">{{ grp.group }}</div>
         <button
           v-for="it in grp.items"
@@ -47,6 +47,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   route: { type: String, default: 'home' },
@@ -62,30 +65,30 @@ const shortId = computed(() => {
   return id ? id.slice(0, 8) : '--------'
 })
 
-const NAV = [
-  { group: null, items: [{ id: 'home', icon: 'home', label: 'Start' }] },
-  { group: 'Seele', items: [
-    { id: 'setup',    icon: 'edit',    label: 'Einrichten' },
-    { id: 'chat',     icon: 'chat',    label: 'Session' },
-    { id: 'soul',     icon: 'soul',    label: 'Inhalte' },
-    { id: 'chronik',  icon: 'history', label: 'Chronik' },
-    { id: 'maturity', icon: 'spark',   label: 'Reife' },
-    { id: 'health',   icon: 'pulse',   label: 'Gesundheit' },
+const nav = computed(() => [
+  { group: null, items: [{ id: 'home', icon: 'home', label: t('nav.home') }] },
+  { group: t('nav.group_soul'), items: [
+    { id: 'setup',    icon: 'edit',    label: t('nav.setup') },
+    { id: 'chat',     icon: 'chat',    label: t('nav.session') },
+    { id: 'soul',     icon: 'soul',    label: t('nav.contents') },
+    { id: 'chronik',  icon: 'history', label: t('nav.chronik') },
+    { id: 'maturity', icon: 'spark',   label: t('nav.maturity') },
+    { id: 'health',   icon: 'pulse',   label: t('nav.health') },
   ]},
-  { group: 'Vault', items: [
-    { id: 'files', icon: 'files', label: 'Dateien' },
-    { id: 'calendar', icon: 'calendar', label: 'Kalender' },
+  { group: t('nav.group_vault'), items: [
+    { id: 'files',    icon: 'files',    label: t('nav.files') },
+    { id: 'calendar', icon: 'calendar', label: t('nav.calendar') },
   ]},
-  { group: 'Netzwerk', items: [
-    { id: 'peers', icon: 'peers', label: 'Peers' },
-    { id: 'connect', icon: 'qr', label: 'Verbindung', tag: 'neu' },
-    { id: 'market', icon: 'market', label: 'Marketplace' },
-    { id: 'earnings', icon: 'earn', label: 'Einnahmen' },
+  { group: t('nav.group_network'), items: [
+    { id: 'peers',    icon: 'peers',  label: t('nav.peers') },
+    { id: 'connect',  icon: 'qr',     label: t('nav.connect'), tag: t('nav.connect_tag') },
+    { id: 'market',   icon: 'market', label: t('nav.marketplace') },
+    { id: 'earnings', icon: 'earn',   label: t('nav.earnings') },
   ]},
-  { group: 'Werkzeuge', items: [
-    { id: 'anchor', icon: 'anchor', label: 'Verankern' },
-    { id: 'export', icon: 'export', label: 'Exportieren' },
-    { id: 'settings', icon: 'settings', label: 'Einstellungen' },
+  { group: t('nav.group_tools'), items: [
+    { id: 'anchor',   icon: 'anchor',   label: t('nav.anchor') },
+    { id: 'export',   icon: 'export',   label: t('nav.export') },
+    { id: 'settings', icon: 'settings', label: t('nav.settings') },
   ]},
-]
+])
 </script>

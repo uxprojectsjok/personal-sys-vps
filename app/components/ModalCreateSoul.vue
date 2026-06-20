@@ -6,10 +6,10 @@
           <div class="sys-modal-handle"></div>
 
           <div class="sys-modal-head">
-            <button class="sys-modal-close" @click="$emit('cancel')" aria-label="Schließen">×</button>
+            <button class="sys-modal-close" @click="$emit('cancel')" :aria-label="$t('common.close')">×</button>
             <span class="sys-kicker">New Soul</span>
-            <h2 class="sys-display" style="font-size:clamp(22px,3vw,30px)">Seele anlegen</h2>
-            <p class="sys-lede">Kein Name, keine E-Mail — nur ein Hash, der dir gehört.</p>
+            <h2 class="sys-display" style="font-size:clamp(22px,3vw,30px)">{{ $t('create_soul.title') }}</h2>
+            <p class="sys-lede">{{ $t('create_soul.lede') }}</p>
           </div>
 
           <div class="sys-modal-body">
@@ -21,7 +21,7 @@
                 </div>
                 <button
                   @click="copyHash"
-                  :aria-label="copied ? 'Kopiert' : 'Hash kopieren'"
+                  :aria-label="copied ? $t('first_setup.btn_copied') : $t('create_soul.btn_copy_hash_aria')"
                   class="sys-btn-ed sys-btn-ed--ghost"
                   style="padding:0 14px"
                 >
@@ -36,11 +36,11 @@
             </div>
 
             <div class="sys-field" style="margin-bottom:0">
-              <span class="sys-field-label">Idee <span class="sys-field-hint">(optional)</span></span>
+              <span class="sys-field-label">{{ $t('create_soul.field_idea') }} <span class="sys-field-hint">{{ $t('create_soul.optional') }}</span></span>
               <textarea
                 ref="ideaInput"
                 v-model="idea"
-                placeholder="Wer ist diese Seele in einem Satz?"
+                :placeholder="$t('create_soul.idea_placeholder')"
                 maxlength="280"
                 rows="3"
                 class="sys-input"
@@ -52,11 +52,11 @@
           <div class="sys-modal-foot">
             <div class="sys-foot-meta">
               <span class="sys-dot sys-dot--idle"></span>
-              Neue Soul · Hash generiert
+              {{ $t('create_soul.meta_hash_ready') }}
             </div>
             <div class="sys-foot-actions">
-              <button class="sys-btn-ed sys-btn-ed--ghost" @click="$emit('cancel')">Abbrechen</button>
-              <button class="sys-btn-ed sys-btn-ed--primary" @click="handleCreate">Erstellen</button>
+              <button class="sys-btn-ed sys-btn-ed--ghost" @click="$emit('cancel')">{{ $t('common.cancel') }}</button>
+              <button class="sys-btn-ed sys-btn-ed--primary" @click="handleCreate">{{ $t('create_soul.btn_create') }}</button>
             </div>
           </div>
         </div>
@@ -67,6 +67,9 @@
 
 <script setup>
 import { ref, watch, nextTick } from "vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n()
 
 const props = defineProps({
   isOpen: Boolean

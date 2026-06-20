@@ -6,7 +6,7 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="['Seele', 'sys.md']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
-          <button class="icon-btn" :class="{ on: syncing }" @click="handlePush" :disabled="syncing" title="Auf Server hochladen">
+          <button class="icon-btn" :class="{ on: syncing }" @click="handlePush" :disabled="syncing" :title="$t('soul_viewer.upload_title')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
             </svg>
@@ -34,7 +34,7 @@
                     class="sp-edit-btn icon-btn"
                     @click="startEdit(section)"
                     v-if="editingKey !== section.key"
-                    title="Bearbeiten"
+                    :title="$t('common.edit')"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/>
@@ -45,7 +45,7 @@
                 <!-- Read mode -->
                 <template v-if="editingKey !== section.key">
                   <p v-if="getContent(section.key)" class="sp-sec-text">{{ getContent(section.key) }}</p>
-                  <p v-else class="sp-sec-empty">Noch nicht beschrieben.</p>
+                  <p v-else class="sp-sec-empty">{{ $t('soul_viewer.empty_section') }}</p>
                 </template>
 
                 <!-- Edit mode -->
@@ -60,13 +60,13 @@
                     @keydown.esc="cancelEdit"
                   />
                   <div class="sp-edit-actions">
-                    <span class="sp-edit-hint">⌘S speichern · Esc abbrechen</span>
-                    <button class="sp-btn-cancel" @click="cancelEdit">Abbrechen</button>
+                    <span class="sp-edit-hint">{{ $t('soul_viewer.edit_hint') }}</span>
+                    <button class="sp-btn-cancel" @click="cancelEdit">{{ $t('common.cancel') }}</button>
                     <button class="sp-btn-save" @click="saveEdit" :disabled="saving">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
                       </svg>
-                      {{ saving ? 'Speichert…' : 'Speichern' }}
+                      {{ saving ? $t('common.saving') : $t('common.save') }}
                     </button>
                   </div>
                 </div>
@@ -87,6 +87,7 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { parseSoul, updateSection } from '#shared/utils/soulParser.js'
@@ -94,6 +95,7 @@ import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const router = useRouter()
 const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer, isLoaded } = useSoul()
 const { allFiles } = useVault()
@@ -116,16 +118,16 @@ const cmdkOpen         = ref(false)
 const syncing          = ref(false)
 
 // ── Soul sections ────────────────────────────────────────────────────────────
-const SOUL_SECTIONS = [
-  { key: 'Kern-Identität',                      label: 'Kern-Identität' },
-  { key: 'Werte & Überzeugungen',               label: 'Werte & Überzeugungen' },
-  { key: 'Ästhetik & Resonanz',                 label: 'Ästhetik & Resonanz' },
-  { key: 'Sprachmuster & Ausdruck',             label: 'Sprachmuster & Ausdruck' },
-  { key: 'Wiederkehrende Themen & Obsessionen', label: 'Themen & Obsessionen' },
-  { key: 'Emotionale Signatur',                 label: 'Emotionale Signatur' },
-  { key: 'Weltbild',                            label: 'Weltbild' },
-  { key: 'Offene Fragen dieser Person',         label: 'Offene Fragen' },
-]
+const SOUL_SECTIONS = computed(() => [
+  { key: 'Kern-Identität',                      label: t('soul_viewer.section_identity') },
+  { key: 'Werte & Überzeugungen',               label: t('soul_viewer.section_values') },
+  { key: 'Ästhetik & Resonanz',                 label: t('soul_viewer.section_aesthetics') },
+  { key: 'Sprachmuster & Ausdruck',             label: t('soul_viewer.section_language') },
+  { key: 'Wiederkehrende Themen & Obsessionen', label: t('soul_viewer.section_themes') },
+  { key: 'Emotionale Signatur',                 label: t('soul_viewer.section_emotional') },
+  { key: 'Weltbild',                            label: t('soul_viewer.section_worldview') },
+  { key: 'Offene Fragen dieser Person',         label: t('soul_viewer.section_questions') },
+])
 
 const parsed = computed(() => parseSoul(soulContent.value))
 

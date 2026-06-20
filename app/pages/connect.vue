@@ -6,12 +6,12 @@
           <span class="cw-sys">SYS<span class="cw-accent">.</span></span>
           <span class="cw-name">Save Your Soul</span>
         </div>
-        <p class="cw-tagline">Persönliche Identitätsschicht für KI-Systeme.<br>Portabel. Verschlüsselt.</p>
+        <p class="cw-tagline" v-html="$t('connect.tagline').replace('\n', '<br>')"></p>
 
         <!-- Loading -->
         <template v-if="phase === 'loading'">
           <svg class="spin cw-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-          <div class="cw-hint">Verbindung prüfen…</div>
+          <div class="cw-hint">{{ $t('connect.checking') }}</div>
         </template>
 
         <!-- Waiting for owner approval -->
@@ -21,8 +21,8 @@
               <circle cx="22" cy="22" r="19" stroke-dasharray="6 3"/>
             </svg>
           </div>
-          <div class="cw-title">Warte auf Bestätigung…</div>
-          <div class="cw-hint">Der Node-Inhaber muss die Verbindung freigeben.</div>
+          <div class="cw-title">{{ $t('connect.waiting_title') }}</div>
+          <div class="cw-hint">{{ $t('connect.waiting_hint') }}</div>
         </template>
 
         <!-- Approved → hello -->
@@ -30,11 +30,11 @@
           <div class="cw-check">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
           </div>
-          <div class="cw-title">Verbunden</div>
+          <div class="cw-title">{{ $t('connect.connected') }}</div>
           <div class="cw-hello">{{ helloMsg }}</div>
           <div class="cw-verified">
             <span class="cw-dot" />
-            Node verifiziert
+            {{ $t('connect.node_verified') }}
           </div>
         </template>
 
@@ -43,8 +43,8 @@
           <div class="cw-check cw-check--err">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
           </div>
-          <div class="cw-title">Abgelehnt</div>
-          <div class="cw-hint">Der Inhaber hat die Verbindung nicht freigegeben.</div>
+          <div class="cw-title">{{ $t('connect.rejected_title') }}</div>
+          <div class="cw-hint">{{ $t('connect.rejected_hint') }}</div>
         </template>
 
         <!-- Expired -->
@@ -52,8 +52,8 @@
           <div class="cw-check cw-check--err">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           </div>
-          <div class="cw-title">QR-Code abgelaufen</div>
-          <div class="cw-hint">Bitte einen neuen QR-Code scannen.</div>
+          <div class="cw-title">{{ $t('connect.expired_title') }}</div>
+          <div class="cw-hint">{{ $t('connect.expired_hint') }}</div>
         </template>
 
         <!-- Error -->
@@ -61,7 +61,7 @@
           <div class="cw-check cw-check--err">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
           </div>
-          <div class="cw-title">Fehler</div>
+          <div class="cw-title">{{ $t('connect.error_title') }}</div>
           <div class="cw-hint">{{ errorMsg }}</div>
         </template>
 
@@ -74,9 +74,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const route    = useRoute()
 const phase    = ref('loading')
 const helloMsg = ref('')
@@ -87,7 +89,7 @@ let pollTimer = null
 onMounted(async () => {
   const token = route.query.s
   if (!token || typeof token !== 'string' || token.length !== 48) {
-    errorMsg.value = 'Kein gültiger Token in der URL.'
+    errorMsg.value = t('connect.err_no_token')
     phase.value    = 'error'
     return
   }
@@ -108,7 +110,7 @@ async function probe(token) {
     if (res.status === 410) { phase.value = 'expired'; return }
     if (res.status === 409) { phase.value = 'expired'; return }
     if (!res.ok) {
-      errorMsg.value = data.error || 'Probe fehlgeschlagen'
+      errorMsg.value = data.error || t('connect.err_probe')
       phase.value    = 'error'
       return
     }
@@ -116,7 +118,7 @@ async function probe(token) {
     phase.value = 'waiting'
     startPolling(token)
   } catch (e) {
-    errorMsg.value = 'Netzwerkfehler'
+    errorMsg.value = t('connect.err_network')
     phase.value    = 'error'
   }
 }
@@ -147,14 +149,14 @@ async function fetchHello(token) {
     const res  = await fetch(`/api/connect/hello?s=${token}`)
     const data = await res.json()
     if (!res.ok) {
-      errorMsg.value = data.error || 'Hello fehlgeschlagen'
+      errorMsg.value = data.error || t('connect.err_hello')
       phase.value    = 'error'
       return
     }
     helloMsg.value = data.message || 'Hello!'
     phase.value    = 'done'
   } catch (e) {
-    errorMsg.value = 'Netzwerkfehler'
+    errorMsg.value = t('connect.err_network')
     phase.value    = 'error'
   }
 }

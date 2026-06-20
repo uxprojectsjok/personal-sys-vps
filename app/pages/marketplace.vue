@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Netzwerk', 'Marketplace']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('common.network'), 'Marketplace']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="market-page">
@@ -13,8 +13,8 @@
             <!-- ── Hero ── -->
             <div class="mk-hero">
               <div class="mk-eyebrow">AGENT MARKETPLACE</div>
-              <h1 class="mk-title">Deine Soul <em>veröffentlichen</em></h1>
-              <p class="mk-sub">Mache deine Soul für externe KI-Assistenten zugänglich — über MCP-Tools, kostenlos oder gegen POL. Danach ist sie im Marketplace auffindbar.</p>
+              <h1 class="mk-title">{{ $t('marketplace.hero_prefix') }} <em>{{ $t('marketplace.hero_em') }}</em></h1>
+              <p class="mk-sub">{{ $t('marketplace.hero_sub') }}</p>
             </div>
 
             <!-- ── Panel (inline, modal stripped) ── -->

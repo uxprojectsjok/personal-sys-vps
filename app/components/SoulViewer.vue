@@ -8,29 +8,31 @@
     </div>
 
     <div v-if="allEmpty" class="sv-empty">
-      Noch keine Seeleninhalte gespeichert.
+      {{ $t('soul_viewer.empty') }}
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { parseSoul } from "#shared/utils/soulParser.js";
 import { useSoul } from "~/composables/useSoul.js";
 
+const { t } = useI18n();
 const { soulContent } = useSoul();
 
-const SOUL_SECTIONS = [
-  { key: "Kern-Identität",                       label: "Kern-Identität" },
-  { key: "Werte & Überzeugungen",                label: "Werte & Überzeugungen" },
-  { key: "Ästhetik & Resonanz",                  label: "Ästhetik & Resonanz" },
-  { key: "Sprachmuster & Ausdruck",              label: "Sprachmuster & Ausdruck" },
-  { key: "Wiederkehrende Themen & Obsessionen",  label: "Themen & Obsessionen" },
-  { key: "Emotionale Signatur",                  label: "Emotionale Signatur" },
-  { key: "Weltbild",                             label: "Weltbild" },
-  { key: "Offene Fragen dieser Person",          label: "Offene Fragen" },
-  { key: "Session-Log (komprimiert)",            label: "Verlauf" },
-];
+const SOUL_SECTIONS = computed(() => [
+  { key: "Kern-Identität",                       label: t('soul_viewer.section_identity') },
+  { key: "Werte & Überzeugungen",                label: t('soul_viewer.section_values') },
+  { key: "Ästhetik & Resonanz",                  label: t('soul_viewer.section_aesthetics') },
+  { key: "Sprachmuster & Ausdruck",              label: t('soul_viewer.section_language') },
+  { key: "Wiederkehrende Themen & Obsessionen",  label: t('soul_viewer.section_themes') },
+  { key: "Emotionale Signatur",                  label: t('soul_viewer.section_emotional') },
+  { key: "Weltbild",                             label: t('soul_viewer.section_worldview') },
+  { key: "Offene Fragen dieser Person",          label: t('soul_viewer.section_questions') },
+  { key: "Session-Log (komprimiert)",            label: t('soul_viewer.section_history') },
+]);
 
 const parsed = computed(() => parseSoul(soulContent.value));
 
