@@ -376,7 +376,7 @@
                 <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.language_desc') }}</p>
                 <div style="display:flex;gap:8px">
                   <button
-                    v-for="loc in availableLocales"
+                    v-for="loc in LOCALES"
                     :key="loc.code"
                     @click="switchLocale(loc.code)"
                     class="sys-btn-ed"
@@ -726,7 +726,12 @@ const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
 const { clearMcpCache, loadMcpTools } = useMcpTools()
 const { ask: confirmAsk } = useConfirm()
-const { t, locale, setLocale, availableLocales } = useI18n()
+const { t, locale, setLocale } = useI18n()
+
+const LOCALES = [
+  { code: 'en', name: 'English' },
+  { code: 'de', name: 'Deutsch' },
+]
 
 function switchLocale(code) {
   setLocale(code)
