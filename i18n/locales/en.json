@@ -1491,7 +1491,10 @@
     "err_network": "Network error"
   },
   "soul_upload": {
-    "err_invalid": "No valid sys.md file."
+    "label": "Load sys.md",
+    "err_invalid": "No valid sys.md file.",
+    "err_type": "Please upload a .md file.",
+    "err_read": "Error reading the file."
   },
   "agent_sandbox": {
     "desc": "What external AI agents see about you — the rest of sys.md stays private.",

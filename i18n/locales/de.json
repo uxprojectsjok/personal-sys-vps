@@ -1491,7 +1491,10 @@
     "err_network": "Netzwerkfehler"
   },
   "soul_upload": {
-    "err_invalid": "Keine gültige sys.md Datei."
+    "label": "sys.md laden",
+    "err_invalid": "Keine gültige sys.md Datei.",
+    "err_type": "Bitte eine .md Datei hochladen.",
+    "err_read": "Fehler beim Lesen der Datei."
   },
   "agent_sandbox": {
     "desc": "Was externe KI-Agenten über dich sehen — der Rest von sys.md bleibt privat.",
