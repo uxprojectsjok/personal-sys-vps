@@ -1125,6 +1125,7 @@
     "tags_placeholder": "Marburg, AI, Design, Decentralization…",
     "wallet_disconnect": "Disconnect wallet",
     "connect_wallet_note": "Connect a wallet first to anchor. At least one real session is required.",
+    "kicker": "Polygon · Blockchain",
     "crumb_own": "Own",
     "crumb_anchor": "Anchor"
   },

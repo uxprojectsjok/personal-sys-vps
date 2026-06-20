@@ -99,7 +99,7 @@ function parseContractError(e, context = "") {
     e.info?.error?.code === 4001 ||
     /user (rejected|denied)/i.test(e.message ?? "")
   ) {
-    return "Abgebrochen – du hast die Transaktion in der Wallet abgelehnt.";
+    return "Cancelled — you rejected the transaction in your wallet.";
   }
 
   // ② Contract Custom-Errors (VOR INSUFFICIENT_FUNDS – Mobile gibt sonst falschen Fehler)
@@ -111,29 +111,29 @@ function parseContractError(e, context = "") {
       const diffH = Math.max(0, Math.ceil(diffMs / 3_600_000));
       const diffMin = Math.max(0, Math.ceil(diffMs / 60_000));
       const until = new Date(ts * 1000).toLocaleString("de-DE");
-      const left = diffH >= 1 ? `noch ${diffH} Std.` : `noch ${diffMin} Min.`;
-      return `Rate-Limit (${left}) – nächster Anker möglich: ${until}`;
+      const left = diffH >= 1 ? `${diffH} hrs left` : `${diffMin} min left`;
+      return `Rate limit (${left}) — next anchor possible: ${until}`;
     }
-    return "Rate-Limit aktiv – bitte etwas später erneut versuchen.";
+    return "Rate limit active — please try again later.";
   }
   if (name === "NotSoulOwner") {
-    return "Diese Wallet ist nicht der eingetragene Eigentümer dieser Soul. Richtige Wallet verbinden?";
+    return "This wallet is not the registered owner of this Soul. Connect the correct wallet?";
   }
   if (name === "MaxAnchorsReached") {
-    return "Maximale Ankeranzahl (365) für dieses Jahr erreicht.";
+    return "Maximum anchor count (365) for this year reached.";
   }
   if (name === "InsufficientFee") {
     const req = e.revert?.args?.[0] ?? e.errorArgs?.[0];
-    return `Fee zu gering${req ? ` (erwartet: ${(Number(req) / 1e18).toFixed(4)} POL)` : ""}. Seite neu laden und erneut versuchen.`;
+    return `Fee too low${req ? ` (expected: ${(Number(req) / 1e18).toFixed(4)} POL)` : ""}. Reload page and try again.`;
   }
   if (name === "ContractPaused") {
-    return "Smart Contract ist derzeit pausiert – bitte später erneut versuchen.";
+    return "Smart contract is currently paused — please try again later.";
   }
   if (name === "SoulNotRegistered") {
-    return "Diese Soul-ID ist noch nicht on-chain registriert. Bitte zuerst verankern.";
+    return "This Soul ID is not yet registered on-chain. Please anchor first.";
   }
   if (name === "InvalidSoulId" || name === "InvalidContentHash") {
-    return "Interne Daten ungültig – Soul neu laden (F5) und erneut versuchen.";
+    return "Internal data invalid — reload Soul (F5) and try again.";
   }
 
   // ④ CALL_EXCEPTION / missing revert data
@@ -144,11 +144,11 @@ function parseContractError(e, context = "") {
     /missing revert data/i.test(e.message ?? "")
   ) {
     return (
-      "Polygon Amoy hat die Transaktion ohne Fehlerdetail abgelehnt.\n" +
-      "Wahrscheinlichste Ursache: RPC-Instabilität des Testnets → 1–2 Min. warten und erneut versuchen.\n" +
-      "Weitere mögliche Ursachen:\n" +
-      "→ Zu wenig POL (mind. 0,5 POL + Gas)\n" +
-      "→ Rate-Limit (24h) noch nicht abgelaufen – 'Echtheit verifizieren' zeigt den Anker-Status"
+      "Polygon Amoy rejected the transaction without error details.\n" +
+      "Most likely cause: RPC instability of the testnet → wait 1–2 min and try again.\n" +
+      "Other possible causes:\n" +
+      "→ Not enough POL (min. 0.5 POL + gas)\n" +
+      "→ Rate limit (24h) not yet expired — 'Verify identity' shows the anchor status"
     );
   }
 
@@ -159,8 +159,8 @@ function parseContractError(e, context = "") {
     /insufficient funds/i.test(e.message ?? "")
   ) {
     return (
-      `Nicht genug POL auf ${ACTIVE_NETWORK.name}.\n` +
-      "Mindestens 0,5 POL + Gas-Gebühr erforderlich. Bitte Konto aufladen."
+      `Not enough POL on ${ACTIVE_NETWORK.name}.\n` +
+      "At least 0.5 POL + gas fee required. Please top up your account."
     );
   }
 
@@ -171,13 +171,13 @@ function parseContractError(e, context = "") {
     )
   ) {
     return (
-      "Netzwerkfehler nach Chain-Wechsel.\n" +
-      "→ Wallet trennen → Seite neu laden → erneut verbinden."
+      "Network error after chain switch.\n" +
+      "→ Disconnect wallet → Reload page → Reconnect."
     );
   }
 
   // ⑥ Fallback – roh, aber begrenzt
-  const raw = e.shortMessage ?? e.reason ?? e.message ?? "Unbekannter Fehler";
+  const raw = e.shortMessage ?? e.reason ?? e.message ?? "Unknown error";
   return (
     (raw.length > 220 ? raw.slice(0, 220) + "…" : raw) +
     (context ? ` [${context}]` : "")
@@ -210,7 +210,7 @@ function getOrInitAppKit(projectId) {
     projectId,
     metadata: {
       name: "SaveYourSoul",
-      description: "Eine KI, die wirklich weiß, wer du bist.",
+      description: "An AI that truly knows who you are.",
       url: window.location.origin,
       icons: [window.location.origin + "/logo.png"],
     },
@@ -297,7 +297,7 @@ export function useChainAnchor() {
 
   function getSignerProvider() {
     const provider = readProvider();
-    if (!provider) throw new Error("Kein Wallet verbunden.");
+    if (!provider) throw new Error("No wallet connected.");
     return new BrowserProvider(provider);
   }
 
@@ -345,12 +345,12 @@ export function useChainAnchor() {
     }
 
     if (!projectId) {
-      anchorError.value = "Kein Reown Project ID konfiguriert. Bitte in den Einstellungen eintragen (dashboard.reown.com).";
+      anchorError.value = "No Reown Project ID configured. Please add it in settings (dashboard.reown.com).";
       return;
     }
     const kit = getOrInitAppKit(projectId);
     if (!kit) {
-      anchorError.value = "AppKit konnte nicht initialisiert werden.";
+      anchorError.value = "AppKit could not be initialized.";
       return;
     }
     try {
@@ -403,18 +403,18 @@ export function useChainAnchor() {
           ]);
         } catch {
           throw new Error(
-            `Netzwerk „${ACTIVE_NETWORK.name}" konnte nicht hinzugefügt werden.\n` +
-              "Bitte manuell in der Wallet-App hinzufügen.",
+            `Network "${ACTIVE_NETWORK.name}" could not be added.\n` +
+              "Please add it manually in your wallet app.",
           );
         }
       } else if (code === 4001) {
         throw new Error(
-          "Netzwerkwechsel abgelehnt – bitte in der Wallet bestätigen.",
+          "Network switch rejected — please confirm in your wallet.",
         );
       } else {
         throw new Error(
-          `Wechsel auf „${ACTIVE_NETWORK.name}" fehlgeschlagen.\n` +
-            "Bitte Netz manuell in der Wallet-App wechseln.",
+          `Failed to switch to "${ACTIVE_NETWORK.name}".\n` +
+            "Please switch the network manually in your wallet app.",
         );
       }
     }
@@ -436,8 +436,8 @@ export function useChainAnchor() {
     }
     if (!freshRaw) {
       throw new Error(
-        "Wallet-Provider nach Netzwerkwechsel verloren.\n" +
-          "→ Wallet trennen → Seite neu laden → erneut verbinden.",
+        "Wallet provider lost after network switch.\n" +
+          "→ Disconnect wallet → Reload page → Reconnect.",
       );
     }
     return new BrowserProvider(freshRaw);
@@ -452,8 +452,8 @@ export function useChainAnchor() {
           () =>
             reject(
               new Error(
-                "Wallet antwortet nicht (Timeout 60s).\n" +
-                  "→ MetaMask / Wallet-App öffnen und Transaktion bestätigen, dann erneut versuchen.",
+                "Wallet not responding (timeout 60s).\n" +
+                  "→ Open MetaMask / wallet app and confirm the transaction, then try again.",
               ),
             ),
           60_000,
@@ -467,7 +467,7 @@ export function useChainAnchor() {
   async function getFastReadProvider() {
     const walletProvider = readProvider();
     if (walletProvider) return new BrowserProvider(walletProvider);
-    if (!isConnected.value) throw new Error("Kein Wallet verbunden.");
+    if (!isConnected.value) throw new Error("No wallet connected.");
     if (READ_RPCS.length === 1) return new JsonRpcProvider(READ_RPCS[0]);
     return Promise.any(
       READ_RPCS.map(async (url) => {
@@ -584,11 +584,11 @@ export function useChainAnchor() {
 
   async function anchorSoul(tags = []) {
     if (!CONTRACT_ADDRESS) {
-      anchorError.value = "Smart Contract noch nicht deployed.";
+      anchorError.value = "Smart contract not yet deployed.";
       return null;
     }
     if (!isConnected.value) {
-      anchorError.value = "Bitte zuerst Wallet verbinden.";
+      anchorError.value = "Please connect your wallet first.";
       return null;
     }
 
@@ -613,8 +613,8 @@ export function useChainAnchor() {
             owner.toLowerCase() !== walletAddress.value.toLowerCase()
           ) {
             anchorError.value =
-              `Falsche Wallet – diese Soul gehört ${owner.slice(0, 6)}…${owner.slice(-4)}.\n` +
-              "Bitte die richtige Wallet verbinden.";
+              `Wrong wallet — this Soul belongs to ${owner.slice(0, 6)}…${owner.slice(-4)}.\n` +
+              "Please connect the correct wallet.";
             return null;
           }
         } catch {
@@ -634,8 +634,8 @@ export function useChainAnchor() {
             const diffMin = Math.max(0, Math.ceil(diffMs / 60_000));
             const until = new Date(nextTs * 1000).toLocaleString("de-DE");
             const left =
-              diffH >= 1 ? `noch ${diffH} Std.` : `noch ${diffMin} Min.`;
-            anchorError.value = `Rate-Limit (${left}) – nächster Anker möglich: ${until}`;
+              diffH >= 1 ? `${diffH} hrs left` : `${diffMin} min left`;
+            anchorError.value = `Rate limit (${left}) — next anchor possible: ${until}`;
             return null;
           }
         } catch {
@@ -709,7 +709,7 @@ export function useChainAnchor() {
               const diffMin = Math.max(0, Math.ceil(diffMs / 60_000));
               const until = new Date(nextTs * 1000).toLocaleString("de-DE");
               const left =
-                diffH >= 1 ? `noch ${diffH} Std.` : `noch ${diffMin} Min.`;
+                diffH >= 1 ? `${diffH} hrs left` : `${diffMin} min left`;
               throw Object.assign(new Error("RateLimitExceeded"), {
                 revert: { name: "RateLimitExceeded", args: [nextTs] },
                 errorName: "RateLimitExceeded",
@@ -789,15 +789,15 @@ export function useChainAnchor() {
             } catch (pollErr) {
               if (pollErr?.message === "TX_REVERTED") {
                 anchorError.value =
-                  "Transaktion on-chain abgelehnt (Revert).\n" +
-                  "→ Rate-Limit oder Fee-Problem. Echtheit verifizieren und erneut versuchen.";
+                  "Transaction rejected on-chain (revert).\n" +
+                  "→ Rate limit or fee issue. Verify identity and try again.";
               }
               // Polling-Timeout: TX-Hash ist in sys.md, kein Datenverlust
             }
           } else if (waitErr.code === "CALL_EXCEPTION" || waitErr.reason) {
             anchorError.value =
-              "Transaktion wurde abgelehnt (Revert on-chain).\n" +
-              "→ Rate-Limit oder Fee-Problem. Echtheit verifizieren und erneut versuchen.";
+              "Transaction rejected on-chain (revert).\n" +
+              "→ Rate limit or fee issue. Verify identity and try again.";
           }
           // Alle anderen wait-Fehler auf Mobile ignorieren — TX wurde gesendet
         }
@@ -833,7 +833,7 @@ export function useChainAnchor() {
       };
     } catch (e) {
       verifyError.value =
-        e.shortMessage ?? e.message ?? "Verifikation fehlgeschlagen.";
+        e.shortMessage ?? e.message ?? "Verification failed.";
       return null;
     }
   }
@@ -853,7 +853,7 @@ export function useChainAnchor() {
       // soul_chain_anchor vertrauen (kann veraltet sein nach Mobile-TX).
       const history = await contract.getHistory(idBytes32);
       if (!history || history.length === 0) {
-        return { found: false, reason: "Keine Anker on-chain für diese Soul-ID gefunden." };
+        return { found: false, reason: "No anchors found on-chain for this Soul ID." };
       }
       const latest     = history[history.length - 1];
       const latestDate = new Date(Number(latest.timestamp) * 1000)
@@ -872,7 +872,7 @@ export function useChainAnchor() {
         network:        ACTIVE_NETWORK.name,
       };
     } catch (e) {
-      verifyError.value = e.shortMessage ?? e.message ?? "Verifikation fehlgeschlagen.";
+      verifyError.value = e.shortMessage ?? e.message ?? "Verification failed.";
       return { found: false, reason: verifyError.value };
     }
   }
@@ -890,18 +890,18 @@ export function useChainAnchor() {
         ? null
         : ownerAddr;
     } catch (e) {
-      anchorError.value = e.message ?? "Eigentümer-Abfrage fehlgeschlagen";
+      anchorError.value = e.message ?? "Owner query failed";
       return null;
     }
   }
 
   async function transferSoul(newOwnerAddress) {
     if (!CONTRACT_ADDRESS) {
-      anchorError.value = "Smart Contract nicht konfiguriert.";
+      anchorError.value = "Smart contract not configured.";
       return null;
     }
     if (!isConnected.value) {
-      anchorError.value = "Bitte zuerst Wallet verbinden.";
+      anchorError.value = "Please connect your wallet first.";
       return null;
     }
 
@@ -942,7 +942,7 @@ export function useChainAnchor() {
 
   // Einfache Nachricht signieren — ohne Soul-ID / on-chain-Verifikation
   async function signSimple(message) {
-    if (!isConnected.value) throw new Error("Kein Wallet verbunden.");
+    if (!isConnected.value) throw new Error("No wallet connected.");
     const provider  = getSignerProvider();
     const signer    = await withSigner(provider);
     const signature = await signer.signMessage(message);
@@ -953,7 +953,7 @@ export function useChainAnchor() {
   async function proveIdentity() {
     if (!CONTRACT_ADDRESS || !soulMeta.value?.id) return null;
     if (!isConnected.value) {
-      anchorError.value = "Bitte zuerst Wallet verbinden.";
+      anchorError.value = "Please connect your wallet first.";
       return null;
     }
 
@@ -975,8 +975,8 @@ export function useChainAnchor() {
           owner.toLowerCase() !== walletAddress.value.toLowerCase()
         ) {
           anchorError.value =
-            `Falsche Wallet – diese Soul gehört ${owner.slice(0, 6)}…${owner.slice(-4)}.\n` +
-            "Bitte die richtige Wallet verbinden.";
+            `Wrong wallet — this Soul belongs to ${owner.slice(0, 6)}…${owner.slice(-4)}.\n` +
+            "Please connect the correct wallet.";
           return null;
         }
       } catch {
