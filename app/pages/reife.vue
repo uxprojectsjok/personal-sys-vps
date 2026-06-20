@@ -4,15 +4,15 @@
       <SysSidebar route="maturity" :soul-meta="soulMeta ? { ...soulMeta, maturity: data.score } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'Reife']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('chronicle.crumb_soul'), $t('maturity.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
         <div class="page rf-page">
 
           <!-- Header -->
           <div class="rf-head">
-            <div class="eyebrow">Soul-Reife</div>
-            <h1 class="rf-title">Wie deine Seele <em>wächst</em></h1>
-            <p class="rf-lede">Reife misst die Tiefe und Konsistenz deiner Identität — nicht Aktivität, sondern Substanz. Sie steigt durch echten Dialog, reichen Kontext und Verankerung.</p>
+            <div class="eyebrow">{{ $t('maturity.eyebrow') }}</div>
+            <h1 class="rf-title">{{ $t('maturity.title_prefix') }} <em>{{ $t('maturity.title_em') }}</em></h1>
+            <p class="rf-lede">{{ $t('maturity.lede') }}</p>
           </div>
 
           <!-- Ring + Levels -->
@@ -50,7 +50,7 @@
           </div>
 
           <!-- Stat cards -->
-          <div class="rf-section-head">Was deine Reife trägt</div>
+          <div class="rf-section-head">{{ $t('maturity.section_head') }}</div>
           <div class="rf-cards">
             <div v-for="card in CARDS" :key="card.key" class="rf-card">
               <div class="rf-card-top">
@@ -79,10 +79,12 @@
 definePageMeta({ layout: false })
 import { ref, computed, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
+const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, clear: _clear, isLoaded } = useSoul()
 const { allFiles } = useVault()
@@ -159,24 +161,24 @@ const data = computed(() => {
 // Ring circumference (r=66)
 const CIRC = 2 * Math.PI * 66
 
-const DISPLAY_LEVELS = [
-  { num: '01', name: 'Keim',      range: '0 – 14 %',  min: 0,  max: 14  },
-  { num: '02', name: 'Aufbau',    range: '15 – 34 %', min: 15, max: 34  },
-  { num: '03', name: 'Etabliert', range: '35 – 74 %', min: 35, max: 74  },
-  { num: '04', name: 'Reif',      range: '75 – 95 %', min: 75, max: 95  },
-  { num: '05', name: 'Souverän',  range: '96 – 100 %',min: 96, max: 100 },
-]
+const DISPLAY_LEVELS = computed(() => [
+  { num: '01', name: t('maturity.level_keim'),       range: '0 – 14 %',   min: 0,  max: 14  },
+  { num: '02', name: t('maturity.level_aufbau'),     range: '15 – 34 %',  min: 15, max: 34  },
+  { num: '03', name: t('maturity.level_etabliert'),  range: '35 – 74 %',  min: 35, max: 74  },
+  { num: '04', name: t('maturity.level_reif'),       range: '75 – 95 %',  min: 75, max: 95  },
+  { num: '05', name: t('maturity.level_souveraen'),  range: '96 – 100 %', min: 96, max: 100 },
+])
 
 const currentDisplayLevel = computed(() => {
   const s = data.value.score
-  return DISPLAY_LEVELS.find(l => s >= l.min && s <= l.max) ?? DISPLAY_LEVELS[0]
+  return DISPLAY_LEVELS.value.find(l => s >= l.min && s <= l.max) ?? DISPLAY_LEVELS.value[0]
 })
 
 const nextLevelHint = computed(() => {
   const s = data.value.score
-  const next = DISPLAY_LEVELS.find(l => l.min > s)
+  const next = DISPLAY_LEVELS.value.find(l => l.min > s)
   if (!next) return null
-  return `${next.min - s} bis ${next.name}`
+  return `${next.min - s} to ${next.name}`
 })
 
 // Icon components (inline SVG via h())
@@ -187,14 +189,14 @@ const IconPeers   = { render: () => h('svg', { viewBox:'0 0 24 24', fill:'none',
 const IconAnchor  = { render: () => h('svg', { viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':'1.6', 'stroke-linecap':'round', 'stroke-linejoin':'round' }, [h('path', { d:'M12 7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm0 0v14m0 0c-3.5 0-6.5-2.5-7-6m7 6c3.5 0 6.5-2.5 7-6M5 11H3m18 0h-2' })]) }
 const IconSpark   = { render: () => h('svg', { viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':'1.6', 'stroke-linecap':'round', 'stroke-linejoin':'round' }, [h('path', { d:'M12 3v6m0 6v6m9-9h-6m-6 0H3m13.5-6.5-3 3m-5 5-3 3m11 0-3-3m-5-5-3-3' })]) }
 
-const CARDS = [
-  { key: 'session', label: 'Session-Tiefe',  icon: IconChat,   max: 8  },
-  { key: 'sysmd',   label: 'sys.md-Reichtum',icon: IconDoc,    max: 12 },
-  { key: 'vault',   label: 'Vault-Kontext',  icon: IconFolder, max: 20 },
-  { key: 'social',  label: 'Soziale Resonanz',icon: IconPeers,  max: 10 },
-  { key: 'anchor',  label: 'Verankerung',    icon: IconAnchor, max: 15 },
-  { key: 'skills',  label: 'Konsistenz',     icon: IconSpark,  max: 15 },
-]
+const CARDS = computed(() => [
+  { key: 'session', label: t('maturity.card_session'), icon: IconChat,   max: 8  },
+  { key: 'sysmd',   label: t('maturity.card_sysmd'),   icon: IconDoc,    max: 12 },
+  { key: 'vault',   label: t('maturity.card_vault'),   icon: IconFolder, max: 20 },
+  { key: 'social',  label: t('maturity.card_social'),  icon: IconPeers,  max: 10 },
+  { key: 'anchor',  label: t('maturity.card_anchor'),  icon: IconAnchor, max: 15 },
+  { key: 'skills',  label: t('maturity.card_skills'),  icon: IconSpark,  max: 15 },
+])
 
 function cardPct(card) {
   const b = data.value.breakdown
@@ -208,22 +210,22 @@ function cardDesc(card) {
   if (!b) return '—'
   switch (card.key) {
     case 'session': return b.sessionCount > 0
-      ? `${b.sessionCount} Sessions · konsistenter Dialog`
-      : 'Noch keine Session-Einträge'
+      ? t('maturity.sessions', { count: b.sessionCount })
+      : t('maturity.no_sessions')
     case 'sysmd': {
       const filled = Object.values(b.sectionScores ?? {}).filter(v => v > 0).length
-      return `${filled} von 8 Sektionen gefüllt`
+      return t('maturity.sections_filled', { filled })
     }
     case 'vault': {
       const parts = []
       if (b.vaultAudio  > 0) parts.push('Audio')
-      if (b.vaultImages > 0) parts.push('Bilder')
-      if (b.vaultContext > 0) parts.push('Kontext')
-      return parts.length ? parts.join(', ') + ' verknüpft' : 'Noch keine Vault-Dateien'
+      if (b.vaultImages > 0) parts.push(t('maturity.vault_images'))
+      if (b.vaultContext > 0) parts.push(t('maturity.vault_context'))
+      return parts.length ? parts.join(', ') + ' ' + t('maturity.vault_linked') : t('maturity.no_vault')
     }
-    case 'social': return b.netzwerk > 0 ? `${b.netzwerk} Verbindungspunkte` : 'Keine Peers verbunden'
-    case 'anchor': return b.growthChain > 0 ? `${b.growthChain} Wachstumseinträge` : 'Noch nicht verankert'
-    case 'skills': return b.signatureHints?.length ? b.signatureHints.slice(0, 3).join(' · ') + ' erkannte Skills' : 'Noch keine Signatur-Merkmale'
+    case 'social': return b.netzwerk > 0 ? t('maturity.connections', { n: b.netzwerk }) : t('maturity.no_peers')
+    case 'anchor': return b.growthChain > 0 ? t('maturity.growth', { n: b.growthChain }) : t('maturity.no_anchor')
+    case 'skills': return b.signatureHints?.length ? b.signatureHints.slice(0, 3).join(' · ') + ' ' + t('maturity.skills_recognized') : t('maturity.no_skills')
     default: return '—'
   }
 }

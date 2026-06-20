@@ -16,7 +16,7 @@
           class="text-xs tracking-[0.1em] uppercase font-semibold"
           :class="isRecording ? 'text-red-400' : isPreview ? 'text-white/70' : 'text-[var(--sys-fg-dim)]'"
         >
-          {{ isRecording ? 'Aufnahme' : isPreview ? 'Vorschau' : 'Stimme aufnehmen' }}
+          {{ isRecording ? $t('voice_recorder.status_recording') : isPreview ? $t('voice_recorder.status_preview') : $t('voice_recorder.status_idle') }}
         </span>
         <span v-if="isRecording || isPreview" class="text-xs font-mono text-[var(--sys-fg-dim)]">
           {{ formatDuration(duration) }}
@@ -42,9 +42,9 @@
             :class="duration >= 25 ? 'text-white/80' : 'text-red-400'"
           >{{ Math.ceil(30 - duration) }}</span>
           <span v-else class="text-sm font-bold tracking-[0.2em] uppercase text-white/80 leading-none">
-            Fertig
+            {{ $t('voice_recorder.countdown_done') }}
           </span>
-          <span v-if="duration < 30" class="text-xs text-[var(--sys-fg-dim)]/40 tracking-widest uppercase mt-0.5">Sek.</span>
+          <span v-if="duration < 30" class="text-xs text-[var(--sys-fg-dim)]/40 tracking-widest uppercase mt-0.5">{{ $t('voice_recorder.countdown_unit') }}</span>
         </div>
 
         <!-- Pegel-Meter -->
@@ -81,8 +81,7 @@
         class="mt-0.5 flex-none w-3.5 h-3.5 cursor-pointer accent-[#22c55e]"
       />
       <span class="text-xs text-[var(--sys-fg-muted)] leading-relaxed">
-        Ich stimme zu, dass diese Aufnahme zur Erstellung eines KI-Stimmklons verarbeitet werden darf
-        (EU AI Act Art. 50, Art. 9 DSGVO). Die Verarbeitung erfolgt ausschließlich durch mich selbst.
+        {{ $t('voice_recorder.consent_text') }}
       </span>
     </label>
 
@@ -91,7 +90,7 @@
       v-if="!isRecording && !isPreview"
       class="text-center text-xs text-[var(--sys-fg-muted)]/70 tracking-[0.06em]"
     >
-      Mindestens 30 Sek. frei sprechen für optimale Qualität
+      {{ $t('voice_recorder.idle_hint') }}
     </p>
 
     <!-- Fehler -->
@@ -115,7 +114,7 @@
           class="w-2.5 h-2.5 rounded-full flex-none transition-all"
           :class="isRecording ? 'bg-red-400 rounded-sm scale-90' : 'bg-white'"
         ></span>
-        {{ isRecording ? 'Stopp' : 'Aufnehmen' }}
+        {{ isRecording ? $t('voice_recorder.btn_stop') : $t('voice_recorder.btn_record') }}
       </button>
 
       <!-- Preview-Controls -->
@@ -133,15 +132,15 @@
               <rect x="14" y="4" width="4" height="16" rx="1"/>
             </g>
           </svg>
-          {{ isPlayingPreview ? 'Pause' : 'Anhören' }}
+          {{ isPlayingPreview ? $t('voice_recorder.btn_pause') : $t('voice_recorder.btn_listen') }}
         </button>
 
         <!-- Aufnahme verwerfen -->
         <button
           @click="handleDiscard"
           class="w-9 h-9 flex-none flex items-center justify-center rounded-full text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all"
-          aria-label="Aufnahme verwerfen"
-          title="Aufnahme verwerfen"
+          :aria-label="$t('voice_recorder.discard_aria')"
+          :title="$t('voice_recorder.discard_aria')"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -156,7 +155,7 @@
           :class="saved
             ? 'border border-white/25 bg-[rgba(255,255,255,0.12)] text-white/85'
             : 'border border-white/15 bg-[rgba(255,255,255,0.06)] text-white/75 hover:bg-[rgba(255,255,255,0.11)]'"
-          :title="!vaultConnected ? 'Vault verbinden zum Speichern' : ''"
+          :title="!vaultConnected ? $t('voice_recorder.btn_connect_save') : ''"
         >
           <svg v-if="saved" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
@@ -167,7 +166,7 @@
           <svg v-else class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
           </svg>
-          {{ saved ? 'Gespeichert' : isSaving ? '…' : 'Im Vault speichern' }}
+          {{ saved ? $t('voice_recorder.saved') : isSaving ? '…' : $t('voice_recorder.btn_save') }}
         </button>
 
       </template>
@@ -178,7 +177,7 @@
       v-if="isPreview && !vaultConnected"
       class="text-xs text-white/55 tracking-[0.06em] opacity-80"
     >
-      Vault verbinden um die Stimmprobe dauerhaft zu speichern.
+      {{ $t('voice_recorder.no_vault_hint') }}
     </p>
 
     <!-- Verstecktes Audio für Vorschau -->
@@ -188,6 +187,8 @@
 
 <script setup>
 import { ref, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
+const { t } = useI18n();
 import { useVoice }      from "~/composables/useVoice.js";
 import { useVault }      from "~/composables/useVault.js";
 import { useSoul }       from "~/composables/useSoul.js";

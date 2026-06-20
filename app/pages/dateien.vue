@@ -18,7 +18,7 @@
             <!-- ── Hero ── -->
             <div class="dt-hero">
               <div class="dt-eyebrow">VAULT</div>
-              <h1 class="dt-title">Dein Kontext, <em>verschlüsselt</em></h1>
+              <h1 class="dt-title">{{ $t('files.title') }} <em>{{ $t('files.title_em') }}</em></h1>
             </div>
 
             <!-- ── Tab toggle ── -->
@@ -29,7 +29,7 @@
                     <rect x="2" y="3" width="16" height="12" rx="1.5"/>
                     <path stroke-linecap="round" d="M6 18h8M10 15v3"/>
                   </svg>
-                  Lokal
+                  {{ $t('files.tab_local') }}
                 </button>
                 <button class="dt-tab" :class="{ on: tab === 'server' }" @click="switchToServer">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
@@ -37,14 +37,14 @@
                     <rect x="2" y="12" width="16" height="5" rx="1.5"/>
                     <circle cx="5.5" cy="5.5" r="1"/><circle cx="5.5" cy="14.5" r="1"/>
                   </svg>
-                  Server
+                  {{ $t('files.tab_server') }}
                 </button>
                 <button class="dt-tab" :class="{ on: tab === 'geteilt' }" @click="switchToShared">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
                     <circle cx="5" cy="10" r="2.5"/><circle cx="15" cy="5" r="2.5"/><circle cx="15" cy="15" r="2.5"/>
                     <path stroke-linecap="round" d="M7.2 9 12.8 6M7.2 11 12.8 14"/>
                   </svg>
-                  Geteilt
+                  {{ $t('files.tab_shared') }}
                 </button>
               </div>
             </div>
@@ -55,29 +55,29 @@
                 <button v-for="f in FILTERS" :key="f.key" :class="{ on: typeFilter === f.key }" @click="typeFilter = f.key">{{ f.label }}</button>
               </div>
               <!-- Refresh -->
-              <button class="icon-btn" :class="{ on: refreshing }" @click="refresh" :disabled="refreshing" title="Aktualisieren">
+              <button class="icon-btn" :class="{ on: refreshing }" @click="refresh" :disabled="refreshing" :title="$t('files.refresh')">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" :class="{ 'spin': refreshing }">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 4a8 8 0 1 1 0 12"/>
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
                 </svg>
               </button>
               <!-- Alle lokalen Dateien auf Server laden -->
-              <button v-if="tab === 'lokal' && vaultConnected" class="dt-upload-btn" @click="pushVaultToServer" :disabled="syncing" :title="syncing ? 'Wird hochgeladen…' : 'Vault auf Server laden'">
+              <button v-if="tab === 'lokal' && vaultConnected" class="dt-upload-btn" @click="pushVaultToServer" :disabled="syncing" :title="syncing ? $t('files.upload_to_server_loading') : $t('files.upload_to_server')">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
                   <rect x="2" y="12" width="16" height="5" rx="1.5"/>
                   <path stroke-linecap="round" stroke-linejoin="round" d="M10 9V2m0 0L6 6m4-4 4 4"/>
                   <circle cx="5.5" cy="14.5" r="1"/>
                 </svg>
-                {{ syncing ? 'Lädt…' : 'Auf Server' }}
+                {{ syncing ? $t('files.loading') : $t('files.on_server') }}
               </button>
               <!-- Geteilt: direkter Upload -->
-              <button v-if="tab === 'geteilt' && soulToken" class="dt-upload-btn" @click="sharedInput?.click()" :disabled="sharedUploading" :title="sharedUploading ? 'Wird hochgeladen…' : 'Datei hochladen'">
+              <button v-if="tab === 'geteilt' && soulToken" class="dt-upload-btn" @click="sharedInput?.click()" :disabled="sharedUploading" :title="sharedUploading ? $t('files.upload_to_server_loading') : $t('files.upload')">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" :class="{ spin: sharedUploading }">
                   <path v-if="!sharedUploading" stroke-linecap="round" stroke-linejoin="round" d="M10 9V2m0 0L6 6m4-4 4 4"/>
                   <path v-if="!sharedUploading" stroke-linecap="round" stroke-linejoin="round" d="M2 14v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
                   <path v-if="sharedUploading" stroke-linecap="round" d="M4 4a8 8 0 1 1 0 12"/>
                 </svg>
-                {{ sharedUploading ? 'Lädt…' : 'Hochladen' }}
+                {{ sharedUploading ? $t('files.loading') : $t('files.upload') }}
               </button>
               <input ref="sharedInput" type="file" class="dt-file-input" @change="handleSharedUpload" />
               <!-- sys.md lokal importieren -->
@@ -89,7 +89,7 @@
             <!-- ── Geteilt Tab ── -->
             <template v-if="tab === 'geteilt'">
               <div v-if="!soulToken" class="dt-empty">
-                <p class="dt-empty-text">Soul-Zertifikat benötigt</p>
+                <p class="dt-empty-text">{{ $t('files.no_soul_cert') }}</p>
               </div>
               <div v-else-if="sharedLoading" class="dt-empty">
                 <svg class="spin" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -98,11 +98,11 @@
                 </svg>
               </div>
               <div v-else-if="filteredSharedFiles.length === 0" class="dt-empty">
-                <p class="dt-empty-text">Keine geteilten Dateien</p>
+                <p class="dt-empty-text">{{ $t('files.no_shared_files') }}</p>
               </div>
               <div v-else class="dt-table" style="margin-top:14px">
                 <div class="dt-table-head" style="grid-template-columns: 1fr 90px">
-                  <span class="dt-col-name">Name</span>
+                  <span class="dt-col-name">{{ $t('files.col_name') }}</span>
                   <span class="dt-col-actions"></span>
                 </div>
                 <div v-for="f in filteredSharedFiles" :key="f.name"
@@ -122,11 +122,11 @@
                     </div>
                   </div>
                   <div class="dt-actions">
-                    <button class="dt-act-btn" @click="downloadSharedFile(f)" :disabled="!!sharedBusy[f.name]" title="Herunterladen">
+                    <button class="dt-act-btn" @click="downloadSharedFile(f)" :disabled="!!sharedBusy[f.name]" :title="$t('files.download')">
                       <svg v-if="sharedBusy[f.name] === 'down'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                     </button>
-                    <button class="dt-act-btn dt-act-del" @click="deleteSharedFile(f.name)" :disabled="!!sharedBusy[f.name]" title="Löschen">
+                    <button class="dt-act-btn dt-act-del" @click="deleteSharedFile(f.name)" :disabled="!!sharedBusy[f.name]" :title="$t('files.delete')">
                       <svg v-if="sharedBusy[f.name] === 'del'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/></svg>
                       <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
                     </button>
@@ -138,23 +138,23 @@
             <!-- ── File table (Lokal/Server) ── -->
             <div v-if="tab !== 'geteilt'" class="dt-table">
               <div class="dt-table-head">
-                <span class="dt-col-name">Name</span>
-                <span class="dt-col-date">Hinzugefügt</span>
+                <span class="dt-col-name">{{ $t('files.col_name') }}</span>
+                <span class="dt-col-date">{{ $t('files.col_added') }}</span>
                 <span class="dt-col-actions"></span>
               </div>
 
               <!-- Local: not connected -->
               <div v-if="tab === 'lokal' && !vaultConnected" class="dt-empty">
-                <p class="dt-empty-text">Vault nicht verbunden.</p>
-                <button class="dt-connect-btn" @click="connectVaultFn">Vault verbinden</button>
+                <p class="dt-empty-text">{{ $t('files.vault_not_connected') }}</p>
+                <button class="dt-connect-btn" @click="connectVaultFn">{{ $t('files.vault_connect') }}</button>
               </div>
               <!-- Server: loading -->
               <div v-else-if="tab === 'server' && !serverLoaded" class="dt-empty">
-                <p class="dt-empty-text">Server-Dateien werden geladen…</p>
+                <p class="dt-empty-text">{{ $t('files.server_loading') }}</p>
               </div>
               <!-- Empty -->
               <div v-else-if="filteredFiles.length === 0" class="dt-empty">
-                <p class="dt-empty-text">{{ searchQuery ? 'Keine Ergebnisse.' : 'Keine Dateien vorhanden.' }}</p>
+                <p class="dt-empty-text">{{ searchQuery ? $t('files.no_results') : $t('files.no_files') }}</p>
               </div>
 
               <!-- Rows -->
@@ -197,13 +197,13 @@
                   <div class="dt-col-actions dt-actions">
                     <!-- sys.md specific -->
                     <template v-if="file.type === 'soul'">
-                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadSoul(file)" title="sys.md vom Server herunterladen">
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadSoul(file)" :title="$t('files.title_download')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
-                      <button v-if="tab === 'server'" class="dt-act-btn" @click="soulServerInput?.click()" :disabled="busy['soul']" title="sys.md auf Server ersetzen">
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="soulServerInput?.click()" :disabled="busy['soul']" :title="$t('files.title_replace_server')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><rect x="2" y="12" width="12" height="2" rx="1"/></svg>
                       </button>
-                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" title="sys.md aus Datei importieren (lokalen Stand ersetzen)">
+                      <button v-if="tab === 'lokal'" class="dt-act-btn" @click="soulInput?.click()" :title="$t('files.title_import_local')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V3m0 0-3 3m3-3 3 3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
                     </template>
@@ -211,15 +211,15 @@
                     <!-- Regular files -->
                     <template v-else>
                       <!-- Upload to server (Lokal-Tab) -->
-                      <button v-if="tab === 'lokal' && vaultConnected && soulToken" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" title="Auf Server hochladen">
+                      <button v-if="tab === 'lokal' && vaultConnected && soulToken" class="dt-act-btn" @click="uploadToServer(file)" :disabled="!!busy[file.id]" :title="$t('files.title_upload_server')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10V2m0 0L5 5m3-3 3 3"/><rect x="2" y="12" width="12" height="3" rx="1"/></svg>
                       </button>
                       <!-- Download (nur auf Server-Tab sinnvoll) -->
-                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" title="Herunterladen">
+                      <button v-if="tab === 'server'" class="dt-act-btn" @click="downloadFile(file)" :disabled="!!busy[file.id]" :title="$t('files.download')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
                       </button>
                       <!-- Delete (nur auf Server-Tab) -->
-                      <button v-if="tab === 'server'" class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" title="Löschen">
+                      <button v-if="tab === 'server'" class="dt-act-btn dt-act-del" @click="deleteFile(file)" :disabled="!!busy[file.id]" :title="$t('files.delete')">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
                       </button>
                     </template>
@@ -241,6 +241,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useApiContext } from '~/composables/useApiContext.js'
@@ -250,6 +251,7 @@ import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded } = useSoul()
 const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
@@ -278,14 +280,14 @@ const sharedLoading   = ref(false)
 const sharedUploading = ref(false)
 const sharedInput     = ref(null)
 
-const FILTERS = [
-  { key: 'all',   label: 'Alle' },
-  { key: 'soul',  label: 'sys.md' },
-  { key: 'audio', label: 'Audio' },
-  { key: 'video', label: 'Video' },
-  { key: 'image', label: 'Bilder' },
-  { key: 'doc',   label: 'Kontext' },
-]
+const FILTERS = computed(() => [
+  { key: 'all',   label: t('files.type_all')   },
+  { key: 'soul',  label: t('files.type_soul')  },
+  { key: 'audio', label: t('files.type_audio') },
+  { key: 'video', label: t('files.type_video') },
+  { key: 'image', label: t('files.type_image') },
+  { key: 'doc',   label: t('files.type_doc')   },
+])
 
 // ── Toast ──────────────────────────────────────────────────────────────────
 function showToast(msg, type = 'ok') {
@@ -311,7 +313,13 @@ function nameToApiType(name) {
   if (/^(jpg|jpeg|png|webp|gif|avif|heic)$/.test(ext)) return 'image'
   return 'context'
 }
-const TYPE_DISPLAY = { soul: 'sys.md', audio: 'Audio', video: 'Video', image: 'Bild', doc: 'Dokument' }
+const TYPE_DISPLAY = computed(() => ({
+  soul:  t('files.type_label_soul'),
+  audio: t('files.type_label_audio'),
+  video: t('files.type_label_video'),
+  image: t('files.type_label_image'),
+  doc:   t('files.type_label_doc'),
+}))
 
 // ── File lists ─────────────────────────────────────────────────────────────
 const soulEntry = computed(() => ({
@@ -327,7 +335,7 @@ const localFileList = computed(() => {
     items.push({
       id: f.name, name: f.name,
       displayName: f.name.split('/').pop(),
-      type, typeLabel: TYPE_DISPLAY[type] || f.kind,
+      type, typeLabel: TYPE_DISPLAY.value[type] || f.kind,
       apiType: nameToApiType(f.name),
     })
   }
@@ -339,7 +347,7 @@ const serverFileList = computed(() => {
   const sf = syncedFiles.value || {}
   const add = (arr, type, apiType) => {
     for (const name of (arr || [])) {
-      items.push({ id: `srv:${name}`, name, displayName: name.split('/').pop(), type, typeLabel: TYPE_DISPLAY[type], apiType })
+      items.push({ id: `srv:${name}`, name, displayName: name.split('/').pop(), type, typeLabel: TYPE_DISPLAY.value[type], apiType })
     }
   }
   add(sf.audio,   'audio', 'audio')
@@ -428,26 +436,26 @@ async function downloadSharedFile(f) {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(sharedSoulId.value)}/${encodeURIComponent(f.name)}`, {
       headers: { Authorization: `Bearer ${soulToken.value}` }
     })
-    if (!res.ok) { showToast('Download fehlgeschlagen', 'err'); return }
+    if (!res.ok) { showToast(t('files.download_failed'), 'err'); return }
     const blob = await res.blob()
-    if (!blob.size) { showToast('Download fehlgeschlagen', 'err'); return }
+    if (!blob.size) { showToast(t('files.download_failed'), 'err'); return }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = f.name; a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 5000)
-    showToast(`${f.name} wird heruntergeladen`)
-  } catch { showToast('Download fehlgeschlagen', 'err') }
+    showToast(t('files.downloading', { name: f.name }))
+  } catch { showToast(t('files.download_failed'), 'err') }
   finally { delete sharedBusy[f.name] }
 }
 async function deleteSharedFile(name) {
   if (!soulToken.value) return
   const ok = await confirmAsk({
-    title:       'Datei löschen?',
-    message:     `„${name}" wird unwiderruflich aus dem geteilten Bereich gelöscht.`,
-    confirmText: 'Löschen',
-    cancelText:  'Abbrechen',
+    title:       t('files.confirm_delete_file'),
+    message:     t('files.confirm_delete_shared', { name }),
+    confirmText: t('files.delete'),
+    cancelText:  t('common.cancel'),
     danger:      true,
   })
   if (!ok) return
@@ -456,16 +464,16 @@ async function deleteSharedFile(name) {
     const res = await fetch(`/api/vault/shared/${encodeURIComponent(name)}`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${soulToken.value}` }
     })
-    if (res.ok) { sharedFiles.value = sharedFiles.value.filter(f => f.name !== name); showToast(`${name} gelöscht ✓`) }
-    else showToast('Löschen fehlgeschlagen', 'err')
-  } catch { showToast('Löschen fehlgeschlagen', 'err') }
+    if (res.ok) { sharedFiles.value = sharedFiles.value.filter(f => f.name !== name); showToast(t('files.deleted_ok', { name })) }
+    else showToast(t('files.delete_failed'), 'err')
+  } catch { showToast(t('files.delete_failed'), 'err') }
   finally { delete sharedBusy[name] }
 }
 
 async function handleSharedUpload(e) {
   const file = e.target.files?.[0]
   if (!file || !soulToken.value) return
-  if (file.size > 50 * 1024 * 1024) { showToast('Max. 50 MB', 'err'); e.target.value = ''; return }
+  if (file.size > 50 * 1024 * 1024) { showToast(t('files.max_50mb'), 'err'); e.target.value = ''; return }
   sharedUploading.value = true
   try {
     const b64 = await new Promise((res, rej) => {
@@ -480,9 +488,9 @@ async function handleSharedUpload(e) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body: JSON.stringify({ name: safeName, data: b64, mime: file.type || '' }),
     })
-    if (resp.ok) { showToast(`${file.name} hochgeladen ✓`); await loadSharedFiles() }
-    else { const d = await resp.json().catch(() => ({})); showToast(d.error || 'Upload fehlgeschlagen', 'err') }
-  } catch { showToast('Upload fehlgeschlagen', 'err') }
+    if (resp.ok) { showToast(t('files.uploaded_ok', { name: file.name })); await loadSharedFiles() }
+    else { const d = await resp.json().catch(() => ({})); showToast(d.error || t('files.upload_failed'), 'err') }
+  } catch { showToast(t('files.upload_failed'), 'err') }
   finally { sharedUploading.value = false; e.target.value = '' }
 }
 
@@ -518,7 +526,7 @@ async function handleSoulImport(e) {
   const text = await file.text()
   importFromText(text)
   saveSoul()
-  showToast('sys.md überschrieben ✓')
+  showToast(t('files.soul_overwritten'))
   e.target.value = ''
 }
 
@@ -547,9 +555,9 @@ async function replaceSoulOnServer(e) {
   try {
     const text = await file.text()
     await uploadSoulText(text)
-    showToast('sys.md auf Server ersetzt ✓')
+    showToast(t('files.soul_replaced'))
     await loadContext(soulToken.value)
-  } catch (err) { showToast(err.message || 'Ersetzen fehlgeschlagen', 'err') }
+  } catch (err) { showToast(err.message || t('files.replace_failed'), 'err') }
   finally { busy['soul'] = false; e.target.value = '' }
 }
 
@@ -559,17 +567,17 @@ async function downloadFile(file) {
   try {
     if (tab.value === 'lokal') {
       const buf = await readVaultFile(file.name)
-      if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
+      if (!buf) { showToast(t('files.file_unreadable'), 'err'); return }
       triggerDownload(buf, file.displayName)
     } else {
       const res = await fetch(`/api/vault/${file.apiType}/${encodeURIComponent(file.name)}`, {
         headers: { Authorization: `Bearer ${soulToken.value}` }
       })
-      if (!res.ok) { showToast('Download fehlgeschlagen', 'err'); return }
+      if (!res.ok) { showToast(t('files.download_failed'), 'err'); return }
       triggerDownload(await res.arrayBuffer(), file.displayName)
     }
-    showToast(`${file.displayName} heruntergeladen ✓`)
-  } catch { showToast('Fehler beim Herunterladen', 'err') }
+    showToast(t('files.downloaded_ok', { name: file.displayName }))
+  } catch { showToast(t('files.download_error'), 'err') }
   finally { busy[file.id] = false }
 }
 
@@ -578,22 +586,22 @@ async function uploadToServer(file) {
   busy[file.id] = true
   try {
     const buf = await readVaultFile(file.displayName)
-    if (!buf) { showToast('Datei nicht lesbar', 'err'); return }
+    if (!buf) { showToast(t('files.file_unreadable'), 'err'); return }
     const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
     const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
-    if (res.ok) { showToast(`${file.displayName} hochgeladen ✓`); await loadContext(soulToken.value); await scanLocalVault() }
-    else showToast(res.error || 'Upload fehlgeschlagen', 'err')
-  } catch { showToast('Fehler beim Hochladen', 'err') }
+    if (res.ok) { showToast(t('files.uploaded_ok', { name: file.displayName })); await loadContext(soulToken.value); await scanLocalVault() }
+    else showToast(res.error || t('files.upload_failed'), 'err')
+  } catch { showToast(t('files.upload_error'), 'err') }
   finally { busy[file.id] = false }
 }
 
 // ── Delete file ────────────────────────────────────────────────────────────
 async function deleteFile(file) {
   const ok = await confirmAsk({
-    title:       'Datei löschen?',
-    message:     `„${file.displayName}" wird unwiderruflich gelöscht.`,
-    confirmText: 'Löschen',
-    cancelText:  'Abbrechen',
+    title:       t('files.confirm_delete_file'),
+    message:     t('files.confirm_delete_file_msg', { name: file.displayName }),
+    confirmText: t('files.delete'),
+    cancelText:  t('common.cancel'),
     danger:      true,
   })
   if (!ok) return
@@ -601,14 +609,14 @@ async function deleteFile(file) {
   try {
     if (tab.value === 'lokal') {
       const ok = await deleteLocalFile(file.name)
-      if (ok) showToast(`${file.displayName} gelöscht ✓`)
-      else showToast('Löschen fehlgeschlagen', 'err')
+      if (ok) showToast(t('files.deleted_ok', { name: file.displayName }))
+      else showToast(t('files.delete_failed'), 'err')
     } else {
       const res = await deleteVaultFile(soulToken.value, file.apiType, file.name)
-      if (res?.ok !== false) { showToast(`${file.displayName} gelöscht ✓`); await loadContext(soulToken.value) }
-      else showToast('Löschen fehlgeschlagen', 'err')
+      if (res?.ok !== false) { showToast(t('files.deleted_ok', { name: file.displayName })); await loadContext(soulToken.value) }
+      else showToast(t('files.delete_failed'), 'err')
     }
-  } catch { showToast('Fehler beim Löschen', 'err') }
+  } catch { showToast(t('files.delete_error'), 'err') }
   finally { busy[file.id] = false }
 }
 
@@ -636,8 +644,8 @@ async function pushVaultToServer() {
     } else {
       fail++
     }
-    if (fail === 0) showToast(`Vault hochgeladen — ${ok} Datei${ok !== 1 ? 'en' : ''} ✓`)
-    else showToast(`${ok} hochgeladen, ${fail} fehlgeschlagen`, ok === 0 ? 'err' : 'ok')
+    if (fail === 0) showToast(t('files.vault_uploaded', { ok, plural: ok !== 1 ? 'en' : '' }))
+    else showToast(t('files.vault_upload_partial', { ok, fail }), ok === 0 ? 'err' : 'ok')
     await loadContext(soulToken.value)
     await scanLocalVault()
   } finally {

@@ -5,15 +5,15 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Netzwerk', 'Peers']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('common.network'), 'Peers']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page pr-page">
 
             <!-- ── Header ── -->
             <div class="pr-head">
-              <div class="eyebrow">Sozial · Sphere</div>
-              <h1 class="pr-title">Vertraute <em>Souls</em></h1>
-              <p class="pr-lede">Direkte, verschlüsselte Verbindungen zu anderen Knoten. Erwähne sie mit @ in der Session, teile Medien oder sende an alle.</p>
+              <div class="eyebrow">{{ $t('peers.eyebrow') }}</div>
+              <h1 class="pr-title">{{ $t('peers.title_prefix') }} <em>Souls</em></h1>
+              <p class="pr-lede">{{ $t('peers.lede') }}</p>
             </div>
 
             <!-- ── Toolbar ── -->
@@ -22,7 +22,7 @@
                 <svg class="pr-tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                 </svg>
-                Peer hinzufügen
+                {{ $t('peers.btn_add') }}
               </button>
             </div>
 
@@ -31,7 +31,7 @@
               <div v-if="addOpen" class="pr-add-form">
                 <div class="pr-add-fields">
                   <div class="f-field">
-                    <label class="f-label">Soul-ID</label>
+                    <label class="f-label">{{ $t('peers.field_soul_id') }}</label>
                     <input
                       v-model="newSoulId"
                       type="text"
@@ -42,7 +42,7 @@
                     />
                   </div>
                   <div class="f-field">
-                    <label class="f-label">Alias</label>
+                    <label class="f-label">{{ $t('peers.field_alias') }}</label>
                     <input
                       v-model="newAlias"
                       type="text"
@@ -52,7 +52,7 @@
                     />
                   </div>
                   <div class="f-field pr-field--full">
-                    <label class="f-label">Domain</label>
+                    <label class="f-label">{{ $t('peers.field_domain') }}</label>
                     <input
                       v-model="newDomain"
                       type="text"
@@ -64,14 +64,14 @@
                 </div>
                 <p v-if="addError" class="f-error">{{ addError }}</p>
                 <div class="pr-add-foot">
-                  <button class="pr-btn pr-btn--ghost" @click="addOpen = false; addError = ''">Abbrechen</button>
+                  <button class="pr-btn pr-btn--ghost" @click="addOpen = false; addError = ''">{{ $t('common.cancel') }}</button>
                   <button
                     class="pr-btn pr-btn--primary"
                     :disabled="addLoading || !newSoulId.trim() || !newAlias.trim()"
                     @click="handleAdd"
                   >
                     <svg v-if="addLoading" class="spin pr-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                    {{ addLoading ? 'Verbinden…' : 'Verbindung herstellen' }}
+                    {{ addLoading ? $t('peers.btn_connecting') : $t('peers.btn_connect') }}
                   </button>
                 </div>
               </div>
@@ -80,7 +80,7 @@
             <!-- ── Incoming requests ── -->
             <div v-if="incoming.length > 0" class="pr-section">
               <div class="pr-section-label">
-                <span>Eingehende Anfragen</span>
+                <span>{{ $t('peers.requests_label') }}</span>
                 <span class="pr-badge">{{ incoming.length }}</span>
               </div>
               <div class="pr-chips">
@@ -94,7 +94,7 @@
                       :value="acceptAliases[req.soul_id]"
                       @input="acceptAliases[req.soul_id] = $event.target.value"
                       class="pr-alias-input"
-                      placeholder="Name für diesen Peer"
+                      :placeholder="$t('peers.alias_placeholder')"
                       @keydown.enter="confirmAccept(req)"
                       @keydown.escape="acceptingId = null"
                       ref="aliasInputEl"
@@ -108,24 +108,24 @@
                   </div>
                   <div class="pr-chip-actions">
                     <template v-if="acceptingId === req.soul_id">
-                      <button class="pr-action pr-action--accept" @click="confirmAccept(req)" title="Bestätigen">
+                      <button class="pr-action pr-action--accept" @click="confirmAccept(req)" :title="$t('peers.btn_confirm')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
                         </svg>
                       </button>
-                      <button class="pr-action" @click="acceptingId = null" title="Abbrechen">
+                      <button class="pr-action" @click="acceptingId = null" :title="$t('common.cancel')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                         </svg>
                       </button>
                     </template>
                     <template v-else>
-                      <button class="pr-action pr-action--accept" @click="startAccept(req)" title="Annehmen">
+                      <button class="pr-action pr-action--accept" @click="startAccept(req)" :title="$t('peers.btn_accept')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
                         </svg>
                       </button>
-                      <button class="pr-action pr-action--reject" @click="handleRejectRequest(req.soul_id)" title="Ablehnen">
+                      <button class="pr-action pr-action--reject" @click="handleRejectRequest(req.soul_id)" :title="$t('peers.btn_reject')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                         </svg>
@@ -138,13 +138,13 @@
 
             <!-- ── Removed notifications ── -->
             <div v-if="removedByPeer.length > 0" class="pr-section">
-              <div class="pr-section-label">Verbindungen getrennt</div>
+              <div class="pr-section-label">{{ $t('peers.section_removed') }}</div>
               <div class="pr-removed-list">
                 <div v-for="n in removedByPeer" :key="n.soul_id" class="pr-removed">
                   <span class="pr-removed-alias">{{ n.alias }}</span>
-                  <span class="pr-removed-text">hat die Verbindung getrennt</span>
+                  <span class="pr-removed-text">{{ $t('peers.removed_text') }}</span>
                   <span class="pr-removed-ts">{{ formatDate(n.removed_at * 1000) }}</span>
-                  <button class="pr-action pr-action--dismiss" @click="handleDismiss(n.soul_id)" title="Verwerfen">
+                  <button class="pr-action pr-action--dismiss" @click="handleDismiss(n.soul_id)" :title="$t('peers.btn_dismiss')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                     </svg>
@@ -157,10 +157,10 @@
             <div class="pr-section">
               <div v-if="loading && !connections.length" class="pr-empty">
                 <svg class="spin pr-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                Lade Peers…
+                {{ $t('peers.loading') }}
               </div>
               <div v-else-if="!connections.length" class="pr-empty">
-                Noch keine verbundenen Souls. Füge deinen ersten Peer hinzu.
+                {{ $t('peers.empty') }}
               </div>
               <div v-else class="pr-chips">
                 <div v-for="peer in connections" :key="peer.soul_id" class="pr-chip" :style="`border-left: 3px solid ${peerTextColor(peer.soul_id)}`">
@@ -172,21 +172,21 @@
                     <div class="pr-chip-id">{{ shortId(peer.soul_id) }}</div>
                     <div class="pr-chip-status">
                       <span v-if="peer.mutual" class="pr-mutual-dot" />
-                      {{ peer.mutual ? 'Gegenseitig' : '⏳ Bestätigung ausstehend · ' + (peer.domain || '').replace('https://', '') }}
+                      {{ peer.mutual ? $t('peers.status_mutual') : $t('peers.status_pending', { domain: (peer.domain || '').replace('https://', '') }) }}
                     </div>
                   </div>
                   <div class="pr-chip-actions">
-                    <button v-if="!peer.peer_token" class="pr-action" @click="handleRetryHandshake(peer)" title="Handshake erneut versuchen (Peer war offline)">
+                    <button v-if="!peer.peer_token" class="pr-action" @click="handleRetryHandshake(peer)" :title="$t('peers.btn_retry_title')">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
                       </svg>
                     </button>
-                    <button class="pr-action" @click="onNav('chat')" title="In Session erwähnen">
+                    <button class="pr-action" @click="onNav('chat')" :title="$t('peers.btn_mention')">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
                       </svg>
                     </button>
-                    <button class="pr-action pr-action--remove" @click="handleRemove(peer.soul_id, peer.alias)" title="Verbindung trennen">
+                    <button class="pr-action pr-action--remove" @click="handleRemove(peer.soul_id, peer.alias)" :title="$t('peers.btn_disconnect')">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
                       </svg>
@@ -210,12 +210,14 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, soulContent, isLoaded } = useSoul() // soulToken needed for authHeaders
 const maturity = computed(() => computeMaturity(soulContent.value).score)
@@ -275,11 +277,11 @@ function formatDate(ms) {
   const d = new Date(ms)
   const now = Date.now()
   const diff = now - ms
-  if (diff < 60_000) return 'gerade eben'
-  if (diff < 3_600_000) return `vor ${Math.floor(diff / 60_000)} Min.`
-  if (diff < 86_400_000) return `vor ${Math.floor(diff / 3_600_000)} Std.`
-  if (diff < 172_800_000) return 'gestern'
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
+  if (diff < 60_000) return t('peers.just_now')
+  if (diff < 3_600_000) return t('peers.mins_ago', { n: Math.floor(diff / 60_000) })
+  if (diff < 86_400_000) return t('peers.hours_ago', { n: Math.floor(diff / 3_600_000) })
+  if (diff < 172_800_000) return t('peers.yesterday')
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined })
 }
 
 function authHeaders() {
@@ -309,11 +311,11 @@ async function handleAdd() {
 
   if (!sid || !alias) return
   if (!domain) {
-    addError.value = 'Domain erforderlich (z.B. https://me.example.com).'
+    addError.value = t('peers.err_domain_required')
     return
   }
   if (!domain.startsWith('https://')) {
-    addError.value = 'Domain muss mit https:// beginnen.'
+    addError.value = t('peers.err_domain_https')
     return
   }
 
@@ -327,14 +329,14 @@ async function handleAdd() {
       body: JSON.stringify(body),
     })
     const data = await res.json()
-    if (!res.ok) { addError.value = data.error || 'Fehler beim Verbinden.'; return }
+    if (!res.ok) { addError.value = data.error || t('peers.err_connect'); return }
 
     newSoulId.value = ''
     newAlias.value  = ''
     newDomain.value = ''
     addOpen.value   = false
     await loadConnections()
-  } catch { addError.value = 'Netzwerkfehler.' } finally {
+  } catch { addError.value = t('peers.err_network') } finally {
     addLoading.value = false
   }
 }
@@ -351,13 +353,13 @@ async function handleRetryHandshake(peer) {
     if (res.ok && d.ok) {
       await loadConnections()
     } else {
-      alert(`Handshake fehlgeschlagen (${res.status}): ${d.error || 'Unbekannter Fehler'}`)
+      alert(t('peers.err_handshake', { status: res.status, error: d.error || '?' }))
     }
-  } catch { alert('Netzwerkfehler beim Handshake — Peer vermutlich nicht erreichbar.') }
+  } catch { alert(t('peers.err_handshake_network')) }
 }
 
 async function handleRemove(soulId, alias) {
-  const ok = await ask(`Verbindung mit „${alias}" wirklich trennen?`, { confirm: 'Trennen', cancel: 'Abbrechen', danger: true })
+  const ok = await ask(t('peers.confirm_remove', { alias }), { confirm: t('peers.btn_disconnect_confirm'), cancel: t('common.cancel'), danger: true })
   if (!ok) return
   try {
     await fetch(`/api/vault/connections/${encodeURIComponent(soulId)}`, {

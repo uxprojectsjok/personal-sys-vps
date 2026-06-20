@@ -5,6 +5,20 @@ export default defineNuxtConfig({
   ssr: false,
   compatibilityDate: "2025-07-15",
 
+  modules: ["@nuxtjs/i18n"],
+
+  i18n: {
+    strategy: "no_prefix",
+    defaultLocale: "en",
+    locales: [
+      { code: "en", name: "English", file: "en.json" },
+      { code: "de", name: "Deutsch", file: "de.json" },
+    ],
+    lazy: true,
+    langDir: "locales/",
+    detectBrowserLanguage: false,
+  },
+
   runtimeConfig: {
     // Server-only key (nicht im Client-Bundle)
     wavespeedKey: process.env.WAVESPEED_KEY || "",
@@ -16,7 +30,7 @@ export default defineNuxtConfig({
       // Personal Node: Soul-Erstellung immer erlaubt (Single-Soul, erster Nutzer wird Owner)
       allowCreateSoul: true,
       // Node-Identität — wird auf der Landingpage angezeigt
-      nodeName: process.env.NODE_NAME || "Mein Soul-Node",
+      nodeName: process.env.NODE_NAME || "My Soul Node",
       nodeTagline: process.env.NODE_TAGLINE || "",
       // Docs öffentlich zugänglich? false = nur eingeloggte User
       docsPublic: process.env.DOCS_PUBLIC === "true",
@@ -56,14 +70,14 @@ export default defineNuxtConfig({
     baseURL: "/",
     buildAssetsDir: "/_nuxt/",
     head: {
-      htmlAttrs: { lang: "de" },
+      htmlAttrs: { lang: "en" },
       title: "Personal SYS VPS",
       meta: [
         {
           name: "viewport",
           content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover",
         },
-        { name: "description", content: "Deine persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt. Unter deiner Kontrolle." },
+        { name: "description", content: "Your personal identity layer for AI systems. Portable. Encrypted. Under your control." },
         { name: "theme-color", content: "#12101a" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-capable", content: "yes" },

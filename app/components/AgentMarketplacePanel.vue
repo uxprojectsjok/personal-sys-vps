@@ -4,13 +4,13 @@
       class="sys-amm-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Agent Marketplace einrichten"
+      :aria-label="$t('marketplace.aria_label')"
       @click.self="$emit('close')"
     >
       <div class="sys-amm">
         <!-- ═══════════ HEADER ═══════════ -->
         <header class="amm-head">
-          <button class="amm-close" @click="$emit('close')" aria-label="Schließen">
+          <button class="amm-close" @click="$emit('close')" :aria-label="$t('common.close')">
             <span aria-hidden="true">×</span>
           </button>
 
@@ -19,7 +19,7 @@
         </header>
 
         <!-- ═══════════ STEP RAIL ═══════════ -->
-        <nav class="amm-rail" aria-label="Schritte">
+        <nav class="amm-rail" :aria-label="$t('marketplace.steps_aria')">
           <button
             v-for="(s, i) in steps"
             :key="s.id"
@@ -44,14 +44,10 @@
           <!-- ───── STEP 1 · ZUGANGSMODUS ───── -->
           <section v-if="step === 'mode'" class="step">
             <div class="step-head">
-              <h2 class="step-title">Zugang <em>festlegen</em></h2>
+              <h2 class="step-title">{{ $t('marketplace.step1_title') }} <em>{{ $t('marketplace.step1_title_em') }}</em></h2>
             </div>
 
-            <p class="prose">
-              Lege fest, ob KI-Assistenten anderer Personen kostenlos oder gegen Bezahlung auf deine Soul zugreifen dürfen.
-              Zugangscode und MCP-Peers findest du unter <strong>Peers</strong>.
-            </p>
-
+            <p class="prose">{{ $t('marketplace.step1_prose') }}</p>
 
             <div class="mode-grid">
               <button
@@ -61,9 +57,9 @@
               >
                 <div class="mode-card-head">
                   <span class="mode-mark"></span>
-                  <span class="mode-name">Frei</span>
+                  <span class="mode-name">{{ $t('marketplace.mode_free') }}</span>
                 </div>
-                <p class="mode-desc">Jeder KI-Assistent kann deine Soul-Daten lesen — ohne Einschränkung.</p>
+                <p class="mode-desc">{{ $t('marketplace.mode_free_desc') }}</p>
               </button>
 
               <button
@@ -73,9 +69,9 @@
               >
                 <div class="mode-card-head">
                   <span class="mode-mark"></span>
-                  <span class="mode-name">Bezahlt · POL</span>
+                  <span class="mode-name">{{ $t('marketplace.mode_pay') }}</span>
                 </div>
-                <p class="mode-desc">Pro Zugriff wird automatisch ein kleiner Betrag POL an dich überwiesen.</p>
+                <p class="mode-desc">{{ $t('marketplace.mode_pay_desc') }}</p>
                 <span class="mode-tag">on-chain</span>
               </button>
             </div>
@@ -84,15 +80,15 @@
             <div v-if="amort.enabled" class="pay-form">
               <div class="pay-fields">
                 <div class="field">
-                  <label class="field-label">Betrag pro Zugriff <span class="field-hint">(in POL)</span></label>
+                  <label class="field-label">{{ $t('marketplace.field_amount') }} <span class="field-hint">{{ $t('marketplace.field_amount_hint') }}</span></label>
                   <input v-model="amort.pol_per_request" type="text" class="input mono" placeholder="0.001" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Deine Wallet-Adresse</label>
+                  <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Token-Gültigkeit <span class="field-hint">(1–30 Tage)</span></label>
+                  <label class="field-label">{{ $t('marketplace.field_token_validity') }} <span class="field-hint">{{ $t('marketplace.field_token_validity_hint') }}</span></label>
                   <input
                     :value="amort.token_duration_days"
                     @input="amort.token_duration_days = Math.min(30, Math.max(1, Math.floor(Number($event.target.value) || 1)))"
@@ -101,10 +97,10 @@
                   />
                 </div>
                 <div class="field span-2">
-                  <label class="field-label">Freigegebene Agent-Tools <span class="field-hint">(nach Zahlung verfügbar)</span></label>
+                  <label class="field-label">{{ $t('marketplace.field_tools') }} <span class="field-hint">{{ $t('marketplace.field_tools_hint') }}</span></label>
                   <div class="tools-row">
                     <input v-model="agentToolsStr" type="text" class="input mono" placeholder="soul_read, verify_human" />
-                    <button class="tools-add" type="button" :class="{ on: showToolPicker }" @click.stop="showToolPicker = !showToolPicker" aria-label="Tool auswählen">+</button>
+                    <button class="tools-add" type="button" :class="{ on: showToolPicker }" @click.stop="showToolPicker = !showToolPicker" :aria-label="$t('marketplace.tool_select_aria')">+</button>
                   </div>
                   <div v-if="showToolPicker" class="tools-picker" @click.stop>
                     <button
@@ -117,7 +113,7 @@
                       @click="toggleTool(tool)"
                     >
                       <span class="chip-check">{{ amort.agent_tools.includes(tool) ? '✓' : '+' }}</span>
-                      {{ TOOL_LABELS[tool] || tool }}
+                      {{ TOOL_LABELS[tool] ?? tool }}
                     </button>
                     <button
                       v-for="tool in BETA_TOOLS"
@@ -125,7 +121,7 @@
                       type="button"
                       class="tool-chip tool-chip--beta"
                       disabled
-                      :title="`${tool} — Beta · Selbst integrieren`"
+                      :title="`${tool} — ${$t('marketplace.tool_beta_hint')}`"
                     >
                       <span class="chip-check" style="opacity:0.4">·</span>
                       {{ tool }}
@@ -136,14 +132,14 @@
               </div>
 
               <p v-if="amortError" class="field-error">{{ amortError }}</p>
-              <p v-else-if="amortSuccess" class="field-ok">Gespeichert ✓</p>
+              <p v-else-if="amortSuccess" class="field-ok">{{ $t('common.saved') }}</p>
             </div>
 
             <div v-else class="state-ok subtle">
               <span class="state-mark"></span>
               <div class="state-text">
-                <span class="state-label">{{ modeLoading ? 'Wird gespeichert…' : 'Frei-Modus aktiv' }}</span>
-                <span class="state-value">Jeder KI-Assistent kann deine Soul-Daten kostenlos lesen.</span>
+                <span class="state-label">{{ modeLoading ? $t('marketplace.free_mode_saving') : $t('marketplace.free_mode_active') }}</span>
+                <span class="state-value">{{ $t('marketplace.free_mode_state') }}</span>
               </div>
             </div>
           </section>
@@ -151,18 +147,15 @@
           <!-- ───── STEP 2 · IPFS REGISTRATION ───── -->
           <section v-else-if="step === 'ipfs'" class="step">
             <div class="step-head">
-              <h2 class="step-title">Auf IPFS <em>veröffentlichen</em></h2>
+              <h2 class="step-title">{{ $t('marketplace.step2_title') }} <em>{{ $t('marketplace.step2_title_em') }}</em></h2>
             </div>
 
-            <p class="prose">
-              Pinnt ERC-8004-Metadaten via Pinata. Deine Soul erscheint danach im Marketplace und ist
-              für externe Agenten auffindbar.
-            </p>
+            <p class="prose">{{ $t('marketplace.step2_prose') }}</p>
 
             <div v-if="!pinataOk" class="prereq">
               <span class="prereq-mark">!</span>
               <div>
-                <span class="prereq-label">Pinata-JWT fehlt — bitte in den Einstellungen hinterlegen</span>
+                <span class="prereq-label">{{ $t('marketplace.pinata_missing') }}</span>
               </div>
             </div>
 
@@ -173,14 +166,14 @@
                   <input v-model="preview.name" type="text" class="input" @blur="persistMetaFields()" />
                 </div>
                 <div class="field">
-                  <label class="field-label">Beschreibung <span class="field-hint">optional</span></label>
+                  <label class="field-label">{{ $t('marketplace.field_desc') }} <span class="field-hint">{{ $t('marketplace.field_desc_hint') }}</span></label>
                   <div class="translate-wrap">
                     <input v-model="preview.description" type="text" class="input" placeholder="Kurze Beschreibung der Soul…" @blur="translateField('description')" />
                     <span v-if="translating.description" class="translate-spin">⟳</span>
                   </div>
                 </div>
                 <div class="field">
-                  <label class="field-label">Discovery-Tags <span class="field-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</span></label>
+                  <label class="field-label">{{ $t('marketplace.field_tags') }} <span class="field-hint">{{ $t('marketplace.field_tags_hint') }}</span></label>
                   <div class="translate-wrap">
                     <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, AI, Design, Musik…" @blur="translateField('tags')" />
                     <span v-if="translating.tags" class="translate-spin">⟳</span>
@@ -203,15 +196,15 @@
             </div>
 
             <div v-if="currentCid" class="cid">
-              <span class="kicker">Aktueller CID</span>
+              <span class="kicker">{{ $t('marketplace.current_cid') }}</span>
               <p class="cid-value">{{ currentCid }}</p>
               <a class="cid-link" :href="`https://gateway.pinata.cloud/ipfs/${currentCid}`" target="_blank" rel="noopener">
-                Gateway öffnen <span class="arr">↗</span>
+                {{ $t('marketplace.gateway_open') }} <span class="arr">↗</span>
               </a>
             </div>
 
             <p v-if="registerError" class="field-error">{{ registerError }}</p>
-            <p v-if="newCid" class="field-ok">Veröffentlicht ✓ · CID: {{ newCid.slice(0, 20) }}…</p>
+            <p v-if="newCid" class="field-ok">{{ $t('marketplace.published_ok') }} {{ newCid.slice(0, 20) }}…</p>
           </section>
         </div>
 
@@ -223,7 +216,7 @@
           </div>
 
           <div class="amm-foot-actions">
-            <button v-if="step !== 'mode'" class="btn btn-ghost" @click="prevStep">← Zurück</button>
+            <button v-if="step !== 'mode'" class="btn btn-ghost" @click="prevStep">{{ $t('marketplace.btn_back') }}</button>
 
             <button
               v-if="step === 'mode'"
@@ -231,7 +224,7 @@
               :disabled="!canAdvance"
               @click="primaryAction"
             >
-              {{ amort.enabled ? (savingAmort ? 'Speichern…' : 'Speichern &amp; weiter →') : 'Weiter →' }}
+              {{ amort.enabled ? (savingAmort ? $t('marketplace.btn_saving') : $t('marketplace.btn_save_next')) : $t('common.next') }}
             </button>
 
             <button
@@ -240,7 +233,7 @@
               :disabled="!pinataOk || registering"
               @click="register"
             >
-              {{ registering ? 'Veröffentliche…' : (registered ? 'Erneut veröffentlichen' : 'Veröffentlichen') }}
+              {{ registering ? $t('marketplace.btn_publishing') : (registered ? $t('marketplace.btn_republish') : $t('marketplace.btn_publish')) }}
             </button>
           </div>
 
@@ -252,18 +245,21 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   soulCert: { type: String, default: '' },
 })
 const emit = defineEmits(['close'])
 
+const { t } = useI18n()
+
 // ═══════════ STEP MACHINE ═══════════
 const step = ref('mode') // 'mode' | 'ipfs'
 
 const steps = computed(() => [
-  { id: 'mode',   title: 'Zugang',   subtitle: 'Frei oder bezahlt', done: amortActive.value || (!amort.enabled && modeTouched.value) },
-  { id: 'ipfs',   title: 'IPFS',     subtitle: 'Veröffentlichen',  done: registered.value },
+  { id: 'mode', title: t('marketplace.step_mode_title'), subtitle: t('marketplace.step_mode_sub'), done: amortActive.value || (!amort.enabled && modeTouched.value) },
+  { id: 'ipfs', title: 'IPFS',                           subtitle: t('marketplace.step_ipfs_sub'),  done: registered.value },
 ])
 
 function canJumpTo(_id) {
@@ -300,9 +296,9 @@ async function primaryAction() {
 
 const overallStatus = computed(() => {
   const done = steps.value.filter(s => s.done).length
-  if (done === 2) return { kind: 'ok',   text: 'Marketplace · vollständig eingerichtet' }
-  if (done > 0)   return { kind: 'live', text: `${done} von 2 Schritten · in Arbeit` }
-  return            { kind: 'idle', text: 'Setup · noch nicht begonnen' }
+  if (done === 2) return { kind: 'ok',   text: t('marketplace.status_done') }
+  if (done > 0)   return { kind: 'live', text: t('marketplace.status_progress', { done }) }
+  return            { kind: 'idle', text: t('marketplace.status_idle') }
 })
 
 // ═══════════ STATE ═══════════
@@ -447,24 +443,24 @@ const AVAILABLE_TOOLS = [
   'video_get', 'video_list',
 ]
 
-const TOOL_LABELS = {
-  audio_get:          'Audio abrufen',
-  audio_list:         'Audio auflisten',
-  calendar_read:      'Kalender lesen',
-  context_get:        'Kontext lesen',
-  context_list:       'Kontext auflisten',
-  health_check_payed: 'Gesundheit',
-  image_get:          'Bild abrufen',
-  image_list:         'Bilder auflisten',
-  profile_get:        'Profil abrufen',
-  shop_write_read:    'Shopping',
-  soul_maturity:      'Reifegrad',
-  soul_read:          'Soul lesen',
-  soul_skills:        'Skills',
-  verify_human:       'Menschlichkeit',
-  video_get:          'Video abrufen',
-  video_list:         'Videos auflisten',
-}
+const TOOL_LABELS = computed(() => ({
+  audio_get:          t('marketplace.tool_audio_get'),
+  audio_list:         t('marketplace.tool_audio_list'),
+  calendar_read:      t('marketplace.tool_calendar_read'),
+  context_get:        t('marketplace.tool_context_get'),
+  context_list:       t('marketplace.tool_context_list'),
+  health_check_payed: t('marketplace.tool_health_check'),
+  image_get:          t('marketplace.tool_image_get'),
+  image_list:         t('marketplace.tool_image_list'),
+  profile_get:        t('marketplace.tool_profile_get'),
+  shop_write_read:    t('marketplace.tool_shop'),
+  soul_maturity:      t('marketplace.tool_soul_maturity'),
+  soul_read:          t('marketplace.tool_soul_read'),
+  soul_skills:        t('marketplace.tool_soul_skills'),
+  verify_human:       t('marketplace.tool_verify_human'),
+  video_get:          t('marketplace.tool_video_get'),
+  video_list:         t('marketplace.tool_video_list'),
+}))
 
 // Beta tools — sichtbar aber nicht interaktiv (developer opt-in)
 const BETA_TOOLS = ['elevenlabs_agent_update']

@@ -24,7 +24,7 @@
       <button
         v-if="dismissible"
         class="sys-alert-dismiss"
-        aria-label="Schließen"
+        :aria-label="$t('common.close')"
         @click="dismiss"
       >
         <i class="ri-close-line ri-fw" aria-hidden="true" />

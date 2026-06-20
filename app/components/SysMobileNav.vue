@@ -1,7 +1,7 @@
 <template>
   <nav class="mob-tab-bar">
     <button
-      v-for="tab in TABS" :key="tab.id"
+      v-for="tab in tabs" :key="tab.id"
       class="mob-tab"
       :class="{ active: current === tab.id }"
       @click="go(tab)"
@@ -16,16 +16,18 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route  = useRoute()
 const router = useRouter()
 
-const TABS = [
-  { id: 'start',        label: 'Start',        icon: 'home',     path: '/'               },
-  { id: 'session',      label: 'Session',      icon: 'chat',     path: '/session'        },
-  { id: 'einstellungen', label: 'Einstellungen', icon: 'settings', path: '/einstellungen' },
-  { id: 'gate',         label: 'Gate',         icon: 'lock',     path: '/gate'           },
-]
+const tabs = computed(() => [
+  { id: 'start',        label: t('mobile_nav.start'),    icon: 'home',     path: '/'               },
+  { id: 'session',      label: t('mobile_nav.session'),  icon: 'chat',     path: '/session'        },
+  { id: 'einstellungen', label: t('mobile_nav.settings'), icon: 'settings', path: '/einstellungen' },
+  { id: 'gate',         label: t('mobile_nav.gate'),     icon: 'lock',     path: '/gate'           },
+])
 
 const current = computed(() => {
   const p = route.path

@@ -8,7 +8,7 @@
       :aria-expanded="open"
     >
       <div class="flex items-center gap-3">
-        <span class="text-sm font-medium text-[var(--sys-fg)]">Verbundene Dienste</span>
+        <span class="text-sm font-medium text-[var(--sys-fg)]">{{ $t('services.title') }}</span>
         <span
           v-if="services.length"
           class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 text-white/50 border border-white/10"
@@ -22,7 +22,7 @@
           @click.stop="fetchServices()"
           :disabled="loading"
           class="w-7 h-7 flex items-center justify-center rounded-none text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors"
-          aria-label="Dienste neu laden"
+          :aria-label="$t('services.refresh_aria')"
         >
           <svg class="w-3.5 h-3.5" :class="loading ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -45,10 +45,9 @@
         <!-- Erklärung -->
         <div class="px-5 pt-4" style="padding-bottom:20px">
           <p style="font-size:13px;font-weight:500;line-height:1.6;color:var(--fg);margin:0">
-            Jeder Dienst erhält einen eigenen Service-Token.
-            Dieser Token kommt als <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
-            in den Webhook-Header externer Dienste.
-            Zugriff nur wenn Vault-Zugang offen ist.
+            {{ $t('services.prose_1') }}
+            <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
+            {{ $t('services.prose_2') }}
           </p>
         </div>
 
@@ -69,43 +68,43 @@
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
               <p class="text-xs text-[var(--sys-fg-muted)] mt-1 font-mono">
-                Läuft ab: {{ formatExpiry(svc.expires_at) }}
+                {{ $t('services.expires_at', { date: formatExpiry(svc.expires_at) }) }}
               </p>
             </div>
             <div class="flex flex-col items-end gap-2 flex-none">
               <button
                 class="text-xs px-2 py-1 rounded border border-[rgba(255,255,255,0.1)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.25)] transition-colors min-h-[28px]"
                 @click="tokenModal = svc"
-                :aria-label="`Token von ${svc.name} anzeigen`"
+                :aria-label="$t('services.show_token_aria', { name: svc.name })"
               >
                 Token
               </button>
               <button
                 class="text-xs px-2 py-1 rounded border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
                 @click="handleRevoke(svc.token, svc.name)"
-                :aria-label="`${svc.name} widerrufen`"
+                :aria-label="$t('services.revoke_aria', { name: svc.name })"
               >
-                Widerrufen
+                {{ $t('services.btn_revoke') }}
               </button>
             </div>
           </div>
         </div>
 
         <div v-else class="px-5 py-4">
-          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">Noch keine verbundenen Dienste.</p>
+          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.empty') }}</p>
         </div>
 
         <!-- Neuer Dienst -->
         <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)]" style="display:flex;flex-direction:column;gap:12px">
-          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">Neuer Dienst</p>
+          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.new_service') }}</p>
 
           <input
             v-model="newName"
             type="text"
-            placeholder="Name (z. B. Mein KI-Dienst)"
+            :placeholder="$t('services.name_placeholder')"
             class="sys-input"
             style="font-size:13px"
-            aria-label="Name des neuen Dienstes"
+            :aria-label="$t('services.name_aria')"
           />
 
           <!-- Permissions -->
@@ -139,9 +138,9 @@
             class="btn btn-primary w-full"
             :disabled="!newName.trim() || addLoading"
             @click="handleAdd"
-            aria-label="Dienst hinzufügen"
+            :aria-label="$t('services.add_aria')"
           >
-            {{ addLoading ? 'Wird erstellt…' : '+ Dienst hinzufügen' }}
+            {{ addLoading ? $t('services.btn_creating') : $t('services.btn_add') }}
           </button>
 
           <p v-if="error" class="text-xs text-red-400">{{ error }}</p>
@@ -176,9 +175,9 @@
           <div style="padding:16px 20px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
             <div>
               <p style="font-size:14px;font-weight:500;color:var(--fg);margin:0">{{ tokenModal.name }}</p>
-              <p style="font-size:11px;color:var(--fg-3);margin:2px 0 0">Service-Token</p>
+              <p style="font-size:11px;color:var(--fg-3);margin:2px 0 0">{{ $t('services.service_token_label') }}</p>
             </div>
-            <button class="icon-btn" @click="tokenModal = null" aria-label="Schließen" style="flex:none">
+            <button class="icon-btn" @click="tokenModal = null" :aria-label="$t('common.close')" style="flex:none">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -193,7 +192,7 @@
 
             <!-- Verwendung -->
             <p style="font-size:13px;color:var(--fg-2);line-height:1.6;margin:0">
-              Im Dienst als Authorization-Header eintragen:
+              {{ $t('services.usage_hint') }}
               <code style="display:block;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--fg-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 10px;word-break:break-all">Authorization: Bearer {{ tokenModal.token }}</code>
             </p>
 
@@ -207,10 +206,10 @@
                 :disabled="testLoading"
                 @click="testConnection(tokenModal.token)"
               >
-                <span v-if="testLoading">Teste…</span>
-                <span v-else-if="testResult === 'ok'">✓ Vault erreichbar</span>
+                <span v-if="testLoading">{{ $t('services.btn_testing') }}</span>
+                <span v-else-if="testResult === 'ok'">{{ $t('services.btn_test_ok') }}</span>
                 <span v-else-if="testResult === 'error'">✗ {{ testError }}</span>
-                <span v-else>Verbindung testen</span>
+                <span v-else>{{ $t('services.btn_test') }}</span>
               </button>
 
               <button
@@ -219,19 +218,19 @@
                 :class="copied === tokenModal.token ? 'btn-ghost' : 'btn-primary'"
                 @click="copyToken(tokenModal.token)"
               >
-                {{ copied === tokenModal.token ? '✓ Kopiert' : 'Token kopieren' }}
+                {{ copied === tokenModal.token ? $t('services.btn_copied') : $t('services.btn_copy_token') }}
               </button>
             </div>
 
             <!-- Test-Hinweis bei Fehler -->
-            <p v-if="testResult === 'error' && testError === 'Vault gesperrt'" style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">
-              Der Vault-Zugang ist auf dem Server abgelaufen. Bitte im Vault-Panel sperren und neu öffnen.
+            <p v-if="testResult === 'error' && testErrorCode === 'vault_locked'" style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">
+              {{ $t('services.err_vault_locked_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testError.startsWith('Schlüssel falsch')" class="text-xs text-white/55 leading-relaxed">
-              Der Vault wurde mit einem anderen Schlüssel geöffnet als sys.md verschlüsselt wurde. Vault sperren, mit dem originalen Schlüssel (12 Wörter) öffnen und erneut synchronisieren.
+            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-xs text-white/55 leading-relaxed">
+              {{ $t('services.err_key_wrong_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testError.startsWith('sys.md fehlt')" class="text-xs text-white/55 leading-relaxed">
-              Die sys.md wurde noch nicht auf den Server synchronisiert. Im Vault Explorer → Sync ausführen.
+            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-xs text-white/55 leading-relaxed">
+              {{ $t('services.err_no_sync_hint') }}
             </p>
           </div>
         </div>
@@ -241,11 +240,13 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useVaultServices } from '../composables/useVaultServices.js'
 import { useConfirm } from '../composables/useConfirm.js'
 import ConfirmModal from './ConfirmModal.vue'
-const { ask } = useConfirm();
+const { ask } = useConfirm()
+const { t } = useI18n()
 
 const props = defineProps({ headless: Boolean })
 
@@ -263,27 +264,29 @@ const tokenModal      = ref(null)
 const testLoading     = ref(false)
 const testResult      = ref(null)   // null | 'ok' | 'error'
 const testError       = ref('')
+const testErrorCode   = ref('')     // 'vault_locked' | 'key_wrong' | 'no_sync' | ''
 
 // Reset test state when modal opens/closes
 watch(tokenModal, () => {
-  testResult.value = null
-  testError.value  = ''
+  testResult.value    = null
+  testError.value     = ''
+  testErrorCode.value = ''
 })
 
-const allPermissions = [
+const allPermissions = computed(() => [
   { value: 'soul',          label: 'Soul' },
   { value: 'audio',         label: 'Audio' },
-  { value: 'images',        label: 'Bilder' },
+  { value: 'images',        label: t('services.perm_images') },
   { value: 'video',         label: 'Video' },
-  { value: 'context_files', label: 'Kontext' },
-]
+  { value: 'context_files', label: t('services.perm_context') },
+])
 
-const expiryOptions = [
+const expiryOptions = computed(() => [
   { value: null,  label: '∞' },
-  { value: 30,    label: '30 T' },
-  { value: 182,   label: '6 Mo' },
-  { value: 365,   label: '1 Jahr' },
-]
+  { value: 30,    label: t('services.expiry_30d') },
+  { value: 182,   label: t('services.expiry_6mo') },
+  { value: 365,   label: t('services.expiry_1yr') },
+])
 
 function togglePermission(p) {
   const idx = newPermissions.value.indexOf(p)
@@ -316,15 +319,16 @@ async function handleAdd() {
 }
 
 async function handleRevoke(token, name) {
-  if (!await ask({ title: 'Dienst widerrufen', message: `„${name}" wirklich widerrufen? Der Token wird sofort ungültig.`, confirmText: 'Widerrufen' })) return
+  if (!await ask({ title: t('services.revoke_title'), message: t('services.revoke_msg', { name }), confirmText: t('services.revoke_confirm') })) return
   if (tokenModal.value?.token === token) tokenModal.value = null
   await revokeService(token)
 }
 
 async function testConnection(token) {
-  testLoading.value = true
-  testResult.value  = null
-  testError.value   = ''
+  testLoading.value   = true
+  testResult.value    = null
+  testError.value     = ''
+  testErrorCode.value = ''
   try {
     const res = await fetch('/api/soul', {
       headers: { Authorization: `Bearer ${token}` }
@@ -335,21 +339,31 @@ async function testConnection(token) {
       const body = await res.json().catch(() => ({}))
       testResult.value = 'error'
       if (res.status === 403) {
-        if (body.error === 'vault_locked') testError.value = 'Vault gesperrt'
-        else if (body.error === 'decryption_failed') testError.value = 'Schlüssel falsch – Vault neu öffnen + Sync'
-        else testError.value = 'Zugriff verweigert (403)'
+        if (body.error === 'vault_locked') {
+          testErrorCode.value = 'vault_locked'
+          testError.value     = t('services.err_vault_locked')
+        } else if (body.error === 'decryption_failed') {
+          testErrorCode.value = 'key_wrong'
+          testError.value     = t('services.err_key_wrong')
+        } else {
+          testError.value = t('services.err_access_denied')
+        }
       } else if (res.status === 404) {
-        if (body.error === 'No soul content synced yet') testError.value = 'sys.md fehlt – bitte Sync ausführen'
-        else testError.value = 'API nicht konfiguriert (404)'
+        if (body.error === 'No soul content synced yet') {
+          testErrorCode.value = 'no_sync'
+          testError.value     = t('services.err_no_sync')
+        } else {
+          testError.value = t('services.err_api_not_configured')
+        }
       } else if (res.status === 401) {
-        testError.value = 'Token ungültig (401)'
+        testError.value = t('services.err_token_invalid')
       } else {
-        testError.value = `Fehler ${res.status}`
+        testError.value = t('services.err_status', { status: res.status })
       }
     }
   } catch {
     testResult.value = 'error'
-    testError.value  = 'Keine Verbindung zum Server'
+    testError.value  = t('services.err_no_connection')
   } finally {
     testLoading.value = false
   }

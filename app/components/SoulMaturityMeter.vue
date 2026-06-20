@@ -6,7 +6,7 @@
       <button
         class="soul-meter-label"
         @click="open = !open"
-        :title="open ? 'Breakdown schließen' : 'Breakdown anzeigen'"
+        :title="open ? $t('maturity.breakdown_close') : $t('maturity.breakdown_open')"
       >
         <span>Soul Index</span>
         <svg
@@ -31,18 +31,18 @@
           boxShadow: isMature ? '0 0 10px hsl(var(--chart-1) / 0.4)' : 'none'
         }"
       ></div>
-      <div class="soul-meter-tick" title="Premium-Schwelle: 75 Punkte"></div>
+      <div class="soul-meter-tick" :title="$t('maturity.premium_threshold')"></div>
     </div>
 
     <!-- Score row -->
     <div class="soul-meter-score">
       <span class="soul-meter-score-val">{{ score }}/100</span>
-      <span v-if="isMature" class="soul-meter-ready">✓ Bereit zur Verschlüsselung</span>
+      <span v-if="isMature" class="soul-meter-ready">{{ $t('maturity.ready_encrypt') }}</span>
       <span v-else class="soul-meter-hint">
-        <template v-if="score >= 55">{{ Math.max(0, 75 - score) }} bis Premium</template>
-        <template v-else-if="score >= 35">{{ Math.max(0, 55 - score) }} bis Etabliert</template>
-        <template v-else-if="score >= 15">{{ Math.max(0, 35 - score) }} bis Reifung</template>
-        <template v-else>{{ Math.max(0, 15 - score) }} bis Aufbau</template>
+        <template v-if="score >= 55">{{ $t('maturity.until_premium', { n: Math.max(0, 75 - score) }) }}</template>
+        <template v-else-if="score >= 35">{{ $t('maturity.until_established', { n: Math.max(0, 55 - score) }) }}</template>
+        <template v-else-if="score >= 15">{{ $t('maturity.until_maturing', { n: Math.max(0, 35 - score) }) }}</template>
+        <template v-else>{{ $t('maturity.until_building', { n: Math.max(0, 15 - score) }) }}</template>
       </span>
     </div>
 
@@ -65,17 +65,17 @@
 
         <div class="soul-meter-skills">
           <template v-if="breakdown.signatureVerified">
-            <span class="soul-meter-skills-ok">✓ Signatur extern verifiziert</span>
+            <span class="soul-meter-skills-ok">{{ $t('maturity.sig_verified') }}</span>
           </template>
           <template v-else-if="breakdown.signatureHints?.length">
             <span class="soul-meter-skills-hints">
               {{ breakdown.signatureHints.slice(0, 5).join(' · ') }}
               <span v-if="breakdown.signatureHints.length > 5"> +{{ breakdown.signatureHints.length - 5 }}</span>
             </span>
-            <span class="soul-meter-skills-suffix"> erkannte Skills</span>
+            <span class="soul-meter-skills-suffix"> {{ $t('maturity.skills_suffix') }}</span>
           </template>
           <template v-else>
-            <span class="soul-meter-skills-empty">Trag herausragende Skills in deine Soul ein — das steigert den Wert</span>
+            <span class="soul-meter-skills-empty">{{ $t('maturity.skills_empty') }}</span>
           </template>
         </div>
 
@@ -87,6 +87,7 @@
 
 <script setup>
 import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps({
   score:     { type: Number,  required: true },
@@ -95,16 +96,17 @@ const props = defineProps({
   breakdown: { type: Object,  default: null },
 });
 
+const { t } = useI18n();
 const open = ref(false);
 
-const pillars = [
-  { key: "herkunft",  label: "Herkunft",  max: 25, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#f59e0b", valueColor: "text-[var(--sys-fg-muted)]" },
-  { key: "tiefe",     label: "Tiefe",     max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#60a5fa", valueColor: "text-[var(--sys-fg-muted)]" },
-  { key: "biometrie", label: "Biometrie", max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#c084fc", valueColor: "text-[var(--sys-fg-muted)]" },
-  { key: "archiv",    label: "Archiv",    max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#34d399", valueColor: "text-[var(--sys-fg-muted)]" },
-  { key: "signatur",  label: "Skills",    max: 15, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#fb923c", valueColor: "text-[var(--sys-fg-muted)]" },
-  { key: "netzwerk",  label: "Net Skill", max: 10, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#22d3ee", valueColor: "text-[var(--sys-fg-muted)]" },
-];
+const pillars = computed(() => [
+  { key: "herkunft",  label: t('maturity.pillar_origin'),     max: 25, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#f59e0b", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "tiefe",     label: t('maturity.pillar_depth'),      max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#60a5fa", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "biometrie", label: t('maturity.pillar_biometrics'), max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#c084fc", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "archiv",    label: t('maturity.pillar_archive'),    max: 20, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#34d399", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "signatur",  label: "Skills",                        max: 15, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#fb923c", valueColor: "text-[var(--sys-fg-muted)]" },
+  { key: "netzwerk",  label: "Net Skill",                     max: 10, labelColor: "text-[var(--sys-fg-muted)]", barStyle: "background:#22d3ee", valueColor: "text-[var(--sys-fg-muted)]" },
+]);
 
 const levelColor = computed(() => {
   if (props.isMature) return "text-[var(--sys-fg)] font-bold";

@@ -17,7 +17,7 @@
             class="text-xs tracking-[0.1em] uppercase font-semibold"
             :class="isRecording ? 'text-red-400' : isPreview ? 'text-white/60' : 'text-[var(--sys-fg-dim)]'"
           >
-            {{ isRecording ? (selectedMode === 'face' ? 'Mimik' : 'Ganzkörper') : isPreview ? 'Vorschau' : 'Bewegung aufnehmen' }}
+            {{ isRecording ? (selectedMode === 'face' ? $t('motion.status_face') : $t('motion.status_body')) : isPreview ? $t('motion.status_preview') : $t('motion.status_idle') }}
           </span>
           <span v-if="isRecording || isPreview" class="text-xs font-mono text-[var(--sys-fg-dim)]">
             {{ formatDuration(duration) }}
@@ -220,17 +220,17 @@
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
             </svg>
-            Zurück
+            {{ $t('common.back') }}
           </button>
 
-          <!-- Aufnehmen (idle) – M3 FAB-style -->
+          <!-- Record (idle) – M3 FAB-style -->
           <button
             v-if="!isRecording && !isPreview"
             @click="handleStart"
             class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all border border-white/20 bg-[rgba(255,255,255,0.08)] text-white/80 hover:bg-[rgba(255,255,255,0.14)]"
           >
             <span class="w-2.5 h-2.5 rounded-full bg-white flex-none"></span>
-            Aufnehmen
+            {{ $t('motion.record') }}
           </button>
 
           <!-- Recording: Stopp + Weiter -->
@@ -241,14 +241,14 @@
               :class="isLastPrompt ? 'mx-auto' : ''"
             >
               <span class="w-2.5 h-2.5 rounded-sm bg-red-400 flex-none"></span>
-              Stopp
+              {{ $t('motion.stop') }}
             </button>
             <button
               v-if="!isLastPrompt"
               @click="advancePrompt"
               class="sys-btn sys-btn-ghost flex items-center gap-1.5 ml-auto"
             >
-              Weiter
+              {{ $t('motion.next_prompt') }}
               <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
               </svg>
@@ -260,8 +260,8 @@
             <button
               @click="handleDiscard"
               class="w-9 h-9 flex-none flex items-center justify-center rounded-full text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all"
-              aria-label="Aufnahme verwerfen"
-              title="Aufnahme verwerfen"
+              :aria-label="$t('motion.discard_aria')"
+              :title="$t('motion.discard_aria')"
             >
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -274,7 +274,7 @@
               @click="$emit('next-mode')"
               class="sys-btn flex items-center gap-1.5 border border-white/12 bg-[rgba(255,255,255,0.04)] text-white/55 hover:bg-[rgba(255,255,255,0.08)] transition-all"
             >
-              Bewegung
+              {{ $t('motion.next_mode') }}
               <svg class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
               </svg>
@@ -286,7 +286,7 @@
               :class="saved
                 ? 'border border-white/15 bg-[rgba(255,255,255,0.08)] text-white/65'
                 : 'border border-white/12 bg-[rgba(255,255,255,0.05)] text-white/55 hover:bg-[rgba(255,255,255,0.09)]'"
-              :title="(!vaultConnected && !soulToken) ? 'Vault verbinden oder Soul laden' : ''"
+              :title="(!vaultConnected && !soulToken) ? $t('motion.vault_title') : ''"
             >
               <svg v-if="saved" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
@@ -297,7 +297,7 @@
               <svg v-else class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
               </svg>
-              {{ saved ? 'Gespeichert' : isSaving ? '…' : 'Im Vault speichern' }}
+              {{ saved ? $t('motion.saved') : isSaving ? $t('motion.saving') : $t('motion.save') }}
             </button>
           </template>
 
@@ -309,7 +309,7 @@
           :class="['text-xs text-[var(--sys-amber)] tracking-[0.06em] opacity-80',
             embedded ? 'px-4 pb-3' : '']"
         >
-          Vault verbinden um das Bewegungsmuster dauerhaft zu speichern.
+          {{ $t('motion.vault_hint') }}
         </p>
 
       </div>
@@ -321,6 +321,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useMotion }     from "~/composables/useMotion.js";
 import { useVault }      from "~/composables/useVault.js";
 import { useSoul }       from "~/composables/useSoul.js";
@@ -334,6 +335,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["saved", "close", "next-mode"]);
+
+const { t, tm } = useI18n()
 
 const {
   isRecording, isPreview, isPreviewing, duration,
@@ -349,31 +352,13 @@ const { syncFile }  = useApiContext();
 
 // ── Prompt-Sequenzen ──────────────────────────────────────────────────────────
 
-const PROMPTS = {
-  face: [
-    { text: "Neutral – Blick gerade in die Kamera",    sub: "Baseline · Augen offen, ruhiges Gesicht",    secs: 8  },
-    { text: "Natürlich lächeln",                       sub: "Echtes, entspanntes Lächeln",                secs: 7  },
-    { text: "Breit lachen",                            sub: "Volle Emotion – Zähne zeigen",               secs: 7  },
-    { text: "Nachdenklich schauen",                    sub: "Stirn leicht runzeln, Blick leicht weg",     secs: 7  },
-    { text: "Überrascht – Augen weit öffnen",          sub: "Mundwinkel nach unten, Augenbrauen hoch",    secs: 7  },
-    { text: "Zustimmend nicken",                       sub: "3× langsam und bewusst nicken",              secs: 8  },
-    { text: "Kopf schütteln – Nein",                   sub: "3× langsam und bewusst schütteln",           secs: 8  },
-    { text: "2 Sätze über dich laut sprechen",         sub: "Natürliche Mimik beim Sprechen",             secs: 12 },
-    { text: "Blick links – Mitte – rechts",            sub: "Langsam und kontrolliert",                   secs: 8  },
-    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0  },
-  ],
-  body: [
-    { text: "Ganzkörper ins Bild bringen",             sub: "Kopf bis Füße vollständig im Bild?",         secs: 10 },
-    { text: "Neutrale Haltung – Arme locker seitlich", sub: "Entspannte Referenz-Pose",                   secs: 8  },
-    { text: "5 Schritte vor und zurück gehen",         sub: "Normaler, natürlicher Gang",                 secs: 10 },
-    { text: "Jemanden begrüßen – winken",              sub: "Typische Willkommensgeste",                  secs: 8  },
-    { text: "Sprich und gestikuliere dabei",           sub: "2–3 Sätze frei sprechen",                   secs: 12 },
-    { text: "Arme weit ausbreiten – T-Pose",           sub: "Körpermaß-Referenz für Rigging",             secs: 8  },
-    { text: "Langsam 360° drehen",                     sub: "Einmal komplett rundherum",                  secs: 12 },
-    { text: "Sitzhaltung einnehmen falls möglich",     sub: "Sitz-Pose – Stuhl oder Boden",               secs: 10 },
-    { text: "Fertig – frei weitermachen oder stoppen", sub: "",                                           secs: 0  },
-  ]
-};
+const FACE_SECS = [8, 7, 7, 7, 7, 8, 8, 12, 8, 0]
+const BODY_SECS = [10, 8, 10, 8, 12, 8, 12, 10, 0]
+
+const PROMPTS = computed(() => ({
+  face: (tm('motion.face_prompts') || []).map((p, i) => ({ text: p.text, sub: p.sub, secs: FACE_SECS[i] ?? 0 })),
+  body: (tm('motion.body_prompts') || []).map((p, i) => ({ text: p.text, sub: p.sub, secs: BODY_SECS[i] ?? 0 })),
+}));
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -392,7 +377,7 @@ let readTimer      = null;
 // ── Computed ──────────────────────────────────────────────────────────────────
 
 const currentPrompts = computed(() =>
-  selectedMode.value ? PROMPTS[selectedMode.value] : []
+  selectedMode.value ? (PROMPTS.value[selectedMode.value] ?? []) : []
 );
 
 const currentPrompt = computed(() =>

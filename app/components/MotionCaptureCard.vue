@@ -5,20 +5,16 @@
     <template v-if="state === 'consent'">
       <div class="mcc-head">
         <span class="mcc-dot mcc-dot--idle"></span>
-        <span class="mcc-label">{{ modeLabel }} aufnehmen</span>
+        <span class="mcc-label">{{ $t('motion.record_label', { mode: modeLabel }) }}</span>
       </div>
-      <p class="mcc-desc">
-        Kamera-Aufnahme wird lokal in deinem Vault gespeichert und verlässt dein Gerät nur wenn du es explizit freigibst.
-      </p>
+      <p class="mcc-desc">{{ $t('motion.consent_desc') }}</p>
       <label class="mcc-check">
         <input type="checkbox" v-model="consentChecked" class="mcc-checkbox" />
-        <span class="mcc-check-label">
-          Ich stimme der Aufnahme meines Gesichts und meiner Bewegungsdaten zu (DSGVO Art. 7, Art. 9)
-        </span>
+        <span class="mcc-check-label">{{ $t('motion.consent_check') }}</span>
       </label>
       <div class="mcc-actions">
         <button :disabled="!consentChecked" @click="giveConsent" class="mcc-btn mcc-btn--primary">
-          Weiter →
+          {{ $t('common.next') }}
         </button>
       </div>
     </template>
@@ -32,14 +28,14 @@
       <div class="mcc-video-wrap">
         <video ref="liveEl" autoplay muted playsinline class="mcc-video"></video>
         <div v-if="!isPreviewing" class="mcc-video-placeholder">
-          <span class="mcc-video-hint">Kamera startet…</span>
+          <span class="mcc-video-hint">{{ $t('motion.camera_starting') }}</span>
         </div>
       </div>
       <p v-if="motionError" class="mcc-error">{{ motionError }}</p>
       <div class="mcc-actions">
         <button @click="handleStart" class="mcc-btn mcc-btn--record" :disabled="!!motionError">
           <span class="mcc-rec-dot"></span>
-          Aufnehmen
+          {{ $t('motion.record') }}
         </button>
       </div>
     </template>
@@ -79,10 +75,10 @@
       <div class="mcc-actions">
         <button @click="handleStop" class="mcc-btn mcc-btn--stop">
           <span class="mcc-stop-sq"></span>
-          Stopp
+          {{ $t('motion.stop') }}
         </button>
         <button v-if="!isLastPrompt" @click="advancePrompt" class="mcc-btn mcc-btn--ghost">
-          Weiter →
+          {{ $t('motion.next_prompt') }}
         </button>
       </div>
     </template>
@@ -91,14 +87,14 @@
     <template v-else-if="state === 'preview'">
       <div class="mcc-head">
         <span class="mcc-dot mcc-dot--preview"></span>
-        <span class="mcc-label">Vorschau</span>
+        <span class="mcc-label">{{ $t('motion.status_preview') }}</span>
         <span class="mcc-dur">{{ formatDuration(lastSample?.duration || 0) }}</span>
       </div>
       <div class="mcc-video-wrap">
         <video ref="previewEl" :src="lastSample?.url ?? ''" controls playsinline class="mcc-video"></video>
       </div>
       <div class="mcc-actions">
-        <button @click="handleDiscard" class="mcc-btn mcc-btn--discard" title="Verwerfen">
+        <button @click="handleDiscard" class="mcc-btn mcc-btn--discard" :title="$t('motion.discard_aria')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
           </svg>
@@ -118,7 +114,7 @@
           <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
           </svg>
-          {{ saved ? 'Gespeichert' : isSaving ? '…' : 'Speichern' }}
+          {{ saved ? $t('motion.saved') : isSaving ? $t('motion.saving') : $t('motion.save') }}
         </button>
       </div>
     </template>
@@ -127,7 +123,7 @@
     <template v-else-if="state === 'saved'">
       <div class="mcc-head">
         <span class="mcc-dot mcc-dot--saved"></span>
-        <span class="mcc-label">{{ modeLabel }}-Aufnahme gespeichert</span>
+        <span class="mcc-label">{{ $t('motion.saved_label', { mode: modeLabel }) }}</span>
       </div>
     </template>
 
@@ -136,6 +132,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useMotion }     from '~/composables/useMotion.js'
 import { useVault }      from '~/composables/useVault.js'
 import { useSoul }       from '~/composables/useSoul.js'
@@ -147,6 +144,8 @@ const CONSENT_KEY = 'sys_biometric_consent'
 const props = defineProps({
   mode: { type: String, default: 'face' }  // 'face' | 'body'
 })
+
+const { t, tm } = useI18n()
 
 const {
   isRecording, isPreview, isPreviewing, duration,
@@ -171,33 +170,17 @@ const promptIndex     = ref(0)
 const promptCountdown = ref(100)
 let countdownTimer    = null
 
-const modeLabel = computed(() => props.mode === 'face' ? 'Gesicht' : 'Bewegung')
+const modeLabel = computed(() => props.mode === 'face' ? t('motion.mode_face') : t('motion.mode_body'))
 
-const PROMPTS = {
-  face: [
-    { text: 'Neutral – Blick gerade in die Kamera', sub: 'Baseline · Augen offen, ruhiges Gesicht', secs: 5 },
-    { text: 'Natürlich lächeln', sub: 'Echtes, entspanntes Lächeln', secs: 4 },
-    { text: 'Breit lachen', sub: 'Volle Emotion – Zähne zeigen', secs: 4 },
-    { text: 'Nachdenklich schauen', sub: 'Stirn leicht runzeln, Blick leicht weg', secs: 4 },
-    { text: 'Überrascht – Augen weit öffnen', sub: 'Mundwinkel nach unten, Augenbrauen hoch', secs: 3 },
-    { text: 'Zustimmend nicken', sub: '3× langsam und bewusst nicken', secs: 5 },
-    { text: 'Kopf schütteln – Nein', sub: '3× langsam und bewusst schütteln', secs: 5 },
-    { text: '2 Sätze über dich laut sprechen', sub: 'Natürliche Mimik beim Sprechen', secs: 8 },
-    { text: 'Fertig – frei weitermachen oder stoppen', sub: '', secs: 0 },
-  ],
-  body: [
-    { text: 'Ganzkörper ins Bild bringen', sub: 'Kopf bis Füße vollständig im Bild?', secs: 6 },
-    { text: 'Neutrale Haltung – Arme locker seitlich', sub: 'Entspannte Referenz-Pose', secs: 5 },
-    { text: '5 Schritte vor und zurück gehen', sub: 'Normaler, natürlicher Gang', secs: 7 },
-    { text: 'Jemanden begrüßen – winken', sub: 'Typische Willkommensgeste', secs: 5 },
-    { text: 'Sprich und gestikuliere dabei', sub: '2–3 Sätze frei sprechen', secs: 8 },
-    { text: 'Arme weit ausbreiten – T-Pose', sub: 'Körpermaß-Referenz für Rigging', secs: 5 },
-    { text: 'Langsam 360° drehen', sub: 'Einmal komplett rundherum', secs: 8 },
-    { text: 'Fertig – frei weitermachen oder stoppen', sub: '', secs: 0 },
-  ]
-}
+const FACE_SECS = [5, 4, 4, 4, 3, 5, 5, 8, 0]
+const BODY_SECS = [6, 5, 7, 5, 8, 5, 8, 0]
 
-const currentPrompts = computed(() => PROMPTS[props.mode] || [])
+const currentPrompts = computed(() => {
+  const key = `motion.${props.mode === 'face' ? 'face_prompts' : 'body_prompts'}`
+  const secs = props.mode === 'face' ? FACE_SECS : BODY_SECS
+  const arr = tm(key)
+  return (Array.isArray(arr) ? arr : []).map((p, i) => ({ text: p.text, sub: p.sub, secs: secs[i] ?? 0 }))
+})
 const currentPrompt  = computed(() => currentPrompts.value[promptIndex.value] ?? null)
 const isLastPrompt   = computed(() =>
   !currentPrompt.value || currentPrompt.value.secs === 0 ||

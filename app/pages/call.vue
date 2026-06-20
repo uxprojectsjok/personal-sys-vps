@@ -3,39 +3,39 @@
     <div class="call-page">
       <!-- Kein Soul geladen -->
       <div v-if="!hasSoul" class="call-card call-card--err">
-        <p class="call-label">Kein Soul geladen</p>
-        <a href="/" class="call-btn">Zur Startseite</a>
+        <p class="call-label">{{ $t('call.no_soul') }}</p>
+        <a href="/" class="call-btn">{{ $t('call.go_home') }}</a>
       </div>
 
       <!-- Laden -->
       <div v-else-if="phase === 'loading'" class="call-card">
         <div class="call-pulse" />
-        <p class="call-label">Verbindung wird aufgebaut…</p>
+        <p class="call-label">{{ $t('call.connecting') }}</p>
       </div>
 
       <!-- Fehler: kein Agent -->
       <div v-else-if="phase === 'no-agent'" class="call-card call-card--err">
         <p class="call-name">{{ name }}</p>
-        <p class="call-label">Kein Agent konfiguriert.</p>
-        <p class="call-hint">Öffne die App und führe <strong>@create-agent</strong> im Claude-Chat aus.</p>
-        <a href="/einrichten" class="call-btn">Einrichten</a>
+        <p class="call-label">{{ $t('call.no_agent') }}</p>
+        <p class="call-hint">{{ $t('call.no_agent_hint_pre') }}<strong>{{ $t('call.no_agent_hint_cmd') }}</strong>{{ $t('call.no_agent_hint_post') }}</p>
+        <a href="/einrichten" class="call-btn">{{ $t('call.setup') }}</a>
       </div>
 
       <!-- Fehler allgemein -->
       <div v-else-if="phase === 'error'" class="call-card call-card--err">
         <p class="call-name">{{ name }}</p>
-        <p class="call-label">Verbindung fehlgeschlagen</p>
+        <p class="call-label">{{ $t('call.conn_failed') }}</p>
         <p class="call-hint">{{ errorMsg }}</p>
-        <button class="call-btn" @click="startCall">Erneut versuchen</button>
+        <button class="call-btn" @click="startCall">{{ $t('call.retry') }}</button>
       </div>
 
       <!-- Bereit / aktiv — Widget -->
       <div v-else class="call-card call-card--active">
         <p class="call-name">{{ name }}</p>
-        <p class="call-label">{{ phase === 'ready' ? 'Bereit' : 'Gespräch aktiv' }}</p>
+        <p class="call-label">{{ phase === 'ready' ? $t('call.status_ready') : $t('call.status_active') }}</p>
         <!-- ElevenLabs Widget wird per ref gesteuert -->
         <div ref="widgetWrap" class="call-widget-wrap" />
-        <button v-if="phase === 'active'" class="call-end-btn" @click="endCall">Auflegen</button>
+        <button v-if="phase === 'active'" class="call-end-btn" @click="endCall">{{ $t('call.hang_up') }}</button>
       </div>
     </div>
   </ClientOnly>
@@ -43,8 +43,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 
+const { t } = useI18n()
 const { soulToken, hasSoul, soulMeta, load } = useSoul()
 
 const name      = ref('…')

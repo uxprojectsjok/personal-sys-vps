@@ -7,37 +7,37 @@
         @click.self="!inline && $emit('close')"
         :role="!inline ? 'dialog' : undefined"
         :aria-modal="!inline ? 'true' : undefined"
-        :aria-label="!inline ? 'Einstellungen' : undefined"
+        :aria-label="!inline ? $t('settings.aria_label') : undefined"
       >
         <div :class="inline ? null : 'sys-modal sys-modal--md'" :style="!inline ? 'max-width:520px' : ''">
           <template v-if="!inline">
             <div class="sys-modal-handle"></div>
             <!-- Head -->
             <div class="sys-modal-head" style="padding:20px 28px 16px">
-              <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
-              <span class="sys-kicker" style="margin-bottom:0;padding-bottom:0;border-bottom:none">Einstellungen</span>
+              <button class="sys-modal-close" @click="$emit('close')" :aria-label="$t('common.close')">×</button>
+              <span class="sys-kicker" style="margin-bottom:0;padding-bottom:0;border-bottom:none">{{ $t('settings.title') }}</span>
             </div>
           </template>
 
           <!-- Rail / Tabs -->
           <div class="sys-rail sys-rail--6">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">API</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_api') }}</span></span>
             </button>
             <button @click="tab = 'dienste'" class="sys-rail-item" :class="tab === 'dienste' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">Dienste</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_services') }}</span></span>
             </button>
             <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">Plugins</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
             </button>
             <button @click="tab = 'config'" class="sys-rail-item" :class="tab === 'config' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">Config</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_config') }}</span></span>
             </button>
             <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">Archivar</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_archivar') }}</span></span>
             </button>
             <button @click="tab = 'gesundheit'; loadHealthConfig()" class="sys-rail-item" :class="tab === 'gesundheit' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">Gesundheit</span></span>
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_health') }}</span></span>
             </button>
           </div>
 
@@ -50,7 +50,7 @@
               <!-- WaveSpeed Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  WaveSpeed API-Key
+                  {{ $t('settings.wavespeed_key') }}
                   <span v-if="wavespeedKeySet" class="sm-key-ok">{{ wavespeedPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -60,7 +60,7 @@
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="wavespeedKeySet ? 'Neu eingeben zum Überschreiben…' : 'WaveSpeed API-Key…'"
+                    :placeholder="wavespeedKeySet ? $t('common.overwrite_placeholder') : $t('settings.wavespeed_key') + '…'"
                     autocomplete="off"
                     spellcheck="false"
                     @input="wavespeedDirty = true"
@@ -70,20 +70,20 @@
                     @click="showWavespeedKey = !showWavespeedKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showWavespeedKey ? 'Key verbergen' : 'Key anzeigen'"
+                    :aria-label="showWavespeedKey ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="wavespeedKeySet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- ElevenLabs Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  ElevenLabs API-Key
+                  {{ $t('settings.elevenlabs_key') }}
                   <span v-if="elevenlabsKeySet" class="sm-key-ok">{{ elevenlabsPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -93,7 +93,7 @@
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="elevenlabsKeySet ? 'Neu eingeben zum Überschreiben…' : 'ElevenLabs API-Key…'"
+                    :placeholder="elevenlabsKeySet ? $t('common.overwrite_placeholder') : $t('settings.elevenlabs_key') + '…'"
                     autocomplete="off"
                     spellcheck="false"
                     @input="elevenlabsDirty = true"
@@ -103,36 +103,36 @@
                     @click="showElevenlabsKey = !showElevenlabsKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showElevenlabsKey ? 'Key verbergen' : 'Key anzeigen'"
+                    :aria-label="showElevenlabsKey ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="elevenlabsKeySet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('elevenlabs_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('elevenlabs_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- ElevenLabs Agent-URL (Klartext-URL, kein eye) -->
               <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label">
-                  ElevenLabs Agent-URL
-                  <span v-if="agentUrlSet" class="sm-key-ok">gespeichert</span>
+                  {{ $t('settings.agent_url_label') }}
+                  <span v-if="agentUrlSet" class="sm-key-ok">{{ $t('settings.agent_saved') }}</span>
                 </label>
                 <input
                   v-model="agentUrl"
                   type="text"
                   class="sys-input"
                   :style="agentUrlSet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="agentUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://elevenlabs.io/app/talk-to?agent_id=…'"
+                  :placeholder="agentUrlSet ? $t('settings.agent_url_placeholder_set') : $t('settings.agent_url_placeholder_empty')"
                   autocomplete="off"
                   spellcheck="false"
                   @keyup.enter="saveAgentUrl"
                 />
                 <div v-if="agentUrl || agentUrlSet" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <button v-if="agentUrl" @click="saveAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">Speichern</button>
-                  <button v-if="agentUrlSet" @click="deleteAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
-                  <button @click="confirmRotateWebhook" :disabled="webhookRotateBusy" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-warn)">{{ webhookRotateBusy ? 'Erneuert…' : 'Token erneuern' }}</button>
+                  <button v-if="agentUrl" @click="saveAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">{{ $t('common.save') }}</button>
+                  <button v-if="agentUrlSet" @click="deleteAgentUrl" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
+                  <button @click="confirmRotateWebhook" :disabled="webhookRotateBusy" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-warn)">{{ webhookRotateBusy ? $t('settings.token_renewing') : $t('settings.token_renew') }}</button>
                   <span v-if="agentUrlFeedback" class="sm-feedback"
                     :style="agentUrlFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ agentUrlFeedback.message }}
@@ -169,9 +169,9 @@
 
               <!-- Model -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">Modell</label>
+                <label class="sys-field-label">{{ $t('settings.model') }}</label>
                 <select v-model="model" class="sys-input" style="cursor:pointer">
-                  <option value="">Server-Standard</option>
+                  <option value="">{{ $t('settings.model_default') }}</option>
                   <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
                   <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
                   <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
@@ -180,7 +180,7 @@
 
               <!-- Anthropic Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">Anthropic API-Key</label>
+                <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="apiKey"
@@ -197,13 +197,13 @@
                     @click="showKey = !showKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showKey ? 'Key verbergen' : 'Key anzeigen'"
+                    :aria-label="showKey ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
-                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
@@ -224,7 +224,7 @@
               <!-- Brave Search Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  Brave Search API-Key
+                  {{ $t('settings.brave_key_label') }}
                   <span v-if="braveKeySet" class="sm-key-ok">{{ bravePreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -234,7 +234,7 @@
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="braveKeySet ? 'Neu eingeben zum Überschreiben…' : 'BSA…'"
+                    :placeholder="braveKeySet ? $t('common.overwrite_placeholder') : 'BSA…'"
                     autocomplete="off"
                     spellcheck="false"
                     @input="braveDirty = true"
@@ -244,20 +244,20 @@
                     @click="showBraveKey = !showBraveKey"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showBraveKey ? 'Key verbergen' : 'Key anzeigen'"
+                    :aria-label="showBraveKey ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showBraveKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="braveKeySet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('brave_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('brave_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- Reown Project ID -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  Reown Project ID
+                  {{ $t('settings.reown_id') }}
                   <span v-if="reownSet" class="sm-key-ok">{{ reownPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -267,7 +267,7 @@
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="reownSet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="reownSet ? 'Neu eingeben zum Überschreiben…' : 'a1b2c3d4…'"
+                    :placeholder="reownSet ? $t('common.overwrite_placeholder') : 'a1b2c3d4…'"
                     autocomplete="off"
                     spellcheck="false"
                     @input="reownDirty = true"
@@ -277,20 +277,20 @@
                     @click="showReownId = !showReownId"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showReownId ? 'ID verbergen' : 'ID anzeigen'"
+                    :aria-label="showReownId ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showReownId ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="reownSet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('reown_project_id')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('reown_project_id')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- Zapier MCP -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
-                  Zapier MCP Server
+                  {{ $t('settings.mcp_label') }}
                   <span v-if="mcpUrlSet" class="sm-key-ok">{{ mcpPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -300,7 +300,7 @@
                     class="sys-input sys-input--mono"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="mcpUrlSet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="mcpUrlSet ? 'Neu eingeben zum Überschreiben…' : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
+                    :placeholder="mcpUrlSet ? $t('common.overwrite_placeholder') : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
                     autocomplete="off"
                     spellcheck="false"
                     @input="mcpDirty = true"
@@ -310,20 +310,20 @@
                     @click="showMcpUrl = !showMcpUrl"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showMcpUrl ? 'URL verbergen' : 'URL anzeigen'"
+                    :aria-label="showMcpUrl ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showMcpUrl ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="mcpUrlSet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('mcp_url')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button @click="deleteKey('mcp_url')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- Pinata JWT -->
               <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label">
-                  Pinata JWT
+                  {{ $t('settings.pinata_jwt') }}
                   <span v-if="pinataJwtSet" class="sm-key-ok">{{ pinataPreview }}</span>
                 </label>
                 <div style="display:flex;gap:0">
@@ -333,7 +333,7 @@
                     class="sys-input"
                     style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
                     :style="pinataJwtSet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="pinataJwtSet ? 'Neu eingeben zum Überschreiben…' : 'eyJ…'"
+                    :placeholder="pinataJwtSet ? $t('common.overwrite_placeholder') : 'eyJ…'"
                     autocomplete="off"
                     spellcheck="false"
                     @keyup.enter="savePinataJwt"
@@ -342,13 +342,13 @@
                     @click="showPinataJwt = !showPinataJwt"
                     class="sys-btn-ed sys-btn-ed--ghost"
                     style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showPinataJwt ? 'JWT verbergen' : 'JWT anzeigen'"
+                    :aria-label="showPinataJwt ? $t('common.hide_key') : $t('common.show_key')"
                   >
                     <i :class="showPinataJwt ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                   </button>
                 </div>
                 <div v-if="pinataJwtSet || pinataFeedback" style="display:flex;align-items:center;gap:8px">
-                  <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">Löschen</button>
+                  <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                   <span v-if="pinataFeedback" class="sm-feedback"
                     :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ pinataFeedback.message }}
@@ -370,9 +370,27 @@
             <!-- ── Tab: Config ── -->
             <template v-if="tab === 'config'">
 
+              <!-- Language -->
+              <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
+                <div class="sys-field-label" style="margin-bottom:4px">{{ $t('settings.language') }}</div>
+                <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.language_desc') }}</p>
+                <div style="display:flex;gap:8px">
+                  <button
+                    v-for="loc in availableLocales"
+                    :key="loc.code"
+                    @click="switchLocale(loc.code)"
+                    class="sys-btn-ed"
+                    :class="locale === loc.code ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                    style="min-width:80px;justify-content:center"
+                  >
+                    {{ loc.name }}
+                  </button>
+                </div>
+              </div>
+
               <!-- Soul-Cert -->
               <div style="margin-bottom:24px">
-                <div class="sys-field-label" style="margin-bottom:8px">Soul-Cert</div>
+                <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.soul_cert') }}</div>
                 <div v-if="soulToken" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:flex-start;gap:8px">
                     <code style="flex:1;font-family:var(--sys-mono);font-size:13px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ soulToken }}</code>
@@ -389,18 +407,18 @@
                   :disabled="certRotateBusy"
                   class="sys-btn-ed sys-btn-ed--primary"
                   style="width:100%;justify-content:center"
-                >{{ certRotateBusy ? 'Rotiert…' : 'Soul-Cert rotieren' }}</button>
+                >{{ certRotateBusy ? $t('settings.cert_rotating') : $t('settings.cert_rotate') }}</button>
                 <Transition name="sys-modal-fade">
                   <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
                     <div v-if="certRotationResult.error" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">
-                      Cert-Rotation fehlgeschlagen — bitte Seite neu laden und erneut versuchen.
+                      {{ $t('settings.cert_rotation_failed') }}
                     </div>
                     <template v-else>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                      <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">Cert rotiert — Version {{ certRotationResult.cert_version }}</span>
+                      <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">{{ $t('settings.cert_rotated', { version: certRotationResult.cert_version }) }}</span>
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
                     </div>
-                    <div class="sm-sec-head" style="margin-bottom:4px">Bearer-Token (Zugangscode)</div>
+                    <div class="sm-sec-head" style="margin-bottom:4px">{{ $t('settings.bearer_token') }}</div>
                     <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
                       <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
                       <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
@@ -412,13 +430,13 @@
                       </button>
                     </div>
                     <p class="sm-desc" :style="certRotationResult.validated ? 'color:var(--sys-ok)' : 'color:var(--fg-4)'">
-                      {{ certRotationResult.validated ? '✓ Cert auf Server validiert' : 'Server-Validierung prüfen — Seite neu laden' }}
+                      {{ certRotationResult.validated ? $t('settings.cert_validated') : $t('settings.cert_check_hint') }}
                     </p>
                     <p v-if="certRotationResult.credsUpdated" class="sm-desc f-ok" style="margin-top:4px">
-                      ✓ Biometrische Zugangsdaten aktualisiert
+                      {{ $t('settings.biometric_updated') }}
                     </p>
                     <p v-else-if="certRotationResult.credsUpdateFailed" class="sm-desc" style="color:var(--sys-warn);margin-top:4px">
-                      Biometrische Zugangsdaten konnten nicht aktualisiert werden — beim nächsten Login einmalig neu speichern.
+                      {{ $t('settings.biometric_update_failed') }}
                     </p>
                     </template>
                   </div>
@@ -428,10 +446,10 @@
               <!-- Admin verbinden (Multi-Hoster, kein Admin) -->
               <template v-if="!isAdmin && isMultiHoster">
                 <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
-                  <div class="sys-field-label" style="margin-bottom:12px">Admin verbinden</div>
-                  <p class="sys-prose" style="margin-bottom:16px">Gib den Admin-Token ein, den du beim Server-Setup erhalten hast. Er wird nur lokal im Browser gespeichert.</p>
+                  <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.admin_connect') }}</div>
+                  <p class="sys-prose" style="margin-bottom:16px">{{ $t('settings.admin_connect_desc') }}</p>
                   <div class="sys-field" style="margin-bottom:12px">
-                    <label class="sys-field-label">Admin-Token</label>
+                    <label class="sys-field-label">{{ $t('settings.admin_token_label') }}</label>
                     <div style="display:flex;gap:0">
                       <input
                         v-model="connectToken"
@@ -447,14 +465,14 @@
                         @click="showConnectToken = !showConnectToken"
                         class="sys-btn-ed sys-btn-ed--ghost"
                         style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                        :aria-label="showConnectToken ? 'Token verbergen' : 'Token anzeigen'"
+                        :aria-label="showConnectToken ? $t('common.hide_key') : $t('common.show_key')"
                       >
                         <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
                       </button>
                     </div>
                   </div>
                   <button class="sys-btn-ed sys-btn-ed--primary" @click="connectAdmin" :disabled="connectingAdmin || !connectToken">
-                    {{ connectingAdmin ? 'Prüfe…' : 'Verbinden' }}
+                    {{ connectingAdmin ? $t('common.checking') : $t('settings.connect_btn') }}
                   </button>
                   <Transition name="sys-modal-fade">
                     <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
@@ -469,36 +487,36 @@
               <!-- Server-Admin (isAdmin) -->
               <template v-if="isAdmin">
                 <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
-                  <div class="sys-field-label" style="margin-bottom:12px">Server-Admin</div>
+                  <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.server_admin') }}</div>
                   <div class="sm-infoblock">
-                    Master-Key-Rotation betrifft diese Instanz. Grace-Period 15 min — danach sind alte Certs ungültig.
+                    {{ $t('settings.master_key_rotation') }}
                   </div>
                   <div class="sys-field">
-                    <label class="sys-field-label">Neuer Soul-Master-Key</label>
+                    <label class="sys-field-label">{{ $t('settings.new_master_key') }}</label>
                     <div style="display:flex;gap:8px">
-                      <input v-model="newMasterKey" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generieren klicken" />
-                      <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">Generieren</button>
+                      <input v-model="newMasterKey" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generate" />
+                      <button @click="generateMasterKey" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">{{ $t('settings.generate') }}</button>
                     </div>
                   </div>
                   <Transition name="sys-modal-fade">
                     <div v-if="graceUntil" style="border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.05);padding:14px 16px;margin-bottom:16px">
                       <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-                        <span class="sm-accent-label">Grace-Period aktiv</span>
+                        <span class="sm-accent-label">{{ $t('settings.grace_active') }}</span>
                         <span class="sm-accent-label">{{ graceCountdown }}</span>
                       </div>
                     </div>
                   </Transition>
                   <div v-if="isMultiHoster" class="sys-field" style="padding-top:14px;border-top:1px solid var(--sys-rule);margin-bottom:0">
-                    <label class="sys-field-label">Admin-Token rotieren</label>
+                    <label class="sys-field-label">{{ $t('settings.rotate_admin_token') }}</label>
                     <div style="display:flex;gap:8px">
-                      <input v-model="newAdminToken" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generieren klicken" />
-                      <button @click="generateAdminToken" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">Generieren</button>
+                      <input v-model="newAdminToken" type="text" readonly class="sys-input sys-input--mono" style="flex:1" placeholder="→ Generate" />
+                      <button @click="generateAdminToken" class="sys-btn-ed sys-btn-ed--primary" style="white-space:nowrap">{{ $t('settings.generate') }}</button>
                     </div>
                   </div>
                   <div style="margin-top:16px">
                     <button class="sys-btn-ed sys-btn-ed--primary" @click="saveMaster"
                       :disabled="savingMaster || (!newMasterKey && !masterAnthropicKey && !newAdminToken)">
-                      {{ savingMaster ? 'Rotiert…' : 'Speichern & rotieren' }}
+                      {{ savingMaster ? $t('settings.admin_saving') : $t('settings.save_rotate') }}
                     </button>
                   </div>
                   <Transition name="sys-modal-fade">
@@ -517,19 +535,19 @@
             <template v-if="tab === 'gesundheit'">
 
               <div class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">Provider</label>
+                <label class="sys-field-label">{{ $t('settings.provider') }}</label>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                   <button v-for="p in HEALTH_PROVIDERS" :key="p.id"
                     class="sys-btn-ed" :class="healthAdapter === p.id ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
                     :disabled="p.soon" :style="p.soon ? 'opacity:0.4;cursor:not-allowed' : ''"
                     @click="!p.soon && (healthAdapter = p.id)">
-                    {{ p.label }}<span v-if="p.soon" style="font-size:10px;margin-left:6px;opacity:0.6">bald</span>
+                    {{ p.label }}<span v-if="p.soon" style="font-size:10px;margin-left:6px;opacity:0.6">{{ $t('settings.soon') }}</span>
                   </button>
                 </div>
               </div>
 
               <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">Gerät</label>
+                <label class="sys-field-label">{{ $t('settings.device') }}</label>
                 <select class="sys-input" v-model="healthGarminModel" style="cursor:pointer">
                   <optgroup label="Venu / Vivoactive">
                     <option value="garmin_vivoactive2">Vivoactive 2</option>
@@ -555,27 +573,27 @@
                     <option value="garmin_epix">Epix</option>
                   </optgroup>
                 </select>
-                <span class="sm-desc">Das Gerät beeinflusst wie Daten interpretiert werden. Alle Modelle nutzen die Garmin Connect API.</span>
+                <span class="sm-desc">{{ $t('settings.health_sync_info') }}</span>
               </div>
 
               <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">Garmin Connect E-Mail</label>
-                <input class="sys-input" type="email" v-model="healthGarminEmail" placeholder="deine@email.de" autocomplete="off" />
+                <label class="sys-field-label">{{ $t('settings.garmin_email') }}</label>
+                <input class="sys-input" type="email" v-model="healthGarminEmail" placeholder="your@email.com" autocomplete="off" />
               </div>
 
               <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">Garmin Connect Passwort</label>
+                <label class="sys-field-label">{{ $t('settings.garmin_password') }}</label>
                 <input class="sys-input" type="password" v-model="healthGarminPassword"
-                  :placeholder="healthHasPassword ? '•••••••• (leer lassen = behalten)' : 'Passwort eingeben'"
+                  :placeholder="healthHasPassword ? $t('settings.garmin_pw_keep') : $t('settings.garmin_pw_enter')"
                   autocomplete="new-password" />
               </div>
 
               <div v-if="healthAdapter === 'apple_health'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <div class="sm-infoblock">Für Apple Health muss die Health-Sync App auf deinem iPhone installiert sein. Die Einrichtung erfolgt über SSH (install.sh).</div>
+                <div class="sm-infoblock">{{ $t('settings.apple_health_info') }}</div>
               </div>
 
               <div v-if="healthAdapter === 'oura'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <div class="sm-infoblock">Oura Ring API-Token wird über SSH in der health_sync Konfiguration hinterlegt.</div>
+                <div class="sm-infoblock">{{ $t('settings.oura_info') }}</div>
               </div>
 
               <Transition name="sys-modal-fade">
@@ -593,26 +611,26 @@
 
               <!-- LONGMEM Status -->
               <div class="sys-field" style="margin-bottom:24px">
-                <div class="sys-field-label" style="margin-bottom:10px">Langzeitgedächtnis (LONGMEM)</div>
-                <div v-if="archivLoading" class="archivar-loading">Lade…</div>
+                <div class="sys-field-label" style="margin-bottom:10px">{{ $t('settings.longmem_title') }}</div>
+                <div v-if="archivLoading" class="archivar-loading">{{ $t('common.loading') }}</div>
                 <template v-else>
                   <div class="archivar-lm-block">
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Fakten</span>
+                      <span class="archivar-lm-key">{{ $t('settings.facts_label') }}</span>
                       <span class="archivar-lm-val" :class="longmemFacts > 0 ? 'archivar-lm-ok' : 'archivar-lm-dim'">
-                        {{ longmemFacts > 0 ? longmemFacts + ' gespeichert' : 'noch keine' }}
+                        {{ longmemFacts > 0 ? $t('settings.facts_count', { n: longmemFacts }) : $t('chat.no_facts') }}
                       </span>
                     </div>
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Letztes Aufräumen</span>
+                      <span class="archivar-lm-key">{{ $t('settings.last_cleanup') }}</span>
                       <span class="archivar-lm-val archivar-lm-dim">{{ longmemUpdated || '—' }}</span>
                     </div>
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Größe</span>
+                      <span class="archivar-lm-key">{{ $t('settings.size') }}</span>
                       <span class="archivar-lm-val archivar-lm-dim">{{ longmemSizeKb }}</span>
                     </div>
                     <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">Chaos</span>
+                      <span class="archivar-lm-key">{{ $t('chat.chaos') }}</span>
                       <span class="archivar-lm-val archivar-chaos-wrap">
                         <span class="archivar-chaos-bar">
                           <span class="archivar-chaos-fill" :style="{ width: longmemChaos.pct + '%', background: longmemChaos.color }" />
@@ -626,7 +644,7 @@
                     style="margin-top:14px;width:100%;justify-content:center"
                     :disabled="crystallizeBusy"
                     @click="triggerCrystallize"
-                  ><span v-if="crystallizeBusy" class="dots-running">Räumt auf</span><template v-else>Jetzt aufräumen</template></button>
+                  ><span v-if="crystallizeBusy" class="dots-running">{{ $t('settings.cleanup_running') }}</span><template v-else>{{ $t('settings.cleanup_now') }}</template></button>
                   <Transition name="sys-modal-fade">
                     <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
                       :style="archivFeedback.ok
@@ -650,34 +668,34 @@
               </template>
               <template v-else-if="tab === 'dienste'">
                 <span class="sys-dot sys-dot--idle"></span>
-                Dienste
+                {{ $t('settings.tab_services') }}
               </template>
               <template v-else-if="tab === 'plugins'">
                 <span class="sys-dot sys-dot--idle"></span>
-                Plugins
+                {{ $t('settings.tab_plugins') }}
               </template>
               <template v-else-if="tab === 'config'">
                 <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
-                {{ isAdmin ? 'Server-Admin · Rotation' : 'Soul-Cert & Admin' }}
+                {{ isAdmin ? $t('settings.rotation_admin') : $t('settings.admin_cert') }}
               </template>
               <template v-else-if="tab === 'archivar'">
                 <span class="sys-dot" :class="longmemFacts > 0 ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
-                {{ longmemFacts > 0 ? longmemFacts + ' Fakten im Langzeitgedächtnis' : 'Langzeitgedächtnis leer' }}
+                {{ longmemFacts > 0 ? $t('settings.facts_count', { n: longmemFacts }) : $t('settings.memory_empty') }}
               </template>
               <template v-else-if="tab === 'gesundheit'">
                 <span class="sys-dot" :class="healthHasPassword ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
-                {{ healthHasPassword ? 'Garmin verbunden' : 'Noch nicht eingerichtet' }}
+                {{ healthHasPassword ? $t('settings.garmin_connected') : $t('settings.not_configured') }}
               </template>
             </div>
             <div class="sys-foot-actions">
               <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
-                  {{ saving ? 'Speichert…' : 'Speichern' }}
+                  {{ saving ? $t('settings.saving') : $t('common.save') }}
                 </button>
               </template>
               <template v-else-if="tab === 'gesundheit'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
-                  {{ healthSaving ? 'Speichert…' : 'Speichern' }}
+                  {{ healthSaving ? $t('settings.saving') : $t('common.save') }}
                 </button>
               </template>
             </div>
@@ -697,6 +715,7 @@ import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useConfirm } from '~/composables/useConfirm.js'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({ open: Boolean, inline: { type: Boolean, default: false } })
 const emit  = defineEmits(['close', 'master-rotated'])
@@ -707,6 +726,12 @@ const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
 const { clearMcpCache, loadMcpTools } = useMcpTools()
 const { ask: confirmAsk } = useConfirm()
+const { t, locale, setLocale, availableLocales } = useI18n()
+
+function switchLocale(code) {
+  setLocale(code)
+  localStorage.setItem('sys-locale', code)
+}
 
 // ── Admin-Erkennung ───────────────────────────────────────────────────────────
 const ADMIN_KEY    = 'sys_admin_token'
@@ -866,10 +891,10 @@ const agentUrlSet      = ref(false)
 const agentUrlFeedback = ref(null)
 
 const keySourceLabel = computed(() => ({
-  soul:   'Eigener Key aktiv',
-  master: 'Server-Key aktiv',
-  env:    'Env-Key aktiv',
-  none:   'Kein Key konfiguriert',
+  soul:   t('settings.key_status_soul'),
+  master: t('settings.key_status_master'),
+  env:    t('settings.key_status_env'),
+  none:   t('settings.key_status_none'),
 }[keySource.value] || ''))
 
 async function loadStatus() {
@@ -919,10 +944,10 @@ async function loadStatus() {
 
 async function confirmRotateWebhook() {
   const ok = await confirmAsk({
-    title:       'Webhook-Token erneuern?',
-    message:     'Der ElevenLabs-Agent wird automatisch auf den neuen Token aktualisiert. Falls das fehlschlägt, erscheint ein Hinweis.',
-    confirmText: 'Erneuern',
-    cancelText:  'Abbrechen',
+    title:       t('settings.webhook_rotate_title'),
+    message:     t('settings.webhook_rotate_msg'),
+    confirmText: t('settings.renew'),
+    cancelText:  t('common.cancel'),
     danger:      true,
   })
   if (!ok) return
@@ -937,14 +962,14 @@ async function confirmRotateWebhook() {
     if (res.ok && d.ok) {
       webhookTokenPreview.value = d.token_preview || ''
       if (d.agent_patched) {
-        webhookFeedback.value = { ok: true, message: 'Token erneuert ✓ · ElevenLabs-Agent aktualisiert' }
+        webhookFeedback.value = { ok: true, message: t('settings.token_renewed_agent') }
       } else if (d.agent_err) {
-        webhookFeedback.value = { ok: true, message: `Token erneuert ✓ · Agent-Update fehlgeschlagen (${d.agent_err}) — Agent neu erstellen` }
+        webhookFeedback.value = { ok: true, message: t('settings.token_renewed_agent_failed', { err: d.agent_err }) }
       } else {
-        webhookFeedback.value = { ok: true, message: 'Token erneuert ✓' }
+        webhookFeedback.value = { ok: true, message: t('settings.token_renewed') }
       }
     } else {
-      webhookFeedback.value = { ok: false, message: d.error || `Fehler ${res.status}` }
+      webhookFeedback.value = { ok: false, message: d.error || `${t('common.error')} ${res.status}` }
     }
   } catch (e) {
     webhookFeedback.value = { ok: false, message: e.message }
@@ -1060,9 +1085,9 @@ async function testKey(type, key, useStored = false) {
       })
       const d = await res.json().catch(() => ({}))
       ok  = d.ok === true
-      msg = ok ? 'Key gültig ✓' : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : ''}`
+      msg = ok ? t('common.valid') : `${t('common.error')} ${d.status || res.status}${d.error ? ' · ' + d.error : ''}`
     } else if (!key) {
-      ok = false; msg = 'Kein Key eingegeben'
+      ok = false; msg = t('settings.no_key_entered')
     } else if (type === 'anthropic') {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -1075,7 +1100,7 @@ async function testKey(type, key, useStored = false) {
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'test' }] })
       })
       ok  = res.status === 200
-      msg = ok ? 'Key gültig ✓' : `Fehler ${res.status}${res.status === 401 ? ' · Ungültiger Key' : res.status === 429 ? ' · Rate-Limit' : ''}`
+      msg = ok ? t('common.valid') : `${t('common.error')} ${res.status}${res.status === 401 ? ' · ' + t('settings.key_invalid') : res.status === 429 ? ' · ' + t('settings.rate_limit') : ''}`
     } else if (type === 'elevenlabs') {
       // ElevenLabs blockiert CORS → immer über Server testen
       const body = key
@@ -1088,14 +1113,14 @@ async function testKey(type, key, useStored = false) {
       })
       const d = await res.json().catch(() => ({}))
       ok  = d.ok === true
-      msg = ok ? 'Key gültig ✓' : `Fehler ${d.status || res.status}${d.error ? ' · ' + d.error : res.status === 401 ? ' · Ungültiger Key' : ''}`
+      msg = ok ? t('common.valid') : `${t('common.error')} ${d.status || res.status}${d.error ? ' · ' + d.error : res.status === 401 ? ' · ' + t('settings.key_invalid') : ''}`
     } else if (type === 'wavespeed') {
       ok  = /^[0-9a-f]{32,}$/i.test(key)
-      msg = ok ? 'Format OK (Hex-Key erkannt)' : 'Ungültiges Format — Hex erwartet'
+      msg = ok ? t('common.format_ok') : t('common.invalid_format')
     }
   } catch (e) {
     ok  = false
-    msg = `Verbindungsfehler: ${e.message}`
+    msg = `${t('settings.connection_error')}: ${e.message}`
   }
   stateRef.value = { loading: false, ok, message: msg }
   setTimeout(() => { stateRef.value = null }, 6000)
@@ -1193,7 +1218,7 @@ async function connectAdmin() {
       }
     }
     if (matched) {
-      connectFeedback.value = { ok: true, message: 'Admin-Zugang verbunden ✓' }
+      connectFeedback.value = { ok: true, message: t('settings.admin_connected') }
       setTimeout(() => {
         detectAdmin()
         tab.value = 'admin'
@@ -1201,10 +1226,10 @@ async function connectAdmin() {
         connectFeedback.value = null
       }, 800)
     } else {
-      connectFeedback.value = { ok: false, message: 'Token ungültig — Zugang verweigert' }
+      connectFeedback.value = { ok: false, message: t('settings.access_denied') }
     }
   } catch {
-    connectFeedback.value = { ok: false, message: 'Netzwerkfehler' }
+    connectFeedback.value = { ok: false, message: t('common.network_error') }
   } finally {
     connectingAdmin.value = false
   }
@@ -1270,8 +1295,8 @@ async function saveMaster() {
     const d = await res.json().catch(() => ({}))
     if (res.ok) {
       const masterRotated = !!body.soul_master_key
-      let msg = 'Gespeichert ✓'
-      if (d.prev_valid_until) msg += ' — Grace-Period 15 min aktiv'
+      let msg = t('common.saved')
+      if (d.prev_valid_until) msg += t('settings.grace_period_suffix')
       if (newAdminToken.value) {
         if (isSoulAdmin.value && soulId) {
           localStorage.setItem(`sys_admin_token_${soulId}`, newAdminToken.value)
@@ -1279,7 +1304,7 @@ async function saveMaster() {
           localStorage.setItem(ADMIN_KEY, newAdminToken.value)
         }
         adminToken.value = newAdminToken.value
-        msg += ' — Admin-Token rotiert & gespeichert'
+        msg += t('settings.admin_token_rotated_suffix')
       }
       adminFeedback.value = { ok: true, message: msg }
       if (d.prev_valid_until) startGraceCountdown(d.prev_valid_until)
@@ -1293,16 +1318,16 @@ async function saveMaster() {
         await handleRotateCert()
         // Cert-Ergebnis im Admin-Tab kommunizieren (Result-Card ist im API-Tab).
         if (certRotationResult.value && !certRotationResult.value.error) {
-          adminFeedback.value = { ok: true, message: 'Master-Key & Cert rotiert ✓ — sys.md heruntergeladen. Du bleibst eingeloggt.' }
+          adminFeedback.value = { ok: true, message: t('settings.master_key_rotated') }
         } else {
-          adminFeedback.value = { ok: false, message: 'Master-Key rotiert — Cert-Rotation fehlgeschlagen. Manuell im API-Tab erneuern.' }
+          adminFeedback.value = { ok: false, message: t('settings.master_key_cert_failed') }
         }
       }
     } else {
-      adminFeedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
+      adminFeedback.value = { ok: false, message: d.message || d.error || `${t('common.error')} ${res.status}` }
     }
   } catch {
-    adminFeedback.value = { ok: false, message: 'Netzwerkfehler' }
+    adminFeedback.value = { ok: false, message: t('common.network_error') }
   } finally {
     savingMaster.value = false
     setTimeout(() => { adminFeedback.value = null }, 6000)
@@ -1426,9 +1451,9 @@ const longmemSizeKb = computed(() => {
 const longmemChaos = computed(() => {
   const e = longmemLogEntries.value, d = longmemDaysSince.value
   const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
-  if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: 'ruhig' }
-  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: 'wächst' }
-  return { pct: 100, color: '#ef4444', label: 'chaotisch' }
+  if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: t('settings.chaos_calm') }
+  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: t('settings.chaos_growing') }
+  return { pct: 100, color: '#ef4444', label: t('settings.chaos_chaotic') }
 })
 const archivFeedback   = ref(null)
 
@@ -1458,7 +1483,7 @@ async function loadArchivStatus() {
 async function triggerCrystallize() {
   const token = soulToken.value
   if (!token || token === 'anonymous') {
-    archivFeedback.value = { ok: false, message: 'Soul nicht geladen — bitte Seite neu laden.' }
+    archivFeedback.value = { ok: false, message: t('settings.soul_not_loaded') }
     setTimeout(() => { archivFeedback.value = null }, 8000)
     return
   }
@@ -1473,15 +1498,15 @@ async function triggerCrystallize() {
     await loadArchivStatus()
     crystallizeBusy.value = false
     if (data?.ok) {
-      archivFeedback.value = { ok: true, message: 'Aufräumen abgeschlossen ✓' }
+      archivFeedback.value = { ok: true, message: t('settings.cleanup_done') }
       setTimeout(() => { archivFeedback.value = null }, 5000)
     } else {
-      archivFeedback.value = { ok: false, message: data?.error || 'Fehler beim Aufräumen' }
+      archivFeedback.value = { ok: false, message: data?.error || t('settings.cleanup_error') }
       setTimeout(() => { archivFeedback.value = null }, 8000)
     }
   } catch {
     crystallizeBusy.value = false
-    archivFeedback.value = { ok: false, message: 'Netzwerkfehler' }
+    archivFeedback.value = { ok: false, message: t('common.network_error') }
     setTimeout(() => { archivFeedback.value = null }, 8000)
   }
 }

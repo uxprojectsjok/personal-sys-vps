@@ -5,15 +5,15 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Netzwerk', 'Verbindung']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('common.network'), $t('connection.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page cn-page">
 
             <!-- Header -->
             <div class="cn-head">
-              <div class="eyebrow">VERBINDUNG</div>
-              <h1 class="cn-title">Verbindung &amp; <em>Verifikation</em></h1>
-              <p class="cn-lede">Teile deinen MCP-Endpoint per QR-Code. Wenn eine KI deine Identität bestätigen möchte, erscheint hier die Anfrage.</p>
+              <div class="eyebrow">{{ $t('connection.eyebrow') }}</div>
+              <h1 class="cn-title">{{ $t('connection.title_prefix') }} &amp; <em>{{ $t('connection.title_em') }}</em></h1>
+              <p class="cn-lede">{{ $t('connection.lede') }}</p>
             </div>
 
             <!-- Pending MCP challenge banner -->
@@ -24,11 +24,11 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
                   </div>
                   <div>
-                    <div class="cn-mcp-title">Verifikationsanfrage offen</div>
-                    <div class="cn-mcp-sub">Claude AI bittet um {{ methodLabel(pendingChallenge.method) }}</div>
+                    <div class="cn-mcp-title">{{ $t('connection.verify_title') }}</div>
+                    <div class="cn-mcp-sub">{{ $t('connection.verify_sub', { method: methodLabel(pendingChallenge.method) }) }}</div>
                   </div>
                 </div>
-                <button class="cn-mcp-btn" @click="openVerify(pendingChallenge)">Jetzt verifizieren</button>
+                <button class="cn-mcp-btn" @click="openVerify(pendingChallenge)">{{ $t('connection.btn_verify_now') }}</button>
               </div>
             </Transition>
 
@@ -40,8 +40,8 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"/></svg>
                 </div>
                 <div>
-                  <div class="cn-action-title">MCP-Endpoint freigeben</div>
-                  <div class="cn-action-sub">QR scannen · Tap bestätigen · verbunden</div>
+                  <div class="cn-action-title">{{ $t('connection.qr_action_title') }}</div>
+                  <div class="cn-action-sub">{{ $t('connection.qr_action_sub') }}</div>
                 </div>
               </div>
               <button class="cn-action-btn" :class="{ 'cn-action-btn--active': qrPhase === 'active' || qrPhase === 'probed' }" :disabled="qrPhase === 'creating' || qrPhase === 'approving'" @click="qrPhase === 'idle' ? startSession() : cancelSession()">
@@ -59,37 +59,37 @@
                   <div class="cn-panel-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="cn-label-ic"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>DU · NODE-INHABER</div>
                   <div v-if="qrPhase === 'active'" class="cn-panel-body cn-qr-body">
                     <canvas ref="qrCanvas" class="cn-qr-canvas" />
-                    <div class="cn-countdown"><span class="cn-countdown-num">{{ countdown }}</span><span class="cn-countdown-label">Sekunden</span></div>
-                    <p class="cn-hint">Zeige diesen QR-Code jemandem zum Scannen</p>
+                    <div class="cn-countdown"><span class="cn-countdown-num">{{ countdown }}</span><span class="cn-countdown-label">{{ $t('connection.seconds') }}</span></div>
+                    <p class="cn-hint">{{ $t('connection.qr_hint') }}</p>
                   </div>
                   <div v-else-if="qrPhase === 'probed'" class="cn-panel-body cn-approve-body">
                     <div class="cn-probe-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg></div>
-                    <div class="cn-probe-title">Jemand scannt gerade</div>
-                    <p class="cn-probe-hint">Möchtest du die Verbindung freigeben?</p>
-                    <div class="cn-approve-actions"><button class="cn-btn cn-btn--reject" @click="approve(false)">Ablehnen</button><button class="cn-btn cn-btn--accept" @click="approve(true)">Zulassen</button></div>
+                    <div class="cn-probe-title">{{ $t('connection.probe_title') }}</div>
+                    <p class="cn-probe-hint">{{ $t('connection.probe_hint') }}</p>
+                    <div class="cn-approve-actions"><button class="cn-btn cn-btn--reject" @click="approve(false)">{{ $t('connection.btn_reject') }}</button><button class="cn-btn cn-btn--accept" @click="approve(true)">{{ $t('connection.btn_allow') }}</button></div>
                   </div>
                   <div v-else-if="qrPhase === 'done'" class="cn-panel-body cn-done-body">
                     <div class="cn-done-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></div>
-                    <div class="cn-done-title">Verbunden</div>
-                    <button class="cn-btn cn-btn--done" @click="resetQr">Fertig</button>
+                    <div class="cn-done-title">{{ $t('connection.connected') }}</div>
+                    <button class="cn-btn cn-btn--done" @click="resetQr">{{ $t('common.done') }}</button>
                   </div>
                   <div v-else-if="qrPhase === 'error'" class="cn-panel-body cn-done-body">
                     <div class="cn-done-check cn-done-check--err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></div>
-                    <div class="cn-done-title">{{ qrError || 'Fehler' }}</div>
-                    <button class="cn-btn cn-btn--done" @click="resetQr">Neu versuchen</button>
+                    <div class="cn-done-title">{{ qrError || $t('connection.err_generic') }}</div>
+                    <button class="cn-btn cn-btn--done" @click="resetQr">{{ $t('connection.btn_retry') }}</button>
                   </div>
                 </div>
                 <div class="cn-panel cn-panel--stranger">
                   <div class="cn-panel-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="cn-label-ic"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a14.5 14.5 0 0 0 0 20M12 2a14.5 14.5 0 0 1 0 20M2 12h20"/></svg>FREMDER · /CONNECT</div>
                   <div class="cn-panel-body cn-stranger-body">
                     <div class="cn-sys-logo">SYS<span>.</span></div>
-                    <template v-if="qrPhase === 'active'"><div class="cn-stranger-hint">Warte auf Scan…</div></template>
-                    <template v-else-if="qrPhase === 'probed'"><div class="cn-stranger-ring"><svg class="spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg></div><div class="cn-stranger-hint">Warte auf Bestätigung…</div></template>
+                    <template v-if="qrPhase === 'active'"><div class="cn-stranger-hint">{{ $t('connection.waiting_scan') }}</div></template>
+                    <template v-else-if="qrPhase === 'probed'"><div class="cn-stranger-ring"><svg class="spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="10" stroke-dasharray="4 2"/></svg></div><div class="cn-stranger-hint">{{ $t('connection.waiting_confirm') }}</div></template>
                     <template v-else-if="qrPhase === 'done'">
                       <div class="cn-done-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></div>
-                      <div class="cn-done-title">Verbunden</div>
+                      <div class="cn-done-title">{{ $t('connection.connected') }}</div>
                       <div class="cn-hello-msg">Hello from {{ soulMeta?.name || 'Soul' }}!</div>
-                      <div class="cn-verified-row"><span class="cn-verified-dot" />Node verifiziert</div>
+                      <div class="cn-verified-row"><span class="cn-verified-dot" />{{ $t('connection.node_verified') }}</div>
                     </template>
                   </div>
                 </div>
@@ -97,14 +97,14 @@
             </Transition>
 
             <!-- Verifikation info -->
-            <div class="cn-section-label" style="margin-top:40px">VERIFIKATION</div>
+            <div class="cn-section-label" style="margin-top:40px">{{ $t('connection.section_verify') }}</div>
             <div class="cn-info-card">
               <div class="cn-info-ic">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
               </div>
               <div class="cn-info-body">
-                <div class="cn-info-title">Verifikation durch KI</div>
-                <p class="cn-info-desc">Wenn eine KI-Anwendung deine Identität bestätigen möchte, erscheint oben eine Anfrage. Die Verifikation — per Fingerabdruck, Gesicht oder Stimme — öffnet sich dann in einem sicheren Fenster.</p>
+                <div class="cn-info-title">{{ $t('connection.info_title') }}</div>
+                <p class="cn-info-desc">{{ $t('connection.info_desc') }}</p>
               </div>
             </div>
 
@@ -120,9 +120,11 @@
 <script setup>
 import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 
 definePageMeta({ layout: false })
+const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken } = useSoul()
 
@@ -131,7 +133,7 @@ const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(fal
 // ── QR session ────────────────────────────────────────────────────────────────
 const qrPhase = ref('idle'), qrCanvas = ref(null), countdown = ref(120), qrError = ref(''), pendingToken = ref('')
 let pollTimer = null, countdownTimer = null
-const qrActionLabel = computed(() => ({ idle:'QR anzeigen', creating:'Erstelle…', active:'Läuft…', probed:'Warte…', approving:'Bestätige…' }[qrPhase.value] ?? 'Abbrechen'))
+const qrActionLabel = computed(() => ({ idle: t('connection.qr_label_idle'), creating: t('connection.qr_label_creating'), active: t('connection.qr_label_active'), probed: t('connection.qr_label_probed'), approving: t('connection.qr_label_approving') }[qrPhase.value] ?? t('connection.qr_label_cancel')))
 function authHeaders() { return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' } }
 
 async function startSession() {
@@ -139,7 +141,7 @@ async function startSession() {
   try {
     const r = await fetch('/api/connect/create', { method:'POST', headers:authHeaders(), body:JSON.stringify({ soul_name: soulMeta.value?.name||'Soul' }) })
     const d = await r.json()
-    if (!r.ok) throw new Error(d.error || 'Fehler')
+    if (!r.ok) throw new Error(d.error || t('connection.err_generic'))
     pendingToken.value = d.token; countdown.value = d.expires_seconds || 120; qrPhase.value = 'active'
     await nextTick(); await drawQr(d.qr_url); startCountdown(); startPolling()
   } catch (e) { qrError.value = e.message; qrPhase.value = 'error' }
@@ -164,7 +166,7 @@ async function approve(ok) {
   qrPhase.value = 'approving'; clearInterval(pollTimer); clearInterval(countdownTimer)
   try { const r = await fetch('/api/connect/approve',{method:'POST',headers:authHeaders(),body:JSON.stringify({token:pendingToken.value,approved:ok})}); const d=await r.json(); if(!r.ok)throw new Error(d.error); qrPhase.value=ok?'done':'idle' } catch(e){qrError.value=e.message;qrPhase.value='error'}
 }
-function cancelSession(expired=false) { clearInterval(pollTimer); clearInterval(countdownTimer); if(expired){qrError.value='QR-Code abgelaufen';qrPhase.value='error'}else{qrPhase.value='idle'}; pendingToken.value='' }
+function cancelSession(expired=false) { clearInterval(pollTimer); clearInterval(countdownTimer); if(expired){qrError.value=t('connection.err_qr_expired');qrPhase.value='error'}else{qrPhase.value='idle'}; pendingToken.value='' }
 function resetQr() { cancelSession(); qrPhase.value='idle'; qrError.value='' }
 
 // ── Pending MCP challenge ─────────────────────────────────────────────────────
@@ -173,7 +175,7 @@ let challengePollTimer = null
 async function pollPendingChallenge() {
   try { const r = await fetch('/api/verify/pending',{headers:authHeaders()}); const d=await r.json(); pendingChallenge.value=d.pending?.length?d.pending[0]:null } catch(_){}
 }
-function methodLabel(m) { return { fingerprint:'Fingerabdruck/Face ID', face:'Gesichtserkennung', voice:'Stimm-Verifikation' }[m] ?? m }
+function methodLabel(m) { return { fingerprint: t('connection.method_fingerprint'), face: t('connection.method_face'), voice: t('connection.method_voice') }[m] ?? m }
 function openVerify(challenge) {
   router.push(`/verify?id=${challenge.challenge_id}&m=${challenge.method}`)
 }

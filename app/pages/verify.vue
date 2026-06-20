@@ -3,7 +3,7 @@
     <div class="vfy">
       <div class="vfy-card">
         <div class="vfy-mark">SYS<span class="dot">.</span></div>
-        <div class="vfy-sub">Identitäts-Verifikation</div>
+        <div class="vfy-sub">{{ $t('verify.subtitle') }}</div>
 
         <!-- Loading -->
         <template v-if="phase === 'loading'">
@@ -12,9 +12,9 @@
 
         <!-- No soul / not logged in -->
         <template v-else-if="phase === 'gate'">
-          <h1>Anmeldung erforderlich<em>.</em></h1>
-          <p class="vfy-desc">Bitte zuerst in der SYS-App anmelden.</p>
-          <button class="btn btn-primary btn-lg" @click="goGate">Zur Anmeldung</button>
+          <h1>{{ $t('verify.login_required') }}<em>.</em></h1>
+          <p class="vfy-desc">{{ $t('verify.login_required_desc') }}</p>
+          <button class="btn btn-primary btn-lg" @click="goGate">{{ $t('verify.go_to_login') }}</button>
         </template>
 
         <!-- Invalid / expired -->
@@ -22,9 +22,9 @@
           <div class="vfy-ic vfy-ic--err">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
           </div>
-          <h1>Ungültige Challenge<em>.</em></h1>
-          <p class="vfy-desc">{{ errorMsg || 'Diese Verifikationsanfrage ist abgelaufen oder ungültig.' }}</p>
-          <button class="btn btn-primary btn-lg" @click="closePage">Schließen</button>
+          <h1>{{ $t('verify.invalid_challenge') }}<em>.</em></h1>
+          <p class="vfy-desc">{{ errorMsg || $t('verify.invalid_challenge_desc') }}</p>
+          <button class="btn btn-primary btn-lg" @click="closePage">{{ $t('common.close') }}</button>
         </template>
 
         <!-- ── ABGESCHLOSSEN / ZUSAMMENFASSUNG ── -->
@@ -32,7 +32,7 @@
           <div class="vfy-ic vfy-ic--ok">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
           </div>
-          <h1>Abgeschlossen<em>.</em></h1>
+          <h1>{{ $t('verify.done') }}<em>.</em></h1>
           <div class="vfy-summary">
             <div v-for="m in completedMethodsList" :key="m" class="vfy-summary-row vfy-summary-row--ok">
               <svg class="vfy-row-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
@@ -46,26 +46,26 @@
             </div>
             <div v-if="humanVerified" class="vfy-summary-row vfy-summary-row--ok">
               <svg class="vfy-row-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              <span>Blockchain-Anker ({{ humanAnchorCount }}× on-chain)</span>
+              <span>{{ $t('verify.blockchain_anchor', { n: humanAnchorCount }) }}</span>
               <span class="vfy-row-score">+1</span>
             </div>
             <div v-if="verifyIs2fa" class="vfy-summary-row vfy-summary-row--meta">
               <svg class="vfy-row-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3"/></svg>
-              <span>Mobilgerät (2FA)</span>
+              <span>{{ $t('verify.mobile_2fa') }}</span>
             </div>
           </div>
-          <div class="vfy-score-large">Score {{ verifyScore }}</div>
-          <p class="vfy-desc" style="margin-top:4px;color:var(--accent)">✓ Verifikation abgeschlossen — der Agent erkennt dich jetzt.</p>
+          <div class="vfy-score-large">{{ $t('verify.score') }} {{ verifyScore }}</div>
+          <p class="vfy-desc" style="margin-top:4px;color:var(--accent)">{{ $t('verify.verification_done') }}</p>
           <!-- Human-Check noch nachholbar -->
           <template v-if="!humanVerified">
             <button class="btn btn-primary btn-lg" :disabled="humanChecking" @click="doHumanCheck" style="margin-bottom:4px">
               <span v-if="humanChecking" class="btn-spinner" style="border-color:var(--fg-2);border-top-color:transparent" />
               <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
-              {{ humanChecking ? 'Prüfe Blockchain…' : 'No-Robot · Blockchain-Anker +1' }}
+              {{ humanChecking ? $t('verify.checking_blockchain') : $t('verify.no_robot') }}
             </button>
             <p v-if="humanError" class="vfy-err">{{ humanError }}</p>
           </template>
-          <button class="btn btn-primary btn-lg" @click="closePage">Fenster schließen</button>
+          <button class="btn btn-primary btn-lg" @click="closePage">{{ $t('verify.close_window') }}</button>
         </template>
 
         <!-- ── SCHRITT ABGESCHLOSSEN (Zwischenstand) ── -->
@@ -80,19 +80,16 @@
               }"
             >
               <span class="vfy-step-dot" />
-              <span class="vfy-step-lbl">{{ { fingerprint: 'Finger', face: 'Gesicht', voice: 'Stimme' }[m] }}</span>
+              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice') }[m] }}</span>
             </div>
           </div>
           <div class="vfy-ic vfy-ic--ok">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
           </div>
           <h1>{{ METHOD_LABELS[lastStepMethod] }}<em> ✓</em></h1>
-          <p class="vfy-desc">
-            Score {{ verifyScore }} · weiter mit
-            <strong>{{ METHOD_LABELS[pendingMethods[0]] }}</strong>.
-          </p>
-          <button class="btn btn-primary btn-lg" @click="continueToNext">Weiter →</button>
-          <button class="btn btn-ghost" @click="finalizeEarly">Mit Score {{ verifyScore }} abschließen</button>
+          <p class="vfy-desc">{{ $t('verify.continue_with', { score: verifyScore, method: METHOD_LABELS[pendingMethods[0]] }) }}</p>
+          <button class="btn btn-primary btn-lg" @click="continueToNext">{{ $t('common.next') }}</button>
+          <button class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
         </template>
 
         <!-- ── METHOD CHOOSER (Opt-in, Multi-Select) ── -->
@@ -100,8 +97,8 @@
           <div class="vfy-ic">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
           </div>
-          <h1>Methoden wählen<em>.</em></h1>
-          <p class="vfy-desc">Wähle eine oder mehrere Methoden — jede erhöht den Score.</p>
+          <h1>{{ $t('verify.choose_methods') }}<em>.</em></h1>
+          <p class="vfy-desc">{{ $t('verify.choose_methods_desc') }}</p>
 
           <button class="btn btn-method" :class="{'btn-method--on': selectedMethods.includes('fingerprint')}" @click="toggleMethod('fingerprint')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33"/></svg>
@@ -111,13 +108,13 @@
           </button>
           <button class="btn btn-method" :class="{'btn-method--on': selectedMethods.includes('face')}" @click="toggleMethod('face')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M11.25 12.75H12m-.375 0H12m.75 0h-.375M6.75 7.5c0-.69.56-1.25 1.25-1.25h8a1.25 1.25 0 0 1 0 2.5h-8A1.25 1.25 0 0 1 6.75 7.5ZM12 3a9 9 0 1 1 0 18A9 9 0 0 1 12 3Z"/></svg>
-            <span class="btn-label">Gesichtserkennung</span>
+            <span class="btn-label">{{ $t('verify.method_face') }}</span>
             <span class="vfy-check" v-if="selectedMethods.includes('face')">✓</span>
             <span class="vfy-badge" v-else>+1</span>
           </button>
           <button class="btn btn-method" :class="{'btn-method--on': selectedMethods.includes('voice')}" @click="toggleMethod('voice')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
-            <span class="btn-label">Stimm-Analyse</span>
+            <span class="btn-label">{{ $t('verify.method_voice') }}</span>
             <span class="vfy-check" v-if="selectedMethods.includes('voice')">✓</span>
             <span class="vfy-badge" v-else>+1</span>
           </button>
@@ -128,7 +125,7 @@
             style="margin-top:16px"
             @click="startVerification"
           >
-            Starten{{ selectedMethods.length > 0 ? ` (${selectedMethods.length} Methode${selectedMethods.length > 1 ? 'n' : ''})` : '' }}
+            {{ selectedMethods.length > 0 ? $t('verify.start_methods', { n: selectedMethods.length, plural: selectedMethods.length > 1 ? 's' : '' }) : $t('verify.choose_methods') }}
           </button>
         </template>
 
@@ -147,7 +144,7 @@
               }"
             >
               <span class="vfy-step-dot" />
-              <span class="vfy-step-lbl">{{ { fingerprint: 'Finger', face: 'Gesicht', voice: 'Stimme' }[m] }}</span>
+              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice') }[m] }}</span>
             </div>
           </div>
 
@@ -156,19 +153,19 @@
             <div class="vfy-ic" :class="icClass">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75m6.633-4.596a18.666 18.666 0 0 1-2.485 5.33"/></svg>
             </div>
-            <h1 v-if="phase === 'idle'">Fingerabdruck<em>.</em></h1>
-            <h1 v-else-if="phase === 'verifying'">Warte auf Biometrik<em>…</em></h1>
-            <h1 v-else-if="phase === 'verified'">Verifiziert<em>.</em></h1>
-            <h1 v-else-if="phase === 'failed'">Fehlgeschlagen<em>.</em></h1>
+            <h1 v-if="phase === 'idle'">{{ $t('verify.fingerprint') }}<em>.</em></h1>
+            <h1 v-else-if="phase === 'verifying'">{{ $t('verify.waiting_biometric') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'verified'">{{ $t('verify.verified') }}<em>.</em></h1>
+            <h1 v-else-if="phase === 'failed'">{{ $t('verify.failed') }}<em>.</em></h1>
             <p class="vfy-desc">
-              <template v-if="phase === 'idle'">Identitäts-Verifikation via Face ID, Touch ID oder Windows Hello.</template>
-              <template v-else-if="phase === 'verifying'">Bestätige mit Fingerabdruck oder Gesicht…</template>
-              <template v-else-if="phase === 'verified'">Biometrische Verifikation erfolgreich.</template>
-              <template v-else-if="phase === 'failed'">{{ errorMsg || 'Verifikation fehlgeschlagen. Erneut versuchen?' }}</template>
+              <template v-if="phase === 'idle'">{{ $t('verify.fingerprint_desc') }}</template>
+              <template v-else-if="phase === 'verifying'">{{ $t('verify.confirm_biometric') }}</template>
+              <template v-else-if="phase === 'verified'">{{ $t('verify.biometric_success') }}</template>
+              <template v-else-if="phase === 'failed'">{{ errorMsg || $t('verify.failed_retry') }}</template>
             </p>
-            <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doFingerprint">Jetzt verifizieren</button>
-            <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">Erneut versuchen</button>
-            <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">Mit Score {{ verifyScore }} abschließen</button>
+            <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doFingerprint">{{ $t('verify.verify_now') }}</button>
+            <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">{{ $t('verify.retry') }}</button>
+            <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
           </template>
 
           <!-- ── FACE ── -->
@@ -177,36 +174,36 @@
               <div class="vfy-ic" :class="icClass">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M11.25 12.75H12m-.375 0H12m.75 0h-.375M6.75 7.5c0-.69.56-1.25 1.25-1.25h8a1.25 1.25 0 0 1 0 2.5h-8A1.25 1.25 0 0 1 6.75 7.5ZM12 3a9 9 0 1 1 0 18A9 9 0 0 1 12 3Z"/></svg>
               </div>
-              <h1>Gesicht<em>.</em></h1>
-              <p class="vfy-desc">Kamera-Frame wird mit deinem Vault-Profilbild verglichen.</p>
+              <h1>{{ $t('verify.face') }}<em>.</em></h1>
+              <p class="vfy-desc">{{ $t('verify.face_desc') }}</p>
               <button class="btn btn-primary btn-lg" :disabled="phase === 'verifying'" @click="doFace">
                 <span v-if="phase === 'verifying'" class="btn-spinner" />
-                {{ phase === 'verifying' ? 'Kamera startet…' : 'Kamera aktivieren' }}
+                {{ phase === 'verifying' ? $t('verify.camera_starting') : $t('verify.activate_camera') }}
               </button>
-              <button v-if="phase === 'idle' && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">Mit Score {{ verifyScore }} abschließen</button>
+              <button v-if="phase === 'idle' && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
             </template>
             <template v-else-if="phase === 'capturing'">
               <div class="vfy-cam-wrap">
                 <video ref="faceVideo" autoplay playsinline muted class="vfy-cam" />
                 <canvas ref="faceCanvas" style="display:none" />
               </div>
-              <p class="vfy-desc">Halte dein Gesicht in die Kamera.</p>
-              <button class="btn btn-primary btn-lg" @click="captureFace">Aufnahme</button>
-              <button class="btn btn-ghost" @click="stopCamera(); phase = 'idle'">Abbrechen</button>
+              <p class="vfy-desc">{{ $t('verify.hold_face') }}</p>
+              <button class="btn btn-primary btn-lg" @click="captureFace">{{ $t('verify.capture') }}</button>
+              <button class="btn btn-ghost" @click="stopCamera(); phase = 'idle'">{{ $t('common.cancel') }}</button>
             </template>
             <template v-else-if="phase === 'comparing'">
               <div class="vfy-ic vfy-ic--spin">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
               </div>
-              <h1>Vergleiche<em>…</em></h1>
-              <p class="vfy-desc">Claude Vision analysiert dein Gesicht.</p>
+              <h1>{{ $t('verify.comparing') }}<em>…</em></h1>
+              <p class="vfy-desc">{{ $t('verify.analyzing_face') }}</p>
             </template>
             <template v-else-if="phase === 'failed'">
               <div class="vfy-ic vfy-ic--err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></div>
-              <h1>Kein Match<em>.</em></h1>
-              <p class="vfy-desc">{{ errorMsg || 'Gesicht konnte nicht verifiziert werden.' }}</p>
-              <button class="btn btn-primary btn-lg" @click="reset">Erneut versuchen</button>
-              <button v-if="completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">Mit Score {{ verifyScore }} abschließen</button>
+              <h1>{{ $t('verify.no_match') }}<em>.</em></h1>
+              <p class="vfy-desc">{{ errorMsg || $t('verify.face_failed') }}</p>
+              <button class="btn btn-primary btn-lg" @click="reset">{{ $t('verify.retry') }}</button>
+              <button v-if="completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
             </template>
           </template>
 
@@ -215,21 +212,21 @@
             <div class="vfy-ic" :class="icClass">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
             </div>
-            <h1 v-if="phase === 'idle'">Stimme<em>.</em></h1>
-            <h1 v-else-if="phase === 'verifying'">Lade Vault-Audio<em>…</em></h1>
-            <h1 v-else-if="phase === 'recording'">Aufnahme<em>…</em></h1>
-            <h1 v-else-if="phase === 'comparing'">Vergleiche<em>…</em></h1>
-            <h1 v-else-if="phase === 'failed'">Kein Match<em>.</em></h1>
+            <h1 v-if="phase === 'idle'">{{ $t('verify.voice') }}<em>.</em></h1>
+            <h1 v-else-if="phase === 'verifying'">{{ $t('verify.loading_audio') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'recording'">{{ $t('verify.recording') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'comparing'">{{ $t('verify.comparing') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'failed'">{{ $t('verify.no_match') }}<em>.</em></h1>
             <p class="vfy-desc">
-              <template v-if="phase === 'idle'">Deine Stimme wird mit dem Vault-Audio verglichen (FFT-Spektralanalyse).</template>
-              <template v-else-if="phase === 'verifying'">Vault-Audio wird geladen…</template>
-              <template v-else-if="phase === 'recording'">Bitte sprechen — {{ recCountdown }} Sek. <span class="vfy-rec-dot" /></template>
-              <template v-else-if="phase === 'comparing'">Spektralanalyse läuft…</template>
-              <template v-else-if="phase === 'failed'">{{ errorMsg || `Kein Stimm-Match (${(voiceScore * 100).toFixed(0)}%). Erneut versuchen?` }}</template>
+              <template v-if="phase === 'idle'">{{ $t('verify.voice_desc') }}</template>
+              <template v-else-if="phase === 'verifying'">{{ $t('verify.loading_vault_audio') }}</template>
+              <template v-else-if="phase === 'recording'">{{ $t('verify.please_speak', { n: recCountdown }) }} <span class="vfy-rec-dot" /></template>
+              <template v-else-if="phase === 'comparing'">{{ $t('verify.spectral_analysis') }}</template>
+              <template v-else-if="phase === 'failed'">{{ errorMsg || $t('verify.voice_failed', { pct: (voiceScore * 100).toFixed(0) }) }}</template>
             </p>
-            <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doVoice">Aufnahme starten</button>
-            <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">Erneut versuchen</button>
-            <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">Mit Score {{ verifyScore }} abschließen</button>
+            <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doVoice">{{ $t('verify.start_recording') }}</button>
+            <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">{{ $t('verify.retry') }}</button>
+            <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
           </template>
 
           <!-- ── Wallet + Human-Check + Fertig (alle Methoden abgeschlossen) ── -->
@@ -245,7 +242,7 @@
               >
                 <span v-if="walletPhase === 'connecting' || walletPhase === 'signing'" class="btn-spinner" />
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/></svg>
-                {{ walletPhase === 'connecting' ? 'Verbinde…' : walletPhase === 'signing' ? 'Signiere…' : walletConnected ? 'Signieren' : 'Wallet verbinden' }}
+                {{ walletPhase === 'connecting' ? $t('verify.wallet_connecting') : walletPhase === 'signing' ? $t('verify.wallet_signing') : walletConnected ? $t('verify.wallet_sign') : $t('verify.wallet_connect') }}
               </button>
               <p v-if="walletError" class="vfy-err">{{ walletError }}</p>
             </template>
@@ -260,26 +257,26 @@
               >
                 <span v-if="humanChecking" class="btn-spinner" style="border-color:var(--fg-2);border-top-color:transparent" />
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
-                {{ humanChecking ? 'Prüfe Blockchain…' : 'No-Robot · Blockchain-Anker +1' }}
+                {{ humanChecking ? $t('verify.checking_blockchain') : $t('verify.no_robot') }}
               </button>
               <p v-if="humanError" class="vfy-err">{{ humanError }}</p>
             </template>
-            <p v-else class="vfy-wallet-ok">✓ {{ humanAnchorCount }} Blockchain-Anker · +1 Mensch</p>
+            <p v-else class="vfy-wallet-ok">{{ $t('verify.blockchain_verified', { n: humanAnchorCount }) }}</p>
 
-            <button class="btn btn-primary btn-lg" style="margin-top:8px" @click="lockAndClose">Fertig</button>
+            <button class="btn btn-primary btn-lg" style="margin-top:8px" @click="lockAndClose">{{ $t('common.done') }}</button>
           </div>
 
         </template>
 
         <!-- QR: Desktop → Handy scannen (nicht zeigen wenn per QR-Scan angekommen) -->
         <div v-if="phase === 'idle' && qrDataUrl && !arrivedViaScan" class="vfy-qr">
-          <img :src="qrDataUrl" alt="QR-Code" class="vfy-qr-img" />
-          <p class="vfy-qr-hint">Mit Handy scannen &amp; dort verifizieren</p>
+          <img :src="qrDataUrl" :alt="$t('verify.qr_code_alt')" class="vfy-qr-img" />
+          <p class="vfy-qr-hint">{{ $t('verify.scan_with_phone') }}</p>
         </div>
 
         <div v-if="phase !== 'done'" class="vfy-foot">
           <span class="live-dot" />
-          Lokaler Knoten · privat &amp; verschlüsselt
+          {{ $t('verify.local_node') }}
         </div>
       </div>
     </div>
@@ -288,6 +285,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
@@ -296,6 +294,7 @@ import QRCode from 'qrcode'
 
 definePageMeta({ layout: false })
 
+const { t } = useI18n()
 const route  = useRoute()
 const { hasSoul, soulToken } = useSoul()
 const { authenticatePasskey } = useSoulPasskey()
@@ -313,7 +312,11 @@ const vt           = route.query.vt || ''
 
 // Methoden aus URL parsen (komma-getrennt oder einzeln)
 const VALID_METHODS  = ['fingerprint', 'face', 'voice']
-const METHOD_LABELS  = { fingerprint: 'Fingerabdruck', face: 'Gesichtserkennung', voice: 'Stimm-Analyse' }
+const METHOD_LABELS  = computed(() => ({
+  fingerprint: t('verify.method_fingerprint'),
+  face:        t('verify.method_face'),
+  voice:       t('verify.method_voice'),
+}))
 const urlMethods    = methodParam
   ? methodParam.split(',').filter(m => VALID_METHODS.includes(m))
   : []
@@ -538,7 +541,7 @@ onMounted(async () => {
     .map(b => b.toString(16).padStart(2, '0')).join('')
 
   if (!challengeId || challengeId.length !== 32) {
-    errorMsg.value = 'Fehlende oder ungültige Challenge-ID.'
+    errorMsg.value = t('verify.missing_challenge')
     phase.value    = 'invalid'
     return
   }
@@ -678,8 +681,8 @@ async function doHumanCheck() {
       else verifyScore.value = verifyScore.value + 1
     } else {
       humanError.value = d.reason === 'no_blockchain_anchor'
-        ? 'Kein Blockchain-Anker gefunden. Soul muss zuerst verankert werden.'
-        : (d.detail || 'Blockchain-Prüfung fehlgeschlagen.')
+        ? t('verify.no_blockchain_anchor_found')
+        : (d.detail || t('verify.blockchain_failed'))
     }
   } catch {
     humanError.value = 'Verbindungsfehler.'
@@ -714,7 +717,7 @@ async function doFace() {
     await nextTick()
     if (faceVideo.value) { faceVideo.value.srcObject = faceCamStream; faceVideo.value.play().catch(() => {}) }
   } catch {
-    errorMsg.value = 'Kamera nicht verfügbar.'
+    errorMsg.value = t('verify.camera_unavailable')
     phase.value = 'failed'
   }
 }

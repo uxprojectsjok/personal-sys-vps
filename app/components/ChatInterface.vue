@@ -11,11 +11,11 @@
 
       <div v-if="peerPendingVisible && peerPollPending.length" class="peer-error-notice peer-error-notice--pending">
         <span class="peer-error-icon">⏳</span>
-        <span>Verbindung ausstehend · {{ peerPollPending.map(e => `${peerLabel(e.soul_id)} muss Verbindungsanfrage bestätigen`).join(', ') }}</span>
+        <span>{{ $t('chat.peer_pending', { peers: peerPollPending.map(e => `${peerLabel(e.soul_id)} ${$t('chat.peer_must_confirm')}`).join(', ') }) }}</span>
       </div>
       <div v-if="peerWarnVisible && peerPollUnreachable.length" class="peer-error-notice">
         <span class="peer-error-icon">⚠</span>
-        <span>{{ peerPollUnreachable.length === 1 ? 'Peer nicht erreichbar' : `${peerPollUnreachable.length} Peers nicht erreichbar` }} · {{ peerPollUnreachable.map(e => `${peerLabel(e.soul_id)} (${peerErrorLabel(e.error)})`).join(', ') }}</span>
+        <span>{{ peerPollUnreachable.length === 1 ? $t('chat.peer_unreachable_one') : $t('chat.peer_unreachable_many', { n: peerPollUnreachable.length }) }} · {{ peerPollUnreachable.map(e => `${peerLabel(e.soul_id)} (${peerErrorLabel(e.error)})`).join(', ') }}</span>
       </div>
 
       <template v-for="(item, idx) in filteredStream" :key="item.id || `${item._type}-${item.ts ?? item._ts}-${idx}`">
@@ -31,7 +31,7 @@
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
+          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
           <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
@@ -40,7 +40,7 @@
               @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
               <img :src="item.mediaUrl" alt="" loading="lazy" class="msg-media-img"
                 @click="openLightbox(item.mediaUrl, 'bild.jpg')" />
-              <button class="msg-img-del" @click.stop="deleteLocalImg(item)" title="Löschen">×</button>
+              <button class="msg-img-del" @click.stop="deleteLocalImg(item)" :title="$t('chat.delete')">×</button>
             </div>
             <div v-else-if="item.mediaType === 'audio' && item.mediaUrl" class="media-audio">
               <audio controls :src="item.mediaUrl" style="accent-color:var(--accent)"></audio>
@@ -197,7 +197,7 @@
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" title="Löschen">×</button>
+          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
           <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
             :style="{ color: item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
             {{ resolveAuthor(item) }}
@@ -212,7 +212,7 @@
                 @touchend="_cancelMediaLongPress" @touchmove="_cancelMediaLongPress" @touchcancel="_cancelMediaLongPress">
                 <img :src="msgMediaCache.get(item.ts)" class="msg-media-img" alt=""
                   @click="openLightbox(msgMediaCache.get(item.ts), 'bild.jpg')" />
-                <button class="msg-img-del" @click.stop="deleteLocalImg(item)" title="Löschen">×</button>
+                <button class="msg-img-del" @click.stop="deleteLocalImg(item)" :title="$t('chat.delete')">×</button>
               </div>
               <div v-if="msgBlobCache.get(item.ts)" class="msg-doc-link"
                 @contextmenu.prevent.stop="e => _openMediaCtx(e, msgBlobCache.get(item.ts).url, msgBlobCache.get(item.ts).name)"
@@ -222,7 +222,7 @@
                   <span class="msg-doc-icon">📄</span>
                   <span class="msg-doc-name">{{ msgBlobCache.get(item.ts).name }}</span>
                 </a>
-                <button class="msg-doc-del" @click="deleteLocalImg(item)" title="Löschen">×</button>
+                <button class="msg-doc-del" @click="deleteLocalImg(item)" :title="$t('chat.delete')">×</button>
               </div>
             </template>
             <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
@@ -240,7 +240,7 @@
 
         <!-- Capture card -->
         <div v-else-if="item._type === 'capture'" class="capture-wrap">
-          <button class="capture-dismiss" @click="removeMessage(item.id)" aria-label="Schließen">✕</button>
+          <button class="capture-dismiss" @click="removeMessage(item.id)" :aria-label="$t('chat.close')">✕</button>
           <AudioCaptureCard v-if="item.captureMode === 'audio'" />
           <MotionCaptureCard v-else :mode="item.captureMode" />
         </div>
@@ -284,20 +284,20 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/>
             </svg>
-            Foto / Video
+            {{ $t('chat.photo_video') }}
           </button>
           <button class="mp-btn" @click="mediaPickerOpen = false; onFileIconClick()" :disabled="props.growthLocked">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
             </svg>
-            Datei
+            {{ $t('chat.file') }}
           </button>
           <button class="mp-btn" @click="mediaPickerOpen = false; startPeerAudioRec()" :disabled="props.growthLocked">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
               <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
             </svg>
-            Mikro
+            {{ $t('chat.microphone') }}
           </button>
           <button class="mp-btn" @click.stop="mediaPickerOpen = false; emojiOpen = true" :disabled="props.growthLocked">
             <span style="font-size:12px;line-height:1;">🙂</span>
@@ -335,7 +335,7 @@
           :class="{ active: mediaPickerOpen || emojiOpen }"
           @click="mediaPickerOpen = !mediaPickerOpen; cmdsOpen = false; emojiOpen = false"
           :disabled="props.growthLocked"
-          :title="(mediaPickerOpen || emojiOpen) ? 'Schließen' : 'Foto, Datei oder Emoji'"
+          :title="(mediaPickerOpen || emojiOpen) ? $t('chat.close') : $t('chat.media_or_emoji')"
         >
           <svg v-if="!mediaPickerOpen && !emojiOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
@@ -353,7 +353,7 @@
             ref="textareaEl"
             v-model="draft"
             class="input"
-            :placeholder="props.growthLocked ? 'Soul-Archivar schreibt…' : inputPlaceholder"
+            :placeholder="props.growthLocked ? $t('chat.archivar_writing') : inputPlaceholder"
             :disabled="props.growthLocked"
             rows="1"
             @keydown.enter.exact.prevent="handleSend"
@@ -361,7 +361,7 @@
             @input="autoResize"
           ></textarea>
         </div>
-        <button class="send" :disabled="!canSend" @click="handleSend" aria-label="Senden">
+        <button class="send" :disabled="!canSend" @click="handleSend" :aria-label="$t('chat.send')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arr-icon">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m-7 7 7-7 7 7"/>
           </svg>
@@ -376,8 +376,8 @@
           @pointerup="stopVoiceRecord"
           @pointercancel="stopVoiceRecord"
           @contextmenu.prevent
-          title="Gedrückt halten → sprechen → loslassen"
-          aria-label="Mit Agent sprechen"
+          :title="$t('chat.hold_to_speak')"
+          :aria-label="$t('chat.speak_to_agent')"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="dock-icon-svg">
             <rect x="9" y="2" width="6" height="12" rx="3" stroke-linecap="round"/>
@@ -391,7 +391,7 @@
             v-if="ttsPlaying"
             class="dock-icon tts-stop-btn"
             @click="stopTts"
-            title="Audio stoppen"
+            :title="$t('chat.stop_audio')"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" class="dock-icon-svg">
               <rect x="5" y="5" width="14" height="14" rx="2"/>
@@ -403,24 +403,24 @@
       <!-- Speicher Panel -->
       <Transition name="archivar-panel-fade">
         <div v-if="showArchivPanel" class="archivar-panel">
-          <div v-if="archivPanelLoading" class="archivar-panel-loading">Lade…</div>
+          <div v-if="archivPanelLoading" class="archivar-panel-loading">{{ $t('chat.loading') }}</div>
           <template v-else>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Fakten</span>
+              <span class="archivar-panel-key">Facts</span>
               <span class="archivar-panel-val" :class="archivFacts > 0 ? 'archivar-panel-ok' : ''">
-                {{ archivFacts > 0 ? archivFacts + ' gespeichert' : 'noch keine' }}
+                {{ archivFacts > 0 ? $t('chat.facts_saved', { n: archivFacts }) : $t('chat.no_facts') }}
               </span>
             </div>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Letztes Aufräumen</span>
+              <span class="archivar-panel-key">{{ $t('chat.last_cleanup') }}</span>
               <span class="archivar-panel-val">{{ archivUpdated || '—' }}</span>
             </div>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Größe</span>
+              <span class="archivar-panel-key">{{ $t('chat.size') }}</span>
               <span class="archivar-panel-val">{{ archivSizeKb }}</span>
             </div>
             <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Chaos</span>
+              <span class="archivar-panel-key">{{ $t('chat.chaos') }}</span>
               <span class="archivar-panel-val archivar-chaos-wrap">
                 <span class="archivar-chaos-bar">
                   <span class="archivar-chaos-fill" :style="{ width: archivChaos.pct + '%', background: archivChaos.color }" />
@@ -429,7 +429,7 @@
               </span>
             </div>
             <button class="archivar-panel-btn" :disabled="archivCrystallizeBusy" @click="chatCrystallize">
-              <span v-if="archivCrystallizeBusy" class="dots-running">Räumt auf</span><template v-else>Jetzt aufräumen</template>
+              <span v-if="archivCrystallizeBusy" class="dots-running">{{ $t('chat.cleanup_running') }}</span><template v-else>{{ $t('chat.cleanup_now') }}</template>
             </button>
             <div v-if="archivPanelMsg" class="archivar-panel-msg" :class="archivPanelMsg.ok ? 'ok' : 'err'">
               {{ archivPanelMsg.text }}
@@ -441,10 +441,10 @@
       <!-- Mode bar — always below input -->
       <div class="dock-mode-bar">
         <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
-          <span class="archivar-dot"></span>KI-Auto
+          <span class="archivar-dot"></span>{{ $t('chat.ki_auto') }}
         </button>
         <button class="archivar-toggle" :class="{ active: showArchivPanel }" @click="toggleArchivPanel">
-          <span class="archivar-dot"></span>Speicher<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
+          <span class="archivar-dot"></span>{{ $t('chat.memory') }}<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
         </button>
         <span class="mode-sep"></span>
         <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
@@ -452,11 +452,11 @@
         <span class="mode-sep"></span>
         <Transition name="fade-quick">
           <span v-if="clearAllConfirm" class="clear-confirm">
-            Alles löschen?
-            <button class="clear-ok" @click="clearAll">OK</button>
-            <button class="clear-cancel" @click="clearAllConfirm = false">Abbrechen</button>
+            {{ $t('chat.clear_all_confirm') }}
+            <button class="clear-ok" @click="clearAll">{{ $t('common.ok') }}</button>
+            <button class="clear-cancel" @click="clearAllConfirm = false">{{ $t('chat.cancel') }}</button>
           </span>
-          <button v-else class="clear-all-btn" @click="clearAllConfirm = true" title="Alle Nachrichten löschen">
+          <button v-else class="clear-all-btn" @click="clearAllConfirm = true" :title="$t('chat.clear_all_title')">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
               <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
             </svg>
@@ -468,7 +468,7 @@
       <div v-if="peerAudioRec" class="dock-media-preview peer-audio-rec">
         <span class="peer-audio-dot"></span>
         <span class="peer-audio-dur">{{ formatAudioDuration(peerAudioDuration) }}</span>
-        <span class="dock-media-name" style="flex:1">Aufnahme läuft…</span>
+        <span class="dock-media-name" style="flex:1">{{ $t('chat.recording') }}</span>
         <button class="dock-media-remove peer-audio-stop" @click="stopPeerAudioRec" title="Stoppen">
           <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
         </button>
@@ -488,24 +488,24 @@
           </svg>
         </template>
         <template v-else>
-          <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" alt="Anhang" class="dock-media-thumb" />
+          <img :src="`data:${msgMedia.mime};base64,${msgMedia.base64}`" :alt="$t('chat.attachment')" class="dock-media-thumb" />
         </template>
-        <span class="dock-media-name">{{ msgMedia.name ?? 'Anhang' }}</span>
-        <button class="dock-media-remove" @click="msgMedia = null" aria-label="Entfernen">✕</button>
+        <span class="dock-media-name">{{ msgMedia.name ?? $t('chat.attachment') }}</span>
+        <button class="dock-media-remove" @click="msgMedia = null" :aria-label="$t('chat.remove')">✕</button>
       </div>
       <div v-if="msgDoc" class="dock-media-preview">
         <span class="dock-doc-icon">↓</span>
         <span class="dock-media-name">{{ msgDoc.name }}</span>
-        <button class="dock-media-remove" @click="msgDoc = null" aria-label="Entfernen">✕</button>
+        <button class="dock-media-remove" @click="msgDoc = null" :aria-label="$t('chat.remove')">✕</button>
       </div>
 
-      <!-- KI-Disclaimer -->
-      <p class="dock-disclaimer">KI kann Fehler machen — überprüfe wichtige Informationen.</p>
+      <!-- AI disclaimer -->
+      <p class="dock-disclaimer">{{ $t('chat.disclaimer') }}</p>
 
       <!-- Session shared files banner -->
       <div v-if="sessionSharedFiles.length" class="shared-files-banner">
-        <span class="sfb-info">{{ sessionSharedFiles.length }} Datei{{ sessionSharedFiles.length > 1 ? 'en' : '' }} in vault/shared — auf Gerät sichern falls gewünscht</span>
-        <button class="sfb-delete" @click="deleteAllSessionFiles">Alle löschen</button>
+        <span class="sfb-info">{{ $t('chat.shared_files_banner', { n: sessionSharedFiles.length, plural: sessionSharedFiles.length > 1 ? 's' : '' }) }}</span>
+        <button class="sfb-delete" @click="deleteAllSessionFiles">{{ $t('chat.delete_all') }}</button>
       </div>
 
     </footer>
@@ -514,7 +514,7 @@
     <!-- Image Lightbox -->
     <Teleport to="#teleports">
       <div v-if="lightboxImg" class="lightbox-overlay" @click.self="closeLightbox">
-        <button class="lightbox-close" @click="closeLightbox" aria-label="Schließen">×</button>
+        <button class="lightbox-close" @click="closeLightbox" :aria-label="$t('chat.close')">×</button>
         <img :src="lightboxImg.url" class="lightbox-img" alt=""
           @contextmenu.prevent.stop="e => _openMediaCtx(e, lightboxImg.url, lightboxImg.name)"
           @touchstart.stop.passive="e => _startMediaLongPress(e, lightboxImg.url, lightboxImg.name)"
@@ -536,9 +536,9 @@
       <Transition name="ctx-pop">
         <div v-if="ctxItem" class="ctx-scrim" @click="ctxItem = null">
           <div class="ctx-menu" :style="{ top: ctxPos.y + 'px', left: ctxPos.x + 'px' }" @click.stop>
-            <button v-if="ctxItem._mediaUrl" class="ctx-dl" @click="ctxDownload">Herunterladen</button>
-            <button v-else class="ctx-del" @click="ctxDelete">Löschen</button>
-            <button class="ctx-cancel" @click="ctxItem = null">Abbrechen</button>
+            <button v-if="ctxItem._mediaUrl" class="ctx-dl" @click="ctxDownload">{{ $t('chat.download') }}</button>
+            <button v-else class="ctx-del" @click="ctxDelete">{{ $t('chat.delete') }}</button>
+            <button class="ctx-cancel" @click="ctxItem = null">{{ $t('chat.cancel') }}</button>
           </div>
         </div>
       </Transition>
@@ -549,6 +549,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useClaude } from '~/composables/useClaude.js'
 import { useMind } from '~/composables/useMind.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
@@ -561,6 +562,8 @@ import { useVaultSession } from '~/composables/useVaultSession.js'
 import CameraRecorder      from '~/components/CameraRecorder.vue'
 import AudioCaptureCard    from '~/components/AudioCaptureCard.vue'
 import MotionCaptureCard   from '~/components/MotionCaptureCard.vue'
+
+const { t } = useI18n()
 
 // ── Props / Emits ──────────────────────────────────────────────────
 const props = defineProps({
@@ -671,7 +674,7 @@ const archivChaos = computed(() => {
   const e = archivLogEntries.value, d = archivDaysSince.value
   const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
   if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: 'ruhig' }
-  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: 'wächst' }
+  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: t('chat.growth_chaos_label') }
   return { pct: 100, color: '#ef4444', label: 'chaotisch' }
 })
 const archivCrystallizeBusy = ref(false)
@@ -713,7 +716,7 @@ async function chatCrystallize() {
         await syncLongmemFromServer()
         loadArchivPanel()
         archivCrystallizeBusy.value = false
-        archivPanelMsg.value = { ok: true, text: 'Aufräumen abgeschlossen ✓' }
+        archivPanelMsg.value = { ok: true, text: t('chat.cleanup_done') }
         setTimeout(() => { archivPanelMsg.value = null }, 5000)
       }, 18000)
     } else {
@@ -823,7 +826,7 @@ async function startVoiceRecord() {
   // getUserMedia als erstes await — kein async-Code davor damit iOS Gesture-Kontext erhalten bleibt
   let stream
   if (!navigator.mediaDevices?.getUserMedia) {
-    addMessage('assistant', 'Mikrofon-Zugriff nicht verfügbar — HTTPS oder Browser-Unterstützung fehlt.')
+    addMessage('assistant', t('chat.mic_no_access'))
     await scrollToBottom()
     return
   }
@@ -833,8 +836,8 @@ async function startVoiceRecord() {
     const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
       ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
       : e?.name === 'NotFoundError'
-        ? 'Kein Mikrofon gefunden — bitte ein Audiogerät anschließen.'
-        : `Mikrofon nicht verfügbar (${e?.name || 'unbekannt'}).`
+        ? t('chat.mic_not_found')
+        : t('chat.mic_error', { name: e?.name || 'unknown' })
     addMessage('assistant', msg)
     await scrollToBottom()
     return
@@ -1228,7 +1231,7 @@ function peerLabel(soulId) {
 }
 function peerErrorLabel(err) {
   if (!err) return 'Fehler'
-  if (err.includes('invalid_peer_cert') || err.includes('invalid_cert')) return 'Cert ungültig'
+  if (err.includes('invalid_peer_cert') || err.includes('invalid_cert')) return t('chat.cert_invalid')
   if (err.includes('peer_unreachable')) return 'Server offline'
   if (err.includes('peer_not_trusted')) return 'Ausstehend'
   if (err.includes('no_social_content') || err.includes('204')) return 'Leer'
@@ -1917,7 +1920,7 @@ function deliveryTitle(ts) {
   if (s === 'saving')    return 'Wird gesendet…'
   if (s === 'saved')     return 'Gespeichert'
   if (s === 'delivered') return 'Peer erreichbar'
-  if (s === 'error')     return 'Fehler — Peer prüfen'
+  if (s === 'error')     return t('chat.peer_error')
   return ''
 }
 
@@ -2013,7 +2016,7 @@ async function startPeerAudioRec() {
   } catch (e) {
     const msg = e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError'
       ? 'Mikrofon-Zugriff verweigert — bitte in den Browser-Einstellungen erlauben.'
-      : 'Mikrofon nicht verfügbar.'
+      : t('chat.mic_unavailable')
     addMessage('assistant', msg); await scrollToBottom(); return
   }
   _peerAudioStream = stream
@@ -2368,7 +2371,7 @@ async function handleWebSearch(query) {
   const preErr = preflightCheck('web-search')
   if (preErr) { addMessage('user', `@suche ${safe}`); addMessage('assistant', preErr); return }
   addMessage('user', `@suche ${safe}`)
-  const statusMsg = addMessage('assistant', 'Suche läuft…', { streaming: true })
+  const statusMsg = addMessage('assistant', t('chat.search_running'), { streaming: true })
   await scrollToBottom()
 
   // ── Schritt 1: Brave Search ──────────────────────────────────────

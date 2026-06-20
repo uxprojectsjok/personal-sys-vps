@@ -13,25 +13,25 @@
 
           <!-- Head -->
           <div class="sys-modal-head">
-            <button class="sys-modal-close" @click="dismissSync()" aria-label="Schließen">×</button>
+            <button class="sys-modal-close" @click="dismissSync()" :aria-label="$t('common.close')">×</button>
             <span class="sys-kicker">Soul · Sync</span>
-            <h2 id="soul-sync-title" class="sys-display" style="font-size:clamp(22px,3vw,32px)">Abgleich</h2>
-            <p class="sys-lede">{{ changedSections.length }} Abschnitte unterscheiden sich zwischen diesem Gerät und dem Server.</p>
+            <h2 id="soul-sync-title" class="sys-display" style="font-size:clamp(22px,3vw,32px)">{{ $t('sync.title') }}</h2>
+            <p class="sys-lede">{{ $t('sync.lede', { count: changedSections.length }) }}</p>
           </div>
 
           <!-- Meta bar (rail slot) -->
           <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--sys-rule);background:var(--sys-paper-3)">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px;border-right:1px solid var(--sys-rule)">
               <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Dieses Gerät</span>
+              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ $t('sync.this_device') }}</span>
               <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ localLastSession || '—' }}</span>
-              <span v-if="newerSide === 'local'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
+              <span v-if="newerSide === 'local'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px">
               <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S</span>
               <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Server</span>
               <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ serverLastSession || '—' }}</span>
-              <span v-if="newerSide === 'server'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">Aktueller</span>
+              <span v-if="newerSide === 'server'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
             </div>
           </div>
 
@@ -65,11 +65,11 @@
               <div v-if="openSections[s.name]" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="sys-card-ed" style="margin-bottom:0">
                   <div class="sys-card-head">
-                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L – Dieses Gerät</span>
+                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">{{ $t('sync.col_local') }}</span>
                   </div>
                   <div class="sys-card-body">
                     <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.localSnippet }}</p>
-                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.localLen - 200 }} Zeichen</p>
+                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.localLen - 200 }) }}</p>
                   </div>
                 </div>
                 <div class="sys-card-ed" style="margin-bottom:0">
@@ -78,7 +78,7 @@
                   </div>
                   <div class="sys-card-body">
                     <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.serverSnippet }}</p>
-                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">+{{ s.serverLen - 200 }} Zeichen</p>
+                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.serverLen - 200 }) }}</p>
                   </div>
                 </div>
               </div>
@@ -89,7 +89,7 @@
           <div class="sys-modal-foot">
             <div class="sys-foot-meta">
               <span class="sys-dot" :class="newerSide === 'server' ? 'sys-dot--live' : newerSide === 'local' ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
-              {{ newerSide === 'server' ? 'Server aktueller' : newerSide === 'local' ? 'Gerät aktueller' : 'Gleicher Stand' }}
+              {{ newerSide === 'server' ? $t('sync.server_newer') : newerSide === 'local' ? $t('sync.local_newer') : $t('sync.same') }}
             </div>
             <div class="sys-foot-actions">
               <button
@@ -97,15 +97,15 @@
                 :class="newerSide === 'server' ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
                 @click="handleAcceptServer"
                 :disabled="saving"
-              >{{ newerSide === 'server' ? '✓ Server übernehmen' : 'Server übernehmen' }}</button>
+              >{{ newerSide === 'server' ? $t('sync.btn_accept_primary') : $t('sync.btn_accept') }}</button>
               <button
                 class="sys-btn-ed"
                 :class="newerSide === 'local' ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
                 @click="handlePushLocal"
                 :disabled="saving"
               >
-                <span v-if="saving">Lädt…</span>
-                <span v-else>{{ newerSide === 'local' ? '✓ Auf Server hochladen' : 'Auf Server hochladen' }}</span>
+                <span v-if="saving">{{ $t('common.loading') }}</span>
+                <span v-else>{{ newerSide === 'local' ? $t('sync.btn_push_primary') : $t('sync.btn_push') }}</span>
               </button>
             </div>
           </div>
@@ -117,8 +117,11 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSoul } from '~/composables/useSoul.js';
 import { useVault } from '~/composables/useVault.js';
+
+const { t } = useI18n();
 
 const {
   soulContent, serverContent, syncStatus,
@@ -173,8 +176,8 @@ const changedSections = computed(() => {
         name:          k,
         localLen:      lc.length,
         serverLen:     sc.length,
-        localSnippet:  lc.slice(0, 200).trim() || '(leer)',
-        serverSnippet: sc.slice(0, 200).trim() || '(leer)',
+        localSnippet:  lc.slice(0, 200).trim() || t('sync.empty_section'),
+        serverSnippet: sc.slice(0, 200).trim() || t('sync.empty_section'),
       };
     });
 });

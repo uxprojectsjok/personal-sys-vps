@@ -47,7 +47,7 @@
             <button
               class="sys-modal-close"
               type="button"
-              aria-label="Schließen"
+              :aria-label="$t('common.close')"
               @click="$emit('cancel')"
             >
               <span aria-hidden="true">×</span>
@@ -88,7 +88,7 @@
                   class="sys-btn-ed sys-btn-ed--ghost"
                   @click="$emit('cancel')"
                 >
-                  {{ cancelText }}
+                  {{ cancelText || $t('common.cancel') }}
                 </button>
                 <button
                   type="button"
@@ -97,7 +97,7 @@
                   :disabled="confirmDisabled || confirmLoading"
                   @click="$emit('confirm')"
                 >
-                  {{ confirmLoading ? loadingText : confirmText }}
+                  {{ confirmLoading ? (loadingText || $t('common.loading')) : (confirmText || $t('common.confirm')) }}
                 </button>
               </slot>
             </div>
@@ -124,9 +124,9 @@ const props = defineProps({
   footMeta:        { type: String,  default: '' },
   footStatus:      { type: String,  default: '' },         // idle | live | ok | warn
   size:            { type: String,  default: 'sm' },        // sm | md | lg | xl
-  confirmText:     { type: String,  default: 'Bestätigen' },
-  cancelText:      { type: String,  default: 'Abbrechen' },
-  loadingText:     { type: String,  default: 'Lade…' },
+  confirmText:     { type: String,  default: '' },
+  cancelText:      { type: String,  default: '' },
+  loadingText:     { type: String,  default: '' },
   hideCancel:      { type: Boolean, default: false },
   hideFoot:        { type: Boolean, default: false },
   danger:          { type: Boolean, default: false },       // default false now (was true!)

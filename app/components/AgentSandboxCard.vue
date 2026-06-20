@@ -6,13 +6,13 @@
       <div class="agent-header-left">
         <i class="ri-robot-2-line ri-fw agent-icon" aria-hidden="true" />
         <span class="agent-label">Agent Sandbox</span>
-        <span v-if="!agentContent && !isOpen" class="agent-empty">leer</span>
+        <span v-if="!agentContent && !isOpen" class="agent-empty">{{ $t('common.empty') }}</span>
         <Transition name="agent-flash">
-          <span v-if="showSaved" class="agent-saved-flash">Gespeichert</span>
+          <span v-if="showSaved" class="agent-saved-flash">{{ $t('common.saved') }}</span>
         </Transition>
       </div>
       <div class="agent-header-right">
-        <span v-if="agentContent" class="agent-chars">{{ agentContent.length }} Z.</span>
+        <span v-if="agentContent" class="agent-chars">{{ agentContent.length }} {{ $t('agent_sandbox.chars') }}</span>
         <svg class="agent-chevron" :class="{ 'rotate-180': isOpen }"
           fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
@@ -23,25 +23,23 @@
     <!-- Body — immer Textarea, kein Zwischenschritt -->
     <Transition name="agent-expand">
       <div v-if="isOpen" class="agent-body">
-        <p class="agent-hint">
-          Was externe KI-Agenten über dich sehen — der Rest von sys.md bleibt privat.
-        </p>
+        <p class="agent-hint">{{ $t('agent_sandbox.desc') }}</p>
         <textarea
           ref="textareaRef"
           v-model="editText"
           class="agent-textarea"
-          placeholder="Schreibe hier frei — als Markdown oder Fließtext. z.B.: »Hallo, ich bin Jan aus Marburg. Ich freue mich über Nachrichten.«"
+          :placeholder="$t('agent_sandbox.placeholder')"
           @keydown.ctrl.enter="save"
           @keydown.meta.enter="save"
         />
         <div class="agent-actions">
-          <span v-if="isDirty" class="agent-dirty">Ungespeicherte Änderungen</span>
+          <span v-if="isDirty" class="agent-dirty">{{ $t('agent_sandbox.unsaved') }}</span>
           <button class="agent-btn ghost" :disabled="!isDirty || isSaving" @click="revert">
-            Verwerfen
+            {{ $t('common.discard') }}
           </button>
           <button class="agent-btn primary" :disabled="!isDirty || isSaving" @click="save">
             <i class="ri-save-line ri-fw" aria-hidden="true" />
-            {{ isSaving ? 'Speichern…' : 'Speichern' }}
+            {{ isSaving ? $t('common.saving') : $t('common.save') }}
           </button>
         </div>
       </div>
@@ -51,7 +49,9 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+const { t } = useI18n()
 
 const { soulContent, updateContent, pushToServer } = useSoul()
 

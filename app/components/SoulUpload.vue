@@ -26,7 +26,9 @@
 
 <script setup>
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { validateSoul } from "#shared/utils/soulParser.js";
+const { t } = useI18n();
 
 const emit = defineEmits(["uploaded"]);
 
@@ -48,7 +50,7 @@ async function readFile(file) {
     const { valid, error } = validateSoul(text);
 
     if (!valid) {
-      errorMsg.value = error || "Keine gültige sys.md Datei.";
+      errorMsg.value = error || t("soul_upload.err_invalid");
       return;
     }
 

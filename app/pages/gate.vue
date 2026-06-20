@@ -2,37 +2,37 @@
   <div class="gate">
     <div class="gate-card">
       <div class="gate-mark">SYS<span class="dot">.</span></div>
-      <div class="gate-sub">Dein digitales Ich · Private Node</div>
+      <div class="gate-sub">{{ $t('gate.subtitle') }}</div>
 
       <!-- ── Biometric unlock ── -->
       <template v-if="mode === 'biometric'">
-        <h1>Willkommen zurück<em>.</em></h1>
-        <p class="welcome">{{ isPwa ? 'Entsperre mit Face ID oder Fingerabdruck.' : 'Gespeicherte Zugangsdaten vorhanden.' }}</p>
+        <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
+        <p class="welcome">{{ isPwa ? $t('gate.biometric_prompt_pwa') : $t('gate.biometric_prompt') }}</p>
         <p v-if="error" class="gate-error">{{ error }}</p>
         <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock">
           <span v-if="loading" class="gate-spinner" />
-          {{ loading ? 'Lade Soul…' : 'Entsperren' }}
+          {{ loading ? $t('gate.loading_soul') : $t('gate.unlock') }}
           <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
         </button>
-        <button class="gate-link" @click="switchToForm">Manuell anmelden</button>
+        <button class="gate-link" @click="switchToForm">{{ $t('gate.manual_login') }}</button>
       </template>
 
       <!-- ── Save creds prompt ── -->
       <template v-else-if="mode === 'saving'">
-        <h1>Angemeldet<em>.</em></h1>
-        <p class="welcome">Zugangsdaten merken?</p>
-        <p class="gate-hint">Passwort und Soul-Cert werden verschlüsselt auf diesem Gerät gespeichert – entsperrbar nur mit deiner Biometrik.</p>
+        <h1>{{ $t('gate.signed_in') }}<em>.</em></h1>
+        <p class="welcome">{{ $t('gate.save_creds_prompt') }}</p>
+        <p class="gate-hint">{{ $t('gate.save_creds_hint') }}</p>
         <p v-if="error" class="gate-error">{{ error }}</p>
         <button class="btn btn-primary btn-lg" :disabled="loading" @click="doSaveCreds">
           <span v-if="loading" class="gate-spinner" />
-          {{ loading ? 'Speichert…' : 'Mit Biometrik speichern' }}
+          {{ loading ? $t('gate.saving') : $t('gate.save_with_biometric') }}
         </button>
-        <button class="gate-link" @click="doRedirect">Überspringen</button>
+        <button class="gate-link" @click="doRedirect">{{ $t('gate.skip') }}</button>
       </template>
 
       <!-- ── Standard form ── -->
       <template v-else>
-        <h1>Willkommen zurück<em>.</em></h1>
+        <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
         <p v-if="error" class="gate-error">{{ error }}</p>
         <form @submit.prevent="submit" style="width:100%">
           <div class="gate-field">
@@ -40,12 +40,12 @@
               v-model="password"
               :type="showPw ? 'text' : 'password'"
               autocomplete="current-password"
-              placeholder="Node-Passwort"
-              aria-label="Node-Passwort"
+              :placeholder="$t('gate.password_placeholder')"
+              :aria-label="$t('gate.password_aria')"
               :disabled="loading"
               required
             />
-            <button type="button" class="reveal" @click="showPw = !showPw" aria-label="Passwort anzeigen">
+            <button type="button" class="reveal" @click="showPw = !showPw" :aria-label="$t('gate.show_password')">
               <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
             </button>
           </div>
@@ -55,24 +55,24 @@
               type="text"
               autocomplete="off"
               spellcheck="false"
-              placeholder="Soul-Cert (a1b2c3d4…)"
-              aria-label="Soul-Cert"
+              :placeholder="$t('gate.cert_placeholder')"
+              :aria-label="$t('gate.cert_aria')"
               :disabled="loading"
               style="font-family:var(--mono);font-size:13px"
             />
           </div>
-          <p v-if="certAutoFilled" class="gate-autofill">✓ Cert aus aktiver Session geladen</p>
+          <p v-if="certAutoFilled" class="gate-autofill">{{ $t('gate.cert_auto_filled') }}</p>
           <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
             <span v-if="loading" class="gate-spinner" />
-            {{ loading ? 'Lädt…' : 'Einloggen' }}
+            {{ loading ? $t('gate.loading') : $t('gate.sign_in') }}
           </button>
         </form>
-        <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">Mit Biometrik entsperren</button>
+        <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">{{ $t('gate.unlock_with_biometric') }}</button>
       </template>
 
       <div class="gate-foot">
         <span class="live-dot" />
-        Lokaler Knoten · alles bleibt auf diesem Gerät
+        {{ $t('gate.footer') }}
       </div>
     </div>
   </div>
@@ -80,6 +80,9 @@
 
 <script setup>
 definePageMeta({ layout: false })
+
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
 const password       = ref('')
 const cert           = ref('')
@@ -136,13 +139,13 @@ async function biometricUnlock() {
   try {
     const prf = await passkey.authenticatePasskey()
     if (!prf) {
-      error.value = passkey.passkeyError.value || 'Biometrik fehlgeschlagen.'
+      error.value = passkey.passkeyError.value || t('gate.error.biometric_failed')
       return
     }
 
     const saved = await creds.loadCreds(prf)
     if (!saved) {
-      error.value = 'Zugangsdaten konnten nicht geladen werden. Bitte manuell anmelden.'
+      error.value = t('gate.error.creds_load_failed')
       creds.clearCreds()
       hasSavedCreds.value = false
       mode.value = 'form'
@@ -153,7 +156,6 @@ async function biometricUnlock() {
     if (saved.cert) body.cert = saved.cert
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body })
 
-    // Soul_id aus Antwort oder localStorage — dann Soul direkt vom Server laden
     const soulId = gateRes?.soul_id || localStorage.getItem(PWA_SOUL_KEY) || ''
     if (soulId && saved.cert) {
       try {
@@ -169,19 +171,19 @@ async function biometricUnlock() {
             return window.location.href = '/session'
           }
         }
-      } catch { /* silent — Fallback auf normalen Redirect */ }
+      } catch { /* silent — fallback to normal redirect */ }
     }
 
     doRedirect()
   } catch (e) {
     const err = e?.data?.error || ''
     if (err === 'invalid_cert' || err === 'gate_not_configured' || e?.status === 401) {
-      error.value = 'Zugangsdaten abgelaufen. Bitte manuell anmelden.'
+      error.value = t('gate.error.cert_expired')
       creds.clearCreds()
       hasSavedCreds.value = false
       mode.value = 'form'
     } else {
-      error.value = 'Verbindungsfehler. Bitte erneut versuchen.'
+      error.value = t('gate.error.connection_error')
     }
   } finally {
     loading.value = false
@@ -199,7 +201,6 @@ async function submit() {
 
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body: payload })
 
-    // soul_id für späteren PWA-Auto-Login merken
     if (gateRes?.soul_id) localStorage.setItem(PWA_SOUL_KEY, gateRes.soul_id)
 
     const support = await passkey.checkPasskeySupport()
@@ -211,20 +212,20 @@ async function submit() {
   } catch (e) {
     const msg = e?.data?.message || e?.data?.error || ''
     if (msg === 'cert_required') {
-      error.value      = 'Soul-Cert erforderlich. Bitte Cert eingeben.'
+      error.value      = t('gate.error.cert_required')
       soulRegistered.value = true
     } else if (e?.data?.error === 'invalid_cert') {
-      error.value = 'Soul-Cert ungültig. Das Cert wurde geleert — einfach nur mit Passwort einloggen, danach im Admin-Tab ein neues ausstellen.'
+      error.value = t('gate.error.invalid_cert')
       cert.value = ''
       certAutoFilled.value = false
     } else if (e?.data?.error === 'gate_not_configured') {
-      error.value = 'Node nicht konfiguriert. init.sh erneut ausführen.'
+      error.value = t('gate.error.gate_not_configured')
     } else if (e?.status === 401) {
-      error.value = 'Zugang verweigert. Bitte prüfe Passwort und Cert.'
+      error.value = t('gate.error.access_denied')
     } else if (e?.status === 429) {
-      error.value = 'Zu viele Versuche. Bitte warte einen Moment.'
+      error.value = t('gate.error.too_many_attempts')
     } else {
-      error.value = 'Verbindungsfehler. Bitte erneut versuchen.'
+      error.value = t('gate.error.connection_error')
     }
   } finally {
     loading.value = false
@@ -240,13 +241,13 @@ async function doSaveCreds() {
       ? await passkey.authenticatePasskey()
       : await passkey.registerPasskey('Soul')
     if (!prf) {
-      error.value = passkey.passkeyError.value || 'Biometrik nicht verfügbar.'
+      error.value = passkey.passkeyError.value || t('gate.error.biometric_unavailable')
       return
     }
     await creds.saveCreds({ password: password.value, cert: cert.value }, prf)
     doRedirect()
   } catch {
-    error.value = 'Speichern fehlgeschlagen.'
+    error.value = t('gate.error.save_failed')
   } finally {
     loading.value = false
   }

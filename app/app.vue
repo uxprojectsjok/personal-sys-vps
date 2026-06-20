@@ -7,10 +7,20 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { setLocale } = useI18n()
+
 // Service Worker registrieren — erforderlich für PWA-Installierbarkeit auf Android/Chrome
 if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})
 }
+
+onMounted(() => {
+  const saved = localStorage.getItem('sys-locale')
+  if (saved && ['en', 'de'].includes(saved)) setLocale(saved)
+})
 </script>
 
 <style>

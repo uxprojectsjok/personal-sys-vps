@@ -5,34 +5,34 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Vault', 'Kalender']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="['Vault', $t('calendar.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="kal-page">
 
             <!-- Page header -->
             <div class="kal-hero">
-              <div class="eyebrow">Kalender</div>
-              <h1 class="kal-title">Deine <em>Zeitachse</em></h1>
-              <p class="kal-sub">Sessions, Vault-Einträge und Verankerungen — gespiegelt auf den Monat.<br class="br-hide"> Tippe einen Tag, um eigene Einträge hinzuzufügen.</p>
+              <div class="eyebrow">{{ $t('calendar.eyebrow') }}</div>
+              <h1 class="kal-title">{{ $t('calendar.title_prefix') }} <em>{{ $t('calendar.title_em') }}</em></h1>
+              <p class="kal-sub">{{ $t('calendar.lede_1') }}<br class="br-hide"> {{ $t('calendar.lede_2') }}</p>
             </div>
 
             <!-- Month navigation -->
             <div class="kal-nav">
               <div class="kal-nav-left">
-                <button class="icon-btn" @click="prevMonth" aria-label="Vorheriger Monat">
+                <button class="icon-btn" @click="prevMonth" :aria-label="$t('calendar.prev_month')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                   </svg>
                 </button>
                 <span class="kal-month-label">{{ monthLabel }}</span>
-                <button class="icon-btn" @click="nextMonth" aria-label="Nächster Monat">
+                <button class="icon-btn" @click="nextMonth" :aria-label="$t('calendar.next_month')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                   </svg>
                 </button>
               </div>
-              <button class="kal-today-btn" @click="goToday">Heute</button>
+              <button class="kal-today-btn" @click="goToday">{{ $t('calendar.today_btn') }}</button>
             </div>
 
             <!-- Calendar + Detail panel -->
@@ -73,9 +73,9 @@
                   <div class="kd-head">
                     <div>
                       <div class="kd-date">{{ detailDateLabel }}</div>
-                      <div class="kd-count">{{ selectedEntries.length }} {{ selectedEntries.length === 1 ? 'Eintrag' : 'Einträge' }}</div>
+                      <div class="kd-count">{{ selectedEntries.length }} {{ selectedEntries.length === 1 ? $t('calendar.entry_singular') : $t('calendar.entry_plural') }}</div>
                     </div>
-                    <button class="icon-btn" @click="selectedDate = null" aria-label="Schließen">
+                    <button class="icon-btn" @click="selectedDate = null" :aria-label="$t('common.close')">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
                       </svg>
@@ -83,19 +83,19 @@
                   </div>
 
                   <div class="kd-entries">
-                    <div v-if="!selectedEntries.length" class="kd-empty">Keine Einträge für diesen Tag.</div>
+                    <div v-if="!selectedEntries.length" class="kd-empty">{{ $t('calendar.no_entries') }}</div>
                     <div v-for="(entry, i) in selectedEntries" :key="i" class="kd-entry">
                       <span class="kd-type-dot" :class="`dot-${entry.type}`" />
                       <div class="kd-entry-info">
                         <div class="kd-entry-text">{{ entry.text }}</div>
                         <div class="kd-entry-type">{{ TYPE_LABELS[entry.type] }}</div>
                       </div>
-                      <button class="kd-del" @click="deleteEntry(i)" title="Löschen">✕</button>
+                      <button class="kd-del" @click="deleteEntry(i)" :title="$t('common.delete')">✕</button>
                     </div>
                   </div>
 
                   <button class="kd-add-btn" @click="openAdd">
-                    + Eintrag am {{ detailDayShort }} hinzufügen
+                    {{ $t('calendar.add_entry_on', { date: detailDayShort }) }}
                   </button>
                 </div>
               </Transition>
@@ -112,7 +112,7 @@
       <div v-if="addOpen" class="modal-scrim" @click.self="addOpen = false">
         <div class="modal-box">
           <div class="modal-head">
-            <span>Eintrag · {{ detailDateLabel }}</span>
+            <span>{{ $t('calendar.modal_title', { date: detailDateLabel }) }}</span>
             <button class="icon-btn" @click="addOpen = false">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
@@ -121,7 +121,7 @@
           </div>
           <div class="modal-body">
             <div class="modal-row">
-              <label class="modal-label">Typ</label>
+              <label class="modal-label">{{ $t('calendar.type_label') }}</label>
               <div class="modal-types">
                 <button v-for="t in ENTRY_TYPES" :key="t.type"
                   class="modal-type-btn" :class="{ active: addType === t.type }"
@@ -132,14 +132,14 @@
               </div>
             </div>
             <div class="modal-row">
-              <label class="modal-label">Notiz</label>
-              <textarea v-model="addText" class="modal-textarea" placeholder="Gedanke, Ereignis, Notiz…" rows="3" />
+              <label class="modal-label">{{ $t('calendar.note_label') }}</label>
+              <textarea v-model="addText" class="modal-textarea" :placeholder="$t('calendar.note_placeholder')" rows="3" />
             </div>
           </div>
           <div class="modal-foot">
-            <button class="btn-ghost" @click="addOpen = false">Abbrechen</button>
+            <button class="btn-ghost" @click="addOpen = false">{{ $t('common.cancel') }}</button>
             <button class="btn-accent" :disabled="!addText.trim() || saving" @click="saveEntry">
-              {{ saving ? '…' : '+ Speichern' }}
+              {{ saving ? '…' : $t('calendar.btn_save_entry') }}
             </button>
           </div>
         </div>
@@ -152,6 +152,7 @@
 definePageMeta({ layout: false })
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { parseSoul, appendCalendarEntry, deleteCalendarEntry } from '#shared/utils/soulParser.js'
@@ -170,18 +171,19 @@ const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 
-// ── Calendar state ────────────────────────────────────────────────────────
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-const MONTHS     = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-                    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const { t, tm } = useI18n()
 
-const ENTRY_TYPES = [
+// ── Calendar state ────────────────────────────────────────────────────────
+const DAY_LABELS = computed(() => tm('calendar.days'))
+const MONTHS     = computed(() => tm('calendar.months'))
+
+const ENTRY_TYPES = computed(() => [
   { type: 'session', label: 'Session' },
   { type: 'post',    label: 'Post'    },
   { type: 'vault',   label: 'Vault'   },
-  { type: 'anker',   label: 'Anker'   },
-]
-const TYPE_LABELS = { session: 'Session', post: 'Post', vault: 'Vault', anker: 'Anker' }
+  { type: 'anker',   label: t('calendar.type_anchor') },
+])
+const TYPE_LABELS = computed(() => ({ session: 'Session', post: 'Post', vault: 'Vault', anker: t('calendar.type_anchor') }))
 
 const viewDate    = ref(new Date())
 const selectedDate = ref(null)
@@ -192,7 +194,8 @@ const saving      = ref(false)
 
 const monthLabel = computed(() => {
   const d = viewDate.value
-  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  const months = Array.isArray(MONTHS.value) ? MONTHS.value : []
+  return `${months[d.getMonth()] ?? ''} ${d.getFullYear()}`
 })
 
 const todayStr = computed(() => new Date().toISOString().split('T')[0])
@@ -270,7 +273,8 @@ const selectedEntries = computed(() => {
 const detailDateLabel = computed(() => {
   if (!selectedDate.value) return ''
   const [y, m, day] = selectedDate.value.split('-').map(Number)
-  return `${day}. ${MONTHS[m - 1]} ${y}`
+  const months = Array.isArray(MONTHS.value) ? MONTHS.value : []
+  return `${day}. ${months[m - 1] ?? ''} ${y}`
 })
 
 const detailDayShort = computed(() => {

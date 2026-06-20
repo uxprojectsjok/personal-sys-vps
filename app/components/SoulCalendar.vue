@@ -7,7 +7,7 @@
       <button
         @click="prevMonth"
         class="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-white/[0.07] transition-colors"
-        aria-label="Vorheriger Monat"
+        :aria-label="$t('calendar.prev_month')"
       >
         <i class="ri-arrow-left-s-line ri-fw text-sm" aria-hidden="true" />
       </button>
@@ -17,7 +17,7 @@
       <button
         @click="nextMonth"
         class="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-white/[0.07] transition-colors"
-        aria-label="Nächster Monat"
+        :aria-label="$t('calendar.next_month')"
       >
         <i class="ri-arrow-right-s-line ri-fw text-sm" aria-hidden="true" />
       </button>
@@ -38,7 +38,7 @@
         v-for="cell in cells"
         :key="cell.key"
         :disabled="!cell.inMonth"
-        :aria-label="cell.inMonth ? `${cell.date}${cell.hasEntry ? ' (Einträge vorhanden)' : ''}` : undefined"
+        :aria-label="cell.inMonth ? `${cell.date}${cell.hasEntry ? $t('calendar.has_entries_aria') : ''}` : undefined"
         @click="cell.inMonth && onDayClick(cell)"
         :class="[
           'relative flex items-center justify-center h-8 w-full rounded-lg text-xs transition-all select-none',
@@ -71,7 +71,7 @@
         @click="openNewEntry"
         class="w-full h-9 rounded-xl text-xs font-medium text-[var(--sys-fg-muted)] border border-[var(--sys-border)] hover:bg-[var(--sys-violet)]/[0.07] hover:text-[var(--sys-violet)] hover:border-[var(--sys-violet)]/30 transition-all active:scale-[0.98]"
       >
-        + Neuer Eintrag
+        {{ $t('calendar.btn_new_entry') }}
       </button>
     </div>
   </div>
@@ -100,13 +100,13 @@
             <div>
               <p class="text-sm font-semibold text-[var(--sys-fg)]">{{ formatDateLabel(modal.date) }}</p>
               <p class="text-xs text-[var(--sys-fg-muted)] mt-0.5">
-                {{ modal.rows.length }} {{ modal.rows.length === 1 ? 'Eintrag' : 'Einträge' }}
+                {{ modal.rows.length }} {{ modal.rows.length === 1 ? $t('calendar.entry_singular') : $t('calendar.entry_plural') }}
               </p>
             </div>
             <button
               @click="modal.open = false"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-white/[0.07] transition-colors flex-none"
-              aria-label="Schließen"
+              :aria-label="$t('common.close')"
             >
               <i class="ri-close-line ri-fw" aria-hidden="true" />
             </button>
@@ -115,7 +115,7 @@
           <!-- Eintrags-Liste (scrollbar) -->
           <div class="flex-1 overflow-y-auto min-h-0">
             <div v-if="!modal.rows.length" class="px-5 py-8 text-center text-sm text-[var(--sys-fg-muted)]">
-              Noch keine Einträge für diesen Tag.
+              {{ $t('calendar.no_entries') }}
             </div>
 
             <div v-else class="divide-y divide-white/[0.06]">
@@ -132,7 +132,7 @@
                       <button
                         @click="startEdit(i)"
                         class="w-7 h-7 flex items-center justify-center rounded-lg text-white/35 hover:text-[var(--sys-violet)] hover:bg-[var(--sys-violet)]/10 transition"
-                        title="Bearbeiten"
+                        :title="$t('calendar.btn_edit')"
                       >
                         <i class="ri-pencil-line text-xs" />
                       </button>
@@ -140,7 +140,7 @@
                         @click="deleteEntry(i)"
                         :disabled="row.deleting"
                         class="w-7 h-7 flex items-center justify-center rounded-lg text-white/35 hover:text-red-400 hover:bg-red-950/30 transition disabled:opacity-30"
-                        title="Löschen"
+                        :title="$t('common.delete')"
                       >
                         <svg v-if="row.deleting" class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                           <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
@@ -163,12 +163,12 @@
                     <button
                       @click="cancelEdit(i)"
                       class="flex-1 h-8 rounded-xl border border-[var(--sys-border)] text-xs text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] transition"
-                    >Abbrechen</button>
+                    >{{ $t('common.cancel') }}</button>
                     <button
                       @click="saveEdit(i)"
                       :disabled="!row.editText.trim() || row.saving"
                       class="flex-1 h-8 rounded-xl bg-[var(--sys-violet)]/15 border border-[var(--sys-violet)]/30 text-[var(--sys-violet)] text-xs font-semibold disabled:opacity-30 hover:not-disabled:bg-[var(--sys-violet)]/25 transition"
-                    >{{ row.saving ? '…' : 'Speichern' }}</button>
+                    >{{ row.saving ? '…' : $t('common.save') }}</button>
                   </div>
                 </template>
               </div>
@@ -177,7 +177,7 @@
 
           <!-- Neuer Eintrag -->
           <div class="flex-none border-t border-[var(--sys-border)] px-5 py-3 space-y-2.5">
-            <p class="text-[10px] font-medium text-[var(--sys-fg-muted)] uppercase tracking-widest">Neuer Eintrag</p>
+            <p class="text-[10px] font-medium text-[var(--sys-fg-muted)] uppercase tracking-widest">{{ $t('calendar.new_entry_label') }}</p>
             <input
               type="date"
               v-model="modal.date"
@@ -194,7 +194,7 @@
                     :class="modal.newAllDay ? 'translate-x-3.5' : 'translate-x-0.5'" />
                 </div>
                 <input type="checkbox" v-model="modal.newAllDay" class="sr-only" />
-                Ganzer Tag
+                {{ $t('calendar.all_day') }}
               </label>
               <input
                 v-if="!modal.newAllDay"
@@ -206,7 +206,7 @@
             </div>
             <textarea
               v-model="modal.newText"
-              placeholder="Notiz, Gedanke, Ereignis…"
+              :placeholder="$t('calendar.new_entry_placeholder')"
               rows="2"
               style="font-family: inherit"
               class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] focus:outline-none focus:border-[var(--sys-violet)]/50 transition resize-none leading-relaxed"
@@ -216,12 +216,12 @@
               <button
                 @click="modal.open = false"
                 class="flex-1 h-10 rounded-xl border border-[var(--sys-border)] text-sm text-[var(--sys-fg-muted)] hover:text-[var(--sys-fg)] transition"
-              >Schließen</button>
+              >{{ $t('common.close') }}</button>
               <button
                 @click="saveNewEntry"
                 :disabled="!modal.newText.trim() || modal.saving"
                 class="flex-1 h-10 rounded-xl bg-[var(--sys-violet)]/15 border border-[var(--sys-violet)]/30 text-[var(--sys-violet)] text-sm font-semibold disabled:opacity-30 hover:not-disabled:bg-[var(--sys-violet)]/25 transition active:not-disabled:scale-[0.98]"
-              >{{ modal.saving ? '…' : '+ Speichern' }}</button>
+              >{{ modal.saving ? '…' : $t('calendar.btn_save_entry') }}</button>
             </div>
           </div>
 
@@ -233,6 +233,7 @@
 
 <script setup>
 import { ref, computed, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useColorScheme } from '~/composables/useColorScheme.js'
@@ -241,21 +242,22 @@ import { parseSoul, appendCalendarEntry, updateCalendarEntry, deleteCalendarEntr
 const { soulContent, updateContent } = useSoul()
 const { isConnected: vaultConnected, writeSoulMd } = useVault()
 const { isDark } = useColorScheme()
+const { t, tm } = useI18n()
 
 async function saveToVaultIfConnected() {
   if (vaultConnected.value) await writeSoulMd(soulContent.value, 'sys')
 }
 
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-                'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+const DAY_LABELS = computed(() => tm('calendar.days'))
+const MONTHS     = computed(() => tm('calendar.months'))
 
 // ── View-Datum ──────────────────────────────────────────────────────────────
 const viewDate = ref(new Date())
 
 const monthLabel = computed(() => {
   const d = viewDate.value
-  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  const months = Array.isArray(MONTHS.value) ? MONTHS.value : []
+  return `${months[d.getMonth()] ?? ''} ${d.getFullYear()}`
 })
 
 const todayStr = computed(() => new Date().toISOString().split('T')[0])
@@ -396,7 +398,7 @@ async function saveNewEntry() {
     modal.newTime = '09:00'
     modal.open = false
   } catch {
-    modal.error = 'Speichern fehlgeschlagen'
+    modal.error = t('calendar.err_save_failed')
   } finally {
     modal.saving = false
   }

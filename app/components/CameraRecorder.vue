@@ -58,7 +58,7 @@
                 :class="isListening ? 'text-red-400' : 'text-white/40 hover:text-white/70'"
                 class="absolute right-3 bottom-3 transition-colors"
                 type="button"
-                :aria-label="isListening ? 'Hört zu…' : 'Sprechen'"
+                :aria-label="isListening ? $t('camera.listening') : $t('camera.speak')"
               >
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4Zm6.5 10.5a.75.75 0 0 1 .75.75A7.25 7.25 0 0 1 12.75 19.4V22h-1.5v-2.6A7.25 7.25 0 0 1 4.75 12.25a.75.75 0 0 1 1.5 0A5.75 5.75 0 0 0 12 18a5.75 5.75 0 0 0 5.75-5.75.75.75 0 0 1 .75-.75Z"/>
@@ -70,13 +70,13 @@
                 @click="cancelCaption"
                 class="flex-1 py-2.5 rounded-xl border border-white/15 text-sm text-white/50 hover:text-white hover:border-white/30 transition-all"
               >
-                Verwerfen
+                {{ $t('camera.btn_discard') }}
               </button>
               <button
                 @click="submitCapture"
                 class="flex-1 py-2.5 rounded-xl bg-white/10 border border-white/20 text-sm text-white font-medium hover:bg-white/20 transition-all"
               >
-                Senden
+                {{ $t('camera.btn_send') }}
               </button>
             </div>
           </div>
@@ -115,7 +115,7 @@
               class="absolute inset-0 flex items-center justify-center"
             >
               <span class="text-xs text-white/50 tracking-[0.2em] uppercase animate-pulse">
-                Kamera…
+                {{ $t('camera.loading') }}
               </span>
             </div>
 
@@ -128,12 +128,12 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
               </svg>
-              <p class="text-sm text-white/50">Kamera nicht verfügbar</p>
+              <p class="text-sm text-white/50">{{ $t('camera.unavailable') }}</p>
               <button
                 @click="cancel"
                 class="px-4 py-1.5 rounded-full border border-white/20 text-xs text-white/60 hover:text-white hover:border-white/40 transition-all"
               >
-                Schließen
+                {{ $t('common.close') }}
               </button>
             </div>
 
@@ -236,6 +236,8 @@
 
 <script setup>
 import { ref, watch, nextTick, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
+const { t } = useI18n();
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },

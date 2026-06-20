@@ -5,22 +5,22 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Eigen', 'Verankern']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('anchor.crumb_own'), $t('anchor.crumb_anchor')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page vank-page">
 
             <!-- ── Header ── -->
             <div class="vank-head">
               <div class="eyebrow">Polygon · Blockchain</div>
-              <h1 class="vank-title">Soul <em>verankern</em></h1>
-              <p class="vank-lede">Schreibe einen kryptographischen Fingerabdruck deiner Soul on-chain — ein unwiderruflicher Zeitstempel, der deine Identität beweist.</p>
+              <h1 class="vank-title">{{ $t('anchor.title_prefix') }} <em>{{ $t('anchor.title_em') }}</em></h1>
+              <p class="vank-lede">{{ $t('anchor.lede') }}</p>
             </div>
 
             <!-- ── Status + Wallet card ── -->
             <div class="vank-card" :class="{ 'vank-card--on': hasAnchor }">
               <div class="vank-status-row">
                 <span class="vank-dot" :class="{ 'vank-dot--on': hasAnchor }" />
-                <span class="vank-status-label">{{ hasAnchor ? 'On-chain verankert' : 'Noch nicht verankert' }}</span>
+                <span class="vank-status-label">{{ hasAnchor ? $t('anchor.status_anchored') : $t('anchor.status_not_anchored') }}</span>
                 <svg class="vank-chain-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
                 </svg>
@@ -28,7 +28,7 @@
               <div class="vank-wallet-row">
                 <template v-if="walletRestoring">
                   <svg class="spin vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                  <span class="vank-wallet-hint">Wallet-Session prüfen…</span>
+                  <span class="vank-wallet-hint">{{ $t('anchor.wallet_checking') }}</span>
                 </template>
                 <template v-else-if="isConnected">
                   <span class="vank-dot vank-dot--on vank-dot--sm" />
@@ -36,7 +36,7 @@
                   <span class="vank-wallet-net">{{ currentNetwork }}</span>
                 </template>
                 <template v-else>
-                  <span class="vank-wallet-hint">Keine Wallet verbunden</span>
+                  <span class="vank-wallet-hint">{{ $t('anchor.wallet_none') }}</span>
                 </template>
               </div>
             </div>
@@ -44,12 +44,12 @@
             <!-- ── Discovery-Tags ── -->
             <section class="vank-section">
               <div class="vank-section-body">
-                <p class="vank-hint">Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)</p>
+                <p class="vank-hint">{{ $t('marketplace.field_tags_hint') }}</p>
                 <input
                   v-model="tagsRaw"
                   type="text"
                   class="vank-input"
-                  placeholder="Marburg, AI, Design, Dezentralität…"
+                  :placeholder="$t('anchor.tags_placeholder')"
                   :disabled="isAnchoring"
                 />
                 <div v-if="tagsArray.length" class="vank-chips">
@@ -63,7 +63,7 @@
               <div class="vank-section-body">
 
                 <div v-if="!canAnchor" class="vank-note">
-                  Mindestens eine echte Session erforderlich. Führe ein Enrichment durch.
+                  {{ $t('anchor.need_session') }}
                 </div>
 
                 <div class="vank-actions">
@@ -75,7 +75,7 @@
                     <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3"/>
                     </svg>
-                    Wallet verbinden
+                    {{ $t('anchor.wallet_connect') }}
                   </button>
                   <button
                     v-if="canAnchor && isConnected"
@@ -85,7 +85,7 @@
                     <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
                     </svg>
-                    Wallet trennen
+                    {{ $t('anchor.wallet_disconnect') }}
                   </button>
                   <button
                     class="vank-btn vank-btn--primary"
@@ -97,22 +97,22 @@
                     <svg v-else class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
                     </svg>
-                    {{ isCheckingRateLimit ? 'Prüfung… · Abbrechen' : isAnchoring ? 'Transaktion… · Abbrechen' : 'Soul verankern' }}
+                    {{ isCheckingRateLimit ? $t('anchor.btn_checking_cancel') : isAnchoring ? $t('anchor.btn_tx_cancel') : $t('anchor.btn_anchor') }}
                   </button>
                 </div>
 
                 <div v-if="!canAnchor || (!isConnected && canAnchor)" class="vank-note vank-note--muted">
-                  Verbinde zuerst eine Wallet, um zu verankern. Mindestens eine echte Session ist erforderlich.
+                  {{ $t('anchor.connect_wallet_note') }}
                 </div>
 
                 <div v-if="isAnchoring" class="vank-note vank-note--info">
                   <svg class="spin vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
-                  Transaktion läuft — bitte in der Wallet-App bestätigen.
+                  {{ $t('anchor.tx_pending') }}
                 </div>
 
                 <div v-if="rateLimitActive" class="vank-note vank-note--warn">
-                  Rate-Limit aktiv — nächster Anker möglich:<br>
-                  <strong>{{ new Date(rateLimitUntil * 1000).toLocaleString('de-DE') }}</strong>
+                  {{ $t('anchor.rate_limit_active') }}<br>
+                  <strong>{{ new Date(rateLimitUntil * 1000).toLocaleString() }}</strong>
                 </div>
 
                 <div v-if="anchorError" class="vank-note vank-note--err">{{ anchorError }}</div>
@@ -122,7 +122,7 @@
                   <div v-if="anchorTx" class="vank-tx">
                     <div class="vank-tx-head">
                       <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                      Transaktion · {{ anchorNetwork }}
+                      {{ $t('anchor.tx_label', { network: anchorNetwork }) }}
                     </div>
                     <a :href="anchorExplorerUrl" target="_blank" rel="noopener noreferrer" class="vank-tx-hash">
                       <span>{{ anchorTx }}</span>
@@ -147,7 +147,7 @@
                     <svg v-else class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
                     </svg>
-                    {{ isProvingIdentity ? 'Signiert… · Abbrechen' : isConnectingForProof ? 'Wallet verbinden…' : 'Identität nachweisen' }}
+                    {{ isProvingIdentity ? $t('anchor.btn_signing_cancel') : isConnectingForProof ? $t('anchor.btn_connecting_wallet') : $t('anchor.btn_prove_identity') }}
                   </button>
 
                   <Transition name="slide-up">
@@ -155,19 +155,18 @@
                       <div class="vank-proof-head">
                         <div class="vank-proof-title">
                           <svg class="vank-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                          Proof generiert
+                          {{ $t('anchor.proof_generated') }}
                         </div>
-                        <button class="vank-proof-copy" @click="copyProof">{{ proofCopied ? '✓ Kopiert' : 'Kopieren' }}</button>
+                        <button class="vank-proof-copy" @click="copyProof">{{ proofCopied ? $t('anchor.proof_copied') : $t('anchor.proof_copy') }}</button>
                       </div>
                       <div class="vank-proof-data">
-                        <div class="vank-proof-row"><span class="vank-proof-key">Anker</span><span class="vank-proof-val">{{ identityProof.anchorCount }}</span></div>
-                        <div class="vank-proof-row"><span class="vank-proof-key">Seit</span><span class="vank-proof-val">{{ identityProof.firstAnchor }}</span></div>
-                        <div class="vank-proof-row"><span class="vank-proof-key">Letzter</span><span class="vank-proof-val">{{ identityProof.latestAnchor }}</span></div>
-                        <div class="vank-proof-row"><span class="vank-proof-key">Wallet</span><span class="vank-proof-val truncate">{{ identityProof.wallet }}</span></div>
+                        <div class="vank-proof-row"><span class="vank-proof-key">{{ $t('anchor.proof_count_label') }}</span><span class="vank-proof-val">{{ identityProof.anchorCount }}</span></div>
+                        <div class="vank-proof-row"><span class="vank-proof-key">{{ $t('anchor.proof_since_label') }}</span><span class="vank-proof-val">{{ identityProof.firstAnchor }}</span></div>
+                        <div class="vank-proof-row"><span class="vank-proof-key">{{ $t('anchor.proof_last_label') }}</span><span class="vank-proof-val">{{ identityProof.latestAnchor }}</span></div>
+                        <div class="vank-proof-row"><span class="vank-proof-key">{{ $t('anchor.proof_wallet_label') }}</span><span class="vank-proof-val truncate">{{ identityProof.wallet }}</span></div>
                       </div>
                       <p class="vank-proof-text">
-                        Kryptographischer Beweis: Diese Wallet besitzt diese Soul ·
-                        {{ identityProof.anchorCount }} Anker seit {{ identityProof.firstAnchor }}
+                        {{ $t('anchor.proof_text', { count: identityProof.anchorCount, since: identityProof.firstAnchor }) }}
                       </p>
                     </div>
                   </Transition>
@@ -187,11 +186,14 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
 
 definePageMeta({ layout: false })
+
+const { t } = useI18n()
 
 const router = useRouter()
 const { hasSoul, soulMeta, soulContent, pushToServer, isLoaded } = useSoul()

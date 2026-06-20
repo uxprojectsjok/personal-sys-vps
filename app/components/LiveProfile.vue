@@ -18,19 +18,15 @@
                 </svg>
               </div>
               <div>
-                <span class="sys-kicker">Profil · Biometrie</span>
-                <h2 class="lp-title">Profil-Daten aufzeichnen</h2>
+                <span class="sys-kicker">{{ $t('live_profile.kicker') }}</span>
+                <h2 class="lp-title">{{ $t('live_profile.title_record') }}</h2>
               </div>
             </div>
-            <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
+            <button class="sys-modal-close" @click="$emit('close')" :aria-label="$t('common.close')">×</button>
           </div>
 
           <div class="lp-consent-body">
-            <p class="lp-consent-desc">
-              Stimme, Gesicht und Bewegung werden in deinem lokalen Vault gespeichert und können
-              auf Wunsch mit deiner digitalen Soul verknüpft werden.
-              Die Daten verlassen dein Gerät nur, wenn du es explizit freigibst.
-            </p>
+            <p class="lp-consent-desc">{{ $t('live_profile.consent_desc') }}</p>
 
             <label class="lp-checkbox-row">
               <div class="lp-checkbox-wrap">
@@ -41,19 +37,16 @@
                   </svg>
                 </div>
               </div>
-              <span class="lp-checkbox-label">
-                Ich stimme der Aufzeichnung meiner Stimme, meines Gesichts und meiner Bewegungsdaten zu
-                und bin mir bewusst, dass diese ausschließlich in meinem lokalen Vault gespeichert werden.
-              </span>
+              <span class="lp-checkbox-label">{{ $t('live_profile.consent_checkbox') }}</span>
             </label>
 
-            <p class="lp-dsgvo">DSGVO Art. 7 – jederzeit widerrufbar durch Schließen dieses Panels</p>
+            <p class="lp-dsgvo">{{ $t('live_profile.gdpr_note') }}</p>
           </div>
 
           <div class="sys-modal-foot">
             <div class="sys-foot-actions" style="width:100%">
-              <button class="sys-btn-ed sys-btn-ed--ghost" style="flex:1" @click="$emit('close')">Abbrechen</button>
-              <button class="sys-btn-ed sys-btn-ed--primary" style="flex:1" :disabled="!consentChecked" @click="confirmConsent">Weiter →</button>
+              <button class="sys-btn-ed sys-btn-ed--ghost" style="flex:1" @click="$emit('close')">{{ $t('common.cancel') }}</button>
+              <button class="sys-btn-ed sys-btn-ed--primary" style="flex:1" :disabled="!consentChecked" @click="confirmConsent">{{ $t('audio_capture.btn_continue') }}</button>
             </div>
           </div>
 
@@ -65,11 +58,11 @@
           <div class="sys-modal-head">
             <div class="lp-head-left">
               <div>
-                <span class="sys-kicker">Profil · {{ carouselIndex + 1 }} / 3</span>
-                <h2 class="lp-title">{{ ['Stimme', 'Gesicht', 'Bewegung'][carouselIndex] }}</h2>
+                <span class="sys-kicker">{{ $t('live_profile.kicker') }} · {{ carouselIndex + 1 }} / 3</span>
+                <h2 class="lp-title">{{ (tm('live_profile.slide_labels') || [])[carouselIndex] }}</h2>
               </div>
             </div>
-            <button class="sys-modal-close" @click="$emit('close')" aria-label="Schließen">×</button>
+            <button class="sys-modal-close" @click="$emit('close')" :aria-label="$t('common.close')">×</button>
           </div>
 
           <!-- Tab bar -->
@@ -78,12 +71,12 @@
               class="lp-tab lp-tab--beta"
               :class="{ active: activeTab === 'stimme' }"
               @click="setCarousel(0)"
-              title="Stimm-Klon · Beta"
+              :title="$t('live_profile.title_tab_voice')"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/>
               </svg>
-              Stimme
+              {{ $t('live_profile.tab_voice') }}
             </button>
             <button
               class="lp-tab"
@@ -95,7 +88,7 @@
                 <path stroke-linecap="round" d="M9.5 8.5c.5.8 1.5 1.3 2.5 1.3s2-.5 2.5-1.3"/>
                 <path stroke-linecap="round" d="M10 7h.01M14 7h.01"/>
               </svg>
-              Gesicht
+              {{ $t('live_profile.tab_face') }}
             </button>
             <button
               class="lp-tab"
@@ -107,7 +100,7 @@
                 <path stroke-linecap="round" d="M12 6v8M9 10h6M9 22l3-8 3 8"/>
                 <path stroke-linecap="round" d="M7 10l-2 4M17 10l2 4" opacity=".5"/>
               </svg>
-              Bewegung
+              {{ $t('live_profile.tab_motion') }}
             </button>
           </nav>
 
@@ -148,8 +141,10 @@
 
 <script setup>
 import { ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import VoiceRecorder from "./VoiceRecorder.vue";
 import MotionRecorder from "./MotionRecorder.vue";
+const { t, tm } = useI18n();
 
 defineProps({
   soulMeta: { type: Object, default: null }

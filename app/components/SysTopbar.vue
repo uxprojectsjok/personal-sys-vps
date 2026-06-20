@@ -1,6 +1,6 @@
 <template>
   <header class="topbar">
-    <button class="icon-btn mob-only" @click="$emit('open-drawer')" aria-label="Menü" style="margin-right:-4px">
+    <button class="icon-btn mob-only" @click="$emit('open-drawer')" :aria-label="$t('common.menu')" style="margin-right:-4px">
       <SysIcon name="menu" style="width:20px;height:20px" />
     </button>
     <div class="tb-crumbs">
