@@ -171,11 +171,11 @@ const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 
-const { t, tm } = useI18n()
+const { t, tm, rt } = useI18n()
 
 // ── Calendar state ────────────────────────────────────────────────────────
-const DAY_LABELS = computed(() => tm('calendar.days'))
-const MONTHS     = computed(() => tm('calendar.months'))
+const DAY_LABELS = computed(() => Array.from(tm('calendar.days')).map(rt))
+const MONTHS     = computed(() => Array.from(tm('calendar.months')).map(rt))
 
 const ENTRY_TYPES = computed(() => [
   { type: 'session', label: 'Session' },
