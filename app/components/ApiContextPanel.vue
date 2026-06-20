@@ -63,10 +63,10 @@
             :disabled="isSaving"
             class="btn btn-primary"
             style="width:100%;justify-content:center;margin-top:4px"
-          >{{ isSaving ? 'Speichern …' : 'Berechtigungen speichern' }}</button>
+          >{{ isSaving ? $t('api_context.saving_permissions') : $t('api_context.save_permissions') }}</button>
 
           <p v-if="saveError" class="api-panel-error">{{ saveError }}</p>
-          <p v-else-if="saveSuccess" class="sys-field-ok">Berechtigungen gespeichert ✓</p>
+          <p v-else-if="saveSuccess" class="sys-field-ok">{{ $t('api_context.saved_ok') }}</p>
         </template>
 
       </div>
@@ -76,7 +76,9 @@
 
 <script setup>
 import { ref, watch, onMounted } from "vue";
+import { useI18n } from 'vue-i18n'
 import { useApiContext } from "~/composables/useApiContext.js";
+const { t } = useI18n()
 
 const props = defineProps({
   soulCert:    { type: String, default: "" },

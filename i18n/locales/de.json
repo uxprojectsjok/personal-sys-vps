@@ -305,7 +305,12 @@
     "img_boundary_violation": "Dieser Prompt verstößt gegen die in mind.md definierten Grenzen.",
     "img_generate_btn": "Bild generieren",
     "img_skip_btn": "Überspringen",
-    "job_none": "Kein laufender Job — alles zurückgesetzt."
+    "job_none": "Kein laufender Job — alles zurückgesetzt.",
+    "sticker_remove": "Entfernen",
+    "search_brave_key": "Brave Search API-Key fehlt — bitte in Einstellungen hinterlegen (brave.com/search/api · Free: 2.000/Monat).",
+    "search_error": "Suchfehler: {msg}",
+    "elevenlabs_key_inline": "ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.",
+    "wavespeed_key_inline": "WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen."
   },
   "common": {
     "cancel": "Abbrechen",
@@ -341,7 +346,8 @@
     "unsaved_changes": "Ungespeicherte Änderungen",
     "empty": "leer",
     "discard": "Verwerfen",
-    "confirm": "Bestätigen"
+    "confirm": "Bestätigen",
+    "remove": "Entfernen"
   },
   "verify": {
     "subtitle": "Identitäts-Verifikation",
@@ -1457,7 +1463,10 @@
     "chars": "Z."
   },
   "api_context": {
-    "public_vault_desc": "Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen."
+    "public_vault_desc": "Gilt für Public Vault — was externe Dienste und verbundene Souls sehen dürfen.",
+    "save_permissions": "Berechtigungen speichern",
+    "saving_permissions": "Speichern …",
+    "saved_ok": "Berechtigungen gespeichert ✓"
   },
   "audio_capture": {
     "consent_label": "Stimme aufnehmen",
