@@ -321,6 +321,23 @@
     "cmd_all_label": "alle",
     "search_no_query": "Bitte eine Suchanfrage angeben: `{'@'}suche Was ist …`"
   },
+  "session_page": {
+    "filter_area": "Bereich",
+    "filter_all": "Alle",
+    "filter_soul": "SoulKI",
+    "filter_peers": "Peers",
+    "filter_agents": "Agent",
+    "filter_period": "Zeitraum",
+    "filter_1d": "1 Tag",
+    "filter_3d": "3 Tage",
+    "filter_7d": "7 Tage",
+    "filter_14d": "14 Tage",
+    "sp_living_file": "Lebendige Datei",
+    "sp_soul_active": "Lebendige Seele aktiv",
+    "sp_soul_growing": "Seele wächst…",
+    "vault_reloaded": "Vault neu geladen · Soul aktiv",
+    "vault_encrypted": "Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren"
+  },
   "common": {
     "cancel": "Abbrechen",
     "close": "Schließen",
