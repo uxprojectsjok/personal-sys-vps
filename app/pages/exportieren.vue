@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['System', 'Exportieren']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('nav.group_tools'), $t('nav.export')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page exp-page">
 

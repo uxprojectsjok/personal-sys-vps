@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Vault', 'Dateien']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[$t('nav.group_vault'), $t('nav.files')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
         <div class="scroll">
           <div class="dateien-page">
