@@ -1151,7 +1151,9 @@
     "err_no_connection": "No connection to server",
     "revoke_title": "Revoke service",
     "revoke_msg": "\"{name}\" really revoke? The token becomes invalid immediately.",
-    "revoke_confirm": "Revoke"
+    "revoke_confirm": "Revoke",
+    "no_expiry": "Unlimited",
+    "btn_token": "Token"
   },
   "calendar": {
     "prev_month": "Previous month",

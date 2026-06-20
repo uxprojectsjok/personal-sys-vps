@@ -91,16 +91,16 @@ export function useVaultServices() {
     }
   }
 
-  function formatExpiry(ts) {
-    if (!ts) return 'Unbegrenzt'
+  function formatExpiry(ts, neverLabel = '∞') {
+    if (!ts) return neverLabel
     const d = new Date(ts * 1000)
-    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   function formatDate(ts) {
     if (!ts) return '—'
     const d = new Date(ts * 1000)
-    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   return {
