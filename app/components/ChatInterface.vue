@@ -973,20 +973,20 @@ function insertEmoji(emoji) {
 const cmdsOpen = ref(false)
 
 const AT_COMMANDS = computed(() => [
-  { cmd: '@food-log ',    label: 'food-log',     desc: t('chat.cmd_food_log_desc'),     direct: false, hint: t('chat.cmd_food_log_hint')     },
-  { cmd: '@product ',     label: 'product',      desc: t('chat.cmd_product_desc'),      direct: false, hint: t('chat.cmd_product_hint')      },
-  { cmd: '@suche ',       label: 'suche',        desc: t('chat.cmd_search_desc'),       direct: false, hint: t('chat.cmd_search_hint')       },
-  { cmd: '@create-media ',label: 'create-media', desc: t('chat.cmd_create_media_desc'), direct: false, hint: t('chat.cmd_create_media_hint') },
-  { cmd: '@audio',        label: 'audio',        desc: t('chat.cmd_audio_desc'),        direct: true                                         },
-  { cmd: '@gesicht',      label: 'gesicht',      desc: t('chat.cmd_face_desc'),         direct: true                                         },
-  { cmd: '@bewegung',     label: 'bewegung',     desc: t('chat.cmd_motion_desc'),       direct: true                                         },
-  { cmd: '@create-agent ', label: 'create-agent', desc: t('chat.cmd_create_agent_desc'), direct: false, hint: t('chat.cmd_create_agent_hint') },
-  { cmd: '@sprechen',     label: 'sprechen',     desc: t('chat.cmd_speak_desc'),        direct: true                                         },
-  { cmd: '@abbruch',      label: 'abbruch',      desc: t('chat.cmd_abort_desc'),        direct: true                                         },
-  { cmd: '@session-end',  label: 'session-end',  desc: t('chat.cmd_session_end_desc'),  direct: true                                         },
-  { cmd: '@alle ',        label: 'alle',         desc: t('chat.cmd_all_desc'),          direct: false, hint: t('chat.cmd_all_hint')          },
-  { cmd: '@peer ',        label: 'peer',         desc: t('chat.cmd_peer_desc'),         direct: false, hint: t('chat.cmd_peer_hint')         },
-  { cmd: '@agent ',       label: 'agent',        desc: t('chat.cmd_agent_desc'),        direct: false, hint: t('chat.cmd_agent_hint')        },
+  { cmd: '@food-log ',    label: 'food-log',                      desc: t('chat.cmd_food_log_desc'),     direct: false, hint: t('chat.cmd_food_log_hint')     },
+  { cmd: '@product ',     label: 'product',                       desc: t('chat.cmd_product_desc'),      direct: false, hint: t('chat.cmd_product_hint')      },
+  { cmd: '@suche ',       label: t('chat.cmd_search_label'),      desc: t('chat.cmd_search_desc'),       direct: false, hint: t('chat.cmd_search_hint')       },
+  { cmd: '@create-media ',label: 'create-media',                  desc: t('chat.cmd_create_media_desc'), direct: false, hint: t('chat.cmd_create_media_hint') },
+  { cmd: '@audio',        label: 'audio',                         desc: t('chat.cmd_audio_desc'),        direct: true                                         },
+  { cmd: '@gesicht',      label: t('chat.cmd_face_label'),        desc: t('chat.cmd_face_desc'),         direct: true                                         },
+  { cmd: '@bewegung',     label: t('chat.cmd_motion_label'),      desc: t('chat.cmd_motion_desc'),       direct: true                                         },
+  { cmd: '@create-agent ',label: 'create-agent',                  desc: t('chat.cmd_create_agent_desc'), direct: false, hint: t('chat.cmd_create_agent_hint') },
+  { cmd: '@sprechen',     label: t('chat.cmd_speak_label'),       desc: t('chat.cmd_speak_desc'),        direct: true                                         },
+  { cmd: '@abbruch',      label: t('chat.cmd_abort_label'),       desc: t('chat.cmd_abort_desc'),        direct: true                                         },
+  { cmd: '@session-end',  label: 'session-end',                   desc: t('chat.cmd_session_end_desc'),  direct: true                                         },
+  { cmd: '@all ',         label: t('chat.cmd_all_label'),         desc: t('chat.cmd_all_desc'),          direct: false, hint: t('chat.cmd_all_hint')          },
+  { cmd: '@peer ',        label: 'peer',                          desc: t('chat.cmd_peer_desc'),         direct: false, hint: t('chat.cmd_peer_hint')         },
+  { cmd: '@agent ',       label: 'agent',                         desc: t('chat.cmd_agent_desc'),        direct: false, hint: t('chat.cmd_agent_hint')        },
 ])
 
 function insertCommand(cmd) {
@@ -3592,7 +3592,7 @@ async function handleSend() {
 
   if (intent.type === 'web-search') {
     if (!intent.query) {
-      addMessage('assistant', 'Bitte eine Suchanfrage angeben: `@suche Was ist …`')
+      addMessage('assistant', t('chat.search_no_query'))
       return
     }
     await handleWebSearch(intent.query)
