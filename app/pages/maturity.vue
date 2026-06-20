@@ -65,6 +65,31 @@
             </div>
           </div>
 
+          <!-- ── Genesis Chain ── -->
+          <template v-if="chainMetrics && chainMetrics.anchor_count > 0">
+            <div class="rf-section-head rf-chain-head">
+              {{ $t('anchor.chain_genesis_title') }}
+              <span class="rf-genesis-badge">{{ $t('anchor.chain_genesis_badge') }}</span>
+            </div>
+            <div class="rf-chain">
+              <div class="rf-chain-item">
+                <span class="rf-chain-val">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                <span class="rf-chain-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
+                <span class="rf-chain-label">{{ $t('anchor.chain_knowledge_label') }}</span>
+              </div>
+              <div class="rf-chain-item">
+                <span class="rf-chain-val">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
+                <span class="rf-chain-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
+                <span class="rf-chain-label">{{ $t('anchor.chain_age_label') }} · {{ chainMetrics.chain_age_human }}</span>
+              </div>
+              <div class="rf-chain-item">
+                <span class="rf-chain-val">{{ chainMetrics.anchor_count }}</span>
+                <span class="rf-chain-unit">×</span>
+                <span class="rf-chain-label">{{ $t('anchor.chain_anchors_label') }} · {{ chainMetrics.genesis_ts ? new Date(chainMetrics.genesis_ts).toLocaleDateString() : '—' }}</span>
+              </div>
+            </div>
+          </template>
+
         </div>
         </div><!-- /scroll -->
       </div>
@@ -83,11 +108,13 @@ import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
+import { useChainAnchor } from '~/composables/useChainAnchor.js'
 
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, clear: _clear, isLoaded } = useSoul()
 const { allFiles } = useVault()
+const { chainMetrics, fetchChainMetrics } = useChainAnchor()
 
 const peerCount = ref(0)
 async function loadPeerCount() {
@@ -112,7 +139,7 @@ async function loadPeerCount() {
     peerCount.value = ids.size
   } catch { /* silent */ }
 }
-onMounted(loadPeerCount)
+onMounted(() => { loadPeerCount(); fetchChainMetrics() })
 
 const drawerOpen      = ref(false)
 const sidebarCollapsed = ref(false)
@@ -346,5 +373,35 @@ function cardDesc(card) {
   height: 100%; background: var(--accent); border-radius: 1px;
   transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
   min-width: 0;
+}
+
+/* ── Genesis Chain ── */
+.rf-chain-head {
+  display: flex; align-items: center; gap: 12px; margin-top: 40px;
+}
+.rf-genesis-badge {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #d4af37;
+  border: 1px solid rgba(212,175,55,0.4); border-radius: 3px;
+  padding: 2px 7px; line-height: 1.6;
+}
+.rf-chain {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px;
+}
+@media (max-width: 640px) { .rf-chain { grid-template-columns: 1fr; } }
+.rf-chain-item {
+  background: var(--surface); border: 1px solid var(--line);
+  padding: 16px; display: flex; flex-direction: column; gap: 2px;
+}
+.rf-chain-val {
+  font-family: var(--serif); font-size: 28px; color: var(--fg);
+  letter-spacing: -0.02em; line-height: 1;
+}
+.rf-chain-unit {
+  font-family: var(--mono); font-size: 11px; color: #d4af37;
+  letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
+}
+.rf-chain-label {
+  font-size: 13px; color: var(--fg-2); margin-top: 4px;
 }
 </style>
