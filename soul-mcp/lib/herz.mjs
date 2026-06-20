@@ -249,23 +249,35 @@ function removeSection(md, heading) {
   }).join('\n');
 }
 
-// Ersetzt den Inhalt einer ## Sektion — entfernt Duplikate und setzt Inhalt einmalig
+// Ersetzt den Inhalt einer ## Sektion — entfernt Duplikate und setzt Inhalt einmalig.
+// HTML-Kommentare (<!-- ... -->) direkt unter der Überschrift werden immer erhalten.
 function replaceSection(md, heading, newContent) {
   const prefix = `## ${heading}`;
   const parts = md.split(/\n(?=## )/);
   let insertIdx = -1;
+  let headerComment = '';
   const kept = [];
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     const isMatch = part.startsWith(prefix + '\n') || part.startsWith(prefix + '\r\n') || part.trim() === prefix;
     if (isMatch) {
-      if (insertIdx === -1) insertIdx = kept.length; // erste Position merken
+      if (insertIdx === -1) {
+        insertIdx = kept.length;
+        // preserve leading <!-- comment --> lines so the Archivar never strips them
+        const body = part.slice(prefix.length).replace(/^\r?\n/, '');
+        const commentLines = [];
+        for (const line of body.split('\n')) {
+          if (line.trim().startsWith('<!--')) commentLines.push(line);
+          else break;
+        }
+        if (commentLines.length) headerComment = commentLines.join('\n') + '\n';
+      }
       // alle weiteren Duplikate überspringen
     } else {
       kept.push(part);
     }
   }
-  const newPart = `## ${heading}\n\n${newContent.trim()}\n`;
+  const newPart = `## ${heading}\n${headerComment}\n${newContent.trim()}\n`;
   if (insertIdx === -1) {
     kept.push(newPart);
   } else {
@@ -325,16 +337,20 @@ async function onCrystallize(soulId, soul, apiKey) {
     if (!c || c.trim().length < 20) continue;
     // Komprimieren wenn Sektion > 300 Zeichen
     if (c.length > 300) {
+      // strip HTML comments before sending to Claude — they are structural metadata, not content
+      const cForClaude = c.replace(/<!--[\s\S]*?-->\n?/g, '').trim();
       const compressed = await callClaude(apiKey,
         'Komprimiere diesen Soul-Abschnitt. Antworte NUR mit dem komprimierten Inhalt, kein Intro.',
-        `Abschnitt ## ${h}:\n\n${c}\n\nRegeln:\n- Gleiche Fakten, weniger Worte\n- Klare Sätze, keine Redundanz\n- Max. 60% der Originallänge\n- Kein Markdown-Overhead`, 400);
-      if (compressed?.trim() && compressed.length < c.length) {
+        `Abschnitt ## ${h}:\n\n${cForClaude}\n\nRegeln:\n- Gleiche Fakten, weniger Worte\n- Klare Sätze, keine Redundanz\n- Max. 60% der Originallänge\n- Kein Markdown-Overhead`, 400);
+      if (compressed?.trim() && compressed.length < cForClaude.length) {
         current = replaceSection(current, h, compressed.trim());
         changed = true;
       }
     }
     const final = extractSectionFull(current, h);
-    if (final) sectionParts.push(`### ${h}\n${final}`);
+    // strip comments before passing to fact extraction prompt
+    const finalForPrompt = final ? final.replace(/<!--[\s\S]*?-->\n?/g, '').trim() : null;
+    if (finalForPrompt) sectionParts.push(`### ${h}\n${finalForPrompt}`);
   }
 
   // ── 2. facts — aus komprimierten Sektionen extrahieren ───────────────────────
