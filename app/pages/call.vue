@@ -18,7 +18,7 @@
         <p class="call-name">{{ name }}</p>
         <p class="call-label">{{ $t('call.no_agent') }}</p>
         <p class="call-hint">{{ $t('call.no_agent_hint_pre') }}<strong>{{ $t('call.no_agent_hint_cmd') }}</strong>{{ $t('call.no_agent_hint_post') }}</p>
-        <a href="/einrichten" class="call-btn">{{ $t('call.setup') }}</a>
+        <a href="/setup" class="call-btn">{{ $t('call.setup') }}</a>
       </div>
 
       <!-- Fehler allgemein -->
