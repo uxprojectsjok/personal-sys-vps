@@ -103,7 +103,7 @@
             <span class="sticker-dir">{{ item.from === 'me' ? 'out' : 'in' }}</span>
             <span class="sticker-pin">pinned</span>
             <span class="sticker-author">{{ resolveAuthor(item) }}</span>
-            <button class="sticker-x" @click.stop="deleteLocalImg(item)" title="Entfernen">×</button>
+            <button class="sticker-x" @click.stop="deleteLocalImg(item)" :title="$t('common.remove')">×</button>
           </div>
           <div class="sticker-body">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
@@ -2351,15 +2351,15 @@ async function handleWebSearch(query) {
     const sData = await sRes.json().catch(() => ({}))
     if (!sRes.ok) {
       const msg = sData.message === 'brave_key_missing'
-        ? 'Brave Search API-Key fehlt — bitte in Einstellungen hinterlegen (brave.com/search/api · Free: 2000/Monat).'
-        : `Suchfehler: ${sData.message || sData.error || 'Unbekannt'}`
+        ? t('chat.search_brave_key')
+        : t('chat.search_error', { msg: sData.message || sData.error || '?' })
       setMessageMetaById(statusMsg.id, 'text', msg)
       setMessageMetaById(statusMsg.id, 'streaming', false)
       return
     }
     results = sData.results || []
   } catch (e) {
-    setMessageMetaById(statusMsg.id, 'text', `Netzwerkfehler: ${e.message}`)
+    setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: e.message }))
     setMessageMetaById(statusMsg.id, 'streaming', false)
     return
   }
@@ -2511,7 +2511,7 @@ async function handleCreateAgent(overrideVoiceId = null) {
     if (!res.ok) {
       const msg = data.message || data.error || `HTTP ${res.status}`
       const text = msg === 'elevenlabs_key_missing'
-        ? 'ElevenLabs API-Key fehlt — bitte in Einstellungen hinterlegen.'
+        ? t('chat.elevenlabs_key_inline')
         : data.error === 'no_voice_source'
         ? t('chat.agent_no_voice_clone')
         : t('chat.error_prefix', { msg })
@@ -2858,8 +2858,7 @@ async function handlePin(query) {
               return meta ? `${ti} (${meta.name})` : ti
             }).join(', ')
           : t('chat.pin_tools_none')
-        accessLine = t('chat.pin_access_paid', { pol: rate, wallet, days })
-        accessLine += `\nTools: ${tools}`
+        accessLine = t('chat.pin_access_paid', { pol: rate, wallet, days, tools })
       } else {
         accessLine = amort.hasOwnProperty?.('enabled')
           ? t('chat.pin_access_free')
@@ -3124,7 +3123,7 @@ async function handleCreateMedia(userPrompt) {
     if (!submitRes.ok) {
       const err = await submitRes.json().catch(() => ({}))
       const msg = err.message === 'wavespeed_key_missing'
-        ? 'WaveSpeed API-Key fehlt — bitte in Einstellungen hinterlegen.'
+        ? t('chat.wavespeed_key_inline')
         : t('chat.error_prefix', { msg: err.message || submitRes.status })
       setMessageMetaById(statusMsg.id, 'text', msg)
       setMessageMetaById(statusMsg.id, 'streaming', false)

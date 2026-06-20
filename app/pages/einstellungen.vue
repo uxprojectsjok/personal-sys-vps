@@ -4,11 +4,11 @@
       <SysSidebar route="settings" :soul-meta="soulMeta" @go="onNav" @lock="lockGate" @collapse="() => {}" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Einstellungen']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
+        <SysTopbar :crumbs="[t('settings.title')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
         <div class="scroll">
           <div class="page es-page">
             <div class="es-header">
-              <h2 class="es-title">Einstellungen</h2>
+              <h2 class="es-title">{{ $t('settings.title') }}</h2>
             </div>
             <SettingsModal inline @master-rotated="handleMasterRotated" />
           </div>
@@ -21,10 +21,12 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import SysSidebar from '~/components/SysSidebar.vue'
 import SysTopbar  from '~/components/SysTopbar.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import ConfirmModal  from '~/components/ConfirmModal.vue'
+const { t } = useI18n()
 import { useSoul }   from '~/composables/useSoul.js'
 
 definePageMeta({ layout: false })

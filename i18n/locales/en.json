@@ -305,7 +305,12 @@
     "img_boundary_violation": "This prompt violates the boundaries defined in mind.md.",
     "img_generate_btn": "Generate image",
     "img_skip_btn": "Skip",
-    "job_none": "No running job — everything reset."
+    "job_none": "No running job — everything reset.",
+    "sticker_remove": "Remove",
+    "search_brave_key": "Brave Search API key missing — add in Settings (brave.com/search/api · Free: 2,000/month).",
+    "search_error": "Search error: {msg}",
+    "elevenlabs_key_inline": "ElevenLabs API key missing — add in Settings.",
+    "wavespeed_key_inline": "WaveSpeed API key missing — add in Settings."
   },
   "common": {
     "cancel": "Cancel",
@@ -341,7 +346,8 @@
     "unsaved_changes": "Unsaved changes",
     "empty": "empty",
     "discard": "Discard",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "remove": "Remove"
   },
   "verify": {
     "subtitle": "Identity verification",
@@ -1457,7 +1463,10 @@
     "chars": "ch."
   },
   "api_context": {
-    "public_vault_desc": "Applies to Public Vault — what external services and connected souls may see."
+    "public_vault_desc": "Applies to Public Vault — what external services and connected souls may see.",
+    "save_permissions": "Save permissions",
+    "saving_permissions": "Saving…",
+    "saved_ok": "Permissions saved ✓"
   },
   "audio_capture": {
     "consent_label": "Record voice",
