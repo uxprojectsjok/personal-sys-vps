@@ -657,7 +657,7 @@ const MODAL_MAP = {
   soul: () => { setupOpen.value    = true },
   files: () => { filesOpen.value   = true },
   anchor: () => { navigateTo('/verankern') },
-  export: () => { navigateTo('/exportieren') },
+  export: () => { navigateTo('/export') },
   settings: () => { navigateTo('/einstellungen') },
   market: () => { navigateTo('/marketplace') },
 }
@@ -670,7 +670,7 @@ function onNav(id) {
   if (id === 'maturity') { navigateTo('/reife');      return }
   if (id === 'health')   { navigateTo('/gesundheit'); return }
   if (id === 'calendar') { navigateTo('/kalender');   return }
-  if (id === 'files')    { navigateTo('/dateien');    return }
+  if (id === 'files')    { navigateTo('/vault');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/verbindung'); return }
   if (id === 'earnings') { navigateTo('/einnahmen');  return }

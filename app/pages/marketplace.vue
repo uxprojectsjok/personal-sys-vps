@@ -57,12 +57,12 @@ function onNav(id) {
   if (id === 'setup')    { router.push('/einrichten');  return }
   if (id === 'soul')     { router.push('/soul');       return }
   if (id === 'chronik')  { router.push('/chronik');    return }
-  if (id === 'files')    { router.push('/dateien');    return }
+  if (id === 'files')    { router.push('/vault');    return }
   if (id === 'maturity') { router.push('/reife');      return }
   if (id === 'health')   { router.push('/gesundheit'); return }
   if (id === 'calendar') { router.push('/kalender');   return }
   if (id === 'anchor')   { router.push('/verankern');    return }
-  if (id === 'export')   { router.push('/exportieren'); return }
+  if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/verbindung');   return }
   if (id === 'settings') { router.push('/einstellungen'); return }

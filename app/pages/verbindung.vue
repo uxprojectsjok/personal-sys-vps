@@ -228,7 +228,7 @@ onUnmounted(() => {
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() { document.cookie='sys_token=; Max-Age=0; path=/'; window.location.href='/gate' }
 function onNav(id) {
-  const routes = { chat:'/session', setup:'/einrichten', soul:'/soul', chronik:'/chronik', files:'/dateien', maturity:'/reife', health:'/gesundheit', calendar:'/kalender', anchor:'/verankern', export:'/exportieren', peers:'/peers', market:'/marketplace', earnings:'/einnahmen', settings:'/einstellungen' }
+  const routes = { chat:'/session', setup:'/einrichten', soul:'/soul', chronik:'/chronik', files:'/vault', maturity:'/reife', health:'/gesundheit', calendar:'/kalender', anchor:'/verankern', export:'/export', peers:'/peers', market:'/marketplace', earnings:'/einnahmen', settings:'/einstellungen' }
   if (id === 'connect') return
   if (routes[id]) { router.push(routes[id]); return }
   drawerOpen.value = false; router.push('/')
