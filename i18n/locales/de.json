@@ -1056,6 +1056,7 @@
     "pinata_missing": "Pinata-JWT fehlt — bitte in den Einstellungen hinterlegen",
     "field_desc": "Beschreibung",
     "field_desc_hint": "optional",
+    "field_desc_placeholder": "Kurze Beschreibung der Soul…",
     "field_tags": "Discovery-Tags",
     "field_tags_hint": "Schlagwörter für soul_discover — KI und Menschen finden dich damit (Komma-getrennt)",
     "current_cid": "Aktueller CID",

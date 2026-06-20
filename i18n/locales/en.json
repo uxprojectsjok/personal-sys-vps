@@ -1056,6 +1056,7 @@
     "pinata_missing": "Pinata JWT missing — please add it in settings",
     "field_desc": "Description",
     "field_desc_hint": "optional",
+    "field_desc_placeholder": "Short description of this Soul…",
     "field_tags": "Discovery tags",
     "field_tags_hint": "Keywords for soul_discover — AI and people find you with them (comma-separated)",
     "current_cid": "Current CID",

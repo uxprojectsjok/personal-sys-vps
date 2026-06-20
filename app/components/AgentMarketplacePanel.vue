@@ -168,7 +168,7 @@
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_desc') }} <span class="field-hint">{{ $t('marketplace.field_desc_hint') }}</span></label>
                   <div class="translate-wrap">
-                    <input v-model="preview.description" type="text" class="input" placeholder="Kurze Beschreibung der Soul…" @blur="translateField('description')" />
+                    <input v-model="preview.description" type="text" class="input" :placeholder="$t('marketplace.field_desc_placeholder')" @blur="translateField('description')" />
                     <span v-if="translating.description" class="translate-spin">⟳</span>
                   </div>
                 </div>
