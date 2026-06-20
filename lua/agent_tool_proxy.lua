@@ -26,6 +26,32 @@ if not tool_name:match("^[a-z_][a-z0-9_]+$") or #tool_name > 60 then
   ngx.status = 400; ngx.say('{"error":"invalid_tool_name"}'); return
 end
 
+-- Permission-Check für Service-Token-Requests (soul-cert bypassed)
+if ngx.ctx.via_webhook then
+  local perms = ngx.ctx.service_permissions or {}
+  local TOOL_PERMS = {
+    soul_read       = "soul", soul_write      = "soul",
+    soul_maturity   = "soul", soul_skills     = "soul",
+    soul_earnings   = "soul", soul_cloud_push = "soul",
+    vault_manifest  = "soul", mind_read       = "soul",
+    mind_write      = "soul", profile_get     = "soul",
+    profile_save    = "soul",
+    calendar_read   = "calendar", calendar_write  = "calendar",
+    calendar_delete = "calendar",
+    audio_get       = "audio",         audio_list      = "audio",
+    video_get       = "video",         video_list      = "video",
+    image_get       = "images",        image_list      = "images",
+    context_get     = "context_files", context_list    = "context_files",
+    context_write   = "context_files",
+  }
+  local req_perm = TOOL_PERMS[tool_name]
+  if req_perm and not perms[req_perm] then
+    ngx.status = 403
+    ngx.say('{"error":"permission_denied","required":"' .. req_perm .. '"}')
+    return
+  end
+end
+
 local input = {}
 if method == "POST" then
   ngx.req.read_body()
