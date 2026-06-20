@@ -312,7 +312,14 @@
     "elevenlabs_key_inline": "ElevenLabs API key missing — add in Settings.",
     "wavespeed_key_inline": "WaveSpeed API key missing — add in Settings.",
     "input_placeholder": "Write…",
-    "pin_tools_select": "**Select tools** — click to select, click again to deselect:"
+    "pin_tools_select": "**Select tools** — click to select, click again to deselect:",
+    "cmd_face_label": "face",
+    "cmd_motion_label": "motion",
+    "cmd_speak_label": "speak",
+    "cmd_abort_label": "abort",
+    "cmd_search_label": "search",
+    "cmd_all_label": "all",
+    "search_no_query": "Please enter a search query: `{'@'}search What is …`"
   },
   "common": {
     "cancel": "Cancel",
