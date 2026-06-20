@@ -41,6 +41,33 @@
               </div>
             </div>
 
+            <!-- ── Genesis Chain Metrics ── -->
+            <Transition name="slide-up">
+              <div v-if="chainMetrics && chainMetrics.anchor_count > 0" class="vank-genesis-card">
+                <div class="vank-genesis-head">
+                  <span class="vank-genesis-badge">{{ $t('anchor.chain_genesis_badge') }}</span>
+                  <span class="vank-genesis-title">{{ $t('anchor.chain_genesis_title') }}</span>
+                  <span class="vank-genesis-since">
+                    {{ $t('anchor.chain_since_label') }} {{ chainMetrics.genesis_ts ? new Date(chainMetrics.genesis_ts).toLocaleDateString() : '—' }}
+                  </span>
+                </div>
+                <div class="vank-genesis-metrics">
+                  <div class="vank-genesis-metric">
+                    <span class="vank-genesis-val">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
+                    <span class="vank-genesis-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
+                    <span class="vank-genesis-label">{{ $t('anchor.chain_age_label') }}</span>
+                    <span class="vank-genesis-sub">~ {{ chainMetrics.chain_age_human }}</span>
+                  </div>
+                  <div class="vank-genesis-metric">
+                    <span class="vank-genesis-val">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                    <span class="vank-genesis-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
+                    <span class="vank-genesis-label">{{ $t('anchor.chain_knowledge_label') }}</span>
+                    <span class="vank-genesis-sub">{{ $t('anchor.chain_anchors_label') }}: {{ chainMetrics.anchor_count }}</span>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+
             <!-- ── Discovery-Tags ── -->
             <section class="vank-section">
               <div class="vank-section-body">
@@ -203,6 +230,7 @@ const {
   anchorError, hasAnchor, sessionCount,
   connectWallet, disconnectWallet, anchorSoul, cancelAnchor, checkNextAnchorAllowed,
   syncAnchorFromChain, proveIdentity, recheckWallet,
+  chainMetrics, fetchChainMetrics,
 } = useChainAnchor()
 
 // ── Shell state ──────────────────────────────────────────────────────────────
@@ -237,6 +265,7 @@ onMounted(async () => {
   recheckWallet()
   walletRestoring.value = false
   refreshRateLimit()
+  fetchChainMetrics()
   syncAnchorFromChain().then(result => {
     if (!result) return
     pushToServer()
@@ -294,6 +323,7 @@ async function handleAnchor() {
       }
     }
     refreshRateLimit()
+    fetchChainMetrics()
     pushToServer()
   }
 }
@@ -560,6 +590,61 @@ function onNav(id) {
 .vank-proof-text {
   font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em;
   line-height: 1.6; color: var(--fg); margin: 0;
+}
+
+/* ── Genesis Chain Card ── */
+.vank-genesis-card {
+  border: 1px solid rgba(212,175,55,0.25);
+  border-radius: var(--r);
+  background: linear-gradient(135deg, rgba(212,175,55,0.04) 0%, rgba(212,175,55,0.02) 100%);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.vank-genesis-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(212,175,55,0.15);
+}
+.vank-genesis-badge {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; padding: 2px 8px;
+  background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 99px; color: #d4af37; flex: none;
+}
+.vank-genesis-title {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg); flex: 1;
+}
+.vank-genesis-since {
+  font-family: var(--mono); font-size: 11px; color: var(--fg-2);
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.vank-genesis-metrics {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.vank-genesis-metric {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 14px 18px;
+}
+.vank-genesis-metric:first-child {
+  border-right: 1px solid rgba(212,175,55,0.15);
+}
+.vank-genesis-val {
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  letter-spacing: -0.02em; color: #d4af37; line-height: 1;
+}
+.vank-genesis-unit {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(212,175,55,0.6); margin-top: 2px;
+}
+.vank-genesis-label {
+  font-family: var(--sans); font-size: 12px; color: var(--fg-2);
+  margin-top: 6px;
+}
+.vank-genesis-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  letter-spacing: 0.04em;
 }
 
 /* ── Shared ── */

@@ -753,16 +753,37 @@ export function useChainAnchor() {
       }
       save();
 
+      // soul_anchor_history in sys.md aktualisieren (Genesis + Block + Size)
+      const soulSize = new TextEncoder().encode(soulContent.value ?? '').length;
+      const histMatch = soulContent.value?.match(/soul_anchor_history:\s*(.+)/m);
+      let anchorHistory = [];
+      try { anchorHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { anchorHistory = []; }
+      if (!Array.isArray(anchorHistory)) anchorHistory = [];
+      const histEntry = { tx: tx.hash, ts: new Date().toISOString(), size: soulSize };
+      if (anchorHistory.length === 0) histEntry.genesis = true;
+      anchorHistory.push(histEntry);
+      const histJson = JSON.stringify(anchorHistory);
+      if (/soul_anchor_history:/m.test(soulContent.value)) {
+        soulContent.value = soulContent.value.replace(
+          /soul_anchor_history:\s*.+/m,
+          `soul_anchor_history: ${histJson}`,
+        );
+      } else {
+        soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
+      }
+      save();
+
       // chain_anchor.json (plaintext) — damit soul_discover den TX-Hash ohne Entschlüsselung lesen kann
       fetch('/api/soul/register-anchor', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
         body:    JSON.stringify({
-          tx_hash:  tx.hash,
-          date:     today,
-          sessions: sessionCount,
-          tags:     Array.isArray(tags) ? tags : [],
-          name:     soulMeta.value?.name ?? null,
+          tx_hash:   tx.hash,
+          date:      today,
+          sessions:  sessionCount,
+          tags:      Array.isArray(tags) ? tags : [],
+          name:      soulMeta.value?.name ?? null,
+          soul_size: soulSize,
         }),
       }).catch(() => {});
 
@@ -1145,6 +1166,22 @@ export function useChainAnchor() {
     }
   }
 
+  // ── Chain Metrics ─────────────────────────────────────────────────────────
+
+  const chainMetrics = ref(null);
+
+  async function fetchChainMetrics() {
+    try {
+      const res = await fetch('/api/soul/chain-metrics', {
+        headers: { Authorization: `Bearer ${soulToken.value}` },
+      });
+      if (res.ok) {
+        chainMetrics.value = await res.json();
+      }
+    } catch { /* ignorieren — Metriken sind optional */ }
+    return chainMetrics.value;
+  }
+
   // ── Computed ──────────────────────────────────────────────────────────────
 
   const hasAnchor = computed(() =>
@@ -1154,6 +1191,11 @@ export function useChainAnchor() {
     /soul_growth_chain:/m.test(soulContent.value ?? ""),
   );
   const sessionCount = computed(() => getSessionCount());
+
+  const isGenesisSoul = computed(() =>
+    !!(chainMetrics.value?.anchor_count === 0 ||
+      (!hasAnchor.value && !chainMetrics.value)),
+  );
 
   return {
     walletAddress,
@@ -1167,6 +1209,9 @@ export function useChainAnchor() {
     hasAnchor,
     hasGrowthChain,
     sessionCount,
+    chainMetrics,
+    isGenesisSoul,
+    fetchChainMetrics,
     connectWallet,
     disconnectWallet,
     computeContentHash,

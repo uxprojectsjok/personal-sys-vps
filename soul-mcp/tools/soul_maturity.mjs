@@ -137,6 +137,12 @@ export function register(server, token) {
 
         const score = Math.min(herkunft + tiefe + biometrie + archiv + signatur + netzwerk, 100);
 
+        // Chain Metrics (optional — kein Fehler wenn Endpunkt nicht erreichbar)
+        let chainMetrics = null;
+        try {
+          chainMetrics = await getJson('/api/soul/chain-metrics', token);
+        } catch { /* ignorieren */ }
+
         return {
           content: [{
             type: 'text',
@@ -152,7 +158,11 @@ export function register(server, token) {
               last_session:   fm.last_session ?? null,
               breakdown: {
                 herkunft, tiefe, biometrie, archiv, signatur, netzwerk,
-                detail: { agePts, chainPts, sectionPts, sessionLogPts: sessionPts, sectionScores, foundKeywords },
+                detail: {
+                  agePts, chainPts, sectionPts, sessionLogPts: sessionPts,
+                  sectionScores, foundKeywords,
+                  chain_metrics: chainMetrics,
+                },
               },
             }, null, 2),
           }],

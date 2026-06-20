@@ -302,6 +302,85 @@ function filterResults(souls, { q, amortized, limit }) {
   return res.slice(0, limit);
 }
 
+// ── Chain Metrics ─────────────────────────────────────────────────────────────
+
+/** Aktuellen Polygon-Block abrufen */
+export async function getCurrentBlock() {
+  return getProvider().getBlockNumber();
+}
+
+/**
+ * Knowledge-Blocks-Wert: gewichtete Summe der Soul-Größen aller Anchors.
+ * Ältere Anchors erhalten mehr Gewicht — je länger das Wissen verankert ist, desto wertvoller.
+ * @param {Array<{ tx?, block?, size?, ts?, genesis? }>} anchorHistory
+ * @param {number} currentBlock
+ */
+export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
+  if (!Array.isArray(anchorHistory) || !anchorHistory.length) return 0;
+  const BLOCKS_PER_HALF_DAY = 43_200; // Polygon ≈ 2 Blöcke/Sek
+  const total = anchorHistory.reduce((sum, anchor) => {
+    const ageBlocks = currentBlock - (anchor.block ?? estimateBlock(anchor.ts));
+    const ageWeight = 1 + Math.log10(1 + Math.max(0, ageBlocks) / BLOCKS_PER_HALF_DAY);
+    const sizeKb = (anchor.size ?? 0) / 1024;
+    return sum + sizeKb * ageWeight;
+  }, 0);
+  return Math.round(total);
+}
+
+/**
+ * Schätzt den Polygon-Block aus einem ISO-Timestamp.
+ * Basiert auf Deployment-Block 83.500.000 am 2026-04-04.
+ */
+function estimateBlock(ts) {
+  if (!ts) return DEPLOY_BLOCK;
+  const DEPLOY_TS = 1775260800; // 2026-04-04T00:00:00Z
+  const unixTs = Math.floor(new Date(ts).getTime() / 1000);
+  return DEPLOY_BLOCK + Math.max(0, Math.round((unixTs - DEPLOY_TS) * 2));
+}
+
+function formatChainAge(days) {
+  if (days < 1) return `${Math.round(days * 24)} Std.`;
+  if (days < 30) return `${Math.round(days)} Tage`;
+  if (days < 365) {
+    const mo = Math.floor(days / 30);
+    return `${mo} Monat${mo !== 1 ? 'e' : ''}`;
+  }
+  const yr = Math.floor(days / 365);
+  const mo = Math.floor((days % 365) / 30);
+  return mo > 0 ? `${yr} J., ${mo} Mo.` : `${yr} Jahr${yr !== 1 ? 'e' : ''}`;
+}
+
+/**
+ * Berechnet alle Chain-Metrics für eine Soul.
+ * @param {Array<{ tx?, block?, size?, ts?, genesis? }>} anchorHistory
+ */
+export async function getChainMetrics(anchorHistory) {
+  const empty = {
+    anchor_count: 0, genesis_block: null, genesis_ts: null, genesis_tx: null,
+    current_block: null, chain_age_blocks: 0, chain_age_days: 0,
+    chain_age_human: '—', knowledge_blocks: 0,
+  };
+  if (!Array.isArray(anchorHistory) || !anchorHistory.length) return empty;
+
+  const currentBlock = await getProvider().getBlockNumber();
+  const genesis = anchorHistory.find(a => a.genesis === true) ?? anchorHistory[0];
+  const genesisBlock = genesis?.block ?? estimateBlock(genesis?.ts);
+  const chainAgeBlocks = Math.max(0, currentBlock - genesisBlock);
+  const chainAgeDays   = chainAgeBlocks / 172_800; // 2 blocks/s * 86400 s/day
+
+  return {
+    genesis_block:    genesisBlock,
+    genesis_ts:       genesis?.ts   ?? null,
+    genesis_tx:       genesis?.tx   ?? null,
+    current_block:    currentBlock,
+    chain_age_blocks: chainAgeBlocks,
+    chain_age_days:   Math.round(chainAgeDays * 10) / 10,
+    chain_age_human:  formatChainAge(chainAgeDays),
+    anchor_count:     anchorHistory.length,
+    knowledge_blocks: calcKnowledgeBlocks(anchorHistory, currentBlock),
+  };
+}
+
 /**
  * Prüft ob eine Soul auf der Blockchain verankert und damit als menschlich verifiziert ist.
  * @param {string} soulId  UUID der Soul

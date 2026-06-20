@@ -37,6 +37,9 @@ if not body.tx_hash:match("^0x[0-9a-fA-F]{64}$") then
   return
 end
 
+local block_number = type(body.block_number) == "number" and math.floor(body.block_number) or nil
+local soul_size    = type(body.soul_size)    == "number" and math.floor(body.soul_size)    or 0
+
 local anchor = {
   tx       = body.tx_hash,
   date     = type(body.date)     == "string"  and body.date     or os.date("!%Y-%m-%d"),
@@ -58,6 +61,30 @@ if cf then
 end
 
 local soul_dir = "/var/lib/sys/souls/" .. soul_id
+
+-- anchor_history.json: wachsende Liste aller Blockchain-Anchors mit Block + Größe
+local hist_path = soul_dir .. "/anchor_history.json"
+local history   = {}
+local hf = io.open(hist_path, "r")
+if hf then
+  local raw_h = hf:read("*a"); hf:close()
+  local ok_h, existing = pcall(cjson.decode, raw_h)
+  if ok_h and type(existing) == "table" then history = existing end
+end
+
+local now_ts = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
+local entry = {
+  tx   = body.tx_hash,
+  ts   = now_ts,
+  size = soul_size,
+}
+if block_number then entry.block = block_number end
+if #history == 0 then entry.genesis = true end
+table.insert(history, entry)
+
+local hfw = io.open(hist_path, "w")
+if hfw then hfw:write(cjson.encode(history)); hfw:close() end
+
 local path     = soul_dir .. "/chain_anchor.json"
 
 local f, err = io.open(path, "w")

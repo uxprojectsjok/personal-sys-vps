@@ -1127,7 +1127,15 @@
     "connect_wallet_note": "Verbinde zuerst eine Wallet, um zu verankern. Mindestens eine echte Session ist erforderlich.",
     "kicker": "Polygon · Blockchain",
     "crumb_own": "Eigen",
-    "crumb_anchor": "Verankern"
+    "crumb_anchor": "Verankern",
+    "chain_genesis_title": "Genesis Chain",
+    "chain_genesis_badge": "Genesis",
+    "chain_age_label": "Chain-Alter",
+    "chain_blocks_suffix": "Blöcke",
+    "chain_knowledge_label": "Wissen",
+    "chain_knowledge_suffix": "KB+",
+    "chain_anchors_label": "Anker",
+    "chain_since_label": "Auf Polygon seit"
   },
   "services": {
     "title": "Verbundene Dienste",
