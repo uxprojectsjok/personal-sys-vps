@@ -174,9 +174,9 @@
               <label class="sys-field-label">{{ $t('setup.label_model') }}</label>
               <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
                 <option value="">{{ $t('setup.model_default') }}</option>
-                <option value="claude-opus-4-6">Claude Opus 4.6 — leistungsstark</option>
-                <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
-                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+                <option value="claude-opus-4-6">{{ $t('setup.model_powerful') }}</option>
+                <option value="claude-sonnet-4-6">{{ $t('setup.model_balanced') }}</option>
+                <option value="claude-haiku-4-5-20251001">{{ $t('setup.model_fast') }}</option>
               </select>
             </div>
 
