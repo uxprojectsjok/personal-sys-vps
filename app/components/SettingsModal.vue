@@ -694,9 +694,30 @@
                 </button>
               </template>
               <template v-else-if="tab === 'gesundheit'">
-                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
-                  {{ healthSaving ? $t('settings.saving') : $t('common.save') }}
-                </button>
+                <!-- MFA-Code-Eingabe wenn Garmin einen Code per SMS gesendet hat -->
+                <template v-if="healthNeedsMfa">
+                  <input
+                    v-model="healthMfaCode"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="8"
+                    placeholder="MFA-Code (SMS)"
+                    class="sys-input"
+                    style="width:140px;font-family:var(--sys-mono);letter-spacing:0.15em"
+                    @keyup.enter="submitMfa"
+                  />
+                  <button class="sys-btn-ed sys-btn-ed--primary" @click="submitMfa" :disabled="healthLoginBusy || !healthMfaCode">
+                    {{ healthLoginBusy ? '…' : 'Code senden' }}
+                  </button>
+                </template>
+                <template v-else>
+                  <button class="sys-btn-ed" @click="garminLogin" :disabled="healthLoginBusy">
+                    {{ healthLoginBusy ? '…' : 'Garmin Login' }}
+                  </button>
+                  <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
+                    {{ healthSaving ? $t('settings.saving') : $t('common.save') }}
+                  </button>
+                </template>
               </template>
             </div>
           </div>
@@ -801,6 +822,9 @@ const healthHasPassword   = ref(false)
 const healthSaving        = ref(false)
 const healthMsg           = ref('')
 const healthMsgError      = ref(false)
+const healthNeedsMfa      = ref(false)
+const healthMfaCode       = ref('')
+const healthLoginBusy     = ref(false)
 
 async function loadHealthConfig() {
   try {
@@ -835,6 +859,47 @@ async function saveHealthConfig() {
   } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
   healthSaving.value = false
   setTimeout(() => { healthMsg.value = '' }, 4000)
+}
+
+async function garminLogin() {
+  healthLoginBusy.value = true; healthMsg.value = ''; healthMsgError.value = false; healthNeedsMfa.value = false
+  try {
+    const r = await fetch('/api/health/login', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+    })
+    const d = await r.json()
+    if (d.needs_mfa) {
+      healthNeedsMfa.value = true
+      healthMsg.value = d.message || 'MFA-Code per SMS erhalten — bitte eingeben.'
+    } else if (d.ok) {
+      healthMsg.value = 'Login erfolgreich ✓'
+    } else {
+      healthMsgError.value = true
+      healthMsg.value = d.error || 'Login fehlgeschlagen.'
+    }
+  } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
+  healthLoginBusy.value = false
+}
+
+async function submitMfa() {
+  if (!healthMfaCode.value.trim()) return
+  healthLoginBusy.value = true; healthMsg.value = ''
+  try {
+    const r = await fetch('/api/health/mfa', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: healthMfaCode.value.trim() }),
+    })
+    const d = await r.json()
+    if (d.ok) {
+      healthNeedsMfa.value = false; healthMfaCode.value = ''
+      healthMsg.value = d.pending ? 'Code übermittelt — Login läuft…' : 'Login erfolgreich ✓'
+    } else {
+      healthMsgError.value = true; healthMsg.value = d.error || 'MFA fehlgeschlagen.'
+    }
+  } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
+  healthLoginBusy.value = false
 }
 
 // ── API-Key Tab State ─────────────────────────────────────────────────────────
