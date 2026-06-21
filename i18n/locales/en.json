@@ -930,7 +930,15 @@
     "tip_nutrition_poor": "Plan more fresh meals",
     "status_active": "Active",
     "crumb_body": "Body",
-    "crumb": "Health"
+    "crumb": "Health",
+    "sync_status_ok": "Sync successful.",
+    "sync_status_rate_limit": "Garmin is throttling logins (rate limit). Please wait 2–4 hours and try again.",
+    "sync_status_mfa_required": "Garmin requires MFA verification. Run once: python3 /opt/sys/health-sync/garmin_login.py",
+    "sync_status_auth_error": "Garmin login failed — check email or password in Health Settings.",
+    "sync_status_network_error": "Network error — Garmin Connect unreachable.",
+    "sync_status_install_error": "Health Sync not installed — run: bash /opt/sys/health-sync/install.sh",
+    "sync_status_unknown": "Sync error — see server log for details.",
+    "sync_status_not_run": "Sync has not run yet."
   },
   "vault_session": {
     "title": "Vault access",

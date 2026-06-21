@@ -32,7 +32,7 @@ end
 local LOG = "/var/log/sys_health_sync.log"
 local f = io.open(LOG, "r")
 if not f then
-  ngx.say(cjson.encode({ ok = false, message = "Sync noch nicht ausgeführt." }))
+  ngx.say(cjson.encode({ ok = false, error_type = "not_run", message = "Sync has not run yet." }))
   return
 end
 
@@ -50,20 +50,25 @@ for ts in recent:gmatch("%[(%d%d%d%d%-%d%d%-%d%d %d%d:%d%d)%]") do
   last_run = ts
 end
 
-local ok_flag = false
-local message  = "Sync-Status unbekannt."
+local ok_flag    = false
+local error_type = nil
+local message    = "Sync status unknown."
 
 if recent:match("Done%.%s+%d+/%d+ soul") then
-  ok_flag = true
-  message  = "Sync erfolgreich."
+  ok_flag  = true
+  message  = "Sync successful."
 elseif recent:match("429") or recent:match("rate.limit") then
-  message = "Rate Limit — Garmin drosselt zu viele Anmeldungen. Bitte 2–4 Stunden warten."
+  error_type = "rate_limit"
+  message    = "Garmin rate limit (429) — wait 2-4 hours and retry."
 elseif recent:match("[Ii]nvalid[Cc]redentials") or recent:match("[Ll]ogin.*[Ff]ail") or recent:match("[Uu]nauthorized") then
-  message = "Garmin-Anmeldung fehlgeschlagen — E-Mail oder Passwort prüfen."
+  error_type = "auth_error"
+  message    = "Garmin login failed — check email/password in Health Settings."
 elseif recent:match("python.*not found") or recent:match("No such file") then
-  message = "Health Sync nicht installiert — bash /opt/sys/health-sync/install.sh ausführen."
+  error_type = "install_error"
+  message    = "Health Sync not installed — run: bash /opt/sys/health-sync/install.sh"
 elseif recent:match("[Ee]rror") or recent:match("[Ff]ailed") then
-  message = "Sync-Fehler — Details im Server-Log."
+  error_type = "unknown"
+  message    = "Sync error — see server log for details."
 end
 
-ngx.say(cjson.encode({ ok = ok_flag, message = message, last_run = last_run }))
+ngx.say(cjson.encode({ ok = ok_flag, error_type = error_type, message = message, last_run = last_run }))
