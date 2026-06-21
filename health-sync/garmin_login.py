@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""One-time interactive Garmin login with MFA support.
+"""One-time interactive Garmin login to refresh OAuth tokens.
 
-After running this script the OAuth tokens are saved and the automatic
-sync (health_sync.py) runs without MFA prompts until the tokens expire.
+Run this when health_sync.py reports auth errors or expired tokens.
+Tokens are saved and reused automatically — no login needed on next sync.
 
 Usage:  python3 /opt/sys/health-sync/garmin_login.py
 """
@@ -13,7 +13,6 @@ from pathlib import Path
 CONFIG_DIR = Path("/var/lib/sys/config")
 TOKEN_BASE  = Path("/var/lib/sys/config/garmin_tokens")
 
-# Find soul config
 configs = list(CONFIG_DIR.glob("health_sync_*.json"))
 if not configs:
     print("No health_sync config found. Set up Health Sync in Settings first.")
@@ -32,7 +31,6 @@ token_dir.mkdir(parents=True, exist_ok=True)
 print(f"\n  Garmin login for: {email}")
 print(f"  Tokens will be saved to: {token_dir}\n")
 
-# Add venv site-packages if present
 sys.path.insert(0, str(Path(__file__).parent))
 venv_site = Path(__file__).parent / ".venv/lib"
 for p in venv_site.glob("python*/site-packages"):
@@ -44,16 +42,9 @@ except ImportError:
     print("ERROR: garminconnect not installed. Run: pip3 install garminconnect")
     sys.exit(1)
 
+api = Garmin(email, password)
 
-def mfa_prompt() -> str:
-    print("\n  Garmin requires a verification code.")
-    print("  Check your email or authenticator app.")
-    return input("  MFA code: ").strip()
-
-
-api = Garmin(email, password, prompt_mfa=mfa_prompt)
-
-# Skip slow portal strategies — they fail the same way as mobile but take longer
+# Skip slow portal strategies
 try:
     api.client.skip_strategies = {"portal+cffi", "portal+requests"}
 except AttributeError:
@@ -61,24 +52,25 @@ except AttributeError:
 
 print("  Logging in…")
 try:
-    mfa_status, _ = api.login(tokenstore=str(token_dir))
-    if mfa_status:
-        print(f"  Unexpected MFA status: {mfa_status}")
-        sys.exit(1)
+    api.login(tokenstore=str(token_dir))
 except Exception as e:
-    print(f"\n  Login failed: {e}")
-    print("  If Garmin says 429 (rate limited): wait 2-4 hours and try again.")
+    msg = str(e).lower()
+    if "429" in msg or "too many" in msg or "rate" in msg:
+        print(f"\n  Garmin is rate-limiting this server's IP (429).")
+        print("  This is temporary — wait 2-4 hours and try again.")
+        print("  The sync will resume automatically once Garmin lifts the limit.")
+    else:
+        print(f"\n  Login failed: {e}")
     sys.exit(1)
 
-print(f"  Tokens saved to {token_dir}")
+print(f"  Tokens saved.")
 
-# Quick data test
 try:
     import datetime
     stats = api.get_stats(str(datetime.date.today()))
     rhr = stats.get("restingHeartRate", "?")
     print(f"  Connection OK — resting HR today: {rhr} bpm")
-    print("\n  Done. The automatic sync will now run without MFA.\n")
+    print("\n  Done. The automatic sync will now run without re-login.\n")
 except Exception as e:
     print(f"  Logged in but data fetch failed: {e}")
-    print("  Tokens are saved — the sync should work anyway.\n")
+    print("  Tokens are saved — the sync should still work.\n")
