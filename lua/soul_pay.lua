@@ -80,7 +80,36 @@ if amort.enabled ~= true then
 end
 
 local wallet      = amort.wallet or ""
+local base_price  = tonumber(amort.pol_per_request) or 0.001
+
+-- Dynamischer Preis: base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
 local pol_per_req = amort.pol_per_request or "0.001"
+if amort.dynamic_pricing == true then
+  local ah_file = SOULS_DIR .. soul_id .. "/anchor_history.json"
+  local ah = io.open(ah_file, "r")
+  if ah then
+    local ok_a, hist = pcall(require("cjson.safe").decode, ah:read("*a")); ah:close()
+    if ok_a and type(hist) == "table" and #hist > 0 then
+      local anchor_count   = #hist
+      local chain_age_days = 0
+      if type(hist[1].ts) == "string" then
+        local y,mo,d,h,mi,s = hist[1].ts:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+        if y then
+          local ref    = ngx.time()
+          local tz_off = ref - os.time(os.date("!*t", ref))
+          local genesis = os.time({
+            year=tonumber(y),month=tonumber(mo),day=tonumber(d),
+            hour=tonumber(h),min=tonumber(mi),sec=tonumber(s),isdst=false
+          }) + tz_off
+          chain_age_days = (ref - genesis) / 86400
+        end
+      end
+      local multiplier = 1 + (anchor_count * 0.1) + (chain_age_days * 0.01)
+      local dyn_price  = math.max(base_price, math.floor(base_price * multiplier * 10000 + 0.5) / 10000)
+      pol_per_req = string.format("%.4f", dyn_price)
+    end
+  end
+end
 
 if not wallet:match("^0x[0-9a-fA-F]+$") then
   ngx.status = 503
