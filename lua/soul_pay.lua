@@ -310,23 +310,22 @@ end
 local ewf = io.open(earnings_file, "w")
 if ewf then ewf:write(cjson.encode(earnings)); ewf:close() end
 
--- ── Vault-Backup: Eintrag an income.md anhängen (persistent über VPS-Wechsel) ──
-local income_dir  = SOULS_DIR .. soul_id .. "/vault/context"
-local income_file = income_dir .. "/income.md"
-os.execute("mkdir -p " .. income_dir)
+-- ── Vault: earnings.md anhängen (VaultExplorer Server-Tab + soul-Import) ──────
+local earnings_dir  = SOULS_DIR .. soul_id .. "/vault/context"
+local earnings_md   = earnings_dir .. "/earnings.md"
+os.execute("mkdir -p " .. earnings_dir)
 local needs_header = true
-local ih = io.open(income_file, "r")
-if ih then ih:close(); needs_header = false end
-local imf = io.open(income_file, "a")
-if imf then
+local eh = io.open(earnings_md, "r")
+if eh then eh:close(); needs_header = false end
+local emf = io.open(earnings_md, "a")
+if emf then
   if needs_header then
-    imf:write("# Soul Income Log\n\n")
-    imf:write("| Date (UTC) | POL | From | TX Hash | Confirmed |\n")
-    imf:write("|---|---|---|---|---|\n")
+    emf:write("# Soul Earnings\n\n")
+    emf:write("| Date (UTC) | POL | From | TX Hash | Confirmed |\n")
+    emf:write("|---|---|---|---|---|\n")
   end
-  -- human-readable table row
   local short_tx = new_entry.tx_hash:sub(1, 10) .. "…" .. new_entry.tx_hash:sub(-6)
-  imf:write(string.format(
+  emf:write(string.format(
     "| %s | %s | `%s` | [`%s`](https://polygonscan.com/tx/%s) | %s |\n",
     new_entry.redeemed_at,
     (new_entry.pol_amount or "0"),
@@ -335,8 +334,7 @@ if imf then
     new_entry.tx_hash,
     (new_entry.confirmed_at or "unknown")
   ))
-  -- machine-readable marker (used by soul_earnings.lua fallback)
-  imf:write(string.format(
+  emf:write(string.format(
     "<!-- @income redeemed:%s tx:%s from:%s pol:%s confirmed:%s -->\n",
     new_entry.redeemed_at,
     new_entry.tx_hash,
@@ -344,20 +342,44 @@ if imf then
     (new_entry.pol_amount or "0"),
     (new_entry.confirmed_at or "unknown")
   ))
-  imf:close()
+  emf:close()
 
-  -- income.md in synced_files.context registrieren damit der VaultExplorer sie anzeigt
+  -- earnings.md in synced_files.context registrieren (VaultExplorer Server-Tab)
   if not ctx.synced_files then ctx.synced_files = {} end
   local sc = ctx.synced_files.context
   if type(sc) ~= "table" then sc = {} end
   local already = false
-  for _, n in ipairs(sc) do if n == "income.md" then already = true; break end end
+  for _, n in ipairs(sc) do if n == "earnings.md" then already = true; break end end
   if not already then
-    table.insert(sc, "income.md")
-    ctx.synced_files.context = sc
+    -- veraltetes income.md entfernen falls vorhanden
+    local sc2 = {}
+    for _, n in ipairs(sc) do if n ~= "income.md" then sc2[#sc2+1] = n end end
+    sc2[#sc2+1] = "earnings.md"
+    ctx.synced_files.context = sc2
     local wf = io.open(ctx_file, "w")
     if wf then wf:write(cjson.encode(ctx)); wf:close() end
   end
+end
+
+-- ── sys.md: Einnahmen-Sektion aktualisieren (non-blocking, via MCP soul_write) ─
+local _se = new_entry
+ngx.timer.at(0, function()
+  local httpc_sw = require("resty.http").new()
+  httpc_sw:set_timeout(8000)
+  local line = string.format(
+    "- %s · **%s POL** von `%s` · [TX](https://polygonscan.com/tx/%s)",
+    _se.redeemed_at, (_se.pol_amount or "0"), (_se.from or "unknown"), _se.tx_hash
+  )
+  local payload = require("cjson.safe").encode({
+    tool  = "soul_write",
+    input = { section = "Marketplace-Einnahmen", content = line, mode = "prepend" }
+  })
+  httpc_sw:request_uri("http://127.0.0.1:3098/internal/run-tool", {
+    method  = "POST",
+    headers = { ["Content-Type"] = "application/json", ["x-soul-id"] = soul_id },
+    body    = payload,
+  })
+end)
 
 end
 
