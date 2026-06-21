@@ -54,6 +54,31 @@ export function useSoul() {
     }
   }
 
+  // ── Migration ─────────────────────────────────────────────────────────
+  // Bereinigt Legacy-Felder und Frontmatter-Artefakte beim Laden der Soul.
+  function migrateSoulContent(content) {
+    // 1. chain_count entfernen (nicht im Template, von soul_growth_chain ableitbar)
+    content = content.replace(/^chain_count:\s*\d+\r?\n/m, '');
+
+    // 2. Dangling JSON-Fragment nach soul_chain_anchor entfernen
+    // Entsteht wenn ein alter Multi-Line-Wert nicht vollständig ersetzt wurde.
+    content = content.replace(
+      /(^soul_chain_anchor:\s*\{[^\n]+\}\r?\n)((?:[ \t]+["{][^\n]*\r?\n)*(?:[ \t]+\}[^\n]*\r?\n)?)/m,
+      '$1',
+    );
+
+    // 3. genesis:true aus soul_anchor_history entfernen
+    // Der Server (anchor_history.json) ist die authoritative Quelle für Genesis.
+    content = content.replace(
+      /^(soul_anchor_history:.*),"genesis":true(\})/m, '$1$2',
+    );
+    content = content.replace(
+      /^(soul_anchor_history:.*)"genesis":true,(.*)/m, '$1$2',
+    );
+
+    return content;
+  }
+
   // ── sys.md Template ────────────────────────────────────────────────────
 
   function buildDefaultSoul(id, cert, name, idea) {
@@ -138,11 +163,13 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     try {
       const stored = sessionStorage.getItem(SOUL_KEY);
       if (stored && stored.includes("soul_cert:")) {
-        soulContent.value = stored;
-        const certFromContent = stored.match(/soul_cert:\s*(.+)/)?.[1]?.trim() || "";
+        const migrated = migrateSoulContent(stored);
+        soulContent.value = migrated;
+        const certFromContent = migrated.match(/soul_cert:\s*(.+)/)?.[1]?.trim() || "";
         soulCert.value = certFromContent;
         soulFilename.value = sessionStorage.getItem(FILENAME_KEY) || "";
         isLoaded.value = true;
+        if (migrated !== stored) save();
         return true;
       }
     } catch (e) {
@@ -206,7 +233,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
     if (certMatch) {
       soulCert.value = certMatch[1].trim();
     }
-    soulContent.value = markdown;
+    soulContent.value = migrateSoulContent(markdown);
     isLoaded.value = true;
     save();
   }
