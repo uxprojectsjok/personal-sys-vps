@@ -1053,6 +1053,7 @@
     "live_price_label": "Aktueller Preis",
     "live_price_detail": "{base} × {mult}",
     "live_price_quote": "Quote gültig für {sec}s",
+    "live_price_save_first": "Einstellungen speichern um Live-Preis zu sehen",
     "field_amount_hint": "(in POL)",
     "field_wallet": "Deine Wallet-Adresse",
     "field_token_validity": "Token-Gültigkeit",
