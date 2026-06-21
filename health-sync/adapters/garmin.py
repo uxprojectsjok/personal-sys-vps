@@ -29,24 +29,10 @@ def get_data(config: dict, soul_id: str = None) -> dict:
 
     api = Garmin(config["garmin_email"], config["garmin_password"])
 
-    # 1. Try saved session (no MFA needed)
-    logged_in = False
-    if token_dir and os.path.isdir(token_dir) and os.listdir(token_dir):
-        try:
-            api.login(tokenstore=token_dir)
-            logged_in = True
-        except Exception as e:
-            print(f"  Session expired or invalid ({e}), re-authenticating…")
-
-    # 2. Fresh login — Garmin may require MFA here
-    if not logged_in:
-        api.login()
-        # Save session for future headless syncs
-        if token_dir:
-            try:
-                api.garth.dump(token_dir)
-            except Exception:
-                pass
+    # login(tokenstore=path): lädt gespeicherte Session wenn vorhanden,
+    # speichert sie nach erfolgreichem Login automatisch — kein MFA nötig
+    # wenn die Session noch gültig ist.
+    api.login(tokenstore=token_dir)
 
     today = date.today()
 
