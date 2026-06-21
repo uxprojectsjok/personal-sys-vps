@@ -341,7 +341,7 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
       if (syncRes.ok) {
         const text = await syncRes.text();
         if (text?.trim().startsWith("---")) {
-          soulContent.value = text;
+          soulContent.value = migrateSoulContent(text);
           save();
         }
       }
@@ -694,7 +694,7 @@ Mögliche section-Werte (exakt so schreiben):
     try {
       // Session-Log vom Server holen und in den zu pushenden Content einsetzen —
       // so gehen soul_write-Einträge der Soul-KI nicht durch pushToServer verloren.
-      let content = soulContent.value;
+      let content = migrateSoulContent(soulContent.value);
       try {
         const fr = await fetch('/api/soul', { headers: { Authorization: `Bearer ${token}` } });
         if (fr.ok) {
