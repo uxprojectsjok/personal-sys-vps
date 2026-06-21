@@ -10,6 +10,7 @@ local SOULS_DIR = "/var/lib/sys/souls/"
 -- Fallback: hardcodierte Werte falls Datei fehlt
 local ANCHOR_COEFF = 0.1
 local AGE_COEFF    = 0.01
+local DEMAND_COEFF = 0.05
 local QUOTE_TTL    = 300
 do
   local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
@@ -18,6 +19,7 @@ do
     if ok_p and type(p) == "table" then
       ANCHOR_COEFF = tonumber(p.anchor_coeff)  or ANCHOR_COEFF
       AGE_COEFF    = tonumber(p.age_coeff)     or AGE_COEFF
+      DEMAND_COEFF = tonumber(p.demand_coeff)  or DEMAND_COEFF
       QUOTE_TTL    = tonumber(p.quote_ttl_sec) or QUOTE_TTL
     end
   end
@@ -87,6 +89,7 @@ local base_price    = tonumber(amort.pol_per_request) or 0.001
 local dynamic       = amort.dynamic_pricing == true
 local anchor_count  = 0
 local chain_age_days = 0
+local buyers_30d    = 0
 local genesis_ts    = nil
 
 if dynamic then
@@ -115,13 +118,28 @@ if dynamic then
       end
     end
   end
+
+  -- demand_log.json: einzigartige Käufer der letzten 30 Tage zählen
+  local demand_file = SOULS_DIR .. soul_id .. "/demand_log.json"
+  local df = io.open(demand_file, "r")
+  if df then
+    local ok_d, dlog = pcall(cjson.decode, df:read("*a")); df:close()
+    if ok_d and type(dlog) == "table" then
+      local cutoff = ngx.time() - 30 * 86400
+      for _, entry in ipairs(dlog) do
+        if type(entry) == "table" and (tonumber(entry.ts) or 0) > cutoff then
+          buyers_30d = buyers_30d + 1
+        end
+      end
+    end
+  end
 end
 
--- Dynamischer Preis: base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
+-- Dynamischer Preis: base × (1 + anchor_count × ANCHOR_COEFF + chain_age_days × AGE_COEFF + buyers_30d × DEMAND_COEFF)
 local multiplier = 1.0
 local price = base_price
-if dynamic and anchor_count > 0 then
-  multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF)
+if dynamic and (anchor_count > 0 or buyers_30d > 0) then
+  multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d * DEMAND_COEFF)
   price = base_price * multiplier
 end
 -- Auf 4 Dezimalstellen runden, Minimum: base_price
@@ -163,6 +181,7 @@ ngx.say(cjson.encode({
   token_duration   = amort.token_duration or "1d",
   anchor_count     = anchor_count,
   chain_age_days   = math.floor(chain_age_days * 10 + 0.5) / 10,
+  buyers_30d       = buyers_30d,
   genesis_ts       = genesis_ts,
   soul_id          = soul_id,
   quote_id         = quote_id,
