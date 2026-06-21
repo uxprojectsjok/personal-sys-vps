@@ -605,10 +605,10 @@ server {
 
   location = /api/soul/chain-metrics {
     limit_except GET { deny all; }
-    limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    limit_req zone=api burst=30 nodelay;
     default_type application/json;
     add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
     content_by_lua_file /etc/openresty/lua/soul_chain_metrics.lua;
   }
 
