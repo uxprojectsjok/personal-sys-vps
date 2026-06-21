@@ -466,6 +466,15 @@ server {
     content_by_lua_file /etc/openresty/lua/food_log.lua;
   }
 
+  # ── Health Config: Garmin-Zugangsdaten lesen/schreiben ──────────────────────
+  location = /api/health/config {
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_config.lua;
+  }
+
   # ── Health Sync: Garmin-Daten im Hintergrund abrufen ────────────────────────
   location = /api/health-sync {
     limit_except POST { deny all; }
