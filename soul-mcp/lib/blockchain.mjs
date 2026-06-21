@@ -310,6 +310,40 @@ export async function getCurrentBlock() {
 }
 
 /**
+ * Liest die komplette Anchor-Historie aus dem SoulRegistry-Contract.
+ * Wird nach Soul-Import einmalig aufgerufen wenn anchor_history.json fehlt.
+ * @param {string} soulId  UUID
+ * @returns {Array<{ tx: null, ts: string, block: number, size: number, genesis?: true }> | null}
+ */
+export async function getOnChainHistory(soulId) {
+  try {
+    const ABI_GET = ['function getHistory(bytes32 soulId) view returns (tuple(bytes32 contentHash, uint256 timestamp, uint32 sessionCount)[])'];
+    const { ethers: _e } = await import('ethers');
+    const provider   = getProvider();
+    const contract   = new _e.Contract(CONTRACT_ADDRESS, ABI_GET, provider);
+    const soulBytes  = _e.keccak256(_e.toUtf8Bytes(soulId));
+    const raw        = await contract.getHistory(soulBytes);
+    if (!raw || !raw.length) return null;
+
+    const current    = await provider.getBlockNumber();
+    const DEPLOY_TS  = 1775260800;
+    const nowUnix    = Math.floor(Date.now() / 1000);
+    const bps        = Math.max(0.1, (current - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS));
+
+    return raw.map((entry, i) => {
+      const tsUnix = Number(entry.timestamp);
+      const ts     = new Date(tsUnix * 1000).toISOString();
+      const block  = Math.round(DEPLOY_BLOCK + (tsUnix - DEPLOY_TS) * bps);
+      const obj    = { tx: null, ts, block, size: 0 };
+      if (i === 0) obj.genesis = true;
+      return obj;
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Liest Genesis-Timestamp und Block direkt aus dem SoulRegistry-Contract.
  * Wird nach Soul-Import aufgerufen wenn anchor_history.json das Datum nicht korrekt hat.
  * @param {string} soulId  UUID
