@@ -32,36 +32,68 @@ class GarminNetworkError(Exception):
 
 
 def _classify_login_error(exc: Exception) -> Exception:
+    # Prefer isinstance checks over string matching — more reliable
+    try:
+        from garminconnect import (
+            GarminConnectTooManyRequestsError,
+            GarminConnectAuthenticationError,
+            GarminConnectConnectionError,
+        )
+        if isinstance(exc, GarminConnectTooManyRequestsError):
+            return GarminRateLimitError(
+                f"Garmin rate limit (429) — too many login attempts. "
+                f"Wait 2-4 hours and retry. ({exc})"
+            )
+        if isinstance(exc, GarminConnectAuthenticationError):
+            msg = str(exc).lower()
+            _MFA_HINTS = ("mfa", "two-factor", "two factor", "authenticati",
+                          "authentication application", "needs_mfa", "verification code")
+            if any(h in msg for h in _MFA_HINTS):
+                return GarminMFARequired(
+                    f"Garmin requires MFA. "
+                    f"Run: python3 /opt/sys/health-sync/garmin_login.py"
+                )
+            return GarminAuthError(
+                f"Garmin login failed — check email/password in Health Settings. ({exc})"
+            )
+        if isinstance(exc, GarminConnectConnectionError):
+            msg = str(exc).lower()
+            # 'GARMIN Authentication Application' is Garmin's MFA challenge page.
+            # garminconnect only checks for literal "MFA" in the title and misses it.
+            _MFA_HINTS = ("authentication application", "mfa", "two-factor",
+                          "needs_mfa", "unexpected title")
+            if any(h in msg for h in _MFA_HINTS):
+                return GarminMFARequired(
+                    f"Garmin requires MFA (interactive login needed). "
+                    f"Run: python3 /opt/sys/health-sync/garmin_login.py"
+                )
+            if "timeout" in msg or "connection" in msg or "network" in msg or "unreachable" in msg:
+                return GarminNetworkError(f"Network error reaching Garmin Connect. ({exc})")
+    except ImportError:
+        pass
+
+    # String-matching fallback for unexpected exception types
     msg = str(exc).lower()
     if "429" in msg or "rate limit" in msg or "too many" in msg:
         return GarminRateLimitError(
-            f"Garmin rate limit (429) — zu viele Loginversuche. "
-            f"Bitte 2-4 Stunden warten, dann neu versuchen. ({exc})"
+            f"Garmin rate limit (429) — too many login attempts. Wait 2-4 hours. ({exc})"
         )
-    if "mfa" in msg or "two.factor" in msg or "verification" in msg or "authenticat" in msg:
+    if any(h in msg for h in ("mfa", "two.factor", "verification", "authenticat",
+                               "authentication application", "unexpected title")):
         return GarminMFARequired(
-            f"Garmin verlangt MFA-Bestätigung. "
-            f"Führe garmin_login.py einmal interaktiv aus. ({exc})"
+            f"Garmin requires MFA. Run: python3 /opt/sys/health-sync/garmin_login.py ({exc})"
         )
     if (
-        "invalid" in msg and ("credential" in msg or "login" in msg or "password" in msg)
+        ("invalid" in msg and ("credential" in msg or "login" in msg or "password" in msg))
         or "wrong password" in msg
         or "unauthorized" in msg
         or "403" in msg
     ):
         return GarminAuthError(
-            f"Garmin-Anmeldung fehlgeschlagen — E-Mail oder Passwort prüfen. ({exc})"
+            f"Garmin login failed — check email/password in Health Settings. ({exc})"
         )
-    if (
-        "connection" in msg
-        or "timeout" in msg
-        or "network" in msg
-        or "name or service not known" in msg
-        or "unreachable" in msg
-    ):
-        return GarminNetworkError(
-            f"Netzwerkfehler beim Verbinden mit Garmin Connect. ({exc})"
-        )
+    if "connection" in msg or "timeout" in msg or "network" in msg or "unreachable" in msg:
+        return GarminNetworkError(f"Network error reaching Garmin Connect. ({exc})")
     return exc
 
 
@@ -79,11 +111,24 @@ def get_data(config: dict, soul_id: str = None) -> dict:
 
     api = Garmin(config["garmin_email"], config["garmin_password"])
 
-    # login(tokenstore=path): lädt gespeicherte Session wenn vorhanden,
-    # speichert sie nach erfolgreichem Login automatisch — kein MFA nötig
-    # wenn die Session noch gültig ist.
+    # Skip portal strategies — they're slow, hit the same rate limits,
+    # and don't handle MFA better than the mobile/widget methods.
     try:
-        api.login(tokenstore=token_dir)
+        api.client.skip_strategies = {"portal+cffi", "portal+requests"}
+    except AttributeError:
+        pass
+
+    # login(): loads cached tokens if available; only re-authenticates when stale.
+    # Returns (mfa_status, _) — "needs_mfa" means interactive login is required.
+    try:
+        mfa_status, _ = api.login(tokenstore=token_dir)
+        if mfa_status:
+            raise GarminMFARequired(
+                f"Garmin requires MFA (status: {mfa_status}). "
+                f"Run: python3 /opt/sys/health-sync/garmin_login.py"
+            )
+    except GarminMFARequired:
+        raise
     except Exception as exc:
         raise _classify_login_error(exc) from exc
 
