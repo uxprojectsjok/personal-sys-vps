@@ -92,11 +92,18 @@
                     <span class="field-hint">{{ $t('marketplace.field_dynamic_pricing_hint') }}</span>
                   </label>
                 </div>
-                <div v-if="amort.dynamic_pricing && livePrice?.enabled" class="live-price-box">
-                  <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
-                  <span class="live-price-value">{{ livePrice.pol_required }} POL</span>
-                  <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: livePrice.base_price, mult: livePriceMultiplier }) }}</span>
-                  <button class="live-price-refresh" type="button" @click="fetchLivePrice" :title="$t('marketplace.live_price_quote', { sec: livePrice.quote_ttl_sec })">↻</button>
+                <div v-if="amort.dynamic_pricing" class="live-price-box field span-2">
+                  <template v-if="livePrice?.enabled">
+                    <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
+                    <span class="live-price-value">{{ livePrice.pol_required }} POL</span>
+                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: livePrice.base_price, mult: livePriceMultiplier }) }}</span>
+                    <button class="live-price-refresh" type="button" @click="fetchLivePrice" :title="$t('marketplace.live_price_quote', { sec: livePrice.quote_ttl_sec })">↻</button>
+                  </template>
+                  <template v-else>
+                    <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
+                    <span class="live-price-pending">{{ livePrice === null ? '…' : $t('marketplace.live_price_save_first') }}</span>
+                    <button class="live-price-refresh" type="button" @click="fetchLivePrice">↻</button>
+                  </template>
                 </div>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
@@ -822,7 +829,8 @@ async function register() {
 .toggle-switch.on { background: var(--accent); }
 .toggle-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
 .toggle-switch.on .toggle-knob { transform: translateX(16px); }
-.live-price-box { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(109,184,154,0.07); border:1px solid rgba(109,184,154,0.2); border-radius:var(--r-xs); font-family:var(--mono); font-size:13px; margin-bottom:4px; }
+.live-price-box { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(109,184,154,0.07); border:1px solid rgba(109,184,154,0.2); border-radius:var(--r-xs); font-family:var(--mono); font-size:13px; }
+.live-price-pending { color:var(--fg-3); font-size:12px; }
 .live-price-label { color:var(--fg-2); }
 .live-price-value { color:#6db89a; font-weight:600; }
 .live-price-detail { color:var(--fg-3); font-size:11px; }
