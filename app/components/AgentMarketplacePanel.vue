@@ -95,8 +95,8 @@
                 <div v-if="amort.dynamic_pricing" class="live-price-box field span-2">
                   <template v-if="livePrice?.enabled">
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
-                    <span class="live-price-value">{{ livePrice.pol_required }} POL</span>
-                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: livePrice.base_price, mult: livePriceMultiplier }) }}</span>
+                    <span class="live-price-value">{{ livePriceDisplay }} POL</span>
+                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.pol_per_request, mult: livePriceMultiplier }) }}</span>
                     <button class="live-price-refresh" type="button" @click="fetchLivePrice" :title="$t('marketplace.live_price_quote', { sec: livePrice.quote_ttl_sec })">↻</button>
                   </template>
                   <template v-else>
@@ -375,6 +375,17 @@ const amortSuccess  = ref(false)
 // Live-Preis (dynamisches Pricing)
 const livePrice     = ref(null)
 let livePriceTimer  = null
+
+// Preis live aus aktuellem Formular-Basiswert × gecachtem Multiplikator berechnen
+// → aktualisiert sich sofort beim Tippen, kein Speichern nötig
+const livePriceDisplay = computed(() => {
+  const p = livePrice.value
+  if (!p?.dynamic || !p.multiplier) return p?.pol_required ?? null
+  const base = parseFloat(amort.pol_per_request)
+  if (!base || isNaN(base)) return p.pol_required
+  const price = Math.max(base, Math.round(base * p.multiplier * 10000) / 10000)
+  return price.toFixed(4)
+})
 
 const livePriceMultiplier = computed(() => {
   const p = livePrice.value
