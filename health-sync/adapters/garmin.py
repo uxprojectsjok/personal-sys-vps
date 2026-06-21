@@ -2,14 +2,20 @@
 
 WARNING: Garmin Connect has no public API. This library reverse-engineers the
 private web API and can break without notice after Garmin app updates.
+
+Session persistence: after first login the OAuth tokens are saved to
+TOKEN_DIR and reused on subsequent syncs — no MFA prompt needed again.
 """
 
+import os
 import time
 from datetime import date, timedelta
 from statistics import mean
 
+TOKEN_DIR_BASE = "/var/lib/sys/config/garmin_tokens"
 
-def get_data(config: dict) -> dict:
+
+def get_data(config: dict, soul_id: str = None) -> dict:
     try:
         from garminconnect import Garmin
     except ImportError:
@@ -17,13 +23,34 @@ def get_data(config: dict) -> dict:
             "python-garminconnect not installed. Run: pip3 install garminconnect"
         )
 
+    token_dir = os.path.join(TOKEN_DIR_BASE, soul_id) if soul_id else None
+    if token_dir:
+        os.makedirs(token_dir, exist_ok=True)
+
     api = Garmin(config["garmin_email"], config["garmin_password"])
-    api.login()
+
+    # 1. Try saved session (no MFA needed)
+    logged_in = False
+    if token_dir and os.path.isdir(token_dir) and os.listdir(token_dir):
+        try:
+            api.login(tokenstore=token_dir)
+            logged_in = True
+        except Exception as e:
+            print(f"  Session expired or invalid ({e}), re-authenticating…")
+
+    # 2. Fresh login — Garmin may require MFA here
+    if not logged_in:
+        api.login()
+        # Save session for future headless syncs
+        if token_dir:
+            try:
+                api.garth.dump(token_dir)
+            except Exception:
+                pass
 
     today = date.today()
 
     def fetch_sleep(d_str):
-        """Try dedicated sleep endpoint first, fall back to get_stats."""
         try:
             s = api.get_sleep_data(d_str)
             daily = s.get("dailySleepDTO") or {}
@@ -42,7 +69,6 @@ def get_data(config: dict) -> dict:
         return None
 
     def fetch_activities(limit=15):
-        """Return recent activities with type, duration, distance, HR."""
         try:
             acts = api.get_activities(0, limit)
             result = []
@@ -70,8 +96,6 @@ def get_data(config: dict) -> dict:
                 stats = api.get_stats(d)
                 rhr   = stats.get("restingHeartRate")
                 steps = stats.get("totalSteps")
-                # highlyActiveSeconds: Garmin's own high-intensity movement sensor —
-                # ≥1800 s (30 min) counts as an active day
                 highly = stats.get("highlyActiveSeconds") or 0
                 if rhr:
                     hr_vals.append(rhr)

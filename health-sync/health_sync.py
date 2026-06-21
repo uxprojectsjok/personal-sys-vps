@@ -42,7 +42,7 @@ def sync_one(config_path: str) -> bool:
         return False
 
     try:
-        data = adapter.get_data(config)
+        data = adapter.get_data(config, soul_id=soul_id)
     except Exception as e:
         print(f"  [error] fetch failed: {e}")
         return False
