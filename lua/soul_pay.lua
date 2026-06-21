@@ -152,7 +152,18 @@ elseif amort.dynamic_pricing == true then
           chain_age_days = (ref - genesis) / 86400
         end
       end
-      local multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF)
+      local buyers_30d_fb = 0
+      local dfl = io.open(SOULS_DIR .. soul_id .. "/demand_log.json", "r")
+      if dfl then
+        local ok_dl, dlog_fb = pcall(require("cjson.safe").decode, dfl:read("*a")); dfl:close()
+        if ok_dl and type(dlog_fb) == "table" then
+          local cutoff = ngx.time() - 30 * 86400
+          for _, e in ipairs(dlog_fb) do
+            if type(e) == "table" and (tonumber(e.ts) or 0) > cutoff then buyers_30d_fb = buyers_30d_fb + 1 end
+          end
+        end
+      end
+      local multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d_fb * DEMAND_COEFF)
       local dyn_price  = math.max(base_price, math.floor(base_price * multiplier * 10000 + 0.5) / 10000)
       pol_per_req = string.format("%.4f", dyn_price)
     end
@@ -310,7 +321,21 @@ local imf = io.open(income_file, "a")
 if imf then
   if needs_header then
     imf:write("# Soul Income Log\n\n")
+    imf:write("| Date (UTC) | POL | From | TX Hash | Confirmed |\n")
+    imf:write("|---|---|---|---|---|\n")
   end
+  -- human-readable table row
+  local short_tx = new_entry.tx_hash:sub(1, 10) .. "…" .. new_entry.tx_hash:sub(-6)
+  imf:write(string.format(
+    "| %s | %s | `%s` | [`%s`](https://polygonscan.com/tx/%s) | %s |\n",
+    new_entry.redeemed_at,
+    (new_entry.pol_amount or "0"),
+    (new_entry.from or "unknown"),
+    short_tx,
+    new_entry.tx_hash,
+    (new_entry.confirmed_at or "unknown")
+  ))
+  -- machine-readable marker (used by soul_earnings.lua fallback)
   imf:write(string.format(
     "<!-- @income redeemed:%s tx:%s from:%s pol:%s confirmed:%s -->\n",
     new_entry.redeemed_at,
