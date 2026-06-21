@@ -25,3 +25,8 @@ soul-whatsapp/
 screen_shot_Ui/
 public/dock_in.png
 public/dock_out.png
+
+# Python virtualenv
+health-sync/.venv/
+health-sync/__pycache__/
+health-sync/adapters/__pycache__/
