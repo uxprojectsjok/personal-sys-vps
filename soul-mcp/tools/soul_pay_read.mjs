@@ -35,6 +35,22 @@ export function register(server, _token) {
     },
     async ({ pay_endpoint, soul_id, tx_hash }) => {
       try {
+        // ── 0. Aktuellen Preis abrufen (informativer Prefix) ──────────────────
+        const priceUrl = pay_endpoint.replace(/\/pay(\?.*)?$/, '/price') + `?soul_id=${soul_id}`;
+        let priceInfo = '';
+        try {
+          const pr = await fetch(priceUrl, { signal: AbortSignal.timeout(5000) });
+          if (pr.ok) {
+            const pd = await pr.json();
+            if (pd.enabled) {
+              const dynamicNote = pd.dynamic
+                ? ` (dynamisch: ${pd.anchor_count} Anchors · ${pd.chain_age_days}d Chain Age)`
+                : ' (statisch)';
+              priceInfo = `Aktueller Preis: ${pd.pol_required} POL${dynamicNote}\n\n`;
+            }
+          }
+        } catch { /* Preis-Abruf optional, nicht blockierend */ }
+
         // ── 1. Zahlung verifizieren → access_token holen ─────────────────────
         const payRes = await fetch(pay_endpoint, {
           method:  'POST',
@@ -128,12 +144,13 @@ export function register(server, _token) {
 
         const lines = [
           `[Soul-Inhalt · ${soul_id.slice(0, 8)}… · Zugang bis ${expiresAt ? new Date(expiresAt).toLocaleString('de-DE') : '?'}]`,
+          priceInfo ? priceInfo.trim() : '',
           `access_token: ${accessToken}`,
           `comment_endpoint: ${commentEndpoint}`,
           '---',
           '',
           soulContent,
-        ];
+        ].filter(l => l !== '');
 
         return { content: [{ type: 'text', text: lines.join('\n') }] };
 
