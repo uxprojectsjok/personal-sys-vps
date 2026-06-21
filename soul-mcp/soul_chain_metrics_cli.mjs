@@ -3,12 +3,12 @@
 // Liest anchor_history.json und berechnet Chain Metrics via Polygon RPC.
 // Wird von soul_chain_metrics.lua per io.popen() aufgerufen.
 //
-// Genesis-Datum: wird beim ersten Aufruf nach einem frischen Deploy direkt
-// on-chain aus dem SoulRegistry-Contract abgefragt und in anchor_history.json
-// gecacht — damit das Datum nach Soul-Import immer korrekt ist.
+// Fallback nach Soul-Import (anchor_history.json fehlt oder leer):
+//   Fragt den SoulRegistry-Contract direkt ab und schreibt anchor_history.json
+//   mit den on-chain Daten — einmalig, danach wird die Datei gecacht.
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { getChainMetrics, getOnChainGenesis } from './lib/blockchain.mjs';
+import { getChainMetrics, getOnChainGenesis, getOnChainHistory } from './lib/blockchain.mjs';
 
 const soulId = process.argv[2];
 if (!soulId) {
@@ -23,20 +23,30 @@ try {
   history = JSON.parse(raw);
 } catch { /* Datei existiert noch nicht */ }
 
-// Wenn Genesis-Eintrag keinen Block hat (altes Format / nach Import),
-// echten on-chain Timestamp nachladen und cachen.
-const genesis = history.find(e => e.genesis) ?? history[0];
-if (genesis && !genesis.block && (!genesis.ts || genesis.ts.startsWith('2026-05') || genesis.ts.startsWith('2026-06'))) {
+// Fresh-Install / nach Soul-Import: anchor_history.json fehlt oder ist leer
+// → on-chain Daten abrufen und lokal cachen
+if (history.length === 0) {
   try {
-    const onChainGenesis = await getOnChainGenesis(soulId);
-    if (onChainGenesis) {
-      genesis.ts    = onChainGenesis.ts;
-      genesis.block = onChainGenesis.block;
-      if (!genesis.genesis) genesis.genesis = true;
-      // Gecacht in anchor_history.json schreiben
+    const onChain = await getOnChainHistory(soulId);
+    if (onChain && onChain.length > 0) {
+      history = onChain;
       await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
     }
-  } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
+  } catch { /* RPC nicht erreichbar — anchor_count bleibt 0 */ }
+} else {
+  // Genesis-Datum korrigieren wenn nach Import falsch (Mai/Juni statt echtem Datum)
+  const genesis = history.find(e => e.genesis) ?? history[0];
+  if (genesis && !genesis.block && genesis.ts && (genesis.ts.startsWith('2026-05') || genesis.ts.startsWith('2026-06'))) {
+    try {
+      const fixed = await getOnChainGenesis(soulId);
+      if (fixed) {
+        genesis.ts    = fixed.ts;
+        genesis.block = fixed.block;
+        if (!genesis.genesis) genesis.genesis = true;
+        await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
+      }
+    } catch { /* weiter mit lokalem Wert */ }
+  }
 }
 
 try {

@@ -93,8 +93,21 @@ local buyers_30d    = 0
 local genesis_ts    = nil
 
 if dynamic then
-  -- anchor_history.json lesen
-  local ah_file = SOULS_DIR .. soul_id .. "/anchor_history.json"
+  local ah_file  = SOULS_DIR .. soul_id .. "/anchor_history.json"
+  local NODE_BIN = "/usr/bin/node"
+  local CLI      = "/opt/sys/soul-mcp/soul_chain_metrics_cli.mjs"
+
+  -- Wenn anchor_history.json fehlt (nach Soul-Import): CLI aufrufen — rekonstruiert
+  -- die Datei einmalig on-chain und schreibt sie; danach wird sie lokal gecacht.
+  local ah_check = io.open(ah_file, "r")
+  if not ah_check then
+    local p = io.popen(NODE_BIN .. " " .. CLI .. " " .. soul_id .. " 2>/dev/null", "r")
+    if p then p:read("*a"); p:close() end -- Ergebnis ignorieren, Datei wurde geschrieben
+  else
+    ah_check:close()
+  end
+
+  -- anchor_history.json lesen (jetzt vorhanden)
   local ah = io.open(ah_file, "r")
   if ah then
     local ok_a, hist = pcall(cjson.decode, ah:read("*a")); ah:close()
@@ -103,7 +116,6 @@ if dynamic then
       -- Genesis-Zeitstempel aus erstem Eintrag
       if hist[1] and type(hist[1].ts) == "string" then
         genesis_ts = hist[1].ts
-        -- ISO8601 → epoch (UTC)
         local y,mo,d,h,mi,s = genesis_ts:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
         if y then
           local ref    = ngx.time()
