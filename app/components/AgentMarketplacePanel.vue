@@ -96,7 +96,7 @@
                   <template v-if="livePrice?.enabled">
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
                     <span class="live-price-value">{{ livePriceDisplay }} POL</span>
-                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.pol_per_request, mult: livePriceMultiplier }) }}</span>
+                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.pol_per_request, mult: livePriceMultiplier, anchors: livePrice.anchor_count ?? 0, age: livePrice.chain_age_days ?? 0, buyers: livePrice.buyers_30d ?? 0 }) }}</span>
                   </template>
                   <template v-else>
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
