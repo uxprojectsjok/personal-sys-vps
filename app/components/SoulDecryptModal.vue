@@ -273,7 +273,7 @@ const emit  = defineEmits(["close", "uploaded", "openFaq"]);
 
 const { t } = useI18n()
 const router = useRouter();
-const { importFromText, resetCertToV0, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
+const { importFromText, resetCertToV0, pushToServer, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
 const { clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();
 const { resetContext, saveContext } = useApiContext();
 const {
@@ -392,6 +392,9 @@ async function finishDecrypt(ok) {
       }
 
       isLoginInProgress.value = false;
+
+      // Migrierte Soul (chain_count entfernt, Artefakte bereinigt) zum Server pushen
+      pushToServer().catch(() => {});
     }
   }
 }
