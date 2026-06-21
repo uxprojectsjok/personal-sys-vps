@@ -15,6 +15,56 @@ from statistics import mean
 TOKEN_DIR_BASE = "/var/lib/sys/config/garmin_tokens"
 
 
+class GarminRateLimitError(Exception):
+    """Garmin returned 429 — too many login attempts."""
+
+
+class GarminMFARequired(Exception):
+    """Garmin requires MFA verification. Run garmin_login.py interactively."""
+
+
+class GarminAuthError(Exception):
+    """Wrong Garmin credentials (email or password)."""
+
+
+class GarminNetworkError(Exception):
+    """Network or connection error while reaching Garmin servers."""
+
+
+def _classify_login_error(exc: Exception) -> Exception:
+    msg = str(exc).lower()
+    if "429" in msg or "rate limit" in msg or "too many" in msg:
+        return GarminRateLimitError(
+            f"Garmin rate limit (429) — zu viele Loginversuche. "
+            f"Bitte 2-4 Stunden warten, dann neu versuchen. ({exc})"
+        )
+    if "mfa" in msg or "two.factor" in msg or "verification" in msg or "authenticat" in msg:
+        return GarminMFARequired(
+            f"Garmin verlangt MFA-Bestätigung. "
+            f"Führe garmin_login.py einmal interaktiv aus. ({exc})"
+        )
+    if (
+        "invalid" in msg and ("credential" in msg or "login" in msg or "password" in msg)
+        or "wrong password" in msg
+        or "unauthorized" in msg
+        or "403" in msg
+    ):
+        return GarminAuthError(
+            f"Garmin-Anmeldung fehlgeschlagen — E-Mail oder Passwort prüfen. ({exc})"
+        )
+    if (
+        "connection" in msg
+        or "timeout" in msg
+        or "network" in msg
+        or "name or service not known" in msg
+        or "unreachable" in msg
+    ):
+        return GarminNetworkError(
+            f"Netzwerkfehler beim Verbinden mit Garmin Connect. ({exc})"
+        )
+    return exc
+
+
 def get_data(config: dict, soul_id: str = None) -> dict:
     try:
         from garminconnect import Garmin
@@ -32,7 +82,10 @@ def get_data(config: dict, soul_id: str = None) -> dict:
     # login(tokenstore=path): lädt gespeicherte Session wenn vorhanden,
     # speichert sie nach erfolgreichem Login automatisch — kein MFA nötig
     # wenn die Session noch gültig ist.
-    api.login(tokenstore=token_dir)
+    try:
+        api.login(tokenstore=token_dir)
+    except Exception as exc:
+        raise _classify_login_error(exc) from exc
 
     today = date.today()
 
