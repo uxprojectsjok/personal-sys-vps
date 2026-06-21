@@ -466,6 +466,46 @@ server {
     content_by_lua_file /etc/openresty/lua/food_log.lua;
   }
 
+  # ── Health Login: Garmin OAuth + MFA via Web ─────────────────────────────────
+  location = /api/health/login {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=3 nodelay;
+    client_max_body_size 4k;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_login.lua;
+  }
+
+  location = /api/health/mfa {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    client_max_body_size 4k;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_mfa.lua;
+  }
+
+  # ── Health Config: Garmin-Einstellungen lesen/schreiben ─────────────────────
+  location = /api/health/config {
+    limit_req zone=api burst=10 nodelay;
+    client_max_body_size 16k;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_config.lua;
+  }
+
+  # ── Health Check: KI-Analyse + Tips aus health.md ───────────────────────────
+  location = /api/health/check {
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_check_api.lua;
+  }
+
   # ── Health Sync: Garmin-Daten im Hintergrund abrufen ────────────────────────
   location = /api/health-sync {
     limit_except POST { deny all; }
