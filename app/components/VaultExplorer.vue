@@ -843,7 +843,10 @@ async function uploadSelectedLocal() {
           const file = await readVaultFile(name);
           if (!file) { fail++; continue; }
           const serverType = type === "images" ? "image" : type;
-          const key = vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || "");
+          const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
+          const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
+            ? ""
+            : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
           const res = await syncFile(props.soulCert, serverType, name, file, key);
           if (res.ok) ok++; else fail++;
         } catch { fail++; }
@@ -1174,8 +1177,8 @@ async function uploadToServer(type, name) {
     const file = await readVaultFile(name);
     if (!file) { showError(t('vault.file_not_readable')); return; }
     const serverType = type === "images" ? "image" : type;
-    // mind.md und health.md sind unverschlüsselt — Key weglassen damit kein Ciphertext entsteht
-    const plainContextFiles = ["mind.md", "health.md", "income.md"];
+    // mind.md, health.md, earnings.md sind immer plaintext — Key weglassen
+    const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
     const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
       ? ""
       : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
