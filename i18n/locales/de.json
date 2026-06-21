@@ -1046,7 +1046,7 @@
     "mode_free": "Frei",
     "mode_free_desc": "Jeder KI-Assistent kann deine Soul-Daten lesen — ohne Einschränkung.",
     "mode_pay": "Bezahlt · POL",
-    "mode_pay_desc": "Pro Zugriff wird automatisch ein kleiner Betrag POL an dich überwiesen.",
+    "mode_pay_desc": "Pro Zugriff wird automatisch ein Betrag POL an dich überwiesen.",
     "field_amount": "Basisbetrag pro Zugriff",
     "field_dynamic_pricing": "Dynamische Preisgestaltung",
     "field_dynamic_pricing_hint": "Preis wächst mit Genesis Chain-Alter und Anchor-Anzahl",
