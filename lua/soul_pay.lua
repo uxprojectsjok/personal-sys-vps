@@ -10,6 +10,20 @@ local http   = require("resty.http")
 local random = require("resty.random")
 local str    = require("resty.string")
 
+-- Pricing-Protokoll-Konstanten (v1)
+local ANCHOR_COEFF = 0.1
+local AGE_COEFF    = 0.01
+do
+  local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
+  if pf then
+    local ok_p, p = pcall(cjson.decode, pf:read("*a")); pf:close()
+    if ok_p and type(p) == "table" then
+      ANCHOR_COEFF = tonumber(p.anchor_coeff) or ANCHOR_COEFF
+      AGE_COEFF    = tonumber(p.age_coeff)    or AGE_COEFF
+    end
+  end
+end
+
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
@@ -136,7 +150,7 @@ elseif amort.dynamic_pricing == true then
           chain_age_days = (ref - genesis) / 86400
         end
       end
-      local multiplier = 1 + (anchor_count * 0.1) + (chain_age_days * 0.01)
+      local multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF)
       local dyn_price  = math.max(base_price, math.floor(base_price * multiplier * 10000 + 0.5) / 10000)
       pol_per_req = string.format("%.4f", dyn_price)
     end
