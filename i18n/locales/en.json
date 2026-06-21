@@ -1046,7 +1046,7 @@
     "mode_free": "Free",
     "mode_free_desc": "Every AI assistant can read your Soul data — without restriction.",
     "mode_pay": "Paid · POL",
-    "mode_pay_desc": "Per access, a small POL amount is automatically transferred to you.",
+    "mode_pay_desc": "Per access, a POL amount is automatically transferred to you.",
     "field_amount": "Base amount per access",
     "field_amount_hint": "(in POL)",
     "field_dynamic_pricing": "Dynamic pricing",
