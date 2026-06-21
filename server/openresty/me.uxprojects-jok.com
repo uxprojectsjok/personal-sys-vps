@@ -554,6 +554,15 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_amortization.lua;
   }
 
+  location = /api/soul/chain-metrics {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_chain_metrics.lua;
+  }
+
   location = /api/soul/register-anchor {
     limit_except POST { deny all; }
     limit_req zone=chat burst=5 nodelay;
