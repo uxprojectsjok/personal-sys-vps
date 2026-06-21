@@ -37,6 +37,14 @@ local function read_last_sync()
   return head:match("last_sync:%s*([%d%-%s:]+[%d])")
 end
 
+local function has_garmin_tokens()
+  local token_dir = "/var/lib/sys/config/garmin_tokens/" .. soul_id
+  local handle = io.popen("ls " .. token_dir .. "/*.json 2>/dev/null | head -1")
+  if not handle then return false end
+  local out = handle:read("*a"); handle:close()
+  return out and out:match("%S") ~= nil
+end
+
 ngx.header["Content-Type"] = "application/json"
 
 -- ── GET ───────────────────────────────────────────────────────────────────────
@@ -48,6 +56,7 @@ if ngx.req.get_method() == "GET" then
     garmin_model  = c.garmin_model  or "garmin_fr235",
     garmin_email  = c.garmin_email  or "",
     has_password  = (c.garmin_password ~= nil and c.garmin_password ~= ""),
+    has_tokens    = has_garmin_tokens(),
     last_sync     = read_last_sync(),
   }))
   return

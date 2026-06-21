@@ -711,9 +711,10 @@
                   </button>
                 </template>
                 <template v-else>
-                  <button class="sys-btn-ed" @click="garminLogin" :disabled="healthLoginBusy">
+                  <button class="sys-btn-ed sys-btn-ed--primary" @click="garminLogin" :disabled="healthLoginBusy">
                     {{ healthLoginBusy ? '…' : 'Garmin Login' }}
                   </button>
+                  <span v-if="healthGarminConnected" style="font-size:11px;font-family:var(--sys-mono);color:var(--sys-ok);padding:0 6px;align-self:center">Garmin verbunden ✓</span>
                   <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
                     {{ healthSaving ? $t('settings.saving') : $t('common.save') }}
                   </button>
@@ -825,6 +826,7 @@ const healthMsgError      = ref(false)
 const healthNeedsMfa      = ref(false)
 const healthMfaCode       = ref('')
 const healthLoginBusy     = ref(false)
+const healthGarminConnected = ref(false)
 
 async function loadHealthConfig() {
   try {
@@ -835,6 +837,7 @@ async function loadHealthConfig() {
       healthGarminModel.value = d.garmin_model || 'garmin_fr235'
       healthGarminEmail.value = d.garmin_email || ''
       healthHasPassword.value = !!d.has_password
+      healthGarminConnected.value = !!d.has_tokens
     }
   } catch {}
 }
@@ -873,7 +876,9 @@ async function garminLogin() {
       healthNeedsMfa.value = true
       healthMsg.value = d.message || 'MFA-Code per SMS erhalten — bitte eingeben.'
     } else if (d.ok) {
+      healthGarminConnected.value = true
       healthMsg.value = 'Login erfolgreich ✓'
+      setTimeout(() => { healthMsg.value = '' }, 4000)
     } else {
       healthMsgError.value = true
       healthMsg.value = d.error || 'Login fehlgeschlagen.'
@@ -894,7 +899,14 @@ async function submitMfa() {
     const d = await r.json()
     if (d.ok) {
       healthNeedsMfa.value = false; healthMfaCode.value = ''
-      healthMsg.value = d.pending ? 'Code übermittelt — Login läuft…' : 'Login erfolgreich ✓'
+      if (d.pending) {
+        healthMsg.value = 'Code übermittelt — Login läuft…'
+        setTimeout(() => { healthMsg.value = '' }, 5000)
+      } else {
+        healthGarminConnected.value = true
+        healthMsg.value = 'Login erfolgreich ✓'
+        setTimeout(() => { healthMsg.value = '' }, 4000)
+      }
     } else {
       healthMsgError.value = true; healthMsg.value = d.error || 'MFA fehlgeschlagen.'
     }
