@@ -570,12 +570,9 @@ export function useChainAnchor() {
         chainJson,
       );
     }
-    // chain_count im Frontmatter synchron halten
-    const chainCount = chain.length;
+    // chain_count entfernen falls noch vorhanden (Legacy-Feld, nicht im Template)
     if (/chain_count:\s*\d+/m.test(soulContent.value)) {
-      soulContent.value = soulContent.value.replace(/chain_count:\s*\d+/m, `chain_count: ${chainCount}`);
-    } else {
-      soulContent.value = updateFrontmatterField(soulContent.value, "chain_count", chainCount);
+      soulContent.value = soulContent.value.replace(/^chain_count:\s*\d+\n?/m, '');
     }
     save();
   }
@@ -760,7 +757,9 @@ export function useChainAnchor() {
       try { anchorHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { anchorHistory = []; }
       if (!Array.isArray(anchorHistory)) anchorHistory = [];
       const histEntry = { tx: tx.hash, ts: new Date().toISOString(), size: soulSize };
-      if (anchorHistory.length === 0) histEntry.genesis = true;
+      // Genesis nur setzen wenn weder lokale History noch Server-Metriken ältere Anchors kennen
+      const serverAnchorCount = chainMetrics.value?.anchor_count ?? 0;
+      if (anchorHistory.length === 0 && serverAnchorCount === 0) histEntry.genesis = true;
       anchorHistory.push(histEntry);
       const histJson = JSON.stringify(anchorHistory);
       if (/soul_anchor_history:/m.test(soulContent.value)) {
