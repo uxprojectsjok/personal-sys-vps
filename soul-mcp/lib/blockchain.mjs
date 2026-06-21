@@ -317,9 +317,15 @@ export async function getCurrentBlock() {
  */
 export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
   if (!Array.isArray(anchorHistory) || !anchorHistory.length) return 0;
-  const BLOCKS_PER_HALF_DAY = 43_200; // Polygon ≈ 2 Blöcke/Sek
+  // Kalibriere Blockrate dynamisch aus Ist-Zustand
+  const DEPLOY_TS = 1775260800;
+  const nowUnix   = Math.floor(Date.now() / 1000);
+  const blocksPerSec = currentBlock
+    ? Math.max(0.1, (currentBlock - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS))
+    : 2;
+  const BLOCKS_PER_HALF_DAY = Math.round(blocksPerSec * 43_200);
   const total = anchorHistory.reduce((sum, anchor) => {
-    const ageBlocks = currentBlock - (anchor.block ?? estimateBlock(anchor.ts));
+    const ageBlocks = currentBlock - (anchor.block ?? estimateBlock(anchor.ts, currentBlock));
     const ageWeight = 1 + Math.log10(1 + Math.max(0, ageBlocks) / BLOCKS_PER_HALF_DAY);
     const sizeKb = (anchor.size ?? 0) / 1024;
     return sum + sizeKb * ageWeight;
@@ -329,13 +335,20 @@ export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
 
 /**
  * Schätzt den Polygon-Block aus einem ISO-Timestamp.
- * Basiert auf Deployment-Block 83.500.000 am 2026-04-04.
+ * Kalibriert dynamisch aus aktuellem Block + Deploy-Anker statt fester Rate.
+ * @param {string} ts  ISO-Timestamp
+ * @param {number} currentBlock  aktueller Block (für Live-Kalibrierung)
  */
-function estimateBlock(ts) {
-  if (!ts) return DEPLOY_BLOCK;
+function estimateBlock(ts, currentBlock) {
   const DEPLOY_TS = 1775260800; // 2026-04-04T00:00:00Z
+  if (!ts) return DEPLOY_BLOCK;
+  const nowUnix   = Math.floor(Date.now() / 1000);
+  // Tatsächliche Blockrate aus Ist-Zustand berechnen (statt feste 2/s-Annahme)
+  const blocksPerSec = currentBlock
+    ? Math.max(0.1, (currentBlock - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS))
+    : 2;
   const unixTs = Math.floor(new Date(ts).getTime() / 1000);
-  return DEPLOY_BLOCK + Math.max(0, Math.round((unixTs - DEPLOY_TS) * 2));
+  return DEPLOY_BLOCK + Math.max(0, Math.round((unixTs - DEPLOY_TS) * blocksPerSec));
 }
 
 function formatChainAge(days) {
@@ -364,9 +377,13 @@ export async function getChainMetrics(anchorHistory) {
 
   const currentBlock = await getProvider().getBlockNumber();
   const genesis = anchorHistory.find(a => a.genesis === true) ?? anchorHistory[0];
-  const genesisBlock = genesis?.block ?? estimateBlock(genesis?.ts);
+  const genesisBlock = genesis?.block ?? estimateBlock(genesis?.ts, currentBlock);
   const chainAgeBlocks = Math.max(0, currentBlock - genesisBlock);
-  const chainAgeDays   = chainAgeBlocks / 172_800; // 2 blocks/s * 86400 s/day
+  // Dynamische Blockrate für chain_age_days
+  const DEPLOY_TS = 1775260800;
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const blocksPerDay = Math.max(0.1, (currentBlock - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS)) * 86400;
+  const chainAgeDays = chainAgeBlocks / blocksPerDay;
 
   return {
     genesis_block:    genesisBlock,
