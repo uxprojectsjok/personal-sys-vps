@@ -118,19 +118,19 @@ if [ "$SYNC_OK" -eq 0 ] && [ -f "$STATUS_FILE" ]; then
   if [[ "$ERROR_TYPE" == "mfa_required" || "$ERROR_TYPE" == "rate_limit" ]]; then
     echo ""
     echo "┌─────────────────────────────────────────────────────────────┐"
-    echo "│  Garmin verlangt einmalige MFA-Bestätigung.                 │"
-    echo "│  Führe jetzt den interaktiven Login durch:                  │"
+    echo "│  Garmin requires a one-time MFA verification.               │"
+    echo "│  Run the interactive login now:                             │"
     echo "│                                                             │"
     echo "│    python3 $INSTALL_DIR/garmin_login.py  │"
     echo "│                                                             │"
-    echo "│  Danach läuft der automatische Sync ohne MFA.               │"
+    echo "│  After that, automatic sync runs without MFA.               │"
     echo "└─────────────────────────────────────────────────────────────┘"
     echo ""
-    read -p "Garmin MFA-Login jetzt durchführen? [Y/n] " do_mfa
+    read -p "Run Garmin MFA login now? [Y/n] " do_mfa
     if [[ ! "$do_mfa" =~ ^[nN]$ ]]; then
       "$VENV/bin/python" "$INSTALL_DIR/garmin_login.py"
     else
-      echo "  Übersprungen. Starte später mit: python3 $INSTALL_DIR/garmin_login.py"
+      echo "  Skipped. Run later: python3 $INSTALL_DIR/garmin_login.py"
     fi
   fi
 fi

@@ -57,7 +57,7 @@ def sync_one(config_path: str) -> bool:
     try:
         adapter = importlib.import_module(f"adapters.{adapter_name}")
     except ImportError as e:
-        msg = f"Adapter '{adapter_name}' nicht gefunden: {e}"
+        msg = f"Adapter '{adapter_name}' not found: {e}"
         print(f"  [error] {msg}")
         _write_status(soul_id, False, "install_error", msg)
         return False
@@ -77,29 +77,20 @@ def sync_one(config_path: str) -> bool:
         data = adapter.get_data(config, soul_id=soul_id)
     except Exception as e:
         error_type = "unknown"
-        message = f"Sync-Fehler: {e}"
+        message = f"Sync error: {e}"
 
         if GarminRateLimitError and isinstance(e, GarminRateLimitError):
             error_type = "rate_limit"
-            message = (
-                "Garmin drosselt Anmeldungen (Rate Limit 429). "
-                "Bitte 2–4 Stunden warten, dann erneut versuchen."
-            )
+            message = "Garmin rate limit (429) — wait 2-4 hours and retry."
         elif GarminMFARequired and isinstance(e, GarminMFARequired):
             error_type = "mfa_required"
-            message = (
-                "Garmin verlangt MFA-Bestätigung. "
-                "Führe einmalig aus: python3 /opt/sys/health-sync/garmin_login.py"
-            )
+            message = "Garmin requires MFA. Run: python3 /opt/sys/health-sync/garmin_login.py"
         elif GarminAuthError and isinstance(e, GarminAuthError):
             error_type = "auth_error"
-            message = (
-                "Garmin-Anmeldung fehlgeschlagen — "
-                "E-Mail oder Passwort in den Health-Settings prüfen."
-            )
+            message = "Garmin login failed — check email/password in Health Settings."
         elif GarminNetworkError and isinstance(e, GarminNetworkError):
             error_type = "network_error"
-            message = "Netzwerkfehler — Garmin Connect nicht erreichbar."
+            message = "Network error — Garmin Connect unreachable."
 
         print(f"  [error] {error_type}: {e}")
         _write_status(soul_id, False, error_type, message)
@@ -107,7 +98,7 @@ def sync_one(config_path: str) -> bool:
 
     from writer import write_health_md
     write_health_md(data, soul_id)
-    _write_status(soul_id, True, None, "Sync erfolgreich.")
+    _write_status(soul_id, True, None, "Sync successful.")
     return True
 
 
