@@ -310,6 +310,36 @@ export async function getCurrentBlock() {
 }
 
 /**
+ * Liest Genesis-Timestamp und Block direkt aus dem SoulRegistry-Contract.
+ * Wird nach Soul-Import aufgerufen wenn anchor_history.json das Datum nicht korrekt hat.
+ * @param {string} soulId  UUID
+ * @returns {{ ts: string, block: number } | null}
+ */
+export async function getOnChainGenesis(soulId) {
+  try {
+    const ABI_GET = ['function getHistory(bytes32 soulId) view returns (tuple(bytes32 contentHash, uint256 timestamp, uint32 sessionCount)[])'];
+    const { ethers: _e } = await import('ethers');
+    const provider = getProvider();
+    const contract = new _e.Contract(CONTRACT_ADDRESS, ABI_GET, provider);
+    const soulBytes = _e.keccak256(_e.toUtf8Bytes(soulId));
+    const history   = await contract.getHistory(soulBytes);
+    if (!history || !history.length) return null;
+    const first   = history[0];
+    const tsUnix  = Number(first.timestamp);
+    const ts      = new Date(tsUnix * 1000).toISOString();
+    // Block schätzen: aus on-chain ts interpolieren
+    const current = await provider.getBlockNumber();
+    const DEPLOY_TS_UNIX = 1775260800; // 2026-04-04T00:00:00Z
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const bps = Math.max(0.1, (current - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS_UNIX));
+    const block = Math.round(DEPLOY_BLOCK + (tsUnix - DEPLOY_TS_UNIX) * bps);
+    return { ts, block };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Knowledge-Blocks-Wert: gewichtete Summe der Soul-Größen aller Anchors.
  * Ältere Anchors erhalten mehr Gewicht — je länger das Wissen verankert ist, desto wertvoller.
  * @param {Array<{ tx?, block?, size?, ts?, genesis? }>} anchorHistory
