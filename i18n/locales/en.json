@@ -1052,7 +1052,7 @@
     "field_dynamic_pricing": "Dynamic pricing",
     "field_dynamic_pricing_hint": "Price grows with Genesis Chain age and anchor count",
     "live_price_label": "Current price",
-    "live_price_detail": "{base} × {mult}",
+    "live_price_detail": "{base} × {mult} · {anchors} anchors · {age}d · {buyers} buyers/30d",
     "live_price_quote": "Quote valid for {sec}s",
     "live_price_save_first": "Save settings to see live price",
     "field_wallet": "Your wallet address",
