@@ -188,6 +188,11 @@ if incoming.token_duration_days ~= nil then
   amort.token_duration_days = math.max(1, math.min(30, math.floor(d)))
 end
 
+-- dynamic_pricing: Preis wächst mit Genesis Chain-Alter und Anchor-Anzahl
+if incoming.dynamic_pricing == true or incoming.dynamic_pricing == false then
+  amort.dynamic_pricing = incoming.dynamic_pricing
+end
+
 ctx.amortization = amort
 ctx.updated_at   = ngx.now()
 
