@@ -34,9 +34,11 @@ if (history.length === 0) {
     }
   } catch { /* RPC nicht erreichbar — anchor_count bleibt 0 */ }
 } else {
-  // Genesis-Datum korrigieren wenn nach Import falsch (Mai/Juni statt echtem Datum)
+  // Genesis-Block fehlt → einmalig on-chain korrigieren und cachen.
+  // Tritt auf wenn anchor_history.json aus soul_growth_chain rekonstruiert wurde
+  // (altes Format ohne Block-Nummern) oder nach einem Soul-Import.
   const genesis = history.find(e => e.genesis) ?? history[0];
-  if (genesis && !genesis.block && genesis.ts && (genesis.ts.startsWith('2026-05') || genesis.ts.startsWith('2026-06'))) {
+  if (genesis && !genesis.block) {
     try {
       const fixed = await getOnChainGenesis(soulId);
       if (fixed) {
@@ -45,7 +47,7 @@ if (history.length === 0) {
         if (!genesis.genesis) genesis.genesis = true;
         await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
       }
-    } catch { /* weiter mit lokalem Wert */ }
+    } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
   }
 }
 
