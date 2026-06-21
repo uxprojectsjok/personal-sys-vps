@@ -1,5 +1,5 @@
 -- /etc/openresty/lua/soul_earnings.lua
--- GET /api/soul/earnings  → earnings.json lesen, Fallback: vault/context/income.md
+-- GET /api/soul/earnings  → earnings.json lesen, Fallback: vault/context/earnings.md
 -- Auth: vault_auth.lua (soul_cert)
 
 local cjson   = require("cjson.safe")
@@ -24,11 +24,13 @@ ngx.header["Cache-Control"] = "no-store"
 
 local SOULS_DIR    = "/var/lib/sys/souls/"
 local earnings_file = SOULS_DIR .. soul_id .. "/earnings.json"
-local income_file   = SOULS_DIR .. soul_id .. "/vault/context/income.md"
+-- earnings.md (neu), income.md (legacy-Fallback)
+local earnings_md  = SOULS_DIR .. soul_id .. "/vault/context/earnings.md"
+local income_md    = SOULS_DIR .. soul_id .. "/vault/context/income.md"
 
--- ── Hilfsfunktion: income.md → earnings-Struktur rekonstruieren ──────────────
+-- ── Hilfsfunktion: earnings.md / income.md → earnings-Struktur rekonstruieren ─
 local function rebuild_from_income_md()
-  local f = io.open(income_file, "r")
+  local f = io.open(earnings_md, "r") or io.open(income_md, "r")
   if not f then return nil end
   local raw = f:read("*a"); f:close()
 
@@ -58,7 +60,7 @@ local function rebuild_from_income_md()
     total_pol      = string.format("%.6f", total_pol),
     total_requests = #entries,
     entries        = entries,
-    restored_from  = "income.md",
+    restored_from  = "earnings.md",
   }
 end
 
