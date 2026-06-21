@@ -101,23 +101,55 @@ if dynamic then
 end
 
 -- Dynamischer Preis: base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
+local multiplier = 1.0
 local price = base_price
 if dynamic and anchor_count > 0 then
-  local multiplier = 1 + (anchor_count * 0.1) + (chain_age_days * 0.01)
+  multiplier = 1 + (anchor_count * 0.1) + (chain_age_days * 0.01)
   price = base_price * multiplier
 end
 -- Auf 4 Dezimalstellen runden, Minimum: base_price
 price = math.max(base_price, math.floor(price * 10000 + 0.5) / 10000)
+
+-- ── Price Quote (5 Min TTL) ───────────────────────────────────────────────────
+local QUOTES_FILE = SOULS_DIR .. soul_id .. "/price_quotes.json"
+local QUOTE_TTL   = 300
+
+-- Bestehende Quotes laden, abgelaufene bereinigen
+local quotes = {}
+local qf = io.open(QUOTES_FILE, "r")
+if qf then
+  local ok_q, stored = pcall(cjson.decode, qf:read("*a")); qf:close()
+  if ok_q and type(stored) == "table" then
+    local now = ngx.time()
+    for qid, q in pairs(stored) do
+      if type(q) == "table" and (q.valid_until or 0) > now then
+        quotes[qid] = q
+      end
+    end
+  end
+end
+
+-- Quote ID: 16-Hex aus Zeit + Zufall
+local quote_id    = ngx.md5(tostring(ngx.now()) .. tostring(math.random(100000, 999999)) .. soul_id):sub(1, 16)
+local valid_until = ngx.time() + QUOTE_TTL
+quotes[quote_id]  = { price = string.format("%.4f", price), valid_until = valid_until }
+
+local qf2 = io.open(QUOTES_FILE, "w")
+if qf2 then qf2:write(cjson.encode(quotes)); qf2:close() end
 
 ngx.say(cjson.encode({
   enabled          = true,
   pol_required     = string.format("%.4f", price),
   dynamic          = dynamic,
   base_price       = string.format("%.4f", base_price),
+  multiplier       = math.floor(multiplier * 100 + 0.5) / 100,
   wallet           = amort.wallet or "",
   token_duration   = amort.token_duration or "1d",
   anchor_count     = anchor_count,
   chain_age_days   = math.floor(chain_age_days * 10 + 0.5) / 10,
   genesis_ts       = genesis_ts,
   soul_id          = soul_id,
+  quote_id         = quote_id,
+  valid_until      = valid_until,
+  quote_ttl_sec    = QUOTE_TTL,
 }))

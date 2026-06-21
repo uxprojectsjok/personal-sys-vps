@@ -92,6 +92,12 @@
                     <span class="field-hint">{{ $t('marketplace.field_dynamic_pricing_hint') }}</span>
                   </label>
                 </div>
+                <div v-if="amort.dynamic_pricing && livePrice?.enabled" class="live-price-box">
+                  <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
+                  <span class="live-price-value">{{ livePrice.pol_required }} POL</span>
+                  <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: livePrice.base_price, mult: livePriceMultiplier }) }}</span>
+                  <button class="live-price-refresh" type="button" @click="fetchLivePrice" :title="$t('marketplace.live_price_quote', { sec: livePrice.quote_ttl_sec })">↻</button>
+                </div>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
@@ -253,7 +259,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -358,6 +364,33 @@ const modeLoading   = ref(false)
 const modeTouched   = ref(false)
 const amortError    = ref('')
 const amortSuccess  = ref(false)
+
+// Live-Preis (dynamisches Pricing)
+const livePrice     = ref(null)
+let livePriceTimer  = null
+
+const livePriceMultiplier = computed(() => {
+  const p = livePrice.value
+  if (!p?.dynamic || !p.multiplier) return null
+  return p.multiplier + '×'
+})
+
+async function fetchLivePrice() {
+  if (!amort.dynamic_pricing) { livePrice.value = null; return }
+  try {
+    const soul_id = props.soulCert?.split('.')?.[0]
+    if (!soul_id) return
+    const r = await fetch(`/api/soul/price?soul_id=${soul_id}`)
+    if (r.ok) livePrice.value = await r.json()
+  } catch { /* ignore */ }
+}
+
+watch(() => amort.dynamic_pricing, (val) => {
+  if (val) fetchLivePrice()
+  else livePrice.value = null
+})
+
+onUnmounted(() => { if (livePriceTimer) clearInterval(livePriceTimer) })
 
 const nodesStorageKey = computed(() => {
   const id = props.soulCert?.split('.')?.[0] || ''
@@ -523,6 +556,7 @@ async function loadAmort() {
     amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.dynamic_pricing      = a.dynamic_pricing ?? false
+    if (amort.dynamic_pricing) fetchLivePrice()
     const rawTrustedSouls = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
       : []
@@ -788,6 +822,12 @@ async function register() {
 .toggle-switch.on { background: var(--accent); }
 .toggle-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
 .toggle-switch.on .toggle-knob { transform: translateX(16px); }
+.live-price-box { display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(109,184,154,0.07); border:1px solid rgba(109,184,154,0.2); border-radius:var(--r-xs); font-family:var(--mono); font-size:13px; margin-bottom:4px; }
+.live-price-label { color:var(--fg-2); }
+.live-price-value { color:#6db89a; font-weight:600; }
+.live-price-detail { color:var(--fg-3); font-size:11px; }
+.live-price-refresh { margin-left:auto; background:none; border:none; cursor:pointer; color:var(--fg-2); font-size:14px; padding:0 2px; transition:color 0.15s; }
+.live-price-refresh:hover { color:var(--accent); }
 .field-hint { font-family: var(--mono); font-size: 12px; color: var(--fg-2); text-transform: none; letter-spacing: 0.03em; margin-left: 6px; }
 .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .field-label-row .field-label { margin-bottom: 0; }

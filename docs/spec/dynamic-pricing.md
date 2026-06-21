@@ -4,12 +4,15 @@
 
 When dynamic pricing is enabled, the POL amount a buyer must pay to access a Soul grows automatically with the Soul's Genesis Chain maturity. The base price set by the owner is the floor — the multiplier can only increase it, never reduce it.
 
+A **Price Quote** system prevents timing problems: the buyer locks in the price for 5 minutes before the on-chain transaction, so a changing multiplier between browse and pay can't cause the transaction to fail.
+
 ---
 
 ## Activation
 
 In **Marketplace → Paid · POL**, toggle **Dynamic pricing** on.  
-The base amount field becomes the price floor (minimum per access).
+The base amount field becomes the price floor (minimum per access).  
+The panel shows the current live price with a refresh button (↻).
 
 Stored as `amortization.dynamic_pricing: true` in the soul context JSON  
 (`/var/lib/sys/souls/{soul_id}/context.json`).
@@ -19,8 +22,8 @@ Stored as `amortization.dynamic_pricing: true` in the soul context JSON
 ## Formula
 
 ```
-price = base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
-price = max(base, round(price, 4 decimals))
+multiplier = 1 + (anchor_count × 0.1) + (chain_age_days × 0.01)
+price      = max(base, round(base × multiplier, 4 decimals))
 ```
 
 | Variable          | Source                                         |
@@ -55,30 +58,93 @@ The base price controls the unit — the chain determines the multiplier.
 
 ---
 
+## Price Quote System
+
+### Problem
+
+Between the moment a buyer sees the price and the moment the on-chain transaction  
+is confirmed, the price can change (new anchor written, chain age ticks over a day).  
+The buyer sends the "wrong" amount → payment rejected.
+
+### Solution: Quote with 5-minute TTL
+
+Every `GET /api/soul/price` call generates a `quote_id` that locks the price for 300 seconds.  
+The buyer includes this `quote_id` in the `POST /api/soul/pay` body.  
+The server uses the quoted price instead of recalculating — the buyer always hits the right amount.
+
+```
+Buyer:  GET /api/soul/price
+Server: → { pol_required: "0.0103", quote_id: "a3f1b2c4d5e6f708", valid_until: 1750123456, quote_ttl_sec: 300 }
+
+Buyer:  sends 0.0103 POL on-chain → gets tx_hash
+Buyer:  POST /api/soul/pay { tx_hash, soul_id, quote_id: "a3f1b2c4d5e6f708" }
+Server: validates quote (exists, not expired, not used) → issues access token at quoted price
+```
+
+**Quote is single-use** — consumed on successful payment. Expired quotes are cleaned up automatically on the next price call.
+
+### Error responses
+
+| Error | Meaning |
+|---|---|
+| `quote_not_found` | Quote ID unknown or already used — fetch a new quote |
+| `quote_expired` | 5-minute window passed — fetch a new quote |
+
+### Fallback
+
+If no `quote_id` is provided, `soul_pay.lua` falls back to live price calculation (backward compatible with older MCP clients).
+
+---
+
 ## Endpoints
 
 ### `GET /api/soul/price`
 
-Public endpoint — no auth required. Returns the current price for any buyer.
+Public endpoint — no auth required.
 
 ```json
 {
-  "soul_id": "abc123…",
-  "price": "0.0103",
+  "enabled": true,
+  "pol_required": "0.0103",
   "base_price": "0.0010",
-  "currency": "POL",
   "dynamic": true,
   "multiplier": 10.28,
   "anchor_count": 85,
-  "chain_age_days": 78.0
+  "chain_age_days": 78.0,
+  "genesis_ts": "2026-04-04T12:00:00Z",
+  "wallet": "0xABC…",
+  "soul_id": "uuid…",
+  "quote_id": "a3f1b2c4d5e6f708",
+  "valid_until": 1750123456,
+  "quote_ttl_sec": 300
 }
 ```
 
 ### `POST /api/soul/pay`
 
-Initiates a payment session. The buyer pays the amount returned by `/price`.  
-If `dynamic_pricing` is enabled, the price is recalculated at payment time from  
-the current state of `anchor_history.json` — not from the value shown at browse time.
+```json
+{
+  "soul_id": "uuid…",
+  "tx_hash": "0x…",
+  "quote_id": "a3f1b2c4d5e6f708"
+}
+```
+
+`quote_id` is optional but recommended for dynamic pricing.
+
+---
+
+## Quote Storage
+
+Quotes are stored in `/var/lib/sys/souls/{soul_id}/price_quotes.json`:
+
+```json
+{
+  "a3f1b2c4d5e6f708": { "price": "0.0103", "valid_until": 1750123456 }
+}
+```
+
+Expired entries are purged on every new price call. The file is server-local and not exposed publicly.
 
 ---
 
@@ -86,11 +152,11 @@ the current state of `anchor_history.json` — not from the value shown at brows
 
 | File | Role |
 |------|------|
-| `lua/soul_price.lua` | `GET /api/soul/price` — reads anchor_history, calculates price |
-| `lua/soul_pay.lua` | `POST /api/soul/pay` — same formula at transaction time |
+| `lua/soul_price.lua` | Calculates price, generates quote, stores in price_quotes.json |
+| `lua/soul_pay.lua` | Validates quote_id, falls back to live calc if absent |
 | `lua/soul_amortization.lua` | Persists `dynamic_pricing` flag on PUT |
-| `app/components/AgentMarketplacePanel.vue` | UI toggle |
-| `soul-mcp/tools/soul_pay_read.mjs` | MCP tool: fetches `/price` first, shows buyer the current amount |
+| `app/components/AgentMarketplacePanel.vue` | Toggle + live price display with ↻ refresh |
+| `soul-mcp/tools/soul_pay_read.mjs` | MCP tool: fetches `/price` (gets quote_id), passes it to `/pay` |
 
 ---
 
@@ -110,3 +176,7 @@ automatically — without the owner manually adjusting prices over time.
 
 The formula is intentionally linear and transparent so buyers can verify it  
 against the public chain data and `/api/soul/chain-metrics`.
+
+The quote system solves the practical problem that on-chain transactions take  
+time to confirm — the price a buyer commits to must stay stable long enough  
+for the transaction to land.

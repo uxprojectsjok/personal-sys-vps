@@ -81,10 +81,42 @@ end
 
 local wallet      = amort.wallet or ""
 local base_price  = tonumber(amort.pol_per_request) or 0.001
-
--- Dynamischer Preis: base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
 local pol_per_req = amort.pol_per_request or "0.001"
-if amort.dynamic_pricing == true then
+
+-- ── Price Quote validieren (verhindert Preis-Timing-Probleme) ────────────────
+local quote_id    = incoming.quote_id
+local QUOTES_FILE = SOULS_DIR .. soul_id .. "/price_quotes.json"
+
+if quote_id and type(quote_id) == "string" and #quote_id == 16 and quote_id:match("^%x+$") then
+  local qf = io.open(QUOTES_FILE, "r")
+  if not qf then
+    ngx.status = 400
+    ngx.say('{"error":"quote_not_found","message":"No quotes on record — call GET /api/soul/price first."}')
+    return
+  end
+  local ok_q, stored = pcall(cjson.decode, qf:read("*a")); qf:close()
+  if not ok_q or type(stored) ~= "table" then
+    ngx.status = 500; ngx.say('{"error":"quote_corrupt"}'); return
+  end
+  local q = stored[quote_id]
+  if not q then
+    ngx.status = 400
+    ngx.say('{"error":"quote_not_found","message":"Quote not found. Call GET /api/soul/price for a new quote."}')
+    return
+  end
+  if ngx.time() > (q.valid_until or 0) then
+    ngx.status = 400
+    ngx.say('{"error":"quote_expired","message":"Quote expired (5 min window). Call GET /api/soul/price for a new quote."}')
+    return
+  end
+  -- Quote gültig — gespeicherten Preis verwenden, Quote verbrauchen
+  pol_per_req = q.price
+  stored[quote_id] = nil
+  local qf2 = io.open(QUOTES_FILE, "w")
+  if qf2 then qf2:write(cjson.encode(stored)); qf2:close() end
+
+elseif amort.dynamic_pricing == true then
+  -- Kein Quote: Preis live berechnen (Fallback für Abwärtskompatibilität)
   local ah_file = SOULS_DIR .. soul_id .. "/anchor_history.json"
   local ah = io.open(ah_file, "r")
   if ah then
