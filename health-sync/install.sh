@@ -108,7 +108,32 @@ echo "Cron added: every Monday 06:00 → $LOG_FILE"
 echo ""
 echo "Running first sync (this may take ~30 seconds for 30 days of data)…"
 echo ""
-"$VENV/bin/python" "$INSTALL_DIR/health_sync.py"
+SYNC_OK=0
+"$VENV/bin/python" "$INSTALL_DIR/health_sync.py" && SYNC_OK=1 || true
+
+# Check structured status file for MFA requirement
+STATUS_FILE="$CONFIG_DIR/health_sync_status_${SOUL_ID}.json"
+if [ "$SYNC_OK" -eq 0 ] && [ -f "$STATUS_FILE" ]; then
+  ERROR_TYPE=$(python3 -c "import json,sys; d=json.load(open('$STATUS_FILE')); print(d.get('error_type',''))" 2>/dev/null || echo "")
+  if [[ "$ERROR_TYPE" == "mfa_required" || "$ERROR_TYPE" == "rate_limit" ]]; then
+    echo ""
+    echo "┌─────────────────────────────────────────────────────────────┐"
+    echo "│  Garmin verlangt einmalige MFA-Bestätigung.                 │"
+    echo "│  Führe jetzt den interaktiven Login durch:                  │"
+    echo "│                                                             │"
+    echo "│    python3 $INSTALL_DIR/garmin_login.py  │"
+    echo "│                                                             │"
+    echo "│  Danach läuft der automatische Sync ohne MFA.               │"
+    echo "└─────────────────────────────────────────────────────────────┘"
+    echo ""
+    read -p "Garmin MFA-Login jetzt durchführen? [Y/n] " do_mfa
+    if [[ ! "$do_mfa" =~ ^[nN]$ ]]; then
+      "$VENV/bin/python" "$INSTALL_DIR/garmin_login.py"
+    else
+      echo "  Übersprungen. Starte später mit: python3 $INSTALL_DIR/garmin_login.py"
+    fi
+  fi
+fi
 
 echo ""
 echo "=== Setup complete ==="
