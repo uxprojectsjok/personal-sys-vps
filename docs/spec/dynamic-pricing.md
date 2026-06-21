@@ -148,12 +148,38 @@ Expired entries are purged on every new price call. The file is server-local and
 
 ---
 
+## Pricing Protocol Constants
+
+The formula coefficients are **protocol constants** — every node running the same SYS version uses the same values. The source of truth is a single file:
+
+```
+shared/constants/pricing.js        ← edit here
+shared/constants/pricing_params.json  ← generated, committed, deployed to server
+/var/lib/sys/config/pricing_params.json  ← runtime location (Lua reads this)
+```
+
+To update coefficients:
+1. Edit `shared/constants/pricing.js`
+2. Run `node utils/gen-pricing-params.mjs` → regenerates JSON
+3. Commit both files → all nodes update on next `git pull` / `init.sh`
+
+`init.sh` copies `pricing_params.json` to `/var/lib/sys/config/` on every install.  
+Lua falls back to hardcoded v1 defaults if the file is missing.
+
+**Phase 2 (future):** When `SoulRegistry.sol` is next upgraded, bake these coefficients  
+into the contract so they are on-chain verifiable without a software update.
+
+---
+
 ## Implementation
 
 | File | Role |
 |------|------|
-| `lua/soul_price.lua` | Calculates price, generates quote, stores in price_quotes.json |
-| `lua/soul_pay.lua` | Validates quote_id, falls back to live calc if absent |
+| `shared/constants/pricing.js` | Source of truth — coefficients and TTL |
+| `shared/constants/pricing_params.json` | Generated JSON, committed to repo |
+| `utils/gen-pricing-params.mjs` | Regenerates JSON from JS constants |
+| `lua/soul_price.lua` | Reads pricing_params.json, calculates price, generates quote |
+| `lua/soul_pay.lua` | Reads pricing_params.json, validates quote_id |
 | `lua/soul_amortization.lua` | Persists `dynamic_pricing` flag on PUT |
 | `app/components/AgentMarketplacePanel.vue` | Toggle + live price display with ↻ refresh |
 | `soul-mcp/tools/soul_pay_read.mjs` | MCP tool: fetches `/price` (gets quote_id), passes it to `/pay` |

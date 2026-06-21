@@ -6,6 +6,23 @@
 local cjson     = require("cjson.safe")
 local SOULS_DIR = "/var/lib/sys/souls/"
 
+-- Pricing-Protokoll-Konstanten (v1) — aus shared/constants/pricing_params.json
+-- Fallback: hardcodierte Werte falls Datei fehlt
+local ANCHOR_COEFF = 0.1
+local AGE_COEFF    = 0.01
+local QUOTE_TTL    = 300
+do
+  local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
+  if pf then
+    local ok_p, p = pcall(cjson.decode, pf:read("*a")); pf:close()
+    if ok_p and type(p) == "table" then
+      ANCHOR_COEFF = tonumber(p.anchor_coeff)  or ANCHOR_COEFF
+      AGE_COEFF    = tonumber(p.age_coeff)     or AGE_COEFF
+      QUOTE_TTL    = tonumber(p.quote_ttl_sec) or QUOTE_TTL
+    end
+  end
+end
+
 ngx.header["Content-Type"]                = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
 ngx.header["Access-Control-Allow-Origin"] = "*"
@@ -104,7 +121,7 @@ end
 local multiplier = 1.0
 local price = base_price
 if dynamic and anchor_count > 0 then
-  multiplier = 1 + (anchor_count * 0.1) + (chain_age_days * 0.01)
+  multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF)
   price = base_price * multiplier
 end
 -- Auf 4 Dezimalstellen runden, Minimum: base_price
@@ -112,7 +129,6 @@ price = math.max(base_price, math.floor(price * 10000 + 0.5) / 10000)
 
 -- ── Price Quote (5 Min TTL) ───────────────────────────────────────────────────
 local QUOTES_FILE = SOULS_DIR .. soul_id .. "/price_quotes.json"
-local QUOTE_TTL   = 300
 
 -- Bestehende Quotes laden, abgelaufene bereinigen
 local quotes = {}
