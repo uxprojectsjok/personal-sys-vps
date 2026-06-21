@@ -75,6 +75,10 @@ export function useSoul() {
     content = content.replace(
       /^(soul_anchor_history:.*)"genesis":true,(.*)/m, '$1$2',
     );
+    // Trailing comma nach JSON-Bereinigung entfernen
+    content = content.replace(
+      /^(soul_anchor_history:.*),(\})/mg, '$1$2',
+    );
 
     return content;
   }
