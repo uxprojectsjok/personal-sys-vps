@@ -986,6 +986,163 @@ server {
     content_by_lua_file /etc/openresty/lua/verify_reown.lua;
   }
 
+  # ── Health: KI-Analyse + Sync-Status ─────────────────────────────────────────
+  location = /api/health/check {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_check_api.lua;
+  }
+
+  location = /api/health/sync-status {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/health_sync_status.lua;
+  }
+
+  # ── Push Notifications ────────────────────────────────────────────────────────
+  location = /api/push/vapid-key {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=30 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/vapid_key.lua;
+  }
+
+  location = /api/push/subscribe {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    content_by_lua_file /etc/openresty/lua/push_subscribe.lua;
+  }
+
+  # ── Soul: Earnings + Meta + Verify-Cache + Prompt-Generation ─────────────────
+  location = /api/soul/paid-earnings {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_paid_earnings.lua;
+  }
+
+  location = /api/soul/meta {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=30 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    content_by_lua_file /etc/openresty/lua/soul_meta.lua;
+  }
+
+  location = /api/soul/verify {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    add_header Access-Control-Allow-Origin "*" always;
+    content_by_lua_file /etc/openresty/lua/soul_verify_cache.lua;
+  }
+
+  location = /api/soul/generate-prompts {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=3 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/generate_prompts.lua;
+  }
+
+  # ── Verify: Claim + Human-Check ───────────────────────────────────────────────
+  location = /api/verify/claim {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/verify_claim.lua;
+  }
+
+  location = /api/verify/human-check {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/verify_human_check.lua;
+  }
+
+  # ── Agent: Post-Call Webhook + Tool Proxy + Verify Flow ──────────────────────
+  location = /api/agent/post-call {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_post_call.lua;
+  }
+
+  location ~ ^/api/agent/tool/([a-z_]+)$ {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    set $agent_tool $1;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/agent_tool_proxy.lua;
+  }
+
+  location = /api/agent/verify {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/agent_verify.lua;
+  }
+
+  location = /api/agent/verify/status {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/agent_verify_status.lua;
+  }
+
+  # ── Vault: External Soul + Bundle Fetch ──────────────────────────────────────
+  location = /api/vault/external/soul {
+    limit_except GET { deny all; }
+    limit_req zone=chat burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/external_vault.lua;
+  }
+
+  location = /api/fetch-bundle {
+    limit_except POST { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/fetch_bundle.lua;
+  }
+
+  # ── Translation ───────────────────────────────────────────────────────────────
+  location = /api/translate {
+    limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/translate.lua;
+  }
+
   # ── Peer-Cert Verify-Callback (öffentlich, CORS) ─────────────────────────────
   location = /api/peer/verify {
     add_header Access-Control-Allow-Origin  "*"                    always;
