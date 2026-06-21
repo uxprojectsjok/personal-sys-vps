@@ -12,21 +12,26 @@ export function register(server, _token) {
   server.tool(
     'soul_pay_read',
     [
-      'Bezahlt mit einem Polygon-TX-Hash und liest den Soul-Inhalt einer fremden Soul.',
+      'Pays with a Polygon TX-hash and reads the content of an external Soul.',
       '',
-      'Kapselt den kompletten Zahlungsflow:',
-      '  1. POST pay_endpoint mit soul_id + tx_hash → access_token',
-      '  2. GET paid-read mit access_token → Soul-Inhalt (AGENT-Block)',
+      'Full payment flow (automatic):',
+      '  0. GET /price → current price + quote_id (locked for 5 min)',
+      '  1. POST pay_endpoint with soul_id + tx_hash + quote_id → access_token',
+      '  2. GET paid-read with access_token → Soul content (AGENT block)',
       '',
-      'Vorbedingungen:',
-      '- Nutzer:in hat POL an soul.amortization.wallet überwiesen',
-      '- TX ist auf Polygon bestätigt',
-      '- pay_endpoint und soul_id kommen aus soul_discover',
+      'IMPORTANT: The price quote is valid for 5 minutes only.',
+      'The user must send the exact POL amount shown in step 0 before the quote expires.',
+      'If the quote expires, the payment will be rejected even if the TX is confirmed.',
       '',
-      'Parameter:',
-      '- pay_endpoint: vollständige URL, z.B. https://example.com/api/soul/pay',
-      '- soul_id:      UUID der Ziel-Soul',
-      '- tx_hash:      Polygon TX-Hash der POL-Zahlung (0x…)',
+      'Prerequisites:',
+      '- User has transferred POL to soul.amortization.wallet (exact amount from /price)',
+      '- TX is confirmed on Polygon',
+      '- pay_endpoint and soul_id come from soul_discover',
+      '',
+      'Parameters:',
+      '- pay_endpoint: full URL, e.g. https://example.com/api/soul/pay',
+      '- soul_id:      UUID of the target Soul',
+      '- tx_hash:      Polygon TX hash of the POL payment (0x…)',
     ].join('\n'),
     {
       pay_endpoint: z.string().url().describe('Vollständige URL des pay-Endpoints der Ziel-Soul'),
@@ -35,27 +40,35 @@ export function register(server, _token) {
     },
     async ({ pay_endpoint, soul_id, tx_hash }) => {
       try {
-        // ── 0. Aktuellen Preis abrufen (informativer Prefix) ──────────────────
+        // ── 0. Preis + Quote abrufen ──────────────────────────────────────────
         const priceUrl = pay_endpoint.replace(/\/pay(\?.*)?$/, '/price') + `?soul_id=${soul_id}`;
         let priceInfo = '';
+        let quoteId   = null;
         try {
           const pr = await fetch(priceUrl, { signal: AbortSignal.timeout(5000) });
           if (pr.ok) {
             const pd = await pr.json();
             if (pd.enabled) {
+              quoteId = pd.quote_id || null;
               const dynamicNote = pd.dynamic
-                ? ` (dynamisch: ${pd.anchor_count} Anchors · ${pd.chain_age_days}d Chain Age)`
-                : ' (statisch)';
-              priceInfo = `Aktueller Preis: ${pd.pol_required} POL${dynamicNote}\n\n`;
+                ? ` (dynamic: ${pd.anchor_count} anchors · ${pd.chain_age_days}d chain age · ${pd.base_price} × ${pd.multiplier})`
+                : ' (fixed)';
+              const validUntil = pd.valid_until
+                ? new Date(pd.valid_until * 1000).toLocaleTimeString()
+                : null;
+              const quoteNote = quoteId && validUntil
+                ? `\nPrice locked until ${validUntil} (${pd.quote_ttl_sec}s) — quote_id: ${quoteId}`
+                : '';
+              priceInfo = `Price: ${pd.pol_required} POL${dynamicNote}${quoteNote}\n`;
             }
           }
-        } catch { /* Preis-Abruf optional, nicht blockierend */ }
+        } catch { /* price fetch optional, non-blocking */ }
 
         // ── 1. Zahlung verifizieren → access_token holen ─────────────────────
         const payRes = await fetch(pay_endpoint, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ soul_id, tx_hash }),
+          body:    JSON.stringify({ soul_id, tx_hash, ...(quoteId ? { quote_id: quoteId } : {}) }),
           signal:  AbortSignal.timeout(20000),
         });
 
