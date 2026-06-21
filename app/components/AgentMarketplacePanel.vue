@@ -97,12 +97,10 @@
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
                     <span class="live-price-value">{{ livePriceDisplay }} POL</span>
                     <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.pol_per_request, mult: livePriceMultiplier }) }}</span>
-                    <button class="live-price-refresh" type="button" @click="fetchLivePrice" :title="$t('marketplace.live_price_quote', { sec: livePrice.quote_ttl_sec })">↻</button>
                   </template>
                   <template v-else>
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
                     <span class="live-price-pending">{{ livePrice === null ? '…' : $t('marketplace.live_price_save_first') }}</span>
-                    <button class="live-price-refresh" type="button" @click="fetchLivePrice">↻</button>
                   </template>
                 </div>
                 <div class="field">
@@ -845,8 +843,6 @@ async function register() {
 .live-price-label { color:var(--fg-2); }
 .live-price-value { color:#6db89a; font-weight:600; }
 .live-price-detail { color:var(--fg-3); font-size:11px; }
-.live-price-refresh { margin-left:auto; background:none; border:none; cursor:pointer; color:var(--fg-2); font-size:14px; padding:0 2px; transition:color 0.15s; }
-.live-price-refresh:hover { color:var(--accent); }
 .field-hint { font-family: var(--mono); font-size: 12px; color: var(--fg-2); text-transform: none; letter-spacing: 0.03em; margin-left: 6px; }
 .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .field-label-row .field-label { margin-bottom: 0; }
