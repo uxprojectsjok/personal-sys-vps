@@ -13,13 +13,15 @@ local str    = require("resty.string")
 -- Pricing-Protokoll-Konstanten (v1)
 local ANCHOR_COEFF = 0.1
 local AGE_COEFF    = 0.01
+local DEMAND_COEFF = 0.05
 do
   local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
   if pf then
     local ok_p, p = pcall(cjson.decode, pf:read("*a")); pf:close()
     if ok_p and type(p) == "table" then
-      ANCHOR_COEFF = tonumber(p.anchor_coeff) or ANCHOR_COEFF
-      AGE_COEFF    = tonumber(p.age_coeff)    or AGE_COEFF
+      ANCHOR_COEFF = tonumber(p.anchor_coeff)  or ANCHOR_COEFF
+      AGE_COEFF    = tonumber(p.age_coeff)     or AGE_COEFF
+      DEMAND_COEFF = tonumber(p.demand_coeff)  or DEMAND_COEFF
     end
   end
 end
@@ -359,6 +361,26 @@ local tf = io.open("/var/lib/sys/pol_tokens/" .. access_token .. ".json", "w")
 if tf then tf:write(token_data); tf:close() end
 -- Abgelaufene Token-Dateien aufräumen (async, Fehler ignorieren)
 os.execute("find /var/lib/sys/pol_tokens/ -name '*.json' -mmin +" .. math.ceil(TOKEN_TTL/60) .. " -delete 2>/dev/null &")
+
+-- ── Demand-Log: Käufer der letzten 30 Tage tracken ───────────────────────────
+local demand_file = SOULS_DIR .. soul_id .. "/demand_log.json"
+local dlog = {}
+local dlf = io.open(demand_file, "r")
+if dlf then
+  local ok_dl, stored = pcall(cjson.decode, dlf:read("*a")); dlf:close()
+  if ok_dl and type(stored) == "table" then
+    -- Alte Einträge (> 30 Tage) beim Schreiben bereinigen
+    local cutoff = ngx.time() - 30 * 86400
+    for _, entry in ipairs(stored) do
+      if type(entry) == "table" and (tonumber(entry.ts) or 0) > cutoff then
+        dlog[#dlog+1] = entry
+      end
+    end
+  end
+end
+dlog[#dlog+1] = { ts = ngx.time(), tx = tx_hash:lower() }
+local dlwf = io.open(demand_file, "w")
+if dlwf then dlwf:write(cjson.encode(dlog)); dlwf:close() end
 
 ngx.say(cjson.encode({
   ok           = true,

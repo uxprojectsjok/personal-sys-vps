@@ -2,6 +2,7 @@
   "version": 1,
   "anchor_coeff": 0.1,
   "age_coeff": 0.01,
+  "demand_coeff": 0.05,
   "quote_ttl_sec": 300,
   "_note": "Generated from shared/constants/pricing.js — do not edit manually. Run: node utils/gen-pricing-params.mjs"
 }

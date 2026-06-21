@@ -15,6 +15,7 @@ const json = JSON.stringify({
   version:       params.version,
   anchor_coeff:  params.anchor_coeff,
   age_coeff:     params.age_coeff,
+  demand_coeff:  params.demand_coeff,
   quote_ttl_sec: params.quote_ttl_sec,
   _note:         'Generated from shared/constants/pricing.js — do not edit manually. Run: node utils/gen-pricing-params.mjs',
 }, null, 2) + '\n'
@@ -23,4 +24,5 @@ writeFileSync(outPath, json)
 console.log(`pricing_params.json written (v${params.version})`)
 console.log(`  anchor_coeff:  ${params.anchor_coeff}`)
 console.log(`  age_coeff:     ${params.age_coeff}`)
+console.log(`  demand_coeff:  ${params.demand_coeff}`)
 console.log(`  quote_ttl_sec: ${params.quote_ttl_sec}`)
