@@ -27,6 +27,7 @@ import { register as calendarWrite }         from './calendar_write.mjs';
 import { register as calendarDelete }        from './calendar_delete.mjs';
 import { register as callMe }                from './call_me.mjs';
 import { register as soulPayRead }           from './soul_pay_read.mjs';
+import { register as soulPreview }          from './soul_preview.mjs';
 import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 import { register as mindRead }              from './mind_read.mjs';
@@ -104,6 +105,7 @@ export function registerTools(server, token, soulId = null) {
   calendarWrite(server, token);
   calendarDelete(server, token);
   callMe(server, token, soulId);
+  soulPreview(server, token);
   soulPayRead(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
