@@ -51,6 +51,26 @@ if (history.length === 0) {
   }
 }
 
+// Backfill: Einträge die aus on-chain Daten rekonstruiert wurden haben size=0.
+// Der Blockchain-Contract speichert keine Soul-Größen. Einmalig mit aktueller
+// Vault-Größe befüllen — konservative Näherung (soul war kleiner in der Vergangenheit,
+// aber 0 ergibt knowledge_blocks=0 was noch ungenauer wäre).
+const needsSizeBackfill = history.some(e => !e.size || e.size === 0);
+if (needsSizeBackfill) {
+  try {
+    const { execSync } = await import('node:child_process');
+    const vaultDir = `/var/lib/sys/souls/${soulId}/vault`;
+    const duOut = execSync(`du -sb "${vaultDir}" 2>/dev/null || echo 0`, { encoding: 'utf8' });
+    const totalSize = parseInt(duOut.trim()) || 0;
+    if (totalSize > 0) {
+      for (const e of history) {
+        if (!e.size || e.size === 0) e.size = totalSize;
+      }
+      await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
+    }
+  } catch { /* Vault nicht zugänglich — knowledge_blocks bleibt 0 */ }
+}
+
 try {
   const metrics = await getChainMetrics(history);
   process.stdout.write(JSON.stringify(metrics));
