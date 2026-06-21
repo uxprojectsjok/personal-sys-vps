@@ -84,6 +84,15 @@
                   <input v-model="amort.pol_per_request" type="text" class="input mono" placeholder="0.001" />
                 </div>
                 <div class="field">
+                  <label class="field-label field-label--toggle">
+                    <span class="toggle-switch" :class="{ on: amort.dynamic_pricing }" @click="amort.dynamic_pricing = !amort.dynamic_pricing" role="switch" :aria-checked="amort.dynamic_pricing" tabindex="0" @keydown.enter.space.prevent="amort.dynamic_pricing = !amort.dynamic_pricing">
+                      <span class="toggle-knob"></span>
+                    </span>
+                    {{ $t('marketplace.field_dynamic_pricing') }}
+                    <span class="field-hint">{{ $t('marketplace.field_dynamic_pricing_hint') }}</span>
+                  </label>
+                </div>
+                <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
@@ -314,6 +323,7 @@ const amort = reactive({
   wallet:               '',
   agent_tools:          ['soul_read', 'verify_human', 'soul_maturity'],
   token_duration_days:  1,
+  dynamic_pricing:      false,
 })
 
 // Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
@@ -394,6 +404,7 @@ async function persistMetaFields() {
         agent_tools:         amort.agent_tools,
         trusted_souls:       peersToTrustedSouls(peers.value),
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
+        dynamic_pricing:     amort.dynamic_pricing,
         name:                preview.value.name || '',
         description:         preview.value.description || '',
         tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
@@ -511,6 +522,7 @@ async function loadAmort() {
     amort.wallet          = a.wallet          ?? ''
     amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
+    amort.dynamic_pricing      = a.dynamic_pricing ?? false
     const rawTrustedSouls = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
       : []
@@ -575,6 +587,7 @@ async function setMode(mode) {
           agent_tools:          amort.agent_tools,
           trusted_souls:        peersToTrustedSouls(peers.value),
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
+          dynamic_pricing:      amort.dynamic_pricing,
         }),
       })
       const d = await r.json()
@@ -608,6 +621,7 @@ async function saveAmort() {
         agent_tools:          amort.agent_tools,
         trusted_souls:        peersToTrustedSouls(peers.value),
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
+        dynamic_pricing:      amort.dynamic_pricing,
       }),
     })
     const d = await r.json()
@@ -769,6 +783,11 @@ async function register() {
 .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .field.span-2 { grid-column: 1 / -1; }
 .field-label { font-family: var(--sans); font-size: 14px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg); }
+.field-label--toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 10px 0; }
+.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; background: var(--line-2); border-radius: 10px; transition: background 0.2s; cursor: pointer; flex-shrink: 0; }
+.toggle-switch.on { background: var(--accent); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.toggle-switch.on .toggle-knob { transform: translateX(16px); }
 .field-hint { font-family: var(--mono); font-size: 12px; color: var(--fg-2); text-transform: none; letter-spacing: 0.03em; margin-left: 6px; }
 .field-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .field-label-row .field-label { margin-bottom: 0; }
