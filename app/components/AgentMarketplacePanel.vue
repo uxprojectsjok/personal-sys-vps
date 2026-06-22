@@ -339,6 +339,7 @@ const amort = reactive({
 
 // Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
 const peers = ref([])
+const trustedSoulsLoaded = ref(false)
 
 function buildPeers(trustedSouls, localNodes) {
   const labelMap = new Map()
@@ -451,7 +452,7 @@ async function persistMetaFields() {
         pol_per_request:     amort.pol_per_request,
         wallet:              amort.wallet,
         agent_tools:         amort.agent_tools,
-        trusted_souls:       peersToTrustedSouls(peers.value),
+        ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:     amort.dynamic_pricing,
         name:                preview.value.name || '',
@@ -581,6 +582,7 @@ async function loadAmort() {
       try { localNodes = JSON.parse(localStorage.getItem(nodesStorageKey.value) || '[]') } catch { /* ignore */ }
     }
     peers.value           = buildPeers(rawTrustedSouls, localNodes)
+    trustedSoulsLoaded.value = true
     amortActive.value     = amort.enabled
     if (a.enabled !== undefined) modeTouched.value = true
     currentCid.value      = a.agent_registry_cid || ''
@@ -635,7 +637,7 @@ async function setMode(mode) {
           pol_per_request:      amort.pol_per_request,
           wallet:               amort.wallet,
           agent_tools:          amort.agent_tools,
-          trusted_souls:        peersToTrustedSouls(peers.value),
+          ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
           dynamic_pricing:      amort.dynamic_pricing,
         }),
@@ -669,7 +671,7 @@ async function saveAmort() {
         pol_per_request:      amort.pol_per_request,
         wallet:               amort.wallet,
         agent_tools:          amort.agent_tools,
-        trusted_souls:        peersToTrustedSouls(peers.value),
+        ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:      amort.dynamic_pricing,
       }),
