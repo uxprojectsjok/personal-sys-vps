@@ -20,7 +20,7 @@
           </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail sys-rail--6">
+          <div class="sys-rail sys-rail--7">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_api') }}</span></span>
             </button>
@@ -38,6 +38,9 @@
             </button>
             <button @click="tab = 'gesundheit'; loadHealthConfig()" class="sys-rail-item" :class="tab === 'gesundheit' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_health') }}</span></span>
+            </button>
+            <button @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_agent') }}</span></span>
             </button>
           </div>
 
@@ -657,6 +660,97 @@
 
             </template>
 
+            <!-- ── Tab: Agent ── -->
+            <template v-if="tab === 'agent'">
+
+              <p class="sm-desc" style="margin-bottom:20px;line-height:1.7">{{ $t('settings.agent_cron_desc') }}</p>
+
+              <!-- Status Block -->
+              <div class="archivar-lm-block" style="margin-bottom:20px">
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">Claude Code</span>
+                  <span class="archivar-lm-val" :class="agentInstalled ? 'archivar-lm-ok' : ''">
+                    {{ agentInstalled ? $t('settings.agent_installed') : $t('settings.agent_not_installed') }}
+                  </span>
+                </div>
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('settings.agent_interval_label') }}</span>
+                  <span class="archivar-lm-val">
+                    {{ agentInterval === 'daily' ? $t('settings.agent_interval_daily') : $t('settings.agent_interval_hourly') }}
+                  </span>
+                </div>
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('settings.agent_last_run') }}</span>
+                  <span class="archivar-lm-val archivar-lm-dim">{{ agentLastRun || $t('settings.agent_last_run_never') }}</span>
+                </div>
+              </div>
+
+              <!-- Not installed hint -->
+              <div v-if="!agentInstalled" class="sm-infoblock" style="margin-bottom:20px">
+                {{ $t('settings.agent_not_installed_hint') }}
+              </div>
+
+              <!-- No API key warning -->
+              <div v-if="keySource === 'none'" class="sm-infoblock" style="margin-bottom:20px;border-color:var(--sys-warn)">
+                {{ $t('settings.agent_no_api_key') }}
+              </div>
+
+              <!-- Enable / Disable toggle -->
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                <button
+                  @click="toggleAgent(true)"
+                  :disabled="agentToggleBusy || agentEnabled"
+                  class="sys-btn-ed"
+                  :class="agentEnabled ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                  style="flex:1;justify-content:center"
+                >{{ $t('settings.agent_enable') }}</button>
+                <button
+                  @click="toggleAgent(false)"
+                  :disabled="agentToggleBusy || !agentEnabled"
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="flex:1;justify-content:center"
+                >{{ $t('settings.agent_disable') }}</button>
+              </div>
+
+              <!-- Interval selector -->
+              <div class="sys-field" style="gap:10px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.agent_interval_label') }}</label>
+                <div style="display:flex;gap:8px">
+                  <button
+                    v-for="iv in ['hourly','daily']"
+                    :key="iv"
+                    class="sys-btn-ed"
+                    :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                    @click="setAgentInterval(iv)"
+                  >{{ iv === 'hourly' ? $t('settings.agent_interval_hourly') : $t('settings.agent_interval_daily') }}</button>
+                </div>
+              </div>
+
+              <!-- Queue editor -->
+              <div class="sys-field" style="gap:10px">
+                <label class="sys-field-label">{{ $t('settings.agent_queue_title') }}</label>
+                <p class="sm-desc" style="margin-bottom:8px">{{ $t('settings.agent_queue_desc') }}</p>
+                <textarea
+                  v-model="agentQueueText"
+                  class="sys-input"
+                  rows="6"
+                  :placeholder="$t('settings.agent_queue_placeholder')"
+                  style="font-family:var(--sys-mono);font-size:12px;resize:vertical;line-height:1.6"
+                  spellcheck="false"
+                ></textarea>
+              </div>
+
+              <!-- Feedback -->
+              <Transition name="sys-modal-fade">
+                <div v-if="agentFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="agentFeedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ agentFeedback.message }}</div>
+              </Transition>
+
+            </template>
+
           </div>
 
           <!-- Foot -->
@@ -686,11 +780,20 @@
                 <span class="sys-dot" :class="healthHasPassword ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ healthHasPassword ? $t('settings.garmin_connected') : $t('settings.not_configured') }}
               </template>
+              <template v-else-if="tab === 'agent'">
+                <span class="sys-dot" :class="agentEnabled ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
+                {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
+              </template>
             </div>
             <div class="sys-foot-actions">
               <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
                   {{ saving ? $t('settings.saving') : $t('common.save') }}
+                </button>
+              </template>
+              <template v-else-if="tab === 'agent'">
+                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveAgentQueue" :disabled="agentQueueSaving">
+                  {{ agentQueueSaving ? $t('settings.agent_queue_saving') : $t('settings.agent_queue_save') }}
                 </button>
               </template>
               <template v-else-if="tab === 'gesundheit'">
@@ -1593,6 +1696,91 @@ async function triggerCrystallize() {
   }
 }
 
+// ── Agent Tab ─────────────────────────────────────────────────────────────────
+const agentInstalled    = ref(false)
+const agentEnabled      = ref(false)
+const agentInterval     = ref('hourly')
+const agentLastRun      = ref('')
+const agentToggleBusy   = ref(false)
+const agentQueueText    = ref('')
+const agentQueueSaving  = ref(false)
+const agentFeedback     = ref(null)
+
+async function loadAgentStatus() {
+  try {
+    const r = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      agentInstalled.value = !!d.installed
+      agentEnabled.value   = !!d.enabled
+      agentInterval.value  = d.interval || 'hourly'
+      agentLastRun.value   = d.last_run || ''
+    }
+  } catch {}
+  // Load current agent.md content
+  try {
+    const r = await fetch('/api/agent/queue', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      agentQueueText.value = d.content || ''
+    }
+  } catch {}
+}
+
+async function toggleAgent(enable) {
+  agentToggleBusy.value = true
+  agentFeedback.value   = null
+  try {
+    const r = await fetch('/api/agent/cron', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ enabled: enable }),
+    })
+    if (r.ok) {
+      agentEnabled.value   = enable
+      agentFeedback.value  = { ok: true, message: enable ? t('settings.agent_enabled') + ' ✓' : t('settings.agent_disabled') }
+    } else {
+      agentFeedback.value = { ok: false, message: `Error ${r.status}` }
+    }
+  } catch (e) {
+    agentFeedback.value = { ok: false, message: e.message }
+  }
+  agentToggleBusy.value = false
+  setTimeout(() => { agentFeedback.value = null }, 4000)
+}
+
+async function setAgentInterval(iv) {
+  agentInterval.value = iv
+  try {
+    await fetch('/api/agent/cron', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ interval: iv }),
+    })
+  } catch {}
+}
+
+async function saveAgentQueue() {
+  agentQueueSaving.value = true
+  agentFeedback.value    = null
+  try {
+    const r = await fetch('/api/agent/queue', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ content: agentQueueText.value }),
+    })
+    if (r.ok) {
+      agentFeedback.value = { ok: true, message: t('settings.agent_queue_saved') }
+    } else {
+      agentFeedback.value = { ok: false, message: `Error ${r.status}` }
+    }
+  } catch (e) {
+    agentFeedback.value = { ok: false, message: e.message }
+  }
+  agentQueueSaving.value = false
+  setTimeout(() => { agentFeedback.value = null }, 4000)
+}
+
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
 async function initSettings() {
   await loadNodeStatus()
@@ -1655,7 +1843,7 @@ onMounted(() => { if (props.inline) initSettings() })
 /* Override: Rail scrollbar auf Mobile */
 @media (max-width: 640px) {
   :deep(.sys-rail) {
-    grid-template-columns: repeat(6, minmax(80px, 1fr));
+    grid-template-columns: repeat(7, minmax(72px, 1fr));
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
