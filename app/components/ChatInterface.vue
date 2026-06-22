@@ -3746,20 +3746,31 @@ async function handleSend() {
 // ── Peer-ID-Liste laden (trusted_souls + vault/connections) ────────
 async function loadPeerIds() {
   try {
-    const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
-    if (!r.ok) return
-    const d = await r.json()
     const ownId    = props.soulCert?.split('.')?.[0] || ''
     const lsKey    = ownId ? `sys.connected_nodes.${ownId}` : null
     let localNodes = []
     if (lsKey) { try { localNodes = JSON.parse(localStorage.getItem(lsKey) || '[]') } catch {} }
     const labelMap = new Map(localNodes.map(n => [n.soul_id, n.label || '']))
-    peerIds.value = (d.amortization?.trusted_souls ?? [])
-      .map(p => {
-        if (typeof p === 'string') return { soul_id: p, endpoint: null, label: labelMap.get(p) || '' }
-        return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
-      })
-      .filter(p => p && p.soul_id)
+
+    // trusted_souls aus amortization — optional, kein Abbruch bei Fehler
+    // (amortization liegt hinter soul_auth.lua; nach VPS-Wechsel kann vault_auth
+    //  aber noch gültige Tokens akzeptieren bevor soul_auth neu eingerichtet ist)
+    let amorPeers = []
+    try {
+      const r = await fetch('/api/soul/amortization', { headers: { Authorization: `Bearer ${props.soulCert}` } })
+      if (r.ok) {
+        const d = await r.json()
+        amorPeers = (d.amortization?.trusted_souls ?? [])
+          .map(p => {
+            if (typeof p === 'string') return { soul_id: p, endpoint: null, label: labelMap.get(p) || '' }
+            return { soul_id: p.soul_id, endpoint: p.endpoint || null, label: p.label || labelMap.get(p.soul_id) || '' }
+          })
+          .filter(p => p && p.soul_id)
+      }
+    } catch { /* silent */ }
+    peerIds.value = amorPeers
+
+    // Connections immer laden — primäre Quelle für Peers mit Alias
     try {
       const cr = await fetch('/api/vault/connections', { headers: { Authorization: `Bearer ${props.soulCert}` } })
       if (cr.ok) {
