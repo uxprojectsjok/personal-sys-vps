@@ -295,6 +295,15 @@ if not already_connected then
       received_at = now,
     })
   end
+else
+  -- Gegenseite hat aktiv eine Verbindung zu uns erstellt → gegenseitig bestätigt.
+  -- peer_confirmed_at einmalig setzen (wird für mutual-Flag genutzt).
+  for i, c in ipairs(conn_data.connections) do
+    if c.soul_id == remote_soul_id and not conn_data.connections[i].peer_confirmed_at then
+      conn_data.connections[i].peer_confirmed_at = now
+      break
+    end
+  end
 end
 
 os.execute("mkdir -p " .. SOULS_DIR .. local_soul_id)
