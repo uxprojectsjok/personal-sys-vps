@@ -696,26 +696,32 @@
               </div>
 
               <!-- Enable / Disable toggle -->
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:14px 16px;border:1px solid var(--sys-rule);border-radius:var(--r-xs)"
+                :style="agentEnabled ? 'border-color:var(--sys-ok);background:rgba(184,220,196,0.04)' : ''">
+                <div>
+                  <div style="font-family:var(--sys-mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg)"
+                    :style="agentEnabled ? 'color:var(--sys-ok)' : ''">
+                    {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
+                  </div>
+                  <div style="font-family:var(--sys-mono);font-size:11px;color:var(--fg-4);margin-top:3px;letter-spacing:0.04em">
+                    {{ agentInterval === 'daily' ? $t('settings.agent_interval_daily') : $t('settings.agent_interval_hourly') }}
+                  </div>
+                </div>
                 <button
-                  @click="toggleAgent(true)"
-                  :disabled="agentToggleBusy || agentEnabled"
-                  class="sys-btn-ed"
-                  :class="agentEnabled ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
-                  style="flex:1;justify-content:center"
-                >{{ $t('settings.agent_enable') }}</button>
-                <button
-                  @click="toggleAgent(false)"
-                  :disabled="agentToggleBusy || !agentEnabled"
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  style="flex:1;justify-content:center"
-                >{{ $t('settings.agent_disable') }}</button>
+                  @click="toggleAgent(!agentEnabled)"
+                  :disabled="agentToggleBusy"
+                  class="agent-toggle"
+                  :class="agentEnabled ? 'agent-toggle--on' : ''"
+                  :aria-label="agentEnabled ? $t('settings.agent_disable') : $t('settings.agent_enable')"
+                >
+                  <span class="agent-toggle-knob"></span>
+                </button>
               </div>
 
-              <!-- Interval selector -->
+              <!-- Interval selector + Run now -->
               <div class="sys-field" style="gap:10px;margin-bottom:24px">
                 <label class="sys-field-label">{{ $t('settings.agent_interval_label') }}</label>
-                <div style="display:flex;gap:8px">
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
                   <button
                     v-for="iv in ['hourly','daily']"
                     :key="iv"
@@ -723,6 +729,12 @@
                     :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
                     @click="setAgentInterval(iv)"
                   >{{ iv === 'hourly' ? $t('settings.agent_interval_hourly') : $t('settings.agent_interval_daily') }}</button>
+                  <button
+                    class="sys-btn-ed sys-btn-ed--ghost"
+                    style="margin-left:auto"
+                    :disabled="agentRunNowBusy"
+                    @click="runAgentNow"
+                  >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
                 </div>
               </div>
 
@@ -1702,6 +1714,7 @@ const agentEnabled      = ref(false)
 const agentInterval     = ref('hourly')
 const agentLastRun      = ref('')
 const agentToggleBusy   = ref(false)
+const agentRunNowBusy   = ref(false)
 const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
@@ -1758,6 +1771,27 @@ async function setAgentInterval(iv) {
       body: JSON.stringify({ interval: iv }),
     })
   } catch {}
+}
+
+async function runAgentNow() {
+  agentRunNowBusy.value = true
+  agentFeedback.value   = null
+  try {
+    const r = await fetch('/api/agent/run', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok) {
+      agentFeedback.value = { ok: true, message: d.message || t('settings.agent_run_started') }
+    } else {
+      agentFeedback.value = { ok: false, message: d.error || `Error ${r.status}` }
+    }
+  } catch (e) {
+    agentFeedback.value = { ok: false, message: e.message }
+  }
+  agentRunNowBusy.value = false
+  setTimeout(() => { agentFeedback.value = null }, 6000)
 }
 
 async function saveAgentQueue() {
@@ -1891,4 +1925,19 @@ onMounted(() => { if (props.inline) initSettings() })
 .archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
 .archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
 .settings-inline-body { max-height: none; overflow: visible; }
+
+/* Agent on/off toggle */
+.agent-toggle {
+  position: relative; display: inline-flex; align-items: center;
+  width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
+  background: var(--sys-rule-strong); transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.agent-toggle--on { background: var(--sys-ok); }
+.agent-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
+.agent-toggle-knob {
+  position: absolute; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.agent-toggle--on .agent-toggle-knob { transform: translateX(20px); }
 </style>
