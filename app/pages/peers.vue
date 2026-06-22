@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
@@ -411,8 +411,27 @@ async function handleDismiss(soulId) {
   } catch { /* ignore */ }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-onMounted(() => { loadConnections() })
+// ── Init + Polling ────────────────────────────────────────────────────────────
+let pollTimer = null
+
+function startPolling() {
+  pollTimer = setInterval(() => { loadConnections() }, 30_000)
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') loadConnections()
+}
+
+onMounted(() => {
+  loadConnections()
+  startPolling()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  clearInterval(pollTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() {

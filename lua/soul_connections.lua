@@ -278,13 +278,38 @@ if method == "GET" and uri:match("^/api/vault/connections/test/") then
   return
 end
 
+-- ── Mutual-Helpers ────────────────────────────────────────────────────────────
+
+-- Prüft ob remote_sid auf diesem Server eine Verbindung zurück zu local_sid hat.
+local function is_mutual_same_server(local_sid, remote_sid)
+  local f = io.open(SOULS_DIR .. remote_sid .. "/soul_connections.json", "r")
+  if not f then return false end
+  local raw = f:read("*a"); f:close()
+  local ok, d = pcall(cjson.decode, raw)
+  if not ok or type(d) ~= "table" then return false end
+  local conns = (d[1] ~= nil) and d or (type(d.connections) == "table" and d.connections or {})
+  for _, c in ipairs(conns) do
+    if c.soul_id == local_sid then return true end
+  end
+  return false
+end
+
 -- ── GET /api/vault/connections ────────────────────────────────────────────────
 
 if method == "GET" then
   local data = load_data()
-  -- Mutual-Status: peer_token vorhanden = Handshake erfolgreich = gegenseitig verbunden
+  -- Mutual-Status:
+  --   1. peer_confirmed_at gesetzt → Gegenseite hat aktiv zurück-verbunden (neues Verfahren)
+  --   2. Same-Server-Fallback → prüfen ob Gegenseite local soul in ihrer connections hat
+  --   3. Sonst: ausstehend (Gegenseite hat noch nicht bestätigt)
   for _, conn in ipairs(data.connections) do
-    conn.mutual = type(conn.peer_token) == "string" and conn.peer_token ~= ""
+    if type(conn.peer_confirmed_at) == "number" then
+      conn.mutual = true
+    elseif soul_exists(conn.soul_id) then
+      conn.mutual = is_mutual_same_server(soul_id, conn.soul_id)
+    else
+      conn.mutual = false
+    end
   end
   ngx.say(cjson.encode({
     ok                = true,
