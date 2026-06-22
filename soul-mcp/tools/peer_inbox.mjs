@@ -125,6 +125,7 @@ async function fetchImageBlocks(attachments, token) {
   for (const r of results) {
     if (r.status !== 'fulfilled' || !r.value.data?.ok) continue;
     const { label, filename, data } = r.value;
+    if (!data.data_b64 || typeof data.data_b64 !== 'string') { skipped++; continue; }
     const mime = data.mime || 'image/jpeg';
 
     if (!CLAUDE_IMAGE_MIME.has(mime)) { skipped++; continue; } // avif o.ä. → skip
@@ -221,18 +222,27 @@ export function register(server, token) {
         ];
 
         for (const m of resolvedMsgs) {
-          const date = m.ts.replace('T', ' ').slice(0, 16) + ' UTC';
+          const rawTs = m.ts ?? ''
+          const date = rawTs ? rawTs.replace('T', ' ').slice(0, 16) + ' UTC' : '???'
           const direction = m.outgoing
-            ? `Du → ${ m.to === 'peer' ? 'alle' : m.to === 'community' ? 'Community' : m.to === 'agent' ? 'Agent' : m.to.slice(0, 8) }`
-            : (m.from_label || m.peer);
-          contentBlocks.push({ type: 'text', text: `[${date}] ${direction}\n${m.content}` });
+            ? `Du → ${ m.to === 'peer' ? 'alle' : m.to === 'community' ? 'Community' : m.to === 'agent' ? 'Agent' : (m.to ?? '').slice(0, 8) }`
+            : (m.from_label || m.peer || '?')
+          contentBlocks.push({ type: 'text', text: `[${date}] ${direction}\n${m.content ?? ''}` })
         }
 
         // Bilder zuerst (Vision) — dann PDFs/Texte
         contentBlocks.push(...imageBlocks);
         contentBlocks.push(...readableBlocks);
 
-        return { content: contentBlocks };
+        // Ungültige Blöcke filtern (undefined/null Felder würden den Response sprengen)
+        const validBlocks = contentBlocks.filter(b => {
+          if (!b || typeof b.type !== 'string') return false
+          if (b.type === 'text') return typeof b.text === 'string'
+          if (b.type === 'image') return typeof b.source?.data === 'string' && b.source.data.length > 0
+          return true
+        })
+
+        return { content: validBlocks.length > 0 ? validBlocks : [{ type: 'text', text: 'Nachrichten geladen (keine darstellbaren Blöcke).' }] };
 
       } catch (err) {
         return { content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true };

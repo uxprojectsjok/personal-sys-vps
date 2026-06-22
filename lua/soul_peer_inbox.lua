@@ -96,7 +96,8 @@ local peer_list = {}
 for _, conn in ipairs(connections) do
   local peer_label      = (type(conn.alias) == "string" and conn.alias ~= "") and conn.alias or conn.soul_id:sub(1, 8)
   local peer_soul_id_v  = conn.soul_id
-  local is_mutual       = type(conn.peer_token) == "string" and conn.peer_token ~= ""
+  local is_mutual       = (type(conn.peer_token) == "string" and conn.peer_token ~= "")
+                          or (type(conn.peer_confirmed_at) == "number" and conn.peer_confirmed_at > 0)
 
   if not is_mutual then goto continue end
   table.insert(peer_list, peer_label)
