@@ -775,6 +775,15 @@
                 >{{ agentFeedback.message }}</div>
               </Transition>
 
+              <!-- Live log after run -->
+              <div v-if="agentRunLog" style="margin-top:12px">
+                <div style="font-family:var(--sys-mono);font-size:10px;color:var(--fg-4);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">
+                  Agent Log
+                  <span v-if="agentRunPolling" style="color:var(--sys-ok);margin-left:6px">● live</span>
+                </div>
+                <pre style="background:rgba(0,0,0,0.28);border:1px solid var(--sys-rule);border-radius:var(--r-xs);padding:10px 12px;font-family:var(--sys-mono);font-size:10px;line-height:1.6;color:var(--fg-2);overflow-x:auto;white-space:pre-wrap;max-height:260px;overflow-y:auto">{{ agentRunLog }}</pre>
+              </div>
+
             </template>
 
             <!-- ── Tab: Einladen ── -->
@@ -1772,6 +1781,9 @@ const agentRunNowBusy   = ref(false)
 const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
+const agentRunLog       = ref('')
+const agentRunPolling   = ref(false)
+let   agentLogTimer     = null
 
 // ── Invite Token (Multi-Hoster) ───────────────────────────────────────────────
 const inviteToken      = ref('')
@@ -1879,9 +1891,21 @@ async function setAgentInterval(iv) {
   } catch {}
 }
 
+async function fetchAgentLog() {
+  try {
+    const r = await fetch('/api/agent/log?lines=80', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      agentRunLog.value = d.log || ''
+    }
+  } catch {}
+}
+
 async function runAgentNow() {
   agentRunNowBusy.value = true
   agentFeedback.value   = null
+  agentRunLog.value     = ''
+  clearInterval(agentLogTimer)
   try {
     const r = await fetch('/api/agent/run', {
       method: 'POST',
@@ -1890,6 +1914,14 @@ async function runAgentNow() {
     const d = await r.json().catch(() => ({}))
     if (r.ok) {
       agentFeedback.value = { ok: true, message: d.message || t('settings.agent_run_started') }
+      // Poll log every 2s for 90s
+      agentRunPolling.value = true
+      let ticks = 0
+      agentLogTimer = setInterval(async () => {
+        await fetchAgentLog()
+        ticks++
+        if (ticks >= 45) { clearInterval(agentLogTimer); agentRunPolling.value = false }
+      }, 2000)
     } else {
       agentFeedback.value = { ok: false, message: d.error || `Error ${r.status}` }
     }
@@ -1897,7 +1929,6 @@ async function runAgentNow() {
     agentFeedback.value = { ok: false, message: e.message }
   }
   agentRunNowBusy.value = false
-  setTimeout(() => { agentFeedback.value = null }, 6000)
 }
 
 async function saveAgentQueue() {
