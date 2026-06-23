@@ -91,6 +91,19 @@ local function check_soul_cert(token)
       return nil
     end
 
+    -- Gate-Soul-Binding: Gate-Token muss zur selben soul_id gehören
+    local gate_token = ngx.var.cookie_sys_gate or ""
+    if #gate_token == 64 and gate_token:match("^[a-fA-F0-9]+$") then
+      local sessions = ngx.shared.gate_sessions
+      if sessions then
+        local bound = sessions:get("gs:" .. gate_token)
+        if bound and bound ~= "" and bound ~= soul_id then
+          ngx.log(ngx.WARN, "[vault_auth] Gate soul mismatch: gate=", bound, " cert=", soul_id)
+          return nil
+        end
+      end
+    end
+
     ngx.ctx.soul_id = soul_id
   end
 

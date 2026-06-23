@@ -11,7 +11,20 @@ ngx.header["Cache-Control"] = "no-store"
 
 local node_soul_id = cfg.get_node_soul_id()
 
+-- Souls-Verzeichnis prüfen (auch Multi-Hoster: node_soul_id nicht gesetzt, aber Souls vorhanden)
+local souls_exist = false
+do
+  local h = io.popen("ls /var/lib/sys/souls/ 2>/dev/null")
+  if h then
+    for d in h:lines() do
+      if d:match("^[a-zA-Z0-9%-]+$") then souls_exist = true; break end
+    end
+    h:close()
+  end
+end
+
 ngx.status = 200
 ngx.say(cjson.encode({
-  soul_registered = (node_soul_id ~= nil and node_soul_id ~= "")
+  soul_registered = souls_exist,
+  multi_hoster    = cfg.get_multi_hoster() == true,
 }))

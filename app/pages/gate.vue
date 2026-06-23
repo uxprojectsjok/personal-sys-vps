@@ -49,7 +49,7 @@
               <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
             </button>
           </div>
-          <div v-if="soulRegistered" class="gate-field" style="margin-bottom:14px">
+          <div v-if="soulRegistered || multiHoster" class="gate-field" style="margin-bottom:14px">
             <input
               v-model="cert"
               type="text"
@@ -89,6 +89,7 @@ const cert           = ref('')
 const error          = ref('')
 const loading        = ref(false)
 const soulRegistered = ref(false)
+const multiHoster    = ref(false)
 const certAutoFilled = ref(false)
 const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
@@ -116,6 +117,7 @@ onMounted(async () => {
   try {
     const status = await $fetch('/api/gate-status')
     soulRegistered.value = status.soul_registered ?? false
+    multiHoster.value    = status.multi_hoster    ?? false
   } catch {
     soulRegistered.value = false
   }
@@ -197,7 +199,7 @@ async function submit() {
   loading.value = true
   try {
     const payload = { password: password.value }
-    if (soulRegistered.value && cert.value) payload.cert = cert.value.trim()
+    if ((soulRegistered.value || multiHoster.value) && cert.value) payload.cert = cert.value.trim()
 
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body: payload })
 
