@@ -173,7 +173,7 @@ Work sequentially. Be careful and conservative."
     --model "$MODEL" \
     --print \
     --add-dir /var/lib/sys \
-    --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead" \
+    --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead,mcp__*" \
     $SETTINGS_ARG \
     >> "$LOG_FILE" 2>&1 \
     || log_s "WARNING: claude exited non-zero"
