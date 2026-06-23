@@ -2,6 +2,9 @@
   <div class="gate">
     <div class="gate-card">
       <div class="gate-mark">SYS<span class="dot">.</span></div>
+      <div v-if="!ready" class="gate-sub">{{ $t('gate.subtitle') }}</div>
+
+      <template v-if="ready">
       <div class="gate-sub">{{ $t('gate.subtitle') }}</div>
 
       <!-- ── Biometric unlock ── -->
@@ -74,6 +77,8 @@
         <span class="live-dot" />
         {{ $t('gate.footer') }}
       </div>
+
+      </template><!-- end v-if="ready" -->
     </div>
   </div>
 </template>
@@ -94,6 +99,7 @@ const certAutoFilled = ref(false)
 const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
 const hasSavedCreds  = ref(false)
+const ready          = ref(false)   // true after gate-status known (prevents flicker)
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 
@@ -125,10 +131,11 @@ onMounted(async () => {
     soulRegistered.value = false
   }
 
-  // Multi-hoster with no soul yet → registration happens on /join, not here
+  // Multi-hoster with no soul yet → registration happens on /join, not here.
+  // replace() avoids adding /gate to history so the browser back button skips it.
   if (multiHoster.value && !soulRegistered.value) {
     const next = nextUrl.value !== '/' ? `?next=${encodeURIComponent(nextUrl.value)}` : ''
-    window.location.href = `/join${next}`
+    window.location.replace(`/join${next}`)
     return
   }
 
@@ -147,6 +154,8 @@ onMounted(async () => {
     hasSavedCreds.value = creds.hasCreds.value
     if (hasSavedCreds.value && soulRegistered.value) mode.value = 'biometric'
   }
+
+  ready.value = true  // all checks done, safe to render
 })
 
 async function biometricUnlock() {
