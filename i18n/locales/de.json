@@ -145,7 +145,8 @@
       "node_locked": "Dieser Node ist bereits einer anderen Soul zugewiesen.",
       "no_soul_id": "Keine soul_id in der Datei gefunden. Gültige sys.md erforderlich.",
       "import_failed": "Import fehlgeschlagen ({error}).",
-      "reset_failed": "Reset fehlgeschlagen: {error}"
+      "reset_failed": "Reset fehlgeschlagen: {error}",
+      "import_title": "Import-Fehler"
     }
   },
   "topbar": {

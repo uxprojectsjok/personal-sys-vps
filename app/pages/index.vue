@@ -555,7 +555,7 @@ async function handleLoginUpload(text, filename) {
           : result.error === 'no_soul_id'
           ? t('index.error.no_soul_id')
           : t('index.error.import_failed', { error: result.error })
-        alert(msg)
+        await confirmAsk({ title: t('index.error.import_title'), message: msg, confirmText: t('common.ok'), danger: false, hideCancel: true })
       }
       return
     }
@@ -576,7 +576,7 @@ async function handleLoginUpload(text, filename) {
         : result.error === 'no_soul_id'
         ? t('index.error.no_soul_id')
         : t('index.error.import_failed', { error: result.error })
-      alert(msg)
+      await confirmAsk({ title: t('index.error.import_title'), message: msg, confirmText: t('common.ok'), danger: false, hideCancel: true })
       return
     }
   }
