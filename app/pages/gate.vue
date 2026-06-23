@@ -218,7 +218,9 @@ async function submit() {
       error.value      = t('gate.error.cert_required')
       soulRegistered.value = true
     } else if (e?.data?.error === 'invalid_cert') {
-      error.value = t('gate.error.invalid_cert')
+      error.value = cert.value.startsWith('inv_')
+        ? t('gate.error.invalid_invite')
+        : t('gate.error.invalid_cert')
       cert.value = ''
       certAutoFilled.value = false
     } else if (e?.data?.error === 'gate_not_configured') {
