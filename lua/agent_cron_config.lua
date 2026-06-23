@@ -31,17 +31,19 @@ local function write_json(path, data)
   return true
 end
 
+local CLAUDE_PATH_FILE = "/var/lib/sys/claude_path"
+
 local function claude_installed()
-  -- 1. System npm installs (nodesource: /usr/local/bin or /usr/bin)
+  -- 1. Path file written by init.sh / manual install (works regardless of install method)
+  local pf = io.open(CLAUDE_PATH_FILE, "r")
+  if pf then
+    local p = pf:read("*l"); pf:close()
+    if p and p:match("%S") then return true end
+  end
+  -- 2. System npm installs (nodesource: /usr/local/bin or /usr/bin)
   for _, p in ipairs({"/usr/local/bin/claude", "/usr/bin/claude"}) do
     local f = io.open(p, "r")
     if f then f:close(); return true end
-  end
-  -- 2. nvm installs (/root/.nvm/versions/node/<version>/bin/claude)
-  local h = io.popen("find /root/.nvm/versions/node -maxdepth 3 -name 'claude' 2>/dev/null | head -1")
-  if h then
-    local out = h:read("*a"); h:close()
-    if out and out:match("%S") then return true end
   end
   return false
 end
