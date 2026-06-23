@@ -43,7 +43,8 @@ info "Checking agent.md for existing souls..."
 for _SOUL_DIR in /var/lib/sys/souls/*/; do
   [ -d "$_SOUL_DIR" ] || continue
   _AGENT_FILE="${_SOUL_DIR}vault/context/agent.md"
-  if [ ! -f "$_AGENT_FILE" ]; then
+  _AGENT_SIZE=$(stat -c%s "$_AGENT_FILE" 2>/dev/null || echo 0)
+  if [ ! -f "$_AGENT_FILE" ] || [ "$_AGENT_SIZE" -lt 10 ]; then
     mkdir -p "${_SOUL_DIR}vault/context"
     cat > "$_AGENT_FILE" <<'AGENTEOF'
 # SYS Agent Queue

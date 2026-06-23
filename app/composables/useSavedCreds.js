@@ -26,18 +26,7 @@ export function useSavedCreds() {
 
   function checkCreds(soulId = '') {
     if (!import.meta.client) return false
-    const key = storageKey(soulId)
-    if (localStorage.getItem(key)) return true
-    // Migrate legacy key (no soul_id suffix) → per-soul key
-    if (soulId) {
-      const legacy = localStorage.getItem('sys_saved_creds')
-      if (legacy) {
-        localStorage.setItem(key, legacy)
-        localStorage.removeItem('sys_saved_creds')
-        return true
-      }
-    }
-    return false
+    return !!localStorage.getItem(storageKey(soulId))
   }
 
   function initForSoul(soulId = '') {
