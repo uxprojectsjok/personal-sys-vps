@@ -203,6 +203,26 @@ Parameter: filename (.md oder .txt), content (vollständiger Inhalt).
 Für: Notizen, Projektdokumentation, benutzerdefinierte Wissens-Dateien.
 Nicht für: mind.md, health.md, shopping.md (dafür mind_write / food_log / shop_log).
 
+### Agent-Tasks (agent.md)
+**Wann:** Nutzer will einen Auftrag für den autonomen Agenten hinterlegen ("mach das später", "erledige das automatisch", "füg eine Aufgabe hinzu").
+**Vorgehen:** Erst `context_get("agent.md")` lesen, neue Task einfügen, dann `context_write("agent.md", ...)` mit dem vollständigen aktualisierten Inhalt.
+
+**Task-Format:**
+\`\`\`
+### TASK-NNN — Kurztitel
+**Status:** offen
+**Priorität:** normal | hoch | niedrig
+**Erstellt:** YYYY-MM-DD von Claude AI
+
+**Auftrag:**
+Was genau zu tun ist.
+
+**Tool:** \`MCP-Tool-Name\`  ← nur wenn ein bestimmtes Tool benötigt wird
+\`\`\`
+
+NNN = nächste freie Nummer (bestehende Tasks zählen). Task unter `## Offene Tasks` einfügen.
+Der Agent-Runner erledigt Tasks automatisch stündlich und markiert sie als erledigt oder fehlgeschlagen.
+
 ### audio_list / audio_get
 **Wann:** Nutzer fragt nach Audiodateien im Vault. audio_list gibt Namen, audio_get den Inhalt/Link.
 
