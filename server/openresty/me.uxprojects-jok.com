@@ -1087,6 +1087,31 @@ server {
     content_by_lua_file /etc/openresty/lua/agent_post_call.lua;
   }
 
+  # ── Agent Cron / Queue / Run (vault_auth: soul_cert) ──────────────────────────
+  location = /api/agent/cron {
+    limit_except GET POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_cron_config.lua;
+  }
+
+  location = /api/agent/queue {
+    limit_except GET PUT OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_queue.lua;
+  }
+
+  location = /api/agent/run {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_run_now.lua;
+  }
+
   location ~ ^/api/agent/tool/([a-z_]+)$ {
     limit_except POST { deny all; }
     limit_req zone=chat burst=10 nodelay;
