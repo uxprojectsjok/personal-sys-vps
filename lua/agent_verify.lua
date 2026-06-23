@@ -70,7 +70,7 @@ do
       soul_id = soul_id,
       title   = "Verifikationsanfrage",
       body    = "Eine KI-Anwendung möchte deine Identität bestätigen.",
-      url     = "/verbindung",
+      url     = "/connection",
     }),
   })
 end
