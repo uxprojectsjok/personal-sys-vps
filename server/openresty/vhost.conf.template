@@ -1403,6 +1403,14 @@ server {
     content_by_lua_file /etc/openresty/lua/agent_run_now.lua;
   }
 
+  location = /api/agent/log {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/agent_log.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }
