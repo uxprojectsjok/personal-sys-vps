@@ -568,8 +568,17 @@ async function handleLoginUpload(text, filename) {
       return
     }
   } else {
-    importFromText(text)
-    await refreshCert()
+    // Validate cert against server before importing — prevents loading a foreign soul
+    const result = await importAndSetup(text)
+    if (!result.ok) {
+      const msg = result.error === 'node_locked'
+        ? t('index.error.node_locked')
+        : result.error === 'no_soul_id'
+        ? t('index.error.no_soul_id')
+        : t('index.error.import_failed', { error: result.error })
+      alert(msg)
+      return
+    }
   }
   loginOpen.value = false
   fetchNodeStatus()
