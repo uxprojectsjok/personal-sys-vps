@@ -1075,7 +1075,7 @@ app.post('/internal/push-subscribe', express.json({ limit: '16kb' }), async (req
 // POST /internal/send-push  { soul_id, title, body, url }
 app.post('/internal/send-push', express.json({ limit: '4kb' }), async (req, res) => {
   if (!vapidKeys) return res.json({ ok: false, error: 'vapid not configured' });
-  const { soul_id, title = 'SYS', body = '', url = '/verbindung' } = req.body || {};
+  const { soul_id, title = 'SYS', body = '', url = '/connection' } = req.body || {};
   if (!soul_id) return res.status(400).json({ error: 'soul_id erforderlich' });
   const subsFile = `${SOULS_DIR}${soul_id}/push_subscriptions.json`;
   let subs = [];
