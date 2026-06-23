@@ -67,7 +67,8 @@
       "too_many_attempts": "Zu viele Versuche. Bitte warte einen Moment.",
       "save_failed": "Speichern fehlgeschlagen.",
       "biometric_unavailable": "Biometrik nicht verfügbar."
-    }
+    },
+    "cert_or_invite_placeholder": "Soul-Cert oder Einladungscode"
   },
   "home": {
     "welcome": "Willkommen zurück",
@@ -810,7 +811,20 @@
     "agent_url_placeholder_set": "Neu eingeben zum Überschreiben…",
     "agent_url_placeholder_empty": "https://elevenlabs.io/app/talk-to?agent_id=…",
     "language": "Sprache",
-    "language_desc": "Anzeigesprache der App."
+    "language_desc": "Anzeigesprache der App.",
+    "tab_invite": "Einladen",
+    "invite_desc": "Teile einen Einladungscode mit einem neuen Nutzer. Der Code ermöglicht es ihm, seine Soul auf diesem Node zu registrieren. Er rotiert automatisch nach jeder Registrierung.",
+    "invite_token_label": "Aktueller Einladungscode",
+    "invite_not_generated": "Noch nicht generiert — rotieren um einen zu erstellen.",
+    "invite_hint": "Der Code rotiert automatisch wenn eine neue Soul registriert wird. Du kannst ihn auch manuell rotieren, um den aktuellen Code zu invalidieren.",
+    "invite_copy": "Kopieren",
+    "invite_copied": "Kopiert!",
+    "invite_rotate": "Code rotieren",
+    "invite_rotating": "Wird rotiert…",
+    "invite_rotated": "Neuer Einladungscode generiert.",
+    "invite_rotate_failed": "Rotation fehlgeschlagen.",
+    "invite_active": "Einladungscode aktiv",
+    "invite_inactive": "Kein Einladungscode"
   },
   "files": {
     "title": "Dein Kontext,",

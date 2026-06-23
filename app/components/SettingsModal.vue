@@ -42,6 +42,9 @@
             <button @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_agent') }}</span></span>
             </button>
+            <button v-if="isAdmin && isMultiHoster" @click="tab = 'einladen'; loadInviteToken()" class="sys-rail-item" :class="tab === 'einladen' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_invite') }}</span></span>
+            </button>
           </div>
 
           <!-- Body -->
@@ -763,6 +766,31 @@
 
             </template>
 
+            <!-- ── Tab: Einladen ── -->
+            <template v-if="tab === 'einladen'">
+              <p class="sm-desc" style="margin-bottom:20px;line-height:1.7">{{ $t('settings.invite_desc') }}</p>
+
+              <div class="sys-field" style="margin-bottom:20px">
+                <label class="sys-field-label">{{ $t('settings.invite_token_label') }}</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <code style="flex:1;padding:10px 14px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);font-family:var(--sys-mono);font-size:13px;color:var(--sys-accent-bright);word-break:break-all;user-select:all;border:1px solid var(--sys-rule)">
+                    {{ inviteToken || $t('settings.invite_not_generated') }}
+                  </code>
+                  <button v-if="inviteToken" class="sys-btn-ed" @click="copyInviteToken" style="flex-shrink:0">
+                    {{ inviteCopied ? $t('settings.invite_copied') : $t('settings.invite_copy') }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="sm-infoblock" style="margin-bottom:20px">
+                {{ $t('settings.invite_hint') }}
+              </div>
+
+              <div v-if="inviteFeedback" class="sm-infoblock" :style="inviteFeedbackOk ? 'border-color:var(--sys-ok);color:var(--sys-ok)' : 'border-color:var(--sys-err);color:var(--sys-err)'" style="margin-bottom:0">
+                {{ inviteFeedback }}
+              </div>
+            </template>
+
           </div>
 
           <!-- Foot -->
@@ -796,11 +824,20 @@
                 <span class="sys-dot" :class="agentEnabled ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
               </template>
+              <template v-else-if="tab === 'einladen'">
+                <span class="sys-dot" :class="inviteToken ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
+                {{ inviteToken ? $t('settings.invite_active') : $t('settings.invite_inactive') }}
+              </template>
             </div>
             <div class="sys-foot-actions">
               <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
                   {{ saving ? $t('settings.saving') : $t('common.save') }}
+                </button>
+              </template>
+              <template v-else-if="tab === 'einladen'">
+                <button class="sys-btn-ed sys-btn-ed--primary" @click="rotateInviteToken" :disabled="inviteRotating">
+                  {{ inviteRotating ? $t('settings.invite_rotating') : $t('settings.invite_rotate') }}
                 </button>
               </template>
               <template v-else-if="tab === 'agent'">
@@ -1718,6 +1755,58 @@ const agentRunNowBusy   = ref(false)
 const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
+
+// ── Invite Token (Multi-Hoster) ───────────────────────────────────────────────
+const inviteToken      = ref('')
+const inviteCopied     = ref(false)
+const inviteRotating   = ref(false)
+const inviteFeedback   = ref('')
+const inviteFeedbackOk = ref(false)
+
+async function loadInviteToken() {
+  inviteFeedback.value = ''
+  try {
+    const r = await fetch('/api/invite-token', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      inviteToken.value = d.invite_token || ''
+    }
+  } catch { /* silent */ }
+}
+
+async function rotateInviteToken() {
+  if (inviteRotating.value) return
+  inviteRotating.value = true
+  inviteFeedback.value = ''
+  try {
+    const r = await fetch('/api/invite-token', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    const d = await r.json()
+    if (r.ok) {
+      inviteToken.value      = d.invite_token || ''
+      inviteFeedback.value   = t('settings.invite_rotated')
+      inviteFeedbackOk.value = true
+    } else {
+      inviteFeedback.value   = d.message || d.error || t('settings.invite_rotate_failed')
+      inviteFeedbackOk.value = false
+    }
+  } catch {
+    inviteFeedback.value   = t('settings.invite_rotate_failed')
+    inviteFeedbackOk.value = false
+  } finally {
+    inviteRotating.value = false
+  }
+}
+
+async function copyInviteToken() {
+  try {
+    await navigator.clipboard.writeText(inviteToken.value)
+    inviteCopied.value = true
+    setTimeout(() => { inviteCopied.value = false }, 2000)
+  } catch { /* silent */ }
+}
 
 async function loadAgentStatus() {
   try {

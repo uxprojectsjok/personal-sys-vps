@@ -55,7 +55,7 @@
               type="text"
               autocomplete="off"
               spellcheck="false"
-              :placeholder="$t('gate.cert_placeholder')"
+              :placeholder="multiHoster ? $t('gate.cert_or_invite_placeholder') : $t('gate.cert_placeholder')"
               :aria-label="$t('gate.cert_aria')"
               :disabled="loading"
               style="font-family:var(--mono);font-size:13px"
@@ -204,6 +204,7 @@ async function submit() {
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body: payload })
 
     if (gateRes?.soul_id) localStorage.setItem(PWA_SOUL_KEY, gateRes.soul_id)
+    if (gateRes?.invite_login) sessionStorage.setItem('sys.invite_login', '1')
 
     const support = await passkey.checkPasskeySupport()
     if (support.supported && !creds.hasCreds.value) {

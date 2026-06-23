@@ -303,6 +303,48 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
             -- Cert neu ableiten mit per-soul Key (nur wenn Datei erfolgreich geschrieben)
             active_key = soul_master_key_full:sub(5)
             cert = hmac.cert_for_soul(active_key, soul_id, cert_version)
+
+            -- Invite-Token nach erfolgreicher Registrierung rotieren
+            local rnd_inv = io.open("/dev/urandom", "rb")
+            if rnd_inv then
+              local inv_bytes = rnd_inv:read(16); rnd_inv:close()
+              if inv_bytes and #inv_bytes == 16 then
+                local inv_hex = "inv_"
+                for ii = 1, 16 do inv_hex = inv_hex .. string.format("%02x", inv_bytes:byte(ii)) end
+                local mpath_inv = get_master_path()
+                local inv_rf = io.open(mpath_inv, "r")
+                local inv_data = {}
+                if inv_rf then
+                  local inv_raw = inv_rf:read("*a"); inv_rf:close()
+                  local ok_inv, d_inv = pcall(cjson.decode, inv_raw)
+                  if ok_inv and type(d_inv) == "table" then inv_data = d_inv end
+                end
+                inv_data.invite_token = inv_hex
+                local inv_wf = io.open(mpath_inv, "w")
+                if inv_wf then
+                  inv_wf:write(cjson.encode(inv_data)); inv_wf:close()
+                  os.execute("chmod 600 " .. mpath_inv)
+                  os.execute("chown www-data:www-data " .. mpath_inv .. " 2>/dev/null || true")
+                  cfg.invalidate_master_cache()
+                end
+                if mpath_inv ~= MASTER_PATH_GLOBAL then
+                  local g_inv_rf = io.open(MASTER_PATH_GLOBAL, "r")
+                  local g_inv_data = {}
+                  if g_inv_rf then
+                    local g_inv_raw = g_inv_rf:read("*a"); g_inv_rf:close()
+                    local g_ok_inv, g_d_inv = pcall(cjson.decode, g_inv_raw)
+                    if g_ok_inv and type(g_d_inv) == "table" then g_inv_data = g_d_inv end
+                  end
+                  g_inv_data.invite_token = inv_hex
+                  local g_inv_wf = io.open(MASTER_PATH_GLOBAL, "w")
+                  if g_inv_wf then
+                    g_inv_wf:write(cjson.encode(g_inv_data)); g_inv_wf:close()
+                    os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+                    os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+                  end
+                end
+              end
+            end
           end
         end
       end

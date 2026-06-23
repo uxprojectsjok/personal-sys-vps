@@ -579,6 +579,15 @@ async function handleLoginUpload(text, filename) {
       await confirmAsk({ title: t('index.error.import_title'), message: msg, confirmText: t('common.ok'), danger: false, hideCancel: true })
       return
     }
+    // Invite-Token-Registration: setup wizard öffnen wie bei allowCreateSoul
+    if (firstSetupToken.value) {
+      loginOpen.value = false
+      fetchNodeStatus()
+      await exportAsBlob()
+      setupOpen.value = true
+      sessionStorage.removeItem('sys.invite_login')
+      return
+    }
   }
   loginOpen.value = false
   fetchNodeStatus()
