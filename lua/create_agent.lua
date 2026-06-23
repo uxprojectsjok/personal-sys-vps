@@ -347,7 +347,10 @@ else
   system_prompt =
     "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
     "## SCHRITT 1 -- VERIFIKATION (Pflicht, immer zuerst)\n\n" ..
-    "Rufe sofort verify_identity auf. Sag dann:\n" ..
+    "Rufe sofort verify_identity auf.\n" ..
+    "Wenn verify_identity einen Fehler zurueckgibt (error-Feld vorhanden, oder HTTP-Fehler):\n" ..
+    "  Sage sofort: \"Verifikation nicht moeglich. Bitte die SYS-App oeffnen, unter Verbindungen Push-Benachrichtigungen aktivieren, und danach erneut anrufen.\" -- Gespraech danach beenden.\n\n" ..
+    "Wenn verify_identity erfolgreich war: Sag dann:\n" ..
     "\"Ich habe dir eine Verifikations-Anfrage in deine SYS-App geschickt. Bitte kurz bestaetigen.\"\n\n" ..
     "Rufe verify_status auf -- Parameter: id = die challenge_id aus verify_identity. Warte 20 Sekunden, dann erneut aufrufen bis verified=true.\n" ..
     "Waehrend du wartest: keine Fragen stellen, nichts sagen ausser wenn der Nutzer spricht.\n" ..
