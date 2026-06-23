@@ -71,6 +71,23 @@
     },
     "cert_or_invite_placeholder": "Soul-Cert oder Einladungscode"
   },
+  "join": {
+    "subtitle": "Multi-Hoster Node",
+    "heading": "Neu hier",
+    "intro": "Gib das Node-Passwort und deinen Einladungscode ein, um deine Soul auf diesem Node zu registrieren.",
+    "password_placeholder": "Node-Passwort",
+    "invite_placeholder": "Einladungscode (inv_…)",
+    "invite_aria": "Einladungscode",
+    "register": "Registrieren",
+    "registering": "Wird registriert…",
+    "footer": "Deine Soul bleibt auf diesem Node",
+    "error": {
+      "invalid_invite": "Einladungscode ungültig oder abgelaufen. Frag den Node-Admin nach dem aktuellen Code (Einstellungen → Einladen).",
+      "access_denied": "Zugang verweigert. Passwort und Einladungscode prüfen.",
+      "too_many_attempts": "Zu viele Versuche. Bitte kurz warten.",
+      "connection_error": "Verbindungsfehler. Bitte erneut versuchen."
+    }
+  },
   "home": {
     "welcome": "Willkommen zurück",
     "hero_sub": "Dein Knoten im Internet. Als Mensch. Sprich mit deiner KI, verbinde dich mit Peers — der Soul-Archivar schreibt still mit.",
