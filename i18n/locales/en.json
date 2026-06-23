@@ -71,6 +71,23 @@
     },
     "cert_or_invite_placeholder": "Soul-Cert or invite code"
   },
+  "join": {
+    "subtitle": "Multi-Hoster Node",
+    "heading": "New here",
+    "intro": "Enter the node password and your invite code to register your soul on this node.",
+    "password_placeholder": "Node password",
+    "invite_placeholder": "Invite code (inv_…)",
+    "invite_aria": "Invite code",
+    "register": "Register",
+    "registering": "Registering…",
+    "footer": "Your soul stays on this node",
+    "error": {
+      "invalid_invite": "Invite code invalid or expired. Ask the node admin for the current code (Settings → Invite).",
+      "access_denied": "Access denied. Check password and invite code.",
+      "too_many_attempts": "Too many attempts. Please wait a moment.",
+      "connection_error": "Connection error. Please try again."
+    }
+  },
   "home": {
     "welcome": "Welcome back",
     "hero_sub": "Your node on the internet. As a human. Talk to your AI, connect with peers — the Soul Archivist writes silently alongside.",

@@ -67,7 +67,7 @@
             {{ loading ? $t('gate.loading') : $t('gate.sign_in') }}
           </button>
         </form>
-        <button v-if="hasSavedCreds" class="gate-link" @click="mode = 'biometric'">{{ $t('gate.unlock_with_biometric') }}</button>
+        <button v-if="hasSavedCreds && !multiHoster" class="gate-link" @click="mode = 'biometric'">{{ $t('gate.unlock_with_biometric') }}</button>
       </template>
 
       <div class="gate-foot">
@@ -125,6 +125,13 @@ onMounted(async () => {
     soulRegistered.value = false
   }
 
+  // Multi-hoster with no soul yet → registration happens on /join, not here
+  if (multiHoster.value && !soulRegistered.value) {
+    const next = nextUrl.value !== '/' ? `?next=${encodeURIComponent(nextUrl.value)}` : ''
+    window.location.href = `/join${next}`
+    return
+  }
+
   if (soulRegistered.value) {
     const stored = sessionStorage.getItem('sys.soul_cert')
     if (stored && stored.length >= 20) {
@@ -133,10 +140,13 @@ onMounted(async () => {
     }
   }
 
-  lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
-  creds.initForSoul(lastSoulId.value)
-  hasSavedCreds.value = creds.hasCreds.value
-  if (hasSavedCreds.value && soulRegistered.value) mode.value = 'biometric'
+  // Biometric: only for single-hoster with saved creds (multi-hoster biometric unreliable)
+  if (!multiHoster.value) {
+    lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
+    creds.initForSoul(lastSoulId.value)
+    hasSavedCreds.value = creds.hasCreds.value
+    if (hasSavedCreds.value && soulRegistered.value) mode.value = 'biometric'
+  }
 })
 
 async function biometricUnlock() {
