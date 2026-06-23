@@ -602,19 +602,15 @@
                 <div class="sm-infoblock">{{ $t('settings.oura_info') }}</div>
               </div>
 
-              <!-- ── Sync ausführen ── -->
-              <div v-if="healthAdapter === 'garmin' && healthHasPassword" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.health_sync_run') }}</label>
-                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                  <button class="sys-btn-ed sys-btn-ed--ghost" :disabled="healthSyncing" @click="triggerHealthSync">
-                    <span v-if="healthSyncing" class="gate-spinner" style="width:12px;height:12px;border-width:1.5px" />
-                    {{ healthSyncing ? $t('settings.health_syncing') : $t('settings.health_sync_now') }}
-                  </button>
-                  <span v-if="healthSyncStatus" class="sm-desc" :style="healthSyncStatus.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
-                    {{ healthSyncStatus.ok ? '✓' : '✗' }} {{ healthSyncStatus.message }}
-                    <span v-if="healthSyncStatus.last_run" style="color:var(--fg-2);margin-left:6px">{{ healthSyncStatus.last_run }}</span>
-                  </span>
+              <!-- ── Sync-Status ── -->
+              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:6px;margin-bottom:20px">
+                <label class="sys-field-label">{{ $t('settings.health_sync_status_label') }}</label>
+                <div v-if="!healthHasPassword" class="sm-desc" style="color:var(--fg-2)">{{ $t('settings.health_sync_not_configured') }}</div>
+                <div v-else-if="healthSyncStatus" class="sm-desc" :style="healthSyncStatus.ok ? 'color:var(--sys-ok)' : 'color:var(--c-err,#e06c75)'">
+                  {{ healthSyncStatus.ok ? '✓' : '✗' }} {{ healthSyncStatus.message }}
+                  <span v-if="healthSyncStatus.last_run" style="color:var(--fg-2);margin-left:6px">{{ healthSyncStatus.last_run }}</span>
                 </div>
+                <div v-else class="sm-desc" style="color:var(--sys-ok)">✓ {{ $t('settings.health_sync_configured') }}</div>
               </div>
 
               <Transition name="sys-modal-fade">
@@ -994,7 +990,6 @@ const healthNeedsMfa      = ref(false)
 const healthMfaCode       = ref('')
 const healthLoginBusy     = ref(false)
 const healthGarminConnected = ref(false)
-const healthSyncing        = ref(false)
 const healthSyncStatus     = ref(null)
 
 async function loadHealthConfig() {
@@ -1014,23 +1009,6 @@ async function loadHealthConfig() {
     const rs = await fetch('/api/health/sync-status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (rs.ok) healthSyncStatus.value = await rs.json()
   } catch {}
-}
-
-async function triggerHealthSync() {
-  healthSyncing.value = true
-  try {
-    await fetch('/api/health-sync', { method: 'POST', headers: { Authorization: `Bearer ${soulToken.value}` } })
-    // Status nach kurzer Verzögerung neu laden (Sync läuft asynchron)
-    setTimeout(async () => {
-      try {
-        const rs = await fetch('/api/health/sync-status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-        if (rs.ok) healthSyncStatus.value = await rs.json()
-      } catch {}
-      healthSyncing.value = false
-    }, 8000)
-  } catch {
-    healthSyncing.value = false
-  }
 }
 
 async function saveHealthConfig() {
