@@ -9,17 +9,44 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useSoul } from '~/composables/useSoul'
 
 const { setLocale } = useI18n()
+const { soulToken } = useSoul()
 
-// Service Worker registrieren — erforderlich für PWA-Installierbarkeit auf Android/Chrome
 if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})
+}
+
+async function initPush() {
+  if (!soulToken.value) return
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+  try {
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission()
+      if (perm !== 'granted') return
+    }
+    const reg = await navigator.serviceWorker.ready
+    let sub = await reg.pushManager.getSubscription()
+    if (!sub) {
+      const r = await fetch('/api/push/vapid-key')
+      const { publicKey } = await r.json()
+      if (!publicKey) return
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey })
+    }
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON()),
+    })
+  } catch {}
 }
 
 onMounted(() => {
   const saved = localStorage.getItem('sys-locale')
   if (saved && ['en', 'de'].includes(saved)) setLocale(saved)
+  initPush()
 })
 </script>
 
