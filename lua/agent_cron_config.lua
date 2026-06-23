@@ -32,17 +32,18 @@ local function write_json(path, data)
 end
 
 local function claude_installed()
-  -- Check known install paths directly — avoids PATH restrictions in nginx env
-  local paths = {"/usr/local/bin/claude", "/usr/bin/claude"}
-  for _, p in ipairs(paths) do
+  -- 1. System npm installs (nodesource: /usr/local/bin or /usr/bin)
+  for _, p in ipairs({"/usr/local/bin/claude", "/usr/bin/claude"}) do
     local f = io.open(p, "r")
     if f then f:close(); return true end
   end
-  -- Shell fallback with explicit PATH
-  local h = io.popen("PATH=/usr/local/bin:/usr/bin:/bin which claude 2>/dev/null")
-  if not h then return false end
-  local out = h:read("*a"); h:close()
-  return out ~= nil and out:match("%S") ~= nil
+  -- 2. nvm installs (/root/.nvm/versions/node/<version>/bin/claude)
+  local h = io.popen("find /root/.nvm/versions/node -maxdepth 3 -name 'claude' 2>/dev/null | head -1")
+  if h then
+    local out = h:read("*a"); h:close()
+    if out and out:match("%S") then return true end
+  end
+  return false
 end
 
 local function last_run_from_log()
