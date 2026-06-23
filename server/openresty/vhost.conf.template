@@ -168,6 +168,16 @@ server {
     content_by_lua_file /etc/openresty/lua/gate_auth.lua;
   }
 
+  # ── Invite-Token (Multi-Hoster, Auth erforderlich) ──────────────────────────
+  location = /api/invite-token {
+    limit_req zone=api burst=10 nodelay;
+    limit_except GET POST { deny all; }
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    content_by_lua_file /etc/openresty/lua/invite_token.lua;
+  }
+
   # ── Gate-Passwort ändern (soul_cert erforderlich) ─────────────────────────────
   location = /api/gate-password {
     limit_req zone=auth burst=3 nodelay;
