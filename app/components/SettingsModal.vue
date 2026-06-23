@@ -1920,7 +1920,17 @@ async function runAgentNow() {
       agentLogTimer = setInterval(async () => {
         await fetchAgentLog()
         ticks++
-        if (ticks >= 45) { clearInterval(agentLogTimer); agentRunPolling.value = false }
+        if (ticks >= 45) {
+          clearInterval(agentLogTimer)
+          agentRunPolling.value = false
+        }
+        // Refresh last_run timestamp every 10s
+        if (ticks % 5 === 0) {
+          try {
+            const lr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+            if (lr.ok) { const d = await lr.json(); agentLastRun.value = d.last_run || '' }
+          } catch {}
+        }
       }, 2000)
     } else {
       agentFeedback.value = { ok: false, message: d.error || `Error ${r.status}` }
