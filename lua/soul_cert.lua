@@ -232,6 +232,23 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
     _health_check:close()
   end
 
+  -- earnings.md Leer-Template anlegen falls nicht vorhanden
+  local _earn_path  = SOULS_DIR .. soul_id .. "/vault/context/earnings.md"
+  local _earn_check = io.open(_earn_path, "r")
+  if not _earn_check then
+    local _ef = io.open(_earn_path, "w")
+    if _ef then
+      local _today = os.date("%Y-%m-%d")
+      local _month = os.date("%Y-%m")
+      local _year  = os.date("%Y")
+      _ef:write("---\nlast_updated: " .. _today .. "\ncurrency: EUR\n---\n\n## Income (" .. _month .. ")\n_No entries yet._\n\n## Annual Summary (" .. _year .. ")\n_No entries yet._\n\n## Platforms & Sources\n\n## Notes\n")
+      _ef:close()
+      os.execute("chown www-data:www-data " .. _earn_path .. " 2>/dev/null || true")
+    end
+  else
+    _earn_check:close()
+  end
+
   -- prompts.md via MCP generieren (fire-and-forget nach dem Response)
   ngx.timer.at(0, function()
     local ok, http = pcall(require, "resty.http")
