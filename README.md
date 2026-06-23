@@ -508,6 +508,10 @@ I am the author of this software, not an operator.
 **SYS is an infrastructure protocol — not an AI system.**
 It functions as a connectivity layer between the user's own server and external AI services (Anthropic, ElevenLabs, etc.) over the MCP protocol. SYS does not develop AI, operate AI, or make AI-based decisions. All AI processing is performed by external, independently regulated services. The analogy is DNS or HTTP: the protocol enables communication but is not the service.
 
+**EU AI Act (Regulation (EU) 2024/1689):** SYS does not qualify as an AI system under Article 3 of the EU AI Act and is therefore not subject to its requirements as a provider. Two independent grounds apply: (1) SYS is infrastructure, not a system that generates outputs such as predictions, recommendations, or decisions — it transmits requests to third-party AI services that are themselves subject to their own regulatory obligations. (2) The codebase is published as open-source software under Apache 2.0. Recital 12 of the EU AI Act provides for reduced obligations for freely available open-source AI components; this further supports the position that the Act's provider obligations do not apply to this repository. The openness of the source code is also substantively relevant: the EU AI Act is most concerned with opaque, unverifiable systems. This codebase is fully inspectable — no hidden model, no hidden inference, no hidden decision logic.
+
+**Apache 2.0 — No Warranty:** This software is provided *"AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.* This exclusion is legally binding under the Apache License 2.0, which is recognized in all major jurisdictions.
+
 This software is published with the explicit intent to empower individuals
 over their own data and identity. The author expressly distances himself from
 any use of this software for criminal purposes, unauthorized surveillance,
