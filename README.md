@@ -505,6 +505,9 @@ Operators who want blockchain features need their own Reown Project ID (free: cl
 
 I am the author of this software, not an operator.
 
+**SYS is an infrastructure protocol — not an AI system.**
+It functions as a connectivity layer between the user's own server and external AI services (Anthropic, ElevenLabs, etc.) over the MCP protocol. SYS does not develop AI, operate AI, or make AI-based decisions. All AI processing is performed by external, independently regulated services. The analogy is DNS or HTTP: the protocol enables communication but is not the service.
+
 This software is published with the explicit intent to empower individuals
 over their own data and identity. The author expressly distances himself from
 any use of this software for criminal purposes, unauthorized surveillance,
@@ -517,6 +520,10 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 - I do not provide hosting infrastructure, accounts, or managed servers.
 - User data resides exclusively on users' own servers.
 - The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
+
+**Data processing:** UX-Projects does not process personal data on behalf of users. All soul data, biometric references, and vault content reside exclusively on the operator's own VPS. The `verify_identity` tools run on the user's own infrastructure — biometric verification (WebAuthn, voice, face) is performed by the user's browser or by the external APIs the operator has independently configured. No biometric data is transmitted to or stored by UX-Projects.
+
+The only technical touchpoint between a running SYS node and UX-Projects infrastructure is the Polygon anchoring contract — which stores SHA-256 hashes only, contains no personal data, and operates autonomously on a public blockchain.
 
 **Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
