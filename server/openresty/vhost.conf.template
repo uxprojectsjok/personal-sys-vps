@@ -517,6 +517,16 @@ server {
   }
 
   # ── Health Sync: Garmin-Daten im Hintergrund abrufen ────────────────────────
+  location = /api/health/setup {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=2 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    lua_socket_read_timeout 120s;
+    content_by_lua_file /etc/openresty/lua/health_setup.lua;
+  }
+
   location = /api/health/sync-status {
     limit_except GET { deny all; }
     limit_req zone=api burst=10 nodelay;
