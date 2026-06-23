@@ -1,9 +1,13 @@
 // app/composables/useSavedCreds.js
 // Speichert Node-Passwort + Soul-Cert AES-GCM-verschlüsselt via WebAuthn-PRF.
+// Storage key ist pro Soul: sys_saved_creds_<soul_id>
 import { ref } from 'vue'
 
-const STORAGE_KEY = 'sys_saved_creds'
-const SALT        = 'sys-gate-creds-v1'
+const SALT = 'sys-gate-creds-v1'
+
+function storageKey(soulId = '') {
+  return soulId ? `sys_saved_creds_${soulId}` : 'sys_saved_creds'
+}
 
 async function deriveKey(prfOutput, usage) {
   const enc = new TextEncoder()
@@ -18,11 +22,29 @@ async function deriveKey(prfOutput, usage) {
 }
 
 export function useSavedCreds() {
-  const hasCreds = ref(
-    import.meta.client ? !!localStorage.getItem(STORAGE_KEY) : false
-  )
+  const hasCreds = ref(false)
 
-  async function saveCreds({ password, cert }, prfOutput) {
+  function checkCreds(soulId = '') {
+    if (!import.meta.client) return false
+    const key = storageKey(soulId)
+    if (localStorage.getItem(key)) return true
+    // Migrate legacy key (no soul_id suffix) → per-soul key
+    if (soulId) {
+      const legacy = localStorage.getItem('sys_saved_creds')
+      if (legacy) {
+        localStorage.setItem(key, legacy)
+        localStorage.removeItem('sys_saved_creds')
+        return true
+      }
+    }
+    return false
+  }
+
+  function initForSoul(soulId = '') {
+    hasCreds.value = checkCreds(soulId)
+  }
+
+  async function saveCreds({ password, cert }, prfOutput, soulId = '') {
     const iv  = crypto.getRandomValues(new Uint8Array(12))
     const key = await deriveKey(prfOutput, 'encrypt')
     const enc = new TextEncoder()
@@ -31,15 +53,15 @@ export function useSavedCreds() {
       key,
       enc.encode(JSON.stringify({ password, cert }))
     )
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    localStorage.setItem(storageKey(soulId), JSON.stringify({
       iv:   Array.from(iv),
       data: Array.from(new Uint8Array(buf)),
     }))
     hasCreds.value = true
   }
 
-  async function loadCreds(prfOutput) {
-    const raw = localStorage.getItem(STORAGE_KEY)
+  async function loadCreds(prfOutput, soulId = '') {
+    const raw = localStorage.getItem(storageKey(soulId))
     if (!raw) return null
     try {
       const { iv, data } = JSON.parse(raw)
@@ -55,17 +77,17 @@ export function useSavedCreds() {
     }
   }
 
-  async function updateCert(newCert, prfOutput) {
-    const saved = await loadCreds(prfOutput)
+  async function updateCert(newCert, prfOutput, soulId = '') {
+    const saved = await loadCreds(prfOutput, soulId)
     if (!saved) return false
-    await saveCreds({ password: saved.password, cert: newCert }, prfOutput)
+    await saveCreds({ password: saved.password, cert: newCert }, prfOutput, soulId)
     return true
   }
 
-  function clearCreds() {
-    localStorage.removeItem(STORAGE_KEY)
+  function clearCreds(soulId = '') {
+    localStorage.removeItem(storageKey(soulId))
     hasCreds.value = false
   }
 
-  return { hasCreds, saveCreds, loadCreds, updateCert, clearCreds }
+  return { hasCreds, initForSoul, saveCreds, loadCreds, updateCert, clearCreds }
 }

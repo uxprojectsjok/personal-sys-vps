@@ -97,6 +97,9 @@ const hasSavedCreds  = ref(false)
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 
+const lastSoulId    = ref('')   // soul_id of last login (for biometric unlock)
+const currentSoulId = ref('')   // soul_id from current submit (for saving creds)
+
 const route   = useRoute()
 const passkey = useSoulPasskey()
 const creds   = useSavedCreds()
@@ -130,6 +133,8 @@ onMounted(async () => {
     }
   }
 
+  lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
+  creds.initForSoul(lastSoulId.value)
   hasSavedCreds.value = creds.hasCreds.value
   if (hasSavedCreds.value) mode.value = 'biometric'
 })
@@ -145,10 +150,10 @@ async function biometricUnlock() {
       return
     }
 
-    const saved = await creds.loadCreds(prf)
+    const saved = await creds.loadCreds(prf, lastSoulId.value)
     if (!saved) {
       error.value = t('gate.error.creds_load_failed')
-      creds.clearCreds()
+      creds.clearCreds(lastSoulId.value)
       hasSavedCreds.value = false
       mode.value = 'form'
       return
@@ -181,7 +186,7 @@ async function biometricUnlock() {
     const err = e?.data?.error || ''
     if (err === 'invalid_cert' || err === 'gate_not_configured' || e?.status === 401) {
       error.value = t('gate.error.cert_expired')
-      creds.clearCreds()
+      creds.clearCreds(lastSoulId.value)
       hasSavedCreds.value = false
       mode.value = 'form'
     } else {
@@ -203,7 +208,11 @@ async function submit() {
 
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body: payload })
 
-    if (gateRes?.soul_id) localStorage.setItem(PWA_SOUL_KEY, gateRes.soul_id)
+    if (gateRes?.soul_id) {
+      localStorage.setItem(PWA_SOUL_KEY, gateRes.soul_id)
+      currentSoulId.value = gateRes.soul_id
+      creds.initForSoul(gateRes.soul_id)
+    }
     if (gateRes?.invite_login) sessionStorage.setItem('sys.invite_login', '1')
 
     const support = await passkey.checkPasskeySupport()
@@ -249,7 +258,7 @@ async function doSaveCreds() {
       error.value = passkey.passkeyError.value || t('gate.error.biometric_unavailable')
       return
     }
-    await creds.saveCreds({ password: password.value, cert: cert.value }, prf)
+    await creds.saveCreds({ password: password.value, cert: cert.value }, prf, currentSoulId.value)
     doRedirect()
   } catch {
     error.value = t('gate.error.save_failed')
