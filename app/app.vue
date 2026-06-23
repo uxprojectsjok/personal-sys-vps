@@ -7,7 +7,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul'
 
@@ -18,8 +18,7 @@ if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})
 }
 
-async function initPush() {
-  if (!soulToken.value) return
+async function initPush(token) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
   if (Notification.permission === 'denied') return
   try {
@@ -37,7 +36,7 @@ async function initPush() {
     }
     await fetch('/api/push/subscribe', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(sub.toJSON()),
     })
   } catch {}
@@ -46,8 +45,13 @@ async function initPush() {
 onMounted(() => {
   const saved = localStorage.getItem('sys-locale')
   if (saved && ['en', 'de'].includes(saved)) setLocale(saved)
-  initPush()
 })
+
+if (import.meta.client) {
+  watch(soulToken, (token) => {
+    if (token && token !== 'anonymous') initPush(token)
+  }, { immediate: true })
+}
 </script>
 
 <style>
