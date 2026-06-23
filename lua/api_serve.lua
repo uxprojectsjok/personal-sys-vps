@@ -364,9 +364,20 @@ Claudes ethische Grundsätze sind aktiv und nicht verhandelbar. Diese Sektion is
       mime   = "text/plain; charset=utf-8",
       active = false
     })
+    -- agent.md: immer anzeigen (Agent-Queue)
+    local agent_path = base_dir .. "/vault/context/agent.md"
+    local af = io.open(agent_path, "r")
+    if af then af:close()
+      table.insert(list, {
+        name   = "agent.md",
+        url    = base_url .. "/api/vault/context/agent.md",
+        mime   = "text/plain; charset=utf-8",
+        active = false
+      })
+    end
   end
   for _, name in ipairs(files) do
-    if name ~= "mind.md" then  -- Duplikat vermeiden falls manuell hochgeladen
+    if name ~= "mind.md" and name ~= "agent.md" then  -- Duplikat vermeiden falls manuell hochgeladen
       local ext = name:match("%.([^%.]+)$") or ""
       local url = base_url .. "/api/vault/" .. type_name .. "/" .. name
       table.insert(list, {

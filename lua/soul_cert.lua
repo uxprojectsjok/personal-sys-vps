@@ -249,18 +249,21 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
     _earn_check:close()
   end
 
-  -- agent.md anlegen falls nicht vorhanden
+  -- agent.md anlegen falls nicht vorhanden oder leer
   local _agent_path  = SOULS_DIR .. soul_id .. "/vault/context/agent.md"
   local _agent_check = io.open(_agent_path, "r")
-  if not _agent_check then
+  local _agent_needs_write = true
+  if _agent_check then
+    local _existing = _agent_check:read("*a"); _agent_check:close()
+    if _existing and #_existing > 10 then _agent_needs_write = false end
+  end
+  if _agent_needs_write then
     local _af = io.open(_agent_path, "w")
     if _af then
       _af:write("# SYS Agent Queue\n<!-- Tasks werden von Claude AI via MCP hier eingetragen. -->\n<!-- Format: - [ ] task  →  Agent holt sie beim nächsten Cron-Lauf ab -->\n\n## Pending\n\n\n\n## Done\n")
       _af:close()
       os.execute("chown www-data:www-data " .. _agent_path .. " 2>/dev/null || true")
     end
-  else
-    _agent_check:close()
   end
 
   -- prompts.md via MCP generieren (fire-and-forget nach dem Response)
