@@ -101,8 +101,8 @@ print(key)
 
   export ANTHROPIC_API_KEY="$API_KEY"
 
-  # MCP config (Zapier, etc.)
-  local MCP_URL
+  # MCP config (Zapier, etc.) — written as --mcp-config file, NOT settings.json
+  local MCP_URL MCP_CONFIG_FILE MCP_CONFIG_ARG
   MCP_URL="$(python3 -c "
 import json
 try:
@@ -111,17 +111,22 @@ try:
 except: print('')
 " 2>/dev/null || echo "")"
 
+  MCP_CONFIG_FILE="$AGENT_DIR/mcp.json"
+  MCP_CONFIG_ARG=""
+  MCP_TOOLS=""
   if [[ -n "$MCP_URL" ]]; then
     python3 -c "
 import json
 cfg = {'mcpServers': {'zapier': {'type': 'http', 'url': '$MCP_URL'}}}
-with open('$AGENT_DIR/.claude/settings.json','w') as f:
+with open('$MCP_CONFIG_FILE','w') as f:
   json.dump(cfg, f, indent=2)
 " 2>/dev/null \
-    && log_s "MCP: Zapier configured" \
-    || log_s "WARNING: could not write settings.json"
+    && log_s "MCP: Zapier configured (mcp.json)" \
+    || log_s "WARNING: could not write mcp.json"
+    MCP_CONFIG_ARG="--mcp-config $MCP_CONFIG_FILE"
+    MCP_TOOLS=",mcp__zapier__*"
   else
-    rm -f "$AGENT_DIR/.claude/settings.json"
+    rm -f "$MCP_CONFIG_FILE"
     log_s "MCP: not configured (no mcp_url in config)"
   fi
 
@@ -157,11 +162,6 @@ For each pending task:
 
 Work sequentially. Be careful and conservative."
 
-  # Build settings arg — point to agent .claude/ dir if it has a settings.json
-  local SETTINGS_ARG=""
-  local SETTINGS_FILE="$AGENT_DIR/.claude/settings.json"
-  [[ -f "$SETTINGS_FILE" ]] && SETTINGS_ARG="--settings $SETTINGS_FILE"
-
   # Pre-fix ownership so www-data can read/write during the run
   chown -R www-data:www-data "$soul_dir/vault/context/" 2>/dev/null || true
 
@@ -173,8 +173,8 @@ Work sequentially. Be careful and conservative."
     --model "$MODEL" \
     --print \
     --add-dir /var/lib/sys \
-    --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead,mcp__*" \
-    $SETTINGS_ARG \
+    --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead${MCP_TOOLS}" \
+    $MCP_CONFIG_ARG \
     >> "$LOG_FILE" 2>&1 \
     || log_s "WARNING: claude exited non-zero"
 
@@ -186,7 +186,8 @@ Work sequentially. Be careful and conservative."
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
-echo "[$(ts)] cron fired — mode: ${FORCE_SOUL:+force}${FORCE_SOUL:-scan}${FORCE_SOUL:+ ($FORCE_SOUL)}" >> "$LOG_MASTER"
+MODE="$( [[ -n "$FORCE_SOUL" ]] && echo "force ($FORCE_SOUL)" || echo "scan" )"
+echo "[$(ts)] cron fired — mode: $MODE" >> "$LOG_MASTER"
 
 if [[ -n "$FORCE_SOUL" ]]; then
   run_soul "$FORCE_SOUL"

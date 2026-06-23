@@ -1893,12 +1893,14 @@ async function setAgentInterval(iv) {
 
 async function fetchAgentLog() {
   try {
-    const r = await fetch('/api/agent/log?lines=80', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    const r = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
       const d = await r.json()
       agentRunLog.value = d.log || ''
+      return d.running === true   // true = still running, false = done
     }
   } catch {}
+  return false
 }
 
 async function runAgentNow() {
@@ -1914,13 +1916,13 @@ async function runAgentNow() {
     const d = await r.json().catch(() => ({}))
     if (r.ok) {
       agentFeedback.value = { ok: true, message: d.message || t('settings.agent_run_started') }
-      // Poll log every 2s for 90s
       agentRunPolling.value = true
       let ticks = 0
       agentLogTimer = setInterval(async () => {
-        await fetchAgentLog()
+        const stillRunning = await fetchAgentLog()
         ticks++
-        if (ticks >= 45) {
+        // Stop when run complete or after 90s
+        if (!stillRunning || ticks >= 45) {
           clearInterval(agentLogTimer)
           agentRunPolling.value = false
         }
@@ -1928,7 +1930,7 @@ async function runAgentNow() {
         if (ticks % 5 === 0) {
           try {
             const lr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-            if (lr.ok) { const d = await lr.json(); agentLastRun.value = d.last_run || '' }
+            if (lr.ok) { const ld = await lr.json(); agentLastRun.value = ld.last_run || '' }
           } catch {}
         }
       }, 2000)
