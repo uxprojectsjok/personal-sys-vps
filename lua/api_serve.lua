@@ -297,9 +297,9 @@ if not sub_dir then
   return
 end
 
--- Berechtigung prüfen
+-- Berechtigung prüfen (nur für externe Webhook-Aufrufe; Owner hat immer Zugriff)
 local perm_key = PERM_KEYS[type_name]
-if perm_key and not perm[perm_key] then
+if ngx.ctx.via_webhook and perm_key and not perm[perm_key] then
   ngx.status = 403
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"Access to ' .. type_name .. ' not permitted"}')
