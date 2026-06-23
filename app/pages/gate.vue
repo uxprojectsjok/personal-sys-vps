@@ -136,7 +136,7 @@ onMounted(async () => {
   lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
   creds.initForSoul(lastSoulId.value)
   hasSavedCreds.value = creds.hasCreds.value
-  if (hasSavedCreds.value) mode.value = 'biometric'
+  if (hasSavedCreds.value && soulRegistered.value) mode.value = 'biometric'
 })
 
 async function biometricUnlock() {
