@@ -146,10 +146,18 @@ if souls_exist then
       handle:close()
     end
     if bound_soul_id == "" then
-      ngx.sleep(0.5)
-      ngx.status = 401
-      ngx.say('{"error":"invalid_cert","message":"Ungültiger Soul-Cert. Dieser Soul ist auf diesem Server nicht registriert."}')
-      return
+      -- Kein Soul-Cert match → Invite-Token prüfen
+      local invite_tok = type(master.invite_token) == "string" and master.invite_token or ""
+      if invite_tok ~= "" and cert == invite_tok then
+        -- Gültiger Einladungscode → Gate-Zugang ohne Soul-Binding (Neuregistrierung)
+        ngx.log(ngx.INFO, "[gate_auth] Invite-Token Login akzeptiert")
+        -- bound_soul_id bleibt "" → kein gs:-Eintrag, Neuzugang kann Soul registrieren
+      else
+        ngx.sleep(0.5)
+        ngx.status = 401
+        ngx.say('{"error":"invalid_cert","message":"Ungültiger Soul-Cert oder Einladungscode."}')
+        return
+      end
     end
   end
 end
@@ -185,6 +193,9 @@ ngx.header["Set-Cookie"] = "sys_gate=" .. gate_token
 ngx.status = 200
 if bound_soul_id ~= "" then
   ngx.say('{"ok":true,"soul_id":"' .. bound_soul_id .. '"}')
+elseif multi_hoster and souls_exist then
+  -- Invite-Token Login: kein soul_id, aber invite_login Flag für Frontend
+  ngx.say('{"ok":true,"invite_login":true}')
 else
   ngx.say('{"ok":true}')
 end
