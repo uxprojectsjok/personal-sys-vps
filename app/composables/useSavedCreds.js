@@ -25,7 +25,7 @@ export function useSavedCreds() {
   const hasCreds = ref(false)
 
   function checkCreds(soulId = '') {
-    if (!import.meta.client) return false
+    if (!import.meta.client || !soulId) return false
     return !!localStorage.getItem(storageKey(soulId))
   }
 
