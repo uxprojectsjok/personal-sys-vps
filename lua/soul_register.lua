@@ -127,6 +127,7 @@ local meta = {
   soul_endpoint  = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
   verify_endpoint = base_url .. "/api/soul/verify?soul_id=" .. soul_id,
   pay_endpoint   = base_url .. "/api/soul/pay",
+  price_endpoint = base_url .. "/api/soul/price",
   earnings_endpoint = base_url .. "/api/soul/earnings",
 }
 if created_at   then meta.created      = created_at   end
@@ -223,6 +224,7 @@ if type(amort) == "table" then
     enabled              = amort.enabled == true,
     private              = amort.private == true,
     pol_per_request      = amort.pol_per_request,
+    dynamic_pricing      = amort.dynamic_pricing == true,
     wallet               = amort.wallet,
     -- agent_tools nur im Bezahlt-Modus relevant (gefiltert auf erlaubte Tools)
     agent_tools          = (amort.enabled == true)
