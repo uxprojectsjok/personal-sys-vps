@@ -418,7 +418,13 @@ const { allowCreateSoul, fetchNodeStatus } = useNodeStatus()
 const pwa = usePwaInstall()
 
 // Node-Status beim Start laden
-onMounted(() => fetchNodeStatus())
+const chainCountServer = ref(null)
+onMounted(() => {
+  fetchNodeStatus()
+  fetch('/api/soul/chain-metrics').then(r => r.ok ? r.json() : null).then(d => {
+    if (d?.anchor_count != null) chainCountServer.value = d.anchor_count
+  }).catch(() => {})
+})
 
 // ── Modal-State ───────────────────────────────────────────────────────────
 const createSoulOpen    = ref(false)
@@ -443,8 +449,9 @@ async function copyId() {
 }
 const shortCert    = computed(() => { const c = soulMeta.value?.cert || ''; return c ? c.slice(0, 8) + '…' : '—' })
 
-// chainCount aus soul_growth_chain Array-Länge
+// chainCount: Server-Wert (anchor_history.json) bevorzugt, Fallback auf lokalen Parse
 const chainCount = computed(() => {
+  if (chainCountServer.value != null) return chainCountServer.value
   if (!soulContent.value) return 0
   const m = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m)
   if (!m) return 0
