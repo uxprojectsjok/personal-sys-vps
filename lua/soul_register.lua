@@ -218,15 +218,65 @@ end
 if translate_desc then meta.description = translate_desc end
 if translate_tags then meta.tags        = translate_tags end
 if type(amort) == "table" then
-  local no_tools = setmetatable({}, cjson.array_mt)
-  local days     = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
+  local no_tools  = setmetatable({}, cjson.array_mt)
+  local days      = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
+  local base_price = tonumber(amort.pol_per_request) or 0.001
+  local dynamic    = amort.dynamic_pricing == true
+  local pol_current = string.format("%.4f", base_price)
+
+  if dynamic then
+    local ANCHOR_COEFF = 0.1; local AGE_COEFF = 0.01; local DEMAND_COEFF = 0.05
+    local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
+    if pf then
+      local ok_p, p = pcall(require("cjson.safe").decode, pf:read("*a")); pf:close()
+      if ok_p and type(p) == "table" then
+        ANCHOR_COEFF = tonumber(p.anchor_coeff)  or ANCHOR_COEFF
+        AGE_COEFF    = tonumber(p.age_coeff)     or AGE_COEFF
+        DEMAND_COEFF = tonumber(p.demand_coeff)  or DEMAND_COEFF
+      end
+    end
+    local anchor_count = 0; local chain_age_days = 0; local buyers_30d = 0
+    local ah = io.open(SOULS_DIR .. soul_id .. "/anchor_history.json", "r")
+    if ah then
+      local ok_a, hist = pcall(require("cjson.safe").decode, ah:read("*a")); ah:close()
+      if ok_a and type(hist) == "table" then
+        anchor_count = #hist
+        if hist[1] and type(hist[1].ts) == "string" then
+          local y,mo,d,h,mi,s = hist[1].ts:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+          if y then
+            local ref = ngx.time(); local utc_t = os.date("!*t", ref)
+            local tz_off = ref - os.time(utc_t)
+            local genesis = os.time({ year=tonumber(y), month=tonumber(mo), day=tonumber(d),
+              hour=tonumber(h), min=tonumber(mi), sec=tonumber(s), isdst=false }) + tz_off
+            chain_age_days = (ngx.time() - genesis) / 86400
+          end
+        end
+      end
+    end
+    local df = io.open(SOULS_DIR .. soul_id .. "/demand_log.json", "r")
+    if df then
+      local ok_d, dlog = pcall(require("cjson.safe").decode, df:read("*a")); df:close()
+      if ok_d and type(dlog) == "table" then
+        local cutoff = ngx.time() - 30 * 86400
+        for _, e in ipairs(dlog) do
+          if type(e) == "table" and (tonumber(e.ts) or 0) > cutoff then buyers_30d = buyers_30d + 1 end
+        end
+      end
+    end
+    if anchor_count > 0 or buyers_30d > 0 then
+      local mult  = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d * DEMAND_COEFF)
+      local price = math.max(base_price, math.floor(base_price * mult * 10000 + 0.5) / 10000)
+      pol_current = string.format("%.4f", price)
+    end
+  end
+
   meta.amortization = {
     enabled              = amort.enabled == true,
     private              = amort.private == true,
     pol_per_request      = amort.pol_per_request,
-    dynamic_pricing      = amort.dynamic_pricing == true,
+    pol_current          = pol_current,
+    dynamic_pricing      = dynamic,
     wallet               = amort.wallet,
-    -- agent_tools nur im Bezahlt-Modus relevant (gefiltert auf erlaubte Tools)
     agent_tools          = (amort.enabled == true)
                            and filter_tools(amort.agent_tools or amort.free_tools) or no_tools,
     token_duration_days  = days,
