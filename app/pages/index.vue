@@ -455,7 +455,7 @@ const chainCountLocal = computed(() => {
   const m = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m)
   if (m) {
     try {
-      const arr = JSON.parse(m[1])
+      const arr = JSON.parse(m[1].replace(/,(\s*[\]\}])/g, '$1'))
       return Array.isArray(arr) ? arr.length : 0
     } catch {
       return m[1].split('\n').filter(l => l.trim().startsWith('-')).length

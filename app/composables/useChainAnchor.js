@@ -523,7 +523,9 @@ export function useChainAnchor() {
     const m = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m);
     if (!m) return [];
     try {
-      return JSON.parse(m[1]);
+      // trailing commas in YAML-Blockformat tolerieren (z.B. nach Import alter Soul-Dateien)
+      const clean = m[1].replace(/,(\s*[\]\}])/g, '$1');
+      return JSON.parse(clean);
     } catch {
       return [];
     }
