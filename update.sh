@@ -65,7 +65,7 @@ done
 # ── 6. Rebuild + deploy frontend ──────────────────────────────────────────────
 # Find deploy path from nginx config
 DEPLOY_DIR=""
-_NGINX_CONF=$(find /etc/openresty /usr/local/openresty /etc/nginx -name "*.conf" 2>/dev/null | xargs grep -l "root /var/www/" 2>/dev/null | head -1)
+_NGINX_CONF=$(find /etc/openresty /usr/local/openresty /etc/nginx -name "*.conf" 2>/dev/null | xargs grep -l "root /var/www/" 2>/dev/null | head -1 || true)
 if [ -n "$_NGINX_CONF" ]; then
   DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}')
 fi
@@ -79,6 +79,20 @@ if command -v npm &>/dev/null; then
   info "Frontend deployed to $DEPLOY_DIR"
 else
   warn "npm not found — frontend not rebuilt (Lua + OpenResty update still applied)"
+fi
+
+# ── 7. soul-mcp: sync + restart ──────────────────────────────────────────────
+# Erkennt ob der Service aus dem Repo oder aus /opt/sys/soul-mcp läuft.
+# Bei /opt/sys/ (Legacy-Setup): JS-Dateien aus Repo dorthin kopieren.
+# Bei $SCRIPT_DIR (modernes Init): git pull hat die Dateien schon aktualisiert.
+_MCP_WD=$(systemctl show soul-mcp --property=WorkingDirectory --value 2>/dev/null || true)
+if [ -d "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" = "/opt/sys/soul-mcp" ]; then
+  info "Syncing soul-mcp to /opt/sys/soul-mcp/ ..."
+  cp "$SCRIPT_DIR/soul-mcp/server.mjs" /opt/sys/soul-mcp/server.mjs
+  cp -r "$SCRIPT_DIR/soul-mcp/lib/"    /opt/sys/soul-mcp/lib/
+fi
+if systemctl is-enabled --quiet soul-mcp 2>/dev/null; then
+  systemctl restart soul-mcp && info "soul-mcp restarted ✓"
 fi
 
 info "Update complete."
