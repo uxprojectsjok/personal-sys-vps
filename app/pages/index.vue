@@ -449,20 +449,25 @@ async function copyId() {
 }
 const shortCert    = computed(() => { const c = soulMeta.value?.cert || ''; return c ? c.slice(0, 8) + '…' : '—' })
 
-// chainCount: Server-Wert (anchor_history.json) bevorzugt, Fallback auf lokalen Parse
-const chainCount = computed(() => {
-  if (chainCountServer.value != null) return chainCountServer.value
+// Lokaler Parse: inline JSON array oder YAML-Blockliste
+const chainCountLocal = computed(() => {
   if (!soulContent.value) return 0
   const m = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m)
-  if (!m) return 0
-  try {
-    const arr = JSON.parse(m[1])
-    return Array.isArray(arr) ? arr.length : 0
-  } catch {
-    const lines = m[1].split('\n').filter(l => l.trim().startsWith('-'))
-    return lines.length
+  if (m) {
+    try {
+      const arr = JSON.parse(m[1])
+      return Array.isArray(arr) ? arr.length : 0
+    } catch {
+      return m[1].split('\n').filter(l => l.trim().startsWith('-')).length
+    }
   }
+  const block = soulContent.value.match(/soul_growth_chain:\s*\n((?:[ \t]*-[^\n]*\n?)+)/m)
+  if (block) return block[1].split('\n').filter(l => l.trim().startsWith('-')).length
+  return 0
 })
+// Höchster Wert gewinnt: frischer VPS hat server=0 aber lokal=18; alter VPS kann server>lokal haben
+const effectiveChainCount = computed(() => Math.max(chainCountServer.value ?? 0, chainCountLocal.value))
+const chainCount = computed(() => effectiveChainCount.value)
 
 // hasAnchor: true wenn soul_chain_anchor nicht null/leer
 const hasAnchor = computed(() => {
@@ -473,7 +478,7 @@ const hasAnchor = computed(() => {
 })
 
 // Maturity wird live aus dem Soul-Content berechnet
-const maturityData  = computed(() => computeMaturity(soulContent.value, {}, null, 0, chainCountServer.value))
+const maturityData  = computed(() => computeMaturity(soulContent.value, {}, null, 0, effectiveChainCount.value || null))
 const maturity      = computed(() => maturityData.value.score)
 const maturityLevel = computed(() => maturityData.value.level)
 
