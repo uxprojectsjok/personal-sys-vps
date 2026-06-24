@@ -482,7 +482,10 @@ async function seedFromLocalAnchors() {
         }
 
         // ── 3. Neue Soul aus chain_anchor.json anlegen ───────────────────────
-        // Nur wenn chain_anchor.json vorhanden ist (enthält TX-Hash als Beweis)
+        // Primär: chain_anchor.json (von register-anchor geschrieben).
+        // Fallback: neuester Eintrag mit TX aus anchor_history.json —
+        // tritt auf bei VPS-Import wenn register-anchor auf dem neuen VPS
+        // noch nie aufgerufen wurde (z.B. nach soul-Import ohne Neu-Ankerung).
         let anchor = null;
         try {
           const raw = await readFile(`${SOULS_DIR}${dir}/chain_anchor.json`, 'utf8');
@@ -491,8 +494,30 @@ async function seedFromLocalAnchors() {
         } catch { /* kein chain_anchor.json */ }
 
         if (!anchor) {
+          // Fallback: anchor_history.json nach letztem TX-Eintrag durchsuchen
+          try {
+            const rawH = await readFile(`${SOULS_DIR}${dir}/anchor_history.json`, 'utf8');
+            const hist = JSON.parse(rawH);
+            if (Array.isArray(hist)) {
+              const withTx = hist.filter(e => typeof e.tx === 'string' && e.tx.startsWith('0x'));
+              if (withTx.length > 0) {
+                const last = withTx[withTx.length - 1];
+                anchor = {
+                  tx:       last.tx,
+                  date:     last.ts ? last.ts.split('T')[0] : null,
+                  sessions: 1,  // konservativ — wird bei nächstem Anker überschrieben
+                  tags:     [],
+                  cid:      rawCid ?? undefined,
+                };
+                console.log(`[soul-seed] ${dir.slice(0,8)}: chain_anchor.json fehlt — Fallback auf anchor_history.json (TX ${last.tx.slice(0,10)}...)`);
+              }
+            }
+          } catch { /* kein anchor_history.json */ }
+        }
+
+        if (!anchor) {
           // Noch nicht geankert — überspringen (kein TX-Beweis vorhanden)
-          console.log(`[soul-seed] ${dir.slice(0,8)}: kein chain_anchor.json — übersprungen`);
+          console.log(`[soul-seed] ${dir.slice(0,8)}: kein chain_anchor.json und kein anchor_history.json — übersprungen`);
           continue;
         }
 
