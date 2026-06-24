@@ -193,6 +193,7 @@ Work sequentially. Be careful and conservative."
     --print \
     --add-dir /var/lib/sys \
     --add-dir "$WORK_DIR" \
+    --add-dir /etc/openresty \
     --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead${MCP_TOOLS}" \
     $MCP_CONFIG_ARG \
     >> "$LOG_FILE" 2>&1 \
