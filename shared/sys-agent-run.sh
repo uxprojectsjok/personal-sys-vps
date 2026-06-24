@@ -9,8 +9,15 @@ set -euo pipefail
 SOULS_DIR="/var/lib/sys/souls"
 CONFIG_DIR="/var/lib/sys/config"
 AGENT_DIR="/var/lib/sys/agent"
-WORK_DIR="/var/www/SaveYourSoul_init"
 LOG_MASTER="/var/log/sys_agent.log"
+
+# Source dir written by init.sh — resolves correctly on both dev and fresh installs
+_SYS_DIR_FILE="/var/lib/sys/sys_dir"
+WORK_DIR=""
+if [[ -f "$_SYS_DIR_FILE" ]]; then
+  WORK_DIR="$(tr -d '[:space:]' < "$_SYS_DIR_FILE")"
+fi
+[[ -z "$WORK_DIR" || ! -d "$WORK_DIR" ]] && WORK_DIR="/opt/sys"
 
 # Resolve claude binary: sentinel file → PATH
 CLAUDE_BIN=""
