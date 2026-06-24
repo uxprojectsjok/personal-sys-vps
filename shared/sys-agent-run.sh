@@ -37,6 +37,9 @@ run_soul() {
   local LOG_FILE="/var/log/sys_agent_${soul_id}.log"
   local SHORT_ID="${soul_id:0:8}"
 
+  # Truncate soul log at run start — file always contains only the last run
+  > "$LOG_FILE" 2>/dev/null || true
+
   log_s() { echo "[$(ts)] $*" >> "$LOG_FILE"; echo "[$(ts)] [$SHORT_ID] $*" >> "$LOG_MASTER"; }
 
   # In cron mode check enabled flag; in force mode skip this
