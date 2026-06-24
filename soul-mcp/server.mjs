@@ -1041,7 +1041,7 @@ app.get('/internal/discover-souls', (req, res) => {
 // POST /internal/generate-prompts — regeneriert prompts.md in allen Soul-Vaults
 // Wird vom Vault-Explorer nach dem Sync aufgerufen.
 app.post('/internal/generate-prompts', async (_req, res) => {
-  const PROJECT_ROOT = '/var/www/SaveYourSoul_init';
+  const PROJECT_ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
   const script = `${PROJECT_ROOT}/utils/generate-prompts.mjs`;
   try {
     await new Promise((resolve, reject) => {
