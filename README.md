@@ -425,8 +425,8 @@ The setup script prompts for domain, email, and optionally an Anthropic API key 
 
 | Mode | Description |
 |------|-------------|
-| **Personal Node** | Single soul. First registrant is the permanent owner. |
-| **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. |
+| **Personal Node** | Single soul. First registrant is the permanent owner. Includes the **Autonomous Agent Runner** — processes tasks from `agent.md`, maintains the node, runs hourly + on-demand with optional Zapier MCP support. |
+| **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. Agent Runner not available — it runs as root and would have access to all souls on the node. |
 
 These modes are independent of the server's infrastructure. A Personal Node can run on a VPS that already hosts other websites — SYS detects existing sites automatically and integrates safely alongside them.
 
