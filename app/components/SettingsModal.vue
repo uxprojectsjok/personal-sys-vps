@@ -540,71 +540,9 @@
             <!-- ── Tab: Gesundheit ── -->
             <template v-if="tab === 'gesundheit'">
 
-              <div class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.provider') }}</label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button v-for="p in HEALTH_PROVIDERS" :key="p.id"
-                    class="sys-btn-ed" :class="healthAdapter === p.id ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
-                    :disabled="p.soon" :style="p.soon ? 'opacity:0.4;cursor:not-allowed' : ''"
-                    @click="!p.soon && (healthAdapter = p.id)">
-                    {{ p.label }}<span v-if="p.soon" style="font-size:10px;margin-left:6px;opacity:0.6">{{ $t('settings.soon') }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.device') }}</label>
-                <select class="sys-input" v-model="healthGarminModel" style="cursor:pointer">
-                  <optgroup label="Venu / Vivoactive">
-                    <option value="garmin_vivoactive2">Vivoactive 2</option>
-                    <option value="garmin_vivoactive3">Vivoactive 3</option>
-                    <option value="garmin_vivoactive4">Vivoactive 4</option>
-                    <option value="garmin_venu">Venu</option>
-                    <option value="garmin_venu2">Venu 2</option>
-                  </optgroup>
-                  <optgroup label="Forerunner">
-                    <option value="garmin_fr235">Forerunner 235</option>
-                    <option value="garmin_fr245">Forerunner 245</option>
-                    <option value="garmin_fr255">Forerunner 255</option>
-                    <option value="garmin_fr265">Forerunner 265</option>
-                    <option value="garmin_fr945">Forerunner 945</option>
-                  </optgroup>
-                  <optgroup label="Fenix">
-                    <option value="garmin_fenix5">Fenix 5</option>
-                    <option value="garmin_fenix6">Fenix 6</option>
-                    <option value="garmin_fenix7">Fenix 7</option>
-                  </optgroup>
-                  <optgroup label="Instinct / Epix">
-                    <option value="garmin_instinct">Instinct</option>
-                    <option value="garmin_epix">Epix</option>
-                  </optgroup>
-                </select>
-                <span class="sm-desc">{{ $t('settings.health_sync_info') }}</span>
-              </div>
-
-              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.garmin_email') }}</label>
-                <input class="sys-input" type="email" v-model="healthGarminEmail" placeholder="your@email.com" autocomplete="off" />
-              </div>
-
-              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.garmin_password') }}</label>
-                <input class="sys-input" type="password" v-model="healthGarminPassword"
-                  :placeholder="healthHasPassword ? $t('settings.garmin_pw_keep') : $t('settings.garmin_pw_enter')"
-                  autocomplete="new-password" />
-              </div>
-
-              <div v-if="healthAdapter === 'apple_health'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <div class="sm-infoblock">{{ $t('settings.apple_health_info') }}</div>
-              </div>
-
-              <div v-if="healthAdapter === 'oura'" class="sys-field" style="gap:10px;margin-bottom:20px">
-                <div class="sm-infoblock">{{ $t('settings.oura_info') }}</div>
-              </div>
-
-              <!-- ── Sync-Status ── -->
-              <div v-if="healthAdapter === 'garmin'" class="sys-field" style="gap:6px;margin-bottom:20px">
-                <label class="sys-field-label">{{ $t('settings.health_sync_status_label') }}</label>
+              <!-- Status -->
+              <div class="sys-field" style="gap:6px;margin-bottom:20px">
+                <label class="sys-field-label">Garmin Connect</label>
                 <div v-if="!healthHasPassword" class="sm-desc" style="color:var(--fg-2)">{{ $t('settings.health_sync_not_configured') }}</div>
                 <div v-else-if="healthSyncStatus" class="sm-desc" :style="healthSyncStatus.ok ? 'color:var(--sys-ok)' : 'color:var(--c-err,#e06c75)'">
                   {{ healthSyncStatus.ok ? '✓' : '✗' }} {{ healthSyncStatus.message }}
@@ -887,9 +825,6 @@
                     {{ healthLoginBusy ? '…' : 'Garmin Login' }}
                   </button>
                   <span v-if="healthGarminConnected" style="font-size:11px;font-family:var(--sys-mono);color:var(--sys-ok);padding:0 6px;align-self:center">Garmin verbunden ✓</span>
-                  <button class="sys-btn-ed sys-btn-ed--primary" @click="saveHealthConfig" :disabled="healthSaving">
-                    {{ healthSaving ? $t('settings.saving') : $t('common.save') }}
-                  </button>
                 </template>
               </template>
             </div>
@@ -982,17 +917,7 @@ function detectAdmin() {
 const tab = ref('api')
 
 // ── Gesundheit Tab State ──────────────────────────────────────────────────────
-const HEALTH_PROVIDERS = [
-  { id: 'garmin',       label: 'Garmin',       soon: false },
-  { id: 'apple_health', label: 'Apple Health', soon: true  },
-  { id: 'oura',         label: 'Oura Ring',    soon: true  },
-]
-const healthAdapter       = ref('garmin')
-const healthGarminModel   = ref('garmin_fr235')
-const healthGarminEmail   = ref('')
-const healthGarminPassword = ref('')
 const healthHasPassword   = ref(false)
-const healthSaving        = ref(false)
 const healthMsg           = ref('')
 const healthMsgError      = ref(false)
 const healthNeedsMfa      = ref(false)
@@ -1006,40 +931,14 @@ async function loadHealthConfig() {
     const r = await fetch('/api/health/config', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
       const d = await r.json()
-      healthAdapter.value     = d.adapter     || 'garmin'
-      healthGarminModel.value = d.garmin_model || 'garmin_fr235'
-      healthGarminEmail.value = d.garmin_email || ''
-      healthHasPassword.value = !!d.has_password
+      healthHasPassword.value     = !!d.has_password
       healthGarminConnected.value = !!d.has_tokens
     }
   } catch {}
-  // Sync-Status parallel laden
   try {
     const rs = await fetch('/api/health/sync-status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (rs.ok) healthSyncStatus.value = await rs.json()
   } catch {}
-}
-
-async function saveHealthConfig() {
-  healthSaving.value = true; healthMsg.value = ''; healthMsgError.value = false
-  try {
-    const body = { adapter: healthAdapter.value, garmin_model: healthGarminModel.value, garmin_email: healthGarminEmail.value }
-    if (healthGarminPassword.value) body.garmin_password = healthGarminPassword.value
-    const r = await fetch('/api/health/config', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (r.ok) {
-      healthMsg.value = 'Gespeichert ✓'
-      healthGarminPassword.value = ''
-      healthHasPassword.value = true
-    } else {
-      healthMsgError.value = true; healthMsg.value = 'Fehler beim Speichern.'
-    }
-  } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
-  healthSaving.value = false
-  setTimeout(() => { healthMsg.value = '' }, 4000)
 }
 
 async function garminLogin() {
