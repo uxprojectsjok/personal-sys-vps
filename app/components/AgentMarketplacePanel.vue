@@ -681,6 +681,7 @@ async function saveAmort() {
     amortActive.value  = amort.enabled
     amortSuccess.value = true
     setTimeout(() => { amortSuccess.value = false }, 3000)
+    if (amort.dynamic_pricing) fetchLivePrice()
   } catch (e) {
     amortError.value = e.message
   } finally {
