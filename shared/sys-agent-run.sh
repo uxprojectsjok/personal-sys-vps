@@ -156,9 +156,12 @@ Pending tasks are lines starting with '- [ ]' OR sections with '**Status:** offe
 
 For each pending task:
 1. Complete it fully using your available tools.
-2. Mark it done:
+2. After completion rewrite the entire agent.md:
+   - Move the completed task block from '## Offene Tasks' to '## Erledigte Tasks'
+   - In the moved block: change '**Status:** offen' to '**Status:** erledigt $TODAY'
    - checkbox format: change '- [ ]' to '- [x] $TODAY —'
-   - section format:  change '**Status:** offen' to '**Status:** erledigt $TODAY'
+   - If '## Erledigte Tasks' only has '*(leer)*', replace that line with the task block
+   - Keep all other tasks unchanged
 
 Work sequentially. Be careful and conservative."
 
