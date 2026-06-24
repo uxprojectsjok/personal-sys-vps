@@ -217,6 +217,7 @@ async function enrichFromIpfs(entry, rawCid) {
     entry.cid            = cid;
     entry.gateway_url    = gw;
     entry.ipfs_loaded_at = new Date().toISOString();
+    _dirty = true;
   } catch { /* alle IPFS-Gateways nicht erreichbar */ }
 }
 
@@ -376,6 +377,15 @@ async function incrementalScan() {
       return;
     }
 
+    // Beginne Scan maximal SCAN_WINDOW Blöcke in der Vergangenheit.
+    // Öffentliche RPCs (publicnode) blockieren eth_getLogs für ältere Blöcke (archive).
+    const SCAN_WINDOW = 2_000_000; // ~11 Tage bei ~2 Blöcken/s
+    const scanFrom = Math.max(_lastBlock, current - SCAN_WINDOW);
+    if (scanFrom > _lastBlock) {
+      console.log(`[soul-index] Überspringe Blöcke ${_lastBlock}–${scanFrom - 1} (archive, kein freier RPC-Zugang)`);
+      _lastBlock = scanFrom;
+    }
+
     console.log(`[soul-index] Scan ${_lastBlock} → ${current} (${current - _lastBlock} Blöcke, ~${Math.ceil((current - _lastBlock) / SCAN_CHUNK)} Chunks)`);
 
     for (let from = _lastBlock; from <= current; from += SCAN_CHUNK) {
@@ -386,7 +396,16 @@ async function incrementalScan() {
           await processEvent(ev).catch(e => console.error('[soul-index] Event übersprungen:', e.message));
         }
         _lastBlock = to + 1;
-      } catch { /* Chunk überspringen — wird beim nächsten Neustart wieder versucht */ }
+      } catch (e) {
+        const msg = e?.info?.responseBody ?? e?.message ?? '';
+        if (msg.includes('Archive') || msg.includes('archive') || msg.includes('personal token')) {
+          // RPC blockiert alle historischen getLogs — überspringe gesamten Rest
+          console.warn(`[soul-index] Archive-Fehler bei Block ${from} — überspringe bis ${current}`);
+          _lastBlock = current + 1;
+          break;
+        }
+        console.warn(`[soul-index] Chunk ${from}–${to} übersprungen:`, msg.slice(0, 80));
+      }
       await sleep(SCAN_DELAY_MS);
     }
 
