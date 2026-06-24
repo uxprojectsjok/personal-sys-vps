@@ -155,16 +155,20 @@ except: print('claude-sonnet-4-6')
 
   local PROMPT="${CLAUDE_MD_HINT}Read $AGENT_MD and work through every pending task.
 
-Pending tasks are lines starting with '- [ ]' OR sections with '**Status:** offen'.
+## Sections in agent.md
+- **## Dauertasks** — standing rules, always apply after completing each task. Never mark them done.
+- **## Offene Tasks** — tasks to complete. Identified by '**Status:** offen' or '- [ ]'.
+- **## Erledigte Tasks** — completed tasks archive.
 
-For each pending task:
+## Steps for each pending task
 1. Complete it fully using your available tools.
-2. After completion rewrite the entire agent.md:
+2. Apply all rules from '## Dauertasks' (e.g. send a summary email).
+3. Rewrite agent.md:
    - Move the completed task block from '## Offene Tasks' to '## Erledigte Tasks'
-   - In the moved block: change '**Status:** offen' to '**Status:** erledigt $TODAY'
+   - Change '**Status:** offen' to '**Status:** erledigt $TODAY'
    - checkbox format: change '- [ ]' to '- [x] $TODAY —'
    - If '## Erledigte Tasks' only has '*(leer)*', replace that line with the task block
-   - Keep all other tasks unchanged
+   - Leave '## Dauertasks' section completely unchanged
 
 Work sequentially. Be careful and conservative."
 
