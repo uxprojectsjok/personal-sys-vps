@@ -21,7 +21,10 @@ local runner = "/usr/local/bin/sys-agent-run.sh"
 local log    = "/var/log/sys_agent_" .. soul_id .. ".log"
 
 -- soul_id als Argument → runner bypasses enabled-check ("force mode")
-local cmd = "nohup " .. runner .. " " .. soul_id .. " >> " .. log .. " 2>&1 &"
+-- sudo required: www-data (OpenResty) can't write to root-owned log files.
+-- Outer redirect → /dev/null (www-data can't write root-owned log);
+-- the runner itself writes to the log internally (runs as root via sudo).
+local cmd = "nohup sudo " .. runner .. " " .. soul_id .. " >/dev/null 2>&1 &"
 local ok = os.execute(cmd)
 
 if ok then

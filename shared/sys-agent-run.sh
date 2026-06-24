@@ -167,12 +167,15 @@ Work sequentially. Be careful and conservative."
 
   log_s "launching Claude..."
 
-  cd "$WORK_DIR"
+  # cd into soul dir so agent.md is in the project scope (Claude Code requires
+  # files to be within cwd or --add-dir for Edit/Write to be auto-approved).
+  cd "$soul_dir/vault/context"
   # shellcheck disable=SC2086
   echo "$PROMPT" | "$CLAUDE_BIN" \
     --model "$MODEL" \
     --print \
     --add-dir /var/lib/sys \
+    --add-dir "$WORK_DIR" \
     --allowedTools "Read,Edit,Write,Bash,Glob,Grep,LS,WebSearch,WebFetch,TodoWrite,TodoRead${MCP_TOOLS}" \
     $MCP_CONFIG_ARG \
     >> "$LOG_FILE" 2>&1 \
