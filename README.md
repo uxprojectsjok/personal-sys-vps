@@ -80,6 +80,18 @@ Three phases — nothing more:
 - **Food Log**: every food photo logged as dated entry (A–E nutrition rating, name, notes) — aggregated weekly and monthly, annual journal with KW breakdown
 - **Health Sync**: Garmin Connect adapter (FR235 and others) — weekly cron or on-demand via chat command. Adapters for Apple Health and Oura ring included.
 - Profile capture via chat: `@audio` / `@face` / `@body` — inline capture cards for voice, photo, and motion directly in the chat stream
+- Health setup via init.sh script — the Settings UI shows connection status and the Garmin MFA login flow only (no credentials stored in the UI)
+
+**Agent Runner (Autonomous Tasks)**
+- **SYS Agent** runs tasks from `agent.md` autonomously — Claude Code executes them on a schedule without any manual prompt
+- Hourly cron scan across all souls; runs only when pending tasks exist
+- On-demand execution via **"Jetzt ausführen"** button in Settings → Agent tab
+- **agent.md** three-section format: **`## Dauertasks`** (standing rules always applied after each task), **`## Offene Tasks`** (pending), **`## Erledigte Tasks`** (completed archive)
+- **Dauertasks** persist permanently and never get marked done — example: "After every completed task, send email via Zapier"
+- **Zapier MCP** integration: agent can call Zapier actions (send email, Slack, webhooks, Google Docs) during task execution
+- Live log viewer in Settings → Agent tab: auto-polls while running, shows full output of the last run
+- Per-soul enable/disable — disabled souls are skipped silently at cron time
+- Agent writes directly to the soul's vault context files (full read/write access to `vault/context/`)
 
 **Emergency Protocol**
 - 3-level AI lock activatable from the header: KI-Sperre → AI-Blackout → Isolierung
@@ -148,6 +160,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 - Zapier integration — automate workflows and notifications via webhooks
 - Browser extension (Chrome MV3) for automatic soul_cert injection
 - Twilio call config — voice call integration
+- **Web Push Notifications**: browser subscribes at login via VAPID — node can push alerts without a background app
 
 **Agent Marketplace**
 - Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
@@ -454,7 +467,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: e513f8c0d30a39db
+Current release fingerprint: a061eedb6de9e802
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
