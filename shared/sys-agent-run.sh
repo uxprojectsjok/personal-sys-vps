@@ -77,7 +77,7 @@ run_soul() {
   #   checkbox:  - [ ] task
   #   section:   **Status:** offen  |  Status: offen  |  status: open
   local task_count=0
-  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* offen|Status: offen|status: open" "$AGENT_MD" 2>/dev/null || true)
+  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* offen|Status: offen|status: open|\*\*Status:\*\* aktiv" "$AGENT_MD" 2>/dev/null || true)
 
   if [[ "$task_count" -eq 0 ]]; then
     log_s "no pending tasks — idle"
