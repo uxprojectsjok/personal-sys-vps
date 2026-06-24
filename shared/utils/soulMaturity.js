@@ -54,8 +54,9 @@ export const MATURITY_THRESHOLD = 75;
  * @param {{ audio?: string[], images?: string[], context?: string[] }} [syncedFiles]
  * @param {number|null} [verifiedSignatureScore]  — externe Verifikation (0–15)
  * @param {number} [mutualConnections]  — bestätigte Soul-Network-Verbindungen (0–n)
+ * @param {number|null} [chainCountOverride] — Server-seitiger anchor_count (überschreibt lokalen Parse)
  */
-export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatureScore = null, mutualConnections = 0) {
+export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatureScore = null, mutualConnections = 0, chainCountOverride = null) {
   if (!soulMarkdown) {
     return { score: 0, level: "Genesis", isMature: false, breakdown: zeroBreakdown() };
   }
@@ -64,7 +65,9 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
 
   // ── Säule 1: Herkunft ── max 25 ──────────────────────────────────────────
   const agePts      = scoreAge(meta["created"]);           // 0–10
-  const chainPts    = scoreGrowthChain(meta["soul_growth_chain"]); // 0–15
+  const chainPts    = chainCountOverride != null
+    ? scoreGrowthChainFromCount(chainCountOverride)
+    : scoreGrowthChain(meta["soul_growth_chain"]); // 0–15
   const herkunftPts = agePts + chainPts;
 
   // ── Säule 2: Tiefe ── max 20 ─────────────────────────────────────────────
@@ -174,18 +177,22 @@ function scoreAge(createdStr) {
   return 10;                    // 25+ Jahre — generationelles Archiv
 }
 
+function scoreGrowthChainFromCount(n) {
+  if (!n || n === 0) return 0;
+  if (n <= 2)   return 2;
+  if (n <= 5)   return 5;
+  if (n <= 10)  return 8;
+  if (n <= 20)  return 11;
+  if (n <= 40)  return 13;
+  return 15;
+}
+
 function scoreGrowthChain(raw) {
   if (!raw) return 0;
   try {
     const chain = JSON.parse(raw);
     const n = Array.isArray(chain) ? chain.length : 0;
-    if (n === 0)  return 0;
-    if (n <= 2)   return 2;
-    if (n <= 5)   return 5;
-    if (n <= 10)  return 8;
-    if (n <= 20)  return 11;
-    if (n <= 40)  return 13;
-    return 15;    // 40+ Versionen — lebenslanges Wachstum
+    return scoreGrowthChainFromCount(n);
   } catch { return 0; }
 }
 

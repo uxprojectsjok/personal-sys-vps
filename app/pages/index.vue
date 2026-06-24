@@ -473,7 +473,7 @@ const hasAnchor = computed(() => {
 })
 
 // Maturity wird live aus dem Soul-Content berechnet
-const maturityData  = computed(() => computeMaturity(soulContent.value))
+const maturityData  = computed(() => computeMaturity(soulContent.value, {}, null, 0, chainCountServer.value))
 const maturity      = computed(() => maturityData.value.score)
 const maturityLevel = computed(() => maturityData.value.level)
 

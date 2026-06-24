@@ -182,7 +182,7 @@ const syncedFiles = computed(() => {
 
 const data = computed(() => {
   if (!soulContent.value) return { score: 0, level: 'Genesis', breakdown: null }
-  return computeMaturity(soulContent.value, syncedFiles.value, null, peerCount.value)
+  return computeMaturity(soulContent.value, syncedFiles.value, null, peerCount.value, chainMetrics.value?.anchor_count ?? null)
 })
 
 // Ring circumference (r=66)
