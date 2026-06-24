@@ -381,8 +381,6 @@ ngx.timer.at(0, function()
   })
 end)
 
-end
-
 -- ── Zugriffs-Token ausstellen ─────────────────────────────────────────────────
 local days      = math.max(1, math.min(30, tonumber(amort.token_duration_days) or 1))
 local TOKEN_TTL = days * 86400
