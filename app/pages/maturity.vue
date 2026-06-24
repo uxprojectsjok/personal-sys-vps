@@ -184,7 +184,7 @@ const localChainCount = computed(() => {
   if (!soulContent.value) return 0
   const m = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m)
   if (m) {
-    try { const arr = JSON.parse(m[1]); return Array.isArray(arr) ? arr.length : 0 } catch { return m[1].split('\n').filter(l => l.trim().startsWith('-')).length }
+    try { const arr = JSON.parse(m[1].replace(/,(\s*[\]\}])/g, '$1')); return Array.isArray(arr) ? arr.length : 0 } catch { return m[1].split('\n').filter(l => l.trim().startsWith('-')).length }
   }
   const block = soulContent.value.match(/soul_growth_chain:\s*\n((?:[ \t]*-[^\n]*\n?)+)/m)
   if (block) return block[1].split('\n').filter(l => l.trim().startsWith('-')).length
