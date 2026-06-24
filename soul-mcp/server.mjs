@@ -60,21 +60,78 @@ app.get('/.well-known/oauth-authorization-server', (_req, res) => {
 });
 
 // ── Protected Resource Metadata (RFC 8707) – Claude.ai nutzt diesen Endpoint ──
+// Liest Zahlungsinfos aus api_context.json für die 401-Antwort
+async function loadPaymentHint(soulId) {
+  try {
+    let id = soulId;
+    if (!id) {
+      const dirs = await readdir(SOULS_DIR).catch(() => []);
+      id = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) ?? null;
+    }
+    if (!id) return null;
+    const raw = await readFile(`${SOULS_DIR}${id}/api_context.json`, 'utf8');
+    const ctx = JSON.parse(raw);
+    const a = ctx.amortization;
+    if (!a?.enabled) return null;
+    const base    = parseFloat(a.pol_per_request) || 0.001;
+    const dynamic = a.dynamic_pricing === true;
+    let polCurrent = base;
+    if (dynamic) {
+      // Gleiche Formel wie soul_price.lua
+      const ANCHOR_COEFF = 0.1, AGE_COEFF = 0.01, DEMAND_COEFF = 0.05;
+      let anchorCount = 0, chainAgeDays = 0, buyers30d = 0;
+      try {
+        const ahRaw = await readFile(`${SOULS_DIR}${id}/anchor_history.json`, 'utf8');
+        const hist = JSON.parse(ahRaw);
+        if (Array.isArray(hist)) {
+          anchorCount = hist.length;
+          if (hist[0]?.ts) {
+            const genesis = new Date(hist[0].ts).getTime();
+            if (!isNaN(genesis)) chainAgeDays = (Date.now() - genesis) / 86_400_000;
+          }
+        }
+      } catch { /* keine anchor_history → base */ }
+      try {
+        const dlRaw  = await readFile(`${SOULS_DIR}${id}/demand_log.json`, 'utf8');
+        const dlog   = JSON.parse(dlRaw);
+        const cutoff = Date.now() / 1000 - 30 * 86400;
+        if (Array.isArray(dlog)) buyers30d = dlog.filter(e => (e.ts || 0) > cutoff).length;
+      } catch { /* kein demand_log → 0 */ }
+      if (anchorCount > 0 || buyers30d > 0) {
+        const mult = 1 + anchorCount * ANCHOR_COEFF + chainAgeDays * AGE_COEFF + buyers30d * DEMAND_COEFF;
+        polCurrent = Math.max(base, Math.round(base * mult * 10000) / 10000);
+      }
+    }
+    return {
+      pol_per_request: a.pol_per_request ?? '0.001',
+      pol_current:     polCurrent.toFixed(4),
+      dynamic_pricing: dynamic,
+      wallet:          a.wallet ?? '',
+      pay_endpoint:    `${BASE_URL}/api/soul/pay`,
+      price_endpoint:  `${BASE_URL}/api/soul/price`,
+    };
+  } catch { return null; }
+}
+
 // Sowohl /mcp-Variante als auch Basis-URL werden abgefragt
-app.get('/.well-known/oauth-protected-resource', (_req, res) => {
+app.get('/.well-known/oauth-protected-resource', async (req, res) => {
+  const hint = await loadPaymentHint(req.query.soul_id ?? null);
   res.json({
     resource: `${BASE_URL}/mcp`,
     authorization_servers: [BASE_URL],
     scopes_supported: SCOPES,
     bearer_methods_supported: ['header'],
+    ...(hint ? { x_payment: hint } : {}),
   });
 });
-app.get('/.well-known/oauth-protected-resource/mcp', (_req, res) => {
+app.get('/.well-known/oauth-protected-resource/mcp', async (req, res) => {
+  const hint = await loadPaymentHint(req.query.soul_id ?? null);
   res.json({
     resource: `${BASE_URL}/mcp`,
     authorization_servers: [BASE_URL],
     scopes_supported: SCOPES,
     bearer_methods_supported: ['header'],
+    ...(hint ? { x_payment: hint } : {}),
   });
 });
 
@@ -83,22 +140,26 @@ app.use('/oauth', oauthRouter);
 
 // ── MCP Streamable HTTP ───────────────────────────────────────────────────
 
-function unauthorized(res) {
-  // RFC 8707: resource_metadata zeigt auf Protected Resource Metadata (nicht Authorization Server)
+async function unauthorized(res, soulId) {
   res.setHeader(
     'WWW-Authenticate',
     `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`
   );
+  const hint = await loadPaymentHint(soulId ?? null);
+  const message = hint
+    ? `Payment required. Send ${hint.dynamic_pricing ? hint.pol_current + ' POL (dynamic, call ' + hint.price_endpoint + ' for live quote)' : hint.pol_per_request + ' POL'} to wallet ${hint.wallet}, then POST tx_hash to ${hint.pay_endpoint} to receive an access token.`
+    : 'Authorization required.';
   return res.status(401).json({
     jsonrpc: '2.0',
-    error: { code: -32001, message: 'Authorization required.' },
+    error: { code: -32001, message, ...(hint ? { payment: hint } : {}) },
     id: null,
   });
 }
 
 async function handleMcp(req, res) {
   const token = extractToken(req);
-  if (!token) return unauthorized(res);
+  const soulIdParam = req.query.soul_id ?? null;
+  if (!token) return unauthorized(res, soulIdParam);
 
   const server = new McpServer({ name: 'soul-mcp', version: '1.0.0' });
 
@@ -113,10 +174,11 @@ async function handleMcp(req, res) {
     // pol_access_token validieren + agent_tools laden
     const paid = await validatePolToken(token);
     if (!paid.ok) {
+      const hint = await loadPaymentHint(soulIdParam);
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
       return res.status(401).json({
         jsonrpc: '2.0',
-        error: { code: -32001, message: paid.error || 'pol_access_token ungültig oder abgelaufen. Neue Zahlung erforderlich.' },
+        error: { code: -32001, message: paid.error || 'pol_access_token ungültig oder abgelaufen. Neue Zahlung erforderlich.', ...(hint ? { payment: hint } : {}) },
         id: null,
       });
     }
