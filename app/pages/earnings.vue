@@ -157,8 +157,8 @@ onMounted(async () => {
   ])
   if (amRes?.ok) { const d = await amRes.json(); if (d.amortization) amort.value = d.amortization }
   if (erRes?.ok) { const d = await erRes.json(); earnings.value = d }
-  if (amort.value.dynamic_pricing && soulMeta.value?.soul_id) {
-    const pr = await fetch(`/api/soul/price?soul_id=${soulMeta.value.soul_id}`).catch(() => null)
+  if (amort.value.dynamic_pricing && soulMeta.value?.id) {
+    const pr = await fetch(`/api/soul/price?soul_id=${soulMeta.value.id}`).catch(() => null)
     if (pr?.ok) { const pd = await pr.json(); if (pd.pol_required) livePrice.value = pd.pol_required }
   }
 })
