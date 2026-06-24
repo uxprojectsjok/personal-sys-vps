@@ -38,8 +38,10 @@ export function register(server, token) {
       '',
       'Typischer Workflow für einen zahlenden Agenten (nur amortized=true Souls):',
       '1. soul_discover(amortized=true) → nur zahlungspflichtige Souls anzeigen',
-      '2. gateway_url öffnen (falls vorhanden) → vollständige IPFS-Metadaten',
-      '3. POL-Transaktion an soul.amortization.wallet senden',
+      '2. soul_preview(pay_endpoint, soul_id) → kostenloser Teaser + Live-Preis (bei dynamic_pricing)',
+      '   Zeigt den ersten ~200 Zeichen des AGENT-Blocks + aktuellem POL-Preis mit Multiplikator.',
+      '   IMMER aufrufen bevor bezahlt wird — besonders bei dynamic_pricing=true Souls.',
+      '3. POL-Transaktion an soul.amortization.wallet senden (Preis aus soul_preview)',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
     ].join('\n'),
     {
@@ -94,7 +96,11 @@ export function register(server, token) {
           lines.push(`- **MCP:** ${s.mcp_endpoint}`);
 
           if (s.amortization?.enabled) {
-            lines.push(`- **Preis:** ${s.amortization.pol_per_request} POL pro Anfrage`);
+            if (s.amortization.dynamic_pricing) {
+              lines.push(`- **Preis:** ab ${s.amortization.pol_per_request} POL (dynamisch — soul_preview für Live-Preis aufrufen!)`);
+            } else {
+              lines.push(`- **Preis:** ${s.amortization.pol_per_request} POL pro Anfrage`);
+            }
             lines.push(`- **Wallet:** \`${s.amortization.wallet}\``);
             const aTools = s.amortization.agent_tools || s.amortization.free_tools;
             if (Array.isArray(aTools) && aTools.length) {
