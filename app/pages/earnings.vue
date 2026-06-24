@@ -25,7 +25,7 @@
                 </div>
                 <div class="earn-step-lbl">
                   <span class="earn-step-t">{{ $t('earnings.step_access') }}</span>
-                  <span class="earn-step-s">{{ amort.enabled ? $t('earnings.step_access_paid', { pol: amort.pol_per_request }) : $t('earnings.step_access_free') }}</span>
+                  <span class="earn-step-s">{{ amort.enabled ? $t('earnings.step_access_paid', { pol: displayPrice }) : $t('earnings.step_access_free') }}</span>
                 </div>
                 <button class="btn btn-sm btn-ghost" @click="onNav('market')">{{ $t('earnings.btn_configure') }}</button>
               </div>
@@ -45,7 +45,10 @@
               </div>
               <div class="earn-stat">
                 <div class="earn-stat-label">{{ $t('earnings.stat_price') }}</div>
-                <div class="earn-stat-value">{{ amort.enabled ? amort.pol_per_request + ' POL' : '—' }}</div>
+                <div class="earn-stat-value">
+                  {{ amort.enabled ? displayPrice + ' POL' : '—' }}
+                  <span v-if="amort.dynamic_pricing" class="earn-stat-dynamic">dynamic</span>
+                </div>
               </div>
               <div class="earn-stat">
                 <div class="earn-stat-label">{{ $t('earnings.stat_total_requests') }}</div>
@@ -133,6 +136,13 @@ const cmdkOpen         = ref(false)
 
 const amort    = ref({ enabled: false, pol_per_request: '0.001', wallet: '', token_duration_days: 1 })
 const earnings = ref({ total_pol: '0', total_requests: 0, entries: [] })
+const livePrice = ref(null) // pol_required from /api/soul/price wenn dynamic_pricing
+
+const displayPrice = computed(() =>
+  amort.value.dynamic_pricing && livePrice.value
+    ? livePrice.value
+    : amort.value.pol_per_request
+)
 
 const sortedEntries = computed(() =>
   [...(earnings.value.entries || [])].reverse()
@@ -147,6 +157,10 @@ onMounted(async () => {
   ])
   if (amRes?.ok) { const d = await amRes.json(); if (d.amortization) amort.value = d.amortization }
   if (erRes?.ok) { const d = await erRes.json(); earnings.value = d }
+  if (amort.value.dynamic_pricing && soulMeta.value?.soul_id) {
+    const pr = await fetch(`/api/soul/price?soul_id=${soulMeta.value.soul_id}`).catch(() => null)
+    if (pr?.ok) { const pd = await pr.json(); if (pd.pol_required) livePrice.value = pd.pol_required }
+  }
 })
 
 function formatDate(iso) {
@@ -284,6 +298,7 @@ function onNav(id) {
 .earn-stat--pol { color: var(--accent-bright); }
 .earn-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
 .earn-stat-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
+.earn-stat-dynamic { font-size: 10px; font-family: var(--mono); color: var(--fg-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
 
 /* ── Table ── */
 .earn-table-wrap { }
