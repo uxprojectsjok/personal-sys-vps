@@ -209,6 +209,7 @@ async function enrichFromIpfs(entry, rawCid) {
         enabled:            !!am.enabled,
         pol_per_request:    Number(am.pol_per_request) || 0,
         wallet:             str(am.wallet, 42) ?? null,
+        ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
         token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
         ...(aTools?.length && { agent_tools: aTools }),
       };
@@ -240,6 +241,7 @@ async function enrichFromLocal(entry, soulId) {
       enabled:             !!am.enabled,
       pol_per_request:     Number(am.pol_per_request) || 0,
       wallet:              str(am.wallet, 42) ?? null,
+      ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
       ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
       ...(aTools?.length && { agent_tools: aTools }),
     };
@@ -448,6 +450,7 @@ async function seedFromLocalAnchors() {
               enabled:             !!am.enabled,
               pol_per_request:     Number(am.pol_per_request) || 0,
               wallet:              str(am.wallet, 42) ?? null,
+              ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
               ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
               ...(aTools?.length && { agent_tools: aTools }),
             };
