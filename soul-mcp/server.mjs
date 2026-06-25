@@ -1146,7 +1146,7 @@ app.post('/internal/send-push', express.json({ limit: '4kb' }), async (req, res)
   let sent = 0, dead = [];
   for (const sub of subs) {
     try { await webpush.sendNotification(sub, payload); sent++; }
-    catch (e) { if (e.statusCode === 410 || e.statusCode === 404) dead.push(sub.endpoint); }
+    catch (e) { if (e.statusCode === 410 || e.statusCode === 404 || e.statusCode === 403) dead.push(sub.endpoint); }
   }
   if (dead.length) {
     const alive = subs.filter(s => !dead.includes(s.endpoint));
