@@ -16,6 +16,36 @@
   </div>
 </template>
 
+<script setup>
+import { useSoul } from '~/composables/useSoul.js'
+
+const { soulToken } = useSoul()
+
+onMounted(async () => {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+  try {
+    const r = await fetch('/api/push/vapid-key')
+    const { publicKey } = await r.json()
+    if (!publicKey) return
+    const stored = localStorage.getItem('sys_vapid_key')
+    if (stored === publicKey) return  // Key unverändert — nichts zu tun
+    // Key hat sich geändert (z.B. nach init.sh) → neu subscriben
+    const reg = await navigator.serviceWorker.ready
+    const existing = await reg.pushManager.getSubscription()
+    if (existing) await existing.unsubscribe().catch(() => {})
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey })
+    const token = soulToken.value
+    if (!token || token === 'anonymous') return
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON()),
+    })
+    localStorage.setItem('sys_vapid_key', publicKey)
+  } catch {}
+})
+</script>
+
 <style scoped>
 .sys-footer {
   text-align: center;

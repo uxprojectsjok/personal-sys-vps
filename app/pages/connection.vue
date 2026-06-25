@@ -188,15 +188,13 @@ async function subscribeToPush() {
     const r = await fetch('/api/push/vapid-key')
     const { publicKey } = await r.json()
     if (!publicKey) return
+    const stored = localStorage.getItem('sys_vapid_key')
     const existing = await reg.pushManager.getSubscription()
-    // Bestehende Subscription kündigen damit der neue VAPID-Key greift
-    // (nach Server-Neuinstallation sind die Keys neu — alte Sub wäre ungültig)
+    if (stored === publicKey && existing) return
     if (existing) await existing.unsubscribe().catch(() => {})
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: publicKey,
-    })
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey })
     await saveSub(sub)
+    localStorage.setItem('sys_vapid_key', publicKey)
   } catch {}
 }
 async function saveSub(sub) {
