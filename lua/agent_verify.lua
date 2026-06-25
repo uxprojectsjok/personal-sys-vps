@@ -58,33 +58,22 @@ if not f then
 end
 f:write(data); f:close()
 
--- Push-Benachrichtigung an das Gerät des Soul-Inhabers
+-- Push-Benachrichtigung (Best-Effort — Challenge läuft auch ohne Push via /verbindung-Polling)
 local http = require("resty.http")
 do
   local hc = http.new()
   hc:set_timeout(2000)
-  local push_res, push_err = hc:request_uri("http://127.0.0.1:3098/internal/send-push", {
+  local push_res = hc:request_uri("http://127.0.0.1:3098/internal/send-push", {
     method  = "POST",
     headers = { ["Content-Type"] = "application/json" },
     body    = cjson.encode({
       soul_id = soul_id,
       title   = "Verifikationsanfrage",
       body    = "Eine KI-Anwendung möchte deine Identität bestätigen.",
-      url     = "/connection",
+      url     = "/verbindung",
     }),
   })
-  -- Abort wenn Push-Service nicht erreichbar oder kein Gerät registriert
-  if not push_res then
-    ngx.status = 503
-    ngx.say(cjson.encode({ error = "push_unavailable", message = "Push-Service nicht erreichbar." }))
-    return
-  end
-  local push_data = cjson.decode(push_res.body or "{}") or {}
-  if push_data.sent ~= nil and push_data.sent == 0 then
-    ngx.status = 503
-    ngx.say(cjson.encode({ error = "no_push_subscription", message = "Kein Gerät registriert. Push-Benachrichtigungen in der SYS-App aktivieren." }))
-    return
-  end
+  -- Push-Fehler werden ignoriert — Challenge ist bereits gespeichert und über /verbindung sichtbar
 end
 
 ngx.say(cjson.encode({
