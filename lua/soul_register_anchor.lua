@@ -31,8 +31,8 @@ if not ok or type(body) ~= "table" or type(body.tx_hash) ~= "string" then
   return
 end
 
-local tx_clean = body.tx_hash:match("^%s*(.-)%s*$") -- trim whitespace
-if not tx_clean:match("^0x[0-9a-fA-F]{64}$") then
+local tx_clean = body.tx_hash:match("^%s*(.-)%s*$")
+if #tx_clean < 10 or not tx_clean:match("^0x") then
   ngx.status = 400
   ngx.log(ngx.ERR, "[register-anchor] ungültiger tx_hash: len=", #body.tx_hash, " val=", body.tx_hash:sub(1,80))
   ngx.say('{"error":"Ungültiger TX-Hash","received_len":' .. #body.tx_hash .. '}')
