@@ -713,13 +713,10 @@
                 >{{ agentFeedback.message }}</div>
               </Transition>
 
-              <!-- Live log after run -->
-              <div v-if="agentRunLog" style="margin-top:12px">
-                <div style="font-family:var(--sys-mono);font-size:10px;color:var(--fg-4);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em">
-                  Agent Log
-                  <span v-if="agentRunPolling" style="color:var(--sys-ok);margin-left:6px">● live</span>
-                </div>
-                <pre style="background:rgba(0,0,0,0.28);border:1px solid var(--sys-rule);border-radius:var(--r-xs);padding:10px 12px;font-family:var(--sys-mono);font-size:10px;line-height:1.6;color:var(--fg-2);overflow-x:auto;white-space:pre-wrap;max-height:260px;overflow-y:auto">{{ agentRunLog }}</pre>
+              <!-- Agent running status -->
+              <div v-if="agentRunNowBusy || agentRunPolling" class="agent-status-running">
+                <span class="agent-status-dot"></span>
+                {{ agentRunNowBusy ? $t('settings.agent_starting') : $t('settings.agent_working') }}
               </div>
 
             </template>
@@ -1680,7 +1677,6 @@ const agentRunNowBusy   = ref(false)
 const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
-const agentRunLog       = ref('')
 const agentRunPolling   = ref(false)
 let   agentLogTimer     = null
 
@@ -1790,22 +1786,9 @@ async function setAgentInterval(iv) {
   } catch {}
 }
 
-async function fetchAgentLog() {
-  try {
-    const r = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      agentRunLog.value = d.log || ''
-      return d.running === true   // true = still running, false = done
-    }
-  } catch {}
-  return false
-}
-
 async function runAgentNow() {
   agentRunNowBusy.value = true
   agentFeedback.value   = null
-  agentRunLog.value     = ''
   clearInterval(agentLogTimer)
   try {
     const r = await fetch('/api/agent/run', {
@@ -1814,32 +1797,35 @@ async function runAgentNow() {
     })
     const d = await r.json().catch(() => ({}))
     if (r.ok) {
-      agentFeedback.value = { ok: true, message: d.message || t('settings.agent_run_started') }
+      agentFeedback.value   = { ok: true, message: d.message || t('settings.agent_run_started') }
+      agentRunNowBusy.value = false
       agentRunPolling.value = true
       let ticks = 0
       agentLogTimer = setInterval(async () => {
-        const stillRunning = await fetchAgentLog()
         ticks++
-        // Stop when run complete or after 90s
-        if (!stillRunning || ticks >= 45) {
-          clearInterval(agentLogTimer)
-          agentRunPolling.value = false
-        }
-        // Refresh last_run timestamp every 10s
-        if (ticks % 5 === 0) {
-          try {
-            const lr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-            if (lr.ok) { const ld = await lr.json(); agentLastRun.value = ld.last_run || '' }
-          } catch {}
-        }
+        try {
+          const lr = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+          if (lr.ok) {
+            const ld = await lr.json()
+            if (!ld.running) {
+              clearInterval(agentLogTimer)
+              agentRunPolling.value = false
+              const cr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+              if (cr.ok) { const cd = await cr.json(); agentLastRun.value = cd.last_run || '' }
+              return
+            }
+          }
+        } catch {}
+        if (ticks >= 90) { clearInterval(agentLogTimer); agentRunPolling.value = false }
       }, 2000)
     } else {
-      agentFeedback.value = { ok: false, message: d.error || `Error ${r.status}` }
+      agentFeedback.value   = { ok: false, message: d.error || `Error ${r.status}` }
+      agentRunNowBusy.value = false
     }
   } catch (e) {
-    agentFeedback.value = { ok: false, message: e.message }
+    agentFeedback.value   = { ok: false, message: e.message }
+    agentRunNowBusy.value = false
   }
-  agentRunNowBusy.value = false
 }
 
 async function saveAgentQueue() {
@@ -1988,4 +1974,16 @@ onMounted(() => { if (props.inline) initSettings() })
   background: #fff; transition: transform 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 .agent-toggle--on .agent-toggle-knob { transform: translateX(20px); }
+.agent-status-running {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 12px;
+  font-family: var(--sys-mono); font-size: 11px; letter-spacing: 0.05em;
+  color: var(--sys-ok);
+}
+.agent-status-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--sys-ok);
+  box-shadow: 0 0 6px var(--sys-ok);
+  animation: soul-pulse 1.4s ease-in-out infinite;
+}
 </style>
