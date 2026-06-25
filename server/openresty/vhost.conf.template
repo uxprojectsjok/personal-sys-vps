@@ -1452,6 +1452,24 @@ server {
   }
 
   ################################
+  # Join-Seite (Multi-Hoster Registrierung): kein Gate-Check
+  # join.vue prüft selbst ob Registrierung erlaubt ist
+  ################################
+  location = /join {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /join/index.html /index.html;
+  }
+
+  location ^~ /join/ {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /join/index.html /index.html;
+  }
+
+  ################################
   # SPA Root (Nuxt static)
   ################################
   location / {
