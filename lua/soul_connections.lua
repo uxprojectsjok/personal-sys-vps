@@ -375,10 +375,13 @@ if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
 
   local cok, cdata = pcall(cjson.decode, cres.body or "")
   if cres.status == 200 and cok and type(cdata) == "table" and cdata.ok then
-    -- peer_token in Connection-Record speichern
+    -- peer_token + ggf. peer_confirmed_at in Connection-Record speichern
     for i, c in ipairs(data.connections) do
       if c.soul_id == target_id then
         data.connections[i].peer_token = cdata.peer_token
+        if cdata.mutual == true then
+          data.connections[i].peer_confirmed_at = math.floor(ngx.now())
+        end
         break
       end
     end
@@ -526,6 +529,10 @@ if method == "POST" then
         for i, c in ipairs(data.connections) do
           if c.soul_id == target_id then
             data.connections[i].peer_token = peer_token
+            -- Peer hatte uns bereits in seinen Connections → gegenseitig bestätigt
+            if cdata.mutual == true then
+              data.connections[i].peer_confirmed_at = math.floor(ngx.now())
+            end
             break
           end
         end
