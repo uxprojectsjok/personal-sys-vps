@@ -327,4 +327,5 @@ ngx.say(cjson.encode({
   peer_token = peer_token,
   soul_id    = local_soul_id,
   domain     = own_domain,
+  mutual     = already_connected,
 }))
