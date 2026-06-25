@@ -17,6 +17,12 @@ if uri == "/connect" then
   return
 end
 
+-- Multi-Hoster Registrierungsseite: öffentlich — join.vue prüft selbst ob Registrierung erlaubt ist
+if uri == "/join" then
+  ngx.ctx.gate_done = true
+  return
+end
+
 -- Share-Link Viewer: öffentlich zugänglich (Token = Auth)
 if uri:sub(1, 6) == "/link/" then
   ngx.ctx.gate_done = true
