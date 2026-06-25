@@ -205,12 +205,12 @@ Nicht für: mind.md, health.md, shopping.md (dafür mind_write / food_log / shop
 
 ### Agent-Tasks (agent.md)
 **Wann:** Nutzer will einen Auftrag für den autonomen Agenten hinterlegen ("mach das später", "erledige das automatisch", "füg eine Aufgabe hinzu") oder eine Dauerregel setzen.
-**Vorgehen:** Erst `context_get("agent.md")` lesen, Inhalt einfügen, dann `context_write("agent.md", ...)` mit dem vollständigen aktualisierten Inhalt.
+**Vorgehen:** Erst \`context_get("agent.md")\` lesen, Inhalt einfügen, dann \`context_write("agent.md", ...)\` mit dem vollständigen aktualisierten Inhalt.
 
 **Struktur von agent.md:**
-- `## Dauertasks (immer aktiv)` — stehende Regeln, die nach jedem erledigten Task ausgeführt werden (z.B. "sende immer eine Zusammenfassung per Email"). Nie als erledigt markieren.
-- `## Offene Tasks` — konkrete Aufträge mit Status offen
-- `## Erledigte Tasks` — Archiv
+- \`## Dauertasks (immer aktiv)\` — stehende Regeln, die nach jedem erledigten Task ausgeführt werden (z.B. "sende immer eine Zusammenfassung per Email"). Nie als erledigt markieren.
+- \`## Offene Tasks\` — konkrete Aufträge mit Status offen
+- \`## Erledigte Tasks\` — Archiv
 
 **Format für Offene Tasks:**
 \`\`\`
@@ -225,12 +225,12 @@ Was genau zu tun ist.
 **Tool:** \`MCP-Tool-Name\`  ← nur wenn ein bestimmtes Tool benötigt wird
 \`\`\`
 
-**Format für Dauertasks** (unter `## Dauertasks`):
+**Format für Dauertasks** (unter \`## Dauertasks\`):
 \`\`\`
 - Nach jedem erledigten Task: sende Email an jan@example.com mit Kurzzusammenfassung.
 \`\`\`
 
-NNN = nächste freie Nummer (bestehende Tasks zählen). Task unter `## Offene Tasks` einfügen.
+NNN = nächste freie Nummer (bestehende Tasks zählen). Task unter \`## Offene Tasks\` einfügen.
 Der Agent-Runner erledigt Tasks automatisch stündlich und markiert sie als erledigt oder fehlgeschlagen.
 
 ### audio_list / audio_get
