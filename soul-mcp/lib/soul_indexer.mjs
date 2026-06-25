@@ -497,31 +497,50 @@ async function seedFromLocalAnchors() {
         } catch { /* kein chain_anchor.json */ }
 
         if (!anchor) {
-          // Fallback: anchor_history.json nach letztem TX-Eintrag durchsuchen
+          // Fallback: anchor_history.json — zuerst Einträge mit TX, dann mit Block-Nummer
           try {
             const rawH = await readFile(`${SOULS_DIR}${dir}/anchor_history.json`, 'utf8');
             const hist = JSON.parse(rawH);
-            if (Array.isArray(hist)) {
+            if (Array.isArray(hist) && hist.length > 0) {
               const withTx = hist.filter(e => typeof e.tx === 'string' && e.tx.startsWith('0x'));
               if (withTx.length > 0) {
                 const last = withTx[withTx.length - 1];
                 anchor = {
                   tx:       last.tx,
                   date:     last.ts ? last.ts.split('T')[0] : null,
-                  sessions: 1,  // konservativ — wird bei nächstem Anker überschrieben
+                  sessions: 1,
                   tags:     [],
                   cid:      rawCid ?? undefined,
                 };
-                console.log(`[soul-seed] ${dir.slice(0,8)}: chain_anchor.json fehlt — Fallback auf anchor_history.json (TX ${last.tx.slice(0,10)}...)`);
+                console.log(`[soul-seed] ${dir.slice(0,8)}: Fallback anchor_history TX ${last.tx.slice(0,10)}...`);
+              } else {
+                // Einträge mit Block-Nummer aber ohne TX (nach init.sh-Rekonstruktion)
+                const withBlock = hist.filter(e => e.block && e.block > 0);
+                if (withBlock.length > 0) {
+                  const last = withBlock[withBlock.length - 1];
+                  anchor = {
+                    tx:       null,
+                    date:     last.ts ? last.ts.split('T')[0] : null,
+                    sessions: hist.length, // Anzahl Anker als Mindest-Sessions
+                    tags:     [],
+                    cid:      rawCid ?? undefined,
+                  };
+                  console.log(`[soul-seed] ${dir.slice(0,8)}: Fallback anchor_history Block ${last.block} (kein TX — nach init.sh)`);
+                }
               }
             }
           } catch { /* kein anchor_history.json */ }
         }
 
         if (!anchor) {
-          // Noch nicht geankert — überspringen (kein TX-Beweis vorhanden)
-          console.log(`[soul-seed] ${dir.slice(0,8)}: kein chain_anchor.json und kein anchor_history.json — übersprungen`);
-          continue;
+          // Letzter Fallback: api_context.json mit CID = Soul existiert lokal, ist on-chain
+          if (rawCid) {
+            anchor = { tx: null, date: null, sessions: 1, tags: [], cid: rawCid };
+            console.log(`[soul-seed] ${dir.slice(0,8)}: kein anchor_history — Fallback auf api_context CID`);
+          } else {
+            console.log(`[soul-seed] ${dir.slice(0,8)}: kein Anchor-Beweis — übersprungen`);
+            continue;
+          }
         }
 
         // CID auch aus chain_anchor lesen (falls api_context keinen hatte)
