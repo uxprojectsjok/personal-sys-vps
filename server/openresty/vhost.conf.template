@@ -912,6 +912,19 @@ server {
     content_by_lua_file /etc/openresty/lua/peer_connect.lua;
   }
 
+  # ── Peer-Disconnect Eingang (öffentlich, CORS) ──────────────────────────────
+  location = /api/peer/disconnect {
+    add_header Access-Control-Allow-Origin  "*"                    always;
+    add_header Access-Control-Allow-Headers "Content-Type"         always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS"        always;
+    add_header Cache-Control                "no-store"             always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/peer_disconnect.lua;
+  }
+
   # ── QR-Connect: Token erzeugen (soul_cert) ──────────────────────────────────
   location = /api/connect/create {
     limit_except POST { deny all; }

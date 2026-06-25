@@ -473,12 +473,20 @@ if method == "POST" then
   end
   data.removed_by_peer = new_removed
 
+  -- Wenn das eine eingehende Anfrage ist, hat der Peer uns bereits in seinen Connections →
+  -- peer_confirmed_at sofort setzen, ohne auf den Handshake-Callback zu warten.
+  local was_incoming = false
+  for _, r in ipairs(data.incoming_requests) do
+    if r.soul_id == target_id then was_incoming = true; break end
+  end
+
   local new_conn = {
-    soul_id      = target_id,
-    alias        = alias,
-    domain       = conn_domain,
-    permissions  = permissions,
-    connected_at = math.floor(ngx.now())
+    soul_id           = target_id,
+    alias             = alias,
+    domain            = conn_domain,
+    permissions       = permissions,
+    connected_at      = math.floor(ngx.now()),
+    peer_confirmed_at = was_incoming and math.floor(ngx.now()) or nil,
   }
   table.insert(data.connections, new_conn)
 
@@ -609,12 +617,14 @@ if method == "DELETE" then
   local data     = load_data()
   local new_conn = {}
   local found    = false
+  local peer_domain = nil
 
   for _, c in ipairs(data.connections) do
     if c.soul_id ~= target_id then
       table.insert(new_conn, c)
     else
-      found = true
+      found      = true
+      peer_domain = c.domain
     end
   end
 
@@ -627,10 +637,33 @@ if method == "DELETE" then
   data.connections = new_conn
   save_data(data)
 
-  -- Soul-Grant + Peer-Notification wenn Soul lokal vorhanden (gleicher Server)
+  -- Soul-Grant + Peer-Notification: gleicher Server via Filesystem, anderer Server via HTTP
   if soul_exists(target_id) then
     grant_remove(target_id, soul_id)
     write_peer_removed(target_id)
+  elseif peer_domain and peer_domain ~= "" then
+    -- Cross-domain: Gegenseite über Verbindungstrennung benachrichtigen
+    local our_cert = ngx.ctx.soul_cert or ""
+    if our_cert ~= "" then
+      local scheme     = ngx.var.scheme or "https"
+      local our_domain = scheme .. "://" .. (ngx.var.host or "")
+      local http_mod   = require "resty.http"
+      local httpc      = http_mod.new()
+      httpc:set_timeout(5000)
+      local disc_res, disc_err = httpc:request_uri(peer_domain .. "/api/peer/disconnect", {
+        method  = "POST",
+        headers = { ["Content-Type"] = "application/json" },
+        body    = cjson.encode({
+          soul_id        = soul_id,
+          cert           = our_cert,
+          domain         = our_domain,
+          target_soul_id = target_id,
+        }),
+      })
+      if not disc_res then
+        ngx.log(ngx.WARN, "[soul_connections] peer_disconnect fehlgeschlagen für ", peer_domain, ": ", disc_err or "?")
+      end
+    end
   end
 
   ngx.say(cjson.encode({ ok = true }))
