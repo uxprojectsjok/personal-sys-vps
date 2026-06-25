@@ -184,7 +184,7 @@ export function register(server, token) {
           status:       'pending',
           challenge_id: cid,
           verify_url:   verifyUrl,
-          method:       method || 'all',
+          method:       methods?.[0] || 'all',
           expires_at:   data.expires_at,
           next_action:  `verify_identity(challenge_id="${cid}") SOFORT erneut aufrufen — wartet weitere 15s`,
         }, null, 2) }] }
