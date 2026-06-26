@@ -252,22 +252,34 @@ local function check_pol_access_token(token)
   if type(amort) ~= "table" or amort.enabled ~= true then return nil end
 
   -- Nur GET erlaubt, nur Media/Context-Pfade (kein /api/soul, kein /api/context PUT)
+  -- Ausnahme: genehmigte Agent-Tools per POST (z.B. soul_maturity)
   local uri    = ngx.var.uri
   local method = ngx.req.get_method()
   local ALLOWED_PREFIXES = {
     "/api/vault/audio", "/api/vault/images", "/api/vault/video",
     "/api/vault/context", "/api/vault/profile/",
   }
+  local PAID_AGENT_TOOLS = { soul_maturity = true }
   local path_ok = false
-  for _, pfx in ipairs(ALLOWED_PREFIXES) do
-    if uri:sub(1, #pfx) == pfx then path_ok = true; break end
+
+  -- Agent-Tool-Aufrufe: Whitelist prüfen
+  local agent_tool = uri:match("^/api/agent/tool/([a-z][a-z0-9_]+)$")
+  if agent_tool and PAID_AGENT_TOOLS[agent_tool] and (method == "POST" or method == "GET") then
+    path_ok = true
   end
 
-  if not path_ok or method ~= "GET" then
+  -- Vault-Pfade: nur GET
+  if not path_ok and method == "GET" then
+    for _, pfx in ipairs(ALLOWED_PREFIXES) do
+      if uri:sub(1, #pfx) == pfx then path_ok = true; break end
+    end
+  end
+
+  if not path_ok then
     ngx.header["Content-Type"]  = "application/json"
     ngx.header["Cache-Control"] = "no-store"
     ngx.status = 403
-    ngx.say('{"error":"paid_agent_restricted","message":"Zahlende Agenten dürfen nur GET auf Vault-Media/Context-Pfade zugreifen."}')
+    ngx.say('{"error":"paid_agent_restricted","message":"Zahlende Agenten dürfen nur GET auf Vault-Media/Context-Pfade oder genehmigte Agent-Tools zugreifen."}')
     return ngx.exit(403)
   end
 
