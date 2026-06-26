@@ -26,6 +26,16 @@ if not tool_name:match("^[a-z_][a-z0-9_]+$") or #tool_name > 60 then
   ngx.status = 400; ngx.say('{"error":"invalid_tool_name"}'); return
 end
 
+-- Permission-Check für bezahlte Agenten (pol_access_token)
+if ngx.ctx.is_paid_agent then
+  local PAID_AGENT_TOOLS = { soul_maturity = true }
+  if not PAID_AGENT_TOOLS[tool_name] then
+    ngx.status = 403
+    ngx.say('{"error":"permission_denied","required":"paid_agent_whitelist"}')
+    return
+  end
+end
+
 -- Permission-Check für Service-Token-Requests (soul-cert bypassed)
 if ngx.ctx.via_webhook then
   local perms = ngx.ctx.service_permissions or {}
