@@ -273,7 +273,7 @@ const emit  = defineEmits(["close", "uploaded", "openFaq"]);
 
 const { t } = useI18n()
 const router = useRouter();
-const { importFromText, resetCertToV0, pushToServer, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
+const { importAndSetup, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
 const { clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();
 const { resetContext, saveContext } = useApiContext();
 const {
@@ -367,17 +367,12 @@ async function finishDecrypt(ok) {
     if (soulMd) {
       clearVault();
       resetContext();
-      // Flag setzen damit der cert-Watcher in VaultExplorer keinen Logout auslöst
-      // während refreshCert den Cert noch aktualisiert
       isLoginInProgress.value = true;
-      importFromText(soulMd);
 
-      // resetCertToV0 löst den cert_version-Konflikt:
-      // Wenn api_context.json fehlt, erwartet der Server version=0.
-      // Decrypted soul kann aber version=N haben → 401 auf alle Folge-Requests.
-      // resetCertToV0 erkennt dies, holt einen v0-Cert, rotiert auf v1 und
-      // schreibt cert_version=1 in api_context.json — damit ist der Token gültig.
-      await resetCertToV0();
+      // importAndSetup: POST /api/soul-cert → soul_cert.lua legt Verzeichnis + Default-Dateien
+      // an wenn api_context.json fehlt (Neu-Import), oder validiert den Proof wenn die Soul
+      // bereits existiert. Anschließend wird sys.md zum Server gepusht.
+      await importAndSetup(soulMd);
 
       // Permissions & enabled in api_context.json initialisieren
       const token = soulToken.value;
@@ -392,9 +387,6 @@ async function finishDecrypt(ok) {
       }
 
       isLoginInProgress.value = false;
-
-      // Migrierte Soul (chain_count entfernt, Artefakte bereinigt) zum Server pushen
-      pushToServer().catch(() => {});
     }
   }
 }
