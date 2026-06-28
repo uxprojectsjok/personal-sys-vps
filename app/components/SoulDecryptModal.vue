@@ -273,7 +273,7 @@ const emit  = defineEmits(["close", "uploaded", "openFaq"]);
 
 const { t } = useI18n()
 const router = useRouter();
-const { importAndSetup, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
+const { importAndSetup, isLoginInProgress, soulToken, soulMeta, soulContent, firstSetupToken } = useSoul();
 const { clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();
 const { resetContext, saveContext } = useApiContext();
 const {
@@ -369,10 +369,10 @@ async function finishDecrypt(ok) {
       resetContext();
       isLoginInProgress.value = true;
 
-      // importAndSetup: POST /api/soul-cert → soul_cert.lua legt Verzeichnis + Default-Dateien
-      // an wenn api_context.json fehlt (Neu-Import), oder validiert den Proof wenn die Soul
-      // bereits existiert. Anschließend wird sys.md zum Server gepusht.
       await importAndSetup(soulMd);
+      // Bundle-Import: FirstSetupModal überspringen — Soul ist bereits vollständig importiert.
+      // Admin-Token (Multi-Hoster) ist in localStorage gespeichert und via Settings abrufbar.
+      firstSetupToken.value = null;
 
       // Permissions & enabled in api_context.json initialisieren
       const token = soulToken.value;
