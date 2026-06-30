@@ -615,7 +615,7 @@
             <!-- ── Tab: Agent ── -->
             <template v-if="tab === 'agent'">
 
-              <p class="sm-desc" style="margin-bottom:20px;line-height:1.7">{{ $t('settings.agent_cron_desc') }}</p>
+              <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
 
               <!-- Status Block -->
               <div class="archivar-lm-block" style="margin-bottom:20px">
@@ -645,6 +645,20 @@
               <!-- No API key warning -->
               <div v-if="keySource === 'none'" class="sm-infoblock" style="margin-bottom:20px;border-color:var(--sys-warn)">
                 {{ $t('settings.agent_no_api_key') }}
+              </div>
+
+              <!-- MCP Service Token fehlt -->
+              <div v-if="agentInstalled && !agentMcpTokenOk" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:12px 16px;border:1px solid var(--sys-warn);border-radius:var(--r-xs);background:rgba(220,184,109,0.04)">
+                <div>
+                  <div style="font-size:14px;font-weight:500;color:var(--sys-warn)">{{ $t('settings.agent_mcp_token_missing') }}</div>
+                  <div style="font-size:13px;line-height:1.55;color:var(--fg-2);margin-top:4px">{{ $t('settings.agent_mcp_token_missing_hint') }}</div>
+                </div>
+                <button
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="flex-shrink:0;margin-left:12px"
+                  :disabled="agentSetupMcpBusy"
+                  @click="setupAgentMcpToken"
+                >{{ agentSetupMcpBusy ? '…' : $t('settings.agent_mcp_token_setup') }}</button>
               </div>
 
               <!-- Enable / Disable toggle -->
@@ -693,7 +707,7 @@
               <!-- Queue editor -->
               <div class="sys-field" style="gap:10px">
                 <label class="sys-field-label">{{ $t('settings.agent_queue_title') }}</label>
-                <p class="sm-desc" style="margin-bottom:8px">{{ $t('settings.agent_queue_desc') }}</p>
+                <p style="font-size:13px;line-height:1.55;color:var(--fg-2);margin:0 0 8px">{{ $t('settings.agent_queue_desc') }}</p>
                 <textarea
                   v-model="agentQueueText"
                   class="sys-input"
@@ -1679,6 +1693,8 @@ const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
 const agentRunPolling   = ref(false)
 let   agentLogTimer     = null
+const agentMcpTokenOk   = ref(true)
+const agentSetupMcpBusy = ref(false)
 
 // ── Invite Token (Multi-Hoster) ───────────────────────────────────────────────
 const inviteToken      = ref('')
@@ -1743,6 +1759,14 @@ async function loadAgentStatus() {
       agentLastRun.value   = d.last_run || ''
     }
   } catch {}
+  // Check if Agent Runner MCP service token exists
+  try {
+    const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      agentMcpTokenOk.value = (d.services || []).some(s => s.name === 'SYS Agent Runner')
+    }
+  } catch {}
   // Load current agent.md content
   try {
     const r = await fetch('/api/agent/queue', { headers: { Authorization: `Bearer ${soulToken.value}` } })
@@ -1751,6 +1775,19 @@ async function loadAgentStatus() {
       agentQueueText.value = d.content || ''
     }
   } catch {}
+}
+
+async function setupAgentMcpToken() {
+  agentSetupMcpBusy.value = true
+  try {
+    const r = await fetch('/api/vault/services/agent-runner/rotate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (r.ok) agentMcpTokenOk.value = true
+  } catch { /* silent */ } finally {
+    agentSetupMcpBusy.value = false
+  }
 }
 
 async function toggleAgent(enable) {
@@ -1904,8 +1941,8 @@ onMounted(() => { if (props.inline) initSettings() })
   padding: 10px 14px; margin-bottom: 20px;
   border-left: 2px solid var(--line-2);
   background: var(--surface-2);
-  font-family: var(--mono); font-size: 12px;
-  letter-spacing: 0.06em; color: var(--fg-2);
+  font-size: 13px; line-height: 1.55;
+  color: var(--fg-2);
 }
 
 /* Override: Rail scrollbar auf Mobile */

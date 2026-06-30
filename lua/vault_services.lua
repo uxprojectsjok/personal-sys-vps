@@ -65,7 +65,7 @@ end
 
 -- ── POST /api/vault/services ──────────────────────────────────────────────────
 
-if method == "POST" then
+if method == "POST" and uri == "/api/vault/services" then
   ngx.req.read_body()
   local body = ngx.req.get_body_data() or "{}"
   local _, payload = pcall(cjson.decode, body)
@@ -168,8 +168,8 @@ end
 -- ── DELETE /api/vault/services/{token} ────────────────────────────────────────
 
 if method == "DELETE" then
-  -- Token-Regex: nur Hex-Zeichen (64-char Token = 32 Bytes Hex)
-  local token = uri:match("^/api/vault/services/([a-f0-9]+)$")
+  -- Token kann 64-Hex (service_token) oder wh_... (ElevenLabs-Style) sein
+  local token = uri:match("^/api/vault/services/([a-zA-Z0-9_]+)$")
   if not token or token == "" then
     ngx.status = 400
     ngx.say(cjson.encode({ error = "Token required in path: DELETE /api/vault/services/{token}" }))
@@ -186,6 +186,48 @@ if method == "DELETE" then
   svcs[token] = nil
   save_services(svcs)
   ngx.say(cjson.encode({ ok = true }))
+  return
+end
+
+-- ── POST /api/vault/services/agent-runner/rotate ─────────────────────────────
+-- Erstellt neuen Agent-Runner-Token, trägt ihn in config.json ein, revoziert den alten.
+
+if method == "POST" and uri:match("^/api/vault/services/agent%-runner/rotate$") then
+  local cfg_path  = "/var/lib/sys/souls/" .. soul_id .. "/config.json"
+  local auth_path = "/var/lib/sys/souls/" .. soul_id .. "/authorized_services.json"
+
+  -- Alten Agent-Runner-Token aus config.json lesen
+  local old_token = nil
+  local cfg = {}
+  local cf = io.open(cfg_path, "r")
+  if cf then
+    local raw = cf:read("*a"); cf:close()
+    local ok_j, d = pcall(cjson.decode, raw)
+    if ok_j and type(d) == "table" then cfg = d; old_token = d.sys_mcp_token end
+  end
+
+  -- Neuen Token generieren
+  local new_token = random_token()
+  local svcs = load_services()
+
+  -- Alten Token entfernen
+  if old_token and svcs[old_token] then svcs[old_token] = nil end
+
+  -- Neuen Token eintragen
+  svcs[new_token] = {
+    name        = "SYS Agent Runner",
+    permissions = { soul = true, calendar = true, context_files = true, images = true, audio = true, video = true },
+    expires_at  = math.floor(ngx.now()) + (365 * 86400),
+    created_at  = math.floor(ngx.now())
+  }
+  save_services(svcs)
+
+  -- config.json updaten
+  cfg.sys_mcp_token = new_token
+  local wf = io.open(cfg_path, "w")
+  if wf then wf:write(cjson.encode(cfg)); wf:close() end
+
+  ngx.say(cjson.encode({ ok = true, token = new_token }))
   return
 end
 
