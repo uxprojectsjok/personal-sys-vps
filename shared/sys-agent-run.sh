@@ -111,8 +111,8 @@ print(key)
 
   export ANTHROPIC_API_KEY="$API_KEY"
 
-  # MCP config (Zapier, etc.) — written as --mcp-config file, NOT settings.json
-  local MCP_URL MCP_CONFIG_FILE MCP_CONFIG_ARG
+  # MCP config (Zapier + SYS MCP) — written as --mcp-config file, NOT settings.json
+  local MCP_URL SYS_MCP_URL SYS_MCP_TOKEN MCP_CONFIG_FILE MCP_CONFIG_ARG
   MCP_URL="$(python3 -c "
 import json
 try:
@@ -121,23 +121,47 @@ try:
 except: print('')
 " 2>/dev/null || echo "")"
 
+  # SYS MCP: URL aus config.json, Token aus authorized_services.json (64-hex service_token)
+  SYS_MCP_URL="$(python3 -c "
+import json
+try:
+  d = json.load(open('$soul_dir/config.json'))
+  print(d.get('sys_mcp_url',''))
+except: print('')
+" 2>/dev/null || echo "")"
+  SYS_MCP_TOKEN="$(python3 -c "
+import json, re
+try:
+  d = json.load(open('$soul_dir/config.json'))
+  t = d.get('sys_mcp_token', '')
+  if re.match(r'^[0-9a-f]{64}$', t): print(t)
+  else: print('')
+except: print('')
+" 2>/dev/null || echo "")"
+
   MCP_CONFIG_FILE="$AGENT_DIR/mcp.json"
   MCP_CONFIG_ARG=""
   MCP_TOOLS=""
-  if [[ -n "$MCP_URL" ]]; then
-    python3 -c "
-import json
-cfg = {'mcpServers': {'zapier': {'type': 'http', 'url': '$MCP_URL'}}}
-with open('$MCP_CONFIG_FILE','w') as f:
+  if [[ -n "$MCP_URL" || ( -n "$SYS_MCP_URL" && -n "$SYS_MCP_TOKEN" ) ]]; then
+    python3 - "$MCP_URL" "$SYS_MCP_URL" "$SYS_MCP_TOKEN" "$MCP_CONFIG_FILE" <<'PYEOF'
+import json, sys
+zapier_url, sys_url, sys_token, out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+cfg = {'mcpServers': {}}
+if zapier_url:
+  cfg['mcpServers']['zapier'] = {'type': 'http', 'url': zapier_url}
+if sys_url and sys_token:
+  cfg['mcpServers']['sys'] = {'type': 'http', 'url': sys_url,
+    'headers': {'Authorization': f'Bearer {sys_token}'}}
+with open(out, 'w') as f:
   json.dump(cfg, f, indent=2)
-" 2>/dev/null \
-    && log_s "MCP: Zapier configured (mcp.json)" \
-    || log_s "WARNING: could not write mcp.json"
+PYEOF
+    log_s "MCP: configured (${MCP_URL:+Zapier }${SYS_MCP_URL:+SYS})"
     MCP_CONFIG_ARG="--mcp-config $MCP_CONFIG_FILE"
-    MCP_TOOLS=",mcp__zapier__*"
+    [[ -n "$MCP_URL" ]] && MCP_TOOLS="${MCP_TOOLS},mcp__zapier__*"
+    [[ -n "$SYS_MCP_URL" && -n "$SYS_MCP_TOKEN" ]] && MCP_TOOLS="${MCP_TOOLS},mcp__sys__*"
   else
     rm -f "$MCP_CONFIG_FILE"
-    log_s "MCP: not configured (no mcp_url in config)"
+    log_s "MCP: not configured (no mcp_url / sys_mcp_url in config)"
   fi
 
   local MODEL
