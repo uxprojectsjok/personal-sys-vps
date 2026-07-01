@@ -593,6 +593,14 @@ async function handleLoginUpload(text, filename) {
       setupOpen.value = true
       return
     }
+    // Multi-hoster: cert was updated on server — download the updated soul file
+    // so the user has a backup with the correct cert for this node
+    if (firstSetupToken.value) {
+      loginOpen.value = false
+      fetchNodeStatus()
+      await exportAsBlob()
+      return
+    }
   } else {
     // Validate cert against server before importing — prevents loading a foreign soul
     const result = await importAndSetup(text)
