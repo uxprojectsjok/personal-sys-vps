@@ -388,7 +388,7 @@
 
 <script setup>
 definePageMeta({ layout: false })
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { usePwaInstall } from '~/composables/usePwaInstall.js'
 import { useSoul } from '~/composables/useSoul.js'
@@ -419,11 +419,20 @@ const pwa = usePwaInstall()
 
 // Node-Status beim Start laden
 const chainCountServer = ref(null)
+
+function fetchChainMetricsForSoul(id) {
+  if (!id) return
+  chainCountServer.value = null
+  fetch(`/api/soul/chain-metrics?soul_id=${encodeURIComponent(id)}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d?.anchor_count != null) chainCountServer.value = d.anchor_count })
+    .catch(() => {})
+}
+
+watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate: true })
+
 onMounted(() => {
   fetchNodeStatus()
-  fetch('/api/soul/chain-metrics').then(r => r.ok ? r.json() : null).then(d => {
-    if (d?.anchor_count != null) chainCountServer.value = d.anchor_count
-  }).catch(() => {})
 })
 
 // ── Modal-State ───────────────────────────────────────────────────────────
