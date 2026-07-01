@@ -1109,12 +1109,24 @@ app.get('/api/soul/scan', async (req, res) => {
   const stats = indexStats();
   const souls = await Promise.all(querySouls({ limit: 100 }).map(async s => {
     let txHash = s.tx_hash || null;
-    if (!txHash && s.soul_id) {
+    let anchorCount = s.anchor_count ?? 0;
+    let anchorSpanDays = s.anchor_span_days ?? 0;
+    if (s.soul_id) {
       try {
         const raw = await readFile(`${SOULS_DIR}${s.soul_id}/anchor_history.json`, 'utf8');
         const history = JSON.parse(raw);
-        const last = [...history].reverse().find(e => e.tx);
-        if (last?.tx) txHash = last.tx;
+        if (history.length > anchorCount) anchorCount = history.length;
+        if (!txHash) {
+          const last = [...history].reverse().find(e => e.tx);
+          if (last?.tx) txHash = last.tx;
+        }
+        if (anchorSpanDays === 0 && history.length >= 2) {
+          const dates = history.map(e => e.ts || e.date || e.created_at).filter(Boolean).sort();
+          if (dates.length >= 2) {
+            const ms = new Date(dates[dates.length - 1]) - new Date(dates[0]);
+            anchorSpanDays = Math.round(ms / 86400000);
+          }
+        }
       } catch {}
     }
     return {
@@ -1125,8 +1137,8 @@ app.get('/api/soul/scan', async (req, res) => {
       pol_per_request:     s.amortization?.pol_per_request ?? null,
       token_duration_days: s.amortization?.token_duration_days ?? null,
       sessions:            s.sessions ?? 0,
-      anchor_count:        s.anchor_count ?? 0,
-      anchor_span_days:    s.anchor_span_days ?? 0,
+      anchor_count:        anchorCount,
+      anchor_span_days:    anchorSpanDays,
       anchor_date:         s.anchor_date ?? null,
       wallet:              s.amortization?.wallet || null,
       mcp_endpoint:        s.mcp_endpoint,
