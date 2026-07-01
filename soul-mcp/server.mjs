@@ -1100,6 +1100,42 @@ app.get('/internal/discover-souls', (req, res) => {
   });
 });
 
+// GET /api/soul/scan — öffentliches Soul-Verzeichnis (Protokoll-Bestandteil)
+// Gibt nur Daten zurück die bereits on-chain öffentlich sind (Polygon-Calldata).
+// Wird von soul-directories wie sys.uxprojects-jok.com/scan abgefragt.
+// Jeder Node der gelistet werden will exponiert diesen Endpoint.
+app.get('/api/soul/scan', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=25');
+  const stats = indexStats();
+  const souls = await Promise.all(querySouls({ limit: 100 }).map(async s => {
+    let txHash = s.tx_hash || null;
+    if (!txHash && s.soul_id) {
+      try {
+        const raw = await readFile(`${SOULS_DIR}${s.soul_id}/anchor_history.json`, 'utf8');
+        const history = JSON.parse(raw);
+        const last = [...history].reverse().find(e => e.tx);
+        if (last?.tx) txHash = last.tx;
+      } catch {}
+    }
+    return {
+      soul_id:             s.soul_id,
+      name:                s.name || s.soul_id?.slice(0, 8),
+      description:         s.description ? s.description.slice(0, 120) : '',
+      tags:                Array.isArray(s.tags) ? s.tags.slice(0, 6) : [],
+      pol_per_request:     s.amortization?.pol_per_request ?? null,
+      token_duration_days: s.amortization?.token_duration_days ?? null,
+      sessions:            s.sessions ?? 0,
+      anchor_count:        s.anchor_count ?? 0,
+      anchor_span_days:    s.anchor_span_days ?? 0,
+      anchor_date:         s.anchor_date ?? null,
+      wallet:              s.amortization?.wallet || null,
+      mcp_endpoint:        s.mcp_endpoint,
+      tx_hash:             txHash,
+    };
+  }));
+  res.json({ ok: true, souls, indexed: stats.souls, scanning: stats.scanning });
+});
+
 // POST /internal/generate-prompts — regeneriert prompts.md in allen Soul-Vaults
 // Wird vom Vault-Explorer nach dem Sync aufgerufen.
 app.post('/internal/generate-prompts', async (_req, res) => {
