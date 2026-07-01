@@ -1172,8 +1172,10 @@ export function useChainAnchor() {
   const chainMetrics = ref(null);
 
   async function fetchChainMetrics() {
+    const id = soulMeta.value?.id
+    if (!id) return chainMetrics.value
     try {
-      const res = await fetch('/api/soul/chain-metrics', {
+      const res = await fetch(`/api/soul/chain-metrics?soul_id=${encodeURIComponent(id)}`, {
         headers: { Authorization: `Bearer ${soulToken.value}` },
       });
       if (res.ok) {
