@@ -513,8 +513,12 @@ async function handleSoulCreate({ name, idea }) {
 
 async function onSetupDownload() {
   await exportAsBlob()
-  firstSetupToken.value = null
-  setupOpen.value = true
+  if (firstSetupToken.value === '__single__') {
+    // Single-host: no real token to show — close modal and open setup wizard
+    firstSetupToken.value = null
+    setupOpen.value = true
+  }
+  // Multi-host: modal advances to token screen; dismiss handler closes it
 }
 
 async function onSetupImport(markdown) {
