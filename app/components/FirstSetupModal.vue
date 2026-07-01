@@ -14,17 +14,61 @@
     >
       <div class="sys-modal sys-modal--md sys-modal--no-rail">
 
-        <!-- ── STEP 1: Admin-Token ──────────────────────────────────── -->
+        <!-- ── STEP 1: Soul sichern / importieren ────────────────── -->
         <template v-if="step === 1">
+          <header class="sys-modal-head">
+            <div class="sys-modal-handle" aria-hidden="true" />
+            <div class="head-icon" aria-hidden="true">
+              <i class="ri-user-heart-line" />
+            </div>
+            <span class="sys-kicker">{{ isSingle ? $t('first_setup.kicker_new_single') : $t('first_setup.kicker_new_vps') }}</span>
+            <h1 id="first-setup-title" class="sys-display">Soul <em>{{ $t('first_setup.title_soul_em') }}</em>.</h1>
+            <p class="sys-lede">{{ $t('first_setup.lede_soul') }}</p>
+          </header>
+
+          <div class="sys-modal-body">
+
+            <!-- Download new -->
+            <div class="action-card" @click="emitDownload">
+              <div class="action-icon"><i class="ri-download-2-line" /></div>
+              <div class="action-text">
+                <strong>{{ $t('first_setup.dl_title') }}</strong>
+                <span>{{ $t('first_setup.dl_desc') }}</span>
+              </div>
+              <i class="ri-arrow-right-line action-arr" />
+            </div>
+
+            <div class="sep-or">{{ $t('common.or') }}</div>
+
+            <!-- Import existing -->
+            <div class="action-card" @click="triggerFilePicker">
+              <div class="action-icon"><i class="ri-upload-2-line" /></div>
+              <div class="action-text">
+                <strong>{{ $t('first_setup.import_title') }}</strong>
+                <span>{{ $t('first_setup.import_desc') }}</span>
+              </div>
+              <i class="ri-arrow-right-line action-arr" />
+            </div>
+            <input ref="fileInput" type="file" accept=".md,text/plain" hidden @change="handleFile" />
+            <p v-if="importError" class="import-error">{{ importError }}</p>
+            <p v-if="importing" class="import-status">{{ $t('first_setup.importing') }}</p>
+
+            <!-- Skip -->
+            <button class="skip-link" @click="emitDismiss">{{ $t('first_setup.btn_skip') }}</button>
+          </div>
+        </template>
+
+        <!-- ── STEP 2: Admin-Token ─────────────────────────────────── -->
+        <template v-else-if="step === 2">
           <header class="sys-modal-head">
             <div class="sys-modal-handle" aria-hidden="true" />
             <div class="head-icon" aria-hidden="true">
               <i class="ri-shield-keyhole-line" />
             </div>
-            <span class="sys-kicker">{{ postImportConfirmOnly ? $t('first_setup.kicker_import') : $t('first_setup.kicker_new') }}</span>
-            <h1 id="first-setup-title" class="sys-display">{{ $t('first_setup.token_label') }} <em>{{ $t('first_setup.title_token_em') }}</em>.</h1>
+            <span class="sys-kicker">{{ isPostImport ? $t('first_setup.kicker_import') : $t('first_setup.kicker_new') }}</span>
+            <h1 class="sys-display">{{ $t('first_setup.token_label') }} <em>{{ $t('first_setup.title_token_em') }}</em>.</h1>
             <p class="sys-lede">
-              <template v-if="postImportConfirmOnly">
+              <template v-if="isPostImport">
                 {{ $t('first_setup.lede_import_1') }} <em>{{ $t('first_setup.lede_once') }}</em> {{ $t('first_setup.lede_suffix') }}
               </template>
               <template v-else>
@@ -62,55 +106,11 @@
               {{ confirmed ? $t('first_setup.status_confirmed') : $t('first_setup.status_pending') }}
             </div>
             <div class="sys-foot-actions">
-              <button type="button" class="sys-btn-ed sys-btn-ed--primary" :disabled="!confirmed" @click="postImportConfirmOnly ? emitDismiss() : (step = 2)">
-                {{ postImportConfirmOnly ? $t('common.done') : $t('common.next') }}
+              <button type="button" class="sys-btn-ed sys-btn-ed--primary" :disabled="!confirmed" @click="emitDismiss">
+                {{ $t('common.done') }}
               </button>
             </div>
           </footer>
-        </template>
-
-        <!-- ── STEP 2: Soul sichern / importieren ─────────────────── -->
-        <template v-else-if="step === 2">
-          <header class="sys-modal-head">
-            <div class="sys-modal-handle" aria-hidden="true" />
-            <div class="head-icon" aria-hidden="true">
-              <i class="ri-user-heart-line" />
-            </div>
-            <span class="sys-kicker">{{ isSingle ? $t('first_setup.kicker_new_single') : $t('first_setup.kicker_new_vps') }}</span>
-            <h1 class="sys-display">Soul <em>{{ $t('first_setup.title_soul_em') }}</em>.</h1>
-            <p class="sys-lede">{{ $t('first_setup.lede_soul') }}</p>
-          </header>
-
-          <div class="sys-modal-body">
-
-            <!-- Download new -->
-            <div class="action-card" @click="emitDownload">
-              <div class="action-icon"><i class="ri-download-2-line" /></div>
-              <div class="action-text">
-                <strong>{{ $t('first_setup.dl_title') }}</strong>
-                <span>{{ $t('first_setup.dl_desc') }}</span>
-              </div>
-              <i class="ri-arrow-right-line action-arr" />
-            </div>
-
-            <div class="sep-or">{{ $t('common.or') }}</div>
-
-            <!-- Import existing -->
-            <div class="action-card" @click="triggerFilePicker">
-              <div class="action-icon"><i class="ri-upload-2-line" /></div>
-              <div class="action-text">
-                <strong>{{ $t('first_setup.import_title') }}</strong>
-                <span>{{ $t('first_setup.import_desc') }}</span>
-              </div>
-              <i class="ri-arrow-right-line action-arr" />
-            </div>
-            <input ref="fileInput" type="file" accept=".md,text/plain" hidden @change="handleFile" />
-            <p v-if="importError" class="import-error">{{ importError }}</p>
-            <p v-if="importing" class="import-status">{{ $t('first_setup.importing') }}</p>
-
-            <!-- Skip -->
-            <button class="skip-link" @click="emitDismiss">{{ $t('first_setup.btn_skip') }}</button>
-          </div>
         </template>
 
       </div>
@@ -129,23 +129,25 @@ const props = defineProps({
 })
 const emit = defineEmits(['dismiss', 'download-soul', 'import-soul'])
 
-const isSingle             = computed(() => props.token === '__single__')
-const step                 = ref(1)
-const copied               = ref(false)
-const confirmed            = ref(false)
-const postImportConfirmOnly = ref(false)
+const isSingle     = computed(() => props.token === '__single__')
+const step         = ref(1)
+const copied       = ref(false)
+const confirmed    = ref(false)
+const isPostImport = ref(false)
 
 watch(() => props.token, (val, oldVal) => {
+  if (!val) { step.value = 1; isPostImport.value = false; return }
   if (val === '__single__') {
-    postImportConfirmOnly.value = false
-    step.value = 2
-  } else if (val && oldVal && val !== oldVal) {
-    // Token wechselte nach Import: neuer Admin-Token für importierte Soul anzeigen
-    postImportConfirmOnly.value = true
-    confirmed.value = false
+    isPostImport.value = false
     step.value = 1
-  } else if (val && !oldVal) {
-    postImportConfirmOnly.value = false
+  } else if (oldVal && val !== oldVal) {
+    // Token wechselte nach Import: zeige neuen Admin-Token genau einmal
+    isPostImport.value = true
+    confirmed.value = false
+    step.value = 2
+  } else if (!oldVal) {
+    isPostImport.value = false
+    confirmed.value = false
     step.value = 1
   }
 }, { immediate: true })
@@ -164,6 +166,8 @@ async function copyToken() {
 
 function emitDownload() {
   emit('download-soul')
+  // For non-single mode: show token screen after download
+  if (!isSingle.value) step.value = 2
 }
 
 function emitDismiss() {
