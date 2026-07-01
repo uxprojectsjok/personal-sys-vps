@@ -516,6 +516,7 @@ async function confirmReset() {
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
   await pushToServer()
+  await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
 }
