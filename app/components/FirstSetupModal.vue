@@ -146,9 +146,10 @@ watch(() => props.token, (val, oldVal) => {
     confirmed.value = false
     step.value = 2
   } else if (!oldVal) {
+    // Multi-hoster fresh token: user already chose create/import on landing — skip to token
     isPostImport.value = false
     confirmed.value = false
-    step.value = 1
+    step.value = 2
   }
 }, { immediate: true })
 const importing = ref(false)
