@@ -47,12 +47,19 @@ if not ok or type(body) ~= "table" then
   return
 end
 
--- soul_id
+-- soul_id — UUID-Format erzwingen (Path-Traversal verhindern)
 local soul_id = body.soul_id
 if not soul_id or soul_id == "" then
   ngx.status = 400
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"soul_id required"}')
+  return
+end
+local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+if not soul_id:match(UUID_PAT) then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid soul_id format"}')
   return
 end
 
@@ -114,10 +121,10 @@ end
 
 -- ── PBKDF2 + HMAC via Python3 (os.execute + Tempfiles, kein Shell-Escaping) ──
 
-local ts      = tostring(ngx.now()):gsub("%.", "_")
-local tmp_m   = "/tmp/sys_m_"   .. ts
-local tmp_s   = "/tmp/sys_s_"   .. ts
-local tmp_out = "/tmp/sys_out_" .. ts
+local rand    = tostring(ngx.now()):gsub("%.", "_") .. "_" .. tostring(math.random(100000, 999999))
+local tmp_m   = "/tmp/sys_m_"   .. rand
+local tmp_s   = "/tmp/sys_s_"   .. rand
+local tmp_out = "/tmp/sys_out_" .. rand
 
 -- Mnemonic + soul_id in Tempfiles schreiben (vermeidet Shell-Escaping)
 local fm = io.open(tmp_m, "w")

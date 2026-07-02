@@ -34,7 +34,8 @@ local function check_soul_cert(token)
 
   local master_key = cfg.get_master_key()
   if master_key == "" then
-    ngx.ctx.soul_id = soul_id
+    ngx.log(ngx.ERR, "[sys/auth] SOUL_MASTER_KEY nicht gesetzt — Zugriff verweigert")
+    return nil
   else
     local cert_version = hmac.read_cert_version(soul_id)
     local matched      = false

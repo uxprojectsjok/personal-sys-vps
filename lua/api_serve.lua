@@ -22,10 +22,15 @@ local soul_id   = ngx.ctx.soul_id
 local base_dir  = "/var/lib/sys/souls/" .. soul_id
 local uri       = ngx.var.uri
 
--- CORS für externe Dienste (ElevenLabs, etc.)
-ngx.header["Access-Control-Allow-Origin"]  = "*"
+-- CORS: Origin nur reflektieren wenn gleicher Host (server-to-server braucht kein CORS)
+local origin      = ngx.req.get_headers()["origin"] or ""
+local host        = ngx.var.host or ""
+local cors_origin = (origin ~= "" and (origin:match("^https?://([^/]+)$") or "") == host)
+                    and origin or ("https://" .. host)
+ngx.header["Access-Control-Allow-Origin"]  = cors_origin
 ngx.header["Access-Control-Allow-Methods"] = "GET, DELETE, OPTIONS"
 ngx.header["Access-Control-Allow-Headers"] = "Authorization, X-Webhook-Token"
+ngx.header["Vary"] = "Origin"
 
 if ngx.req.get_method() == "OPTIONS" then
   ngx.status = 204; return

@@ -7,8 +7,11 @@
 local cfg        = require("config_reader")
 local master_key = cfg.get_master_key()
 
--- Kein Master-Key → Dev-Modus, pass-through
-if master_key == "" then return end
+-- Kein Master-Key → Node nicht konfiguriert, Zugriff verweigern
+if master_key == "" then
+  ngx.log(ngx.ERR, "[sys/auth] SOUL_MASTER_KEY nicht gesetzt — Zugriff verweigert")
+  return ngx.exit(503)
+end
 
 local auth  = ngx.req.get_headers()["authorization"] or ""
 local token = auth:match("^[Bb]earer%s+(.+)$")

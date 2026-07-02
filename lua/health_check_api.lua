@@ -23,7 +23,7 @@ if not fh then
 end
 fh:close()
 
-local pipe = io.popen(NODE .. " " .. SCRIPT .. " " .. HEALTH_MD)
+local pipe = io.popen(NODE .. " " .. SCRIPT .. ' "' .. HEALTH_MD:gsub('"', '\\"') .. '"')
 local out  = pipe and pipe:read("*a") or ""
 if pipe then pipe:close() end
 

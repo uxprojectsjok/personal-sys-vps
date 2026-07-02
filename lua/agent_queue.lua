@@ -33,7 +33,7 @@ if ngx.req.get_method() == "GET" then
     os.execute("mkdir -p /var/lib/sys/souls/" .. soul_id .. "/vault/context")
     local wf = io.open(QUEUE_PATH, "w")
     if wf then wf:write(DEFAULT_TEMPLATE); wf:close()
-      os.execute("chmod 640 " .. QUEUE_PATH)
+      os.execute("chmod 660 " .. QUEUE_PATH .. " && chown www-data:www-data " .. QUEUE_PATH)
     end
     ngx.say(cjson.encode({ content = DEFAULT_TEMPLATE }))
     return

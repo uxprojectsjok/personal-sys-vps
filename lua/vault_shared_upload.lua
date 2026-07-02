@@ -57,7 +57,7 @@ if #content > 50 * 1024 * 1024 then
 end
 
 local dir = "/var/lib/sys/souls/" .. soul_id .. "/vault_shared"
-os.execute("mkdir -p " .. dir .. " && chmod 777 " .. dir)
+os.execute("mkdir -p " .. dir .. " && chmod 750 " .. dir .. " && chown www-data:www-data " .. dir)
 
 local ts       = math.floor(ngx.now() * 1000)
 local filename = ts .. "_" .. safe_name

@@ -36,7 +36,8 @@ for line in handle:lines() do
       f:close()
     end
     -- mtime via stat
-    local sh = io.popen('stat -c "%Y" "' .. fpath .. '" 2>/dev/null')
+    local safe_fpath = fpath:gsub('"', '\\"')
+    local sh = io.popen('stat -c "%Y" "' .. safe_fpath .. '" 2>/dev/null')
     local mtime = 0
     if sh then
       local s = sh:read("*l"); sh:close()
