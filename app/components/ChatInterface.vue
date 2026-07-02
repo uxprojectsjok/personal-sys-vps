@@ -599,9 +599,11 @@ const localRole = ref('soul')
 
 // ── Model selector ─────────────────────────────────────────────────
 const MODELS = [
-  { id: 'claude-haiku-4-5-20251001', label: 'Haiku', hint: 'schnell' },
-  { id: 'claude-sonnet-4-6',          label: 'Sonnet', hint: 'Standard' },
-  { id: 'claude-opus-4-7',            label: 'Opus',   hint: 'tief' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku',    hint: 'schnell' },
+  { id: 'claude-sonnet-4-6',          label: 'Sonnet',   hint: 'Standard' },
+  { id: 'claude-fable-5',             label: 'Fable 5',  hint: 'kreativ' },
+  { id: 'claude-sonnet-5',            label: 'Sonnet 5', hint: 'neu' },
+  { id: 'claude-opus-4-7',            label: 'Opus',     hint: 'tief' },
 ]
 const selectedModel = ref(
   typeof window !== 'undefined' ? (localStorage.getItem('sys_chat_model') || 'claude-sonnet-4-6') : 'claude-sonnet-4-6'
