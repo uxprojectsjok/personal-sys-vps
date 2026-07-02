@@ -177,11 +177,11 @@
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">{{ $t('settings.model') }}</label>
                 <select v-model="model" class="sys-input" style="cursor:pointer">
-                  <option value="">{{ $t('settings.model_default') }}</option>
+                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
                   <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
                   <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
                   <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
-                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — ausgewogen</option>
+                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
                   <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
                 </select>
               </div>
