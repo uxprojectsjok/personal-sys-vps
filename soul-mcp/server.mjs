@@ -1104,24 +1104,27 @@ app.get('/internal/discover-souls', (req, res) => {
 // Gibt nur Daten zurück die bereits on-chain öffentlich sind (Polygon-Calldata).
 // Wird von soul-directories wie sys.uxprojects-jok.com/scan abgefragt.
 // Jeder Node der gelistet werden will exponiert diesen Endpoint.
+const SCAN_ANCHOR_COEFF = 0.1, SCAN_AGE_COEFF = 0.01, SCAN_DEMAND_COEFF = 0.05;
+
 app.get('/api/soul/scan', async (req, res) => {
-  res.set('Cache-Control', 'public, max-age=25');
+  res.set('Cache-Control', 'public, max-age=300');
   const stats = indexStats();
   const souls = await Promise.all(querySouls({ limit: 100 }).map(async s => {
     let txHash = s.tx_hash || null;
     let anchorCount = s.anchor_count ?? 0;
     let anchorSpanDays = s.anchor_span_days ?? 0;
+    let anchorHistory = [];
     if (s.soul_id) {
       try {
         const raw = await readFile(`${SOULS_DIR}${s.soul_id}/anchor_history.json`, 'utf8');
-        const history = JSON.parse(raw);
-        if (history.length > anchorCount) anchorCount = history.length;
+        anchorHistory = JSON.parse(raw);
+        if (anchorHistory.length > anchorCount) anchorCount = anchorHistory.length;
         if (!txHash) {
-          const last = [...history].reverse().find(e => e.tx);
+          const last = [...anchorHistory].reverse().find(e => e.tx);
           if (last?.tx) txHash = last.tx;
         }
-        if (anchorSpanDays === 0 && history.length >= 2) {
-          const dates = history.map(e => e.ts || e.date || e.created_at).filter(Boolean).sort();
+        if (anchorSpanDays === 0 && anchorHistory.length >= 2) {
+          const dates = anchorHistory.map(e => e.ts || e.date || e.created_at).filter(Boolean).sort();
           if (dates.length >= 2) {
             const ms = new Date(dates[dates.length - 1]) - new Date(dates[0]);
             anchorSpanDays = Math.round(ms / 86400000);
@@ -1129,18 +1132,46 @@ app.get('/api/soul/scan', async (req, res) => {
         }
       } catch {}
     }
+
+    // Effective live price (same formula as loadPaymentHint)
+    const amort = s.amortization ?? {};
+    const basePol = parseFloat(amort.pol_per_request) || 0.001;
+    const dynamic = amort.dynamic_pricing === true;
+    let polCurrent = basePol;
+    if (dynamic) {
+      let chainAgeDays = 0, buyers30d = 0;
+      if (anchorHistory[0]?.ts) {
+        const genesis = new Date(anchorHistory[0].ts).getTime();
+        if (!isNaN(genesis)) chainAgeDays = (Date.now() - genesis) / 86_400_000;
+      }
+      if (s.soul_id) {
+        try {
+          const dlRaw = await readFile(`${SOULS_DIR}${s.soul_id}/demand_log.json`, 'utf8');
+          const dlog = JSON.parse(dlRaw);
+          const cutoff = Date.now() / 1000 - 30 * 86400;
+          if (Array.isArray(dlog)) buyers30d = dlog.filter(e => (e.ts || 0) > cutoff).length;
+        } catch {}
+      }
+      if (anchorCount > 0 || buyers30d > 0) {
+        const mult = 1 + anchorCount * SCAN_ANCHOR_COEFF + chainAgeDays * SCAN_AGE_COEFF + buyers30d * SCAN_DEMAND_COEFF;
+        polCurrent = Math.max(basePol, Math.round(basePol * mult * 10000) / 10000);
+      }
+    }
+
     return {
       soul_id:             s.soul_id,
       name:                s.name || s.soul_id?.slice(0, 8),
       description:         s.description ? s.description.slice(0, 120) : '',
       tags:                Array.isArray(s.tags) ? s.tags.slice(0, 6) : [],
-      pol_per_request:     s.amortization?.pol_per_request ?? null,
-      token_duration_days: s.amortization?.token_duration_days ?? null,
+      pol_per_request:     basePol,
+      pol_current:         polCurrent,
+      dynamic_pricing:     dynamic,
+      token_duration_days: amort.token_duration_days ?? null,
       sessions:            s.sessions ?? 0,
       anchor_count:        anchorCount,
       anchor_span_days:    anchorSpanDays,
       anchor_date:         s.anchor_date ?? null,
-      wallet:              s.amortization?.wallet || null,
+      wallet:              amort.wallet || null,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,
     };
