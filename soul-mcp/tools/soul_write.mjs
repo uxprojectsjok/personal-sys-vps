@@ -59,26 +59,26 @@ export function register(server, token) {
   server.tool(
     'soul_write',
     [
-      'Schreibt Inhalt dauerhaft in eine sys.md Sektion.',
-      'Anwendungsfälle:',
-      '- Session-Protokoll → section "Session-Log", mode "prepend" (neuestes oben)',
-      '- Persönlichkeitsprofil → section "Werte & Überzeugungen", mode "replace"',
-      '- Neues Thema hinzufügen → mode "replace" (legt Sektion an wenn nicht vorhanden)',
-      '- Eintrag ergänzen → mode "append"',
+      'Writes content permanently to a sys.md section.',
+      'Use cases:',
+      '- Session log → section "Session Log", mode "prepend" (newest at top)',
+      '- Personality profile → section "Values & Beliefs", mode "replace"',
+      '- Add new topic → mode "replace" (creates section if not present)',
+      '- Extend entry → mode "append"',
       '',
-      'Liest zuerst die aktuelle sys.md, aktualisiert die Sektion und schreibt zurück.',
-      'Benötigt soul-Berechtigung.',
+      'Reads the current sys.md first, updates the section, and writes back.',
+      'Requires soul permission.',
     ].join('\n'),
     {
-      section: z.string().min(1).max(200).regex(/^[^\n\r]+$/, 'Sektionsname darf keine Zeilenumbrüche enthalten').describe(
-        'Name der ## Sektion ohne "##", z.B. "Session-Log" oder "Werte & Überzeugungen"'
+      section: z.string().min(1).max(200).regex(/^[^\n\r]+$/, 'Section name must not contain line breaks').describe(
+        'Name of the ## section without "##", e.g. "Session Log" or "Values & Beliefs"'
       ),
       content: z.string().min(1).max(50000).describe(
-        'Markdown-Inhalt. Für Session-Logs: mit Datum-Header beginnen, z.B. "- **2026-04-05:** …"'
+        'Markdown content. For session logs: start with a date header, e.g. "- **2026-04-05:** …"'
       ),
       mode: z.enum(['replace', 'append', 'prepend'])
         .default('replace')
-        .describe('replace = Sektion ersetzen | append = ans Ende | prepend = an den Anfang (empfohlen für Logs)'),
+        .describe('replace = overwrite section | append = add to end | prepend = add to start (recommended for logs)'),
     },
     async ({ section, content, mode }) => {
       try {
@@ -94,12 +94,12 @@ export function register(server, token) {
 
         if (!result?.ok) {
           return {
-            content: [{ type: 'text', text: `Fehler beim Schreiben: ${JSON.stringify(result)}` }],
+            content: [{ type: 'text', text: `Write error: ${JSON.stringify(result)}` }],
             isError: true,
           };
         }
 
-        const verb = mode === 'replace' ? 'ersetzt' : mode === 'append' ? 'erweitert (Ende)' : 'erweitert (Anfang)';
+        const verb = mode === 'replace' ? 'replaced' : mode === 'append' ? 'extended (end)' : 'extended (start)';
         return {
           content: [{
             type: 'text',
@@ -107,7 +107,7 @@ export function register(server, token) {
               ok: true,
               section: `## ${section}`,
               mode,
-              message: `Sektion "${section}" ${verb}. Änderung ist sofort in sys.md aktiv.`,
+              message: `Section "${section}" ${verb}. Change is immediately active in sys.md.`,
             }, null, 2),
           }],
         };

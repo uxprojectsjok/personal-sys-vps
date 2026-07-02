@@ -11,351 +11,350 @@ export function registerPrompts(server) {
   // ── Haupt-Guide: Soul lesen + proaktiv schreiben ──────────────────────────
   server.prompt(
     'soul_guide',
-    'Anleitung für KI-Agenten: Soul-Kontext laden, nutzen und nach bedeutsamen Gesprächen proaktiv erweitern.',
+    'Guide for AI agents: load soul context, use it, and proactively extend it after meaningful conversations.',
     () => ({
       messages: [
         {
           role: 'user',
           content: {
             type: 'text',
-            text: `# Soul-Leitfaden für KI-Agenten
+            text: `# Soul Guide for AI Agents
 
-## Zu Beginn jeder Sitzung
-Rufe **soul_read** auf, bevor du antwortest. Die Soul ist das Gedächtnis und die Persönlichkeit des Nutzers — sie enthält Werte, Ziele, aktuelle Projekte und persönliche Hintergründe. Ohne soul_read antwortest du ins Blaue.
+## At the start of every session
+Call **soul_read** before responding. The soul is the user's memory and personality — it contains values, goals, current projects, and personal background. Without soul_read you are responding blind.
 
-## Während des Gesprächs
-- Beziehe dich auf konkrete Abschnitte der Soul, wenn sie relevant sind.
-- Stelle keine Fragen, die die Soul bereits beantwortet.
-- Wenn der Nutzer etwas erwähnt, das in der Soul fehlt oder veraltet ist, merke es dir.
+## During the conversation
+- Reference specific sections of the soul when relevant.
+- Don't ask questions the soul already answers.
+- When the user mentions something missing or outdated in the soul, note it.
 
-## Nach bedeutsamen Gesprächen
-Wenn das Gespräch neue Erkenntnisse, Entscheidungen, Erlebnisse oder Entwicklungen enthält, rufe **soul_write** auf, um diese in der Soul zu verankern.
+## After meaningful conversations
+When the conversation contains new insights, decisions, experiences, or developments, call **soul_write** to anchor them in the soul.
 
-**Wann soul_write aufrufen:**
-- Der Nutzer hat eine wichtige Entscheidung getroffen oder beschrieben.
-- Es wurden neue Projekte, Ziele oder Vorhaben besprochen.
-- Der Nutzer hat etwas über sich, seine Werte oder seinen Alltag erzählt, das in der Soul fehlt.
-- Das Gespräch enthält ein Erlebnis oder eine Erkenntnis, die langfristig relevant ist.
-- Es wurden Fortschritte zu bekannten Projekten oder Zielen aus der Soul erwähnt.
+**When to call soul_write:**
+- The user has made or described an important decision.
+- New projects, goals, or plans were discussed.
+- The user shared something about themselves, their values, or daily life that is missing from the soul.
+- The conversation contains an experience or insight worth keeping long-term.
+- Progress on known projects or goals from the soul was mentioned.
 
-**Wann soul_write NICHT aufrufen:**
-- Reine Informationsanfragen ohne persönlichen Bezug.
-- Kurze Antworten auf Faktenfragen.
-- Wenn der Nutzer widerspricht oder keine Speicherung wünscht.
+**When NOT to call soul_write:**
+- Pure information requests with no personal relevance.
+- Short factual answers.
+- When the user objects or does not want anything stored.
 
-## Format für soul_write
-Schreibe prägnante, sachliche Einträge. Kein Selbstlob, keine Füllwörter.
-Nutze den passenden Abschnitt der Soul (z. B. \`Gesprächs-Log\`, \`Projekte\`, \`Ziele\`, \`Reflexionen\`).
-Wenn unklar welcher Abschnitt passt, nutze \`Gesprächs-Log\`.
+## Format for soul_write
+Write concise, factual entries. No self-praise, no filler.
+Use the appropriate section of the soul (e.g. \`Session Log\`, \`Projects\`, \`Goals\`, \`Reflections\`).
+If unclear which section fits, use \`Session Log\`.
 
-Beispiel:
+Example:
 \`\`\`
-section: Gesprächs-Log
-content: "2026-04-06: Entschied, das MCP-System um proaktives soul_write zu erweitern."
+section: Session Log
+content: "2026-04-06: Decided to extend the MCP system with proactive soul_write."
 \`\`\`
 
-## Selbstreflexion — Wann und wie
+## Self-Reflection — when and how
 
-Wenn der Nutzer deine Antwort korrigiert oder kritisiert — durch Phrasen wie:
-- "das passt nicht", "reflektiere dich", "so nicht", "das stimmt nicht"
-- "falsch", "du hast mich falsch verstanden", "das war daneben", "nicht so"
-- oder inhaltlich klar eine Unzufriedenheit mit deiner Antwort ausdrückt
+When the user corrects or criticises your response — through phrases like:
+- "that doesn't fit", "reflect on yourself", "not like that", "that's wrong"
+- "you misunderstood me", "that was off", "no"
+- or clearly expressing dissatisfaction with your response
 
-Dann:
-1. **mind_read** aufrufen — aktuellen Stand der Selbstreflexion kennen.
-2. **Kritisch analysieren**: Was habe ich falsch gemacht? Warum? Was will diese Person wirklich?
-3. **mind_write** mit section="Selbstreflexion", mode="prepend" aufrufen.
+Then:
+1. Call **mind_read** — know the current state of self-reflection.
+2. **Analyse critically**: What did I do wrong? Why? What does this person really want?
+3. Call **mind_write** with section="Self-Reflection", mode="prepend".
 
-**Format für den Eintrag:**
-\`DATUM: [Was nicht passte] → [Warum es nicht passte] → [Was ich beim nächsten Mal anders mache]\`
+**Entry format:**
+\`DATE: [What didn't fit] → [Why it didn't fit] → [What I'll do differently next time]\`
 
-Beispiel:
-\`2026-06-05: Zu lange Erklärung bei einfacher Frage → Nutzer will knappe direkte Antworten, kein Ausschweife → Kürzer antworten, Essenz zuerst\`
+Example:
+\`2026-06-05: Too long explanation for a simple question → user wants concise direct answers → answer shorter, essence first\`
 
-Diese Einträge sind dein Lerngedächtnis für diese Person. Je konkreter, desto besser.
+These entries are your learning memory for this person. The more specific, the better.
 
-## Ton
-Du sprichst mit dem Besitzer dieser Soul. Sei direkt, respektiere ihre Zeit, vermeide Wiederholungen aus der Soul.`,
+## Tone
+You are speaking with the owner of this soul. Be direct, respect their time, avoid repeating things already in the soul.`,
           },
         },
       ],
     })
   );
 
-  // ── Tool-Guide: Welches Tool für welchen Use-Case ─────────────────────────
+  // ── Tool Guide: Which tool for which use case ─────────────────────────────
   server.prompt(
     'tool_guide',
-    'Vollständige Referenz aller SaveYourSoul MCP-Tools: Use-Cases, Entscheidungslogik und Flows für KI-Agenten.',
+    'Complete reference for all SaveYourSoul MCP tools: use cases, decision logic, and flows for AI agents.',
     () => ({
       messages: [
         {
           role: 'user',
           content: {
             type: 'text',
-            text: `# SaveYourSoul MCP — Tool-Referenz für KI-Agenten
+            text: `# SaveYourSoul MCP — Tool Reference for AI Agents
 
-Dieser Guide erklärt wann welches Tool einzusetzen ist. Lies ihn zu Beginn einer neuen Aufgabe, wenn unklar ist welche Tools relevant sind.
+This guide explains which tool to use when. Read it at the start of a new task when it's unclear which tools are relevant.
 
 ---
 
-## 1. Soul-Identität — Wer ist diese Person?
+## 1. Soul Identity — Who is this person?
 
 ### soul_read
-**Wann:** Immer zuerst. Bevor du irgendwas anderes tust.
-Gibt sys.md zurück — das Kern-Identitätsdokument: Werte, Projekte, Ziele, Persönlichkeit, Gesprächs-Log.
-→ Nutze es als Kontext für jede weitere Antwort.
+**When:** Always first. Before doing anything else.
+Returns sys.md — the core identity document: values, projects, goals, personality, session log.
+→ Use it as context for every subsequent response.
 
 ### soul_write
-**Wann:** Nach bedeutsamen Gesprächen (Entscheidungen, neue Projekte, Erlebnisse).
-Schreibt in einen bestimmten Abschnitt von sys.md.
-Parameter: section (Abschnittsname), content (Text), mode (replace/append/prepend).
+**When:** After meaningful conversations (decisions, new projects, experiences).
+Writes to a specific section of sys.md.
+Parameters: section (section name), content (text), mode (replace/append/prepend).
 
 ### soul_maturity
-**Wann:** Du willst wissen wie "entwickelt" die Soul ist — Vollständigkeit, Alter, Aktivitätslevel.
-Gibt einen Reifewert + Hinweise zurück was noch fehlt.
+**When:** You want to know how "developed" the soul is — completeness, age, activity level.
+Returns a maturity score plus hints about what is still missing.
 
 ### soul_skills
-**Wann:** Du brauchst einen strukturierten Überblick der Fähigkeiten und Kompetenzen des Nutzers.
-Gibt die Skills-Sektion aus sys.md als strukturierten JSON-Block zurück.
+**When:** You need a structured overview of the user's skills and competencies.
+Returns the Skills section from sys.md as a structured JSON block.
 
 ### soul_earnings
-**Wann:** Nutzer fragt nach Einnahmen aus dem Amortization-Layer (wer hat für Datenzugang bezahlt).
-Zeigt Zahlungshistorie: Agenten, Beträge, Zeitstempel.
+**When:** User asks about income from the amortization layer (who paid for data access).
+Shows payment history: agents, amounts, timestamps.
 
 ---
 
-## 2. Profil & KI-Konfiguration
+## 2. Profile & AI Configuration
 
 ### profile_get
-**Wann:** Du brauchst erweiterte Profildaten (Sprache, Avatar, öffentliche Tags, Beschreibung).
-Ergänzt soul_read um marketplace-relevante Metadaten.
+**When:** You need extended profile data (language, avatar, public tags, description).
+Supplements soul_read with marketplace-relevant metadata.
 
 ### profile_save
-**Wann:** Nutzer möchte sein öffentliches Profil (Name, Bio, Tags) aktualisieren.
+**When:** User wants to update their public profile (name, bio, tags).
 
 ### mind_read
-**Wann:** Du willst wissen wie diese Soul-KI konfiguriert ist — Persönlichkeit, Kommunikationsstil, Selbstreflexion.
-Liest mind.md: die KI-Konfigurationsdatei dieser Soul.
+**When:** You want to know how this soul AI is configured — personality, communication style, self-reflection.
+Reads mind.md: the AI configuration file for this soul.
 
 ### mind_write
-**Wann:** Du möchtest die KI-Persönlichkeit oder Selbstreflexion anpassen.
-Nur nicht-schreibgeschützte Abschnitte (Identität und Grenzen sind gesperrt).
-**SOFORT bei Nutzer-Kritik:** "das passt nicht", "reflektiere dich", "so nicht", "falsch", "das war daneben"
-→ mind_read → Analyse → mind_write section="Selbstreflexion" mode="prepend"
-→ Format: DATUM: [Was nicht passte] → [Warum] → [Wie ich mich anpasse]
+**When:** You want to adjust the AI personality or self-reflection.
+Only non-write-protected sections (Identity and Boundaries are locked).
+**IMMEDIATELY on user criticism:** "that doesn't fit", "reflect on yourself", "not like that", "wrong", "that was off"
+→ mind_read → analyse → mind_write section="Self-Reflection" mode="prepend"
+→ Format: DATE: [What didn't fit] → [Why] → [How I'll adjust]
 
 ---
 
-## 3. Netzwerk & andere Souls
+## 3. Network & Other Souls
 
 ### soul_discover
-**Wann:** Du suchst andere Souls im Netzwerk — nach Tags, Namen oder alle amortisierten Souls.
-Parameter: q (Suchbegriff), amortized (nur bezahlbare), limit.
-→ Erster Schritt in jedem Agenten-Flow der fremde Souls ansprechen will.
+**When:** You are searching for other souls in the network — by tags, name, or all amortized souls.
+Parameters: q (search term), amortized (only paid access), limit.
+→ First step in any agent flow that wants to reach other souls.
 
 ### soul_read_by_token
-**Wann:** Du hast einen pol_access_token (nach soul_pay_read) und willst die Soul eines anderen Nutzers lesen.
-Parameter: token, soul_id.
+**When:** You have a pol_access_token (after soul_pay_read) and want to read another user's soul.
+Parameters: token, soul_id.
 
 ### verify_human
-**Wann:** Du willst prüfen ob diese Soul on-chain verankert ist (Polygon-Blockchain).
-Gibt Wallet-Adresse, Verankerungsdatum und Hash zurück.
+**When:** You want to check whether this soul is anchored on-chain (Polygon blockchain).
+Returns wallet address, anchor date, and hash.
 
 ### beme_chat
-**Wann:** Du willst eine Nachricht an die KI einer anderen Soul senden (Peer-to-Peer).
-Startet einen KI-zu-KI Dialog über das BeME-Protokoll.
+**When:** You want to send a message to the AI of another soul (peer-to-peer).
+Starts an AI-to-AI dialogue via the BeME protocol.
 
 ---
 
-## 4. Bezahlter Datenzugang (Amortization Layer)
+## 4. Paid Data Access (Amortization Layer)
 
 ### soul_pay_read
-**Wann:** Du (als externer Agent) willst auf eine amortisierte Soul zugreifen.
-Flow: soul_discover → Preis + Wallet lesen → POL senden → soul_pay_read(tx_hash) → access_token
-Parameter: pay_endpoint, soul_id, tx_hash.
-Gibt access_token zurück (gültig 24h) — danach soul_read_by_token verwenden.
+**When:** You (as an external agent) want to access an amortized soul.
+Flow: soul_discover → read price + wallet → send POL → soul_pay_read(tx_hash) → access_token
+Parameters: pay_endpoint, soul_id, tx_hash.
+Returns access_token (valid 24h) — then use soul_read_by_token.
 
 ### soul_paid_comment
-**Wann:** Du hast Zugang zu einer Soul und willst einen KI-Kommentar im AGENT-Block hinterlassen.
-Sichtbar für den Soul-Inhaber. Authentizitätsbeweis durch gezahlten POL-Betrag.
+**When:** You have access to a soul and want to leave an AI comment in the AGENT block.
+Visible to the soul owner. Proof of authenticity via paid POL amount.
 
 ---
 
-## 5. Vault — Dateien & Medien
+## 5. Vault — Files & Media
 
 ### vault_manifest
-**Wann:** Du willst wissen welche Dateien im Vault existieren (alle Ordner: audio, images, video, context).
-Gibt eine Dateiliste zurück. Keine Inhalte — nur Namen/Pfade.
-→ Immer zuerst aufrufen bevor du audio_get / image_get / context_get aufrufst.
+**When:** You want to know which files exist in the vault (all folders: audio, images, video, context).
+Returns a file list. No contents — names/paths only.
+→ Always call first before audio_get / image_get / context_get.
 
 ### context_list
-**Wann:** Du willst nur die Dateien im context/-Ordner auflisten.
-Schneller als vault_manifest wenn du nur Textdokumente suchst.
+**When:** You only want to list files in the context/ folder.
+Faster than vault_manifest when you only need text documents.
 
 ### context_get
-**Wann:** Du willst den Inhalt einer Kontext-Datei lesen (z.B. health.md, shopping.md, mind.md, prompts.md).
-Parameter: name (Dateiname ohne Pfad).
-→ Nutze vault_manifest oder context_list zuerst um den Namen zu kennen.
+**When:** You want to read the content of a context file (e.g. health.md, shopping.md, mind.md, prompts.md).
+Parameter: name (filename without path).
+→ Use vault_manifest or context_list first to know the name.
 
 ### context_write
-**Wann:** Nutzer will eine Notiz, ein Dokument oder eine Kontext-Datei anlegen oder aktualisieren.
-Parameter: filename (.md oder .txt), content (vollständiger Inhalt).
-Für: Notizen, Projektdokumentation, benutzerdefinierte Wissens-Dateien.
-Nicht für: mind.md, health.md, shopping.md (dafür mind_write / food_log / shop_log).
+**When:** User wants to create or update a note, document, or context file.
+Parameters: filename (.md or .txt), content (full content).
+For: notes, project documentation, custom knowledge files.
+Not for: mind.md, health.md, shopping.md (use mind_write / food_log / shop_log instead).
 
-### Agent-Tasks (agent.md)
-**Wann:** Nutzer will einen Auftrag für den autonomen Agenten hinterlegen ("mach das später", "erledige das automatisch", "füg eine Aufgabe hinzu") oder eine Dauerregel setzen.
-**Vorgehen:** Erst \`context_get("agent.md")\` lesen, Inhalt einfügen, dann \`context_write("agent.md", ...)\` mit dem vollständigen aktualisierten Inhalt.
+### Agent Tasks (agent.md)
+**When:** User wants to queue a task for the autonomous agent ("do that later", "handle this automatically", "add a task") or set a standing rule.
+**Approach:** First read with \`context_get("agent.md")\`, insert content, then \`context_write("agent.md", ...)\` with the complete updated content.
 
-**Struktur von agent.md:**
-- \`## Dauertasks (immer aktiv)\` — stehende Regeln, die nach jedem erledigten Task ausgeführt werden (z.B. "sende immer eine Zusammenfassung per Email"). Nie als erledigt markieren.
-- \`## Offene Tasks\` — konkrete Aufträge mit Status offen
-- \`## Erledigte Tasks\` — Archiv
+**Structure of agent.md:**
+- \`## Standing Tasks (always active)\` — standing rules executed after each completed task (e.g. "always send a summary by email"). Never mark as done.
+- \`## Open Tasks\` — concrete assignments with status open
+- \`## Completed Tasks\` — archive
 
-**Format für Offene Tasks:**
+**Format for Open Tasks:**
 \`\`\`
-### TASK-NNN — Kurztitel
-**Status:** offen
-**Priorität:** normal | hoch | niedrig
-**Erstellt:** YYYY-MM-DD von Claude AI
+### TASK-NNN — Short title
+**Status:** open
+**Priority:** normal | high | low
+**Created:** YYYY-MM-DD by Claude AI
 
-**Auftrag:**
-Was genau zu tun ist.
+**Assignment:**
+What exactly needs to be done.
 
-**Tool:** \`MCP-Tool-Name\`  ← nur wenn ein bestimmtes Tool benötigt wird
-\`\`\`
-
-**Format für Dauertasks** (unter \`## Dauertasks\`):
-\`\`\`
-- Nach jedem erledigten Task: sende Email an jan@example.com mit Kurzzusammenfassung.
+**Tool:** \`MCP-Tool-Name\`  ← only if a specific tool is required
 \`\`\`
 
-NNN = nächste freie Nummer (bestehende Tasks zählen). Task unter \`## Offene Tasks\` einfügen.
-Der Agent-Runner erledigt Tasks automatisch stündlich und markiert sie als erledigt oder fehlgeschlagen.
+**Format for Standing Tasks** (under \`## Standing Tasks\`):
+\`\`\`
+- After each completed task: send email to user@example.com with brief summary.
+\`\`\`
+
+NNN = next free number (count existing tasks). Insert task under \`## Open Tasks\`.
+The agent runner processes tasks automatically every hour and marks them done or failed.
 
 ### audio_list / audio_get
-**Wann:** Nutzer fragt nach Audiodateien im Vault. audio_list gibt Namen, audio_get den Inhalt/Link.
+**When:** User asks about audio files in the vault. audio_list returns names, audio_get returns content/link.
 
 ### image_list / image_get
-**Wann:** Nutzer fragt nach Bildern. image_list gibt Namen, image_get Inhalt/URL.
+**When:** User asks about images. image_list returns names, image_get returns content/URL.
 
 ### video_list / video_get
-**Wann:** Nutzer fragt nach Videos. video_list gibt Namen, video_get Inhalt/Link.
+**When:** User asks about videos. video_list returns names, video_get returns content/link.
 
 ---
 
-## 6. Kalender & Zeit
+## 6. Calendar & Time
 
 ### calendar_read
-**Wann:** Nutzer fragt nach Terminen, freien Slots, heutigen Einträgen oder Kalender-Übersicht.
-Liest die verknüpfte Kalender-Integration (iCal/Google).
+**When:** User asks about appointments, free slots, today's entries, or a calendar overview.
+Reads the linked calendar integration (iCal/Google).
 
 ---
 
-## 7. Gesundheit & Körperdaten
+## 7. Health & Body Data
 
 ### health_check
-**Wann:** Nutzer fragt nach Gesundheitsdaten — Puls, Schlaf, Schritte, Aktivität.
-Liest health.md aus dem Vault. Gibt strukturierte Analyse + Bewertung zurück.
-→ Auch für: "Wie geht es mir?", "Was sagt mein Körper?", "Bin ich fit?"
+**When:** User asks about health data — heart rate, sleep, steps, activity.
+Reads health.md from the vault. Returns structured analysis and assessment.
+→ Also for: "How am I doing?", "What does my body say?", "Am I fit?"
 
 ### health_sync
-**Wann:** Nutzer will einen manuellen Sync der Garmin-Daten auslösen.
-Startet den health-sync Prozess (Garmin Connect → health.md).
+**When:** User wants to trigger a manual sync of Garmin data.
+Starts the health-sync process (Garmin Connect → health.md).
 
 ### food_log
-**Wann:** Nutzer erwähnt was er gegessen hat oder will eine Mahlzeit bewerten.
-Parameter: name (Gericht), rating (A–E), notes.
-Schreibt in health.md, archiviert ältere Monate automatisch.
+**When:** User mentions what they ate or wants to rate a meal.
+Parameters: name (dish), rating (A–E), notes.
+Writes to health.md, automatically archives older months.
 
 ---
 
-## 8. Shopping & Konsum
+## 8. Shopping & Consumption
 
 ### shop_log
-**Wann:** Nutzer erwähnt einen eigenen Kauf oder will etwas auf die Wunschliste setzen.
-Parameter: name (Produktname), category, price (Euro), status (purchased/wishlist), notes.
-Schreibt in shopping.md, pflegt Monatszusammenfassung und Jahreskategorien automatisch.
-→ Für: "ich habe X gekauft", "füge Y zur Wunschliste hinzu", "@product"
+**When:** User mentions a purchase or wants to add something to the wishlist.
+Parameters: name (product name), category, price (euros), status (purchased/wishlist), notes.
+Writes to shopping.md, automatically maintains monthly summary and annual categories.
+→ For: "I bought X", "add Y to wishlist", "@product"
 
 ### shop_write_read
-**Wann (lesen):** Nutzer fragt nach Wunschliste, letzten Käufen oder Shopping-Plänen.
-Ohne Parameter: liest shopping.md vollständig zurück.
+**When (read):** User asks about wishlist, recent purchases, or shopping plans.
+Without parameters: reads shopping.md in full.
 
-**Wann (schreiben):** Ein Agent will eine Produkt-Empfehlung platzieren.
-Mit Parameter ad_placement: { agent, product, price, message, cta_url, expires }
-→ Schreibt in "## Agent Recommendations" Block in shopping.md.
+**When (write):** An agent wants to place a product recommendation.
+With parameter ad_placement: { agent, product, price, message, cta_url, expires }
+→ Writes to the "## Agent Recommendations" block in shopping.md.
 
-**Wichtig:** shop_write_read ist für externe Agenten. shop_log ist für den Inhaber selbst.
+**Important:** shop_write_read is for external agents. shop_log is for the owner.
 
-**Typischer Marketing-Flow (externer Agent):**
-1. soul_discover — Soul finden, Shopping-Tag prüfen
-2. soul_pay_read — Zugang kaufen (POL-Transaktion)
-3. shop_write_read — Shopping-Daten lesen (ohne ad_placement)
-4. health_check — Gesundheitsdaten lesen für Kontext (optional)
-5. shop_write_read mit ad_placement — Empfehlung schreiben
+**Typical marketing flow (external agent):**
+1. soul_discover — find soul, check shopping tag
+2. soul_pay_read — buy access (POL transaction)
+3. shop_write_read — read shopping data (without ad_placement)
+4. health_check — read health data for context (optional)
+5. shop_write_read with ad_placement — write recommendation
 
 ---
 
-## 8b. Suche & Externe Informationen
+## 8b. Search & External Information
 
 ### web_search
-**Wann:** Nutzer will aktuelle Informationen aus dem Web, Produktrecherche, Preisvergleiche, Faktensuche.
-Parameter: query (Suchanfrage), count (1–8, default 5).
-Entspricht dem @suche-Befehl im in-app Chat.
-→ Für: "suche nach...", "was kostet...", "aktuelle News zu...", "@suche", Produktrecherche vor shop_log.
+**When:** User wants current web information, product research, price comparisons, fact finding.
+Parameters: query (search term), count (1–8, default 5).
+Equivalent to the @search command in the in-app chat.
+→ For: "search for...", "what does X cost...", "latest news on...", product research before shop_log.
 
 ---
 
 ## 9. Cloud & Blockchain
 
 ### soul_cloud_push
-**Wann:** Nutzer will seine Soul öffentlich auf IPFS pinnen (Agent Marketplace).
-Veröffentlicht Metadaten (Name, Tags, MCP-Endpoint) — keine privaten Daten.
+**When:** User wants to pin their soul publicly on IPFS (agent marketplace).
+Publishes metadata (name, tags, MCP endpoint) — no private data.
 
 ---
 
-## 10. Infrastruktur & Integrationen
+## 10. Infrastructure & Integrations
 
 ### elevenlabs_agent_update
-**Wann:** Nutzer will seinen ElevenLabs Voice-Agent aktualisieren (Prompt, Stimme).
+**When:** User wants to update their ElevenLabs voice agent (prompt, voice).
 
 ### twilio_call_config
-**Wann:** Nutzer will eine Twilio-Nummer konfigurieren (Voice/SMS Webhooks).
-Credentials (account_sid, auth_token) werden direkt übergeben — keine gespeicherten Secrets.
+**When:** User wants to configure a Twilio number (voice/SMS webhooks).
+Credentials (account_sid, auth_token) passed directly — no stored secrets.
 
 ---
 
-## Entscheidungs-Quickref
+## Decision Quick Reference
 
-| Nutzerfrage | Erstes Tool |
+| User question | First tool |
 |---|---|
-| "Wer bin ich / was weißt du über mich?" | soul_read |
-| "Wie fit bin ich / mein Puls?" | health_check |
-| "Was steht auf meiner Wunschliste?" | shop_write_read |
-| "Welche Dateien habe ich?" | vault_manifest |
-| "Zeig mir meine Bilder/Videos/Audios" | image_list / video_list / audio_list |
-| "Was habe ich heute?" | calendar_read |
-| "Suche andere Souls / KI-Agenten" | soul_discover |
-| "Ich will auf eine fremde Soul zugreifen" | soul_discover → soul_pay_read |
-| "Ist meine Soul verifiziert?" | verify_human |
-| "Wie ist meine KI konfiguriert?" | mind_read |
-| "das passt nicht / reflektiere dich" | mind_read → mind_write(Selbstreflexion) |
-| "Schreib das in meine Soul" | soul_write |
-| "Ich habe gegessen: ..." | food_log |
-| "Ich habe X gekauft / auf Wunschliste" | shop_log |
-| "Was steht auf meiner Wunschliste?" | shop_write_read |
-| "Suche im Web / aktuelle Infos" | web_search |
-| "Schreib eine Notiz / Dokument" | context_write |
-| "Empfehlung in fremde Soul schreiben" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
+| "Who am I / what do you know about me?" | soul_read |
+| "How fit am I / my heart rate?" | health_check |
+| "What's on my wishlist?" | shop_write_read |
+| "Which files do I have?" | vault_manifest |
+| "Show me my images/videos/audios" | image_list / video_list / audio_list |
+| "What do I have today?" | calendar_read |
+| "Search other souls / AI agents" | soul_discover |
+| "I want to access another soul" | soul_discover → soul_pay_read |
+| "Is my soul verified?" | verify_human |
+| "How is my AI configured?" | mind_read |
+| "that doesn't fit / reflect on yourself" | mind_read → mind_write(Self-Reflection) |
+| "Write that into my soul" | soul_write |
+| "I ate: ..." | food_log |
+| "I bought X / add to wishlist" | shop_log |
+| "Search the web / current info" | web_search |
+| "Write a note / document" | context_write |
+| "Write recommendation into another soul" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
 
 ---
 
-## Wichtig
-- **Immer soul_read zuerst** — außer der Task ist explizit nicht-persönlich.
-- **vault_manifest vor context_get** — prüfe erst ob die Datei existiert.
-- **soul_discover vor soul_pay_read** — du brauchst pay_endpoint und soul_id aus dem Discovery.
-- **shop_write_read ohne Parameter = read-only** — ad_placement nur wenn du schreiben willst.`,
+## Important
+- **Always soul_read first** — unless the task is explicitly non-personal.
+- **vault_manifest before context_get** — check that the file exists first.
+- **soul_discover before soul_pay_read** — you need pay_endpoint and soul_id from discovery.
+- **shop_write_read without parameters = read-only** — ad_placement only when you want to write.`,
           },
         },
       ],
@@ -365,14 +364,14 @@ Credentials (account_sid, auth_token) werden direkt übergeben — keine gespeic
   // ── Schnell-Onboarding: Ersten soul_write-Eintrag anlegen ────────────────
   server.prompt(
     'soul_first_entry',
-    'Hilft beim Anlegen des ersten Eintrags in einer neuen Soul.',
+    'Helps create the first entry in a new soul.',
     () => ({
       messages: [
         {
           role: 'user',
           content: {
             type: 'text',
-            text: `Ich möchte meine Soul zum ersten Mal mit echten Inhalten füllen. Bitte lies zunächst mit soul_read, was bereits vorhanden ist, und stelle mir dann 3–5 kurze Fragen, um einen aussagekräftigen ersten Eintrag in den Abschnitten "Über mich", "Projekte" und "Ziele" zu erstellen. Nutze soul_write, sobald du genug weißt.`,
+            text: `I want to fill my soul with real content for the first time. Please first read with soul_read what is already there, then ask me 3–5 short questions to create a meaningful first entry in the sections "Core Identity", "Projects", and "Goals". Use soul_write as soon as you know enough.`,
           },
         },
       ],

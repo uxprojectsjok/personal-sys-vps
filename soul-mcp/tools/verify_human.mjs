@@ -22,8 +22,8 @@ export function register(server, token) {
         const result = await blockchainVerify(soulId);
 
         const summary = result.verified
-          ? `✓ Verifiziert – ${result.anchor_count} Blockchain-Anker, ${result.total_sessions} Sessions, erste Verankerung: ${result.first_anchor}`
-          : `✗ Nicht verifiziert – keine Blockchain-Einträge gefunden`;
+          ? `✓ Verified – ${result.anchor_count} blockchain anchors, ${result.total_sessions} sessions, first anchor: ${result.first_anchor}`
+          : `✗ Not verified – no blockchain entries found`;
 
         return {
           content: [

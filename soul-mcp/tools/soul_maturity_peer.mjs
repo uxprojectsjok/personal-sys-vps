@@ -12,17 +12,23 @@ const SOULS_DIR   = '/var/lib/sys/souls/';
 const MAGIC       = Buffer.from([0x53, 0x59, 0x53, 0x01]);
 
 const SCORED_SECTIONS = [
-  "Kern-Identität", "Werte & Überzeugungen", "Ästhetik & Resonanz",
-  "Sprachmuster & Ausdruck", "Wiederkehrende Themen & Obsessionen",
-  "Emotionale Signatur", "Weltbild", "Offene Fragen dieser Person",
+  { en: "Core Identity",                      de: "Kern-Identität" },
+  { en: "Values & Beliefs",                   de: "Werte & Überzeugungen" },
+  { en: "Aesthetics & Resonance",             de: "Ästhetik & Resonanz" },
+  { en: "Language Patterns & Expression",     de: "Sprachmuster & Ausdruck" },
+  { en: "Recurring Themes & Obsessions",      de: "Wiederkehrende Themen & Obsessionen" },
+  { en: "Emotional Signature",                de: "Emotionale Signatur" },
+  { en: "Worldview",                          de: "Weltbild" },
+  { en: "Open Questions",                     de: "Offene Fragen dieser Person" },
 ];
 
 const SIGNATURE_KEYWORDS = [
-  "startup", "gründer", "gründerin", "künstler", "musiker", "autor",
-  "weltmeister", "champion", "preis", "award", "patent", "erfinder",
-  "professor", "doktor", "phd", "ceo", "cto", "geschäftsführer",
-  "millionen", "international", "polizei", "beamter", "offizier",
-  "architekt", "ingenieur", "chirurg", "pilot",
+  "startup", "founder", "gründer", "gründerin", "artist", "künstler", "musician", "musiker",
+  "author", "autor", "world champion", "weltmeister", "champion", "prize", "preis", "award",
+  "patent", "inventor", "erfinder", "professor", "doctor", "doktor", "phd", "ceo", "cto",
+  "managing director", "geschäftsführer", "millions", "millionen", "international",
+  "police", "polizei", "officer", "beamter", "offizier", "architect", "architekt",
+  "engineer", "ingenieur", "surgeon", "chirurg", "pilot",
 ];
 
 function countWords(text) {
@@ -62,16 +68,16 @@ function scoreSignature(n) {
   if (n === 3) return 10; if (n === 4) return 12; return 15;
 }
 function scoreToLevel(score) {
-  if (score >= 96) return "Zeitlos";   if (score >= 86) return "Legendär";
-  if (score >= 75) return "Premium";   if (score >= 55) return "Etabliert";
-  if (score >= 35) return "Reifung";   if (score >= 15) return "Aufbau";
+  if (score >= 96) return "Timeless";   if (score >= 86) return "Legendary";
+  if (score >= 75) return "Premium";    if (score >= 55) return "Established";
+  if (score >= 35) return "Maturing";   if (score >= 15) return "Building";
   return "Genesis";
 }
 
 export function register(server, targetSoulId) {
   server.tool(
     'soul_maturity',
-    'Gibt den Reifegrad der Soul zurück: Maturity-Score (0–100), Wachstumsstufe und Breakdown. (Peer-Zugriff: Archiv- und Netzwerk-Säulen werden nicht bewertet.)',
+    'Returns the maturity level of the soul: maturity score (0–100), growth level, and breakdown. (Peer access: archive and network pillars are not scored.)',
     {},
     async () => {
       try {
@@ -109,13 +115,17 @@ export function register(server, targetSoulId) {
 
         let sectionTotal = 0;
         const sectionScores = {};
-        for (const name of SCORED_SECTIONS) {
-          const pts = scoreSection(sections[name] ?? "");
-          sectionScores[name] = pts;
+        for (const { en, de } of SCORED_SECTIONS) {
+          const content = sections[en] ?? sections[de] ?? "";
+          const pts = scoreSection(content);
+          sectionScores[en] = pts;
           sectionTotal += pts;
         }
         const sectionPts = Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12);
-        const logEntries = countSessionEntries(sections["Session-Log"] ?? sections["Session-Log (komprimiert)"] ?? "");
+        const logEntries = countSessionEntries(
+          sections["Session Log"] ?? sections["Session-Log"] ??
+          sections["Session Log (compressed)"] ?? sections["Session-Log (komprimiert)"] ?? ""
+        );
         const sessionPts = Math.min(Math.floor(logEntries / 2), 8);
         const tiefe      = sectionPts + sessionPts;
 
@@ -133,7 +143,7 @@ export function register(server, targetSoulId) {
           content: [{
             type: 'text',
             text: JSON.stringify({
-              name:           fm.soul_name ?? fm.name ?? 'Unbekannt',
+              name:           fm.soul_name ?? fm.name ?? 'Unknown',
               soul_id:        fm.soul_id   ?? targetSoulId,
               maturity_score: score,
               level:          scoreToLevel(score),
@@ -142,7 +152,7 @@ export function register(server, targetSoulId) {
               anchored:       !!fm.soul_chain_anchor,
               created:        fm.created       ?? null,
               last_session:   fm.last_session  ?? null,
-              note:           'Peer-Zugriff: Archiv- und Netzwerk-Säulen nicht bewertet.',
+              note:           'Peer access: archive and network pillars not scored.',
               breakdown:      { herkunft, tiefe, biometrie, archiv: 0, signatur, netzwerk: 0 },
             }, null, 2),
           }],

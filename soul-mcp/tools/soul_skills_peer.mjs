@@ -73,9 +73,9 @@ export function register(server, targetSoulId) {
         const skillIndex = skills.map(s => `- \`${s.filename}\` → ${s.heading} (${s.source})`).join('\n');
         skills.unshift({
           filename: `${slug}-sys.md`,
-          heading: 'Root (Soul-Kontext)',
+          heading: 'Root (Soul Context)',
           source:  'sys.md',
-          content: `---\nname: ${slug}-soul\ndescription: ${name}s Soul-Kontext\n---\n\n# ${name} – Soul-Kontext\n\n## Verfügbare Skills\n\n${skillIndex || '(keine Sektionen)'}\n`,
+          content: `---\nname: ${slug}-soul\ndescription: ${name}'s soul context\n---\n\n# ${name} – Soul Context\n\n## Available Skills\n\n${skillIndex || '(no sections)'}\n`,
         });
 
         return {

@@ -27,7 +27,7 @@ export function register(server, targetSoulId) {
           content: [{
             type: 'text',
             text: JSON.stringify({
-              owner:       fm.soul_name ?? fm.name ?? fm.soul_id ?? 'Unbekannt',
+              owner:       fm.soul_name ?? fm.name ?? fm.soul_id ?? 'Unknown',
               entry_count: entries.length,
               entries,
               raw_section: raw || '(kein Kalender-Abschnitt gefunden)',
