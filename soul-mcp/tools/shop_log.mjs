@@ -73,7 +73,7 @@ export function register(server, soulId) {
         }
 
         const moPurch = purchaseLines.filter(l => l.match(new RegExp(`^- ${curMonth}`)) && l.includes('| purchased |'));
-        let monthlyContent = '_Noch keine Einträge._';
+        let monthlyContent = '_No entries yet._';
         if (moPurch.length > 0) {
           const cc = {}; let tot = 0, pc = 0;
           for (const l of moPurch) {
@@ -81,19 +81,19 @@ export function register(server, soulId) {
             const pm = l.match(/€([\d.]+)/); if (pm) { tot += parseFloat(pm[1]); pc++; }
           }
           monthlyContent = Object.entries(cc).map(([c, n]) => `- ${c}: ${n}`).join('\n');
-          if (pc > 0) monthlyContent += `\n- Gesamt: €${tot.toFixed(2)}`;
+          if (pc > 0) monthlyContent += `\n- Total: €${tot.toFixed(2)}`;
         }
 
         const yrPurch = purchaseLines.filter(l => l.match(new RegExp(`^- ${curYear}`)) && l.includes('| purchased |'));
-        let annualContent = '_Noch keine Einträge._';
+        let annualContent = '_No entries yet._';
         if (yrPurch.length > 0) {
           const yc = {};
           for (const l of yrPurch) { const cm = l.match(/\| purchased \| (\w+)/); if (cm) yc[cm[1]] = (yc[cm[1]] || 0) + 1; }
           annualContent = Object.entries(yc).map(([c, n]) => `- ${c}: ${n}`).join('\n');
         }
 
-        let out = head.trimEnd() + '\n\n## Wishlist\n' + (wishlistLines.filter(l => l.trim()).join('\n') || '_Leer._');
-        out += '\n\n## Recent Purchases\n' + (purchaseLines.filter(l => l.trim()).join('\n') || '_Noch keine Einträge._');
+        let out = head.trimEnd() + '\n\n## Wishlist\n' + (wishlistLines.filter(l => l.trim()).join('\n') || '_Empty._');
+        out += '\n\n## Recent Purchases\n' + (purchaseLines.filter(l => l.trim()).join('\n') || '_No entries yet._');
         out += `\n\n## Monthly Summary (${curMonth})\n${monthlyContent}`;
         out += `\n\n## Annual Categories (${curYear})\n${annualContent}\n`;
 

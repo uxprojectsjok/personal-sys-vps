@@ -13,7 +13,7 @@ export function register(server, token) {
         const { entries, raw } = parseCalendar(md);
 
         const result = {
-          owner: fm.name || fm.soul_id || 'Unbekannt',
+          owner: fm.name || fm.soul_id || 'Unknown',
           entry_count: entries.length,
           entries,
           raw_section: raw || '(kein Kalender-Abschnitt gefunden)',

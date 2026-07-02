@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { putJson } from '../lib/api.mjs';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
 
-const WRITE_PROTECTED = new Set(['Identität', 'Grenzen']);
+const WRITE_PROTECTED = new Set(['Identität', 'Grenzen', 'Identity', 'Boundaries']);
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -11,49 +11,49 @@ export function register(server, token, soulId = null) {
   server.tool(
     'mind_write',
     [
-      'Schreibt oder ergänzt eine Sektion in deiner Konfigurationsdatei (mind.md).',
+      'Writes or extends a section in your configuration file (mind.md).',
       '',
-      'Beschreibbare Sektionen:',
-      '- Kommunikation — wie du sprichst und antwortest',
-      '- Intellekt — deine Denkweise und Herangehensweise',
-      '- Werkzeuge — verfügbare Tools und Fähigkeiten',
-      '- Netzwerk — Peer-Interaktionsregeln',
-      '- Selbstreflexion — was du über diese Person gelernt hast',
+      'Writable sections:',
+      '- Communication — how you speak and respond',
+      '- Intellect — your thinking style and approach',
+      '- Tools — available tools and capabilities',
+      '- Network — peer interaction rules',
+      '- Self-Reflection — what you have learned about this person',
       '',
-      'Schreibgeschützt (nicht änderbar): Identität, Grenzen.',
+      'Write-protected (cannot be changed): Identity, Boundaries.',
       '',
-      '## SELBSTREFLEXION — Wann SOFORT schreiben:',
-      'Wenn der User sagt: "das passt nicht", "reflektiere dich", "so nicht", "das stimmt nicht",',
-      '"falsch", "ändere dich", "du hast mich falsch verstanden", "das war falsch", "nicht so",',
-      'oder andere Kritik/Korrektur an deiner Antwort äußert:',
-      '1. Lese zuerst mind_read um den aktuellen Stand zu kennen.',
-      '2. Analysiere KRITISCH: Was habe ich falsch gemacht? Warum? Was erwartet diese Person?',
-      '3. DEDUP-PRÜFUNG (Pflicht): Gibt es bereits einen Eintrag der dasselbe Kernprinzip beschreibt — auch mit anderen Worten? Wenn JA → nicht schreiben. Das Prinzip ist bereits gelernt.',
-      '4. Nur wenn das Prinzip wirklich neu ist: Schreibe mit mode="prepend".',
+      '## SELF-REFLECTION — when to write IMMEDIATELY:',
+      'When the user says: "that doesn\'t fit", "reflect on yourself", "not like that", "that\'s wrong",',
+      '"you misunderstood me", "change your approach", "that was off", "no",',
+      'or otherwise expresses criticism or correction of your response:',
+      '1. First call mind_read to know the current state.',
+      '2. Analyse CRITICALLY: What did I do wrong? Why? What does this person expect?',
+      '3. DEDUP CHECK (required): Is there already an entry describing the same core principle — even in different words? If YES → do not write. The principle is already learned.',
+      '4. Only if the principle is genuinely new: write with mode="prepend".',
       '',
-      'Format für Selbstreflexion-Einträge:',
-      '`DATUM: [Was nicht passte] → [Warum es nicht passte] → [Was ich beim nächsten Mal anders mache]`',
+      'Format for Self-Reflection entries:',
+      '`DATE: [What didn\'t fit] → [Why it didn\'t fit] → [What I\'ll do differently next time]`',
       '',
-      'Nur schreiben bei echten, neuen Erkenntnissen — nicht bei Variationen bereits gelernter Prinzipien.',
-      'Max. 20 Einträge. Der Server entfernt älteste automatisch wenn die Grenze überschritten wird.',
+      'Only write for real, new insights — not for variations of already learned principles.',
+      'Max. 20 entries. The server removes the oldest automatically when the limit is exceeded.',
     ].join('\n'),
     {
       section: z.string().min(1).max(200).describe(
-        'Sektionsname ohne "##", z.B. "Selbstreflexion" oder "Kommunikation"'
+        'Section name without "##", e.g. "Self-Reflection" or "Communication"'
       ),
       content: z.string().min(1).max(50000).describe(
-        'Neuer Inhalt der Sektion (Markdown). Für Logs mit Datum beginnen.'
+        'New section content (Markdown). For logs, start with a date.'
       ),
       mode: z.enum(['replace', 'append', 'prepend'])
         .default('replace')
-        .describe('replace = ersetzen | append = ans Ende | prepend = an den Anfang (empfohlen für Logs)'),
+        .describe('replace = overwrite | append = add to end | prepend = add to start (recommended for logs)'),
     },
     async ({ section, content, mode }) => {
       if (WRITE_PROTECTED.has(section)) {
         return {
           content: [{
             type: 'text',
-            text: `Sektion "${section}" ist schreibgeschützt und kann nicht via mind_write verändert werden.`,
+            text: `Section "${section}" is write-protected and cannot be changed via mind_write.`,
           }],
           isError: true,
         };
@@ -90,7 +90,7 @@ export function register(server, token, soulId = null) {
           await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
           await writeFile(mindPath, md, 'utf8');
 
-          const verb = mode === 'replace' ? 'ersetzt' : mode === 'append' ? 'erweitert (Ende)' : 'erweitert (Anfang)';
+          const verb = mode === 'replace' ? 'replaced' : mode === 'append' ? 'extended (end)' : 'extended (start)';
           return {
             content: [{
               type: 'text',
@@ -98,21 +98,21 @@ export function register(server, token, soulId = null) {
                 ok: true,
                 section,
                 mode,
-                message: `Sektion "${section}" in mind.md ${verb}.`,
+                message: `Section "${section}" in mind.md ${verb}.`,
               }, null, 2),
             }],
           };
         }
 
-        // Fallback: API (nur wenn kein soulId bekannt)
+        // Fallback: API (only when soulId is unknown)
         const result = await putJson('/api/mind', token, { section, content, mode });
         if (!result?.ok) {
           return {
-            content: [{ type: 'text', text: `Fehler beim Schreiben: ${JSON.stringify(result)}` }],
+            content: [{ type: 'text', text: `Write error: ${JSON.stringify(result)}` }],
             isError: true,
           };
         }
-        const verb = mode === 'replace' ? 'ersetzt' : mode === 'append' ? 'erweitert (Ende)' : 'erweitert (Anfang)';
+        const verb = mode === 'replace' ? 'replaced' : mode === 'append' ? 'extended (end)' : 'extended (start)';
         return {
           content: [{
             type: 'text',
@@ -120,13 +120,13 @@ export function register(server, token, soulId = null) {
               ok: true,
               section,
               mode,
-              message: `Sektion "${section}" in mind.md ${verb}.`,
+              message: `Section "${section}" in mind.md ${verb}.`,
             }, null, 2),
           }],
         };
       } catch (err) {
         return {
-          content: [{ type: 'text', text: `mind_write Fehler: ${err.message}` }],
+          content: [{ type: 'text', text: `mind_write error: ${err.message}` }],
           isError: true,
         };
       }

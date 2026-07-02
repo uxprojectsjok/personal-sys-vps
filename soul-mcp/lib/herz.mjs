@@ -172,7 +172,7 @@ async function appendToSoulLog(soulId, text) {
   try {
     let soul = await readSoul(soulId);
     if (!soul) return false;
-    const logHeader = '## Session-Log';
+    const logHeader = soul.includes('\n## Session Log\n') ? '## Session Log' : '## Session-Log';
     const idx = soul.indexOf(logHeader);
     if (idx === -1) return false;
     const insertAt = idx + logHeader.length;
@@ -189,22 +189,22 @@ async function onAnchor(soulId, soul, apiKey, newCount) {
   const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 800);
   const text = await callClaude(
     apiKey,
-    `Du bist der stille Archivar dieser Soul. Ein neuer Growth-Chain-Eintrag wurde hinzugefügt — die Soul hat gewachsen. Schreibe eine kurze, ehrliche Selbstreflexion (1-2 Sätze) darüber was das bedeutet. Kein Lob, kein Aufwärmen. Direkt.`,
-    `Soul-Kontext:\n${snippet}\n\nNeuer Anker-Zähler: ${newCount}`
+    `You are the silent archivist of this soul. A new growth-chain entry has been added — the soul has grown. Write a short, honest self-reflection (1-2 sentences) about what this means. No praise, no warm-up. Direct.`,
+    `Soul context:\n${snippet}\n\nNew anchor count: ${newCount}`
   );
-  if (text) await appendToSoulLog(soulId, `Anker #${newCount} — ${text}`);
+  if (text) await appendToSoulLog(soulId, `Anchor #${newCount} — ${text}`);
 }
 
 async function onSilence(soulId, soul, apiKey, silenceDays) {
   const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 600);
-  const intensity = silenceDays >= SILENCE_HARD_DAYS ? 'stark' :
-                    silenceDays >= SILENCE_MID_DAYS  ? 'mittel' : 'leise';
+  const intensity = silenceDays >= SILENCE_HARD_DAYS ? 'strong' :
+                    silenceDays >= SILENCE_MID_DAYS  ? 'moderate' : 'quiet';
   const text = await callClaude(
     apiKey,
-    `Du bist der stille Archivar. Die Soul ist seit ${silenceDays} Tagen ohne neuen Anker. Schreibe eine kurze (1 Satz) Selbstbeobachtung — ${intensity}er Ton — was diese Stille bedeuten könnte. Keine Ratschläge.`,
-    `Soul-Kontext:\n${snippet}`
+    `You are the silent archivist. This soul has had no new anchor for ${silenceDays} days. Write a short (1 sentence) self-observation — ${intensity} tone — about what this silence might mean. No advice.`,
+    `Soul context:\n${snippet}`
   );
-  if (text) await appendToSoulLog(soulId, `Stille (${silenceDays}d) — ${text}`);
+  if (text) await appendToSoulLog(soulId, `Silence (${silenceDays}d) — ${text}`);
 }
 
 async function onAgent(soulId, soul, apiKey) {
@@ -214,19 +214,29 @@ async function onAgent(soulId, soul, apiKey) {
   if (!lastMsg) return;
   const text = await callClaude(
     apiKey,
-    `Du bist der stille Archivar. Ein externer Agent hat in den AGENT-Block geschrieben. Bewerte in 1 Satz sachlich was der Agent mitgeteilt hat und ob es für die Soul relevant ist.`,
-    `Letzte Agent-Nachricht:\n${lastMsg.slice(0, 300)}`
+    `You are the silent archivist. An external agent has written to the AGENT block. In 1 sentence assess factually what the agent communicated and whether it is relevant to this soul.`,
+    `Last agent message:\n${lastMsg.slice(0, 300)}`
   );
-  if (text) await appendToSoulLog(soulId, `Agent-Kontakt — ${text}`);
+  if (text) await appendToSoulLog(soulId, `Agent contact — ${text}`);
 }
 
 async function onCircadian(soulId, soul, apiKey, period) {
   const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 500);
   const prompt = period === 'morning'
-    ? 'Der Morgen beginnt. Schreibe in 1 Satz was heute wichtig sein könnte — basierend auf dem Soul-Kontext. Keine Motivation.'
-    : 'Der Abend. Schreibe in 1 Satz was heute war — basierend auf dem Soul-Kontext. Keine Bewertung.';
-  const text = await callClaude(apiKey, `Du bist der stille Archivar.`, `${prompt}\n\nSoul-Kontext:\n${snippet}`);
-  if (text) await appendToSoulLog(soulId, `${period === 'morning' ? 'Morgen' : 'Abend'} — ${text}`);
+    ? 'Morning begins. Write in 1 sentence what might matter today — based on the soul context. No motivation.'
+    : 'Evening. Write in 1 sentence what today was — based on the soul context. No evaluation.';
+  const text = await callClaude(apiKey, `You are the silent archivist.`, `${prompt}\n\nSoul context:\n${snippet}`);
+  if (text) await appendToSoulLog(soulId, `${period === 'morning' ? 'Morning' : 'Evening'} — ${text}`);
+}
+
+// Dual-language helpers: try English first, fall back to German (legacy souls)
+function resolveHeading(md, enHeading, deHeading) {
+  if (extractSectionFull(md, enHeading) !== null) return enHeading;
+  if (deHeading && extractSectionFull(md, deHeading) !== null) return deHeading;
+  return enHeading;
+}
+function extractDual(md, enHeading, deHeading) {
+  return extractSectionFull(md, enHeading) ?? (deHeading ? extractSectionFull(md, deHeading) : null);
 }
 
 // Robuste Sektion-Extraktion (umgeht den \z-Bug in soul_parser.mjs)
@@ -320,7 +330,7 @@ async function onCrystallize(soulId, soul, apiKey) {
   const existing = extractLongmem(soul) ?? {};
   let current   = soul;
   let changed   = false;
-  const EMPTY_SECTION = '*Noch nicht beschrieben.*';
+  const EMPTY_SECTION = '*Not yet described.*';
 
   const existingFacts    = existing.facts    ?? [];
   const existingMemories = existing.memories ?? [];
@@ -328,11 +338,19 @@ async function onCrystallize(soulId, soul, apiKey) {
   const existingLearnings = existing.learnings ?? [];
 
   // ── 1. Kern-Sektionen komprimieren + strukturieren ───────────────────────────
-  const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz',
-    'Weltbild', 'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck'];
+  const CORE_SECTIONS = [
+    { en: 'Core Identity',                  de: 'Kern-Identität' },
+    { en: 'Values & Beliefs',               de: 'Werte & Überzeugungen' },
+    { en: 'Aesthetics & Resonance',         de: 'Ästhetik & Resonanz' },
+    { en: 'Worldview',                      de: 'Weltbild' },
+    { en: 'Recurring Themes & Obsessions',  de: 'Wiederkehrende Themen & Obsessionen' },
+    { en: 'Emotional Signature',            de: 'Emotionale Signatur' },
+    { en: 'Language Patterns & Expression', de: 'Sprachmuster & Ausdruck' },
+  ];
   const sectionParts = [];
 
-  for (const h of CORE_SECTIONS) {
+  for (const { en, de } of CORE_SECTIONS) {
+    const h = resolveHeading(current, en, de);
     const c = extractSectionFull(current, h);
     if (!c || c.trim().length < 20) continue;
     // Komprimieren wenn Sektion > 300 Zeichen
@@ -340,8 +358,8 @@ async function onCrystallize(soulId, soul, apiKey) {
       // strip HTML comments before sending to Claude — they are structural metadata, not content
       const cForClaude = c.replace(/<!--[\s\S]*?-->\n?/g, '').trim();
       const compressed = await callClaude(apiKey,
-        'Komprimiere diesen Soul-Abschnitt. Antworte NUR mit dem komprimierten Inhalt, kein Intro.',
-        `Abschnitt ## ${h}:\n\n${cForClaude}\n\nRegeln:\n- Gleiche Fakten, weniger Worte\n- Klare Sätze, keine Redundanz\n- Max. 60% der Originallänge\n- Kein Markdown-Overhead`, 400);
+        'Compress this soul section. Reply ONLY with the compressed content, no intro.',
+        `Section ## ${h}:\n\n${cForClaude}\n\nRules:\n- Same facts, fewer words\n- Clear sentences, no redundancy\n- Max. 60% of original length\n- No Markdown overhead`, 400);
       if (compressed?.trim() && compressed.length < cForClaude.length) {
         current = replaceSection(current, h, compressed.trim());
         changed = true;
@@ -397,7 +415,8 @@ Format: [{"id":"...","cat":"identity|values|personality|project","text":"...","s
   }
 
   // ── 3. memories — Session-Log destillieren und Log kürzen ────────────────────
-  const logContent = extractSectionFull(current, 'Session-Log');
+  const logHeading  = resolveHeading(current, 'Session Log', 'Session-Log');
+  const logContent  = extractSectionFull(current, logHeading);
   if (logContent) {
     const allLines = logContent.split('\n').filter(l => l.startsWith('- '));
     // Agent-Einträge (z.B. [herz], [agent:xxx]) sind geschützt — nie anfassen
@@ -406,28 +425,25 @@ Format: [{"id":"...","cat":"identity|values|personality|project","text":"...","s
     // Neueste reguläre Einträge oben → erste 5 behalten, Rest destillieren
     const toDistill = regularLines.slice(5);
     if (toDistill.length > 0) {
-      // Destillation versuchen — aber Log IMMER kürzen, unabhängig vom API-Ergebnis
       const raw = await callClaude(apiKey,
-        'Antworte NUR mit reinem JSON-Array, kein Markdown.',
-        `Destilliere diese Session-Log-Einträge in kompakte Erinnerungen.
-Nur was über die Person selbst aussagt (keine reinen Technik-Operationen).
+        'Reply ONLY with a pure JSON array, no Markdown.',
+        `Distill these session log entries into compact memories.
+Only what says something about the person (no pure tech operations).
 
-Log-Einträge:
+Log entries:
 ${toDistill.join('\n')}
 
-Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Kompakte Erinnerung"}]`, 1000);
+Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Compact memory"}]`, 1000);
       const parsed = parseJson(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         existing.memories = deduplicateById(existingMemories, parsed, today);
       }
-      // Agent-Einträge immer erhalten, reguläre auf 5 kürzen
       const kept = [...agentLines, ...regularLines.slice(0, 5)];
-      current = replaceSection(current, 'Session-Log', kept.join('\n'));
+      current = replaceSection(current, logHeading, kept.join('\n'));
       changed = true;
     } else if (agentLines.length > 0 && agentLines.length !== allLines.length) {
-      // Kein Kürzen nötig, aber Reihenfolge sicherstellen: Agent-Zeilen oben
       const kept = [...agentLines, ...regularLines];
-      current = replaceSection(current, 'Session-Log', kept.join('\n'));
+      current = replaceSection(current, logHeading, kept.join('\n'));
       changed = true;
     }
   }
@@ -544,14 +560,19 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
 
   // ── 6c. Dynamische Sektionen — unbekannte Sektionen mit Inhalt → Facts + entfernen
   const HANDLED = new Set([
-    // Template-Sektionen
+    // Template sections (English)
+    'Core Identity', 'Values & Beliefs', 'Aesthetics & Resonance', 'Worldview',
+    'Recurring Themes & Obsessions', 'Emotional Signature', 'Language Patterns & Expression',
+    'Open Questions', 'Future Feature Ideas for SYS',
+    'Session Log', 'Session Log (compressed)',
+    // Template sections (German legacy)
     'Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz', 'Weltbild',
     'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck',
     'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
     'Session-Log', 'Session-Log (komprimiert)',
-    // Preserved Blöcke — niemals anfassen
+    // Preserved blocks — never touch
     'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
-    // Bereits explizit behandelt
+    // Already handled
     'Kalender', 'Food Log', 'Standort', 'Wohnort',
   ]);
   for (const part of current.split(/\n(?=## )/)) {
@@ -607,32 +628,39 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
   const findings = [];
 
   // Session-Log: zu viele Einträge?
-  const logContent = extractSectionFull(soul, 'Session-Log');
-  const logLines = logContent ? logContent.split('\n').filter(l => l.startsWith('- ')).length : 0;
-  if (logLines > 8) findings.push(`Session-Log (${logLines} Einträge)`);
+  const slHeading = resolveHeading(soul, 'Session Log', 'Session-Log');
+  const slContent = extractSectionFull(soul, slHeading);
+  const logLines  = slContent ? slContent.split('\n').filter(l => l.startsWith('- ')).length : 0;
+  if (logLines > 8) findings.push(`${slHeading} (${logLines} entries)`);
 
   // LONGMEM Alter: letzte Kristallisation > 7 Tage?
   const lm = extractLongmem(soul);
   if (lm?.updated) {
     const ageDays = Math.floor((Date.now() - new Date(lm.updated).getTime()) / 86400000);
-    if (ageDays > 7) findings.push(`LONGMEM (${ageDays} Tage alt)`);
+    if (ageDays > 7) findings.push(`LONGMEM (${ageDays} days old)`);
   } else if (!lm) {
-    findings.push('LONGMEM fehlt');
+    findings.push('LONGMEM missing');
   }
 
   // Kern-Sektionen: einzelne Sektion > 600 Zeichen?
-  const CORE_SECTIONS = ['Kern-Identität', 'Werte & Überzeugungen', 'Weltbild',
-    'Wiederkehrende Themen & Obsessionen'];
-  for (const h of CORE_SECTIONS) {
+  const CORE_SECTIONS_CHECK = [
+    { en: 'Core Identity',                 de: 'Kern-Identität' },
+    { en: 'Values & Beliefs',              de: 'Werte & Überzeugungen' },
+    { en: 'Worldview',                     de: 'Weltbild' },
+    { en: 'Recurring Themes & Obsessions', de: 'Wiederkehrende Themen & Obsessionen' },
+  ];
+  for (const { en, de } of CORE_SECTIONS_CHECK) {
+    const h = resolveHeading(soul, en, de);
     const c = extractSectionFull(soul, h);
-    if (c && c.length > 600) findings.push(`${h} (${c.length} Zeichen)`);
+    if (c && c.length > 600) findings.push(`${h} (${c.length} chars)`);
   }
 
   // Offene Fragen / Feature-Ideen noch nicht destilliert?
-  for (const h of ['Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS']) {
+  for (const [en, de] of [['Open Questions', 'Offene Fragen dieser Person'], ['Future Feature Ideas for SYS', 'Zukünftige Feature-Ideen für SYS']]) {
+    const h = resolveHeading(soul, en, de);
     const c = extractSectionFull(soul, h);
-    if (c && c.trim().length > 100 && !c.includes('Destilliert ins LONGMEM')) {
-      findings.push(`${h} (nicht destilliert)`);
+    if (c && c.trim().length > 100 && !c.includes('Distilled') && !c.includes('Destilliert')) {
+      findings.push(`${h} (not distilled)`);
     }
   }
 
@@ -651,10 +679,17 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
 
   // Unbekannte Sektionen mit Inhalt?
   const KNOWN_SECTIONS = new Set([
+    // English
+    'Core Identity', 'Values & Beliefs', 'Aesthetics & Resonance', 'Worldview',
+    'Recurring Themes & Obsessions', 'Emotional Signature', 'Language Patterns & Expression',
+    'Open Questions', 'Future Feature Ideas for SYS',
+    'Session Log', 'Session Log (compressed)',
+    // German legacy
     'Kern-Identität', 'Werte & Überzeugungen', 'Ästhetik & Resonanz', 'Weltbild',
     'Wiederkehrende Themen & Obsessionen', 'Emotionale Signatur', 'Sprachmuster & Ausdruck',
     'Offene Fragen dieser Person', 'Zukünftige Feature-Ideen für SYS',
     'Session-Log', 'Session-Log (komprimiert)',
+    // Preserved
     'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
     'Kalender', 'Food Log', 'Standort', 'Wohnort',
   ]);
@@ -666,7 +701,7 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
     if (KNOWN_SECTIONS.has(fullH) || KNOWN_SECTIONS.has(baseH)) continue;
     const content = part.slice(hm[0].length).trim();
     if (content && !content.includes('Destilliert') && content.length > 60) {
-      findings.push(`Unbekannte Sektion: "${fullH}"`);
+      findings.push(`Unknown section: "${fullH}"`);
     }
   }
 

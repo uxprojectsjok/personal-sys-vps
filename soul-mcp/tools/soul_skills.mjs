@@ -4,10 +4,10 @@ import { parseFrontmatter, extractAllSections } from '../lib/soul_parser.mjs';
 const SKIP_SECTIONS = new Set(['Kalender', 'API', 'Anker', 'Chain', 'Blockchain']);
 
 const PROFILE_LABELS = {
-  face:      'Erscheinung & Ausdruck',
-  voice:     'Stimme & Kommunikationsstil',
-  motion:    'Bewegung & Körpersprache',
-  expertise: 'Fachkompetenz (Profil)',
+  face:      'Appearance & Expression',
+  voice:     'Voice & Communication Style',
+  motion:    'Movement & Body Language',
+  expertise: 'Professional Competence (Profile)',
 };
 
 export function register(server, token) {
@@ -50,7 +50,7 @@ export function register(server, token) {
             filename: `${slug}-doc-${docSlug}.md`,
             heading:  docHeading,
             source:   `vault/context/${fname}`,
-            skill: skillFile(slug, `doc-${docSlug}`, docHeading, name, content, `Kontext-Dokument: ${fname}`),
+            skill: skillFile(slug, `doc-${docSlug}`, docHeading, name, content, `Context document: ${fname}`),
           });
         }
 
@@ -60,30 +60,30 @@ export function register(server, token) {
 
         const rootSkill = `---
 name: ${slug}-soul
-description: ${name}s vollständiger Soul-Kontext – Persönlichkeit, Wissen, Erscheinung
+description: ${name}'s complete soul context – personality, knowledge, appearance
 ---
 
-# ${name} – Soul-Kontext
+# ${name} – Soul Context
 
 **Maturity:** ${fm.soul_maturity ?? '?'}/100 | **Sessions:** ${fm.soul_sessions ?? '?'} | **Version:** ${fm.version ?? '?'}
 
 ${profileSections}
 
-## Verfügbare Spezial-Skills
+## Available Specialist Skills
 
-${skillIndex || '(noch keine Sektionen generiert)'}
+${skillIndex || '(no sections generated yet)'}
 
-## Wichtige Regeln
+## Important Rules
 
-- Datenschutz: Soul-Daten sind personenbezogen – nicht an Dritte weitergeben
-- Bei direkter KI-Frage: transparent antworten ("Ich bin Claudes digitale Repräsentation von ${name}")
-- Vault gesperrt (403): User bitten Vault in der SYS App zu entsperren
-- Für aktuelle Daten immer MCP-Tools nutzen: \`soul_read\`, \`vault_manifest\`
+- Privacy: soul data is personal – do not share with third parties
+- When asked directly: respond transparently ("I am Claude's digital representation of ${name}")
+- Vault locked (403): ask the user to unlock the vault in the SYS app
+- Always use MCP tools for current data: \`soul_read\`, \`vault_manifest\`
 `;
 
         skills.unshift({
           filename: `${slug}-sys.md`,
-          heading: 'Root (Soul-Kontext)',
+          heading: 'Root (Soul Context)',
           source: 'sys.md + profile',
           skill: rootSkill,
         });
@@ -107,12 +107,12 @@ ${skillIndex || '(noch keine Sektionen generiert)'}
             content:  s.skill,
           })),
           instructions: [
-            `Speichere alle Dateien unter ~/.claude/skills/`,
-            `Oder nutze den /soul-skill-writer Skill für automatische Installation`,
-            `Aufruf: /${slug}-soul (Root) oder /${slug}-{thema} (spezifisch)`,
+            `Save all files under ~/.claude/skills/`,
+            `Or use the /soul-skill-writer skill for automatic installation`,
+            `Invoke: /${slug}-soul (root) or /${slug}-{topic} (specific)`,
             hasProfiles
-              ? `Profile eingebunden: ${Object.keys(profiles).join(', ')}`
-              : `Tipp: Erstelle Profile mit profile_save für noch reichere Skills`,
+              ? `Profiles included: ${Object.keys(profiles).join(', ')}`
+              : `Tip: create profiles with profile_save for richer skills`,
           ],
         };
 
@@ -161,7 +161,7 @@ async function loadProfiles(token) {
 function buildProfileSections(profiles) {
   if (!Object.keys(profiles).length) return '';
 
-  const lines = ['## Sensorisches & Physisches Profil\n'];
+  const lines = ['## Sensory & Physical Profile\n'];
 
   for (const [type, data] of Object.entries(profiles)) {
     lines.push(`### ${PROFILE_LABELS[type] ?? type}`);
@@ -174,7 +174,7 @@ function buildProfileSections(profiles) {
         lines.push(`- **${k}:** ${v.join(', ')}`);
       }
     }
-    if (data.updated_at) lines.push(`*(Stand: ${data.updated_at})*`);
+    if (data.updated_at) lines.push(`*(as of: ${data.updated_at})*`);
     lines.push('');
   }
 

@@ -6,27 +6,27 @@ export function register(server, token) {
   server.tool(
     'soul_discover',
     [
-      'Durchsucht das SYS-Soul-Verzeichnis nach on-chain verankerten Souls.',
+      'Searches the SYS soul directory for on-chain anchored souls.',
       '',
-      'QUELLE: Polygon-Blockchain (einzige Quelle der Wahrheit).',
-      'Pinata/IPFS wird nur zum Pinnen genutzt — nicht zur Suche.',
-      'Metadaten (Name, Tags, Beschreibung) stammen aus dem Calldata des neuesten Anker-TX.',
-      'Falls eine CID hinterlegt ist, wird das IPFS-Metadata-JSON zur Anreicherung geladen.',
+      'SOURCE: Polygon blockchain (single source of truth).',
+      'Pinata/IPFS is only used for pinning — not for search.',
+      'Metadata (name, tags, description) comes from the calldata of the latest anchor TX.',
+      'If a CID is stored, the IPFS metadata JSON is loaded for enrichment.',
       '',
-      'QUALITÄTSSIGNALE (verifizierbarer Anti-Fraud, kein subjektives Rating):',
-      '- sessions:         Growth Chain Länge — echte Sessions, kryptografisch signiert.',
-      '                    Nicht fälschbar ohne reale Nutzung.',
-      '- anchor_count:     Wie oft die Soul verankert wurde — zeigt anhaltende Aktivität.',
-      '- anchor_span_days: Tage zwischen erstem und letztem Anker — nachhaltiger Aufbau.',
-      'Sortierung: sessions DESC, dann anchor_span_days DESC.',
-      'Souls ohne echte Session werden nicht angezeigt (Anti-Fraud-Mindestfilter).',
+      'QUALITY SIGNALS (verifiable anti-fraud, no subjective rating):',
+      '- sessions:         Growth chain length — real sessions, cryptographically signed.',
+      '                    Cannot be faked without real usage.',
+      '- anchor_count:     How often the soul was anchored — shows sustained activity.',
+      '- anchor_span_days: Days between first and last anchor — sustained development.',
+      'Sort: sessions DESC, then anchor_span_days DESC.',
+      'Souls without real sessions are not shown (anti-fraud minimum filter).',
       '',
-      'Suche (q) durchsucht: Name, soul_id, Tags, Beschreibung.',
+      'Search (q) searches: name, soul_id, tags, description.',
       '',
-      'Parameter:',
-      '- q:         Freitext-Suche — Name, soul_id, Tags, Beschreibung — optional',
-      '- amortized: true = nur Souls die POL-Zahlungen akzeptieren — optional',
-      '- limit:     Max. Ergebnisse (1–100, Standard 20) — optional',
+      'Parameters:',
+      '- q:         Free-text search — name, soul_id, tags, description — optional',
+      '- amortized: true = only souls accepting POL payments — optional',
+      '- limit:     Max. results (1–100, default 20) — optional',
       '',
       'ZUGANGS-MODELLE — wichtig, nicht verwechseln:',
       '- amortization.enabled = true  → Zugang per POL-Zahlung möglich.',
@@ -77,12 +77,12 @@ export function register(server, token) {
           const indexed  = data.indexed ?? 0;
           let msg = scanning
             ? `Index wird aufgebaut — bitte in 2-3 Minuten erneut versuchen. (${indexed} Souls bisher indexiert, Blockchain-Scan läuft.)`
-            : 'Keine verankerten Souls gefunden.' + (q ? ` (Suche: "${q}")` : '');
+            : 'No anchored souls found.' + (q ? ` (search: "${q}")` : '');
           return { content: [{ type: 'text', text: msg }] };
         }
 
         const lines = [];
-        lines.push(`## Soul-Verzeichnis — ${souls.length} Einträge${data.total > souls.length ? ` (von ${data.total})` : ''}`);
+        lines.push(`## Soul Directory — ${souls.length} entries${data.total > souls.length ? ` (of ${data.total})` : ''}`);
         lines.push(`_Quelle: Polygon-Blockchain · sortiert nach Aktivität_`);
         if (q) lines.push(`_Suche: "${q}"_`);
         lines.push('');

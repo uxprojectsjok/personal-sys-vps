@@ -569,9 +569,9 @@ async function seedFromLocalAnchors() {
         _souls.set(key, newEntry);
         if (rawCid) enrichFromIpfs(newEntry, rawCid).catch(() => {});
         _dirty = true;
-      } catch { /* Soul-Verzeichnis unlesbar */ }
+      } catch { /* soul directory unreadable */ }
     }
-  } catch { /* /var/lib/sys/souls/ nicht vorhanden */ }
+  } catch { /* /var/lib/sys/souls/ not present */ }
 }
 
 // ── Query-API ─────────────────────────────────────────────────────────────────

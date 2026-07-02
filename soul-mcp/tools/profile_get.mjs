@@ -11,8 +11,8 @@ const PROFILE_HINTS = {
 export function register(server, token) {
   server.tool(
     'profile_get',
-    'Liest ein gespeichertes Analyse-Profil aus dem Vault. Typen: face (Gesicht/Erscheinung), voice (Stimme/Kommunikation), motion (Bewegung/Körpersprache), expertise (Fachkompetenz). Gibt Erstellungs-Hinweis zurück wenn kein Profil existiert.',
-    { type: z.enum(['face', 'voice', 'motion', 'expertise']).describe('Profiltyp') },
+    'Reads a stored analysis profile from the vault. Types: face (appearance/expression), voice (voice/communication), motion (movement/body language), expertise (professional competence). Returns a creation hint when no profile exists.',
+    { type: z.enum(['face', 'voice', 'motion', 'expertise']).describe('Profile type') },
     async ({ type }) => {
       try {
         const data = await getJson(`/api/vault/profile/${type}`, token);
