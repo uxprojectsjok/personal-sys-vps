@@ -117,10 +117,12 @@ if mcp_url ~= nil then
 end
 
 local ALLOWED_MODELS = {
-  ["claude-opus-4-6"]          = true,
-  ["claude-sonnet-4-6"]        = true,
+  ["claude-sonnet-5"]           = true,
+  ["claude-fable-5"]            = true,
+  ["claude-opus-4-8"]           = true,
+  ["claude-opus-4-7"]           = true,
+  ["claude-sonnet-4-6"]         = true,
   ["claude-haiku-4-5-20251001"] = true,
-  ["claude-sonnet-4-5"]        = true,
 }
 
 if model ~= nil and type(model) ~= "string" then model = nil end
@@ -201,6 +203,25 @@ if mf then
   end
 else
   ngx.log(ngx.WARN, "[set_config] master.json nicht gefunden: ", master_path)
+end
+
+-- ── Claude Code CLI settings.json synchronisieren ────────────────────────────
+if model ~= nil then
+  local claude_settings_path = "/root/.claude/settings.json"
+  local csf = io.open(claude_settings_path, "r")
+  local claude_cfg = {}
+  if csf then
+    local cr = csf:read("*a"); csf:close()
+    local cok, cdata = pcall(cjson.decode, cr)
+    if cok and type(cdata) == "table" then claude_cfg = cdata end
+  end
+  claude_cfg.model = model
+  local cwf = io.open(claude_settings_path, "w")
+  if cwf then
+    cwf:write(cjson.encode(claude_cfg)); cwf:close()
+  else
+    ngx.log(ngx.WARN, "[set_config] ~/.claude/settings.json nicht schreibbar")
+  end
 end
 
 -- ── Antwort ────────────────────────────────────────────────────────────────────

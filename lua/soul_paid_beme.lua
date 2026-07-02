@@ -186,7 +186,7 @@ if api_key == "" then
   return
 end
 
-local model    = "claude-sonnet-4-6"
+local model    = cfg.get_model(ngx.ctx.soul_id) or "claude-sonnet-4-6"
 local req_body = cjson.encode({
   model      = model,
   max_tokens = max_tokens,

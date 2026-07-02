@@ -179,10 +179,12 @@ end
 
 -- ── Bevorzugtes Modell: soul config → master.json → default ──────────────────
 local ALLOWED_MODELS = {
-  ["claude-opus-4-6"]    = true,
-  ["claude-sonnet-4-6"]  = true,
+  ["claude-sonnet-5"]           = true,
+  ["claude-fable-5"]            = true,
+  ["claude-opus-4-8"]           = true,
+  ["claude-opus-4-7"]           = true,
+  ["claude-sonnet-4-6"]         = true,
   ["claude-haiku-4-5-20251001"] = true,
-  ["claude-sonnet-4-5"]  = true,
 }
 function M.get_model(soul_id)
   if soul_id and soul_id ~= "" then
