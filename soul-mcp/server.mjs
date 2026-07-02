@@ -1100,6 +1100,74 @@ app.get('/internal/discover-souls', (req, res) => {
   });
 });
 
+// GET /llms.txt — AI-readable node description (llms.txt convention)
+app.get('/llms.txt', async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+
+  const souls = querySouls({ limit: 100 });
+  const lines = [];
+  lines.push(`# SYS Node — ${BASE_URL}`);
+  lines.push('');
+  lines.push('> Personal AI identity node running the SYS open protocol.');
+  lines.push('> Self-hosted, cryptographically secured. Access requires POL payment on Polygon.');
+  lines.push('');
+
+  if (souls.length > 0) {
+    lines.push('## Souls on this node');
+    lines.push('');
+    for (const s of souls) {
+      const a = s.amortization ?? {};
+      const base = parseFloat(a.pol_per_request) || 0.001;
+      const dynamic = a.dynamic_pricing === true;
+      // quick effective price (no file I/O for llms.txt)
+      lines.push(`### ${s.name || s.soul_id}`);
+      if (s.description) lines.push(`_${s.description}_`);
+      if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
+      lines.push('');
+      lines.push(`- **soul_id:** \`${s.soul_id}\``);
+      lines.push(`- **Price:** ${base} POL per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
+      lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
+      if (a.wallet) lines.push(`- **Wallet (Polygon):** \`${a.wallet}\``);
+      if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
+      // read default_model from soul config
+      try {
+        const scRaw = await readFile(`${SOULS_DIR}${s.soul_id}/config.json`, 'utf8');
+        const sc = JSON.parse(scRaw);
+        if (sc.model) lines.push(`- **Default model:** ${sc.model}`);
+      } catch {}
+      lines.push('');
+    }
+  } else {
+    lines.push('_No souls registered on this node._');
+    lines.push('');
+  }
+
+  lines.push('## How to access (agent flow)');
+  lines.push('');
+  lines.push('**1. Preview (optional)**');
+  lines.push(`\`\`\`\nGET ${BASE_URL}/api/soul/preview?soul_id={soul_id}\n\`\`\``);
+  lines.push('Returns public profile and confirmed live price before payment.');
+  lines.push('');
+  lines.push('**2. Pay on Polygon**');
+  lines.push('Send the exact POL amount to the soul\'s wallet on Polygon (chainId 137).');
+  lines.push('');
+  lines.push('**3. Get access token**');
+  lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}" }\n\`\`\``);
+  lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`');
+  lines.push('');
+  lines.push('**4. Use token**');
+  lines.push('```\nAuthorization: Bearer {access_token}\nPOST {mcp_endpoint}\n```');
+  lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
+  lines.push('');
+  lines.push('## More');
+  lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
+  lines.push('- Soul Network: https://sys.uxprojects-jok.com/scan');
+  lines.push('- Source: https://github.com/uxprojectsjok/saveyoursoul-sys');
+
+  res.send(lines.join('\n'));
+});
+
 // GET /api/soul/scan — öffentliches Soul-Verzeichnis (Protokoll-Bestandteil)
 // Gibt nur Daten zurück die bereits on-chain öffentlich sind (Polygon-Calldata).
 // Wird von soul-directories wie sys.uxprojects-jok.com/scan abgefragt.

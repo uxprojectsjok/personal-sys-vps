@@ -151,6 +151,15 @@ server {
   }
 
   # ── Soul-Scan (öffentlich – Protokoll-Bestandteil für Soul-Verzeichnisse) ──────
+  location = /llms.txt {
+    limit_req zone=api burst=10 nodelay;
+    limit_except GET { deny all; }
+    default_type text/plain;
+    add_header Cache-Control "public, max-age=300" always;
+    proxy_pass       http://127.0.0.1:3098/llms.txt;
+    proxy_set_header Host $host;
+  }
+
   location = /api/soul/scan {
     limit_req zone=api burst=30 nodelay;
     limit_except GET OPTIONS { deny all; }
