@@ -203,8 +203,10 @@ except: print('claude-sonnet-4-6')
 
 Work sequentially. Be careful and conservative."
 
-  # Pre-fix ownership so www-data can read/write during the run
+  # Pre-fix ownership + permissions so www-data can read/write during the run
   chown -R www-data:www-data "$soul_dir/vault/context/" 2>/dev/null || true
+  chmod -R 660 "$soul_dir/vault/context/" 2>/dev/null || true
+  find "$soul_dir/vault/context/" -type d -exec chmod 750 {} \; 2>/dev/null || true
 
   log_s "launching Claude..."
 
@@ -223,8 +225,10 @@ Work sequentially. Be careful and conservative."
     >> "$LOG_FILE" 2>&1 \
     || log_s "WARNING: claude exited non-zero"
 
-  # Restore www-data ownership on files the runner (root) may have created/modified
+  # Restore www-data ownership + permissions on files root may have created/modified
   chown -R www-data:www-data "$soul_dir/vault/context/" 2>/dev/null || true
+  chmod -R 660 "$soul_dir/vault/context/" 2>/dev/null || true
+  find "$soul_dir/vault/context/" -type d -exec chmod 750 {} \; 2>/dev/null || true
   log_s "ownership restored"
 
   log_s "=== Run complete ==="
