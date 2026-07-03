@@ -664,6 +664,7 @@ export function useChainAnchor() {
       let anchorData;
       try {
         const meta = { id: soulMeta.value.id, mcp: `${window.location.origin}/mcp` };
+        if (soulMeta.value.name) meta.name = soulMeta.value.name;
         // agent_registry_cid + tags einbetten falls vorhanden
         try {
           const ctx = await fetch('/api/context', {
