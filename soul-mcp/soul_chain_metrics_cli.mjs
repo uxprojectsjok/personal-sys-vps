@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 // soul_chain_metrics_cli.mjs  <soul_id>
-// Liest anchor_history.json und berechnet Chain Metrics via Polygon RPC.
+// Contract ist die einzige Wahrheit — immer on-chain abfragen.
+// anchor_history.json dient nur als Fallback wenn RPC nicht erreichbar ist.
 // Wird von soul_chain_metrics.lua per io.popen() aufgerufen.
-//
-// Fallback nach Soul-Import (anchor_history.json fehlt oder leer):
-//   Fragt den SoulRegistry-Contract direkt ab und schreibt anchor_history.json
-//   mit den on-chain Daten — einmalig, danach wird die Datei gecacht.
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { getChainMetrics, getOnChainGenesis, getOnChainHistory } from './lib/blockchain.mjs';
+import { getChainMetrics, getOnChainHistory } from './lib/blockchain.mjs';
 
 const soulId = process.argv[2];
 if (!soulId) {
@@ -17,60 +14,51 @@ if (!soulId) {
 }
 
 const histPath = `/var/lib/sys/souls/${soulId}/anchor_history.json`;
+
+// Immer Contract fragen — das ist die validierte Blockchain-Wahrheit.
+// Lokale TX-Hashes aus anchor_history.json einmergen (Contract gibt tx: null zurück).
 let history = [];
+let rpcOk = false;
 try {
-  const raw = await readFile(histPath, 'utf8');
-  history = JSON.parse(raw);
-} catch { /* Datei existiert noch nicht */ }
-
-// Fresh-Install / nach Soul-Import: anchor_history.json fehlt oder ist leer
-// → on-chain Daten abrufen und lokal cachen
-if (history.length === 0) {
-  try {
-    const onChain = await getOnChainHistory(soulId);
-    if (onChain && onChain.length > 0) {
-      history = onChain;
-      await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
-    }
-  } catch { /* RPC nicht erreichbar — anchor_count bleibt 0 */ }
-} else {
-  // Genesis-Block fehlt → einmalig on-chain korrigieren und cachen.
-  const genesis = history.find(e => e.genesis) ?? history[0];
-  if (genesis && !genesis.block) {
+  const onChain = await getOnChainHistory(soulId);
+  if (onChain && onChain.length > 0) {
+    // Lokale TX-Hashes lesen und per Timestamp (±120s) einmergen
+    let localHistory = [];
     try {
-      const fixed = await getOnChainGenesis(soulId);
-      if (fixed) {
-        genesis.ts    = fixed.ts;
-        genesis.block = fixed.block;
-        if (!genesis.genesis) genesis.genesis = true;
-        await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
-      }
-    } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
-  }
+      const raw = await readFile(histPath, 'utf8');
+      localHistory = JSON.parse(raw);
+    } catch { /* kein lokales File — kein Problem */ }
 
-  // Reconciliation: on-chain count > lokale History → fehlende Einträge nachziehen.
-  // Contract gibt tx: null zurück — Match läuft über Timestamp (±120s Toleranz).
+    const localByTs = localHistory.map(e => ({
+      ms: new Date(e.ts || 0).getTime(),
+      tx: e.tx || null,
+      size: e.size || 0,
+    }));
+
+    history = onChain.map(oc => {
+      const ocMs = new Date(oc.ts || 0).getTime();
+      const match = localByTs.find(l => l.ms && Math.abs(l.ms - ocMs) < 120_000);
+      return {
+        ...oc,
+        tx:   match?.tx   ?? oc.tx   ?? null,
+        size: match?.size ?? oc.size ?? 0,
+      };
+    });
+
+    // Genesis markieren
+    if (history.length > 0 && !history[0].genesis) history[0].genesis = true;
+
+    await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
+    rpcOk = true;
+  }
+} catch { /* RPC nicht erreichbar → Fallback */ }
+
+// Fallback: lokale Datei wenn RPC down
+if (!rpcOk) {
   try {
-    const onChain = await getOnChainHistory(soulId);
-    if (onChain && onChain.length > history.length) {
-      const localTs = history.map(e => new Date(e.ts || 0).getTime());
-      let added = 0;
-      for (const oc of onChain) {
-        const ocMs = new Date(oc.ts || 0).getTime();
-        if (!ocMs) continue;
-        const matched = localTs.some(lt => Math.abs(lt - ocMs) < 120_000);
-        if (!matched) {
-          history.push(oc);
-          localTs.push(ocMs);
-          added++;
-        }
-      }
-      if (added > 0) {
-        history.sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
-        await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
-      }
-    }
-  } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
+    const raw = await readFile(histPath, 'utf8');
+    history = JSON.parse(raw);
+  } catch { /* komplett leer */ }
 }
 
 // Backfill: Einträge die aus on-chain Daten rekonstruiert wurden haben size=0.
