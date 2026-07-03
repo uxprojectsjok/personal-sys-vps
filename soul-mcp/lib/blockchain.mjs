@@ -272,6 +272,28 @@ export async function discoverSouls({ q = '', amortized = false, limit = 20 } = 
   return filterResults(souls, { q, amortized, limit });
 }
 
+// Returns all on-chain soul origins without the sessions anti-fraud filter.
+// Used by the scan aggregator to discover remote nodes even for freshly anchored souls.
+export async function discoverRemoteOrigins() {
+  const { souls } = await (async () => {
+    if (_discoverCache && Date.now() - _discoverCacheTs < DISCOVER_TTL) return { souls: _discoverCache };
+    const provider = getProvider();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    const { latestMap } = await fetchAnchoredEvents(provider, contract);
+    const souls = [];
+    await Promise.allSettled([...latestMap.entries()].map(async ([, ev]) => {
+      try {
+        const tx = await provider.getTransaction(ev.transactionHash);
+        if (!tx?.data) return;
+        const meta = extractSysMeta(tx.data);
+        if (meta?.id && meta?.mcp) souls.push({ soul_id: meta.id, mcp_endpoint: meta.mcp });
+      } catch {}
+    }));
+    return { souls };
+  })();
+  return souls;
+}
+
 function filterResults(souls, { q, amortized, limit }) {
   let res = souls;
 

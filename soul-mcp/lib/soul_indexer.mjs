@@ -401,10 +401,10 @@ async function incrementalScan() {
       } catch (e) {
         const msg = e?.info?.responseBody ?? e?.message ?? '';
         if (msg.includes('Archive') || msg.includes('archive') || msg.includes('personal token')) {
-          // RPC blockiert alle historischen getLogs — überspringe gesamten Rest
-          console.warn(`[soul-index] Archive-Fehler bei Block ${from} — überspringe bis ${current}`);
-          _lastBlock = current + 1;
-          break;
+          // Nur diesen Chunk überspringen — nächster Chunk könnte klappen
+          console.warn(`[soul-index] Archive-Fehler bei Block ${from}–${to} — überspringe Chunk`);
+          _lastBlock = to + 1;
+          continue;
         }
         console.warn(`[soul-index] Chunk ${from}–${to} übersprungen:`, msg.slice(0, 80));
       }
@@ -576,9 +576,9 @@ async function seedFromLocalAnchors() {
 
 // ── Query-API ─────────────────────────────────────────────────────────────────
 
-export function querySouls({ q = '', amortized = false, limit = 20 } = {}) {
+export function querySouls({ q = '', amortized = false, limit = 20, minSessions = 1 } = {}) {
   let results = [..._souls.values()].filter(s =>
-    (s.sessions ?? 0) >= 1 && s.mcp_endpoint  // nur verifizierte Einträge
+    (s.sessions ?? 0) >= minSessions && s.mcp_endpoint
   );
 
   if (q) {

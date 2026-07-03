@@ -1170,14 +1170,61 @@ app.get('/llms.txt', async (_req, res) => {
 
 // GET /api/soul/scan — öffentliches Soul-Verzeichnis (Protokoll-Bestandteil)
 // Gibt nur Daten zurück die bereits on-chain öffentlich sind (Polygon-Calldata).
-// Wird von soul-directories wie sys.uxprojects-jok.com/scan abgefragt.
-// Jeder Node der gelistet werden will exponiert diesen Endpoint.
+// Aggregiert lokale Souls + alle Remote-Nodes die per eth_getLogs entdeckt werden.
+// Jeder SYS-Node exponiert diesen Endpoint — der Origin aus meta.mcp (Calldata)
+// wird als Node-URL verwendet. Kein sys.md-Lookup nötig.
 const SCAN_ANCHOR_COEFF = 0.1, SCAN_AGE_COEFF = 0.01, SCAN_DEMAND_COEFF = 0.05;
+
+// Remote-Scan-Cache: verhindert hammering anderer Nodes (5-min TTL)
+const _remoteScanCache = new Map(); // origin → { ts, souls[] }
+const REMOTE_SCAN_TTL  = 5 * 60 * 1000;
 
 app.get('/api/soul/scan', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const stats = indexStats();
-  const souls = await Promise.all(querySouls({ limit: 100 }).map(async s => {
+  const ownOrigin = new URL(BASE_URL).origin;
+
+  // ── 1. Alle indizierten Souls holen und in lokal / remote aufteilen ─────────
+  // Der soul_indexer (WebSocket, inkrementell) findet alle on-chain Souls.
+  // Remote-Souls haben keinen lokalen Vault — wir fetchen deren Scan-Endpoint.
+  const allIndexed = querySouls({ limit: 100, minSessions: 0 });
+  const localSoulIds = new Set();
+  const remoteOrigins = new Map(); // origin → Set<soul_id>
+  for (const s of allIndexed) {
+    try {
+      const origin = new URL(s.mcp_endpoint).origin;
+      if (origin === ownOrigin) {
+        localSoulIds.add(s.soul_id);
+      } else {
+        if (!remoteOrigins.has(origin)) remoteOrigins.set(origin, new Set());
+        remoteOrigins.get(origin).add(s.soul_id);
+      }
+    } catch { localSoulIds.add(s.soul_id); }
+  }
+
+  // ── 2. Remote-Scan-Endpoints parallel fetchen (5s timeout) ────────────────
+  const remoteSouls = [];
+  await Promise.allSettled([...remoteOrigins.entries()].map(async ([origin, soulIds]) => {
+    const cached = _remoteScanCache.get(origin);
+    let data;
+    if (cached && Date.now() - cached.ts < REMOTE_SCAN_TTL) {
+      data = cached.souls;
+    } else {
+      try {
+        const r = await fetch(`${origin}/api/soul/scan`, { signal: AbortSignal.timeout(5000) });
+        if (!r.ok) return;
+        const json = await r.json();
+        data = json.souls || [];
+        _remoteScanCache.set(origin, { ts: Date.now(), souls: data });
+      } catch { return; }
+    }
+    for (const soul of data) {
+      if (soulIds.has(soul.soul_id)) remoteSouls.push(soul);
+    }
+  }));
+
+  // ── 3. Lokale Souls (bestehende File-basierte Anreicherung) ────────────────
+  const souls = await Promise.all(allIndexed.filter(s => localSoulIds.has(s.soul_id)).map(async s => {
     let txHash = s.tx_hash || null;
     let anchorCount = s.anchor_count ?? 0;
     let anchorSpanDays = s.anchor_span_days ?? 0;
@@ -1255,7 +1302,12 @@ app.get('/api/soul/scan', async (req, res) => {
       tx_hash:             txHash,
     };
   }));
-  res.json({ ok: true, souls, indexed: stats.souls, scanning: stats.scanning });
+
+  // ── 4. Mergen: lokale Souls haben Vorrang, Remote-Duplikate überspringen ────
+  const localIds = new Set(souls.map(s => s.soul_id));
+  const merged   = [...souls, ...remoteSouls.filter(s => !localIds.has(s.soul_id))];
+
+  res.json({ ok: true, souls: merged, indexed: stats.souls, scanning: stats.scanning });
 });
 
 // POST /internal/generate-prompts — regeneriert prompts.md in allen Soul-Vaults
