@@ -1226,6 +1226,15 @@ app.get('/api/soul/scan', async (req, res) => {
       }
     }
 
+    const DISCOVER_WINDOW_DAYS = 11;
+    const lastAnchorEntry = anchorHistory.length > 0 ? anchorHistory[anchorHistory.length - 1] : null;
+    const lastAnchorTs = lastAnchorEntry ? new Date(lastAnchorEntry.ts || lastAnchorEntry.date || 0).getTime() : 0;
+    const daysSinceLastAnchor = lastAnchorTs > 0 ? (Date.now() - lastAnchorTs) / 86_400_000 : null;
+    const visibilityZone = daysSinceLastAnchor === null ? 'unknown'
+      : daysSinceLastAnchor < DISCOVER_WINDOW_DAYS ? 'discoverable'
+      : daysSinceLastAnchor < DISCOVER_WINDOW_DAYS * 2 ? 'fading'
+      : 'invisible';
+
     return {
       soul_id:             s.soul_id,
       name:                s.name || s.soul_id?.slice(0, 8),
@@ -1239,6 +1248,8 @@ app.get('/api/soul/scan', async (req, res) => {
       anchor_count:        anchorCount,
       anchor_span_days:    anchorSpanDays,
       anchor_date:         s.anchor_date ?? null,
+      days_since_last_anchor: daysSinceLastAnchor !== null ? Math.round(daysSinceLastAnchor * 10) / 10 : null,
+      visibility_zone:     visibilityZone,
       wallet:              amort.wallet || null,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,

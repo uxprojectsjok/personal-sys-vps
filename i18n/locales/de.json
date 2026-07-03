@@ -1215,7 +1215,17 @@
     "chain_knowledge_label": "Wissen",
     "chain_knowledge_suffix": "KB+",
     "chain_anchors_label": "Anker",
-    "chain_since_label": "Auf Polygon seit"
+    "chain_since_label": "Auf Polygon seit",
+    "vis_title": "Chain Visibility",
+    "vis_days_unit": "Tage",
+    "vis_ago": "seit letztem Anker",
+    "vis_window": "Discovery-Fenster",
+    "vis_zone_discoverable": "Auffindbar",
+    "vis_zone_fading": "Verblassend",
+    "vis_zone_invisible": "Nicht auffindbar",
+    "vis_hint_discoverable": "Deine Soul erscheint im Event-Search. KI-Agenten können dich via soul_discover finden.",
+    "vis_hint_fading": "Du verlässt das Discovery-Fenster. Bald nicht mehr via Event-Search auffindbar.",
+    "vis_hint_invisible": "Kein Lebenszeichen auf der Chain. Jetzt ankern um wieder auffindbar zu werden."
   },
   "services": {
     "title": "Verbundene Dienste",

@@ -1215,7 +1215,17 @@
     "chain_knowledge_label": "Knowledge",
     "chain_knowledge_suffix": "KB+",
     "chain_anchors_label": "Anchors",
-    "chain_since_label": "On Polygon since"
+    "chain_since_label": "On Polygon since",
+    "vis_title": "Chain Visibility",
+    "vis_days_unit": "Days",
+    "vis_ago": "since last anchor",
+    "vis_window": "discovery window",
+    "vis_zone_discoverable": "Discoverable",
+    "vis_zone_fading": "Fading",
+    "vis_zone_invisible": "Not discoverable",
+    "vis_hint_discoverable": "Your soul appears in event search. AI agents can find you via soul_discover.",
+    "vis_hint_fading": "You are leaving the discovery window. Soon no longer findable via event search.",
+    "vis_hint_invisible": "No sign of life on chain. Anchor now to become discoverable again."
   },
   "services": {
     "title": "Connected services",

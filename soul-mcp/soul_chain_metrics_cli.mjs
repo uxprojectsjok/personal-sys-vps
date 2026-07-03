@@ -83,7 +83,28 @@ if (needsSizeBackfill) {
 
 try {
   const metrics = await getChainMetrics(history);
-  process.stdout.write(JSON.stringify(metrics));
+
+  // Visibility: soul_discover sucht via eth_getLogs — publicnode limitiert auf ~10k Blocks ≈ 11 Tage.
+  // Wer länger nicht geankert hat, taucht im Event-Search nicht mehr auf.
+  const DISCOVER_WINDOW_DAYS = 11;
+  const lastEntry = history.length > 0 ? history[history.length - 1] : null;
+  const lastTs = lastEntry ? new Date(lastEntry.ts || 0).getTime() : 0;
+  const daysSinceLast = lastTs > 0 ? (Date.now() - lastTs) / 86_400_000 : null;
+
+  let visibilityZone = 'unknown';
+  if (daysSinceLast !== null) {
+    if (daysSinceLast < DISCOVER_WINDOW_DAYS)       visibilityZone = 'discoverable';
+    else if (daysSinceLast < DISCOVER_WINDOW_DAYS * 2) visibilityZone = 'fading';
+    else                                              visibilityZone = 'invisible';
+  }
+
+  process.stdout.write(JSON.stringify({
+    ...metrics,
+    last_anchor_ts:      lastEntry?.ts ?? null,
+    days_since_last_anchor: daysSinceLast !== null ? Math.round(daysSinceLast * 10) / 10 : null,
+    visibility_zone:     visibilityZone,
+    discover_window_days: DISCOVER_WINDOW_DAYS,
+  }));
 } catch (err) {
   process.stdout.write(JSON.stringify({ error: err.message, anchor_count: history.length }));
   process.exit(1);

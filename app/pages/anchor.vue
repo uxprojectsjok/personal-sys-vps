@@ -68,6 +68,37 @@
               </div>
             </Transition>
 
+            <!-- ── Chain Visibility ── -->
+            <Transition name="slide-up">
+              <div v-if="chainMetrics && chainMetrics.visibility_zone && chainMetrics.visibility_zone !== 'unknown'"
+                   class="vank-visibility-card"
+                   :class="`vank-visibility--${chainMetrics.visibility_zone}`">
+                <div class="vank-vis-head">
+                  <span class="vank-vis-badge">{{ $t(`anchor.vis_zone_${chainMetrics.visibility_zone}`) }}</span>
+                  <span class="vank-vis-title">{{ $t('anchor.vis_title') }}</span>
+                </div>
+                <div class="vank-vis-metrics">
+                  <div class="vank-vis-metric">
+                    <span class="vank-vis-val">{{ visVal(chainMetrics.days_since_last_anchor) }}</span>
+                    <span class="vank-vis-unit">{{ visUnit(chainMetrics.days_since_last_anchor) }}</span>
+                    <span class="vank-vis-label">{{ $t('anchor.vis_ago') }}</span>
+                    <div class="vank-vis-bar-wrap">
+                      <div class="vank-vis-bar">
+                        <div class="vank-vis-fill"
+                             :style="{ width: Math.min(100, ((chainMetrics.days_since_last_anchor ?? 0) / (chainMetrics.discover_window_days ?? 11)) * 100) + '%' }">
+                        </div>
+                        <div class="vank-vis-threshold"></div>
+                      </div>
+                      <span class="vank-vis-bar-label">/ {{ chainMetrics.discover_window_days ?? 11 }}d</span>
+                    </div>
+                  </div>
+                  <div class="vank-vis-hint-col">
+                    <p class="vank-vis-hint">{{ $t(`anchor.vis_hint_${chainMetrics.visibility_zone}`) }}</p>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+
             <!-- ── Discovery-Tags ── -->
             <section class="vank-section">
               <div class="vank-section-body">
@@ -256,6 +287,16 @@ const tagsArray = computed(() =>
 )
 const canAnchor = computed(() => sessionCount.value > 0)
 const rateLimitActive = computed(() => rateLimitUntil.value > 0 && rateLimitUntil.value * 1000 > Date.now())
+
+function visVal(days) {
+  if (days === null || days === undefined) return '—'
+  if (days < 1) return Math.round(days * 24)
+  return Math.floor(days)
+}
+function visUnit(days) {
+  if (days === null || days === undefined) return ''
+  return days < 1 ? 'h' : t('anchor.vis_days_unit')
+}
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
@@ -646,6 +687,103 @@ function onNav(id) {
   font-family: var(--mono); font-size: 11px; color: var(--fg-3);
   letter-spacing: 0.04em;
 }
+
+/* ── Chain Visibility Card ── */
+.vank-visibility-card {
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid rgba(109,184,154,0.30);
+  background: linear-gradient(135deg, rgba(109,184,154,0.05) 0%, rgba(109,184,154,0.02) 100%);
+}
+.vank-visibility--fading {
+  border-color: rgba(212,175,55,0.30);
+  background: linear-gradient(135deg, rgba(212,175,55,0.05) 0%, rgba(212,175,55,0.02) 100%);
+}
+.vank-visibility--invisible {
+  border-color: rgba(224,108,117,0.30);
+  background: linear-gradient(135deg, rgba(224,108,117,0.06) 0%, rgba(224,108,117,0.02) 100%);
+}
+.vank-vis-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(109,184,154,0.15);
+}
+.vank-visibility--fading .vank-vis-head    { border-bottom-color: rgba(212,175,55,0.15); }
+.vank-visibility--invisible .vank-vis-head { border-bottom-color: rgba(224,108,117,0.15); }
+.vank-vis-badge {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; padding: 4px 12px;
+  background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.35);
+  border-radius: 99px; color: var(--teal); flex: none;
+}
+.vank-visibility--fading .vank-vis-badge {
+  background: rgba(212,175,55,0.15); border-color: rgba(212,175,55,0.35); color: #d4af37;
+}
+.vank-visibility--invisible .vank-vis-badge {
+  background: rgba(224,108,117,0.12); border-color: rgba(224,108,117,0.35); color: #e06c75;
+}
+.vank-vis-title {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg); flex: 1;
+}
+.vank-vis-metrics {
+  display: grid; grid-template-columns: auto 1fr; gap: 0;
+}
+.vank-vis-metric {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 18px 20px;
+  border-right: 1px solid rgba(109,184,154,0.12);
+  min-width: 120px;
+}
+.vank-visibility--fading .vank-vis-metric   { border-right-color: rgba(212,175,55,0.12); }
+.vank-visibility--invisible .vank-vis-metric { border-right-color: rgba(224,108,117,0.12); }
+.vank-vis-val {
+  font-family: var(--mono); font-size: 32px; font-weight: 500;
+  letter-spacing: -0.02em; color: var(--teal); line-height: 1;
+}
+.vank-visibility--fading .vank-vis-val    { color: #d4af37; }
+.vank-visibility--invisible .vank-vis-val { color: #e06c75; }
+.vank-vis-unit {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(109,184,154,0.6); margin-top: 2px;
+}
+.vank-visibility--fading .vank-vis-unit    { color: rgba(212,175,55,0.6); }
+.vank-visibility--invisible .vank-vis-unit { color: rgba(224,108,117,0.6); }
+.vank-vis-label {
+  font-family: var(--sans); font-size: 12px; color: var(--fg-2); margin-top: 6px;
+}
+.vank-vis-bar-wrap {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+}
+.vank-vis-bar {
+  flex: 1; height: 5px; border-radius: 99px;
+  background: rgba(255,255,255,0.06); position: relative; overflow: visible;
+  min-width: 60px;
+}
+.vank-vis-fill {
+  height: 100%; border-radius: 99px;
+  background: var(--teal); transition: width 0.6s ease;
+}
+.vank-visibility--fading .vank-vis-fill    { background: #d4af37; }
+.vank-visibility--invisible .vank-vis-fill { background: #e06c75; }
+.vank-vis-threshold {
+  position: absolute; right: 0; top: -3px;
+  width: 2px; height: 11px; border-radius: 1px;
+  background: rgba(255,255,255,0.22);
+}
+.vank-vis-bar-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  color: var(--fg-3); white-space: nowrap;
+}
+.vank-vis-hint-col {
+  display: flex; align-items: center; padding: 18px 20px;
+}
+.vank-vis-hint {
+  font-family: var(--sans); font-size: 14px; color: var(--fg-2);
+  line-height: 1.6; margin: 0;
+}
+.vank-visibility--invisible .vank-vis-hint { color: #e06c75; }
 
 /* ── Shared ── */
 .vank-ic { width: 14px; height: 14px; flex: none; }
