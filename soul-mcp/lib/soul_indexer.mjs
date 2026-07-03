@@ -18,11 +18,14 @@ import { extractSysMeta, soulIdToBytes32 } from './blockchain.mjs';
 
 // ── Konstanten ────────────────────────────────────────────────────────────────
 
-const CONTRACT_ADDRESS = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B';
-const DEPLOY_BLOCK     = 83_500_000;
-const INDEX_PATH       = '/var/lib/sys/soul_index.json';
-const SCAN_CHUNK       = 90;      // publicnode eth_getLogs limit: max ~100 Blöcke pro Request
-const SCAN_DELAY_MS    = 200;     // Pause zwischen Chunks — schont den RPC
+const CONTRACT_ADDRESS   = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B';
+const DEPLOY_BLOCK       = 83_500_000;
+const INDEX_PATH         = '/var/lib/sys/soul_index.json';
+const SCAN_CHUNK         = 90;    // publicnode eth_getLogs limit: max ~100 Blöcke (Fallback)
+const SCAN_DELAY_MS      = 200;   // Pause zwischen Chunks — schont den RPC
+const POLYGONSCAN_BASE   = 'https://api.etherscan.io/v2/api'; // Etherscan API V2, chainid=137 = Polygon PoS
+// keccak256("Anchored(bytes32,bytes32,uint32,uint256)")
+const ANCHORED_TOPIC0    = '0x24b87c8294e674d1419dd6c41c12b8d49dc2544499faf53e81accbe330f7cdae';
 const SAVE_INTERVAL_MS = 60_000;  // Disk-Sync alle 60s
 const IPFS_TTL_MS      = 24 * 60 * 60 * 1000; // IPFS-Cache 24h
 
@@ -362,33 +365,100 @@ function subscribeWs() {
   }
 }
 
-// ── Inkrementeller Hintergrund-Scan (historisch) ──────────────────────────────
+// ── Polygonscan API — vollständige Event-History ohne Block-Limit ─────────────
+
+async function fetchPolygonscanEvents(fromBlock) {
+  const apiKey = process.env.POLYGONSCAN_API_KEY;
+  if (!apiKey) return null; // kein Key → Fallback auf eth_getLogs
+
+  const logs = [];
+  let page = 1;
+  const PAGE_SIZE = 1000;
+
+  while (true) {
+    const url = new URL(POLYGONSCAN_BASE);
+    url.searchParams.set('chainid',   '137');
+    url.searchParams.set('module',    'logs');
+    url.searchParams.set('action',    'getLogs');
+    url.searchParams.set('address',   CONTRACT_ADDRESS);
+    url.searchParams.set('topic0',    ANCHORED_TOPIC0);
+    url.searchParams.set('fromBlock', String(fromBlock));
+    url.searchParams.set('toBlock',   'latest');
+    url.searchParams.set('page',      String(page));
+    url.searchParams.set('offset',    String(PAGE_SIZE));
+    url.searchParams.set('apikey',    apiKey);
+
+    const res  = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
+    const json = await res.json();
+
+    if (json.status === '0' && json.message === 'No records found') break;
+    if (json.status !== '1') throw new Error(`Polygonscan: ${json.message} — ${JSON.stringify(json.result).slice(0, 80)}`);
+
+    const batch = json.result;
+    logs.push(...batch);
+    if (batch.length < PAGE_SIZE) break; // letzte Seite
+    page++;
+    await sleep(250); // 4 req/s — Polygonscan Free Tier
+  }
+
+  return logs;
+}
+
+// Polygonscan-Log → ethers-kompatibles Event-Objekt für processEvent()
+function parsePscanLog(log) {
+  const [sessionCount, timestamp] = ethers.AbiCoder.defaultAbiCoder().decode(
+    ['uint32', 'uint256'], log.data
+  );
+  return {
+    transactionHash: log.transactionHash,
+    blockNumber:     parseInt(log.blockNumber, 16),
+    args: {
+      soulId:       log.topics[1],
+      contentHash:  log.topics[2],
+      sessionCount,
+      timestamp,
+    },
+  };
+}
+
+// ── Inkrementeller Hintergrund-Scan ──────────────────────────────────────────
 
 async function incrementalScan() {
   if (_scanning) return;
   _scanning = true;
 
   try {
-    const provider = getHttp();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-    const filter   = contract.filters.Anchored();
-    const current  = await provider.getBlockNumber();
-
+    const current = await getHttp().getBlockNumber();
     if (_lastBlock >= current) {
       console.log('[soul-index] Scan aktuell — keine neuen Blöcke.');
       return;
     }
 
-    // Beginne Scan maximal SCAN_WINDOW Blöcke in der Vergangenheit.
-    // Öffentliche RPCs (publicnode) blockieren eth_getLogs für ältere Blöcke (archive).
-    const SCAN_WINDOW = 2_000_000; // ~11 Tage bei ~2 Blöcken/s
-    const scanFrom = Math.max(_lastBlock, current - SCAN_WINDOW);
-    if (scanFrom > _lastBlock) {
-      console.log(`[soul-index] Überspringe Blöcke ${_lastBlock}–${scanFrom - 1} (archive, kein freier RPC-Zugang)`);
-      _lastBlock = scanFrom;
+    // ── Polygonscan-Pfad (kein Block-Limit) ────────────────────────────────
+    const pscanLogs = await fetchPolygonscanEvents(_lastBlock).catch(e => {
+      console.warn('[soul-index] Polygonscan fehlgeschlagen:', e.message, '— Fallback auf eth_getLogs');
+      return null;
+    });
+
+    if (pscanLogs !== null) {
+      console.log(`[soul-index] Polygonscan-Scan ab Block ${_lastBlock}: ${pscanLogs.length} Events`);
+      pscanLogs.sort((a, b) => parseInt(a.blockNumber, 16) - parseInt(b.blockNumber, 16));
+      for (const log of pscanLogs) {
+        await processEvent(parsePscanLog(log)).catch(e =>
+          console.error('[soul-index] Event übersprungen:', e.message)
+        );
+      }
+      _lastBlock = current + 1;
+      console.log(`[soul-index] Polygonscan-Scan fertig. ${_souls.size} Souls indexiert.`);
+      await saveIndex();
+      return;
     }
 
-    console.log(`[soul-index] Scan ${_lastBlock} → ${current} (${current - _lastBlock} Blöcke, ~${Math.ceil((current - _lastBlock) / SCAN_CHUNK)} Chunks)`);
+    // ── Fallback: eth_getLogs in 90-Block-Chunks (kein Polygonscan-Key) ────
+    console.log(`[soul-index] eth_getLogs-Scan ${_lastBlock} → ${current} (~${Math.ceil((current - _lastBlock) / SCAN_CHUNK)} Chunks)`);
+    const provider = getHttp();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    const filter   = contract.filters.Anchored();
 
     for (let from = _lastBlock; from <= current; from += SCAN_CHUNK) {
       const to = Math.min(from + SCAN_CHUNK - 1, current);
@@ -401,7 +471,6 @@ async function incrementalScan() {
       } catch (e) {
         const msg = e?.info?.responseBody ?? e?.message ?? '';
         if (msg.includes('Archive') || msg.includes('archive') || msg.includes('personal token')) {
-          // publicnode erlaubt max ~100 Blöcke pro eth_getLogs — SCAN_CHUNK sollte ≤90 sein
           console.warn(`[soul-index] Block-Range-Fehler ${from}–${to} — Chunk übersprungen`);
           _lastBlock = to + 1;
           continue;
@@ -411,7 +480,7 @@ async function incrementalScan() {
       await sleep(SCAN_DELAY_MS);
     }
 
-    console.log(`[soul-index] Scan fertig. ${_souls.size} Souls indexiert.`);
+    console.log(`[soul-index] eth_getLogs-Scan fertig. ${_souls.size} Souls indexiert.`);
     await saveIndex();
   } finally {
     _scanning = false;
