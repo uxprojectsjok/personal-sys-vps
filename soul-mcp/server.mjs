@@ -1175,7 +1175,7 @@ app.get('/llms.txt', async (_req, res) => {
 const SCAN_ANCHOR_COEFF = 0.1, SCAN_AGE_COEFF = 0.01, SCAN_DEMAND_COEFF = 0.05;
 
 app.get('/api/soul/scan', async (req, res) => {
-  res.set('Cache-Control', 'public, max-age=300');
+  res.set('Cache-Control', 'no-store');
   const stats = indexStats();
   const souls = await Promise.all(querySouls({ limit: 100 }).map(async s => {
     let txHash = s.tx_hash || null;
