@@ -35,8 +35,6 @@ if (history.length === 0) {
   } catch { /* RPC nicht erreichbar — anchor_count bleibt 0 */ }
 } else {
   // Genesis-Block fehlt → einmalig on-chain korrigieren und cachen.
-  // Tritt auf wenn anchor_history.json aus soul_growth_chain rekonstruiert wurde
-  // (altes Format ohne Block-Nummern) oder nach einem Soul-Import.
   const genesis = history.find(e => e.genesis) ?? history[0];
   if (genesis && !genesis.block) {
     try {
@@ -49,6 +47,30 @@ if (history.length === 0) {
       }
     } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
   }
+
+  // Reconciliation: on-chain count > lokale History → fehlende Einträge nachziehen.
+  // Contract gibt tx: null zurück — Match läuft über Timestamp (±120s Toleranz).
+  try {
+    const onChain = await getOnChainHistory(soulId);
+    if (onChain && onChain.length > history.length) {
+      const localTs = history.map(e => new Date(e.ts || 0).getTime());
+      let added = 0;
+      for (const oc of onChain) {
+        const ocMs = new Date(oc.ts || 0).getTime();
+        if (!ocMs) continue;
+        const matched = localTs.some(lt => Math.abs(lt - ocMs) < 120_000);
+        if (!matched) {
+          history.push(oc);
+          localTs.push(ocMs);
+          added++;
+        }
+      }
+      if (added > 0) {
+        history.sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
+        await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
+      }
+    }
+  } catch { /* RPC nicht erreichbar — weiter mit lokalem Wert */ }
 }
 
 // Backfill: Einträge die aus on-chain Daten rekonstruiert wurden haben size=0.
