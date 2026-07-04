@@ -66,6 +66,20 @@ export function extractLongmem(md) {
   try { return JSON.parse(content); } catch { return null; }
 }
 
+/**
+ * Aggregat-Tiefe aus LONGMEM für Scoring-Zwecke (soul_maturity, soul_skills).
+ * Bewusst kein Rück-Mapping auf einzelne Sektionen — facts.cat kennt nur
+ * identity/values/personality/project, nicht die ursprüngliche Sektion.
+ */
+export function scoreLongmemDepth(longmem) {
+  if (!longmem) return { sectionPts: 0, sessionBonus: 0 };
+  const facts    = longmem.facts    ?? [];
+  const memories = longmem.memories ?? [];
+  const sectionPts   = Math.min(Math.round(facts.length * 0.7 + memories.length * 0.2), 12);
+  const sessionBonus = memories.length;
+  return { sectionPts, sessionBonus };
+}
+
 /** Schreibt aktualisierten LONGMEM-Block in sys.md — immer direkt nach Frontmatter. */
 export function updateLongmem(md, data) {
   const json  = JSON.stringify(data, null, 2);

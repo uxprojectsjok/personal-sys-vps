@@ -1,5 +1,5 @@
 import { getText, getJson } from '../lib/api.mjs';
-import { parseFrontmatter, extractAllSections } from '../lib/soul_parser.mjs';
+import { parseFrontmatter, extractAllSections, extractLongmem, scoreLongmemDepth } from '../lib/soul_parser.mjs';
 
 // ── Scoring (portiert aus shared/utils/soulMaturity.js) ──────────────────────
 
@@ -105,12 +105,14 @@ export function register(server, token) {
           sectionScores[en] = pts;
           sectionTotal += pts;
         }
-        const sectionPts = Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12);
+        const longmem = extractLongmem(md);
+        const { sectionPts: lmSectionPts, sessionBonus } = scoreLongmemDepth(longmem);
+        const sectionPts = Math.max(Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12), lmSectionPts);
         const logEntries = countSessionEntries(
           sections["Session Log"] ?? sections["Session-Log"] ??
           sections["Session Log (compressed)"] ?? sections["Session-Log (komprimiert)"] ?? ""
         );
-        const sessionPts = Math.min(Math.floor(logEntries / 2), 8);
+        const sessionPts = Math.min(Math.floor((logEntries + sessionBonus) / 2), 8);
         const tiefe      = sectionPts + sessionPts;
 
         // Biometrie (Profile-Flags im Frontmatter)

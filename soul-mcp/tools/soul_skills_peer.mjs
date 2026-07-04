@@ -5,7 +5,7 @@
 
 import { readFile } from 'fs/promises';
 import { decryptIfNeeded, loadVaultMeta, SOULS_DIR } from '../lib/vault_fs.mjs';
-import { parseFrontmatter, extractAllSections } from '../lib/soul_parser.mjs';
+import { parseFrontmatter, extractAllSections, extractLongmem, formatLongmemForPrompt } from '../lib/soul_parser.mjs';
 
 const SKIP_SECTIONS = new Set(['Kalender', 'API', 'Anker', 'Chain', 'Blockchain']);
 
@@ -48,6 +48,18 @@ export function register(server, targetSoulId) {
             heading,
             source:   'sys.md',
             content:  skillFile(slug, sectionSlug, heading, name, content),
+          });
+        }
+
+        // LONGMEM — kristallisierte Fakten, die geleerte Sektionen ersetzen
+        const longmem = extractLongmem(md);
+        const lmText  = formatLongmemForPrompt(longmem);
+        if (lmText) {
+          skills.push({
+            filename: `${slug}-longmem.md`,
+            heading:  'Kristallisiertes Langzeitgedächtnis',
+            source:   'sys.md (LONGMEM)',
+            content:  skillFile(slug, 'longmem', 'Kristallisiertes Langzeitgedächtnis', name, lmText),
           });
         }
 

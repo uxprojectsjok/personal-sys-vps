@@ -41,6 +41,20 @@ export function parseSoul(markdown) {
 }
 
 /**
+ * Extrahiert den LONGMEM-JSON-Block (kristallisierte Facts/Memories/Ideas/Learnings).
+ * Spiegelt soul-mcp/lib/soul_parser.mjs::extractLongmem — bewusst dupliziert,
+ * da shared/ und soul-mcp keine gemeinsamen Module teilen (soul-mcp ist standalone).
+ * @param {string} markdown
+ * @returns {Object|null}
+ */
+export function extractLongmem(markdown) {
+  if (!markdown) return null;
+  const m = markdown.match(/<!-- SYS:LONGMEM:START -->([\s\S]*?)<!-- SYS:LONGMEM:END -->/);
+  if (!m) return null;
+  try { return JSON.parse(m[1].trim()); } catch { return null; }
+}
+
+/**
  * Aktualisiert den Inhalt einer Sektion in der Soul.md
  * @param {string} markdown
  * @param {string} sectionTitle

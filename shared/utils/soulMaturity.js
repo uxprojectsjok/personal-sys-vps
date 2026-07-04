@@ -13,7 +13,7 @@
 //   Archiv     (Archive)     max 20 pts  — Vault-Dateien (Audio, Bilder, Kontext)
 //   Signatur   (Signature)   max 15 pts  — Einzigartige Skills / Persönlichkeit
 
-import { parseSoul } from "./soulParser.js";
+import { parseSoul, extractLongmem } from "./soulParser.js";
 
 const SCORED_SECTIONS = [
   "Kern-Identität",
@@ -78,12 +78,16 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
     sectionScores[name] = pts;
     sectionTotal += pts;
   }
-  const sectionPts  = Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12); // 0–12
+  // LONGMEM-Aggregat-Bonus: Herz-Archivar leert Kern-Sektionen nach der
+  // Kristallisation ("*Noch nicht beschrieben.*") — ohne diesen Bonus würde
+  // die Tiefe-Säule sinken, je mehr die Soul tatsächlich reift.
+  const { sectionPts: lmSectionPts, sessionBonus } = scoreLongmemDepth(extractLongmem(soulMarkdown));
+  const sectionPts  = Math.max(Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12), lmSectionPts); // 0–12
   const logEntries  = countSessionEntries(
     sections["Session-Log (komprimiert)"] ?? sections["Session-Log"] ?? ""
   );
   // 1 Pt pro 2 Sessions — braucht 16+ Sessions für Maximum
-  const sessionPts  = Math.min(Math.floor(logEntries / 2), 8); // 0–8
+  const sessionPts  = Math.min(Math.floor((logEntries + sessionBonus) / 2), 8); // 0–8
   const tiefePts    = sectionPts + sessionPts;
 
   // ── Säule 3: Biometrie ── max 20 ─────────────────────────────────────────
@@ -146,6 +150,19 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
 }
 
 // ── Hilfsfunktionen ──────────────────────────────────────────────────────────
+
+// Spiegelt soul-mcp/lib/soul_parser.mjs::scoreLongmemDepth — bewusst dupliziert,
+// da shared/ und soul-mcp keine gemeinsamen Module teilen. Kein Rück-Mapping auf
+// einzelne Sektionen: facts.cat kennt nur identity/values/personality/project,
+// nicht die ursprüngliche Sektion.
+function scoreLongmemDepth(longmem) {
+  if (!longmem) return { sectionPts: 0, sessionBonus: 0 };
+  const facts    = longmem.facts    ?? [];
+  const memories = longmem.memories ?? [];
+  const sectionPts   = Math.min(Math.round(facts.length * 0.7 + memories.length * 0.2), 12);
+  const sessionBonus = memories.length;
+  return { sectionPts, sessionBonus };
+}
 
 function scoreSection(content) {
   if (!content) return 0;
