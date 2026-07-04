@@ -67,9 +67,9 @@ Nitro routes are a dev-only mirror of the Lua scripts. When changing API logic, 
 
 ---
 
-## sys.md Format (v2)
+## sys.md Format (v3)
 
-sys.md v2 uses a three-sphere protection model. Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
+sys.md v3 uses a three-sphere protection model, plus a crystallized long-term memory layer (LONGMEM) that gains a persistent 3D index (MINDIDX) at first crystallization. Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
 ```markdown
 ---
@@ -77,7 +77,7 @@ soul_id: 00000000-0000-0000-0000-000000000000
 soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
-version: 2
+version: 3
 cert_version: 0
 soul_cert: [generated automatically]
 vault_hash: ""
@@ -85,6 +85,9 @@ soul_growth_chain: []
 soul_chain_anchor: null
 storage_tx: ""
 ---
+
+<!-- LONGMEM + MINDIDX appear here automatically once the Archivist first
+     crystallizes this soul — see docs/spec/sys_md.md for the full lifecycle -->
 
 ## Core Identity        ← Private Sphere (owner only)
 ## Values & Beliefs
@@ -109,11 +112,13 @@ storage_tx: ""
 
 | Sphere | Delimiter | Who reads | Who writes |
 |---|---|---|---|
-| **Private Sphere** | All `## sections` | Owner only | Owner only |
+| **Private Sphere** | All `## sections`, LONGMEM, MINDIDX | Owner only | Owner + the Archivist |
 | **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
 | **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
 
-**v1 → v2 migration:** Existing souls (version: 1) are auto-migrated on first peer access — the Social Sphere block is inserted before the Agent Sandbox block (or at end of file), and `version` is bumped to 2.
+**LONGMEM + MINDIDX:** once the background Archivist (`soul-mcp/lib/herz.mjs`) first crystallizes a soul, two blocks are inserted right after the frontmatter — `LONGMEM` (crystallized facts/memories/ideas/learnings) and `MINDIDX` (a 3-axis index over it: category, relevance score, status/recency — applying the [MIND](https://github.com/uxprojectsjok/mind) discovery-format technique to personal long-term memory instead of a network of nodes). Lazy, no forced migration — see `docs/spec/sys_md.md` for the full lifecycle and consumer list.
+
+**v1 → v2 migration:** Existing souls (version: 1) are auto-migrated on first peer access — the Social Sphere block is inserted before the Agent Sandbox block (or at end of file), and `version` is bumped to 2. **v2 → v3** needs no migration — `version: 3` is only set for newly created souls; existing souls gain LONGMEM/MINDIDX the same way any soul does, at their next crystallization.
 
 **Frontmatter fields:**
 
@@ -123,7 +128,7 @@ storage_tx: ""
 | `soul_name` | string | Display name (chosen by the user). |
 | `created` | ISO 8601 | Creation date. |
 | `last_session` | ISO 8601 | Last session date. |
-| `version` | integer | sys.md schema version. `1` = legacy, `2` = three-sphere. |
+| `version` | integer | sys.md schema version. `1` = legacy, `2` = three-sphere, `3` = MIND-aware (LONGMEM/MINDIDX lifecycle). |
 | `cert_version` | integer | Cert rotation counter. Incremented by `soul_rotate_cert`. |
 | `soul_cert` | hex(32) | HMAC-SHA256 cert. Issued by the server, stored in the browser. |
 | `vault_hash` | string | SHA-256 of the last vault snapshot. |

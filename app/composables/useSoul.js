@@ -87,19 +87,24 @@ export function useSoul() {
 
   function buildDefaultSoul(id, cert, name, idea) {
     const now = new Date().toISOString().split("T")[0];
-    // v2 2026-05-09 — three-sphere: Intimsphäre + Sozialsphäre + Agent-Sandbox
+    // v3 2026-07-04 — MIND-fähig: LONGMEM + MINDIDX (3D-Index) entstehen bei der
+    // ersten Kristallisation. v2 2026-05-09 — three-sphere: Intimsphäre + Sozialsphäre + Agent-Sandbox
     return `---
 soul_id: ${id}
 soul_name: ${name || ""}
 created: ${now}
 last_session: ${now}
-version: 2
+version: 3
 soul_cert: ${cert}
 vault_hash: ""
 storage_tx: ""
 elevenlabs_agent_id: ""
 elevenlabs_voice_id: ""
 ---
+
+<!-- LONGMEM + MINDIDX (kristallisiertes Langzeitgedächtnis + 3D-Index)
+     erscheinen hier automatisch, sobald der Archivar zum ersten Mal
+     kristallisiert. Bis dahin: nur die rohen Sektionen unten. -->
 
 ## Kern-Identität
 <!-- Core Identity — who this person is: age, profession, origin, life situation -->
