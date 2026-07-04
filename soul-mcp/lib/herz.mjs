@@ -13,7 +13,7 @@
 
 import { readFile, writeFile } from 'fs/promises';
 import { SOULS_DIR, decryptIfNeeded, encryptBuf, loadVaultMeta } from './vault_fs.mjs';
-import { extractLongmem, updateLongmem, extractAllSections } from './soul_parser.mjs';
+import { extractLongmem, updateLongmem, extractAllSections, buildLongmemIndex, updateLongmemIndex, extractLongmemIndex, queryLongmem } from './soul_parser.mjs';
 
 const TICK_INTERVAL_MS      = 10 * 60 * 1000;  // alle 10 Min prüfen
 const HEARTBEAT_TIMEOUT     = 30 * 60 * 1000;  // 30 Min ohne Ping → auto-deaktivieren
@@ -185,8 +185,23 @@ async function appendToSoulLog(soulId, text) {
 
 // ── Trigger-Handlers ──────────────────────────────────────────────────────────
 
+// Baut den Kontext-Schnipsel für einen Trigger über gezielte LONGMEM-Queries statt
+// positionaler Slice (die zufällig im rohen LONGMEM-JSON landen konnte). Fallback
+// auf die alte Slice-Logik falls die Soul noch nicht kristallisiert wurde — kein
+// Zwang zur Konsistenz für frische Souls.
+function buildHerzContext(soul, queryFn, fallbackLen) {
+  const longmem = extractLongmem(soul);
+  if (!longmem) return soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, fallbackLen);
+  const index = extractLongmemIndex(soul);
+  const snippet = queryFn(longmem, index);
+  return snippet || soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, fallbackLen);
+}
+
 async function onAnchor(soulId, soul, apiKey, newCount) {
-  const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 800);
+  const snippet = buildHerzContext(soul, (lm, idx) => [
+    queryLongmem(lm, idx, { dimension: 'facts', x_minScore: 4, limit: 5 }).formatted,
+    queryLongmem(lm, idx, { dimension: 'memories', limit: 2 }).formatted,
+  ].filter(Boolean).join('\n'), 800);
   const text = await callClaude(
     apiKey,
     `You are the silent archivist of this soul. A new growth-chain entry has been added — the soul has grown. Write a short, honest self-reflection (1-2 sentences) about what this means. No praise, no warm-up. Direct.`,
@@ -196,7 +211,8 @@ async function onAnchor(soulId, soul, apiKey, newCount) {
 }
 
 async function onSilence(soulId, soul, apiKey, silenceDays) {
-  const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 600);
+  const snippet = buildHerzContext(soul, (lm, idx) =>
+    queryLongmem(lm, idx, { dimension: 'facts', y_cat: ['identity', 'values'], limit: 6 }).formatted, 600);
   const intensity = silenceDays >= SILENCE_HARD_DAYS ? 'strong' :
                     silenceDays >= SILENCE_MID_DAYS  ? 'moderate' : 'quiet';
   const text = await callClaude(
@@ -212,16 +228,21 @@ async function onAgent(soulId, soul, apiKey) {
   const msgMatches = [...agentBlock.matchAll(/<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g)];
   const lastMsg = msgMatches.length ? msgMatches[msgMatches.length - 1][0] : '';
   if (!lastMsg) return;
+  const snippet = buildHerzContext(soul, (lm, idx) =>
+    queryLongmem(lm, idx, { dimension: 'facts', y_cat: 'project', limit: 5 }).formatted, 0);
   const text = await callClaude(
     apiKey,
     `You are the silent archivist. An external agent has written to the AGENT block. In 1 sentence assess factually what the agent communicated and whether it is relevant to this soul.`,
-    `Last agent message:\n${lastMsg.slice(0, 300)}`
+    `Last agent message:\n${lastMsg.slice(0, 300)}${snippet ? `\n\nRelevant project context:\n${snippet}` : ''}`
   );
   if (text) await appendToSoulLog(soulId, `Agent contact — ${text}`);
 }
 
 async function onCircadian(soulId, soul, apiKey, period) {
-  const snippet = soul.replace(/^---[\s\S]*?---\n*/m, '').slice(0, 500);
+  const snippet = buildHerzContext(soul, (lm, idx) => [
+    queryLongmem(lm, idx, { dimension: 'memories', limit: 1 }).formatted,
+    queryLongmem(lm, idx, { dimension: 'ideas', z_status: 'planned', limit: 3 }).formatted,
+  ].filter(Boolean).join('\n'), 500);
   const prompt = period === 'morning'
     ? 'Morning begins. Write in 1 sentence what might matter today — based on the soul context. No motivation.'
     : 'Evening. Write in 1 sentence what today was — based on the soul context. No evaluation.';
@@ -610,7 +631,10 @@ Leeres Array [] wenn nichts Neues.`, 800);
   existing.updated = today;
 
   const withLongmem = repairBlockEndTags(updateLongmem(current, existing));
-  await writeSoul(soulId, withLongmem);
+  // MINDIDX direkt nach LONGMEM persistieren — einziger Ort, der den Index baut
+  // (lazy/fehlertolerant: alle anderen Leser bauen bei Bedarf transparent neu)
+  const withIndex = updateLongmemIndex(withLongmem, buildLongmemIndex(existing));
+  await writeSoul(soulId, withIndex);
 
   const total = (existing.facts?.length ?? 0) + (existing.memories?.length ?? 0) +
                 (existing.ideas?.length ?? 0) + (existing.learnings?.length ?? 0);

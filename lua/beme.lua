@@ -129,7 +129,10 @@ Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
 Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.]]
 -- PROMPT_END: beme
 
--- ── LONGMEM: kristallisierte Langzeit-Fakten extrahieren und voranstellen ────
+-- ── LONGMEM: kristallisiertes Langzeitgedächtnis extrahieren und voranstellen ──
+-- Spiegelt formatLongmemForPrompt() aus soul_parser.mjs (Facts/Memories/Ideas/
+-- Learnings) — nach Lua portiert, da OpenResty/Lua und Node kein gemeinsames
+-- Modul teilen können.
 local longmem_block = soul_text:match("<!%-%- SYS:LONGMEM:START %-%->(.-)<!%-%- SYS:LONGMEM:END %-%->")
                    or soul_text:match("<!%-%-+%s*LONGMEM:START%s*%-%-+>(.-)\n?<!%-%-+%s*LONGMEM:END%s*%-%-+>")
 local longmem_prefix = ""
@@ -137,19 +140,60 @@ if longmem_block and longmem_block:match('"facts"') then
   local cjson_ok, cjson = pcall(require, "cjson.safe")
   if cjson_ok then
     local ok, lm = pcall(cjson.decode, longmem_block:match("{.*}"))
-    if ok and type(lm) == "table" and type(lm.facts) == "table" and #lm.facts > 0 then
-      -- Nach score absteigend sortieren
-      table.sort(lm.facts, function(a, b) return (a.score or 0) > (b.score or 0) end)
+    if ok and type(lm) == "table" then
       local lines = {}
-      for _, f in ipairs(lm.facts) do
-        table.insert(lines, "- " .. tostring(f.text or ""))
+
+      if type(lm.facts) == "table" and #lm.facts > 0 then
+        table.sort(lm.facts, function(a, b) return (a.score or 0) > (b.score or 0) end)
+        table.insert(lines, "### Kern-Fakten")
+        for _, f in ipairs(lm.facts) do
+          table.insert(lines, "- " .. tostring(f.text or ""))
+        end
       end
-      longmem_prefix = "\n\n## Kristallisiertes Langzeitgedächtnis\n" .. table.concat(lines, "\n") .. "\n\n"
+
+      if type(lm.memories) == "table" and #lm.memories > 0 then
+        table.insert(lines, "### Erinnerungen")
+        local start_idx = math.max(1, #lm.memories - 19) -- letzte 20
+        for i = start_idx, #lm.memories do
+          local m = lm.memories[i]
+          table.insert(lines, "- " .. tostring(m.date or "") .. " " .. tostring(m.text or ""))
+        end
+      end
+
+      if type(lm.ideas) == "table" and #lm.ideas > 0 then
+        local idea_lines = {}
+        for _, i in ipairs(lm.ideas) do
+          if i.status ~= "done" then
+            table.insert(idea_lines, "- [" .. tostring(i.status or "idea") .. "] " .. tostring(i.title or "") .. ": " .. tostring(i.text or ""))
+          end
+        end
+        if #idea_lines > 0 then
+          table.insert(lines, "### Ideen")
+          for _, l in ipairs(idea_lines) do table.insert(lines, l) end
+        end
+      end
+
+      if type(lm.learnings) == "table" and #lm.learnings > 0 then
+        table.insert(lines, "### Erkenntnisse")
+        for _, l in ipairs(lm.learnings) do
+          table.insert(lines, "- [" .. tostring(l.cat or "learn") .. "] " .. tostring(l.text or ""))
+        end
+      end
+
+      if #lines > 0 then
+        longmem_prefix = "\n\n## Kristallisiertes Langzeitgedächtnis\n" .. table.concat(lines, "\n") .. "\n\n"
+      end
     end
   end
 end
 
-local system_prompt = name_clause .. BEME_INTRO .. longmem_prefix .. soul_text .. BEME_OUTRO
+-- Rohen LONGMEM- (und ggf. MINDIDX-) Block aus soul_text entfernen — sonst würde
+-- er zweimal gesendet: einmal formatiert oben als longmem_prefix, einmal roh hier.
+local soul_text_stripped = soul_text
+  :gsub("<!%-%- SYS:LONGMEM:START %-%->.-<!%-%- SYS:LONGMEM:END %-%->", "")
+  :gsub("<!%-%- SYS:MINDIDX:START %-%->.-<!%-%- SYS:MINDIDX:END %-%->", "")
+
+local system_prompt = name_clause .. BEME_INTRO .. longmem_prefix .. soul_text_stripped .. BEME_OUTRO
 
 -- ── Nachrichten-Array aufbauen ─────────────────────────────────────────────
 

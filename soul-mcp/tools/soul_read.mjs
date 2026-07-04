@@ -1,4 +1,5 @@
 import { getText } from '../lib/api.mjs';
+import { extractLongmem, extractLongmemIndex, queryLongmem } from '../lib/soul_parser.mjs';
 
 export function register(server, token) {
   server.tool(
@@ -22,7 +23,18 @@ export function register(server, token) {
     async () => {
       try {
         const text = await getText('/api/soul', token);
-        return { content: [{ type: 'text', text }] };
+        const longmem = extractLongmem(text);
+        const index   = longmem ? extractLongmemIndex(text) : null;
+        const digest  = longmem
+          ? [
+              queryLongmem(longmem, index, { dimension: 'facts', x_minScore: 4, limit: 8 }).formatted,
+              queryLongmem(longmem, index, { dimension: 'memories', limit: 5 }).formatted,
+            ].filter(Boolean).join('\n')
+          : '';
+        const output = digest
+          ? `## Kern-Kontext (indexbasiert, Top-Facts + neueste Erinnerungen)\n${digest}\n\n---\n\n${text}`
+          : text;
+        return { content: [{ type: 'text', text: output }] };
       } catch (err) {
         return { content: [{ type: 'text', text: apiErrMsg(err) }], isError: true };
       }

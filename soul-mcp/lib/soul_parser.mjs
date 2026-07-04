@@ -134,6 +134,108 @@ export function formatLongmemForPrompt(longmem) {
   return `## LONGMEM — Kristallisiertes Langzeitgedächtnis\n${parts.join('\n\n')}`;
 }
 
+// MINDIDX block markers — persistenter 3D-Index (Y=Kategorie, X=Score, Z=Status/Rezenz) über LONGMEM
+const MI_START = '<!-- SYS:MINDIDX:START -->';
+const MI_END   = '<!-- SYS:MINDIDX:END -->';
+
+/** Baut den 3D-Index aus LONGMEM: Y=Kategorie (facts/learnings), X=Score (facts), Z=Status/Rezenz (ideas/memories). */
+export function buildLongmemIndex(longmem) {
+  if (!longmem) return null;
+  const byCat = (arr) => (arr ?? []).reduce((acc, item, i) => {
+    (acc[item.cat] ??= []).push(i);
+    return acc;
+  }, {});
+  const byStatus = (arr) => (arr ?? []).reduce((acc, item, i) => {
+    (acc[item.status ?? 'idea'] ??= []).push(i);
+    return acc;
+  }, {});
+  const factsByScoreDesc = (longmem.facts ?? [])
+    .map((_, i) => i)
+    .sort((a, b) => (longmem.facts[b].score ?? 0) - (longmem.facts[a].score ?? 0));
+  const memsByDateDesc = (longmem.memories ?? [])
+    .map((_, i) => i)
+    .sort((a, b) => (longmem.memories[b].date ?? '').localeCompare(longmem.memories[a].date ?? ''));
+
+  return {
+    _v: 1,
+    based_on_updated: longmem.updated ?? null,
+    facts:     { y_cat: byCat(longmem.facts), x_score_desc: factsByScoreDesc },
+    memories:  { z_recent: memsByDateDesc },
+    ideas:     { z_status: byStatus(longmem.ideas) },
+    learnings: { y_cat: byCat(longmem.learnings) },
+  };
+}
+
+/** Persistiert den MINDIDX-Block direkt nach dem LONGMEM-Block. */
+export function updateLongmemIndex(md, index) {
+  const json  = JSON.stringify(index, null, 2);
+  const block = `${MI_START}\n${json}\n${MI_END}`;
+
+  // Alten Block überall entfernen
+  const oldPattern = /\n?<!-- SYS:MINDIDX:START -->[\s\S]*?<!-- SYS:MINDIDX:END -->\n?/g;
+  const stripped = md.replace(oldPattern, '\n');
+
+  // Direkt nach dem LONGMEM-Block einfügen — Index folgt den Daten, die er beschreibt
+  const lmEndIdx = stripped.indexOf(LM_END);
+  if (lmEndIdx !== -1) {
+    const after = lmEndIdx + LM_END.length;
+    return stripped.slice(0, after) + '\n' + block + stripped.slice(after);
+  }
+  // Kein LONGMEM vorhanden → Index ohne Daten ergibt keinen Sinn, nicht einfügen
+  return stripped;
+}
+
+/** Extrahiert den MINDIDX-Block aus sys.md. */
+export function extractLongmemIndex(md) {
+  const start = md.lastIndexOf(MI_START);
+  if (start === -1) return null;
+  const end = md.indexOf(MI_END, start);
+  if (end === -1) return null;
+  const content = md.slice(start + MI_START.length, end).trim();
+  try { return JSON.parse(content); } catch { return null; }
+}
+
+/**
+ * Fragt LONGMEM über den 3D-Index ab (Y ∩ X ∩ Z → Indizes → Klartext).
+ * Baut bei fehlendem/veraltetem Index transparent im Speicher neu — der Index ist
+ * ein Fast-Path, kein Muss (analog zu "Erinnerungen haben auch Lücken").
+ * Gibt immer lesbare Bullet-Zeilen zurück, nie rohes JSON.
+ */
+export function queryLongmem(longmem, index, { dimension = 'facts', y_cat, x_minScore, z_status, limit = 5 } = {}) {
+  if (!longmem) return { formatted: '', updated: null };
+  const idx   = (index && index.based_on_updated === longmem.updated) ? index : buildLongmemIndex(longmem);
+  const items = longmem[dimension] ?? [];
+  if (!items.length) return { formatted: '', updated: longmem.updated ?? null };
+
+  const dimIdx = idx?.[dimension] ?? {};
+  const candidateSets = [];
+  if (y_cat != null) {
+    const cats = Array.isArray(y_cat) ? y_cat : [y_cat];
+    candidateSets.push(new Set(cats.flatMap(c => dimIdx.y_cat?.[c] ?? [])));
+  }
+  if (z_status != null) {
+    candidateSets.push(new Set(dimIdx.z_status?.[z_status] ?? []));
+  }
+
+  let indices = candidateSets.length
+    ? candidateSets.reduce((a, b) => new Set([...a].filter(i => b.has(i))))
+    : new Set(items.map((_, i) => i));
+
+  if (x_minScore != null) {
+    indices = new Set([...indices].filter(i => (items[i].score ?? 0) >= x_minScore));
+  }
+
+  // Reihenfolge: facts nach Score absteigend, memories nach Rezenz, sonst Array-Reihenfolge
+  const order   = dimIdx.x_score_desc ?? dimIdx.z_recent ?? items.map((_, i) => i);
+  const ordered = order.filter(i => indices.has(i)).slice(0, limit);
+
+  const formatted = ordered
+    .map(i => `- ${items[i].cat ? `[${items[i].cat}] ` : ''}${items[i].text ?? items[i].title ?? ''}`)
+    .join('\n');
+
+  return { formatted, updated: longmem.updated ?? null };
+}
+
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
