@@ -68,7 +68,7 @@ export function register(server, token) {
                 return {
                   content: [
                     { type: 'text', text: `PDF: ${resolved.filename} (${data.size_kb} KB)\nURL: ${viewUrl}` },
-                    { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: data.data_b64 } },
+                    { type: 'resource', resource: { uri: viewUrl, mimeType: 'application/pdf', blob: data.data_b64 } },
                   ],
                 };
               }

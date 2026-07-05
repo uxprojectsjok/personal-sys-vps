@@ -868,6 +868,14 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_shared_view.lua;
   }
 
+  # ── EU-Widerruf-PDF (bewusst KEIN Auth — Sicherheit über UUID-Unratbarkeit) ──
+  location ~ ^/api/vault/consent/ {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_log off;
+    content_by_lua_file /etc/openresty/lua/vault_consent_serve.lua;
+  }
+
   # ── Vault Shared: internes Filesystem-Serving für X-Accel-Redirect ──────────
   location /internal/vault-shared/ {
     internal;

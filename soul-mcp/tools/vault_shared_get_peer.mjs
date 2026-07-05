@@ -35,7 +35,7 @@ export function register(server, targetSoulId) {
           return {
             content: [
               { type: 'text', text: `PDF: ${filename} (${sizeKb} KB)` },
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buf.toString('base64') } },
+              { type: 'resource', resource: { uri: `vault-shared://${targetSoulId}/${filename}`, mimeType: 'application/pdf', blob: buf.toString('base64') } },
             ],
           };
         }
