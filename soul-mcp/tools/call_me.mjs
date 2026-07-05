@@ -23,16 +23,17 @@ export function register(server, token, soulId = null) {
     {},
     async () => {
       try {
-        // Primär: ownagent_*.md aus vault_shared lesen (neueste datierte Datei)
+        // Primär: ownagent_*.md aus vault/context lesen (neueste datierte Datei)
+        // Owner-only-Ablage — vault_shared ist für zahlende/Peer-Verbindungen lesbar.
         if (soulId) {
           try {
-            const sharedDir = join(SOULS_DIR, soulId, 'vault_shared');
-            const files = readdirSync(sharedDir)
+            const contextDir = join(SOULS_DIR, soulId, 'vault', 'context');
+            const files = readdirSync(contextDir)
               .filter(f => f.includes('ownagent') && f.endsWith('.md'))
               .sort();
             const latest = files[files.length - 1];
             if (latest) {
-              const text   = readFileSync(join(sharedDir, latest), 'utf-8');
+              const text   = readFileSync(join(contextDir, latest), 'utf-8');
               const parsed = parseAgentMd(text);
               if (parsed.agent_url) {
                 return {

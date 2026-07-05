@@ -577,20 +577,21 @@ if not agent_id then
   return
 end
 
--- ── ownagent.md in vault_shared schreiben (für Peers abrufbar) ──────────────────
--- Alte Dateien löschen, dann neu anlegen: ownagent.md (fix, für call_me)
--- + ownagent_YYYY-MM-DD.md (datiert, für vault_shared-Anzeige).
+-- ── ownagent.md in vault/context schreiben (nur für den Owner selbst) ───────────
+-- Owner-only: vault_shared ist seit 2026-07-05 für jede zahlende/Peer-Verbindung
+-- lesbar — dieser Marker (agent_id/agent_url für call_me) gehört nicht dorthin.
+-- Alte Dateien löschen, dann neu anlegen: ownagent.md (datiert, für call_me).
 do
-  local shared_dir = BASE_DIR .. "/vault_shared"
-  os.execute("mkdir -p " .. shared_dir)
+  local context_dir = BASE_DIR .. "/vault/context"
+  os.execute("mkdir -p " .. context_dir)
   -- Alte ownagent-Dateien entfernen
-  os.execute("rm -f " .. shared_dir .. "/*ownagent*.md")
+  os.execute("rm -f " .. context_dir .. "/*ownagent*.md")
   local agent_url  = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
   local vid_line   = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
   local updated_at = os.date("!%Y-%m-%dT%TZ")
   local ts         = tostring(math.floor(ngx.now() * 1000))
   local content    = "---\nagent_id: " .. agent_id .. "\nagent_url: " .. agent_url .. "\n" .. vid_line .. "updated_at: " .. updated_at .. "\n---\n"
-  local wf = io.open(shared_dir .. "/" .. ts .. "_ownagent.md", "w")
+  local wf = io.open(context_dir .. "/" .. ts .. "_ownagent.md", "w")
   if wf then wf:write(content); wf:close() end
 end
 

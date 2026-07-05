@@ -875,6 +875,24 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_consent_serve.lua;
   }
 
+  # ── EU-Widerruf-PDFs — Liste (owner only, Vault Explorer) ────────────────────
+  location = /api/vault/consent-list {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_consent_list.lua;
+  }
+
+  # ── EU-Widerruf-PDF — Löschen (owner only, Vault Explorer) ───────────────────
+  location ~ ^/api/vault/consent-doc/[^/]+$ {
+    limit_except DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    content_by_lua_file /etc/openresty/lua/vault_consent_delete.lua;
+  }
+
   # ── Vault Shared: internes Filesystem-Serving für X-Accel-Redirect ──────────
   location /internal/vault-shared/ {
     internal;
