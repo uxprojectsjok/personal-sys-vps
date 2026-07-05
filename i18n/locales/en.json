@@ -351,9 +351,6 @@
     "filter_3d": "3 days",
     "filter_7d": "7 days",
     "filter_14d": "14 days",
-    "sp_living_file": "Living File",
-    "sp_soul_active": "Living Soul active",
-    "sp_soul_growing": "Soul growing…",
     "vault_reloaded": "Vault reloaded · Soul active",
     "vault_encrypted": "Soul encrypted on server · unlock Vault with key phrases"
   },
@@ -1431,7 +1428,6 @@
     "btn_create": "Create"
   },
   "soul_viewer": {
-    "empty": "No soul content saved yet.",
     "section_identity": "Core Identity",
     "section_values": "Values & Beliefs",
     "section_aesthetics": "Aesthetics & Resonance",
@@ -1440,11 +1436,6 @@
     "section_emotional": "Emotional Signature",
     "section_worldview": "Worldview",
     "section_questions": "Open Questions",
-    "section_history": "History",
-    "section_facts": "Facts",
-    "section_memories": "Memories",
-    "section_ideas": "Ideas",
-    "section_learnings": "Learnings",
     "upload_title": "Upload to server",
     "empty_section": "Not described yet.",
     "edit_hint": "⌘S save · Esc cancel"

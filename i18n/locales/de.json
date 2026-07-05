@@ -351,9 +351,6 @@
     "filter_3d": "3 Tage",
     "filter_7d": "7 Tage",
     "filter_14d": "14 Tage",
-    "sp_living_file": "Lebendige Datei",
-    "sp_soul_active": "Lebendige Seele aktiv",
-    "sp_soul_growing": "Seele wächst…",
     "vault_reloaded": "Vault neu geladen · Soul aktiv",
     "vault_encrypted": "Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren"
   },
@@ -1431,7 +1428,6 @@
     "btn_create": "Erstellen"
   },
   "soul_viewer": {
-    "empty": "Noch keine Seeleninhalte gespeichert.",
     "section_identity": "Kern-Identität",
     "section_values": "Werte & Überzeugungen",
     "section_aesthetics": "Ästhetik & Resonanz",
@@ -1440,11 +1436,6 @@
     "section_emotional": "Emotionale Signatur",
     "section_worldview": "Weltbild",
     "section_questions": "Offene Fragen",
-    "section_history": "Verlauf",
-    "section_facts": "Fakten",
-    "section_memories": "Erinnerungen",
-    "section_ideas": "Ideen",
-    "section_learnings": "Erkenntnisse",
     "upload_title": "Auf Server hochladen",
     "empty_section": "Noch nicht beschrieben.",
     "edit_hint": "⌘S speichern · Esc abbrechen"

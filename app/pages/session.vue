@@ -11,9 +11,6 @@
             </svg>
             <span v-if="filter !== 'all' || timeFilter !== 'all'" class="sess-filter-dot" />
           </button>
-          <button class="icon-btn" :class="{ on: soulPanelOpen }" @click="soulPanelOpen = !soulPanelOpen" aria-label="Soul Panel">
-            <SysIcon name="soul" style="width:18px;height:18px" />
-          </button>
           <span v-if="isGrowingQuietly" class="soul-growing" title="Seele waechst">&#x25CC;</span>
           <Transition name="fade-quick"><span v-if="soulJustGrew" class="soul-grew">&#x2726;</span></Transition>
         </SysTopbar>
@@ -65,7 +62,7 @@
           </Transition>
         </div>
 
-        <div :class="['chat-shell', { 'with-panel': soulPanelOpen }]">
+        <div class="chat-shell">
           <div class="chat-col">
             <ChatInterface
               ref="chatRef"
@@ -80,22 +77,6 @@
               @session-end="forceSessionEnd"
             />
           </div>
-          <aside v-if="soulPanelOpen" class="soulpanel">
-            <div class="sp-head">
-              <div>
-                <div class="eyebrow">{{ $t('session_page.sp_living_file') }}</div>
-                <h3>sys<em>.</em>md</h3>
-              </div>
-              <button class="icon-btn sp-close" @click="soulPanelOpen = false" :aria-label="$t('common.close')">
-                <SysIcon name="close" style="width:16px;height:16px" />
-              </button>
-            </div>
-            <div class="sp-grow">
-              <span class="live-dot" />
-              {{ isGrowingQuietly ? $t('session_page.sp_soul_growing') : $t('session_page.sp_soul_active') }}
-            </div>
-            <div class="sp-scroll"><SoulViewer /></div>
-          </aside>
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
@@ -132,7 +113,6 @@ import ChatInterface from '~/components/ChatInterface.vue'
 import EmergencyModal from '~/components/EmergencyModal.vue'
 import Modal from '~/components/ui/Modal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
-import SoulViewer from '~/components/SoulViewer.vue'
 import ConfirmModal from '~/components/ConfirmModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
@@ -417,7 +397,6 @@ async function onSetupImport(markdown) {
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
-const soulPanelOpen    = ref(false)
 const filterOpen       = ref(false)
 const filter           = ref('all')
 const timeFilter       = ref('all')
@@ -522,10 +501,4 @@ function onNav(id) {
 :deep(input:focus), :deep(textarea:focus) {
   outline: none !important; border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent) !important;
 }
-.soulpanel :deep(h3) {
-  font-family: var(--serif) !important; font-size: 17px !important; font-weight: 400 !important;
-  letter-spacing: -0.015em !important; color: var(--fg) !important;
-  padding-top: 16px; margin-top: 16px !important; margin-bottom: 6px !important; border-top: 1px solid var(--line);
-}
-.soulpanel :deep(p) { font-size: 13px; line-height: 1.6; color: var(--fg-2); }
 </style>

@@ -58,7 +58,6 @@
   --sh-lg: 0 22px 60px rgba(0,0,0,0.5);
 
   --sidebar-w: 264px;
-  --soulpanel-w: 336px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── Remap old violet system → Warm Ash & Sage (global migration) ─────── */
@@ -358,7 +357,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
    CHAT
    ════════════════════════════════════════════════════════════════════════ */
 .chat-shell { display: grid; grid-template-columns: 1fr; min-height: 0; flex: 1; transition: grid-template-columns .3s var(--ease); }
-.chat-shell.with-panel { grid-template-columns: 1fr var(--soulpanel-w); }
 
 .chat-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
 
@@ -481,28 +479,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .model-sel .mhint { color: var(--fg-3); font-weight: 400; }
 
 /* ════════════════════════════════════════════════════════════════════════
-   SOUL PANEL (sys.md live)
-   ════════════════════════════════════════════════════════════════════════ */
-.soulpanel { background: var(--surface); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.sp-head { padding: 18px 20px 14px; display: flex; align-items: flex-start; gap: 10px; }
-.sp-head .eyebrow { margin-bottom: 6px; }
-.sp-head h3 { font-size: 24px; color: var(--fg); }
-.sp-head h3 em { font-style: italic; color: var(--accent); }
-.sp-close { margin-left: auto; }
-.sp-grow { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--accent-bright); margin: 0 20px 12px; }
-.sp-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 18px; display: flex; flex-direction: column; gap: 6px; }
-.sp-sec { border-radius: var(--r); overflow: hidden; background: var(--surface-2); transition: background .15s; }
-.sp-sec:hover { background: var(--surface-3); }
-.sp-sec-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; width: 100%; text-align: left; }
-.sp-sec-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.sp-sec-label { font-size: 13.5px; font-weight: 500; color: var(--fg); flex: 1; }
-.sp-sec-chev { color: var(--fg-4); transition: transform .2s var(--ease); }
-.sp-sec.open .sp-sec-chev { transform: rotate(180deg); color: var(--accent-bright); }
-.sp-sec-body { padding: 0 14px 14px; font-size: 13.5px; line-height: 1.62; color: var(--fg); }
-.sp-sec-body p { margin: 0 0 8px; }
-.sp-sec-body p:last-child { margin-bottom: 0; }
-
-/* ════════════════════════════════════════════════════════════════════════
    COMMAND PALETTE
    ════════════════════════════════════════════════════════════════════════ */
 .cmdk-scrim { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); z-index: 100; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 18px 18px; }
@@ -586,14 +562,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .searchbtn .label-txt, .searchbtn .kbd { display: none; }
   .searchbtn { width: 38px; flex: none; padding: 0; justify-content: center; }
 
-  .chat-shell.with-panel { grid-template-columns: 1fr; }
-  .soulpanel {
-    position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 88vw); z-index: 60;
-    transform: translateX(100%); transition: transform .3s var(--ease); box-shadow: var(--sh-lg);
-  }
-  .chat-shell.with-panel .soulpanel { transform: translateX(0); }
-  /* ensure sp-scroll content isn't hidden under fixed dock on mobile */
-  .sp-scroll { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
 
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .action-list { grid-template-columns: 1fr; }
