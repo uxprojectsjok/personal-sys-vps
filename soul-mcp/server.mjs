@@ -1120,7 +1120,9 @@ app.get('/llms.txt', async (_req, res) => {
   res.set('Cache-Control', 'public, max-age=300');
   res.set('Content-Type', 'text/plain; charset=utf-8');
 
-  const souls = querySouls({ limit: 100 });
+  // Nur Souls, die tatsächlich auf diesem Node laufen — querySouls() liefert den
+  // globalen, per Chain-Scan aggregierten Index (inkl. fremder Nodes).
+  const souls = querySouls({ limit: 100 }).filter(s => s.mcp_endpoint?.startsWith(BASE_URL));
   const lines = [];
   lines.push(`# SYS Node — ${BASE_URL}`);
   lines.push('');
@@ -1185,7 +1187,7 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
   lines.push('- Soul Network: https://sys.uxprojects-jok.com/scan');
-  lines.push('- Source: https://github.com/uxprojectsjok/saveyoursoul-sys');
+  lines.push('- Source: https://github.com/uxprojectsjok/personal-sys-vps');
 
   res.send(lines.join('\n'));
 });
