@@ -115,6 +115,23 @@
               </div>
             </Transition>
 
+            <!-- Getrustete Souls verwalten -->
+            <div class="cn-section-label" style="margin-top:40px">{{ $t('connection.trusted_section') }}</div>
+            <div v-if="!trustedList.length" class="cn-info-card">
+              <div class="cn-info-body">
+                <p class="cn-info-desc">{{ $t('connection.trusted_empty') }}</p>
+              </div>
+            </div>
+            <div v-else class="cn-trusted-list">
+              <div v-for="item in trustedList" :key="item.soul_id" class="cn-trusted-row">
+                <div class="cn-trusted-info">
+                  <div class="cn-trusted-label">{{ item.label || $t('connection.trust_unknown') }}</div>
+                  <div class="cn-trusted-id">{{ item.soul_id.slice(0, 8) }}…</div>
+                </div>
+                <button class="cn-btn cn-btn--reject" :disabled="revoking === item.soul_id" @click="revokeTrust(item.soul_id)">{{ $t('connection.btn_revoke') }}</button>
+              </div>
+            </div>
+
             <!-- Verifikation info -->
             <div class="cn-section-label" style="margin-top:40px">{{ $t('connection.section_verify') }}</div>
             <div class="cn-info-card">
@@ -212,8 +229,25 @@ async function approveTrust(ok) {
     const r = await fetch('/api/trust/approve', { method:'POST', headers:authHeaders(), body:JSON.stringify({ request_id: pendingTrust.value.request_id, approved: ok }) })
     if (!r.ok) throw new Error()
     pendingTrust.value = null
+    if (ok) await loadTrustedList()
   } catch (_) { /* Banner bleibt sichtbar, erneuter Versuch möglich */ }
   trustApproving.value = false
+}
+
+// ── Getrustete Souls verwalten ────────────────────────────────────────────────
+const trustedList = ref([])
+const revoking     = ref(null)
+async function loadTrustedList() {
+  try { const r = await fetch('/api/trust/list',{headers:authHeaders()}); const d = await r.json(); trustedList.value = d.trusted || [] } catch (_) {}
+}
+async function revokeTrust(soulId) {
+  if (revoking.value) return
+  revoking.value = soulId
+  try {
+    const r = await fetch('/api/trust/revoke', { method:'POST', headers:authHeaders(), body:JSON.stringify({ soul_id: soulId }) })
+    if (r.ok) trustedList.value = trustedList.value.filter(t => t.soul_id !== soulId)
+  } catch (_) { /* Eintrag bleibt sichtbar, erneuter Versuch möglich */ }
+  revoking.value = null
 }
 
 // ── Web Push Subscription ─────────────────────────────────────────────────────
@@ -255,6 +289,7 @@ async function requestAndSubscribe() {
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 pollPendingChallenge()
 pollPendingTrust()
+loadTrustedList()
 challengePollTimer = setInterval(() => { pollPendingChallenge(); pollPendingTrust() }, 8000)
 if (import.meta.client) requestAndSubscribe()
 
@@ -348,6 +383,14 @@ function onNav(id) {
 .cn-hello-msg { font-family:var(--serif); font-style:italic; font-size:18px; color:var(--accent); }
 .cn-verified-row { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px; color:var(--fg-2); }
 .cn-verified-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 4px var(--accent-glow); flex:none; }
+
+/* Getrustete Souls verwalten */
+.cn-trusted-list { display:flex; flex-direction:column; gap:1px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-bottom:32px; }
+.cn-trusted-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; background:var(--surface); }
+.cn-trusted-row + .cn-trusted-row { border-top:1px solid var(--line); }
+.cn-trusted-info { min-width:0; }
+.cn-trusted-label { font-family:var(--sans); font-size:14px; font-weight:600; color:var(--fg); }
+.cn-trusted-id { font-family:var(--mono); font-size:12px; color:var(--fg-2); margin-top:2px; }
 
 /* Verifikation info card */
 .cn-info-card { display:flex; align-items:flex-start; gap:16px; padding:20px 22px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); }
