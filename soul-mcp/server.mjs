@@ -1478,7 +1478,9 @@ async function checkTrustedSoul(peerSoulId, peerCert, targetSoulId) {
  */
 async function verifyPeerCert(soulId, cert, peerEndpoint) {
   try {
-    const base = peerEndpoint ? peerEndpoint.replace(/\/$/, '') : 'http://127.0.0.1';
+    // 127.0.0.1 ohne Host-Header trifft den nginx default_server (return 444) —
+    // BASE_URL statt Loopback verwenden, damit der Vhost korrekt geroutet wird.
+    const base = peerEndpoint ? peerEndpoint.replace(/\/$/, '') : BASE_URL;
     const url  = `${base}/api/soul/verify-peer-cert?soul_id=${encodeURIComponent(soulId)}&cert=${encodeURIComponent(cert)}`;
     const res  = await fetch(url, { signal: AbortSignal.timeout(6000) });
     const data = await res.json().catch(() => ({}));

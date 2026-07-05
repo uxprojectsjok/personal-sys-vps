@@ -5,6 +5,7 @@
  * Stage filtering: stage 1 = last 24h (default), stage 2 = last 48h with sampling.
  */
 
+import { z } from 'zod';
 import { readFile, writeFile } from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from '../lib/vault_fs.mjs';
 
@@ -71,11 +72,8 @@ export function register(server, targetSoulId) {
       'Only use stage 2 when the user explicitly asks for more history context.',
     ].join('\n'),
     {
-      stage: {
-        type: 'number',
-        description: 'Message history depth. 1 = last 24h (default). 2 = last 48h with sampling.',
-        optional: true,
-      },
+      stage: z.number().int().min(1).max(2).optional()
+        .describe('Message history depth. 1 = last 24h (default). 2 = last 48h with sampling.'),
     },
     async ({ stage = 1 } = {}) => {
       const s = stage === 2 ? 2 : 1;
