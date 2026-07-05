@@ -30,6 +30,12 @@ export function register(server, _token) {
       'If the preview looks promising: call soul_pay_read with the same',
       'pay_endpoint and soul_id to get full access.',
       '',
+      'Some Souls also accept PayPal for human buyers without crypto — if the',
+      'preview shows paypal_accepted, mention that option: the human pays',
+      'externally, then must call accept_digital_content_terms BEFORE paying',
+      '(EU withdrawal-rights consent), then contacts the Soul owner directly —',
+      'access is granted manually, typically within 48h, not instantly like POL.',
+      '',
       'Parameters:',
       '  pay_endpoint  full URL of the Soul\'s pay endpoint (from soul_discover)',
       '  soul_id       UUID of the target Soul',
@@ -80,10 +86,15 @@ export function register(server, _token) {
           ? `[${d.preview_note}]`
           : (d.preview || '(no AGENT block content found)');
 
+        const paypalLines = d.paypal_accepted
+          ? [`PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`, ``]
+          : [];
+
         const lines = [
           `Soul preview · ${soul_id.slice(0, 8)}…`,
           `Price:   ${priceLine}`,
           `Wallet:  ${d.wallet || '(not set)'}`,
+          ...paypalLines,
           ``,
           `--- AGENT block preview ---`,
           agentContent,

@@ -45,6 +45,10 @@ local DEFAULTS = {
   token_duration_days  = 1,
   activated_at         = cjson.null,
   verified_wallet = cjson.null,
+  paypal_enabled  = false,
+  paypal_link     = "",
+  paypal_email    = "",
+  price_eur       = "",
 }
 
 -- ── GET ───────────────────────────────────────────────────────────────────────
@@ -132,6 +136,36 @@ end
 -- wallet: Ethereum-Adresse
 if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$") then
   amort.wallet = incoming.wallet
+end
+
+-- paypal_enabled: Nicht-Krypto-Zahlungsweg (manuell bestätigt, kein Auto-Verify)
+if incoming.paypal_enabled == true or incoming.paypal_enabled == false then
+  amort.paypal_enabled = incoming.paypal_enabled
+end
+
+-- paypal_link: PayPal.me-URL
+if type(incoming.paypal_link) == "string" then
+  local link = incoming.paypal_link:match("^%s*(.-)%s*$"):sub(1, 200)
+  if link == "" or link:match("^https://[%w%.]-paypal%.me/[%w%.%-_]+$")
+                 or link:match("^https://[%w%.]-paypal%.com/paypalme/[%w%.%-_]+$") then
+    amort.paypal_link = link
+  end
+end
+
+-- paypal_email: Alternative zum Link
+if type(incoming.paypal_email) == "string" then
+  local email = incoming.paypal_email:match("^%s*(.-)%s*$"):sub(1, 254)
+  if email == "" or email:match("^[%w%.%-_%+]+@[%w%.%-]+%.%a%a+$") then
+    amort.paypal_email = email
+  end
+end
+
+-- price_eur: positive Zahl als String, wie pol_per_request
+if type(incoming.price_eur) == "string" then
+  local n = tonumber(incoming.price_eur)
+  if n and n >= 0 then
+    amort.price_eur = incoming.price_eur
+  end
 end
 
 -- agent_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)

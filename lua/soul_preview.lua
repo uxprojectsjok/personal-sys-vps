@@ -176,7 +176,7 @@ price = math.max(base_price, math.floor(price * 10000 + 0.5) / 10000)
 local scheme  = (ngx.var.https == "on") and "https" or "http"
 local base_url = scheme .. "://" .. (ngx.var.host or "")
 
-ngx.say(cjson.encode({
+local response = {
   soul_id           = soul_id,
   enabled           = true,
   preview           = preview_text,
@@ -194,4 +194,17 @@ ngx.say(cjson.encode({
   wallet            = amort.wallet or "",
   pay_endpoint      = base_url .. "/api/soul/pay",
   price_endpoint    = base_url .. "/api/soul/price",
-}))
+}
+
+-- Nicht-Krypto-Zahlungsweg (manuell bestätigt, kein Auto-Verify) — nur wenn aktiviert
+if amort.paypal_enabled then
+  local target = (amort.paypal_link and amort.paypal_link ~= "") and amort.paypal_link
+              or (amort.paypal_email or "")
+  response.paypal_accepted = true
+  response.paypal_target   = target
+  response.price_eur       = amort.price_eur or ""
+  response.paypal_note     = "Für Nicht-Krypto-Zugang: PayPal an " .. target ..
+    ", danach Soul-Inhaber kontaktieren. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden."
+end
+
+ngx.say(cjson.encode(response))

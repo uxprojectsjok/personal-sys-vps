@@ -1525,8 +1525,11 @@ async function verifyPeerCert(soulId, cert, peerEndpoint) {
  */
 async function validatePolToken(token) {
   try {
+    // Über den dedizierten internen Listener (127.0.0.1:8081, kein TLS/Vhost-Routing
+    // nötig) statt über den öffentlichen Vhost — soul_pol_validate.lua prüft zusätzlich
+    // remote_addr==127.0.0.1, ein Umweg über BASE_URL würde daran scheitern.
     const res = await fetch(
-      `http://127.0.0.1/internal/validate-pol-token?token=${encodeURIComponent(token)}`,
+      `http://127.0.0.1:8081/internal/validate-pol-token?token=${encodeURIComponent(token)}`,
       { signal: AbortSignal.timeout(3000) }
     );
     const data = await res.json();

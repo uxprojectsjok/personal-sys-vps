@@ -107,6 +107,29 @@
                   <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
                   <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
+                <div class="field span-2">
+                  <label class="field-label field-label--toggle">
+                    <span class="toggle-switch" :class="{ on: amort.paypal_enabled }" @click="amort.paypal_enabled = !amort.paypal_enabled" role="switch" :aria-checked="amort.paypal_enabled" tabindex="0" @keydown.enter.space.prevent="amort.paypal_enabled = !amort.paypal_enabled">
+                      <span class="toggle-knob"></span>
+                    </span>
+                    {{ $t('marketplace.field_paypal_enabled') }}
+                    <span class="field-hint">{{ $t('marketplace.field_paypal_enabled_hint') }}</span>
+                  </label>
+                </div>
+                <template v-if="amort.paypal_enabled">
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_paypal_link') }}</label>
+                    <input v-model="amort.paypal_link" type="text" class="input mono" placeholder="https://paypal.me/deinname" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_paypal_email') }}</label>
+                    <input v-model="amort.paypal_email" type="text" class="input mono" placeholder="du@example.com" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_price_eur') }} <span class="field-hint">{{ $t('marketplace.field_price_eur_hint') }}</span></label>
+                    <input v-model="amort.price_eur" type="text" class="input mono" placeholder="12.00" />
+                  </div>
+                </template>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_token_validity') }} <span class="field-hint">{{ $t('marketplace.field_token_validity_hint') }}</span></label>
                   <input
@@ -335,6 +358,10 @@ const amort = reactive({
   agent_tools:          ['soul_read', 'verify_human', 'soul_maturity'],
   token_duration_days:  1,
   dynamic_pricing:      false,
+  paypal_enabled:       false,
+  paypal_link:          '',
+  paypal_email:         '',
+  price_eur:            '',
 })
 
 // Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
@@ -455,6 +482,10 @@ async function persistMetaFields() {
         ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:     amort.dynamic_pricing,
+        paypal_enabled:      amort.paypal_enabled,
+        paypal_link:         amort.paypal_link,
+        paypal_email:        amort.paypal_email,
+        price_eur:           amort.price_eur,
         name:                preview.value.name || '',
         description:         preview.value.description || '',
         tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
@@ -573,6 +604,10 @@ async function loadAmort() {
     amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.dynamic_pricing      = a.dynamic_pricing ?? false
+    amort.paypal_enabled       = a.paypal_enabled ?? false
+    amort.paypal_link          = a.paypal_link ?? ''
+    amort.paypal_email         = a.paypal_email ?? ''
+    amort.price_eur            = a.price_eur ?? ''
     if (amort.dynamic_pricing) fetchLivePrice()
     const rawTrustedSouls = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
@@ -640,6 +675,10 @@ async function setMode(mode) {
           ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
           dynamic_pricing:      amort.dynamic_pricing,
+          paypal_enabled:       amort.paypal_enabled,
+          paypal_link:          amort.paypal_link,
+          paypal_email:         amort.paypal_email,
+          price_eur:            amort.price_eur,
         }),
       })
       const d = await r.json()
@@ -674,6 +713,10 @@ async function saveAmort() {
         ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:      amort.dynamic_pricing,
+        paypal_enabled:       amort.paypal_enabled,
+        paypal_link:          amort.paypal_link,
+        paypal_email:         amort.paypal_email,
+        price_eur:            amort.price_eur,
       }),
     })
     const d = await r.json()

@@ -82,12 +82,13 @@ for fname in p:lines() do
           os.remove(TOKEN_DIR .. fname)
         else
           table.insert(tokens, {
-            token      = tok,
-            from       = tdata.from or "unknown",
-            pol_amount = tdata.pol_amount or "0",
-            issued_at  = tdata.issued_at or "",
-            expires_at = tdata.expires_at or "",
-            tx_hash    = tdata.tx_hash or "",
+            token          = tok,
+            from           = tdata.from or "unknown",
+            pol_amount     = tdata.pol_amount or "0",
+            issued_at      = tdata.issued_at or "",
+            expires_at     = tdata.expires_at or "",
+            tx_hash        = tdata.tx_hash or "",
+            payment_method = tdata.payment_method or "pol",
           })
         end
       end

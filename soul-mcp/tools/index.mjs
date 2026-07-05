@@ -17,6 +17,7 @@ import { register as verifyHuman }           from './verify_human.mjs';
 import { register as verifyIdentity }        from './verify_identity.mjs';
 import { register as soulEarnings }          from './soul_earnings.mjs';
 import { register as soulDiscover }          from './soul_discover.mjs';
+import { register as acceptDigitalContentTerms } from './accept_digital_content_terms.mjs';
 import { register as soulMaturity }          from './soul_maturity.mjs';
 import { register as soulSkills }            from './soul_skills.mjs';
 import { register as soulContextQuery }      from './soul_context_query.mjs';
@@ -93,6 +94,7 @@ export function registerTools(server, token, soulId = null) {
   verifyIdentity(server, token);
   soulEarnings(server, token);
   soulDiscover(server, token);
+  if (soulId) acceptDigitalContentTerms(server, soulId);
   vaultManifest(server, token);
   audioList(server, token);
   audioGet(server, token);
@@ -171,6 +173,7 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
 
   // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
   soulDiscover(server, polToken);
+  if (soulId) acceptDigitalContentTerms(server, soulId);
 
   // Vault-Media: vault_auth.lua akzeptiert pol_access_token für diese Pfade
   if (allowed.has('audio_list'))    audioList(server, polToken);
@@ -229,6 +232,7 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
 
   // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
   soulDiscover(server, peerToken);
+  acceptDigitalContentTerms(server, targetSoulId);
 
   // soul_comment: immer verfügbar für vertrauenswürdige Peers
   soulCommentPeer(server, peerToken, targetSoulId);
