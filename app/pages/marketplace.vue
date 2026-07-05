@@ -22,46 +22,6 @@
               <AgentMarketplacePanel :soul-cert="soulToken" @close="router.push('/')" />
             </div>
 
-            <!-- ── Manuelle Zugangs-Tokens (Nicht-Krypto-Käufer, z.B. PayPal) ── -->
-            <div class="mk-tokens-section">
-              <div class="mk-section-label">{{ $t('marketplace.tokens_section') }}</div>
-
-              <div class="mk-token-form">
-                <div class="mk-token-field">
-                  <label class="field-label">{{ $t('marketplace.token_duration_label') }}</label>
-                  <input v-model.number="manualDuration" type="number" min="1" max="30" step="1" class="input" />
-                </div>
-                <div class="mk-token-field mk-token-field--wide">
-                  <label class="field-label">{{ $t('marketplace.token_note_label') }}</label>
-                  <input v-model="manualNote" type="text" class="input" :placeholder="$t('marketplace.token_note_placeholder')" />
-                </div>
-                <button class="mk-issue-btn" :disabled="issuing" @click="issueManualToken">
-                  {{ issuing ? $t('marketplace.token_issuing') : $t('marketplace.token_issue_btn') }}
-                </button>
-              </div>
-              <p v-if="issueError" class="field-error">{{ issueError }}</p>
-
-              <div v-if="issuedToken" class="mk-token-result">
-                <p class="mk-token-result-hint">{{ $t('marketplace.token_issued_hint') }}</p>
-                <div class="mk-token-copy">
-                  <code class="mk-token-copy-val">{{ issuedToken }}</code>
-                  <button class="mk-copy-btn" @click="copyIssuedToken">{{ copied ? $t('common.copy_done') : $t('common.copy') }}</button>
-                </div>
-              </div>
-
-              <div v-if="tokenList.length" class="mk-token-list">
-                <div v-for="t in tokenList" :key="t.token" class="mk-token-row">
-                  <div class="mk-token-info">
-                    <span class="mk-token-method" :class="{ manual: t.payment_method === 'manual' }">{{ t.payment_method === 'manual' ? $t('marketplace.token_method_manual') : $t('marketplace.token_method_pol') }}</span>
-                    <span class="mk-token-from">{{ t.from }}</span>
-                    <span class="mk-token-exp">{{ $t('marketplace.token_expires', { date: formatDate(t.expires_at) }) }}</span>
-                  </div>
-                  <button class="mk-revoke-btn" @click="revokeToken(t.token)">{{ $t('marketplace.token_revoke_btn') }}</button>
-                </div>
-              </div>
-              <p v-else-if="tokensLoaded" class="mk-tokens-empty">{{ $t('marketplace.tokens_empty') }}</p>
-            </div>
-
           </div>
         </div>
       </div>
@@ -85,75 +45,6 @@ const { soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
-
-// ── Manuelle Zugangs-Tokens (Nicht-Krypto-Käufer) ────────────────────────────
-const manualDuration = ref(1)
-const manualNote     = ref('')
-const issuing        = ref(false)
-const issueError     = ref('')
-const issuedToken    = ref('')
-const copied         = ref(false)
-const tokenList      = ref([])
-const tokensLoaded   = ref(false)
-
-function authHeaders() {
-  return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' }
-}
-
-function formatDate(iso) {
-  if (!iso) return ''
-  try { return new Date(iso).toLocaleString() } catch { return iso }
-}
-
-async function loadTokenList() {
-  try {
-    const r = await fetch('/api/soul/tokens', { headers: authHeaders() })
-    const d = await r.json()
-    tokenList.value = d.tokens || []
-  } catch { /* ignore */ }
-  tokensLoaded.value = true
-}
-
-async function issueManualToken() {
-  issueError.value  = ''
-  issuedToken.value = ''
-  issuing.value = true
-  try {
-    const days = Math.min(30, Math.max(1, Math.floor(Number(manualDuration.value) || 1)))
-    const r = await fetch('/api/soul/pay/manual', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ token_duration_days: days, note: manualNote.value }),
-    })
-    const d = await r.json()
-    if (!r.ok || !d.ok) throw new Error(d.error || 'Fehler beim Ausstellen')
-    issuedToken.value = d.access_token
-    manualNote.value  = ''
-    await loadTokenList()
-  } catch (e) {
-    issueError.value = e.message
-  }
-  issuing.value = false
-}
-
-async function copyIssuedToken() {
-  if (!issuedToken.value) return
-  await navigator.clipboard.writeText(issuedToken.value).catch(() => {})
-  copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
-}
-
-async function revokeToken(token) {
-  try {
-    const r = await fetch(`/api/soul/tokens?token=${encodeURIComponent(token)}`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    })
-    if (r.ok) tokenList.value = tokenList.value.filter(t => t.token !== token)
-  } catch { /* ignore */ }
-}
-
-loadTokenList()
 
 function lockGate() {
   document.cookie = 'sys_token=; Max-Age=0; path=/'
@@ -419,37 +310,8 @@ function onNav(id) {
   white-space: pre-wrap;
 }
 
-/* ── Manuelle Zugangs-Tokens ── */
-.mk-tokens-section { margin-top: 40px; }
-.mk-section-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg); margin-bottom: 12px; }
-.mk-token-form { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); margin-bottom: 12px; }
-.mk-token-field { display: flex; flex-direction: column; gap: 6px; }
-.mk-token-field--wide { flex: 1; min-width: 180px; }
-.mk-issue-btn { height: 40px; padding: 0 18px; flex: none; background: var(--accent); border: none; border-radius: var(--r-xs); font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--on-accent); cursor: pointer; transition: background 0.15s; }
-.mk-issue-btn:hover:not(:disabled) { background: var(--accent-bright); }
-.mk-issue-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.mk-token-result { padding: 16px 20px; border: 1px solid rgba(109,184,154,0.35); border-radius: var(--r); background: var(--accent-dim); margin-bottom: 16px; }
-.mk-token-result-hint { font-size: 13px; color: var(--fg); margin: 0 0 10px; }
-.mk-token-copy { display: flex; align-items: center; gap: 10px; }
-.mk-token-copy-val { flex: 1; min-width: 0; font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: var(--r-xs); overflow-x: auto; white-space: nowrap; }
-.mk-copy-btn { flex: none; height: 34px; padding: 0 14px; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--r-xs); font-family: var(--sans); font-size: 13px; color: var(--fg); cursor: pointer; }
-.mk-token-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.mk-token-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; background: var(--surface); }
-.mk-token-row + .mk-token-row { border-top: 1px solid var(--line); }
-.mk-token-info { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; }
-.mk-token-method { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--surface-2); color: var(--fg-2); }
-.mk-token-method.manual { background: var(--accent-dim); color: var(--accent-bright); }
-.mk-token-from { font-size: 13px; color: var(--fg); }
-.mk-token-exp { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
-.mk-revoke-btn { flex: none; height: 34px; padding: 0 14px; background: transparent; border: 1px solid var(--line-2); border-radius: var(--r-xs); font-family: var(--sans); font-size: 13px; color: var(--fg-2); cursor: pointer; transition: all 0.15s; }
-.mk-revoke-btn:hover { color: #e06c75; border-color: rgba(224,108,117,0.35); }
-.mk-tokens-empty { font-family: var(--mono); font-size: 12px; color: var(--fg-2); padding: 16px 0; }
-
 @media (max-width: 900px) {
   .mk-title { font-size: clamp(24px, 7vw, 32px); }
-
-  .mk-token-form { flex-direction: column; align-items: stretch; }
-  .mk-token-row { flex-direction: column; align-items: flex-start; gap: 10px; }
 
   /* Step rail: stack vertically on mobile */
   .mk-panel :deep(.amm-rail) {

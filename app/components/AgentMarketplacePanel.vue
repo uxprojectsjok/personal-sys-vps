@@ -249,6 +249,54 @@
             <p v-if="registerError" class="field-error">{{ registerError }}</p>
             <p v-if="newCid" class="field-ok">{{ $t('marketplace.published_ok') }} {{ newCid.slice(0, 20) }}…</p>
           </section>
+
+          <!-- ───── STEP 3 · MANUELLE TOKENS ───── -->
+          <section v-else-if="step === 'tokens'" class="step">
+            <div class="step-head">
+              <h2 class="step-title">{{ $t('marketplace.step3_title') }} <em>{{ $t('marketplace.step3_title_em') }}</em></h2>
+            </div>
+
+            <p class="prose">{{ $t('marketplace.step3_prose') }}</p>
+
+            <div class="card">
+              <div class="card-body">
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.token_duration_label') }}</label>
+                  <input v-model.number="manualDuration" type="number" min="1" max="30" step="1" class="input" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.token_note_label') }}</label>
+                  <input v-model="manualNote" type="text" class="input" :placeholder="$t('marketplace.token_note_placeholder')" />
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="margin: 14px 0;" :disabled="issuingToken" @click="issueManualToken">
+              {{ issuingToken ? $t('marketplace.token_issuing') : $t('marketplace.token_issue_btn') }}
+            </button>
+
+            <p v-if="issueTokenError" class="field-error">{{ issueTokenError }}</p>
+
+            <div v-if="issuedToken" class="cid">
+              <span class="kicker">{{ $t('marketplace.token_issued_hint') }}</span>
+              <div class="token-copy-row">
+                <p class="cid-value token-copy-val">{{ issuedToken }}</p>
+                <button class="btn btn-ghost" @click="copyIssuedToken">{{ tokenCopied ? $t('common.copy_done') : $t('common.copy') }}</button>
+              </div>
+            </div>
+
+            <div v-if="tokenList.length" class="token-list">
+              <div v-for="tk in tokenList" :key="tk.token" class="token-row">
+                <div class="token-info">
+                  <span class="token-method" :class="{ manual: tk.payment_method === 'manual' }">{{ tk.payment_method === 'manual' ? $t('marketplace.token_method_manual') : $t('marketplace.token_method_pol') }}</span>
+                  <span class="token-from">{{ tk.from }}</span>
+                  <span class="token-exp">{{ $t('marketplace.token_expires', { date: formatTokenDate(tk.expires_at) }) }}</span>
+                </div>
+                <button class="btn btn-ghost" @click="revokeManualToken(tk.token)">{{ $t('marketplace.token_revoke_btn') }}</button>
+              </div>
+            </div>
+            <p v-else-if="tokensLoaded" class="prose">{{ $t('marketplace.tokens_empty') }}</p>
+          </section>
         </div>
 
         <!-- ═══════════ FOOT ═══════════ -->
@@ -271,7 +319,7 @@
             </button>
 
             <button
-              v-else
+              v-else-if="step === 'ipfs'"
               class="btn btn-primary"
               :disabled="!pinataOk || registering"
               @click="register"
@@ -298,11 +346,12 @@ const emit = defineEmits(['close'])
 const { t } = useI18n()
 
 // ═══════════ STEP MACHINE ═══════════
-const step = ref('mode') // 'mode' | 'ipfs'
+const step = ref('mode') // 'mode' | 'ipfs' | 'tokens'
 
 const steps = computed(() => [
-  { id: 'mode', title: t('marketplace.step_mode_title'), subtitle: t('marketplace.step_mode_sub'), done: amortActive.value || (!amort.enabled && modeTouched.value) },
-  { id: 'ipfs', title: 'IPFS',                           subtitle: t('marketplace.step_ipfs_sub'),  done: registered.value },
+  { id: 'mode',   title: t('marketplace.step_mode_title'), subtitle: t('marketplace.step_mode_sub'), done: amortActive.value || (!amort.enabled && modeTouched.value) },
+  { id: 'ipfs',   title: 'IPFS',                           subtitle: t('marketplace.step_ipfs_sub'),  done: registered.value },
+  { id: 'tokens', title: t('marketplace.step_tokens_title'), subtitle: t('marketplace.step_tokens_sub'), done: tokenList.value.length > 0 },
 ])
 
 function canJumpTo(_id) {
@@ -312,11 +361,12 @@ function canJumpTo(_id) {
 function goTo(id) {
   if (id === step.value || canJumpTo(id) || steps.value.find(s => s.id === id)?.done) {
     step.value = id
+    if (id === 'tokens') loadTokenList()
   }
 }
 
 function prevStep() {
-  const order = ['mode', 'ipfs']
+  const order = ['mode', 'ipfs', 'tokens']
   const i = order.indexOf(step.value)
   if (i > 0) step.value = order[i - 1]
 }
@@ -338,7 +388,7 @@ async function primaryAction() {
 }
 
 const overallStatus = computed(() => {
-  const done = steps.value.filter(s => s.done).length
+  const done = steps.value.filter(s => s.id !== 'tokens' && s.done).length
   if (done === 2) return { kind: 'ok',   text: t('marketplace.status_done') }
   if (done > 0)   return { kind: 'live', text: t('marketplace.status_progress', { done }) }
   return            { kind: 'idle', text: t('marketplace.status_idle') }
@@ -573,10 +623,73 @@ function authHeader() {
   return { 'Authorization': `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
 }
 
+// ═══════════ STEP 3 · MANUELLE ZUGANGS-TOKENS (Nicht-Krypto-Käufer) ═══════════
+const manualDuration  = ref(1)
+const manualNote      = ref('')
+const issuingToken    = ref(false)
+const issueTokenError = ref('')
+const issuedToken     = ref('')
+const tokenCopied     = ref(false)
+const tokenList       = ref([])
+const tokensLoaded    = ref(false)
+
+function formatTokenDate(iso) {
+  if (!iso) return ''
+  try { return new Date(iso).toLocaleString() } catch { return iso }
+}
+
+async function loadTokenList() {
+  try {
+    const r = await fetch(`${BASE()}/api/soul/tokens`, { headers: authHeader() })
+    const d = await r.json()
+    tokenList.value = d.tokens || []
+  } catch { /* ignore */ }
+  tokensLoaded.value = true
+}
+
+async function issueManualToken() {
+  issueTokenError.value = ''
+  issuedToken.value     = ''
+  issuingToken.value    = true
+  try {
+    const days = Math.min(30, Math.max(1, Math.floor(Number(manualDuration.value) || 1)))
+    const r = await fetch(`${BASE()}/api/soul/pay/manual`, {
+      method: 'POST',
+      headers: authHeader(),
+      body: JSON.stringify({ token_duration_days: days, note: manualNote.value }),
+    })
+    const d = await r.json()
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Fehler beim Ausstellen')
+    issuedToken.value = d.access_token
+    manualNote.value  = ''
+    await loadTokenList()
+  } catch (e) {
+    issueTokenError.value = e.message
+  }
+  issuingToken.value = false
+}
+
+async function copyIssuedToken() {
+  if (!issuedToken.value) return
+  await navigator.clipboard.writeText(issuedToken.value).catch(() => {})
+  tokenCopied.value = true
+  setTimeout(() => { tokenCopied.value = false }, 2000)
+}
+
+async function revokeManualToken(token) {
+  try {
+    const r = await fetch(`${BASE()}/api/soul/tokens?token=${encodeURIComponent(token)}`, {
+      method: 'DELETE',
+      headers: authHeader(),
+    })
+    if (r.ok) tokenList.value = tokenList.value.filter(t => t.token !== token)
+  } catch { /* ignore */ }
+}
+
 // ═══════════ LOAD ═══════════
 onMounted(async () => {
   if (!props.soulCert) return
-  await Promise.all([loadPinata(), loadAmort()])
+  await Promise.all([loadPinata(), loadAmort(), loadTokenList()])
   if (!amortActive.value && !modeTouched.value) step.value = 'mode'
   else if (!registered.value) step.value = 'ipfs'
   if (step.value === 'ipfs') loadPreview()
@@ -974,6 +1087,18 @@ async function register() {
 .cid-link { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); padding-bottom: 2px; transition: all 0.15s; }
 .cid-link:hover { color: var(--accent); border-color: var(--accent); }
 .arr { font-family: var(--serif); }
+
+/* Token-Tab */
+.token-copy-row { display: flex; align-items: center; gap: 10px; }
+.token-copy-val { flex: 1; margin: 0; }
+.token-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--rule-2); margin-top: 4px; }
+.token-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--paper-2); }
+.token-row + .token-row { border-top: 1px solid var(--rule-2); }
+.token-info { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; }
+.token-method { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--paper-3); color: var(--fg-2); }
+.token-method.manual { background: var(--accent-2); color: var(--accent-bright); }
+.token-from { font-size: 13px; color: var(--fg); }
+.token-exp { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 
 /* ─── FOOT ─── */
 .amm-foot { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 20px 32px; border-top: 1px solid var(--rule); background: var(--paper-3); align-items: center; }
