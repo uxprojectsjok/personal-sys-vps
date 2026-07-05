@@ -46,6 +46,13 @@
                   </svg>
                   {{ $t('files.tab_shared') }}
                 </button>
+                <button class="dt-tab" :class="{ on: tab === 'widerruf' }" @click="switchToConsent">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+                    <rect x="3" y="2" width="14" height="16" rx="1.5"/>
+                    <path stroke-linecap="round" d="M6.5 6.5h7M6.5 9.5h7M6.5 12.5h4"/>
+                  </svg>
+                  {{ $t('files.tab_consent') }}
+                </button>
               </div>
             </div>
 
@@ -135,8 +142,57 @@
               </div>
             </template>
 
+            <!-- ── Widerruf (EU-Consent) Tab ── -->
+            <template v-if="tab === 'widerruf'">
+              <div v-if="!soulToken" class="dt-empty">
+                <p class="dt-empty-text">{{ $t('files.no_soul_cert') }}</p>
+              </div>
+              <div v-else-if="consentLoading" class="dt-empty">
+                <svg class="spin" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4a8 8 0 1 1 0 12"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
+                </svg>
+              </div>
+              <div v-else-if="consentFiles.length === 0" class="dt-empty">
+                <p class="dt-empty-text">{{ $t('files.no_consent_files') }}</p>
+              </div>
+              <div v-else class="dt-table" style="margin-top:14px">
+                <div class="dt-table-head" style="grid-template-columns: 1fr 90px">
+                  <span class="dt-col-name">{{ $t('files.col_name') }}</span>
+                  <span class="dt-col-actions"></span>
+                </div>
+                <div v-for="f in consentFiles" :key="f.reference_id"
+                  class="dt-row" :style="'grid-template-columns: 1fr 90px'"
+                  :class="{ busy: !!consentBusy[f.reference_id] }"
+                >
+                  <div class="dt-name-cell">
+                    <div class="dt-file-icon dt-icon-doc">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
+                        <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+                        <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
+                      </svg>
+                    </div>
+                    <div class="dt-name-info">
+                      <span class="dt-filename">{{ $t('files.consent_ref') }}: {{ f.reference_id }}</span>
+                      <span class="dt-filetype">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</span>
+                    </div>
+                  </div>
+                  <div class="dt-actions">
+                    <button class="dt-act-btn" @click="downloadConsentFile(f)" :disabled="!!consentBusy[f.reference_id]" :title="$t('files.download')">
+                      <svg v-if="consentBusy[f.reference_id] === 'down'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                    </button>
+                    <button class="dt-act-btn dt-act-del" @click="deleteConsentFile(f)" :disabled="!!consentBusy[f.reference_id]" :title="$t('files.delete')">
+                      <svg v-if="consentBusy[f.reference_id] === 'del'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/></svg>
+                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
             <!-- ── File table (Lokal/Server) ── -->
-            <div v-if="tab !== 'geteilt'" class="dt-table">
+            <div v-if="tab !== 'geteilt' && tab !== 'widerruf'" class="dt-table">
               <div class="dt-table-head">
                 <span class="dt-col-name">{{ $t('files.col_name') }}</span>
                 <span class="dt-col-date">{{ $t('files.col_added') }}</span>
@@ -280,6 +336,11 @@ const sharedLoading   = ref(false)
 const sharedUploading = ref(false)
 const sharedInput     = ref(null)
 
+const consentFiles    = ref([])
+const consentSoulId   = ref('')
+const consentBusy     = reactive({})
+const consentLoading  = ref(false)
+
 const FILTERS = computed(() => [
   { key: 'all',   label: t('files.type_all')   },
   { key: 'soul',  label: t('files.type_soul')  },
@@ -391,6 +452,7 @@ async function refresh() {
   try {
     if (tab.value === 'lokal') await scanLocalVault()
     else if (tab.value === 'geteilt') await loadSharedFiles()
+    else if (tab.value === 'widerruf') await loadConsentFiles()
     else await loadContext(soulToken.value)
   } finally { refreshing.value = false }
 }
@@ -468,6 +530,64 @@ async function deleteSharedFile(name) {
     else showToast(t('files.delete_failed'), 'err')
   } catch { showToast(t('files.delete_failed'), 'err') }
   finally { delete sharedBusy[name] }
+}
+
+// ── Widerruf (EU-Consent) tab ────────────────────────────────────────────────
+async function loadConsentFiles() {
+  if (!soulToken.value) return
+  try {
+    const r = await fetch('/api/vault/consent-list', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      consentFiles.value  = d.files || []
+      consentSoulId.value = d.soul_id || ''
+    }
+  } catch {}
+}
+async function switchToConsent() {
+  tab.value = 'widerruf'
+  consentLoading.value = true
+  await loadConsentFiles()
+  consentLoading.value = false
+}
+async function downloadConsentFile(f) {
+  if (!consentSoulId.value) return
+  consentBusy[f.reference_id] = 'down'
+  try {
+    // Öffentlicher, UUID-gesicherter Link — kein Bearer nötig (siehe vault_consent_serve.lua)
+    const res = await fetch(`/api/vault/consent/${encodeURIComponent(consentSoulId.value)}/${encodeURIComponent(f.name)}`)
+    if (!res.ok) { showToast(t('files.download_failed'), 'err'); return }
+    const blob = await res.blob()
+    if (!blob.size) { showToast(t('files.download_failed'), 'err'); return }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = f.name; a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 5000)
+    showToast(t('files.downloading', { name: f.name }))
+  } catch { showToast(t('files.download_failed'), 'err') }
+  finally { delete consentBusy[f.reference_id] }
+}
+async function deleteConsentFile(f) {
+  if (!soulToken.value) return
+  const ok = await confirmAsk({
+    title:       t('files.confirm_delete_file'),
+    message:     t('files.confirm_delete_consent', { name: f.name }),
+    confirmText: t('files.delete'),
+    cancelText:  t('common.cancel'),
+    danger:      true,
+  })
+  if (!ok) return
+  consentBusy[f.reference_id] = 'del'
+  try {
+    const res = await fetch(`/api/vault/consent-doc/${encodeURIComponent(f.reference_id)}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (res.ok) { consentFiles.value = consentFiles.value.filter(x => x.reference_id !== f.reference_id); showToast(t('files.deleted_ok', { name: f.name })) }
+    else showToast(t('files.delete_failed'), 'err')
+  } catch { showToast(t('files.delete_failed'), 'err') }
+  finally { delete consentBusy[f.reference_id] }
 }
 
 async function handleSharedUpload(e) {
