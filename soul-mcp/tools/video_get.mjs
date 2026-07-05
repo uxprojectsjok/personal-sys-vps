@@ -26,9 +26,11 @@ export function register(server, token) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: err.message, filename }) }] };
       }
 
-      // 2. In Temp-Datei schreiben
+      // 2. In Temp-Datei schreiben (echte Extension — ffmpeg verlässt sich beim
+      // Demuxen z.T. auf sie, ein falscher .webm-Suffix bei mp4/mov etc. lässt es scheitern)
+      const srcExt  = (filename.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
       const tmpDir  = await mkdtemp(join(tmpdir(), 'sys-video-'));
-      const inFile  = join(tmpDir, 'input.webm');
+      const inFile  = join(tmpDir, `input.${srcExt}`);
       const outPat  = join(tmpDir, 'frame_%03d.jpg');
 
       await writeFile(inFile, Buffer.from(buffer));

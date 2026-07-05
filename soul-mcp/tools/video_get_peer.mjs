@@ -29,8 +29,11 @@ export function register(server, targetSoulId) {
         const { vaultKeyHex } = await loadVaultMeta(targetSoulId);
         const buf = await readVaultFile(targetSoulId, 'video', filename, vaultKeyHex);
 
+        // Echte Extension — ffmpeg verlässt sich beim Demuxen z.T. auf sie, ein
+        // falscher .webm-Suffix bei mp4/mov etc. lässt es scheitern.
+        const srcExt = (filename.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
         const tmpDir = await mkdtemp(join(tmpdir(), 'sys-vpeer-'));
-        const inFile = join(tmpDir, 'input.webm');
+        const inFile = join(tmpDir, `input.${srcExt}`);
         const outPat = join(tmpDir, 'frame_%03d.jpg');
 
         await writeFile(inFile, buf);
