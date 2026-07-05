@@ -259,6 +259,9 @@ local function check_pol_access_token(token)
   local ALLOWED_PREFIXES = {
     "/api/vault/audio", "/api/vault/images", "/api/vault/video",
     "/api/vault/context", "/api/vault/profile/",
+    -- vault_shared: nur lesend — Upload (POST /api/vault/shared) bleibt owner-only,
+    -- diese Prüfung greift ohnehin nur für GET-Requests (siehe unten).
+    "/api/vault/shared-list", "/api/vault/shared-mcp", "/api/vault/shared-view/",
   }
   local PAID_AGENT_TOOLS = { soul_maturity = true }
   local path_ok = false

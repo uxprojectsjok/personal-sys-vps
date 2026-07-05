@@ -75,6 +75,8 @@ import { registerGet as vaultGetPeer }       from './vault_get_peer.mjs';
 import { register as videoGetPeer }          from './video_get_peer.mjs';
 import { register as contextGetPeer }        from './context_get_peer.mjs';
 import { register as soulCommentPeer }       from './soul_comment_peer.mjs';
+import { register as vaultSharedListPeer }   from './vault_shared_list_peer.mjs';
+import { register as vaultSharedGetPeer }    from './vault_shared_get_peer.mjs';
 
 // ── Trust-Request-Tools (kryptografisch verifiziert, noch nicht getrustet) ───
 import { register as requestTrust }          from './request_trust.mjs';
@@ -176,6 +178,10 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
   soulPreview(server, polToken);
   if (soulId) acceptDigitalContentTerms(server, soulId);
 
+  // vault_shared: nur lesend (get/list) — kein upload für zahlende Agenten (Sicherheit)
+  vaultSharedGet(server, polToken);
+  vaultSharedList(server, polToken);
+
   // Vault-Media: vault_auth.lua akzeptiert pol_access_token für diese Pfade
   if (allowed.has('audio_list'))    audioList(server, polToken);
   if (allowed.has('audio_get'))     audioGet(server, polToken);
@@ -238,6 +244,10 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
 
   // soul_comment: immer verfügbar für vertrauenswürdige Peers
   soulCommentPeer(server, peerToken, targetSoulId);
+
+  // vault_shared: nur lesend (get/list), Peer-Varianten (Filesystem-direkt, kein REST-Umweg)
+  vaultSharedListPeer(server, targetSoulId);
+  vaultSharedGetPeer(server, targetSoulId);
 
   // soul_earnings: Private Finanz-Daten — nicht für Peers freigegeben
 }
