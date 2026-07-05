@@ -270,6 +270,9 @@ if type(amort) == "table" then
     end
   end
 
+  local paypal_target = (amort.paypal_link and amort.paypal_link ~= "") and amort.paypal_link
+                      or (amort.paypal_email or "")
+
   meta.amortization = {
     enabled              = amort.enabled == true,
     private              = amort.private == true,
@@ -280,6 +283,9 @@ if type(amort) == "table" then
     agent_tools          = (amort.enabled == true)
                            and filter_tools(amort.agent_tools or amort.free_tools) or no_tools,
     token_duration_days  = days,
+    paypal_enabled       = amort.paypal_enabled == true,
+    paypal_target        = paypal_target,
+    price_eur            = amort.price_eur,
   }
 end
 

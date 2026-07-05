@@ -1315,6 +1315,9 @@ app.get('/api/soul/scan', async (req, res) => {
       wallet:              amort.wallet || null,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,
+      paypal_enabled:      amort.paypal_enabled === true,
+      paypal_target:       amort.paypal_enabled === true ? (amort.paypal_target || null) : null,
+      price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,
     };
   }));
 

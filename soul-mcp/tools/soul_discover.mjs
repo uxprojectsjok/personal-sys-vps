@@ -107,6 +107,10 @@ export function register(server, token) {
               lines.push(`- **Agent-Tools:** ${aTools.join(', ')}`);
             }
             if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
+            if (s.amortization.paypal_enabled) {
+              const eur = s.amortization.price_eur ? `${s.amortization.price_eur} EUR` : 'Preis auf Anfrage';
+              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h`);
+            }
           } else {
             lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);
           }

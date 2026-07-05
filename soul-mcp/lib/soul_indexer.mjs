@@ -215,6 +215,11 @@ async function enrichFromIpfs(entry, rawCid) {
         ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
         token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
         ...(aTools?.length && { agent_tools: aTools }),
+        ...(am.paypal_enabled === true && {
+          paypal_enabled: true,
+          paypal_target:  str(am.paypal_target, 200) ?? null,
+          price_eur:      str(am.price_eur, 20) ?? null,
+        }),
       };
     }
 
@@ -240,6 +245,7 @@ async function enrichFromLocal(entry, soulId) {
     const aTools = Array.isArray(am.agent_tools)
       ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
       : undefined;
+    const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
     entry.amortization = {
       enabled:             !!am.enabled,
       pol_per_request:     Number(am.pol_per_request) || 0,
@@ -247,6 +253,11 @@ async function enrichFromLocal(entry, soulId) {
       ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
       ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
       ...(aTools?.length && { agent_tools: aTools }),
+      ...(am.paypal_enabled === true && {
+        paypal_enabled: true,
+        paypal_target:  str(paypalTarget, 200) ?? null,
+        price_eur:      str(am.price_eur, 20) ?? null,
+      }),
     };
     if (am.enabled && BASE_URL) {
       entry.pay_endpoint    = `${BASE_URL}/api/soul/pay`;
@@ -515,6 +526,7 @@ async function seedFromLocalAnchors() {
             const aTools = Array.isArray(am.agent_tools)
               ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
               : undefined;
+            const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
             localAmort = {
               enabled:             !!am.enabled,
               pol_per_request:     Number(am.pol_per_request) || 0,
@@ -522,6 +534,11 @@ async function seedFromLocalAnchors() {
               ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
               ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
               ...(aTools?.length && { agent_tools: aTools }),
+              ...(am.paypal_enabled === true && {
+                paypal_enabled: true,
+                paypal_target:  str(paypalTarget, 200) ?? null,
+                price_eur:      str(am.price_eur, 20) ?? null,
+              }),
             };
             if (am.enabled && BASE_URL) {
               localPayEp    = `${BASE_URL}/api/soul/pay`;
