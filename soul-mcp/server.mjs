@@ -1148,7 +1148,7 @@ app.get('/llms.txt', async (_req, res) => {
       if (a.wallet) lines.push(`- **Wallet (Polygon):** \`${a.wallet}\``);
       if (a.paypal_enabled) {
         const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-        lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — manually reviewed by the operator, typically within 48h`);
+        lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h`);
       }
       if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
       // read default_model from soul config
@@ -1182,7 +1182,7 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
   lines.push('');
   lines.push('**Non-crypto alternative**');
-  lines.push('Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, then contact the soul owner directly. Access is granted manually, typically within 48h — not instant like the POL flow.');
+  lines.push('Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow.');
   lines.push('');
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
