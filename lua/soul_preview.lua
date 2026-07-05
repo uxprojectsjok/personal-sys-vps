@@ -205,7 +205,8 @@ if amort.paypal_enabled then
   response.price_eur       = amort.price_eur or ""
   response.paypal_note     = "Für Nicht-Krypto-Zugang: PayPal an " .. target ..
     " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
-    " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden."
+    " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
+    " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
 end
 
 ngx.say(cjson.encode(response))

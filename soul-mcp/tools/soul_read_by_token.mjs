@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 /**
  * soul_read_by_token — Liest eine fremde Soul mit einem bestehenden pol_access_token.
- * Kein neues Payment nötig — Token aus soul_pay_read direkt wiederverwenden.
+ * Kein neues Payment nötig — Token aus soul_pay_read direkt wiederverwenden, ODER
+ * ein Token, das ein Mensch nach manueller PayPal-Zahlung vom Betreiber erhalten hat.
  */
 export function register(server, _token) {
   server.tool(
@@ -14,15 +15,22 @@ export function register(server, _token) {
       'Wann benutzen:',
       '- Du hast soul_pay_read bereits aufgerufen und den access_token gespeichert',
       '- Du möchtest die Soul erneut lesen ohne eine neue POL-Zahlung',
+      '- Ein Mensch gibt dir direkt in diesem Chat einen 48-stelligen Hex-Token,',
+      '  z.B. nach einer manuellen PayPal-Zahlung (Nicht-Krypto-Weg, siehe soul_discover).',
+      '  Erkennbar: reine Hex-Zeichenkette ohne "0x"-Präfix (kein TX-Hash!), meist ohne',
+      '  weiteren Kontext. In diesem Fall NICHT nach Zahlung/TX-Hash fragen — der Token',
+      '  ist bereits gültig, direkt hier verwenden. Fehlt der read_endpoint, zuerst',
+      '  soul_discover(q=...) nutzen um die Soul zu finden und pay_endpoint abzuleiten.',
       '',
       'Parameter:',
       '- read_endpoint: vollständige URL des paid-read Endpoints',
       '  (Ableitung: pay_endpoint → /pay durch /paid-read ersetzen)',
-      '- access_token:  pol_access_token aus soul_pay_read (48-stelliger Hex-String)',
+      '- access_token:  pol_access_token — aus soul_pay_read ODER manuell/PayPal erhalten',
+      '  (48-stelliger Hex-String, in beiden Fällen identisch validiert)',
     ].join('\n'),
     {
       read_endpoint: z.string().url().describe('URL des paid-read Endpoints der Ziel-Soul (…/api/soul/paid-read)'),
-      access_token:  z.string().regex(/^[0-9a-fA-F]{48}$/i).describe('pol_access_token aus soul_pay_read'),
+      access_token:  z.string().regex(/^[0-9a-fA-F]{48}$/i).describe('pol_access_token — aus soul_pay_read oder manuell/PayPal vom Betreiber erhalten'),
     },
     async ({ read_endpoint, access_token }) => {
       try {

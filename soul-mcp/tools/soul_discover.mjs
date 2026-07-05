@@ -6,7 +6,9 @@ export function register(server, token) {
   server.tool(
     'soul_discover',
     [
-      'Searches the SYS soul directory for on-chain anchored souls.',
+      'Searches the SYS soul directory for on-chain anchored souls — call this whenever',
+      'the user asks to find/search/look for a soul, an agent, or a person by topic, name,',
+      'or tag (e.g. "find a soul about AI", "is there a soul for cooking").',
       '',
       'SOURCE: Polygon blockchain (single source of truth).',
       'Pinata/IPFS is only used for pinning — not for search.',
@@ -43,6 +45,16 @@ export function register(server, token) {
       '   IMMER aufrufen bevor bezahlt wird — besonders bei dynamic_pricing=true Souls.',
       '3. POL-Transaktion an soul.amortization.wallet senden (Preis aus soul_preview)',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
+      '',
+      'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Polygon-Wallet:',
+      'Souls mit amortization.paypal_enabled zeigen zusätzlich price_eur + paypal_target.',
+      'Der Mensch zahlt außerhalb des Systems per PayPal, der Betreiber prüft manuell',
+      '(i.d.R. binnen 48h) und schickt dann einen fertigen access_token zurück —',
+      'meist direkt in diesem Chat eingefügt, ohne vorherigen soul_pay_read-Aufruf.',
+      'Erkennbar an: 48 Hex-Zeichen, kein "0x"-Präfix (das wäre ein TX-Hash, kein Token).',
+      'In diesem Fall NICHT nach einer Zahlung fragen — der Token ist bereits gültig.',
+      'Direkt verwenden: soul_read_by_token(read_endpoint, access_token=<der Token>).',
+      'read_endpoint = pay_endpoint der Soul mit /pay ersetzt durch /paid-read.',
     ].join('\n'),
     {
       q:         z.string().optional().describe('Freitext-Suche (soul_id oder Name)'),
@@ -109,7 +121,7 @@ export function register(server, token) {
             if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
             if (s.amortization.paypal_enabled) {
               const eur = s.amortization.price_eur ? `${s.amortization.price_eur} EUR` : 'Preis auf Anfrage';
-              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h`);
+              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.`);
             }
           } else {
             lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);

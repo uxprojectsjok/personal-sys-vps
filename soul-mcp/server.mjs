@@ -1182,7 +1182,7 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
   lines.push('');
   lines.push('**Non-crypto alternative**');
-  lines.push('Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow.');
+  lines.push('Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
   lines.push('');
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
