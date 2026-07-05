@@ -171,8 +171,9 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
   // calendar_read: /api/soul gesperrt → Filesystem
   if (allowed.has('calendar_read') && soulId) calendarReadPeer(server, soulId);
 
-  // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
+  // soul_discover / soul_preview: interne Endpoints, kein Auth nötig — immer verfügbar
   soulDiscover(server, polToken);
+  soulPreview(server, polToken);
   if (soulId) acceptDigitalContentTerms(server, soulId);
 
   // Vault-Media: vault_auth.lua akzeptiert pol_access_token für diese Pfade
@@ -230,8 +231,9 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
   vaultListPeer(server, targetSoulId, 'context');
   contextGetPeer(server, targetSoulId);
 
-  // soul_discover: interner Endpoint, kein Auth nötig — immer verfügbar
+  // soul_discover / soul_preview: interne Endpoints, kein Auth nötig — immer verfügbar
   soulDiscover(server, peerToken);
+  soulPreview(server, peerToken);
   acceptDigitalContentTerms(server, targetSoulId);
 
   // soul_comment: immer verfügbar für vertrauenswürdige Peers
