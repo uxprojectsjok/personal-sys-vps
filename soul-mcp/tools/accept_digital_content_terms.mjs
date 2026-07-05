@@ -6,14 +6,24 @@
  * sein 14-tägiges Widerrufsrecht verliert. Erst nach beiden Einwilligungen
  * wird ein PDF (dauerhafter Datenträger) erzeugt und der Bezahlweg genannt.
  *
- * Das PDF landet in vault_shared/ (sichtbar im Datei-Explorer des Betreibers)
- * UND wird direkt als Base64 zurückgegeben — kein Zahlungs-Token nötig, das
- * existiert an dieser Stelle im Flow noch gar nicht.
+ * Jede Einwilligung bekommt eine eigene UUID (Referenz-ID), die (a) im PDF
+ * selbst steht, (b) der Käufer in seiner PayPal-Zahlungsnotiz angeben soll
+ * (Zuordnung Zahlung ↔ Einwilligung), und (c) Teil des Download-Links ist.
+ *
+ * Das PDF landet NICHT in vault_shared (dort für alle zahlenden/Peer-Verbindungen
+ * lesbar — ungeeignet für ein personenbezogenes Rechtsdokument), sondern in einem
+ * eigenen consent_docs/-Ordner, der von keinem vault_shared_list/-get erreicht
+ * wird. Der Download-Link braucht deshalb keinen Zahlungs-Token (existiert an
+ * dieser Stelle im Flow noch nicht) — er ist stattdessen durch die Unratbarkeit
+ * der UUID gesichert (wie ein Freigabe-Link bei Dropbox/Google Docs).
  */
 
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
+
+const BASE_URL = process.env.BASE_URL || '';
 
 export function register(server, soulId) {
   server.tool(
@@ -26,9 +36,13 @@ export function register(server, soulId) {
       'Ohne beide Einwilligungen (=true) gibt es KEINEN Hinweis auf den',
       'Bezahlweg — dieses Tool muss also VOR der Zahlung aufgerufen werden.',
       '',
-      'Bei Erfolg: PDF-Beleg (Base64) + PayPal-Kontaktdaten in der Antwort.',
-      'Der Käufer zahlt danach außerhalb des Systems und kontaktiert den',
-      'Soul-Inhaber direkt — Zugang wird manuell freigeschaltet, i.d.R. binnen 48h.',
+      'Bei Erfolg: eine neue Referenz-ID (UUID) wird erzeugt, das Widerrufs-PDF',
+      'dazu abgelegt und ein Download-Link zurückgegeben. Gib dem Nutzer diesen',
+      'Link UND weise ausdrücklich darauf hin: die Referenz-ID MUSS in der',
+      'PayPal-Zahlungsnotiz angegeben werden, sonst kann der Betreiber die Zahlung',
+      'nicht dem Vorgang zuordnen. Der Käufer zahlt danach außerhalb des Systems',
+      'und kontaktiert den Soul-Inhaber direkt — Zugang wird manuell freigeschaltet,',
+      'i.d.R. binnen 48h.',
     ].join('\n'),
     {
       consent_immediate_performance: z.boolean()
@@ -59,10 +73,10 @@ export function register(server, soulId) {
             isError: true,
           };
         }
-        const target   = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
-        const priceEur = amort.price_eur || '?';
-        const now      = new Date();
-        const nowIso   = now.toISOString();
+        const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
+        const priceEur     = amort.price_eur || '?';
+        const nowIso        = new Date().toISOString();
+        const referenceId  = randomUUID();
 
         const pdfBuffer = await buildConsentPdf({
           soulName: ctx.name || soulId.slice(0, 8),
@@ -71,31 +85,35 @@ export function register(server, soulId) {
           target,
           contactNote: contact_note || '',
           timestamp: nowIso,
+          referenceId,
         });
 
-        const ts        = Date.now();
-        const filename   = `${ts}_widerruf_${Math.random().toString(16).slice(2, 8)}.pdf`;
-        const sharedDir  = `${SOULS_DIR}${soulId}/vault_shared`;
-        await mkdir(sharedDir, { recursive: true });
-        await writeFile(`${sharedDir}/${filename}`, pdfBuffer);
+        const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
+        await mkdir(consentDir, { recursive: true });
+        await writeFile(`${consentDir}/${referenceId}.pdf`, pdfBuffer);
 
-        const b64 = pdfBuffer.toString('base64');
+        const downloadUrl = `${BASE_URL}/api/vault/consent/${soulId}/${referenceId}.pdf`;
 
         return {
-          content: [{
-            type: 'text',
-            text: [
-              'Einwilligung erfasst. Widerrufsbelehrung + Kaufbeleg als PDF erzeugt',
-              `(auch im Datei-Explorer des Soul-Inhabers unter vault_shared/${filename} abgelegt).`,
-              '',
-              `PayPal: ${priceEur} EUR an ${target}`,
-              'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
-              'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
-              '',
-              'PDF (Base64, application/pdf):',
-              b64,
-            ].join('\n'),
-          }],
+          content: [
+            {
+              type: 'text',
+              text: [
+                'Einwilligung erfasst. Widerrufsbelehrung + Kaufbeleg als PDF erzeugt.',
+                '',
+                `Referenz-ID: ${referenceId}`,
+                `Download-Link: ${downloadUrl}`,
+                '',
+                `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
+                `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
+                '',
+                `PayPal: ${priceEur} EUR an ${target}`,
+                'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
+                'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
+              ].join('\n'),
+            },
+            { type: 'resource', resource: { uri: downloadUrl, mimeType: 'application/pdf', blob: pdfBuffer.toString('base64') } },
+          ],
         };
       } catch (err) {
         return { content: [{ type: 'text', text: `accept_digital_content_terms fehlgeschlagen: ${err.message}` }], isError: true };
@@ -104,7 +122,7 @@ export function register(server, soulId) {
   );
 }
 
-async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote, timestamp }) {
+async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote, timestamp, referenceId }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -114,6 +132,12 @@ async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote
     doc.on('error', reject);
 
     doc.fontSize(16).text('Widerrufsbelehrung & Kaufbestätigung', { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(12).fillColor('#b00020').text(`Referenz-ID: ${referenceId}`);
+    doc.fillColor('black').fontSize(9).text(
+      'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — ' +
+      'nur so kann der Anbieter die Zahlung dieser Einwilligung zuordnen.'
+    );
     doc.moveDown();
     doc.fontSize(10).text(`Erstellt: ${timestamp}`);
     doc.text(`Soul: ${soulName} (${soulId})`);
