@@ -203,9 +203,7 @@ if amort.paypal_enabled then
   response.paypal_accepted = true
   response.paypal_target   = target
   response.price_eur       = amort.price_eur or ""
-  response.paypal_note     = "Für Nicht-Krypto-Zugang: WENN der Käufer in der EU ist, ZUERST" ..
-    " accept_digital_content_terms aufrufen (gesetzliches Widerrufsrecht, nicht optional)," ..
-    " erst danach zur Zahlung übergehen. Dann PayPal an " .. target ..
+  response.paypal_note     = "Für Nicht-Krypto-Zugang: PayPal an " .. target ..
     " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
     " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
     " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
