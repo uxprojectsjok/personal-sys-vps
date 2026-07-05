@@ -18,7 +18,6 @@
     "calendar": "Calendar",
     "peers": "Peers",
     "connect": "Connect",
-    "connect_tag": "new",
     "marketplace": "Marketplace",
     "earnings": "Earnings",
     "anchor": "Anchor",
@@ -54,7 +53,7 @@
     "loading": "Loading…",
     "sign_in": "Sign in",
     "unlock_with_biometric": "Unlock with biometrics",
-    "footer": "Local node · everything stays on this device",
+    "footer": "Local node",
     "error": {
       "biometric_failed": "Biometric failed.",
       "creds_load_failed": "Could not load credentials. Please sign in manually.",
@@ -996,15 +995,7 @@
     "tip_nutrition_poor": "Plan more fresh meals",
     "status_active": "Active",
     "crumb_body": "Body",
-    "crumb": "Health",
-    "sync_status_ok": "Sync successful.",
-    "sync_status_rate_limit": "Garmin is throttling logins (rate limit). Please wait 2–4 hours and try again.",
-    "sync_status_mfa_required": "Garmin requires MFA verification. Run once: python3 /opt/sys/health-sync/garmin_login.py",
-    "sync_status_auth_error": "Garmin login failed — check email or password in Health Settings.",
-    "sync_status_network_error": "Network error — Garmin Connect unreachable.",
-    "sync_status_install_error": "Health Sync not installed — run: bash /opt/sys/health-sync/install.sh",
-    "sync_status_unknown": "Sync error — see server log for details.",
-    "sync_status_not_run": "Sync has not run yet."
+    "crumb": "Health"
   },
   "vault_session": {
     "title": "Vault access",
@@ -1450,6 +1441,10 @@
     "section_worldview": "Worldview",
     "section_questions": "Open Questions",
     "section_history": "History",
+    "section_facts": "Facts",
+    "section_memories": "Memories",
+    "section_ideas": "Ideas",
+    "section_learnings": "Learnings",
     "upload_title": "Upload to server",
     "empty_section": "Not described yet.",
     "edit_hint": "⌘S save · Esc cancel"

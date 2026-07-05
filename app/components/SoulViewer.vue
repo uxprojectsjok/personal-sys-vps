@@ -7,7 +7,19 @@
       </template>
     </div>
 
-    <div v-if="allEmpty" class="sv-empty">
+    <template v-if="allEmpty && longmemGroups.length">
+      <div v-for="group in longmemGroups" :key="group.key" class="sv-section">
+        <div class="sv-label">{{ group.label }}</div>
+        <ul class="sv-longmem-list">
+          <li v-for="(item, i) in group.items" :key="i">
+            <span v-if="item.cat" class="sv-longmem-cat">[{{ item.cat }}]</span>
+            {{ item.text }}
+          </li>
+        </ul>
+      </div>
+    </template>
+
+    <div v-if="allEmpty && !longmemGroups.length" class="sv-empty">
       {{ $t('soul_viewer.empty') }}
     </div>
   </div>
@@ -16,7 +28,7 @@
 <script setup>
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { parseSoul } from "#shared/utils/soulParser.js";
+import { parseSoul, extractLongmem } from "#shared/utils/soulParser.js";
 import { useSoul } from "~/composables/useSoul.js";
 
 const { t } = useI18n();
@@ -55,6 +67,33 @@ function getContent(key) {
 const allEmpty = computed(() =>
   SOUL_SECTIONS.every(s => !getContent(s.key))
 );
+
+// Fallback: Archivar kristallisiert inzwischen primär in LONGMEM statt in
+// Prosa-Sektionen — ohne das würde das Panel bei modernen Souls leer wirken.
+const longmem = computed(() => extractLongmem(soulContent.value));
+
+const LONGMEM_GROUP_DEFS = computed(() => [
+  { key: "facts",     label: t('soul_viewer.section_facts'),     limit: 8 },
+  { key: "memories",  label: t('soul_viewer.section_memories'),  limit: 5 },
+  { key: "ideas",     label: t('soul_viewer.section_ideas'),     limit: 5 },
+  { key: "learnings", label: t('soul_viewer.section_learnings'), limit: 5 },
+]);
+
+const longmemGroups = computed(() => {
+  const lm = longmem.value;
+  if (!lm) return [];
+  return LONGMEM_GROUP_DEFS.value
+    .map(def => {
+      const items = (lm[def.key] ?? [])
+        .slice()
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+        .slice(0, def.limit)
+        .map(it => ({ cat: it.cat ?? null, text: it.text ?? it.title ?? "" }))
+        .filter(it => it.text);
+      return { ...def, items };
+    })
+    .filter(def => def.items.length);
+});
 </script>
 
 <style scoped>
@@ -89,6 +128,27 @@ const allEmpty = computed(() =>
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
+}
+
+.sv-longmem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sv-longmem-list li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-2);
+  word-break: break-word;
+}
+.sv-longmem-cat {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  margin-right: 4px;
 }
 
 .sv-empty {

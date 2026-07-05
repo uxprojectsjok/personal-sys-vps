@@ -81,7 +81,7 @@ const nav = computed(() => [
   ]},
   { group: t('nav.group_network'), items: [
     { id: 'peers',    icon: 'peers',  label: t('nav.peers') },
-    { id: 'connect',  icon: 'qr',     label: t('nav.connect'), tag: t('nav.connect_tag') },
+    { id: 'connect',  icon: 'qr',     label: t('nav.connect') },
     { id: 'market',   icon: 'market', label: t('nav.marketplace') },
     { id: 'earnings', icon: 'earn',   label: t('nav.earnings') },
   ]},

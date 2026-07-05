@@ -81,11 +81,6 @@
               </button>
             </div>
 
-            <!-- Sync status message -->
-            <div v-if="syncStatus.shown && syncStatusText" class="hl-sync-status" :class="syncStatus.ok ? 'hl-sync-ok' : 'hl-sync-error'">
-              {{ syncStatusText }}
-            </div>
-
             <!-- Stat Cards -->
             <div class="hl-section-head">{{ $t('health.section_vitals') }}</div>
             <div class="hl-cards">
@@ -280,7 +275,7 @@
           </template>
 
           <!-- ── Health Check Summary ──────────────────────────────────────────── -->
-          <div v-if="healthSummary.length || syncStatus.shown" class="hl-summary-section">
+          <div v-if="healthSummary.length || tips.length" class="hl-summary-section">
             <div class="hl-section-head">{{ $t('health.section_analysis') }}</div>
             <div v-if="healthSummary.length" class="hl-summary-rows">
               <div v-for="item in healthSummary" :key="item.label" class="hl-summary-row">
@@ -325,15 +320,6 @@ const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(fal
 const loading    = ref(true)
 const syncing    = ref(false)
 const syncDone   = ref(false)
-const syncStatus = reactive({ shown: false, ok: false, message: '', error_type: null, last_run: null })
-const syncStatusText = computed(() => {
-  if (!syncStatus.shown) return ''
-  const key = syncStatus.error_type
-    ? `health.sync_status_${syncStatus.error_type}`
-    : syncStatus.ok ? 'health.sync_status_ok' : 'health.sync_status_unknown'
-  const translated = t(key)
-  return translated !== key ? translated : syncStatus.message
-})
 const apiTips    = ref([])
 
 // ── Health data (from health.md) ──────────────────────────────────────────────
@@ -484,7 +470,7 @@ async function loadAll() {
     }
   } catch { /**/ }
   loading.value = false
-  await Promise.all([fetchSyncStatus(), fetchTips()])
+  await fetchTips()
 }
 
 async function fetchTips() {
@@ -493,20 +479,6 @@ async function fetchTips() {
     if (r.ok) {
       const d = await r.json()
       apiTips.value = d.tips || []
-    }
-  } catch { /**/ }
-}
-
-async function fetchSyncStatus() {
-  try {
-    const r = await fetch('/api/health/sync-status', { headers: authHeaders() })
-    if (r.ok) {
-      const d = await r.json()
-      syncStatus.shown      = true
-      syncStatus.ok         = d.ok
-      syncStatus.error_type = d.error_type || null
-      syncStatus.message    = d.message
-      syncStatus.last_run   = d.last_run || null
     }
   } catch { /**/ }
 }
@@ -530,7 +502,6 @@ async function triggerSync() {
             health.source   = text.match(/source:\s*(\S+)/)?.[1] || null
             health.lastSync = newSync
             if (!health.configured && health.source) health.configured = true
-            await fetchSyncStatus()
             syncing.value  = false
             syncDone.value = false
             return
@@ -733,9 +704,6 @@ function onNav(id) {
 .hl-source-badge { font-family:var(--mono); font-size:13px; letter-spacing:0.08em; padding:3px 10px; background:var(--accent-dim); border:1px solid rgba(109,184,154,0.25); border-radius:4px; color:var(--accent); }
 .hl-sync-date { font-family:var(--mono); font-size:13px; color:var(--fg); }
 .hl-sync-action { display:flex; gap:10px; margin-bottom:12px; }
-.hl-sync-status { font-size:13px; line-height:1.5; padding:10px 14px; border-radius:var(--r-xs); margin-bottom:24px; }
-.hl-sync-ok    { background:rgba(109,184,154,0.08); color:#6db89a; border:1px solid rgba(109,184,154,0.2); }
-.hl-sync-error { background:rgba(224,108,117,0.08); color:#e06c75; border:1px solid rgba(224,108,117,0.2); }
 .hl-btn--full { flex:1; justify-content:center; }
 
 /* Section head */

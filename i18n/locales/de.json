@@ -18,7 +18,6 @@
     "calendar": "Kalender",
     "peers": "Peers",
     "connect": "Verbindung",
-    "connect_tag": "neu",
     "marketplace": "Marketplace",
     "earnings": "Einnahmen",
     "anchor": "Verankern",
@@ -54,7 +53,7 @@
     "loading": "Lädt…",
     "sign_in": "Einloggen",
     "unlock_with_biometric": "Mit Biometrik entsperren",
-    "footer": "Lokaler Knoten · alles bleibt auf diesem Gerät",
+    "footer": "Lokaler Knoten",
     "error": {
       "biometric_failed": "Biometrik fehlgeschlagen.",
       "creds_load_failed": "Zugangsdaten konnten nicht geladen werden. Bitte manuell anmelden.",
@@ -996,15 +995,7 @@
     "tip_nutrition_poor": "Mehr frische Mahlzeiten einplanen",
     "status_active": "Aktiv",
     "crumb_body": "Körper",
-    "crumb": "Gesundheit",
-    "sync_status_ok": "Sync erfolgreich.",
-    "sync_status_rate_limit": "Garmin drosselt Anmeldungen (Rate Limit). Bitte 2–4 Stunden warten und erneut versuchen.",
-    "sync_status_mfa_required": "Garmin verlangt MFA-Bestätigung. Einmalig ausführen: python3 /opt/sys/health-sync/garmin_login.py",
-    "sync_status_auth_error": "Garmin-Anmeldung fehlgeschlagen — E-Mail oder Passwort in den Health-Settings prüfen.",
-    "sync_status_network_error": "Netzwerkfehler — Garmin Connect nicht erreichbar.",
-    "sync_status_install_error": "Health Sync nicht installiert — ausführen: bash /opt/sys/health-sync/install.sh",
-    "sync_status_unknown": "Sync-Fehler — Details im Server-Log.",
-    "sync_status_not_run": "Sync wurde noch nicht ausgeführt."
+    "crumb": "Gesundheit"
   },
   "vault_session": {
     "title": "Vault-Zugang",
@@ -1450,6 +1441,10 @@
     "section_worldview": "Weltbild",
     "section_questions": "Offene Fragen",
     "section_history": "Verlauf",
+    "section_facts": "Fakten",
+    "section_memories": "Erinnerungen",
+    "section_ideas": "Ideen",
+    "section_learnings": "Erkenntnisse",
     "upload_title": "Auf Server hochladen",
     "empty_section": "Noch nicht beschrieben.",
     "edit_hint": "⌘S speichern · Esc abbrechen"
