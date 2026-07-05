@@ -1006,6 +1006,26 @@ server {
     content_by_lua_file /etc/openresty/lua/connect_approve.lua;
   }
 
+  # ── Trust-Request: Pending-Liste (soul_cert) ─────────────────────────────────
+  location = /api/trust/pending {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trust_pending.lua;
+  }
+
+  # ── Trust-Request: Approve/Reject (soul_cert) ────────────────────────────────
+  location = /api/trust/approve {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trust_approve.lua;
+  }
+
   # ── QR-Connect: Hello (öffentlich, CORS) ─────────────────────────────────────
   location = /api/connect/hello {
     add_header Access-Control-Allow-Origin  "*"          always;

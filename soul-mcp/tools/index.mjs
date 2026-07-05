@@ -75,6 +75,10 @@ import { register as videoGetPeer }          from './video_get_peer.mjs';
 import { register as contextGetPeer }        from './context_get_peer.mjs';
 import { register as soulCommentPeer }       from './soul_comment_peer.mjs';
 
+// ── Trust-Request-Tools (kryptografisch verifiziert, noch nicht getrustet) ───
+import { register as requestTrust }          from './request_trust.mjs';
+import { register as requestTrustStatus }    from './request_trust_status.mjs';
+
 /**
  * Registriert alle MCP-Tools für den Soul-Inhaber (service_token / OAuth).
  * @param {string} soulId  — owner soul_id (für Filesystem-basierte Tools); optional
@@ -230,4 +234,18 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
   soulCommentPeer(server, peerToken, targetSoulId);
 
   // soul_earnings: Private Finanz-Daten — nicht für Peers freigegeben
+}
+
+/**
+ * Registriert Tools für einen kryptografisch verifizierten, aber (noch) nicht
+ * getrusteten Peer — einziger Zweck: sich per request_trust um Aufnahme in
+ * trusted_souls der Ziel-Soul bewerben. Kein Zugriff auf Soul-Inhalte.
+ *
+ * @param {string} requesterSoulId — soul_id aus dem peer_cert des Aufrufers
+ * @param {string} targetSoulId    — soul_id der Ziel-Soul
+ * @param {number} port            — lokaler Port für den internen Push-Trigger
+ */
+export function registerTrustRequestTools(server, requesterSoulId, targetSoulId, port) {
+  requestTrust(server, requesterSoulId, targetSoulId, port);
+  requestTrustStatus(server, requesterSoulId, targetSoulId);
 }

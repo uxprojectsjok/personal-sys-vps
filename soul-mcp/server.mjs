@@ -22,7 +22,7 @@ const webpush  = _require('web-push');
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools, registerPaidTools, registerPeerTools } from './tools/index.mjs';
+import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 
@@ -189,20 +189,35 @@ async function handleMcp(req, res) {
     const peerCert     = token.split('.')[1];
     const targetSoulId = req.query.soul_id || null;
     const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
-    if (!trusted || trusted.error) {
+    if (trusted?.error === 'soul_id_required') {
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
-      const msg = trusted?.error === 'soul_id_required'
-        ? 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).'
-        : 'Soul nicht in der Whitelist. Kontakt zum Soul-Inhaber aufnehmen.';
       return res.status(401).json({
         jsonrpc: '2.0',
-        error: { code: -32001, message: msg },
+        error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).' },
         id: null,
       });
     }
-    // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
-    const resolvedTargetId = trusted.soul_id;
-    registerPeerTools(server, token, [], resolvedTargetId);
+    if (trusted && !trusted.error) {
+      // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
+      registerPeerTools(server, token, [], trusted.soul_id);
+    } else {
+      // Nicht (mehr) in der Whitelist — trotzdem prüfen ob der Cert kryptografisch
+      // zur eigenen soul_id passt. Falls ja: nur request_trust/-status freigeben,
+      // damit sich Fremde für die Aufnahme in trusted_souls bewerben können,
+      // statt komplett abgewiesen zu werden.
+      const resolvedTargetId = targetSoulId || await resolveSingleSoulId();
+      const certOk = resolvedTargetId && await verifyPeerCert(peerSoulId, peerCert, null);
+      if (resolvedTargetId && certOk) {
+        registerTrustRequestTools(server, peerSoulId, resolvedTargetId, PORT);
+      } else {
+        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+        return res.status(401).json({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Cert ungültig oder Soul unbekannt.' },
+          id: null,
+        });
+      }
+    }
   } else {
     const dirs = await readdir(SOULS_DIR).catch(() => []);
     const ownerSoulId = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) ?? null;
@@ -1428,6 +1443,20 @@ function extractToken(req) {
   const match = auth.match(/^Bearer\s+(.+)$/i);
   if (match) return match[1].trim();
   return null;
+}
+
+/**
+ * Löst die einzige Soul auf diesem Node auf (Personal-Mode). Gibt null zurück
+ * wenn keine oder mehrere Souls vorhanden sind (Multi-Hoster braucht ?soul_id=).
+ */
+async function resolveSingleSoulId() {
+  try {
+    const dirs = await readdir('/var/lib/sys/souls/');
+    const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+    return soulDirs.length === 1 ? soulDirs[0] : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

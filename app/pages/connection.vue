@@ -32,6 +32,25 @@
               </div>
             </Transition>
 
+            <!-- Pending trust-request banner -->
+            <Transition name="slide-down">
+              <div v-if="pendingTrust" class="cn-mcp-banner">
+                <div class="cn-mcp-banner-left">
+                  <div class="cn-mcp-ic">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12 3v3m0 12v3m9-9h-3M6 12H3m14.657-6.657-2.121 2.121M8.464 15.536l-2.121 2.121m0-11.314 2.121 2.121m8.072 8.072 2.121 2.121"/></svg>
+                  </div>
+                  <div>
+                    <div class="cn-mcp-title">{{ $t('connection.trust_title') }}</div>
+                    <div class="cn-mcp-sub">{{ $t('connection.trust_sub', { label: pendingTrust.label || $t('connection.trust_unknown') }) }}</div>
+                  </div>
+                </div>
+                <div class="cn-mcp-actions">
+                  <button class="cn-btn cn-btn--reject" :disabled="trustApproving" @click="approveTrust(false)">{{ $t('connection.btn_reject') }}</button>
+                  <button class="cn-btn cn-btn--accept" :disabled="trustApproving" @click="approveTrust(true)">{{ $t('connection.btn_allow') }}</button>
+                </div>
+              </div>
+            </Transition>
+
             <!-- QR-CONNECT -->
             <div class="cn-section-label">QR-CONNECT</div>
             <div class="cn-action-card">
@@ -180,6 +199,23 @@ function openVerify(challenge) {
   router.push(`/verify?id=${challenge.challenge_id}&m=${challenge.method}`)
 }
 
+// ── Pending trust requests (request_trust MCP-Tool) ──────────────────────────
+const pendingTrust    = ref(null)
+const trustApproving  = ref(false)
+async function pollPendingTrust() {
+  try { const r = await fetch('/api/trust/pending',{headers:authHeaders()}); const d=await r.json(); pendingTrust.value=d.pending?.length?d.pending[0]:null } catch(_){}
+}
+async function approveTrust(ok) {
+  if (!pendingTrust.value || trustApproving.value) return
+  trustApproving.value = true
+  try {
+    const r = await fetch('/api/trust/approve', { method:'POST', headers:authHeaders(), body:JSON.stringify({ request_id: pendingTrust.value.request_id, approved: ok }) })
+    if (!r.ok) throw new Error()
+    pendingTrust.value = null
+  } catch (_) { /* Banner bleibt sichtbar, erneuter Versuch möglich */ }
+  trustApproving.value = false
+}
+
 // ── Web Push Subscription ─────────────────────────────────────────────────────
 async function subscribeToPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
@@ -218,7 +254,8 @@ async function requestAndSubscribe() {
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 pollPendingChallenge()
-challengePollTimer = setInterval(pollPendingChallenge, 8000)
+pollPendingTrust()
+challengePollTimer = setInterval(() => { pollPendingChallenge(); pollPendingTrust() }, 8000)
 if (import.meta.client) requestAndSubscribe()
 
 onUnmounted(() => {
@@ -256,6 +293,7 @@ function onNav(id) {
 .cn-mcp-sub   { font-family:var(--mono); font-size:11px; color:var(--fg); margin-top:2px; }
 .cn-mcp-btn { height:38px; padding:0 16px; flex:none; background:var(--accent); border:none; border-radius:var(--r-xs); font-family:var(--sans); font-size:13px; font-weight:600; color:var(--on-accent); cursor:pointer; transition:background 0.15s; }
 .cn-mcp-btn:hover { background:var(--accent-bright); }
+.cn-mcp-actions { display:flex; gap:10px; flex:none; }
 
 /* QR Action card */
 .cn-action-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; margin-bottom:32px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); }
@@ -290,6 +328,7 @@ function onNav(id) {
 .cn-probe-hint  { font-family:var(--mono); font-size:12px; color:var(--fg-2); margin:0; }
 .cn-approve-actions { display:flex; gap:10px; }
 .cn-btn { height:40px; padding:0 20px; font-family:var(--sans); font-size:14px; font-weight:500; border-radius:var(--r-xs); cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.cn-btn:disabled { opacity:0.4; cursor:not-allowed; }
 .cn-btn--reject { background:transparent; border:1px solid var(--line-2); color:var(--fg-2); }
 .cn-btn--reject:hover { color:#e06c75; border-color:rgba(224,108,117,0.35); }
 .cn-btn--accept { background:var(--accent); border:1px solid var(--accent); color:var(--on-accent); font-weight:600; }
