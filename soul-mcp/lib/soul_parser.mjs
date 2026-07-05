@@ -201,7 +201,7 @@ export function extractLongmemIndex(md) {
  * ein Fast-Path, kein Muss (analog zu "Erinnerungen haben auch Lücken").
  * Gibt immer lesbare Bullet-Zeilen zurück, nie rohes JSON.
  */
-export function queryLongmem(longmem, index, { dimension = 'facts', y_cat, x_minScore, z_status, limit = 5 } = {}) {
+export function queryLongmem(longmem, index, { dimension = 'facts', y_cat, x_minScore, z_status, exclude_cat, limit = 5 } = {}) {
   if (!longmem) return { formatted: '', updated: null };
   const idx   = (index && index.based_on_updated === longmem.updated) ? index : buildLongmemIndex(longmem);
   const items = longmem[dimension] ?? [];
@@ -223,6 +223,11 @@ export function queryLongmem(longmem, index, { dimension = 'facts', y_cat, x_min
 
   if (x_minScore != null) {
     indices = new Set([...indices].filter(i => (items[i].score ?? 0) >= x_minScore));
+  }
+
+  if (exclude_cat != null) {
+    const excluded = Array.isArray(exclude_cat) ? exclude_cat : [exclude_cat];
+    indices = new Set([...indices].filter(i => !excluded.includes(items[i].cat)));
   }
 
   // Reihenfolge: facts nach Score absteigend, memories nach Rezenz, sonst Array-Reihenfolge

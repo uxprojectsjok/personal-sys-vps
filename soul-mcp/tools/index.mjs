@@ -208,7 +208,7 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
   verifyHumanPeer(server, targetSoulId);
   soulMaturityPeer(server, targetSoulId);
   soulSkillsPeer(server, targetSoulId);
-  soulContextQueryPeer(server, targetSoulId);
+  soulContextQueryPeer(server, targetSoulId, peerToken);
   calendarReadPeer(server, targetSoulId);
   profileGetPeer(server, targetSoulId);
   soulWritePeer(server, targetSoulId);
