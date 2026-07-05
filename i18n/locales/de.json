@@ -357,6 +357,8 @@
   "common": {
     "cancel": "Abbrechen",
     "close": "Schließen",
+    "copy": "Kopieren",
+    "copy_done": "Kopiert ✓",
     "delete": "Löschen",
     "upload": "Hochladen",
     "save": "Speichern",

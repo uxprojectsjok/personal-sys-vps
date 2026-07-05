@@ -357,6 +357,8 @@
   "common": {
     "cancel": "Cancel",
     "close": "Close",
+    "copy": "Copy",
+    "copy_done": "Copied ✓",
     "delete": "Delete",
     "upload": "Upload",
     "save": "Save",

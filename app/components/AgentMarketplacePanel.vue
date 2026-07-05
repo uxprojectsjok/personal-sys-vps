@@ -288,6 +288,7 @@
             <div v-if="tokenList.length" class="token-list">
               <div v-for="tk in tokenList" :key="tk.token" class="token-row">
                 <div class="token-info">
+                  <code class="token-frag">{{ tokenFragment(tk.token) }}</code>
                   <span class="token-method" :class="{ manual: tk.payment_method === 'manual' }">{{ tk.payment_method === 'manual' ? $t('marketplace.token_method_manual') : $t('marketplace.token_method_pol') }}</span>
                   <span class="token-from">{{ tk.from }}</span>
                   <span class="token-exp">{{ $t('marketplace.token_expires', { date: formatTokenDate(tk.expires_at) }) }}</span>
@@ -616,6 +617,7 @@ function toggleTool(name) {
 watch(step, (newStep) => {
   showToolPicker.value = false
   if (newStep === 'ipfs') loadPreview()
+  if (newStep !== 'tokens') issuedToken.value = ''
 })
 
 const BASE = () => ''
@@ -636,6 +638,11 @@ const tokensLoaded    = ref(false)
 function formatTokenDate(iso) {
   if (!iso) return ''
   try { return new Date(iso).toLocaleString() } catch { return iso }
+}
+
+function tokenFragment(token) {
+  if (!token || token.length < 14) return token || ''
+  return `${token.slice(0, 8)}…${token.slice(-6)}`
 }
 
 async function loadTokenList() {
@@ -673,7 +680,7 @@ async function copyIssuedToken() {
   if (!issuedToken.value) return
   await navigator.clipboard.writeText(issuedToken.value).catch(() => {})
   tokenCopied.value = true
-  setTimeout(() => { tokenCopied.value = false }, 2000)
+  setTimeout(() => { tokenCopied.value = false; issuedToken.value = '' }, 1500)
 }
 
 async function revokeManualToken(token) {
@@ -1095,6 +1102,7 @@ async function register() {
 .token-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--paper-2); }
 .token-row + .token-row { border-top: 1px solid var(--rule-2); }
 .token-info { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; }
+.token-frag { font-family: var(--mono); font-size: 12px; color: var(--fg-3); background: var(--paper-3); padding: 3px 7px; border-radius: 4px; }
 .token-method { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--paper-3); color: var(--fg-2); }
 .token-method.manual { background: var(--accent-2); color: var(--accent-bright); }
 .token-from { font-size: 13px; color: var(--fg); }
