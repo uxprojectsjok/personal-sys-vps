@@ -87,7 +87,9 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
 </script>
 
 <style scoped>
-.legal-page { min-height: 100dvh; background: var(--bg); color: var(--fg); font-family: var(--sans); }
+/* body hat app-weit overflow:hidden (eigener Scroll-Container ist die Konvention) —
+   diese Standalone-Seite hat keinen, macht sich also selbst zum Scroll-Container. */
+.legal-page { height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg); color: var(--fg); font-family: var(--sans); }
 
 .l-nav {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px;
