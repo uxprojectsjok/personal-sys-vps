@@ -91,7 +91,10 @@ export function register(server, soulId) {
           content: [{
             type: 'text',
             text: 'Kauf erst nach beiden ausdrücklichen Einwilligungen möglich: ' +
-              'consent_immediate_performance UND consent_withdrawal_waiver müssen true sein.',
+              'consent_immediate_performance UND consent_withdrawal_waiver müssen true sein. ' +
+              'Stimmt der Nutzer nicht zu, ist die Bereitstellung der digitalen Leistung über ' +
+              'diesen Weg leider technisch nicht möglich — kein weiterer Versuch mit erfundenen ' +
+              'true-Werten ohne echte Zustimmung.',
           }],
           isError: true,
         };

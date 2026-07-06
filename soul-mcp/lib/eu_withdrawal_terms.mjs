@@ -53,7 +53,9 @@ export function writeLegalSections(doc) {
 }
 
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
-export async function buildTermsPreviewPdf(termsToken) {
+// Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
+// voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
+export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, priceEur, target, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -66,10 +68,34 @@ export async function buildTermsPreviewPdf(termsToken) {
     doc.moveDown(0.5);
     doc.fontSize(10).fillColor('#666').text(`Referenz-ID: ${termsToken}`);
     doc.fontSize(9).text(
+      'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — ' +
+      'nur so kann der Anbieter die Zahlung dieser Einwilligung zuordnen.'
+    );
+    doc.fontSize(9).fillColor('#666').text(
       'Vorschau — noch keine Zustimmung erteilt. Dieses Dokument beschreibt dein ' +
       'gesetzliches Widerrufsrecht beim Kauf digitaler Inhalte, bevor du zustimmst.'
     );
     doc.fillColor('black').moveDown();
+    doc.fontSize(10).text(`Soul: ${soulName} (${soulId})`);
+    doc.text(`Preis: ${priceEur} EUR`);
+    doc.text(`Zahlungsziel: ${target}`);
+    doc.moveDown();
+
+    doc.fontSize(12).text('Anbieter', { underline: true });
+    if (traderName) {
+      doc.fontSize(10).text(traderName);
+      if (traderAddress)   doc.text(traderAddress);
+      if (traderEmail)     doc.text(`E-Mail: ${traderEmail}`);
+      if (traderLegalForm) doc.text(traderLegalForm);
+      if (traderVatNote)   doc.text(traderVatNote);
+    } else {
+      doc.fontSize(9).fillColor('#b00020').text(
+        'Keine Anbieterkennzeichnung hinterlegt — bitte in den Marketplace-Einstellungen ' +
+        'Name, Anschrift und Kontakt-E-Mail des Anbieters eintragen.'
+      );
+      doc.fillColor('black');
+    }
+    doc.moveDown();
 
     writeLegalSections(doc);
 

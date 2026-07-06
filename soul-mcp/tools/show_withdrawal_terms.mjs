@@ -54,7 +54,18 @@ export function register(server, soulId) {
 
       try {
         const termsToken  = randomUUID();
-        const previewPdf  = await buildTermsPreviewPdf(termsToken);
+        const previewPdf  = await buildTermsPreviewPdf({
+          termsToken,
+          soulName: ctx.name || soulId.slice(0, 8),
+          soulId,
+          priceEur: amort.price_eur || '?',
+          target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
+          traderName:      amort.trader_name || '',
+          traderAddress:   amort.trader_address || '',
+          traderEmail:     amort.trader_email || '',
+          traderLegalForm: amort.trader_legal_form || '',
+          traderVatNote:   amort.trader_vat_note || '',
+        });
         const consentDir  = `${SOULS_DIR}${soulId}/consent_docs`;
         await mkdir(consentDir, { recursive: true });
         await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
@@ -72,9 +83,13 @@ export function register(server, soulId) {
                 `📄 [Widerrufsbelehrung öffnen](${previewUrl})`,
                 previewUrl,
                 '',
-                'Antworte danach mit "Ja, ich stimme zu", wenn du beidem zustimmst:',
+                'Antworte danach mit "Ja, ich stimme zu und schließe kostenpflichtig ab",',
+                'wenn du beidem zustimmst UND den kostenpflichtigen Kauf abschließen willst:',
                 '1. Die digitale Leistung beginnt sofort nach Zahlung.',
                 '2. Du verzichtest damit auf dein 14-tägiges Widerrufsrecht.',
+                '',
+                'Ohne diese Zustimmung ist die Bereitstellung der digitalen Leistung über',
+                'diesen Weg leider technisch nicht möglich.',
                 '',
                 '=== ENDE DER NACHRICHT AN DEN NUTZER ===',
                 '',
