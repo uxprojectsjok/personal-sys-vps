@@ -84,6 +84,8 @@ export function register(server, soulId) {
                 `📄 [Widerrufsbelehrung öffnen](${previewUrl})`,
                 previewUrl,
                 '',
+                `Weitere Kaufbedingungen (Zahlungsweg, Leistungsbeginn, Mängelhaftung): ${BASE_URL}/agb`,
+                '',
                 'Antworte danach mit "Ja, ich stimme zu und schließe kostenpflichtig ab",',
                 'wenn du beidem zustimmst UND den kostenpflichtigen Kauf abschließen willst:',
                 '1. Die digitale Leistung beginnt sofort nach Zahlung.',

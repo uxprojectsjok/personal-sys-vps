@@ -45,7 +45,7 @@ export default defineNuxtConfig({
     compressPublicAssets: true,
     prerender: {
       crawlLinks: true,
-      routes: ["/", "/api-docs"],
+      routes: ["/", "/api-docs", "/agb"],
     },
   },
 

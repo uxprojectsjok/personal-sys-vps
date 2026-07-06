@@ -1594,6 +1594,18 @@ server {
   }
 
   ################################
+  # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus
+  # show_withdrawal_terms für Käufer ohne eigene Soul/Session auf diesem Node.
+  ################################
+  location = /agb {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /agb/index.html /index.html;
+  }
+
+  ################################
   # SPA Root (Nuxt static)
   ################################
   location / {
