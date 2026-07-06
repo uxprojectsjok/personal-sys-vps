@@ -25,6 +25,47 @@ import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
+// Gemeinsamer Rechtstext — identisch in der Chat-Vorschau (vor der Zustimmung)
+// und im PDF (nach der Zustimmung), damit beide nie auseinanderlaufen.
+const LEGAL_SECTIONS = [
+  {
+    title: 'Widerrufsrecht',
+    text: 'Verbraucher haben beim Kauf digitaler Inhalte und Dienstleistungen im ' +
+      'Fernabsatz ein gesetzliches Widerrufsrecht von 14 Tagen ab Vertragsschluss. ' +
+      'Der Widerruf ist kostenfrei und ohne Angabe von Gründen möglich.',
+  },
+  {
+    title: 'Folgen des Widerrufs',
+    text: 'Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir ' +
+      'von Ihnen erhalten haben, einschließlich der Lieferkosten (mit Ausnahme der ' +
+      'zusätzlichen Kosten, die sich daraus ergeben, dass Sie eine andere Art der ' +
+      'Lieferung als die von uns angebotene, günstigste Standardlieferung gewählt ' +
+      'haben), unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag ' +
+      'zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei ' +
+      'uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe ' +
+      'Zahlungsmittel, das Sie bei der ursprünglichen Transaktion eingesetzt haben, ' +
+      'es sei denn, mit Ihnen wurde ausdrücklich etwas anderes vereinbart; in keinem ' +
+      'Fall werden Ihnen wegen dieser Rückzahlung Entgelte berechnet.',
+  },
+  {
+    title: 'Vorzeitiges Erlöschen des Widerrufsrechts',
+    text: 'Das Widerrufsrecht erlischt vorzeitig bei einem Vertrag über die Lieferung ' +
+      'von nicht auf einem körperlichen Datenträger befindlichen digitalen ' +
+      'Inhalten, wenn wir mit der Ausführung des Vertrags begonnen haben, nachdem ' +
+      'Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags ' +
+      'vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre Kenntnis davon ' +
+      'bestätigt haben, dass Sie durch Ihre Zustimmung mit Beginn der Ausführung ' +
+      'des Vertrags Ihr Widerrufsrecht verlieren.\n\n' +
+      'Nach einem wirksamen Widerruf wird der Vertrag rückabgewickelt: der Käufer ' +
+      'darf die erhaltenen digitalen Inhalte nicht weiter nutzen und muss sie im ' +
+      'Rahmen der technischen Möglichkeiten löschen bzw. den Zugriff darauf beenden.',
+  },
+];
+
+function legalTextForChat() {
+  return LEGAL_SECTIONS.map(s => `**${s.title}**\n${s.text}`).join('\n\n');
+}
+
 export function register(server, soulId) {
   server.tool(
     'accept_digital_content_terms',
@@ -33,24 +74,32 @@ export function register(server, soulId) {
       'muss ausdrücklich zustimmen, dass die digitale Leistung sofort beginnt',
       'UND dass er dadurch sein gesetzliches 14-tägiges Widerrufsrecht verliert.',
       '',
-      'Ohne beide Einwilligungen (=true) gibt es KEINEN Hinweis auf den',
-      'Bezahlweg — dieses Tool muss also VOR der Zahlung aufgerufen werden.',
+      'ABLAUF (zwei Schritte, nicht überspringen):',
+      '1. Dieses Tool OHNE beide consent-Flags (oder mit false) aufrufen →',
+      '   gibt den vollständigen Belehrungstext zurück. Diesen Text dem Nutzer',
+      '   VOLLSTÄNDIG und wörtlich zeigen (nicht zusammenfassen), dann ausdrücklich',
+      '   fragen, ob er beiden Punkten zustimmt.',
+      '2. Erst nach expliziter Zustimmung des Nutzers dieses Tool ERNEUT aufrufen,',
+      '   diesmal mit consent_immediate_performance=true UND',
+      '   consent_withdrawal_waiver=true → erzeugt PDF-Beleg + Download-Link +',
+      '   Zahlungsanweisung.',
       '',
-      'Bei Erfolg: eine neue Referenz-ID (UUID) wird erzeugt, das Widerrufs-PDF',
-      'dazu abgelegt und ein Download-Link zurückgegeben.',
-      'PFLICHT: Den Download-Link IMMER wörtlich an den Nutzer weitergeben — als',
-      'klickbaren Markdown-Link, nicht nur in eigenen Worten zusammenfassen und',
-      'dabei weglassen. Zusätzlich ausdrücklich darauf hinweisen: die Referenz-ID',
-      'MUSS in der PayPal-Zahlungsnotiz angegeben werden, sonst kann der Betreiber die Zahlung',
-      'nicht dem Vorgang zuordnen. Der Käufer zahlt danach außerhalb des Systems',
-      'und kontaktiert den Soul-Inhaber direkt — Zugang wird manuell freigeschaltet,',
-      'i.d.R. binnen 48h.',
+      'Ohne beide Einwilligungen gibt es KEINEN Hinweis auf den Bezahlweg —',
+      'niemals direkt mit consent=true raten oder ohne echte Nutzer-Zustimmung aufrufen.',
+      '',
+      'PFLICHT bei Schritt 2: Den Download-Link IMMER wörtlich an den Nutzer',
+      'weitergeben — als klickbaren Markdown-Link, nicht nur in eigenen Worten',
+      'zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich darauf hinweisen:',
+      'die Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben werden, sonst kann',
+      'der Betreiber die Zahlung nicht dem Vorgang zuordnen. Der Käufer zahlt danach',
+      'außerhalb des Systems und kontaktiert den Soul-Inhaber direkt — Zugang wird',
+      'manuell freigeschaltet, i.d.R. binnen 48h.',
     ].join('\n'),
     {
-      consent_immediate_performance: z.boolean()
-        .describe('Zustimmung: die digitale Leistung soll sofort beginnen, vor Ablauf der 14-tägigen Widerrufsfrist'),
-      consent_withdrawal_waiver: z.boolean()
-        .describe('Bestätigung: dem Käufer ist bewusst, dass er durch die Zustimmung zum sofortigen Beginn sein Widerrufsrecht verliert'),
+      consent_immediate_performance: z.boolean().optional().default(false)
+        .describe('Zustimmung: die digitale Leistung soll sofort beginnen, vor Ablauf der 14-tägigen Widerrufsfrist. Erst auf true setzen, NACHDEM der Belehrungstext (Schritt 1) dem Nutzer gezeigt und seine Zustimmung eingeholt wurde.'),
+      consent_withdrawal_waiver: z.boolean().optional().default(false)
+        .describe('Bestätigung: dem Käufer ist bewusst, dass er durch die Zustimmung zum sofortigen Beginn sein Widerrufsrecht verliert. Erst auf true setzen, NACHDEM der Belehrungstext (Schritt 1) dem Nutzer gezeigt und seine Zustimmung eingeholt wurde.'),
       contact_note: z.string().max(200).optional()
         .describe('Optionale Notiz/Kontakt (z.B. E-Mail), für den späteren manuellen Abgleich durch den Soul-Inhaber'),
     },
@@ -59,10 +108,22 @@ export function register(server, soulId) {
         return {
           content: [{
             type: 'text',
-            text: 'Kauf erst nach beiden ausdrücklichen Einwilligungen möglich: ' +
-              'consent_immediate_performance UND consent_withdrawal_waiver müssen true sein.',
+            text: [
+              '📋 Widerrufsbelehrung — bitte VOLLSTÄNDIG an den Nutzer weitergeben,',
+              'nicht zusammenfassen:',
+              '',
+              legalTextForChat(),
+              '',
+              '---',
+              '',
+              'Frage den Nutzer jetzt ausdrücklich, ob er BEIDEN Punkten zustimmt:',
+              '1. Die digitale Leistung beginnt sofort nach Zahlung (vor Ablauf der 14-Tage-Frist).',
+              '2. Er verzichtet damit auf sein 14-tägiges Widerrufsrecht.',
+              '',
+              'Erst NACH expliziter Zustimmung dieses Tool erneut aufrufen mit',
+              'consent_immediate_performance=true und consent_withdrawal_waiver=true.',
+            ].join('\n'),
           }],
-          isError: true,
         };
       }
 
@@ -181,46 +242,11 @@ async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote
     }
     doc.moveDown();
 
-    doc.fontSize(12).text('Widerrufsrecht', { underline: true });
-    doc.fontSize(10).text(
-      'Verbraucher haben beim Kauf digitaler Inhalte und Dienstleistungen im ' +
-      'Fernabsatz ein gesetzliches Widerrufsrecht von 14 Tagen ab Vertragsschluss. ' +
-      'Der Widerruf ist kostenfrei und ohne Angabe von Gründen möglich.'
-    );
-    doc.moveDown();
-
-    doc.fontSize(12).text('Folgen des Widerrufs', { underline: true });
-    doc.fontSize(10).text(
-      'Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir ' +
-      'von Ihnen erhalten haben, einschließlich der Lieferkosten (mit Ausnahme der ' +
-      'zusätzlichen Kosten, die sich daraus ergeben, dass Sie eine andere Art der ' +
-      'Lieferung als die von uns angebotene, günstigste Standardlieferung gewählt ' +
-      'haben), unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag ' +
-      'zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei ' +
-      'uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe ' +
-      'Zahlungsmittel, das Sie bei der ursprünglichen Transaktion eingesetzt haben, ' +
-      'es sei denn, mit Ihnen wurde ausdrücklich etwas anderes vereinbart; in keinem ' +
-      'Fall werden Ihnen wegen dieser Rückzahlung Entgelte berechnet.'
-    );
-    doc.moveDown();
-
-    doc.fontSize(12).text('Vorzeitiges Erlöschen des Widerrufsrechts', { underline: true });
-    doc.fontSize(10).text(
-      'Das Widerrufsrecht erlischt vorzeitig bei einem Vertrag über die Lieferung ' +
-      'von nicht auf einem körperlichen Datenträger befindlichen digitalen ' +
-      'Inhalten, wenn wir mit der Ausführung des Vertrags begonnen haben, nachdem ' +
-      'Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags ' +
-      'vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre Kenntnis davon ' +
-      'bestätigt haben, dass Sie durch Ihre Zustimmung mit Beginn der Ausführung ' +
-      'des Vertrags Ihr Widerrufsrecht verlieren.'
-    );
-    doc.moveDown(0.5);
-    doc.text(
-      'Nach einem wirksamen Widerruf wird der Vertrag rückabgewickelt: der Käufer ' +
-      'darf die erhaltenen digitalen Inhalte nicht weiter nutzen und muss sie im ' +
-      'Rahmen der technischen Möglichkeiten löschen bzw. den Zugriff darauf beenden.'
-    );
-    doc.moveDown();
+    for (const section of LEGAL_SECTIONS) {
+      doc.fontSize(12).text(section.title, { underline: true });
+      doc.fontSize(10).text(section.text);
+      doc.moveDown();
+    }
 
     doc.fontSize(12).text('Erteilte Einwilligungen', { underline: true });
     doc.fontSize(10).text(`[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung: JA`);
