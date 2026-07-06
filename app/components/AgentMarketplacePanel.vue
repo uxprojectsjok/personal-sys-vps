@@ -129,6 +129,29 @@
                     <label class="field-label">{{ $t('marketplace.field_price_eur') }} <span class="field-hint">{{ $t('marketplace.field_price_eur_hint') }}</span></label>
                     <input v-model="amort.price_eur" type="text" class="input mono" placeholder="12.00" />
                   </div>
+                  <div class="field span-2">
+                    <label class="field-label">{{ $t('marketplace.field_trader_section') }} <span class="field-hint">{{ $t('marketplace.field_trader_section_hint') }}</span></label>
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_trader_name') }}</label>
+                    <input v-model="amort.trader_name" type="text" class="input" placeholder="Vorname Nachname / Firma" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_trader_email') }}</label>
+                    <input v-model="amort.trader_email" type="text" class="input mono" placeholder="kontakt@example.com" />
+                  </div>
+                  <div class="field span-2">
+                    <label class="field-label">{{ $t('marketplace.field_trader_address') }}</label>
+                    <input v-model="amort.trader_address" type="text" class="input" placeholder="Straße Hausnr., PLZ Ort, Land" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_trader_legal_form') }}</label>
+                    <input v-model="amort.trader_legal_form" type="text" class="input" placeholder="Einzelunternehmen" />
+                  </div>
+                  <div class="field">
+                    <label class="field-label">{{ $t('marketplace.field_trader_vat_note') }}</label>
+                    <input v-model="amort.trader_vat_note" type="text" class="input" placeholder="§19 UStG — keine USt." />
+                  </div>
                 </template>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_token_validity') }} <span class="field-hint">{{ $t('marketplace.field_token_validity_hint') }}</span></label>
@@ -268,6 +291,10 @@
                   <label class="field-label">{{ $t('marketplace.token_note_label') }}</label>
                   <input v-model="manualNote" type="text" class="input" :placeholder="$t('marketplace.token_note_placeholder')" />
                 </div>
+                <div class="field span-2">
+                  <label class="field-label">{{ $t('marketplace.token_reference_label') }} <span class="field-hint">{{ $t('marketplace.token_reference_hint') }}</span></label>
+                  <input v-model="manualReferenceId" type="text" class="input mono" placeholder="z.B. 1581eae2-9e09-41df-a6f3-6f4e080a9833" />
+                </div>
               </div>
             </div>
 
@@ -291,6 +318,7 @@
                   <code class="token-frag">{{ tokenFragment(tk.token) }}</code>
                   <span class="token-method" :class="{ manual: tk.payment_method === 'manual' }">{{ tk.payment_method === 'manual' ? $t('marketplace.token_method_manual') : $t('marketplace.token_method_pol') }}</span>
                   <span class="token-from">{{ tk.from }}</span>
+                  <span v-if="tk.reference_id" class="token-ref" :title="$t('marketplace.token_reference_label')">{{ tk.reference_id.slice(0, 8) }}…</span>
                   <span class="token-exp">{{ $t('marketplace.token_expires', { date: formatTokenDate(tk.expires_at) }) }}</span>
                 </div>
                 <button class="btn btn-ghost" @click="revokeManualToken(tk.token)">{{ $t('marketplace.token_revoke_btn') }}</button>
@@ -413,6 +441,11 @@ const amort = reactive({
   paypal_link:          '',
   paypal_email:         '',
   price_eur:            '',
+  trader_name:          '',
+  trader_address:       '',
+  trader_email:         '',
+  trader_legal_form:    '',
+  trader_vat_note:      '',
 })
 
 // Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
@@ -537,6 +570,11 @@ async function persistMetaFields() {
         paypal_link:         amort.paypal_link,
         paypal_email:        amort.paypal_email,
         price_eur:           amort.price_eur,
+        trader_name:         amort.trader_name,
+        trader_address:      amort.trader_address,
+        trader_email:        amort.trader_email,
+        trader_legal_form:   amort.trader_legal_form,
+        trader_vat_note:     amort.trader_vat_note,
         name:                preview.value.name || '',
         description:         preview.value.description || '',
         tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
@@ -626,8 +664,9 @@ function authHeader() {
 }
 
 // ═══════════ STEP 3 · MANUELLE ZUGANGS-TOKENS (Nicht-Krypto-Käufer) ═══════════
-const manualDuration  = ref(1)
-const manualNote      = ref('')
+const manualDuration    = ref(1)
+const manualNote        = ref('')
+const manualReferenceId = ref('')
 const issuingToken    = ref(false)
 const issueTokenError = ref('')
 const issuedToken     = ref('')
@@ -663,12 +702,13 @@ async function issueManualToken() {
     const r = await fetch(`${BASE()}/api/soul/pay/manual`, {
       method: 'POST',
       headers: authHeader(),
-      body: JSON.stringify({ token_duration_days: days, note: manualNote.value }),
+      body: JSON.stringify({ token_duration_days: days, note: manualNote.value, reference_id: manualReferenceId.value.trim() }),
     })
     const d = await r.json()
-    if (!r.ok || !d.ok) throw new Error(d.error || 'Fehler beim Ausstellen')
-    issuedToken.value = d.access_token
-    manualNote.value  = ''
+    if (!r.ok || !d.ok) throw new Error(d.message || d.error || 'Fehler beim Ausstellen')
+    issuedToken.value      = d.access_token
+    manualNote.value       = ''
+    manualReferenceId.value = ''
     await loadTokenList()
   } catch (e) {
     issueTokenError.value = e.message
@@ -728,6 +768,11 @@ async function loadAmort() {
     amort.paypal_link          = a.paypal_link ?? ''
     amort.paypal_email         = a.paypal_email ?? ''
     amort.price_eur            = a.price_eur ?? ''
+    amort.trader_name          = a.trader_name ?? ''
+    amort.trader_address       = a.trader_address ?? ''
+    amort.trader_email         = a.trader_email ?? ''
+    amort.trader_legal_form    = a.trader_legal_form ?? ''
+    amort.trader_vat_note      = a.trader_vat_note ?? ''
     if (amort.dynamic_pricing) fetchLivePrice()
     const rawTrustedSouls = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
@@ -799,6 +844,11 @@ async function setMode(mode) {
           paypal_link:          amort.paypal_link,
           paypal_email:         amort.paypal_email,
           price_eur:            amort.price_eur,
+          trader_name:          amort.trader_name,
+          trader_address:       amort.trader_address,
+          trader_email:         amort.trader_email,
+          trader_legal_form:    amort.trader_legal_form,
+          trader_vat_note:      amort.trader_vat_note,
         }),
       })
       const d = await r.json()
@@ -837,6 +887,11 @@ async function saveAmort() {
         paypal_link:          amort.paypal_link,
         paypal_email:         amort.paypal_email,
         price_eur:            amort.price_eur,
+        trader_name:          amort.trader_name,
+        trader_address:       amort.trader_address,
+        trader_email:         amort.trader_email,
+        trader_legal_form:    amort.trader_legal_form,
+        trader_vat_note:      amort.trader_vat_note,
       }),
     })
     const d = await r.json()
@@ -1106,6 +1161,7 @@ async function register() {
 .token-method { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: var(--paper-3); color: var(--fg-2); }
 .token-method.manual { background: var(--accent-2); color: var(--accent-bright); }
 .token-from { font-size: 13px; color: var(--fg); }
+.token-ref { font-family: var(--mono); font-size: 11px; color: var(--fg-3); cursor: help; }
 .token-exp { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 
 /* ─── FOOT ─── */

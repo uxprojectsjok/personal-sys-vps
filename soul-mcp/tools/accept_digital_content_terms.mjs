@@ -75,7 +75,15 @@ export function register(server, soulId) {
         }
         const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
         const priceEur     = amort.price_eur || '?';
-        const nowIso        = new Date().toISOString();
+        const now          = new Date();
+        // Lokale Zeit statt UTC — für ein an Verbraucher gerichtetes Rechtsdokument
+        // ist "Z" (UTC) irreführend, Käufer erwarten ihre eigene (Europe/Berlin) Uhrzeit.
+        const timestampDisplay = now.toLocaleString('de-DE', {
+          timeZone: 'Europe/Berlin',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          timeZoneName: 'short',
+        });
         const referenceId  = randomUUID();
 
         const pdfBuffer = await buildConsentPdf({
@@ -84,8 +92,13 @@ export function register(server, soulId) {
           priceEur,
           target,
           contactNote: contact_note || '',
-          timestamp: nowIso,
+          timestamp: timestampDisplay,
           referenceId,
+          traderName:     amort.trader_name || '',
+          traderAddress:  amort.trader_address || '',
+          traderEmail:    amort.trader_email || '',
+          traderLegalForm: amort.trader_legal_form || '',
+          traderVatNote:  amort.trader_vat_note || '',
         });
 
         const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
@@ -122,7 +135,7 @@ export function register(server, soulId) {
   );
 }
 
-async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote, timestamp, referenceId }) {
+async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -146,25 +159,60 @@ async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote
     if (contactNote) doc.text(`Kontakt/Notiz des Käufers: ${contactNote}`);
     doc.moveDown();
 
+    doc.fontSize(12).text('Anbieter', { underline: true });
+    if (traderName) {
+      doc.fontSize(10).text(traderName);
+      if (traderAddress)   doc.text(traderAddress);
+      if (traderEmail)     doc.text(`E-Mail: ${traderEmail}`);
+      if (traderLegalForm) doc.text(traderLegalForm);
+      if (traderVatNote)   doc.text(traderVatNote);
+    } else {
+      doc.fontSize(9).fillColor('#b00020').text(
+        'Keine Anbieterkennzeichnung hinterlegt — bitte in den Marketplace-Einstellungen ' +
+        'Name, Anschrift und Kontakt-E-Mail des Anbieters eintragen.'
+      );
+      doc.fillColor('black');
+    }
+    doc.moveDown();
+
     doc.fontSize(12).text('Widerrufsrecht', { underline: true });
     doc.fontSize(10).text(
       'Verbraucher haben beim Kauf digitaler Inhalte und Dienstleistungen im ' +
       'Fernabsatz ein gesetzliches Widerrufsrecht von 14 Tagen ab Vertragsschluss. ' +
       'Der Widerruf ist kostenfrei und ohne Angabe von Gründen möglich.'
     );
-    doc.moveDown(0.5);
-    doc.text(
-      'Das Widerrufsrecht erlischt vorzeitig, wenn der Anbieter mit der Ausführung ' +
-      'der Leistung erst nach ausdrücklicher Zustimmung des Verbrauchers zum ' +
-      'sofortigen Beginn beginnt, der Verbraucher dabei bestätigt hat, dass er ' +
-      'dadurch sein Widerrufsrecht verliert, und die Ausführung tatsächlich begonnen hat.'
+    doc.moveDown();
+
+    doc.fontSize(12).text('Folgen des Widerrufs', { underline: true });
+    doc.fontSize(10).text(
+      'Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir ' +
+      'von Ihnen erhalten haben, einschließlich der Lieferkosten (mit Ausnahme der ' +
+      'zusätzlichen Kosten, die sich daraus ergeben, dass Sie eine andere Art der ' +
+      'Lieferung als die von uns angebotene, günstigste Standardlieferung gewählt ' +
+      'haben), unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag ' +
+      'zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei ' +
+      'uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe ' +
+      'Zahlungsmittel, das Sie bei der ursprünglichen Transaktion eingesetzt haben, ' +
+      'es sei denn, mit Ihnen wurde ausdrücklich etwas anderes vereinbart; in keinem ' +
+      'Fall werden Ihnen wegen dieser Rückzahlung Entgelte berechnet.'
+    );
+    doc.moveDown();
+
+    doc.fontSize(12).text('Vorzeitiges Erlöschen des Widerrufsrechts', { underline: true });
+    doc.fontSize(10).text(
+      'Das Widerrufsrecht erlischt vorzeitig bei einem Vertrag über die Lieferung ' +
+      'von nicht auf einem körperlichen Datenträger befindlichen digitalen ' +
+      'Inhalten, wenn wir mit der Ausführung des Vertrags begonnen haben, nachdem ' +
+      'Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags ' +
+      'vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre Kenntnis davon ' +
+      'bestätigt haben, dass Sie durch Ihre Zustimmung mit Beginn der Ausführung ' +
+      'des Vertrags Ihr Widerrufsrecht verlieren.'
     );
     doc.moveDown(0.5);
     doc.text(
-      'Nach einem wirksamen Widerruf wird der Vertrag rückabgewickelt: der Anbieter ' +
-      'erstattet den Kaufpreis, der Käufer darf die erhaltenen digitalen Inhalte ' +
-      'nicht weiter nutzen und muss sie im Rahmen der technischen Möglichkeiten ' +
-      'löschen bzw. den Zugriff darauf beenden.'
+      'Nach einem wirksamen Widerruf wird der Vertrag rückabgewickelt: der Käufer ' +
+      'darf die erhaltenen digitalen Inhalte nicht weiter nutzen und muss sie im ' +
+      'Rahmen der technischen Möglichkeiten löschen bzw. den Zugriff darauf beenden.'
     );
     doc.moveDown();
 
