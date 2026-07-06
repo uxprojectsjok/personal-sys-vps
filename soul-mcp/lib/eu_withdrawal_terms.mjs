@@ -55,7 +55,7 @@ export function writeLegalSections(doc) {
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
 // Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
 // voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
-export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, priceEur, target, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
+export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, priceEur, target, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -95,6 +95,21 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
       );
       doc.fillColor('black');
     }
+    doc.moveDown();
+
+    doc.fontSize(12).text('Funktionsweise & Bereitstellung', { underline: true });
+    doc.fontSize(10).text(
+      `Zugang erfolgt über ein Zugriffs-Token (pol_access_token), gültig für ` +
+      `${tokenDurationDays || 1} Tag(e) ab Ausstellung. Das Token wird nach ` +
+      `manueller Prüfung des Zahlungseingangs per E-Mail (an die in der PayPal-` +
+      `Zahlungsnotiz hinterlegte Adresse) oder direkt im Chat übermittelt, sofern ` +
+      `dort bereits vereinbart. Die digitale Leistung beginnt mit Erhalt und ` +
+      `Einsatz des Tokens. Zahlungsbedingungen: Zahlung per PayPal (oder POL/` +
+      `Kryptowährung über den technischen Zahlungsweg) im Voraus; Zugang wird nach ` +
+      `Zahlungseingang freigeschaltet, i.d.R. binnen 48 Stunden. Es gilt das ` +
+      `gesetzliche Mängelhaftungsrecht; bei technischen Problemen wende dich an ` +
+      `die oben genannte Kontakt-E-Mail des Anbieters.`
+    );
     doc.moveDown();
 
     writeLegalSections(doc);

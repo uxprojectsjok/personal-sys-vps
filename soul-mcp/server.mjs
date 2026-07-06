@@ -1148,7 +1148,7 @@ app.get('/llms.txt', async (_req, res) => {
       if (a.wallet) lines.push(`- **Wallet (Polygon):** \`${a.wallet}\``);
       if (a.paypal_enabled) {
         const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-        lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h`);
+        lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
       }
       if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
       // read default_model from soul config
@@ -1327,6 +1327,7 @@ app.get('/api/soul/scan', async (req, res) => {
       paypal_enabled:      amort.paypal_enabled === true,
       paypal_target:       amort.paypal_enabled === true ? (amort.paypal_target || null) : null,
       price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,
+      price_note:          amort.paypal_enabled === true ? (amort.price_note || null) : null,
     };
   }));
 

@@ -65,6 +65,7 @@ export function register(server, soulId) {
           traderEmail:     amort.trader_email || '',
           traderLegalForm: amort.trader_legal_form || '',
           traderVatNote:   amort.trader_vat_note || '',
+          tokenDurationDays: amort.token_duration_days || 1,
         });
         const consentDir  = `${SOULS_DIR}${soulId}/consent_docs`;
         await mkdir(consentDir, { recursive: true });

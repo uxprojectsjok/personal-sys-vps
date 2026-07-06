@@ -286,6 +286,7 @@ if type(amort) == "table" then
     paypal_enabled       = amort.paypal_enabled == true,
     paypal_target        = paypal_target,
     price_eur            = amort.price_eur,
+    trader_vat_note      = amort.trader_vat_note,
   }
 end
 

@@ -129,7 +129,7 @@ export function register(server, token) {
             if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
             if (s.amortization.paypal_enabled) {
               const eur = s.amortization.price_eur ? `${s.amortization.price_eur} EUR` : 'Preis auf Anfrage';
-              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.`);
+              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.${s.amortization.price_note ? ` Preishinweis: ${s.amortization.price_note}` : ''}`);
             }
           } else {
             lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);

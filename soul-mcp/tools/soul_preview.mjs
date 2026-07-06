@@ -94,7 +94,11 @@ export function register(server, _token) {
           : (d.preview || '(no AGENT block content found)');
 
         const paypalLines = d.paypal_accepted
-          ? [`PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`, ``]
+          ? [
+              `PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`,
+              ...(d.price_note ? [`Price note: ${d.price_note}`] : []),
+              ``,
+            ]
           : [];
 
         const lines = [

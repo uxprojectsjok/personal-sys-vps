@@ -27,6 +27,16 @@ const POLYGONSCAN_BASE   = 'https://api.etherscan.io/v2/api'; // Etherscan API V
 // keccak256("Anchored(bytes32,bytes32,uint32,uint256)")
 const ANCHORED_TOPIC0    = '0x24b87c8294e674d1419dd6c41c12b8d49dc2544499faf53e81accbe330f7cdae';
 const SAVE_INTERVAL_MS = 60_000;  // Disk-Sync alle 60s
+
+// Preisangabe MwSt. (PAngV §6) — generischer Fallback für Discovery-Flächen
+// (scan/discover/llms.txt), falls der Betreiber keinen eigenen trader_vat_note
+// gesetzt hat. Mit gesetztem trader_vat_note (z.B. "§19 UStG, keine USt.") wird
+// IMMER dieser echte, operator-spezifische Text bevorzugt — der generische
+// Text impliziert "ggf. inkl. MwSt.", was für Kleinunternehmer schlicht falsch wäre.
+const PRICE_NOTE_FALLBACK = 'Alle Preise sind Endpreise.';
+function priceNote(am) {
+  return (am.trader_vat_note && am.trader_vat_note.trim() !== '') ? am.trader_vat_note : PRICE_NOTE_FALLBACK;
+}
 const IPFS_TTL_MS      = 24 * 60 * 60 * 1000; // IPFS-Cache 24h
 
 // ── Härtung: Limits ───────────────────────────────────────────────────────────
@@ -219,6 +229,7 @@ async function enrichFromIpfs(entry, rawCid) {
           paypal_enabled: true,
           paypal_target:  str(am.paypal_target, 200) ?? null,
           price_eur:      str(am.price_eur, 20) ?? null,
+          price_note:     str(priceNote(am), 300),
         }),
       };
     }
@@ -257,6 +268,7 @@ async function enrichFromLocal(entry, soulId) {
         paypal_enabled: true,
         paypal_target:  str(paypalTarget, 200) ?? null,
         price_eur:      str(am.price_eur, 20) ?? null,
+        price_note:     str(priceNote(am), 300),
       }),
     };
     if (am.enabled && BASE_URL) {
@@ -538,6 +550,7 @@ async function seedFromLocalAnchors() {
                 paypal_enabled: true,
                 paypal_target:  str(paypalTarget, 200) ?? null,
                 price_eur:      str(am.price_eur, 20) ?? null,
+                price_note:     str(priceNote(am), 300),
               }),
             };
             if (am.enabled && BASE_URL) {

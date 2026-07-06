@@ -203,6 +203,10 @@ if amort.paypal_enabled then
   response.paypal_accepted = true
   response.paypal_target   = target
   response.price_eur       = amort.price_eur or ""
+  -- Preisangabe MwSt. (PAngV §6) — Endpreis-Klarstellung, Pflichtangabe vor Vertragsschluss
+  response.price_note      = (amort.trader_vat_note and amort.trader_vat_note ~= "")
+                              and amort.trader_vat_note
+                              or "Alle Preise sind Endpreise (inkl. ggf. anfallender gesetzl. MwSt.)."
   response.paypal_note     = "Für Nicht-Krypto-Zugang: WENN der Käufer in der EU ist, ZUERST" ..
     " show_withdrawal_terms aufrufen (gesetzliches Widerrufsrecht, nicht optional)," ..
     " erst danach zur Zahlung übergehen. Dann PayPal an " .. target ..
