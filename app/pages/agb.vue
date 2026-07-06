@@ -109,7 +109,7 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
 .content { max-width: 720px; margin: 0 auto; padding: 56px clamp(20px,4vw,44px) 80px; }
 .content h1 { font-family: var(--serif); font-size: clamp(26px,4vw,42px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 12px; }
 .content h2 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright); margin: 40px 0 12px; font-weight: 500; }
-.content p { font-size: 16px; line-height: 1.7; color: var(--fg-2); margin: 0 0 14px; }
+.content p { font-size: 16px; line-height: 1.7; color: var(--fg); margin: 0 0 14px; }
 .content .lead { font-size: 17px; color: var(--fg); }
 .content code { font-family: var(--mono); font-size: 14px; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
 .content .fine { font-size: 13px; color: var(--fg-3); margin-top: 40px; }

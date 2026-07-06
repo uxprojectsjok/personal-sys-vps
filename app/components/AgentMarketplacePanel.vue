@@ -312,16 +312,6 @@
               </div>
             </div>
 
-            <div v-if="issuedEmailTemplate" class="cid">
-              <span class="kicker">{{ $t('marketplace.email_template_hint') }}</span>
-              <p class="field-hint">{{ $t('marketplace.email_template_note') }}</p>
-              <textarea class="email-template-box" readonly rows="8"
-                :value="`An: ${issuedEmailTemplate.to || '(E-Mail des Käufers eintragen)'}\nBetreff: ${issuedEmailTemplate.subject}\n\n${issuedEmailTemplate.body}`" />
-              <button class="btn btn-ghost" style="margin-top:8px" @click="copyEmailTemplate">
-                {{ emailTemplateCopied ? $t('common.copy_done') : $t('marketplace.email_template_copy') }}
-              </button>
-            </div>
-
             <div v-if="tokenList.length" class="token-list">
               <div v-for="tk in tokenList" :key="tk.token" class="token-row">
                 <div class="token-info">
@@ -680,8 +670,6 @@ const manualReferenceId = ref('')
 const issuingToken    = ref(false)
 const issueTokenError = ref('')
 const issuedToken     = ref('')
-const issuedEmailTemplate = ref(null)
-const emailTemplateCopied = ref(false)
 const tokenCopied     = ref(false)
 const tokenList       = ref([])
 const tokensLoaded    = ref(false)
@@ -708,7 +696,6 @@ async function loadTokenList() {
 async function issueManualToken() {
   issueTokenError.value = ''
   issuedToken.value     = ''
-  issuedEmailTemplate.value = null
   issuingToken.value    = true
   try {
     const days = Math.min(30, Math.max(1, Math.floor(Number(manualDuration.value) || 1)))
@@ -720,7 +707,6 @@ async function issueManualToken() {
     const d = await r.json()
     if (!r.ok || !d.ok) throw new Error(d.message || d.error || 'Fehler beim Ausstellen')
     issuedToken.value      = d.access_token
-    issuedEmailTemplate.value = d.email_template || null
     manualNote.value       = ''
     manualReferenceId.value = ''
     await loadTokenList()
@@ -735,15 +721,6 @@ async function copyIssuedToken() {
   await navigator.clipboard.writeText(issuedToken.value).catch(() => {})
   tokenCopied.value = true
   setTimeout(() => { tokenCopied.value = false; issuedToken.value = '' }, 1500)
-}
-
-async function copyEmailTemplate() {
-  if (!issuedEmailTemplate.value) return
-  const t = issuedEmailTemplate.value
-  const text = `An: ${t.to || '(E-Mail des Käufers eintragen)'}\nBetreff: ${t.subject}\n\n${t.body}`
-  await navigator.clipboard.writeText(text).catch(() => {})
-  emailTemplateCopied.value = true
-  setTimeout(() => { emailTemplateCopied.value = false }, 1500)
 }
 
 async function revokeManualToken(token) {
@@ -1176,7 +1153,6 @@ async function register() {
 /* Token-Tab */
 .token-copy-row { display: flex; align-items: center; gap: 10px; }
 .token-copy-val { flex: 1; margin: 0; }
-.email-template-box { width: 100%; font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--fg); background: var(--paper-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 10px; resize: vertical; }
 .token-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--rule-2); margin-top: 4px; }
 .token-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--paper-2); }
 .token-row + .token-row { border-top: 1px solid var(--rule-2); }

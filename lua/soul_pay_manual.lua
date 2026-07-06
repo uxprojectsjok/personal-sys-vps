@@ -90,34 +90,4 @@ if tf then tf:write(token_data); tf:close() end
 -- Abgelaufene Token-Dateien aufräumen (async, Fehler ignorieren)
 os.execute("find /var/lib/sys/pol_tokens/ -name '*.json' -mmin +" .. math.ceil(TOKEN_TTL/60) .. " -delete 2>/dev/null &")
 
--- ── Bestätigungsmail-Vorlage (§312f BGB, dauerhafter Datenträger) ────────────
--- Aus dem Sidecar, das accept_digital_content_terms neben dem Consent-PDF
--- abgelegt hat — keine automatische Zustellung (kein PayPal-Webhook vorhanden,
--- der Käufer-Kontakt kommt nur über die Zahlungsnotiz), aber eine fertige,
--- kopierbare Vorlage direkt nach Token-Ausstellung.
-local email_template = cjson.null
-local sidecar_path = "/var/lib/sys/souls/" .. soul_id .. "/consent_docs/" .. reference_id .. ".json"
-local sf = io.open(sidecar_path, "r")
-if sf then
-  local ok_s, sidecar = pcall(cjson.decode, sf:read("*a"))
-  sf:close()
-  if ok_s and type(sidecar) == "table" then
-    local body = "Hallo,\n\n" ..
-      "vielen Dank für deinen Kauf — hier die Bestätigung:\n\n" ..
-      "Leistung: Zeitlich begrenzter Zugang zu " .. (sidecar.soul_name or soul_id) .. "\n" ..
-      "Preis: " .. (sidecar.price_eur or "?") .. " EUR\n" ..
-      "Datum/Uhrzeit der Einwilligung: " .. (sidecar.timestamp or "") .. "\n" ..
-      "Referenz-ID: " .. reference_id .. "\n" ..
-      "Widerrufsbelehrung (PDF): " .. (sidecar.download_url or "") .. "\n" ..
-      "Gültig bis: " .. expires_iso .. "\n\n" ..
-      "Dein Zugriffs-Token:\n" .. access_token .. "\n\n" ..
-      "Viele Grüße"
-    email_template = {
-      to      = sidecar.contact_note or "",
-      subject = "Bestätigung deines Kaufs — Referenz-ID " .. reference_id,
-      body    = body,
-    }
-  end
-end
-
-ngx.say(cjson.encode({ ok = true, access_token = access_token, expires_at = expires_iso, email_template = email_template }))
+ngx.say(cjson.encode({ ok = true, access_token = access_token, expires_at = expires_iso }))
