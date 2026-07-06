@@ -89,6 +89,7 @@ for fname in p:lines() do
             expires_at     = tdata.expires_at or "",
             tx_hash        = tdata.tx_hash or "",
             payment_method = tdata.payment_method or "pol",
+            reference_id   = tdata.reference_id or cjson.null,
           })
         end
       end

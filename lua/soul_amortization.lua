@@ -49,6 +49,12 @@ local DEFAULTS = {
   paypal_link     = "",
   paypal_email    = "",
   price_eur       = "",
+  -- Anbieterkennzeichnung (Impressum) — für EU-Widerrufsbelehrung, s. accept_digital_content_terms
+  trader_name      = "",
+  trader_address   = "",
+  trader_email     = "",
+  trader_legal_form = "",
+  trader_vat_note  = "",
 }
 
 -- ── GET ───────────────────────────────────────────────────────────────────────
@@ -166,6 +172,26 @@ if type(incoming.price_eur) == "string" then
   if n and n >= 0 then
     amort.price_eur = incoming.price_eur
   end
+end
+
+-- Anbieterkennzeichnung (Impressum): einfache String-Felder, für die EU-Widerrufsbelehrung
+if type(incoming.trader_name) == "string" then
+  amort.trader_name = incoming.trader_name:match("^%s*(.-)%s*$"):sub(1, 200)
+end
+if type(incoming.trader_address) == "string" then
+  amort.trader_address = incoming.trader_address:match("^%s*(.-)%s*$"):sub(1, 300)
+end
+if type(incoming.trader_email) == "string" then
+  local email = incoming.trader_email:match("^%s*(.-)%s*$"):sub(1, 254)
+  if email == "" or email:match("^[%w%.%-_%+]+@[%w%.%-]+%.%a%a+$") then
+    amort.trader_email = email
+  end
+end
+if type(incoming.trader_legal_form) == "string" then
+  amort.trader_legal_form = incoming.trader_legal_form:match("^%s*(.-)%s*$"):sub(1, 150)
+end
+if type(incoming.trader_vat_note) == "string" then
+  amort.trader_vat_note = incoming.trader_vat_note:match("^%s*(.-)%s*$"):sub(1, 300)
 end
 
 -- agent_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)
