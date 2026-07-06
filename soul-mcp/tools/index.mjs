@@ -18,6 +18,7 @@ import { register as verifyIdentity }        from './verify_identity.mjs';
 import { register as soulEarnings }          from './soul_earnings.mjs';
 import { register as soulDiscover }          from './soul_discover.mjs';
 import { register as acceptDigitalContentTerms } from './accept_digital_content_terms.mjs';
+import { register as showWithdrawalTerms }      from './show_withdrawal_terms.mjs';
 import { register as soulMaturity }          from './soul_maturity.mjs';
 import { register as soulSkills }            from './soul_skills.mjs';
 import { register as soulContextQuery }      from './soul_context_query.mjs';
@@ -96,6 +97,7 @@ export function registerTools(server, token, soulId = null) {
   verifyIdentity(server, token);
   soulEarnings(server, token);
   soulDiscover(server, token);
+  if (soulId) showWithdrawalTerms(server, soulId);
   if (soulId) acceptDigitalContentTerms(server, soulId);
   vaultManifest(server, token);
   audioList(server, token);
@@ -176,6 +178,7 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
   // soul_discover / soul_preview: interne Endpoints, kein Auth nötig — immer verfügbar
   soulDiscover(server, polToken);
   soulPreview(server, polToken);
+  if (soulId) showWithdrawalTerms(server, soulId);
   if (soulId) acceptDigitalContentTerms(server, soulId);
 
   // vault_shared: nur lesend (get/list) — kein upload für zahlende Agenten (Sicherheit)
@@ -240,6 +243,7 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
   // soul_discover / soul_preview: interne Endpoints, kein Auth nötig — immer verfügbar
   soulDiscover(server, peerToken);
   soulPreview(server, peerToken);
+  showWithdrawalTerms(server, targetSoulId);
   acceptDigitalContentTerms(server, targetSoulId);
 
   // soul_comment: immer verfügbar für vertrauenswürdige Peers
