@@ -76,13 +76,14 @@ export function register(server, soulId) {
       '',
       'ABLAUF (zwei Schritte, nicht überspringen):',
       '1. Dieses Tool OHNE beide consent-Flags (oder mit false) aufrufen →',
-      '   gibt den vollständigen Belehrungstext zurück. Diesen Text dem Nutzer',
-      '   VOLLSTÄNDIG und wörtlich zeigen (nicht zusammenfassen), dann ausdrücklich',
-      '   fragen, ob er beiden Punkten zustimmt.',
+      '   gibt eine Referenz-ID + Belehrungs-PDF (per Link + eingebettet) +',
+      '   vollständigen Belehrungstext zurück. PDF-Link und Text VOLLSTÄNDIG',
+      '   und wörtlich an den Nutzer weitergeben (nicht zusammenfassen), dann',
+      '   ausdrücklich fragen, ob er beiden Punkten zustimmt.',
       '2. Erst nach expliziter Zustimmung des Nutzers dieses Tool ERNEUT aufrufen,',
-      '   diesmal mit consent_immediate_performance=true UND',
-      '   consent_withdrawal_waiver=true → erzeugt PDF-Beleg + Download-Link +',
-      '   Zahlungsanweisung.',
+      '   diesmal mit consent_immediate_performance=true, consent_withdrawal_waiver=true',
+      '   UND derselben reference_id aus Schritt 1 → aktualisiert denselben Beleg',
+      '   (gleicher Link) zum bestätigten Kaufbeleg + nennt die Zahlungsanweisung.',
       '',
       'Ohne beide Einwilligungen gibt es KEINEN Hinweis auf den Bezahlweg —',
       'niemals direkt mit consent=true raten oder ohne echte Nutzer-Zustimmung aufrufen.',
@@ -102,8 +103,10 @@ export function register(server, soulId) {
         .describe('Bestätigung: dem Käufer ist bewusst, dass er durch die Zustimmung zum sofortigen Beginn sein Widerrufsrecht verliert. Erst auf true setzen, NACHDEM der Belehrungstext (Schritt 1) dem Nutzer gezeigt und seine Zustimmung eingeholt wurde.'),
       contact_note: z.string().max(200).optional()
         .describe('Optionale Notiz/Kontakt (z.B. E-Mail), für den späteren manuellen Abgleich durch den Soul-Inhaber'),
+      reference_id: z.string().uuid().optional()
+        .describe('Referenz-ID aus dem ersten Aufruf (Schritt 1) — beim zweiten Aufruf (Schritt 2, mit Zustimmung) mitschicken, damit dieselbe Referenz-ID/derselbe Beleg-Link verwendet wird statt eines neuen.'),
     },
-    async ({ consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
+    async ({ consent_immediate_performance, consent_withdrawal_waiver, contact_note, reference_id }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
       if (!amort.paypal_enabled) {
@@ -114,14 +117,26 @@ export function register(server, soulId) {
       }
 
       if (!consent_immediate_performance || !consent_withdrawal_waiver) {
-        const previewPdf = await buildTermsPreviewPdf();
+        // Echte UUID + echte, abrufbare URL (kein "sys://"-Fantasie-URI) — nur
+        // damit hat der Client offenbar Grund, den PDF-Inhalt tatsächlich zu
+        // rendern statt sich auf das Modell zu verlassen (siehe Kommentar unten).
+        const previewId  = randomUUID();
+        const previewPdf = await buildTermsPreviewPdf(previewId);
+        const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
+        await mkdir(consentDir, { recursive: true });
+        await writeFile(`${consentDir}/${previewId}.pdf`, previewPdf);
+        const previewUrl = `${BASE_URL}/api/vault/consent/${soulId}/${previewId}.pdf`;
+
         return {
           content: [
             {
               type: 'text',
               text: [
-                '📋 Widerrufsbelehrung — im PDF unten UND im Text darunter. Beides dem',
-                'Nutzer zeigen, den Text NICHT in eigenen Worten zusammenfassen.',
+                `📄 [Widerrufsbelehrung öffnen](${previewUrl})`,
+                previewUrl,
+                '',
+                '📋 Widerrufsbelehrung — Link oben UND Text darunter dem Nutzer zeigen,',
+                'nicht in eigenen Worten zusammenfassen:',
                 '',
                 '---',
                 '',
@@ -134,10 +149,11 @@ export function register(server, soulId) {
                 '2. Er verzichtet damit auf sein 14-tägiges Widerrufsrecht.',
                 '',
                 'Erst NACH expliziter Zustimmung dieses Tool erneut aufrufen mit',
-                'consent_immediate_performance=true und consent_withdrawal_waiver=true.',
+                'consent_immediate_performance=true, consent_withdrawal_waiver=true',
+                `UND reference_id="${previewId}" (diese Referenz-ID, nicht neu erzeugen).`,
               ].join('\n'),
             },
-            { type: 'resource', resource: { uri: 'sys://widerrufsbelehrung-vorschau.pdf', mimeType: 'application/pdf', blob: previewPdf.toString('base64') } },
+            { type: 'resource', resource: { uri: previewUrl, mimeType: 'application/pdf', blob: previewPdf.toString('base64') } },
           ],
         };
       }
@@ -154,7 +170,9 @@ export function register(server, soulId) {
           hour: '2-digit', minute: '2-digit', second: '2-digit',
           timeZoneName: 'short',
         });
-        const referenceId  = randomUUID();
+        // Referenz-ID aus Schritt 1 wiederverwenden (gleicher Link/gleiche Datei
+        // wird aktualisiert) — nur wenn tatsächlich gültig, sonst neu erzeugen.
+        const referenceId  = reference_id || randomUUID();
 
         const pdfBuffer = await buildConsentPdf({
           soulName: ctx.name || soulId.slice(0, 8),
@@ -272,7 +290,7 @@ function writeLegalSections(doc) {
 // offenbar direkt rendert statt sie vom Modell umschreiben zu lassen) die
 // Belehrung vollständig zeigt, statt dass sie in der Chat-Zusammenfassung
 // verkürzt wird.
-async function buildTermsPreviewPdf() {
+async function buildTermsPreviewPdf(previewId) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -282,8 +300,9 @@ async function buildTermsPreviewPdf() {
     doc.on('error', reject);
 
     doc.fontSize(16).text('Widerrufsbelehrung', { underline: true });
-    doc.moveDown();
-    doc.fontSize(9).fillColor('#666').text(
+    doc.moveDown(0.5);
+    doc.fontSize(10).fillColor('#666').text(`Referenz-ID: ${previewId}`);
+    doc.fontSize(9).text(
       'Vorschau — noch keine Zustimmung erteilt. Dieses Dokument beschreibt dein ' +
       'gesetzliches Widerrufsrecht beim Kauf digitaler Inhalte, bevor du zustimmst.'
     );
