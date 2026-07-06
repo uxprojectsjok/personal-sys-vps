@@ -104,38 +104,45 @@ export function register(server, soulId) {
         .describe('Optionale Notiz/Kontakt (z.B. E-Mail), für den späteren manuellen Abgleich durch den Soul-Inhaber'),
     },
     async ({ consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
-      if (!consent_immediate_performance || !consent_withdrawal_waiver) {
+      const ctx   = await loadCtx(soulId);
+      const amort = ctx.amortization || {};
+      if (!amort.paypal_enabled) {
         return {
-          content: [{
-            type: 'text',
-            text: [
-              '📋 Widerrufsbelehrung — bitte VOLLSTÄNDIG an den Nutzer weitergeben,',
-              'nicht zusammenfassen:',
-              '',
-              legalTextForChat(),
-              '',
-              '---',
-              '',
-              'Frage den Nutzer jetzt ausdrücklich, ob er BEIDEN Punkten zustimmt:',
-              '1. Die digitale Leistung beginnt sofort nach Zahlung (vor Ablauf der 14-Tage-Frist).',
-              '2. Er verzichtet damit auf sein 14-tägiges Widerrufsrecht.',
-              '',
-              'Erst NACH expliziter Zustimmung dieses Tool erneut aufrufen mit',
-              'consent_immediate_performance=true und consent_withdrawal_waiver=true.',
-            ].join('\n'),
-          }],
+          content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Nicht-Krypto-Zahlungsweg.' }],
+          isError: true,
+        };
+      }
+
+      if (!consent_immediate_performance || !consent_withdrawal_waiver) {
+        const previewPdf = await buildTermsPreviewPdf();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: [
+                '📋 Widerrufsbelehrung — im PDF unten UND im Text darunter. Beides dem',
+                'Nutzer zeigen, den Text NICHT in eigenen Worten zusammenfassen.',
+                '',
+                '---',
+                '',
+                legalTextForChat(),
+                '',
+                '---',
+                '',
+                'Frage den Nutzer jetzt ausdrücklich, ob er BEIDEN Punkten zustimmt:',
+                '1. Die digitale Leistung beginnt sofort nach Zahlung (vor Ablauf der 14-Tage-Frist).',
+                '2. Er verzichtet damit auf sein 14-tägiges Widerrufsrecht.',
+                '',
+                'Erst NACH expliziter Zustimmung dieses Tool erneut aufrufen mit',
+                'consent_immediate_performance=true und consent_withdrawal_waiver=true.',
+              ].join('\n'),
+            },
+            { type: 'resource', resource: { uri: 'sys://widerrufsbelehrung-vorschau.pdf', mimeType: 'application/pdf', blob: previewPdf.toString('base64') } },
+          ],
         };
       }
 
       try {
-        const ctx   = await loadCtx(soulId);
-        const amort = ctx.amortization || {};
-        if (!amort.paypal_enabled) {
-          return {
-            content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Nicht-Krypto-Zahlungsweg.' }],
-            isError: true,
-          };
-        }
         const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
         const priceEur     = amort.price_eur || '?';
         const now          = new Date();
@@ -242,15 +249,47 @@ async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote
     }
     doc.moveDown();
 
-    for (const section of LEGAL_SECTIONS) {
-      doc.fontSize(12).text(section.title, { underline: true });
-      doc.fontSize(10).text(section.text);
-      doc.moveDown();
-    }
+    writeLegalSections(doc);
 
     doc.fontSize(12).text('Erteilte Einwilligungen', { underline: true });
     doc.fontSize(10).text(`[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung: JA`);
     doc.text(`[${timestamp}] Kenntnisnahme des dadurch erlöschenden Widerrufsrechts: JA`);
+
+    doc.end();
+  });
+}
+
+function writeLegalSections(doc) {
+  for (const section of LEGAL_SECTIONS) {
+    doc.fontSize(12).text(section.title, { underline: true });
+    doc.fontSize(10).text(section.text);
+    doc.moveDown();
+  }
+}
+
+// Vorschau-PDF VOR der Zustimmung — noch kein Kauf, keine Referenz-ID, wird
+// nicht gespeichert. Existiert nur, damit der Client (der PDF-Resource-Blöcke
+// offenbar direkt rendert statt sie vom Modell umschreiben zu lassen) die
+// Belehrung vollständig zeigt, statt dass sie in der Chat-Zusammenfassung
+// verkürzt wird.
+async function buildTermsPreviewPdf() {
+  const { default: PDFDocument } = await import('pdfkit');
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.fontSize(16).text('Widerrufsbelehrung', { underline: true });
+    doc.moveDown();
+    doc.fontSize(9).fillColor('#666').text(
+      'Vorschau — noch keine Zustimmung erteilt. Dieses Dokument beschreibt dein ' +
+      'gesetzliches Widerrufsrecht beim Kauf digitaler Inhalte, bevor du zustimmst.'
+    );
+    doc.fillColor('black').moveDown();
+
+    writeLegalSections(doc);
 
     doc.end();
   });
