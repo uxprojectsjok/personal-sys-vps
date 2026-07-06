@@ -48,9 +48,12 @@ local size = f:seek("end")
 f:seek("set", 0)
 
 ngx.header["Content-Type"]        = "application/pdf"
-ngx.header["Content-Disposition"] = 'inline; filename="widerrufsbestaetigung.pdf"'
+ngx.header["Content-Disposition"] = 'attachment; filename="widerrufsbestaetigung.pdf"'
 ngx.header["Content-Length"]      = tostring(size)
-ngx.header["Cache-Control"]       = "private, max-age=3600"
+-- Kein Caching: dieselbe URL liefert erst die Vorschau (show_withdrawal_terms),
+-- dann nach Zustimmung den aktualisierten, bestätigten Beleg (accept_digital_content_terms)
+-- aus — ein gecachter Browser würde sonst die veraltete Vorschau weiterzeigen.
+ngx.header["Cache-Control"]       = "no-store"
 
 local CHUNK = 65536
 while true do
