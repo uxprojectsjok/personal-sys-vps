@@ -132,6 +132,17 @@ export function register(server, soulId) {
 
         const downloadUrl = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
 
+        // Sidecar mit den Vertragsdaten — Grundlage für die Bestätigungsmail
+        // (§312f BGB, dauerhafter Datenträger), die soul_pay_manual.lua nach
+        // Token-Ausstellung als fertige Vorlage zurückgibt.
+        await writeFile(`${consentDir}/${terms_token}.json`, JSON.stringify({
+          soul_name:    ctx.name || soulId.slice(0, 8),
+          price_eur:    priceEur,
+          timestamp:    timestampDisplay,
+          contact_note: contact_note || '',
+          download_url: downloadUrl,
+        }));
+
         return {
           content: [
             {

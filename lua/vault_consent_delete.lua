@@ -34,5 +34,8 @@ if not ok then
   ngx.status = 500; ngx.say('{"error":"delete_failed"}'); return
 end
 
+-- Sidecar (Vertragsdaten für die Bestätigungsmail-Vorlage) mit aufräumen, falls vorhanden
+os.remove("/var/lib/sys/souls/" .. soul_id .. "/consent_docs/" .. reference_id .. ".json")
+
 ngx.status = 200
 ngx.say('{"ok":true}')
