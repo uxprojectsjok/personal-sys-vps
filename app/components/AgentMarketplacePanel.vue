@@ -299,7 +299,7 @@
               </div>
             </div>
 
-            <button class="btn btn-primary" style="margin: 14px 0;" :disabled="issuingToken" @click="issueManualToken">
+            <button class="btn btn-primary" style="margin: 14px auto; display: flex;" :disabled="issuingToken" @click="issueManualToken">
               {{ issuingToken ? $t('marketplace.token_issuing') : $t('marketplace.token_issue_btn') }}
             </button>
 
