@@ -362,7 +362,8 @@ function cardDesc(card) {
 @media (max-width: 720px) { .rf-cards { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .rf-cards { grid-template-columns: 1fr; } }
 .rf-card {
-  background: var(--surface); border: 1px solid var(--line);
+  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
   padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 6px;
 }
 .rf-card-top {
@@ -393,8 +394,8 @@ function cardDesc(card) {
 }
 .rf-genesis-badge {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: #d4af37;
-  border: 1px solid rgba(212,175,55,0.4); border-radius: 3px;
+  text-transform: uppercase; color: var(--fg);
+  border: 1px solid var(--line-2); border-radius: 3px;
   padding: 2px 7px; line-height: 1.6;
 }
 .rf-chain {
@@ -402,7 +403,8 @@ function cardDesc(card) {
 }
 @media (max-width: 640px) { .rf-chain { grid-template-columns: 1fr; } }
 .rf-chain-item {
-  background: var(--surface); border: 1px solid var(--line);
+  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
   padding: 16px; display: flex; flex-direction: column; gap: 2px;
 }
 .rf-chain-val {
@@ -410,7 +412,7 @@ function cardDesc(card) {
   letter-spacing: -0.02em; line-height: 1;
 }
 .rf-chain-unit {
-  font-family: var(--mono); font-size: 13px; color: #d4af37;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-3);
   letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
 }
 .rf-chain-label {
