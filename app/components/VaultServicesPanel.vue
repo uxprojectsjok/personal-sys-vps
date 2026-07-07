@@ -11,7 +11,7 @@
         <span class="text-sm font-medium text-[var(--sys-fg)]">{{ $t('services.title') }}</span>
         <span
           v-if="services.length"
-          class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10"
+          class="text-sm font-medium px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10"
         >
           {{ services.length }}
         </span>
@@ -44,9 +44,9 @@
 
         <!-- Erklärung -->
         <div class="px-5 pt-4" style="padding-bottom:20px">
-          <p style="font-size:13px;font-weight:500;line-height:1.6;color:var(--fg);margin:0">
+          <p style="font-size:15px;font-weight:500;line-height:1.6;color:var(--fg);margin:0">
             {{ $t('services.prose_1') }}
-            <code style="color:var(--accent);font-size:11px">Authorization: Bearer &lt;token&gt;</code>
+            <code style="color:var(--accent);font-size:13px">Authorization: Bearer &lt;token&gt;</code>
             {{ $t('services.prose_2') }}
           </p>
         </div>
@@ -64,23 +64,23 @@
                 <span
                   v-for="key in (Array.isArray(svc.permissions) ? svc.permissions : Object.keys(svc.permissions).filter(k => svc.permissions[k]))"
                   :key="key"
-                  class="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white border border-white/8"
+                  class="text-sm px-1.5 py-0.5 rounded bg-white/5 text-white border border-white/8"
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
-              <p class="text-xs text-[var(--sys-fg-muted)] mt-1 font-mono">
+              <p class="text-sm text-[var(--sys-fg-muted)] mt-1 font-mono">
                 {{ $t('services.expires_at', { date: formatExpiry(svc.expires_at, $t('services.no_expiry')) }) }}
               </p>
             </div>
             <div class="flex flex-col items-end gap-2 flex-none">
               <button
-                class="text-xs px-2 py-1 rounded border border-[rgba(255,255,255,0.1)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.25)] transition-colors min-h-[28px]"
+                class="text-sm px-2 py-1 rounded border border-[rgba(255,255,255,0.1)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.25)] transition-colors min-h-[28px]"
                 @click="tokenModal = svc"
                 :aria-label="$t('services.show_token_aria', { name: svc.name })"
               >
                 {{ $t('services.btn_token') }}
               </button>
               <button
-                class="text-xs px-2 py-1 rounded border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
+                class="text-sm px-2 py-1 rounded border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
                 @click="handleRevoke(svc.token, svc.name)"
                 :aria-label="$t('services.revoke_aria', { name: svc.name })"
               >
@@ -91,19 +91,19 @@
         </div>
 
         <div v-else class="px-5 py-4">
-          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.empty') }}</p>
+          <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.empty') }}</p>
         </div>
 
         <!-- Neuer Dienst -->
         <div class="px-5 pb-5 pt-4 border-t border-[var(--sys-border)]" style="display:flex;flex-direction:column;gap:12px">
-          <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.new_service') }}</p>
+          <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0">{{ $t('services.new_service') }}</p>
 
           <input
             v-model="newName"
             type="text"
             :placeholder="$t('services.name_placeholder')"
             class="sys-input"
-            style="font-size:13px"
+            style="font-size:15px"
             :aria-label="$t('services.name_aria')"
           />
 
@@ -112,7 +112,7 @@
             <button
               v-for="p in allPermissions"
               :key="p.value"
-              style="font-size:13px;font-weight:500;padding:6px 14px;border:1px solid;border-radius:var(--r-xs);transition:all .15s;min-height:34px"
+              style="font-size:15px;font-weight:500;padding:6px 14px;border:1px solid;border-radius:var(--r-xs);transition:all .15s;min-height:34px"
               :style="newPermissions.includes(p.value)
                 ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)'
                 : 'border-color:var(--line-2);color:var(--fg)'"
@@ -126,7 +126,7 @@
             <button
               v-for="opt in expiryOptions"
               :key="opt.value"
-              style="padding:8px 4px;min-height:36px;font-size:13px;font-weight:500;font-family:var(--mono);border:1px solid;border-radius:var(--r-xs);transition:all .15s"
+              style="padding:8px 4px;min-height:38px;font-size:15px;font-weight:500;font-family:var(--mono);border:1px solid;border-radius:var(--r-xs);transition:all .15s"
               :style="newExpiry === opt.value
                 ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)'
                 : 'border-color:var(--line-2);color:var(--fg)'"
@@ -143,7 +143,7 @@
             {{ addLoading ? $t('services.btn_creating') : $t('services.btn_add') }}
           </button>
 
-          <p v-if="error" class="text-xs text-red-400">{{ error }}</p>
+          <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
         </div>
 
       </div>
@@ -175,7 +175,7 @@
           <div style="padding:16px 20px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
             <div>
               <p style="font-size:14px;font-weight:500;color:var(--fg);margin:0">{{ tokenModal.name }}</p>
-              <p style="font-size:11px;color:var(--fg-3);margin:2px 0 0">{{ $t('services.service_token_label') }}</p>
+              <p style="font-size:13px;color:var(--fg-3);margin:2px 0 0">{{ $t('services.service_token_label') }}</p>
             </div>
             <button class="icon-btn" @click="tokenModal = null" :aria-label="$t('common.close')" style="flex:none">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -187,13 +187,13 @@
           <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:12px">
             <!-- Token-Anzeige -->
             <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px">
-              <p style="font-size:12px;font-family:var(--mono);color:var(--fg);word-break:break-all;margin:0;line-height:1.6;user-select:all">{{ tokenModal.token }}</p>
+              <p style="font-size:14px;font-family:var(--mono);color:var(--fg);word-break:break-all;margin:0;line-height:1.6;user-select:all">{{ tokenModal.token }}</p>
             </div>
 
             <!-- Verwendung -->
-            <p style="font-size:13px;color:var(--fg-2);line-height:1.6;margin:0">
+            <p style="font-size:15px;color:var(--fg-2);line-height:1.6;margin:0">
               {{ $t('services.usage_hint') }}
-              <code style="display:block;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--fg-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 10px;word-break:break-all">Authorization: Bearer {{ tokenModal.token }}</code>
+              <code style="display:block;margin-top:6px;font-family:var(--mono);font-size:13px;color:var(--fg-2);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 10px;word-break:break-all">Authorization: Bearer {{ tokenModal.token }}</code>
             </p>
 
             <!-- Verbindung testen + Kopieren -->
@@ -223,13 +223,13 @@
             </div>
 
             <!-- Test-Hinweis bei Fehler -->
-            <p v-if="testResult === 'error' && testErrorCode === 'vault_locked'" style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">
+            <p v-if="testResult === 'error' && testErrorCode === 'vault_locked'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">
               {{ $t('services.err_vault_locked_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-xs text-white leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-sm text-white leading-relaxed">
               {{ $t('services.err_key_wrong_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-xs text-white leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-sm text-white leading-relaxed">
               {{ $t('services.err_no_sync_hint') }}
             </p>
           </div>

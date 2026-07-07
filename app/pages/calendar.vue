@@ -352,7 +352,7 @@ function onNav(id) {
 }
 .kal-title em { font-style: italic; color: var(--accent); }
 .kal-sub {
-  font-size: 15px;
+  font-size: 17px;
   color: var(--fg);
   line-height: 1.65;
   max-width: 480px;
@@ -370,7 +370,7 @@ function onNav(id) {
 .kal-nav-left { display: flex; align-items: center; gap: 12px; }
 .kal-month-label {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.06em;
   color: var(--fg);
   min-width: 120px;
@@ -378,7 +378,7 @@ function onNav(id) {
 }
 .kal-today-btn {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--fg-2);
@@ -409,7 +409,7 @@ function onNav(id) {
 }
 .kal-dh {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--fg-2);
@@ -451,11 +451,11 @@ function onNav(id) {
 }
 .kal-num {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--fg-2);
   line-height: 1;
 }
-.kal-cell.today .kal-num { font-size: 12px; }
+.kal-cell.today .kal-num { font-size: 14px; }
 .kal-cell.selected .kal-num { color: var(--accent); }
 
 .kal-dots { display: flex; gap: 2px; min-height: 5px; }
@@ -492,7 +492,7 @@ function onNav(id) {
 }
 .kd-count {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--fg-2);
@@ -501,7 +501,7 @@ function onNav(id) {
 .kd-entries { padding: 8px 0; flex: 1; }
 .kd-empty {
   padding: 12px 16px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--fg-2);
   font-family: var(--mono);
 }
@@ -517,10 +517,10 @@ function onNav(id) {
   width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 4px;
 }
 .kd-entry-info { flex: 1; min-width: 0; }
-.kd-entry-text { font-size: 13px; color: var(--fg); line-height: 1.4; }
+.kd-entry-text { font-size: 15px; color: var(--fg); line-height: 1.4; }
 .kd-entry-type {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-2);
@@ -528,7 +528,7 @@ function onNav(id) {
 }
 .kd-del {
   background: none; border: none;
-  color: var(--fg-4); font-size: 11px; cursor: pointer;
+  color: var(--fg-4); font-size: 13px; cursor: pointer;
   opacity: 0; transition: opacity 0.15s;
   padding: 2px 4px;
 }
@@ -540,7 +540,7 @@ function onNav(id) {
   padding: 12px 16px;
   text-align: left;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   color: var(--accent);
   background: transparent;
@@ -565,7 +565,7 @@ function onNav(id) {
   align-items: center;
   gap: 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--fg-2);
@@ -592,20 +592,20 @@ function onNav(id) {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--fg);
 }
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .modal-row { display: flex; flex-direction: column; gap: 8px; }
 .modal-label {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-2);
 }
 .modal-types { display: flex; gap: 6px; flex-wrap: wrap; }
 .modal-type-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 11px; border: 1px solid var(--line);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
   color: var(--fg-2); background: transparent; cursor: pointer;
   transition: all 0.15s;
 }
@@ -613,7 +613,7 @@ function onNav(id) {
 .modal-textarea {
   width: 100%; background: rgba(255,255,255,0.03);
   border: 1px solid var(--line); padding: 10px 12px;
-  font-family: inherit; font-size: 13px; color: var(--fg); line-height: 1.5;
+  font-family: inherit; font-size: 15px; color: var(--fg); line-height: 1.5;
   resize: none;
 }
 .modal-textarea:focus { outline: none; border-color: var(--accent); }
@@ -624,13 +624,13 @@ function onNav(id) {
 }
 .btn-ghost {
   padding: 7px 16px; background: transparent; border: 1px solid var(--line);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
   color: var(--fg-2); cursor: pointer;
 }
 .btn-accent {
   padding: 7px 16px; background: rgba(109,184,154,0.12);
   border: 1px solid rgba(109,184,154,0.3);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
   color: var(--accent); cursor: pointer;
   transition: background 0.15s;
 }

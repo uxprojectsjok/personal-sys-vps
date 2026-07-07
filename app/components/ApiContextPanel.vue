@@ -167,7 +167,7 @@ async function onSave() {
 
 .api-panel-title {
   font-family: var(--sys-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--sys-fg-muted);
@@ -175,7 +175,7 @@ async function onSave() {
 
 .api-panel-badge {
   font-family: var(--sys-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -216,7 +216,7 @@ async function onSave() {
 }
 .api-panel-row-label {
   font-family: var(--sys-mono);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   color: var(--fg);
   transition: color 0.15s;
@@ -249,7 +249,7 @@ async function onSave() {
 
 .api-panel-prose {
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.6;
   color: var(--fg);
@@ -264,20 +264,20 @@ async function onSave() {
 }
 .api-panel-perm-label {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--fg);
   flex: 1;
 }
 .api-panel-perm-hint {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--fg-3);
   letter-spacing: 0.06em;
 }
 
 .api-panel-error {
   font-family: var(--sys-mono);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--sys-err);
   padding-left: 10px;
   border-left: 2px solid var(--sys-err);

@@ -2,7 +2,7 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <SysMobileNav />
+  <SysMobileNav v-if="hasSoul" />
   <div id="teleports"></div>
 </template>
 
@@ -12,7 +12,7 @@ import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul'
 
 const { setLocale } = useI18n()
-const { soulToken } = useSoul()
+const { soulToken, hasSoul } = useSoul()
 
 if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})

@@ -324,7 +324,7 @@ function onNav(id) {
 .chronik-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
 }
 
 /* ── Search ── */
@@ -337,7 +337,7 @@ function onNav(id) {
 .ch-search-icon { color: var(--fg-3); flex: none; }
 .ch-search {
   background: transparent; border: none; outline: none;
-  color: var(--fg); font-family: var(--sans); font-size: 13px;
+  color: var(--fg); font-family: var(--sans); font-size: 15px;
   width: 160px;
 }
 .ch-search::placeholder { color: var(--fg-3); }
@@ -349,7 +349,7 @@ function onNav(id) {
   margin-bottom: 32px;
 }
 .ch-eyebrow {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
   color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
 }
 .ch-title {
@@ -359,13 +359,13 @@ function onNav(id) {
 }
 .ch-title em { font-style: italic; color: var(--accent); }
 .ch-sub {
-  font-size: 15px; line-height: 1.65; color: var(--fg);
+  font-size: 17px; line-height: 1.65; color: var(--fg);
   max-width: 560px; margin: 0;
 }
 
 /* ── Empty ── */
 .ch-empty {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   letter-spacing: 0.06em; padding: 32px 0;
 }
 
@@ -373,7 +373,7 @@ function onNav(id) {
 .ch-feed { display: flex; flex-direction: column; }
 
 .ch-date-sep {
-  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
   letter-spacing: 0.01em; color: var(--fg);
   padding: 24px 0 12px;
 }
@@ -420,11 +420,11 @@ function onNav(id) {
   color: var(--fg); letter-spacing: -0.015em;
 }
 .ch-time {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   letter-spacing: 0.04em;
 }
 .ch-badge {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
   padding: 2px 7px; border-radius: 20px;
   background: var(--surface-2); color: var(--fg-3);
   border: 1px solid var(--line);
@@ -435,7 +435,7 @@ function onNav(id) {
 .ch-badge-genesis { color: var(--accent); border-color: rgba(109,184,154,0.3); background: rgba(109,184,154,0.08); }
 
 .ch-entry-body {
-  font-size: 15px; line-height: 1.65; color: var(--fg);
+  font-size: 16px; line-height: 1.65; color: var(--fg);
   margin: 0; word-break: break-word;
 }
 

@@ -274,12 +274,12 @@ function cardDesc(card) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 .rf-page {
   max-width: 900px;
-  padding-top: 32px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-top: 36px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 /* ── Header ── */
 .rf-head { margin-bottom: 40px; }
@@ -289,7 +289,7 @@ function cardDesc(card) {
   line-height: 1.1; margin: 8px 0 14px;
 }
 .rf-title em { color: var(--accent); font-style: italic; }
-.rf-lede { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
+.rf-lede { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 /* ── Hero (ring + levels) ── */
 .rf-hero {
@@ -313,13 +313,13 @@ function cardDesc(card) {
   font-family: var(--serif); font-size: 52px; font-weight: 400;
   letter-spacing: -0.03em; color: var(--fg); line-height: 1;
 }
-.rf-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-2); letter-spacing: 0.06em; }
+.rf-unit { font-family: var(--mono); font-size: 16px; color: var(--fg-2); letter-spacing: 0.06em; }
 .rf-level-name {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--accent); margin-top: 4px;
 }
 .rf-next-hint {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.10em;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--fg-4); margin-top: 2px;
 }
 
@@ -328,7 +328,7 @@ function cardDesc(card) {
 .rf-level {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px; border-radius: 6px;
-  font-family: var(--mono); font-size: 15px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 17px; letter-spacing: 0.06em;
   color: var(--fg); transition: background 0.15s, color 0.15s;
 }
 .rf-level.done { color: var(--fg); }
@@ -342,14 +342,14 @@ function cardDesc(card) {
 .rf-lv-check {
   width: 22px; height: 22px; flex: none; display: grid; place-items: center;
   border: 1px solid var(--rule-2); border-radius: 50%;
-  color: var(--fg-3); font-size: 10px;
+  color: var(--fg-3); font-size: 12px;
 }
 .rf-level.done .rf-lv-check { border-color: var(--accent); color: var(--accent); }
 .rf-level.done .rf-lv-check svg { width: 13px; height: 13px; }
 .rf-level.active .rf-lv-check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.rf-lv-num { font-size: 10px; color: inherit; }
+.rf-lv-num { font-size: 12px; color: inherit; }
 .rf-lv-name { flex: 1; text-transform: uppercase; font-size: 17px; letter-spacing: 0.08em; }
-.rf-lv-range { font-size: 15px; color: var(--fg); white-space: nowrap; }
+.rf-lv-range { font-size: 17px; color: var(--fg); white-space: nowrap; }
 
 /* ── Stat cards ── */
 .rf-section-head {
@@ -375,9 +375,9 @@ function cardDesc(card) {
   font-family: var(--serif); font-size: 22px; color: var(--fg); line-height: 1;
   letter-spacing: -0.02em;
 }
-.rf-card-pct small { font-family: var(--mono); font-size: 13px; color: var(--fg-2); vertical-align: super; }
-.rf-card-title { font-size: 14px; font-weight: 600; color: var(--fg); line-height: 1.2; }
-.rf-card-desc { font-size: 14px; color: var(--fg); line-height: 1.55; font-family: var(--sans); flex: 1; }
+.rf-card-pct small { font-family: var(--mono); font-size: 15px; color: var(--fg-2); vertical-align: super; }
+.rf-card-title { font-size: 16px; font-weight: 600; color: var(--fg); line-height: 1.2; }
+.rf-card-desc { font-size: 16px; color: var(--fg); line-height: 1.55; font-family: var(--sans); flex: 1; }
 .rf-card-bar {
   height: 2px; background: var(--line); margin-top: 6px; border-radius: 1px; overflow: hidden;
 }
@@ -392,7 +392,7 @@ function cardDesc(card) {
   display: flex; align-items: center; gap: 12px; margin-top: 40px;
 }
 .rf-genesis-badge {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; color: #d4af37;
   border: 1px solid rgba(212,175,55,0.4); border-radius: 3px;
   padding: 2px 7px; line-height: 1.6;
@@ -410,10 +410,10 @@ function cardDesc(card) {
   letter-spacing: -0.02em; line-height: 1;
 }
 .rf-chain-unit {
-  font-family: var(--mono); font-size: 11px; color: #d4af37;
+  font-family: var(--mono); font-size: 13px; color: #d4af37;
   letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
 }
 .rf-chain-label {
-  font-size: 13px; color: var(--fg-2); margin-top: 4px;
+  font-size: 15px; color: var(--fg-2); margin-top: 4px;
 }
 </style>

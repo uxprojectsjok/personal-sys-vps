@@ -88,14 +88,14 @@
                   </div>
                 </div>
                 <div class="stat">
-                  <div class="stat-val" style="font-size:20px">{{ $t('home.local') }}</div>
+                  <div class="stat-val" style="font-size:22px">{{ $t('home.local') }}</div>
                   <div class="stat-label">{{ $t('home.soul_file') }}</div>
                   <div class="stat-foot" :class="{ off: !vaultConnected }">
                     <span class="d" />{{ vaultConnected ? $t('home.ready') : $t('home.offline') }}
                   </div>
                 </div>
                 <div class="stat">
-                  <div class="stat-val" style="font-size:20px">{{ soulMeta?.version || 'v1' }}</div>
+                  <div class="stat-val" style="font-size:22px">{{ soulMeta?.version || 'v1' }}</div>
                   <div class="stat-label">{{ $t('home.soul_version') }}</div>
                   <div class="stat-foot">
                     <span class="d" />{{ shortCert }} · {{ $t('home.signed') }}
@@ -154,85 +154,6 @@
                   <div class="chron-body">{{ n.body }}</div>
                 </div>
               </div>
-            </div>
-
-            <!-- ── Chronicle ─────────────────────────────────────────── -->
-            <div v-else-if="route === 'chronik'" class="page">
-              <div class="page-hero">
-                <h2>{{ $t('chronicle.title') }}<em>.</em></h2>
-                <span class="page-sub">{{ $t('chronicle.subtitle') }} · {{ journal.length }} {{ $t('chronicle.entries', { count: journal.length }) }}</span>
-              </div>
-              <div v-if="journal.length === 0" class="empty-hint">{{ $t('chronicle.no_entries') }}</div>
-              <div v-else class="chronik">
-                <div v-for="n in journal" :key="n.id" class="chron-item">
-                  <div class="chron-when">{{ n.when[0] }}</div>
-                  <div class="chron-body">{{ n.body }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── Maturity ───────────────────────────────────────────── -->
-            <div v-else-if="route === 'maturity'" class="page">
-              <div class="page-hero">
-                <h2>{{ $t('home.soul_maturity') }}<em>.</em></h2>
-                <span class="page-sub">Growth &amp; Development</span>
-              </div>
-              <div class="mat-view">
-                <div class="mat-ring-wrap">
-                  <svg viewBox="0 0 120 120" class="mat-ring-svg" width="160" height="160">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface-2)" stroke-width="10" />
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10"
-                      stroke-dasharray="326.7" :stroke-dashoffset="326.7 * (1 - maturity / 100)"
-                      stroke-linecap="round" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .6s ease" />
-                  </svg>
-                  <div class="mat-ring-inner">
-                    <span class="mat-pct">{{ maturity }}</span>
-                    <span class="mat-unit">%</span>
-                  </div>
-                </div>
-                <div class="mat-meta">
-                  <div class="mat-level-label">{{ maturityLevel }}</div>
-                  <div class="mat-bar-wrap">
-                    <div class="mat-bar-track">
-                      <div class="mat-fill" :style="{ width: maturity + '%' }" />
-                    </div>
-                    <div class="mat-ticks">
-                      <span>{{ $t('home.maturity_levels.genesis') }}</span>
-                      <span>{{ $t('home.maturity_levels.building') }}</span>
-                      <span>{{ $t('home.maturity_levels.established') }}</span>
-                      <span>{{ $t('home.maturity_levels.premium') }}</span>
-                    </div>
-                  </div>
-                  <div class="mat-soul-id">Soul: {{ shortId }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── Peers ──────────────────────────────────────────────── -->
-            <div v-else-if="route === 'peers'" class="page">
-              <div class="page-hero">
-                <h2>Peers<em>.</em></h2>
-                <span class="page-sub">{{ $t('home.peers_sub') }}</span>
-              </div>
-              <div class="empty-hint">{{ $t('home.peers_coming_soon') }}</div>
-            </div>
-
-            <!-- ── Calendar ───────────────────────────────────────────── -->
-            <div v-else-if="route === 'calendar'" class="page">
-              <div class="page-hero">
-                <h2>{{ $t('nav.calendar') }}<em>.</em></h2>
-                <span class="page-sub">{{ $t('home.calendar_sub') }}</span>
-              </div>
-              <div class="empty-hint">{{ $t('home.calendar_coming_soon') }}</div>
-            </div>
-
-            <!-- ── Connect ────────────────────────────────────────────── -->
-            <div v-else-if="route === 'connect'" class="page">
-              <div class="page-hero">
-                <h2>{{ $t('nav.connect') }}<em>.</em></h2>
-                <span class="page-sub">{{ $t('home.connect_sub') }}</span>
-              </div>
-              <div class="empty-hint">{{ $t('home.connect_coming_soon') }}</div>
             </div>
 
             <!-- ── Fallback ───────────────────────────────────────────── -->
@@ -448,7 +369,6 @@ const settingsOpen      = ref(false)
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const initial      = computed(() => (soulMeta.value?.name || 'S').charAt(0).toUpperCase())
-const shortId      = computed(() => { const id = soulMeta.value?.id || ''; return id ? id.slice(0, 8) + '…' + id.slice(-4) : '—' })
 const idCopied     = ref(false)
 async function copyId() {
   if (!soulMeta.value?.id) return
@@ -489,7 +409,6 @@ const hasAnchor = computed(() => {
 // Maturity wird live aus dem Soul-Content berechnet
 const maturityData  = computed(() => computeMaturity(soulContent.value, {}, null, 0, effectiveChainCount.value || null))
 const maturity      = computed(() => maturityData.value.score)
-const maturityLevel = computed(() => maturityData.value.level)
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -754,22 +673,10 @@ onMounted(() => {
 /* ── Inline page layouts ─────────────────────────────────────────────── */
 .page-hero { display: flex; align-items: baseline; gap: 16px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
 .page-hero h2 em { font-style: italic; color: var(--accent); }
-.page-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.08em; }
-.empty-hint { color: var(--fg-2); font-size: 14px; padding: 40px 0; text-align: center; }
+.page-sub { color: var(--fg); font-size: 16px; line-height: 1.5; }
+.empty-hint { color: var(--fg-2); font-size: 15px; padding: 40px 0; text-align: center; }
 
-/* ── Maturity view ────────────────────────────────────────────────────── */
-.mat-view { display: flex; align-items: center; gap: 40px; padding: 24px 0; flex-wrap: wrap; }
-.mat-ring-wrap { position: relative; display: grid; place-items: center; }
-.mat-ring-inner { position: absolute; text-align: center; }
-.mat-pct { font-family: var(--serif); font-size: 32px; color: var(--fg); }
-.mat-unit { font-family: var(--mono); font-size: 14px; color: var(--fg-2); margin-left: 2px; }
-.mat-meta { flex: 1; min-width: 200px; }
-.mat-level-label { font-family: var(--serif); font-size: 22px; color: var(--fg); margin-bottom: 20px; }
-.mat-bar-wrap { margin-bottom: 16px; }
-.mat-bar-track { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .mat-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-deep), var(--accent-bright)); transition: width .6s var(--ease); }
-.mat-ticks { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--fg-4); }
-.mat-soul-id { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 
 /* ── Login sheet (reused from old design, simplified) ─────────────────── */
 .login-sheet {

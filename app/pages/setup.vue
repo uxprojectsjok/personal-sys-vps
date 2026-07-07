@@ -87,7 +87,7 @@ function onNav(id) {
 .er-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
 }
 
 .er-head {

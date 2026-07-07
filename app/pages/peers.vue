@@ -464,13 +464,13 @@ function onNav(id) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 .pr-page {
   max-width: 800px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 100px;
+  padding: 36px clamp(22px, 4vw, 42px) 100px;
   display: flex; flex-direction: column; gap: 0;
 }
 
@@ -482,7 +482,7 @@ function onNav(id) {
   line-height: 1.1; margin: 8px 0 12px;
 }
 .pr-title em { font-style: italic; color: var(--accent); }
-.pr-lede { font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px; }
+.pr-lede { font-size: 17px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px; }
 
 /* ── Toolbar ── */
 .pr-toolbar {
@@ -493,7 +493,7 @@ function onNav(id) {
   height: 40px; padding: 0 20px;
   background: var(--accent); border: 1px solid var(--accent); border-radius: var(--r-xs);
   cursor: pointer; color: var(--on-accent);
-  font-family: var(--sans); font-size: 14px; font-weight: 600; letter-spacing: 0;
+  font-family: var(--sans); font-size: 16px; font-weight: 600; letter-spacing: 0;
   transition: all 0.15s;
 }
 .pr-add-btn:hover { background: var(--accent-bright); border-color: var(--accent-bright); box-shadow: 0 4px 14px var(--accent-glow); }
@@ -505,26 +505,26 @@ function onNav(id) {
 /* ── Add form fields ── */
 .f-field { display: flex; flex-direction: column; gap: 7px; }
 .f-label {
-  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
   color: var(--fg); letter-spacing: 0;
 }
-.f-label-opt { font-weight: 400; color: var(--fg-2); font-size: 12px; }
+.f-label-opt { font-weight: 400; color: var(--fg-2); font-size: 14px; }
 .f-inp {
   width: 100%; padding: 10px 13px;
   background: var(--surface-3); border: 1px solid var(--line-2);
   border-radius: var(--r-xs); color: var(--fg);
-  font-family: var(--sans); font-size: 14px;
+  font-family: var(--sans); font-size: 16px;
   outline: none; transition: border-color 0.15s, box-shadow 0.15s;
   -webkit-appearance: none;
 }
-.f-inp--mono { font-family: var(--mono); font-size: 13px; }
+.f-inp--mono { font-family: var(--mono); font-size: 15px; }
 .f-inp::placeholder { color: var(--fg-3); }
 .f-inp:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 .f-error {
-  font-size: 13px; color: #e06c75;
+  font-size: 15px; color: #e06c75;
   border-left: 2px solid #e06c75; padding-left: 10px; margin: 0;
 }
 
@@ -554,9 +554,9 @@ function onNav(id) {
   padding: 16px 20px;
 }
 .pr-atall-ic { width: 20px; height: 20px; flex: none; color: var(--accent); margin-top: 2px; }
-.pr-atall-title { font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
-.pr-atall-text { font-size: 13.5px; line-height: 1.6; color: var(--fg-2); margin: 0; }
-.pr-code { font-family: var(--mono); font-size: 12px; color: var(--accent-bright); background: var(--accent-dim); padding: 1px 5px; border-radius: 2px; }
+.pr-atall-title { font-size: 16px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+.pr-atall-text { font-size: 15.5px; line-height: 1.6; color: var(--fg-2); margin: 0; }
+.pr-code { font-family: var(--mono); font-size: 14px; color: var(--accent-bright); background: var(--accent-dim); padding: 1px 5px; border-radius: 2px; }
 
 /* ── Section ── */
 .pr-section { margin-bottom: 0; }
@@ -566,13 +566,13 @@ function onNav(id) {
   border-radius: var(--r) var(--r) 0 0;
   padding: 13px 20px;
   background: var(--surface);
-  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  font-family: var(--sans); font-size: 17px; font-weight: 500;
   letter-spacing: 0; text-transform: none; color: var(--fg);
 }
 .pr-badge {
   background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.30);
   border-radius: 99px; color: var(--accent-bright);
-  font-size: 12px; padding: 2px 9px; letter-spacing: 0.03em;
+  font-size: 14px; padding: 2px 9px; letter-spacing: 0.03em;
 }
 
 .pr-mutual-dot {
@@ -595,7 +595,7 @@ function onNav(id) {
 .pr-alias-input {
   flex: 1; min-width: 0; height: 28px; padding: 0 8px;
   background: var(--surface); border: 1px solid var(--accent-dim);
-  border-radius: var(--r-xs); color: var(--fg); font-size: 13px;
+  border-radius: var(--r-xs); color: var(--fg); font-size: 15px;
   outline: none;
 }
 .pr-alias-input:focus { border-color: var(--accent-bright); }
@@ -609,12 +609,12 @@ function onNav(id) {
 .pr-removed {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 20px; border-bottom: 1px solid var(--line);
-  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 16px; color: var(--fg-2);
 }
 .pr-removed:last-child { border-bottom: none; }
 .pr-removed-alias { color: var(--fg); font-weight: 600; }
 .pr-removed-text { flex: 1; }
-.pr-removed-ts { color: var(--fg-2); font-size: 13px; }
+.pr-removed-ts { color: var(--fg-2); font-size: 15px; }
 
 /* ── Empty ── */
 .pr-empty {
@@ -622,14 +622,14 @@ function onNav(id) {
   border: 1px solid var(--line); border-top: none;
   border-radius: 0 0 var(--r) var(--r);
   padding: 32px 20px;
-  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 16px; color: var(--fg-2);
   background: var(--surface);
 }
 
 /* ── Buttons ── */
 .pr-btn {
   height: 38px; padding: 0 16px;
-  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+  font-family: var(--sans); font-size: 16px; letter-spacing: 0;
   cursor: pointer; border-radius: var(--r-xs);
   display: inline-flex; align-items: center; gap: 6px;
   transition: all 0.15s;
@@ -679,12 +679,12 @@ function onNav(id) {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pr-chip-id {
-  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 15px; color: var(--fg-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px;
 }
 .pr-chip-status {
   display: flex; align-items: center; gap: 5px;
-  font-family: var(--mono); font-size: 13px; color: var(--fg-2); margin-top: 3px;
+  font-family: var(--mono); font-size: 15px; color: var(--fg-2); margin-top: 3px;
 }
 .pr-chip-actions { display: flex; align-items: center; gap: 2px; flex: none; }
 

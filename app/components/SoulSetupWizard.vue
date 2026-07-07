@@ -26,8 +26,8 @@
           </svg>
         </div>
         <div class="flex flex-col gap-0.5">
-          <span class="text-sm font-semibold text-[var(--sys-fg)] leading-none">{{ $t('setup.title') }}</span>
-          <span class="text-xs text-[var(--sys-fg-dim)] tracking-wider uppercase leading-none">
+          <span class="text-base font-semibold text-[var(--sys-fg)] leading-none">{{ $t('setup.title') }}</span>
+          <span class="text-sm text-[var(--sys-fg-dim)] tracking-wider uppercase leading-none">
             {{ $t('setup.done_count', { done: doneCount, total: steps.length }) }}
           </span>
         </div>
@@ -49,7 +49,7 @@
       <div v-if="open || modal" class="border-t border-[var(--sys-border)]">
 
         <!-- Step Navigator -->
-        <div class="flex relative">
+        <div class="flex relative step-nav">
           <!-- Progress track -->
           <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--sys-border)]" />
           <div
@@ -61,6 +61,7 @@
             v-for="(step, i) in steps"
             :key="i"
             class="flex-1 flex flex-col items-center gap-3 px-2 pt-5 pb-4 transition-all duration-200 relative group"
+            style="min-width:76px"
             @click="currentStep = i"
           >
             <!-- Step icon circle -->
@@ -85,7 +86,7 @@
             </div>
             <!-- Label -->
             <span
-              class="text-xs font-semibold tracking-wider uppercase transition-colors leading-none"
+              class="text-sm font-semibold tracking-wider uppercase transition-colors leading-none"
               :style="currentStep === i ? 'color:var(--fg)' : step.done ? 'color:var(--fg-2)' : 'color:var(--fg-4)'"
             >{{ step.label }}</span>
           </button>
@@ -101,10 +102,10 @@
             <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm)">
               <span style="width:8px;height:8px;border-radius:50%;flex:none" :style="vaultConnected ? 'background:var(--accent)' : 'background:var(--fg-4)'"></span>
               <div class="flex-1 min-w-0">
-                <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
+                <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0">
                   {{ vaultConnected ? (vaultMemoryMode ? $t('setup.vault_cloud_active') : $t('setup.vault_local_connected')) : $t('setup.vault_none') }}
                 </p>
-                <p style="font-size:13px;color:var(--fg-3);margin:0" class="truncate">
+                <p style="font-size:14px;color:var(--fg-3);margin:0" class="truncate">
                   {{ vaultConnected ? (vaultMemoryMode ? (vaultCloudSrc || 'in-memory') : $t('setup.vault_local_folder')) : $t('setup.vault_connect_hint') }}
                 </p>
               </div>
@@ -128,7 +129,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
               </svg>
               <span style="flex:1; text-align:left">{{ connectingLocal ? $t('setup.vault_selecting') : $t('setup.vault_local_btn') }}</span>
-              <span style="font-size:11px;color:var(--fg-3)">FileSystem API</span>
+              <span style="font-size:13px;color:var(--fg-3)">FileSystem API</span>
             </button>
 
             <!-- Cloud-Vault löschen -->
@@ -144,8 +145,8 @@
                 </svg>
               </div>
               <div class="min-w-0">
-                <p class="text-xs font-medium" style="color:#e06c75">{{ deleteLoading ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</p>
-                <p class="text-xs mt-0.5" style="color:rgba(224,108,117,0.65)">{{ $t('setup.vault_delete_desc') }}</p>
+                <p style="font-size:15px;font-weight:500;margin:0;color:#e06c75">{{ deleteLoading ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</p>
+                <p style="font-size:14px;margin:2px 0 0;color:rgba(224,108,117,0.65)">{{ $t('setup.vault_delete_desc') }}</p>
               </div>
             </button>
 
@@ -172,7 +173,7 @@
             <!-- Modell -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">{{ $t('setup.label_model') }}</label>
-              <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:12px">
+              <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:14px">
                 <option value="">{{ $t('setup.model_default') }}</option>
                 <option value="claude-opus-4-6">{{ $t('setup.model_powerful') }}</option>
                 <option value="claude-sonnet-4-6">{{ $t('setup.model_balanced') }}</option>
@@ -184,7 +185,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_anthropic') }}
-                <span v-if="cfgAnthSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgAnthSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
                 placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
@@ -195,7 +196,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_wavespeed') }}
-                <span v-if="cfgWaveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgWaveSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgWaveSet ? $t('setup.placeholder_overwrite') : 'WaveSpeed API-Key…'"
@@ -207,7 +208,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_elevenlabs') }}
-                <span v-if="cfgLabsSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgLabsSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgLabsSet ? $t('setup.placeholder_overwrite') : 'sk_…'"
@@ -219,7 +220,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_agent_url') }}
-                <span v-if="cfgAgentSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgAgentSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgAgentUrl" type="text" class="sys-input sys-input--mono"
                 placeholder="https://elevenlabs.io/app/talk-to?agent_id=…"
@@ -231,7 +232,7 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_brave') }}
-                <span v-if="cfgBraveSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgBraveSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgBraveKey" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgBraveSet ? $t('setup.placeholder_overwrite') : 'BSA…'"
@@ -243,13 +244,13 @@
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
                 {{ $t('setup.label_pinata') }}
-                <span v-if="cfgPinataSet" style="font-size:11px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
+                <span v-if="cfgPinataSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
               </label>
               <input v-model="cfgPinataJwt" type="password" class="sys-input sys-input--mono"
                 :placeholder="cfgPinataSet ? $t('setup.placeholder_overwrite') : 'eyJ…'"
                 autocomplete="off" spellcheck="false"
                 :style="cfgPinataSet ? 'border-color:var(--sys-ok)' : ''" />
-              <p style="font-size:11px;color:var(--fg-3);letter-spacing:0.04em;margin:0">
+              <p style="font-size:13px;color:var(--fg-3);letter-spacing:0.04em;margin:0">
                 {{ $t('setup.pinata_desc') }}
                 <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--accent-bright)">app.pinata.cloud</a>
               </p>
@@ -262,7 +263,7 @@
               class="sys-btn-ed sys-btn-ed--primary"
               style="width:100%;justify-content:center"
             >{{ cfgSaving ? $t('setup.cfg_saving') : $t('setup.cfg_save') }}</button>
-            <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:10px;margin:0"
+            <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:12px;margin:0"
               :style="cfgFeedback.ok === true ? 'color:var(--sys-ok)' : cfgFeedback.ok === false ? 'color:var(--sys-err)' : 'color:var(--sys-fg-muted)'">
               {{ cfgFeedback.message }}
             </p>
@@ -286,7 +287,7 @@
           <div v-else />
 
           <!-- Step counter -->
-          <span style="font-size:12px;font-family:var(--mono);color:var(--fg-3)">
+          <span style="font-size:14px;font-family:var(--mono);color:var(--fg-3)">
             {{ currentStep + 1 }} / {{ steps.length }}
           </span>
 
@@ -617,4 +618,6 @@ async function handleRotateCert() {
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(-6px); }
 .cert-result-enter-active, .cert-result-leave-active { transition: opacity 0.25s, transform 0.25s; }
 .cert-result-enter-from, .cert-result-leave-to { opacity: 0; transform: translateY(-4px); }
+.step-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.step-nav::-webkit-scrollbar { display: none; }
 </style>

@@ -5,7 +5,7 @@
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
-        <SysTopbar :crumbs="['Seele', 'sys.md']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
+        <SysTopbar :crumbs="[$t('nav.contents'), 'sys.md']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
           <button class="icon-btn" :class="{ on: syncing }" @click="handlePush" :disabled="syncing" :title="$t('soul_viewer.upload_title')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
@@ -220,7 +220,7 @@ function onNav(id) {
 .soul-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
 }
 
 /* ── Hero ── */
@@ -248,13 +248,13 @@ function onNav(id) {
 }
 
 .sp-addr {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   letter-spacing: 0.02em; margin-bottom: 8px;
 }
 
 .sp-stats {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   letter-spacing: 0.03em;
 }
 
@@ -263,7 +263,7 @@ function onNav(id) {
 /* ── Status bar ── */
 .sp-status {
   display: flex; align-items: center; gap: 10px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fg-2);
   padding-bottom: 24px;
 }
@@ -292,7 +292,7 @@ function onNav(id) {
 }
 
 .sp-sec-title {
-  font-family: var(--serif); font-size: 20px; font-weight: 400;
+  font-family: var(--serif); font-size: 22px; font-weight: 400;
   letter-spacing: -0.015em; color: var(--fg); flex: 1;
 }
 
@@ -300,12 +300,12 @@ function onNav(id) {
 .sp-section:hover .sp-edit-btn { opacity: 1; }
 
 .sp-sec-text {
-  font-size: 15px; line-height: 1.65; color: var(--fg);
+  font-size: 16px; line-height: 1.65; color: var(--fg);
   margin: 0; white-space: pre-wrap; word-break: break-word;
 }
 
 .sp-sec-empty {
-  font-size: 13px; color: var(--fg-3); margin: 0; font-style: italic;
+  font-size: 15px; color: var(--fg-3); margin: 0; font-style: italic;
 }
 
 /* ── Edit form ── */
@@ -319,7 +319,7 @@ function onNav(id) {
 .sp-textarea {
   width: 100%; box-sizing: border-box;
   background: transparent; border: none; outline: none; resize: vertical;
-  color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.6;
   padding: 16px 18px; min-height: 120px;
 }
 
@@ -330,13 +330,13 @@ function onNav(id) {
 }
 
 .sp-edit-hint {
-  font-family: var(--mono); font-size: 10.5px; color: var(--fg-4);
+  font-family: var(--mono); font-size: 12px; color: var(--fg-4);
   letter-spacing: 0.08em; margin-right: auto;
 }
 
 .sp-btn-cancel {
   padding: 6px 14px; border: 1px solid var(--line-2); border-radius: var(--r-xs);
-  background: transparent; color: var(--fg-2); font-size: 13px; cursor: pointer;
+  background: transparent; color: var(--fg-2); font-size: 15px; cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 .sp-btn-cancel:hover { border-color: var(--fg-3); color: var(--fg); }
@@ -345,7 +345,7 @@ function onNav(id) {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 16px; border: none; border-radius: var(--r-xs);
   background: var(--accent); color: var(--on-accent);
-  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-size: 15px; font-weight: 500; cursor: pointer;
   transition: background 0.15s;
 }
 .sp-btn-save:hover:not(:disabled) { background: var(--accent-bright); }

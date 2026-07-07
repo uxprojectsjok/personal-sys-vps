@@ -15,14 +15,14 @@
         <span class="text-sm font-medium text-[var(--sys-fg)]">{{ $t('vault_session.title') }}</span>
         <span
           v-if="isUnlocked"
-          class="text-xs tracking-widest font-mono px-2 py-0.5 rounded-full border"
+          class="text-sm tracking-widest font-mono px-2 py-0.5 rounded-full border"
           :class="vaultKey ? 'bg-[rgba(255,255,255,0.07)] text-white border-[rgba(255,255,255,0.18)]' : 'bg-[rgba(255,255,255,0.07)] text-white border-[rgba(255,255,255,0.18)]'"
         >
           {{ vaultKey ? '🔐 ' : '' }}{{ $t('vault_session.open_status', { time: timeRemaining }) }}
         </span>
         <span
           v-else
-          class="text-xs tracking-widest font-mono px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--sys-fg-dim)]"
+          class="text-sm tracking-widest font-mono px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--sys-fg-dim)]"
         >
           {{ $t('vault_session.locked') }}
         </span>
@@ -59,13 +59,13 @@
         <div v-if="isUnlocked || locking">
           <div style="background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
-              <p style="font-size:13px;font-weight:500;color:var(--fg);margin:0">
+              <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0">
                 {{ locking ? $t('vault_session.locking') : $t('vault_session.vault_open') }}{{ !locking && vaultKey ? $t('vault_session.encrypted_suffix') : '' }}
               </p>
-              <p v-if="!locking && !isUnlimited && expiresAt" style="font-size:12px;color:var(--fg-3);margin:3px 0 0">
+              <p v-if="!locking && !isUnlimited && expiresAt" style="font-size:14px;color:var(--fg-3);margin:3px 0 0">
                 {{ $t('vault_session.expires_at', { date: formatTs(expiresAt) }) }}
               </p>
-              <p v-else-if="!locking && isUnlimited" style="font-size:12px;color:var(--fg-3);margin:3px 0 0">{{ $t('vault_session.no_expiry') }}</p>
+              <p v-else-if="!locking && isUnlimited" style="font-size:14px;color:var(--fg-3);margin:3px 0 0">{{ $t('vault_session.no_expiry') }}</p>
             </div>
             <button class="btn btn-sm btn-ghost" :disabled="locking" @click="handleLock" :aria-label="$t('vault_session.lock_aria')">
               <svg v-if="locking" width="12" height="12" class="animate-spin" fill="none" viewBox="0 0 24 24">
@@ -79,12 +79,12 @@
 
         <!-- Gesperrt → Entsperren -->
         <div v-else class="space-y-3">
-          <p class="text-xs" style="color:var(--fg-2)">{{ $t('vault_session.choose_window') }}</p>
+          <p style="font-size:14px;color:var(--fg-2)">{{ $t('vault_session.choose_window') }}</p>
           <div class="grid grid-cols-4 gap-1.5">
             <button
               v-for="opt in durationOptions"
               :key="opt.value"
-              style="padding:8px 4px;min-height:36px;font-size:12px;font-family:var(--mono);border-radius:var(--r-xs);border:1px solid;transition:all .15s"
+              style="padding:8px 4px;min-height:38px;font-size:14px;font-family:var(--mono);border-radius:var(--r-xs);border:1px solid;transition:all .15s"
               :style="selectedDuration === opt.value
                 ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);font-weight:600'
                 : 'border-color:var(--line-2);color:var(--fg-2)'"
@@ -93,12 +93,12 @@
           </div>
 
           <div v-if="selectedDuration === 'unlimited'" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:8px 12px">
-            <p style="font-size:13px;color:var(--fg-3);margin:0">{{ $t('vault_session.unlimited_info') }}</p>
+            <p style="font-size:15px;color:var(--fg-3);margin:0">{{ $t('vault_session.unlimited_info') }}</p>
           </div>
 
           <!-- Verschlüsselung -->
           <div class="space-y-2">
-            <p style="font-size:13px;color:var(--fg-2);margin:0">
+            <p style="font-size:15px;color:var(--fg-2);margin:0">
               {{ $t('vault_session.encryption') }}
               <span style="color:var(--fg-3)" v-if="savedMethod()">{{ $t('vault_session.last_used') }}{{ savedMethod() === 'mnemonic' ? $t('vault_session.method_label_mnemonic') : $t('vault_session.method_label_passkey') }}</span>
               <span style="color:var(--fg-4)" v-else>{{ $t('vault_session.method_hint') }}</span>
@@ -108,7 +108,7 @@
                 v-for="opt in [{ value: 'passkey', label: $t('vault_session.method_passkey') }, { value: 'mnemonic', label: $t('vault_session.method_mnemonic') }]"
                 :key="opt.value"
                 type="button"
-                style="padding:8px 4px;min-height:36px;font-size:13px;border-radius:var(--r-xs);border:1px solid;transition:all .15s"
+                style="padding:8px 4px;min-height:38px;font-size:15px;border-radius:var(--r-xs);border:1px solid;transition:all .15s"
                 :style="encryptMode === opt.value
                   ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);font-weight:600'
                   : 'border-color:var(--line-2);color:var(--fg-2)'"
@@ -119,16 +119,16 @@
             <!-- Methodenwechsel-Warnung -->
             <Transition name="slide-up">
               <div v-if="methodWarning" class="rounded-none bg-[rgba(234,179,8,0.08)] border border-[rgba(234,179,8,0.25)] px-3 py-2">
-                <p class="text-xs text-yellow-300/80 leading-relaxed">{{ methodWarning }}</p>
+                <p class="text-sm text-yellow-300/80 leading-relaxed">{{ methodWarning }}</p>
               </div>
             </Transition>
 
             <!-- Passkey Info -->
             <Transition name="slide-up">
               <div v-if="encryptMode === 'passkey'" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
-                <p style="font-size:13px;color:var(--fg-2);margin:0">{{ hasPasskey ? $t('vault_session.passkey_confirm') : $t('vault_session.passkey_create') }}</p>
-                <p style="font-size:12px;color:var(--fg-3);margin:0">{{ $t('vault_session.biometric_methods') }}</p>
-                <p v-if="passkeyError" style="font-size:12px;color:var(--c-danger,#e06c75);margin:0">{{ passkeyError }}</p>
+                <p style="font-size:15px;color:var(--fg-2);margin:0">{{ hasPasskey ? $t('vault_session.passkey_confirm') : $t('vault_session.passkey_create') }}</p>
+                <p style="font-size:14px;color:var(--fg-3);margin:0">{{ $t('vault_session.biometric_methods') }}</p>
+                <p v-if="passkeyError" style="font-size:14px;color:var(--c-danger,#e06c75);margin:0">{{ passkeyError }}</p>
               </div>
             </Transition>
 
@@ -138,13 +138,13 @@
                 <textarea
                   v-model="mnemonicInput"
                   :placeholder="$t('vault_session.mnemonic_placeholder')"
-                  class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-3 py-2 text-xs text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] resize-none focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
+                  class="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--sys-border)] rounded-none px-3 py-2 text-sm text-[var(--sys-fg)] placeholder:text-[var(--sys-fg-muted)] resize-none focus:outline-none focus:border-[rgba(255,255,255,0.3)] transition-colors"
                   rows="2"
                   autocomplete="off"
                   autocorrect="off"
                   spellcheck="false"
                 />
-                <p v-if="mnemonicInput.trim() && mnemonicWordCount !== 12" class="text-xs text-white">
+                <p v-if="mnemonicInput.trim() && mnemonicWordCount !== 12" class="text-sm text-white">
                   {{ $t('vault_session.word_count', { n: mnemonicWordCount }) }}
                 </p>
               </div>
@@ -163,7 +163,7 @@
             {{ passkeyLoading ? $t('vault_session.awaiting_passkey') : loading ? $t('vault_session.unlocking') : $t('vault_session.unlock_btn') }}
           </button>
 
-          <p v-if="error" class="text-xs text-red-400">{{ error }}</p>
+          <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
         </div>
       </div>
     </Transition>
@@ -197,15 +197,15 @@ const passkeyLoading   = ref(false)
 const locking          = ref(false)
 const methodWarning    = ref('')       // Warnung bei Methodenwechsel
 
-const durationOptions = [
-  { value: '1h',        label: '1 Std' },
-  { value: '12h',       label: '12 Std' },
-  { value: '1d',        label: '1 Tag' },
-  { value: '30d',       label: '30 T' },
-  { value: '182d',      label: '6 Mo' },
-  { value: '365d',      label: '1 Jahr' },
-  { value: 'unlimited', label: '∞' },
-]
+const durationOptions = computed(() => [
+  { value: '1h',        label: t('vault_session.window_1h') },
+  { value: '12h',       label: t('vault_session.window_12h') },
+  { value: '1d',        label: t('vault_session.window_1d') },
+  { value: '30d',       label: t('vault_session.window_30d') },
+  { value: '182d',      label: t('vault_session.window_6mo') },
+  { value: '365d',      label: t('vault_session.window_1yr') },
+  { value: 'unlimited', label: t('vault_session.window_unlimited') },
+])
 
 // ── Schlüsselmethode pro Soul speichern / laden ───────────────────────────
 function _methodKey() {
@@ -293,7 +293,7 @@ async function handleLock() {
 <style scoped>
 .amm-prose {
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.6;
   color: var(--fg);
