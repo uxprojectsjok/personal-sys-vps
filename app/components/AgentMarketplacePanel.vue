@@ -18,26 +18,35 @@
           <div class="amm-handle" aria-hidden="true"></div>
         </header>
 
-        <!-- ═══════════ STEP RAIL ═══════════ -->
-        <nav class="amm-rail" :aria-label="$t('marketplace.steps_aria')">
-          <button
-            v-for="(s, i) in steps"
-            :key="s.id"
-            class="amm-rail-item"
-            :class="{ on: step === s.id, done: s.done }"
-            :disabled="!s.done && step !== s.id && !canJumpTo(s.id)"
-            @click="goTo(s.id)"
-          >
-            <span class="num">
-              <span v-if="s.done" class="check">✓</span>
-              <span v-else>{{ i + 1 }}</span>
-            </span>
-            <span class="lbl">
-              <span class="t">{{ s.title }}</span>
-              <span class="sub">{{ s.subtitle }}</span>
-            </span>
-          </button>
-        </nav>
+        <!-- ═══════════ TABS ═══════════ -->
+        <div class="amm-tabs-row">
+          <nav class="amm-tabs" :aria-label="$t('marketplace.steps_aria')">
+            <button class="amm-tab" :class="{ on: step === 'mode' }" @click="goTo('mode')">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+                <rect x="3" y="2" width="14" height="16" rx="1.5"/>
+                <path stroke-linecap="round" d="M6.5 6.5h7M6.5 9.5h7M6.5 12.5h4"/>
+              </svg>
+              {{ steps[0].title }}
+              <span v-if="steps[0].done" class="amm-tab-dot" aria-hidden="true" />
+            </button>
+            <button class="amm-tab" :class="{ on: step === 'ipfs' }" @click="goTo('ipfs')">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13a3.5 3.5 0 0 1-.5-6.96A4.5 4.5 0 0 1 13.2 5.1 3.5 3.5 0 0 1 14.5 13H5Z"/>
+                <path stroke-linecap="round" d="M10 8v6m0-6-2.2 2.2M10 8l2.2 2.2"/>
+              </svg>
+              {{ steps[1].title }}
+              <span v-if="steps[1].done" class="amm-tab-dot" aria-hidden="true" />
+            </button>
+            <button class="amm-tab" :class="{ on: step === 'tokens' }" @click="goTo('tokens')">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
+                <circle cx="7" cy="13" r="3.5"/>
+                <path stroke-linecap="round" d="m9.5 10.5 6-6M13 5l1.5 1.5M15.5 2.5 17 4"/>
+              </svg>
+              {{ steps[2].title }}
+              <span v-if="steps[2].done" class="amm-tab-dot" aria-hidden="true" />
+            </button>
+          </nav>
+        </div>
 
         <!-- ═══════════ BODY ═══════════ -->
         <div class="amm-body">
@@ -990,22 +999,14 @@ async function register() {
 .lede { font-family: var(--serif); font-size: 17px; line-height: 1.55; color: var(--fg-2); margin: 0; max-width: 60ch; }
 .lede code { font-family: var(--mono); font-size: 14px; color: var(--accent-bright); background: var(--accent-2); padding: 2px 6px; border: 1px solid rgba(139,92,246,0.2); }
 
-/* ─── STEP RAIL ─── */
-.amm-rail { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--rule); background: var(--paper-3); }
-.amm-rail-item { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: transparent; border: 0; border-right: 1px solid var(--rule); cursor: pointer; text-align: left; color: var(--fg-2); transition: all 0.15s; font-family: inherit; }
-.amm-rail-item:last-child { border-right: 0; }
-.amm-rail-item:disabled { cursor: not-allowed; opacity: 0.4; }
-.amm-rail-item:not(:disabled):hover { color: var(--fg); background: rgba(255,255,255,0.02); }
-.amm-rail-item.on { color: var(--fg); background: var(--paper); }
-.amm-rail-item.on .num { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.amm-rail-item.done .num { color: var(--ok); border-color: rgba(184,220,196,0.4); }
-.amm-rail-item.done.on .num { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
-.amm-rail-item .num { width: 32px; height: 32px; border: 1px solid var(--rule-2); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 15px; flex: none; transition: all 0.15s; }
-.amm-rail-item .check { font-family: var(--serif); font-size: 16px; line-height: 1; }
-.amm-rail-item .lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.amm-rail-item .t { font-family: var(--serif); font-size: 16px; letter-spacing: -0.01em; }
-.amm-rail-item .sub { font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); }
-.amm-rail-item.on .sub { color: var(--accent); }
+/* ─── TABS ─── */
+.amm-tabs-row { display: flex; align-items: center; gap: 14px; padding: 16px 32px 0; }
+.amm-tabs { display: flex; border: 1px solid var(--rule); border-radius: var(--r-xs); overflow: hidden; flex: none; }
+.amm-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--rule); cursor: pointer; transition: all 0.15s; }
+.amm-tab:last-child { border-right: none; }
+.amm-tab.on { background: var(--paper); color: var(--fg); }
+.amm-tab:hover:not(.on) { color: var(--fg); }
+.amm-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); flex: none; }
 
 /* ─── BODY ─── */
 .amm-body { overflow-y: auto; padding: 36px 40px; min-height: 0; }
@@ -1199,9 +1200,7 @@ async function register() {
 
 @media (max-width: 720px) {
   .amm-head { padding: 6px 10px; min-height: 40px; }
-  .amm-rail-item { padding: 14px 16px; gap: 10px; }
-  .amm-rail-item .num { width: 28px; height: 28px; font-size: 14px; }
-  .amm-rail-item .t { font-size: 16px; }
+  .amm-tabs-row { padding: 12px 20px 0; }
   .amm-body { padding: 28px 24px; }
   .pay-fields, .mode-grid { grid-template-columns: 1fr; }
   .readonly-list { grid-template-columns: 1fr; gap: 4px 0; }
@@ -1221,12 +1220,7 @@ async function register() {
   .lede { font-size: 16px; }
   .kicker { margin-bottom: 12px; }
 
-  .amm-rail { grid-template-columns: repeat(3, 1fr); }
-  .amm-rail-item { padding: 10px 10px; gap: 8px; border-right: 1px solid var(--rule); border-bottom: 0; justify-content: center; }
-  .amm-rail-item:last-child { border-right: 0; }
-  .amm-rail-item .num { width: 24px; height: 24px; font-size: 14px; flex: none; }
-  .amm-rail-item .sub { display: none; }
-  .amm-rail-item .t { font-size: 15px; }
+  .amm-tab { padding: 7px 12px; font-size: 15px; }
 
   .amm-body { padding: 24px 20px; }
   .step-head { gap: 10px; margin-bottom: 12px; padding-bottom: 12px; }
