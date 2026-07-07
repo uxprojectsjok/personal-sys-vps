@@ -447,7 +447,9 @@ function onNav(id) {
 .vank-card {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
   margin-bottom: 12px;
   transition: border-color 0.3s;
@@ -510,7 +512,9 @@ function onNav(id) {
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 var(--r) var(--r);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 16px 20px;
   display: flex; flex-direction: column; gap: 12px;
 }
@@ -637,7 +641,9 @@ function onNav(id) {
 .vank-genesis-card {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
   margin-bottom: 12px;
 }
@@ -694,7 +700,9 @@ function onNav(id) {
   overflow: hidden;
   margin-bottom: 12px;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 .vank-vis-head {
   display: flex; align-items: center; gap: 10px;
