@@ -76,13 +76,13 @@ function onNav(id) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 .market-page {
   max-width: 860px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
 }
 
 /* ── Hero ── */
@@ -92,7 +92,7 @@ function onNav(id) {
   margin-bottom: 32px;
 }
 .mk-eyebrow {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
   color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
 }
 .mk-title {
@@ -102,7 +102,7 @@ function onNav(id) {
 }
 .mk-title em { font-style: italic; color: var(--accent); }
 .mk-sub {
-  font-size: 15px; line-height: 1.65; color: var(--fg);
+  font-size: 17px; line-height: 1.65; color: var(--fg);
   max-width: 560px; margin: 0;
 }
 
@@ -228,7 +228,7 @@ function onNav(id) {
 .mk-panel :deep(.amm-rail-item .num) {
   width: 38px !important;
   height: 38px !important;
-  font-size: 15px !important;
+  font-size: 17px !important;
   flex: none !important;
 }
 .mk-panel :deep(.amm-rail-item.on .num) {
@@ -243,7 +243,7 @@ function onNav(id) {
   text-overflow: ellipsis !important;
 }
 .mk-panel :deep(.amm-rail-item .sub) {
-  font-size: 11px !important;
+  font-size: 13px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
