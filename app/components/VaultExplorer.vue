@@ -8,12 +8,12 @@
         v-for="t in TABS" :key="t.id"
         @click="switchTab(t.id)"
         class="flex-1 h-8 rounded-none text-xs font-medium transition-all min-w-0"
-        :class="tab === t.id ? 'bg-white/12 text-white' : 'text-white/40 hover:text-white/65'"
+        :class="tab === t.id ? 'bg-white/12 text-white' : 'text-white hover:text-white'"
       >{{ t.label }}</button>
       <button
         @click="onRefresh"
         :disabled="isScanning"
-        class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-lg leading-none"
+        class="w-8 h-8 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-lg leading-none"
         :title="$t('common.refresh')"
       >
         <span :class="isScanning ? 'animate-spin inline-block' : ''">↻</span>
@@ -25,19 +25,19 @@
     <!-- ── LOKAL ─────────────────────────────────────────────────────────── -->
     <template v-if="tab === 'local'">
       <div v-if="!vaultConnected" class="py-8 flex flex-col items-center gap-2">
-        <svg class="w-8 h-8 text-white/15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
         </svg>
-        <p class="text-sm text-white/35">{{ $t('vault.not_connected') }}</p>
+        <p class="text-sm text-white">{{ $t('vault.not_connected') }}</p>
       </div>
 
       <!-- Cloud-Modus-Badge (nur Status, keine v-else-Abhängigkeit) -->
-      <div v-if="vaultConnected && memoryMode" class="flex items-center gap-2 px-3 py-2 rounded-none bg-white/4 border border-white/10 text-xs text-white/50">
-        <svg class="w-3.5 h-3.5 flex-none text-white/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <div v-if="vaultConnected && memoryMode" class="flex items-center gap-2 px-3 py-2 rounded-none bg-white/4 border border-white/10 text-xs text-white">
+        <svg class="w-3.5 h-3.5 flex-none text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/>
         </svg>
         <span class="flex-1 truncate">{{ $t('vault.cloud_mode') }}{{ cloudSource ? ' · ' + cloudSource.split('/').pop() : '' }}</span>
-        <span class="text-white/30">in-memory</span>
+        <span class="text-white">in-memory</span>
       </div>
 
       <template>
@@ -46,7 +46,7 @@
           v-if="soulCert && vaultConnected && !memoryMode"
           @click="openSyncModal"
           :disabled="isSyncing || isScanning"
-          class="w-full h-9 flex items-center justify-center gap-1.5 rounded-none border border-white/10 text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-xs font-medium"
+          class="w-full h-9 flex items-center justify-center gap-1.5 rounded-none border border-white/10 text-white hover:text-white hover:bg-white/8 disabled:opacity-30 transition text-xs font-medium"
           :title="$t('vault.sync_button')"
         >
           <svg v-if="isSyncing" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -61,27 +61,27 @@
         <!-- Identity-Datei als eigene Gruppe (beliebiger *.md Name) -->
         <div v-if="soulContent && (!vaultConnected || memoryMode || allFiles.some(f => f.kind === 'soul'))">
           <div class="flex items-center gap-2 px-1 pt-1 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">Soul · 1</p>
+            <p class="text-[10px] font-medium text-white uppercase tracking-widest flex-1">Soul · 1</p>
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div class="flex items-center gap-2 px-3 min-h-[44px]">
               <span class="w-1.5 h-1.5 rounded-full shrink-0 bg-[#22c55e]/60"/>
-              <span class="text-sm text-white/70 flex-1 font-mono">{{ localSoulFileName }}</span>
+              <span class="text-sm text-white flex-1 font-mono">{{ localSoulFileName }}</span>
             </div>
           </div>
 
         </div>
 
-        <p v-if="!hasLocalFiles" class="py-3 text-center text-sm text-white/30">{{ $t('vault.no_local_files') }}</p>
+        <p v-if="!hasLocalFiles" class="py-3 text-center text-sm text-white">{{ $t('vault.no_local_files') }}</p>
 
         <!-- Bulk-Aktionsleiste Lokal -->
         <div v-if="selectedLocal.size > 0"
           class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-none bg-white/5 border border-white/10"
         >
-          <span class="text-xs text-white/60 sm:flex-1">{{ selectedLocal.size }} {{ $t('common.selected') }}</span>
+          <span class="text-xs text-white sm:flex-1">{{ selectedLocal.size }} {{ $t('common.selected') }}</span>
           <div class="flex items-center gap-1.5">
             <button @click="uploadSelectedLocal"
-              class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
+              class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
               {{ $t('common.upload') }}
@@ -93,7 +93,7 @@
               {{ $t('common.delete') }}
             </button>
             <button @click="clearSelection('local')"
-              class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition text-xs"
+              class="w-7 h-7 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition text-xs"
             >✕</button>
           </div>
         </div>
@@ -102,14 +102,14 @@
         <div v-for="(files, type) in localArchive" :key="type">
           <!-- Typ-Label -->
           <div class="flex items-center gap-2 px-1 pt-2 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">{{ TYPE_LABELS[type] }} · {{ files.length }}</p>
+            <p class="text-[10px] font-medium text-white uppercase tracking-widest flex-1">{{ TYPE_LABELS[type] }} · {{ files.length }}</p>
           </div>
           <!-- Inline-Player -->
           <div v-if="playerSrc && playerTab === 'local' && files.includes(playerName)"
             class="px-3 py-2 mb-1 rounded-none border border-white/8 bg-white/3">
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-mono text-white/50 truncate flex-1">{{ playerName }}</span>
-              <button @click="closePlayer" class="text-white/35 hover:text-white p-1 text-xs">✕</button>
+              <span class="text-xs font-mono text-white truncate flex-1">{{ playerName }}</span>
+              <button @click="closePlayer" class="text-white hover:text-white p-1 text-xs">✕</button>
             </div>
             <audio v-if="playerKind === 'audio'" :src="playerSrc" controls preload="auto" class="w-full" style="height:32px"/>
             <video v-else :src="playerSrc" controls playsinline class="w-full rounded-none max-h-48"/>
@@ -128,14 +128,14 @@
               >
                 <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
-                <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">{{ $t('vault.active') }}</span>
+                <span class="text-sm text-white truncate">{{ name }}</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white shrink-0">{{ $t('vault.active') }}</span>
               </button>
               <div class="absolute right-0 top-0 bottom-0 flex items-center" style="right:12px">
                 <button
                   @click.stop="uploadToServer(type, name)"
                   :disabled="!!localBusy[name]"
-                  style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.65);flex-shrink:0"
+                  style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0"
                   :title="$t('vault.upload_server')"
                   :aria-label="$t('vault.upload_server')"
                 >
@@ -150,7 +150,7 @@
                   @click.stop="openContextMenu('local', type, name, $event)"
                   :disabled="!!localBusy[name]"
                   style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                  :style="isMenuOpen(type, name) ? 'background:rgba(255,255,255,0.1);color:#fff' : 'color:rgba(255,255,255,0.65)'"
+                  :style="isMenuOpen(type, name) ? 'background:rgba(255,255,255,0.1);color:#fff' : 'color:#fff'"
                   :aria-label="$t('vault.actions')"
                 >
                   <svg v-if="localBusy[name] === 'del'" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -170,14 +170,14 @@
 
     <!-- ── SERVER ────────────────────────────────────────────────────────── -->
     <template v-if="tab === 'server'">
-      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">{{ $t('vault.soul_cert_required') }}</div>
+      <div v-if="!soulCert" class="py-8 text-center text-sm text-white">{{ $t('vault.soul_cert_required') }}</div>
       <div v-else-if="serverLoading" class="py-8 flex items-center justify-center">
-        <svg class="w-4 h-4 animate-spin text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
         </svg>
       </div>
       <template v-else>
-        <p v-if="!hasServerFiles" class="py-5 text-center text-sm text-white/30">
+        <p v-if="!hasServerFiles" class="py-5 text-center text-sm text-white">
           {{ $t('vault.no_server_files') }}
         </p>
 
@@ -185,10 +185,10 @@
         <div v-if="selectedServer.size > 0"
           class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-3 py-2.5 rounded-none bg-white/5 border border-white/10"
         >
-          <span class="text-xs text-white/60 sm:flex-1">{{ selectedServer.size }} {{ $t('common.selected') }}</span>
+          <span class="text-xs text-white sm:flex-1">{{ selectedServer.size }} {{ $t('common.selected') }}</span>
           <div class="flex items-center gap-1.5">
             <button v-if="vaultConnected" @click="downloadSelectedServer"
-              class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white/70 hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
+              class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-none bg-white/8 text-white hover:text-white hover:bg-white/12 transition text-xs flex items-center justify-center gap-1.5"
             >
               <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/></svg>
               {{ $t('vault.save_local') }}
@@ -200,7 +200,7 @@
               {{ $t('common.delete') }}
             </button>
             <button @click="clearSelection('server')"
-              class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition text-xs"
+              class="w-7 h-7 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition text-xs"
             >✕</button>
           </div>
         </div>
@@ -208,16 +208,16 @@
         <!-- sys.md (VPS) -->
         <div>
           <div class="flex items-center gap-2 px-1 pt-1 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">Soul · 1</p>
+            <p class="text-[10px] font-medium text-white uppercase tracking-widest flex-1">Soul · 1</p>
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div class="flex items-center gap-2 px-3 min-h-[44px]">
               <span class="w-1.5 h-1.5 rounded-full shrink-0 bg-[#22c55e]/60"/>
-              <span class="text-sm text-white/70 flex-1 font-mono">sys.md</span>
+              <span class="text-sm text-white flex-1 font-mono">sys.md</span>
               <button
                 @click="downloadSoulServer"
                 :disabled="soulServerDownloading"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition shrink-0 disabled:opacity-30"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition shrink-0 disabled:opacity-30"
                 title="sys.md vom Server herunterladen (VPS-Stand)"
                 aria-label="sys.md vom Server herunterladen"
               >
@@ -235,14 +235,14 @@
         <!-- Dateiliste Server: flat, ohne Card-Rahmen pro Gruppe -->
         <div v-for="(files, type) in serverArchive" :key="type">
           <div class="flex items-center gap-2 px-1 pt-2 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">{{ TYPE_LABELS[type] }} · {{ files.length }}</p>
+            <p class="text-[10px] font-medium text-white uppercase tracking-widest flex-1">{{ TYPE_LABELS[type] }} · {{ files.length }}</p>
           </div>
           <!-- Inline-Player -->
           <div v-if="playerSrc && playerTab === 'server' && files.includes(playerName)"
             class="px-3 py-2 mb-1 rounded-none border border-white/8 bg-white/3">
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-mono text-white/50 truncate flex-1">{{ playerName }}</span>
-              <button @click="closePlayer" class="text-white/35 hover:text-white p-1 text-xs">✕</button>
+              <span class="text-xs font-mono text-white truncate flex-1">{{ playerName }}</span>
+              <button @click="closePlayer" class="text-white hover:text-white p-1 text-xs">✕</button>
             </div>
             <audio v-if="playerKind === 'audio'" :src="playerSrc" controls preload="auto" class="w-full" style="height:32px"/>
             <video v-else :src="playerSrc" controls playsinline class="w-full rounded-none max-h-48"/>
@@ -260,13 +260,13 @@
               >
                 <span v-if="type !== 'context' && type !== 'profiles'" class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
                   :class="isActive(type, name) ? 'bg-white' : 'bg-white/20 hover:bg-white/40'"/>
-                <span class="text-sm text-white/70 truncate">{{ name }}</span>
-                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white/40 shrink-0">{{ $t('vault.active') }}</span>
+                <span class="text-sm text-white truncate">{{ name }}</span>
+                <span v-if="isActive(type, name) && type !== 'context' && type !== 'profiles'" class="text-xs font-medium text-white shrink-0">{{ $t('vault.active') }}</span>
               </button>
               <button
                 @click.stop="downloadToLocal(type, name)"
                 :disabled="!!serverBusy[name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition disabled:opacity-25"
                 :title="$t('vault.save_local')"
                 :aria-label="$t('vault.save_local')"
               >
@@ -281,7 +281,7 @@
                 @click.stop="openContextMenu('server', type, name, $event)"
                 :disabled="!!serverBusy[name]"
                 class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25"
-                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/8'"
+                :class="isMenuOpen(type, name) ? 'bg-white/10 text-white' : 'text-white hover:text-white hover:bg-white/8'"
                 :aria-label="$t('vault.actions')"
               >
                 <svg v-if="serverBusy[name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -301,19 +301,19 @@
 
     <!-- ── GETEILT ────────────────────────────────────────────────────────── -->
     <template v-if="tab === 'shared'">
-      <div v-if="!soulCert" class="py-8 text-center text-sm text-white/35">{{ $t('vault.soul_cert_required') }}</div>
+      <div v-if="!soulCert" class="py-8 text-center text-sm text-white">{{ $t('vault.soul_cert_required') }}</div>
       <div v-else-if="sharedLoading" class="py-8 flex items-center justify-center">
-        <svg class="w-4 h-4 animate-spin text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/>
         </svg>
       </div>
       <template v-else>
-        <p v-if="sharedFiles.length === 0" class="py-5 text-center text-sm text-white/30">
+        <p v-if="sharedFiles.length === 0" class="py-5 text-center text-sm text-white">
           {{ $t('vault.no_shared_files') }}
         </p>
         <div v-else>
           <div class="flex items-center gap-2 px-1 pt-1 pb-1">
-            <p class="text-[10px] font-medium text-white/30 uppercase tracking-widest flex-1">{{ $t('common.files') }} · {{ sharedFiles.length }}</p>
+            <p class="text-[10px] font-medium text-white uppercase tracking-widest flex-1">{{ $t('common.files') }} · {{ sharedFiles.length }}</p>
           </div>
           <div class="divide-y divide-white/[0.05] rounded-none border border-white/[0.07]">
             <div v-for="f in sharedFiles" :key="f.name"
@@ -321,13 +321,13 @@
               style="grid-template-columns: minmax(0,1fr) 2rem 2rem; gap: 0.5rem"
             >
               <div class="py-2 min-w-0">
-                <p class="text-sm text-white/70 truncate font-mono">{{ f.name }}</p>
-                <p class="text-[10px] text-white/30">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</p>
+                <p class="text-sm text-white truncate font-mono">{{ f.name }}</p>
+                <p class="text-[10px] text-white">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</p>
               </div>
               <button
                 @click="downloadSharedFile(f)"
                 :disabled="!!sharedBusy[f.name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none text-white/60 hover:text-white hover:bg-white/8 transition disabled:opacity-25"
+                class="w-8 h-8 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition disabled:opacity-25"
                 :title="$t('vault.download_file')"
               >
                 <svg v-if="sharedBusy[f.name] === 'down'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
@@ -336,7 +336,7 @@
               <button
                 @click="deleteSharedFile(f.name)"
                 :disabled="!!sharedBusy[f.name]"
-                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 text-white/40 hover:text-red-400 hover:bg-red-950/30"
+                class="w-8 h-8 flex items-center justify-center rounded-none transition disabled:opacity-25 text-white hover:text-red-400 hover:bg-red-950/30"
                 :title="$t('common.delete')"
               >
                 <svg v-if="sharedBusy[f.name] === 'del'" class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 3a9 9 0 1 0 9 9"/></svg>
@@ -351,7 +351,7 @@
     <!-- Dateien importieren (Lokal-Tab, auch ohne Vault-Verbindung für Mobile) -->
     <label
       v-if="tab === 'local' && soulCert"
-      class="w-full flex items-center justify-center gap-1.5 py-2 rounded-none border border-dashed border-white/15 text-white/40 hover:text-white/70 hover:border-white/30 transition cursor-pointer text-xs"
+      class="w-full flex items-center justify-center gap-1.5 py-2 rounded-none border border-dashed border-white/15 text-white hover:text-white hover:border-white/30 transition cursor-pointer text-xs"
       :title="$t('vault.import_files')"
     >
       <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -407,38 +407,38 @@
           <!-- Header -->
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
             <h2 id="sync-modal-title" class="text-sm font-semibold text-white">{{ $t('vault.sync_confirm_title') }}</h2>
-            <button @click="syncModalOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition" :aria-label="$t('common.close')">✕</button>
+            <button @click="syncModalOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition" :aria-label="$t('common.close')">✕</button>
           </div>
 
           <!-- Body -->
           <div class="px-5 pb-2 space-y-3">
-            <p class="text-xs text-white/55 leading-relaxed">
+            <p class="text-xs text-white leading-relaxed">
               {{ $t('vault.sync_confirm_text') }}
             </p>
 
             <!-- Was wird hochgeladen -->
             <ul class="space-y-1.5">
-              <li v-if="soulContent" class="flex items-center gap-2 text-xs text-white/70">
+              <li v-if="soulContent" class="flex items-center gap-2 text-xs text-white">
                 <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0"/>
                 <span class="font-mono">sys.md</span>
-                <span class="text-white/35 ml-auto">{{ $t('vault.soul_label') }}</span>
+                <span class="text-white ml-auto">{{ $t('vault.soul_label') }}</span>
               </li>
-              <li v-for="(files, type) in localArchive" :key="type" class="flex items-center gap-2 text-xs text-white/70">
+              <li v-for="(files, type) in localArchive" :key="type" class="flex items-center gap-2 text-xs text-white">
                 <span class="w-1.5 h-1.5 rounded-full bg-white/30 shrink-0"/>
                 <span>{{ files.length }} {{ TYPE_LABELS[type] }} {{ files.length !== 1 ? $t('common.files') : $t('common.file') }}</span>
               </li>
-              <li v-if="!soulContent && Object.keys(localArchive).length === 0" class="text-xs text-white/35 italic">
+              <li v-if="!soulContent && Object.keys(localArchive).length === 0" class="text-xs text-white italic">
                 {{ $t('vault.no_local_files') }}
               </li>
             </ul>
 
             <!-- Verschlüsselungsmodus -->
             <div class="flex items-center gap-2 px-3 py-2 rounded-none bg-white/[0.04] border border-white/8 text-xs">
-              <svg class="w-3.5 h-3.5 shrink-0 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg class="w-3.5 h-3.5 shrink-0 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
               </svg>
-              <span v-if="vaultKey && vaultKey !== '__encrypted__'" class="text-white/60">{{ $t('vault.encrypted_upload') }}</span>
-              <span v-else class="text-white/60">{{ $t('vault.unencrypted_upload') }}</span>
+              <span v-if="vaultKey && vaultKey !== '__encrypted__'" class="text-white">{{ $t('vault.encrypted_upload') }}</span>
+              <span v-else class="text-white">{{ $t('vault.unencrypted_upload') }}</span>
             </div>
           </div>
 
@@ -446,7 +446,7 @@
           <div class="flex items-center gap-2 px-5 py-4 border-t border-[var(--sys-border)]">
             <button
               @click="syncModalOpen = false"
-              class="flex-1 py-2.5 rounded-none border border-white/12 text-white/55 text-xs hover:bg-white/6 hover:text-white transition"
+              class="flex-1 py-2.5 rounded-none border border-white/12 text-white text-xs hover:bg-white/6 hover:text-white transition"
             >{{ $t('vault.cancel') }}</button>
             <button
               @click="confirmSync"
@@ -469,14 +469,14 @@
       <template v-if="menuCtx.tab === 'local'">
         <button v-if="menuCtx.type === 'audio' || menuCtx.type === 'video'"
           @click="onPlayLocal(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           {{ playerName === menuCtx.name && playerTab === 'local' ? $t('vault.stop') : $t('vault.play') }}
         </button>
         <button v-if="soulCert"
           @click="uploadToServer(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
@@ -497,14 +497,14 @@
       <template v-else-if="menuCtx.tab === 'server'">
         <button v-if="menuCtx.type === 'audio' || menuCtx.type === 'video'"
           @click="onPlayServer(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           {{ playerName === menuCtx.name && playerTab === 'server' ? $t('vault.stop') : $t('vault.play') }}
         </button>
         <button v-if="vaultConnected"
           @click="downloadToLocal(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 3v13.5m0 0-4.5-4.5M12 16.5l4.5-4.5"/>
@@ -513,7 +513,7 @@
         </button>
         <button v-if="PROFILE_TYPE_MAP[menuCtx.type]"
           @click="onCreateProfile(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>
@@ -522,7 +522,7 @@
         </button>
         <button v-if="props.soulCert"
           @click="onCreateShareLink(menuCtx.type, menuCtx.name); closeMenu()"
-          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white/70 hover:bg-white/8 hover:text-white transition"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-white hover:bg-white/8 hover:text-white transition"
         >
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>
@@ -554,17 +554,17 @@
         <div class="relative w-full max-w-sm bg-[var(--sys-bg-elevated)] border border-[var(--sys-border)] rounded-2xl shadow-2xl overflow-hidden">
           <div class="flex items-center justify-between px-5 pt-5 pb-3">
             <h2 class="text-sm font-semibold text-white">Share Links</h2>
-            <button @click="shareLinkOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white/40 hover:text-white hover:bg-white/8 transition">✕</button>
+            <button @click="shareLinkOpen = false" class="w-7 h-7 flex items-center justify-center rounded-none text-white hover:text-white hover:bg-white/8 transition">✕</button>
           </div>
 
           <!-- Neu erstellter Link -->
           <div v-if="newShareLink" class="mx-5 mb-4 p-3 rounded-xl bg-[var(--accent-dim)] border border-[rgba(109,184,154,0.3)]">
-            <p class="text-xs text-[var(--accent)] font-medium mb-1.5">{{ $t('vault.share_link_created') }} <span class="text-white/80">{{ newShareLink.label }}</span></p>
+            <p class="text-xs text-[var(--accent)] font-medium mb-1.5">{{ $t('vault.share_link_created') }} <span class="text-white">{{ newShareLink.label }}</span></p>
             <div class="flex items-center gap-2">
               <input
                 :value="newShareLink.url"
                 readonly
-                class="flex-1 bg-transparent text-xs text-white/70 font-mono outline-none truncate"
+                class="flex-1 bg-transparent text-xs text-white font-mono outline-none truncate"
               />
               <button
                 @click="copyShareLink(newShareLink.url)"
@@ -576,20 +576,20 @@
 
           <!-- Alle aktiven Links -->
           <div class="px-5 pb-4 space-y-2 max-h-64 overflow-y-auto">
-            <p v-if="shareLinks.length === 0 && !newShareLink" class="text-xs text-white/35 text-center py-4">{{ $t('vault.no_active_links') }}</p>
+            <p v-if="shareLinks.length === 0 && !newShareLink" class="text-xs text-white text-center py-4">{{ $t('vault.no_active_links') }}</p>
             <div v-for="l in shareLinks" :key="l.id"
               class="flex items-center gap-2 py-2 border-b border-white/6 last:border-0"
             >
               <div class="flex-1 min-w-0">
-                <p class="text-xs text-white/70 truncate font-mono">{{ l.label }}</p>
-                <p class="text-[10px] text-white/30">{{ new Date(l.created * 1000).toLocaleDateString('de-DE') }}</p>
+                <p class="text-xs text-white truncate font-mono">{{ l.label }}</p>
+                <p class="text-[10px] text-white">{{ new Date(l.created * 1000).toLocaleDateString('de-DE') }}</p>
               </div>
-              <button @click="copyShareLink(l.url)" class="shrink-0 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/8 transition" title="Kopieren">
+              <button @click="copyShareLink(l.url)" class="shrink-0 p-1.5 rounded-lg text-white hover:text-white hover:bg-white/8 transition" title="Kopieren">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                   <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                 </svg>
               </button>
-              <button @click="deactivateShareLink(l.id)" class="shrink-0 p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-950/30 transition" title="Deaktivieren">
+              <button @click="deactivateShareLink(l.id)" class="shrink-0 p-1.5 rounded-lg text-white hover:text-red-400 hover:bg-red-950/30 transition" title="Deaktivieren">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                 </svg>

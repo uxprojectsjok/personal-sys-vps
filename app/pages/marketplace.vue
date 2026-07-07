@@ -132,9 +132,9 @@ function onNav(id) {
   --rule:        rgba(236,236,236,0.10);
   --rule-2:      rgba(236,236,236,0.15);
   --fg:          #ececec;
-  --fg-2:        rgba(236,236,236,0.72);
-  --fg-3:        rgba(236,236,236,0.48);
-  --fg-4:        rgba(236,236,236,0.30);
+  --fg-2:        #ececec;
+  --fg-3:        #ececec;
+  --fg-4:        #ececec;
   --accent:      #6db89a;
   --accent-2:    rgba(109,184,154,0.12);
   --accent-bright: #8ad0b3;

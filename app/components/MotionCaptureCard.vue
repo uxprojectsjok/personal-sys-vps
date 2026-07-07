@@ -343,13 +343,13 @@ async function handleSave() {
 .mcc-dur {
   font-family: var(--mono);
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color:#fff;
   margin-left: auto;
 }
 .mcc-steps {
   font-family: var(--mono);
   font-size: 10px;
-  color: rgba(255,255,255,0.25);
+  color:#fff;
 }
 
 .mcc-desc {
@@ -412,7 +412,7 @@ async function handleSave() {
 .mcc-video-hint {
   font-family: var(--mono);
   font-size: 11px;
-  color: rgba(255,255,255,0.3);
+  color:#fff;
   letter-spacing: 0.08em;
 }
 
@@ -480,7 +480,7 @@ async function handleSave() {
 .mcc-prompt-sub {
   font-family: var(--mono);
   font-size: 10px;
-  color: rgba(255,255,255,0.5);
+  color:#fff;
   margin: 0 0 6px;
 }
 .mcc-prompt-bar {
@@ -511,14 +511,14 @@ async function handleSave() {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.7);
+  color:#fff;
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
-.mcc-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+.mcc-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color:#fff; }
 .mcc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .mcc-btn--primary {

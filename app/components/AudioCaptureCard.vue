@@ -287,7 +287,7 @@ async function handleSave() {
 .cc-dur {
   font-family: var(--mono);
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color:#fff;
   margin-left: auto;
 }
 
@@ -324,7 +324,7 @@ async function handleSave() {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.3);
+  color:#fff;
   margin: 0;
   text-align: center;
 }
@@ -376,7 +376,7 @@ async function handleSave() {
   font-size: 12px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.6);
+  color:#fff;
 }
 .cc-progress {
   flex: 1;
@@ -411,14 +411,14 @@ async function handleSave() {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.7);
+  color:#fff;
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
-.cc-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+.cc-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); color:#fff; }
 .cc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .cc-btn--primary {

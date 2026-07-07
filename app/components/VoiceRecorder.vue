@@ -14,7 +14,7 @@
         ></span>
         <span
           class="text-xs tracking-[0.1em] uppercase font-semibold"
-          :class="isRecording ? 'text-red-400' : isPreview ? 'text-white/70' : 'text-[var(--sys-fg-dim)]'"
+          :class="isRecording ? 'text-red-400' : isPreview ? 'text-white' : 'text-[var(--sys-fg-dim)]'"
         >
           {{ isRecording ? $t('voice_recorder.status_recording') : isPreview ? $t('voice_recorder.status_preview') : $t('voice_recorder.status_idle') }}
         </span>
@@ -39,9 +39,9 @@
           <span
             v-if="duration < 30"
             class="text-[30px] font-mono font-bold leading-none tabular-nums"
-            :class="duration >= 25 ? 'text-white/80' : 'text-red-400'"
+            :class="duration >= 25 ? 'text-white' : 'text-red-400'"
           >{{ Math.ceil(30 - duration) }}</span>
-          <span v-else class="text-sm font-bold tracking-[0.2em] uppercase text-white/80 leading-none">
+          <span v-else class="text-sm font-bold tracking-[0.2em] uppercase text-white leading-none">
             {{ $t('voice_recorder.countdown_done') }}
           </span>
           <span v-if="duration < 30" class="text-xs text-[var(--sys-fg-dim)]/40 tracking-widest uppercase mt-0.5">{{ $t('voice_recorder.countdown_unit') }}</span>
@@ -107,7 +107,7 @@
         class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         :class="isRecording
           ? 'border border-red-900/50 bg-[rgba(239,68,68,0.12)] text-red-400 hover:bg-[rgba(239,68,68,0.2)]'
-          : 'border border-white/20 bg-[rgba(255,255,255,0.08)] text-white/80 hover:bg-[rgba(255,255,255,0.14)]'"
+          : 'border border-white/20 bg-[rgba(255,255,255,0.08)] text-white hover:bg-[rgba(255,255,255,0.14)]'"
       >
         <!-- Aufnahme-Kreis -->
         <span
@@ -153,8 +153,8 @@
           :disabled="isSaving || !vaultConnected"
           class="sys-btn flex items-center gap-2 transition-all disabled:opacity-30"
           :class="saved
-            ? 'border border-white/25 bg-[rgba(255,255,255,0.12)] text-white/85'
-            : 'border border-white/15 bg-[rgba(255,255,255,0.06)] text-white/75 hover:bg-[rgba(255,255,255,0.11)]'"
+            ? 'border border-white/25 bg-[rgba(255,255,255,0.12)] text-white'
+            : 'border border-white/15 bg-[rgba(255,255,255,0.06)] text-white hover:bg-[rgba(255,255,255,0.11)]'"
           :title="!vaultConnected ? $t('voice_recorder.btn_connect_save') : ''"
         >
           <svg v-if="saved" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -175,7 +175,7 @@
     <!-- Vault-Hinweis wenn nicht verbunden -->
     <p
       v-if="isPreview && !vaultConnected"
-      class="text-xs text-white/55 tracking-[0.06em] opacity-80"
+      class="text-xs text-white tracking-[0.06em] opacity-80"
     >
       {{ $t('voice_recorder.no_vault_hint') }}
     </p>

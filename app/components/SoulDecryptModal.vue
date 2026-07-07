@@ -40,7 +40,7 @@
 
           <!-- ── Step 1: choose .soul file ──────────────────────── -->
           <template v-if="step === 1">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_1') }}</p>
+            <p class="text-xs tracking-[0.22em] text-white uppercase mb-1">{{ $t('encrypt.step_1') }}</p>
             <h2 class="text-base font-bold text-[var(--sys-fg)] mb-3">{{ $t('decrypt.title') }}</h2>
 
             <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-5">
@@ -57,7 +57,7 @@
             >
               <template v-if="bundleFile">
                 <div class="w-10 h-10 rounded-full bg-[rgba(255,255,255,0.06)] border border-white/20 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                   </svg>
                 </div>
@@ -89,7 +89,7 @@
 
             <div class="shad-separator mb-4"></div>
             <div class="flex gap-3">
-              <button @click="step = 2" :disabled="!bundle" class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white/85 disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all">
+              <button @click="step = 2" :disabled="!bundle" class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all">
                 {{ $t('common.next') }}
               </button>
             </div>
@@ -97,7 +97,7 @@
 
           <!-- ── Step 2: enter 12 words ─────────────────────────── -->
           <template v-else-if="step === 2">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_2') }}</p>
+            <p class="text-xs tracking-[0.22em] text-white uppercase mb-1">{{ $t('encrypt.step_2') }}</p>
             <h2 class="text-base font-bold text-[var(--sys-fg)] mb-1">{{ $t('encrypt.words_title') }}</h2>
             <p class="text-xs text-[var(--sys-fg-muted)] leading-relaxed mb-4">
               {{ $t('decrypt.words_prose') }}
@@ -115,7 +115,7 @@
                 :class="wordState(i)"
               >
                 <span class="text-xs font-mono w-4 flex-none text-right"
-                  :class="isValid(userWords[i]) ? 'text-white/45' : 'text-[var(--sys-fg-dim)]/40'"
+                  :class="isValid(userWords[i]) ? 'text-white' : 'text-[var(--sys-fg-dim)]/40'"
                 >{{ i + 1 }}</span>
                 <input
                   :id="`dec-word-${i}`"
@@ -127,7 +127,7 @@
                   class="flex-1 min-w-0 bg-transparent text-sm font-bold text-[var(--sys-fg)] outline-none placeholder-[var(--sys-fg-dim)]/30"
                   @input="sanitizeWord(i, $event)"
                 />
-                <svg v-if="isValid(userWords[i])" class="w-3 h-3 flex-none text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <svg v-if="isValid(userWords[i])" class="w-3 h-3 flex-none text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
                 </svg>
                 <svg v-else-if="userWords[i]" class="w-3 h-3 flex-none text-red-400/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -147,21 +147,21 @@
                 {{ $t('encrypt.back_btn') }}
               </button>
               <button @click="handleDecrypt" :disabled="!allValid"
-                class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white/85 disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all"
+                class="flex-1 h-12 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.08)] text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:not-disabled:bg-[rgba(255,255,255,0.14)] active:not-disabled:scale-[0.98] transition-all"
               >{{ $t('decrypt.decrypt_btn') }}</button>
             </div>
           </template>
 
           <!-- ── Step 3: result ──────────────────────────────────── -->
           <template v-else-if="step === 3">
-            <p class="text-xs tracking-[0.22em] text-white/38 uppercase mb-1">{{ $t('encrypt.step_3') }}</p>
+            <p class="text-xs tracking-[0.22em] text-white uppercase mb-1">{{ $t('encrypt.step_3') }}</p>
             <h2 class="text-base font-bold text-[var(--sys-fg)] mb-6">
               {{ isDecrypting ? $t('decrypt.decrypting') : decryptError ? $t('common.error') : $t('decrypt.vault_decrypted') }}
             </h2>
 
             <!-- Spinner -->
             <div v-if="isDecrypting" class="flex flex-col items-center gap-4 py-8">
-              <svg class="w-10 h-10 text-white/70 animate-spin" viewBox="0 0 24 24" fill="none">
+              <svg class="w-10 h-10 text-white animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
@@ -193,8 +193,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                 </svg>
                 <div>
-                  <p class="text-xs font-semibold text-white/75">{{ $t('decrypt.logged_in') }}</p>
-                  <p class="text-xs text-white/45">{{ $t('decrypt.logged_in_sub') }}</p>
+                  <p class="text-xs font-semibold text-white">{{ $t('decrypt.logged_in') }}</p>
+                  <p class="text-xs text-white">{{ $t('decrypt.logged_in_sub') }}</p>
                 </div>
               </div>
 
@@ -240,7 +240,7 @@
                 class="sys-cta-primary w-full h-12 flex items-center justify-between px-5 rounded-xl active:scale-[0.98] transition-all group"
               >
                 <span class="text-sm font-bold text-white">{{ $t('decrypt.go_to_dashboard') }}</span>
-                <svg class="w-4 h-4 text-white/60 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
                 </svg>
               </button>

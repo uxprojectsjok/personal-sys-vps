@@ -5,9 +5,10 @@
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('nav.group_soul'), $t('nav.session')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
-          <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, active: filter !== 'all' || timeFilter !== 'all' }" @click="filterOpen = !filterOpen" aria-label="Filter">
+          <button class="icon-btn sess-filter-toggle" :class="{ on: filterOpen, active: filter !== 'all' || timeFilter !== 'all' }" @click="filterOpen = !filterOpen" :aria-label="$t('session_page.settings')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2"/>
+              <circle cx="12" cy="12" r="3"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
             </svg>
             <span v-if="filter !== 'all' || timeFilter !== 'all'" class="sess-filter-dot" />
           </button>
@@ -39,6 +40,25 @@
                 <button :class="{ on: timeFilter === 'all' }" @click="timeFilter = 'all'">{{ $t('session_page.filter_all') }}</button>
               </div>
             </div>
+            <div class="sfp-divider" />
+            <div class="sfp-group">
+              <p class="sfp-label">{{ $t('session_page.ai_settings') }}</p>
+              <div class="sfp-chips">
+                <button :class="{ on: isAutonomous }" @click="toggleAutonomous">{{ $t('chat.ki_auto') }}</button>
+              </div>
+              <div class="sfp-chips" style="margin-top:8px">
+                <button v-for="m in models" :key="m.id" :class="{ on: selectedModel === m.id }" @click="selectModel(m.id)">{{ m.label }}</button>
+              </div>
+            </div>
+            <div class="sfp-divider" />
+            <div class="sfp-group sfp-center">
+              <button v-if="!clearAllConfirm" class="btn btn-primary" @click="askClearAll">{{ $t('chat.clear_all_title') }}</button>
+              <div v-else class="sfp-confirm">
+                <span>{{ $t('chat.clear_all_confirm') }}</span>
+                <button class="btn btn-primary" @click="confirmClearAll">{{ $t('common.ok') }}</button>
+                <button class="btn btn-ghost" @click="cancelClearAll">{{ $t('chat.cancel') }}</button>
+              </div>
+            </div>
           </div>
         </Transition>
 
@@ -63,20 +83,18 @@
         </div>
 
         <div class="chat-shell">
-          <div class="chat-col">
-            <ChatInterface
-              ref="chatRef"
-              :soul-content="soulContent"
-              :soul-cert="soulToken"
-              role="soul"
-              :growth-locked="isGrowingQuietly"
-              :sidebar-open="drawerOpen"
-              v-model:filter="filter"
-              :time-filter="timeFilter"
-              @cert-error="handleCertError"
-              @session-end="forceSessionEnd"
-            />
-          </div>
+          <ChatInterface
+            ref="chatRef"
+            :soul-content="soulContent"
+            :soul-cert="soulToken"
+            role="soul"
+            :growth-locked="isGrowingQuietly"
+            :sidebar-open="drawerOpen"
+            v-model:filter="filter"
+            :time-filter="timeFilter"
+            @cert-error="handleCertError"
+            @session-end="forceSessionEnd"
+          />
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
@@ -402,6 +420,27 @@ const filter           = ref('all')
 const timeFilter       = ref('all')
 const maturity         = computed(() => computeMaturity(soulContent.value).score)
 
+// ── Settings-menu bridge to ChatInterface (AI-Auto / Model) ────────
+// Note: defineExpose() auto-unwraps refs via Vue's proxyRefs — chatRef.value.X
+// already gives the current value, no extra .value needed (reading or writing).
+const isAutonomous  = computed(() => chatRef.value?.autonomousKi ?? false)
+const models        = computed(() => chatRef.value?.MODELS ?? [])
+const selectedModel = computed(() => chatRef.value?.selectedModel ?? '')
+function toggleAutonomous() {
+  if (chatRef.value) chatRef.value.autonomousKi = !chatRef.value.autonomousKi
+}
+function selectModel(id) {
+  if (chatRef.value) chatRef.value.selectedModel = id
+}
+const clearAllConfirm = computed(() => chatRef.value?.clearAllConfirm ?? false)
+function askClearAll() {
+  if (chatRef.value) chatRef.value.clearAllConfirm = true
+}
+function cancelClearAll() {
+  if (chatRef.value) chatRef.value.clearAllConfirm = false
+}
+function confirmClearAll() { chatRef.value?.clearAll?.() }
+
 function onNav(id) {
   if (id === 'chat')     return
   if (id === 'setup')    { router.push('/setup'); return }
@@ -460,8 +499,14 @@ function onNav(id) {
   transition: all 0.12s ease;
 }
 .sfp-chips button:hover { border-color: var(--accent); color: var(--accent); }
-.sfp-chips button.on  { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-bright); }
+.sfp-chips button.on  { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
 .sfp-divider { height: 1px; background: var(--line); margin: 0 -4px; }
+
+.sfp-center { align-items: center; text-align: center; }
+.sfp-confirm {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  font-size: 13px; color: var(--fg);
+}
 
 /* ── Transition ── */
 .filter-drop-enter-active, .filter-drop-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }

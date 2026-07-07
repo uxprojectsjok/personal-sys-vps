@@ -11,7 +11,7 @@
         <span class="text-sm font-medium text-[var(--sys-fg)]">{{ $t('services.title') }}</span>
         <span
           v-if="services.length"
-          class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 text-white/50 border border-white/10"
+          class="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10"
         >
           {{ services.length }}
         </span>
@@ -64,7 +64,7 @@
                 <span
                   v-for="key in (Array.isArray(svc.permissions) ? svc.permissions : Object.keys(svc.permissions).filter(k => svc.permissions[k]))"
                   :key="key"
-                  class="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white/45 border border-white/8"
+                  class="text-xs px-1.5 py-0.5 rounded bg-white/5 text-white border border-white/8"
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
               <p class="text-xs text-[var(--sys-fg-muted)] mt-1 font-mono">
@@ -226,10 +226,10 @@
             <p v-if="testResult === 'error' && testErrorCode === 'vault_locked'" style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">
               {{ $t('services.err_vault_locked_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-xs text-white/55 leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-xs text-white leading-relaxed">
               {{ $t('services.err_key_wrong_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-xs text-white/55 leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-xs text-white leading-relaxed">
               {{ $t('services.err_no_sync_hint') }}
             </p>
           </div>

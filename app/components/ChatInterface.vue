@@ -6,8 +6,8 @@
   <div class="sys-chat" :class="{ 'mob-composer-open': mobileComposerOpen }">
 
     <!-- ── Stream ──────────────────────────────────────────────────── -->
-    <div ref="scrollEl" class="stream" :style="streamPadStyle">
-      <div class="stream-inner">
+    <div ref="scrollEl" class="stream">
+      <div class="stream-inner" :style="streamPadStyle">
 
       <div v-if="peerPendingVisible && peerPollPending.length" class="peer-error-notice peer-error-notice--pending">
         <span class="peer-error-icon">⏳</span>
@@ -31,8 +31,10 @@
           class="msg-bubble"
           :class="item.role === 'user' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
-          <div v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</div>
+          <div class="msg-head">
+            <span v-if="item.role === 'assistant'" class="msg-sender" style="color: var(--accent)">SoulKI</span>
+            <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
+          </div>
           <div class="msg-inner" :class="item.role === 'user' ? 'msg-inner--me' : 'msg-inner--ki'">
             <div v-if="item.mediaType === 'image' && item.mediaUrl" class="media-preview msg-img-wrap"
               @contextmenu.prevent.stop="e => _openMediaCtx(e, item.mediaUrl, 'bild.jpg')"
@@ -91,21 +93,18 @@
           <time class="msg-time-ai">{{ fmtTime(item.ts || Date.now()) }}</time>
         </div>
 
-        <!-- ── Sticker: Social / Agent (persistent pinboard) ────────────── -->
+        <!-- ── Sticker: Social / Agent (persistent pinboard) — styled like SoulKI bubbles ── -->
         <div
           v-else-if="item._type === 'bubble' && (item.sphere === 'social' || item.sphere === 'agent')"
-          class="sticker-wrap"
-        ><div
-          class="sticker"
-          :class="item.sphere === 'agent' ? 'sticker--agent' : 'sticker--social'"
+          class="msg-bubble"
+          :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <div class="sticker-head">
-            <span class="sticker-dir">{{ item.from === 'me' ? 'out' : 'in' }}</span>
-            <span class="sticker-pin">pinned</span>
-            <span class="sticker-author">{{ resolveAuthor(item) }}</span>
-            <button class="sticker-x" @click.stop="deleteLocalImg(item)" :title="$t('common.remove')">×</button>
+          <div class="msg-head">
+            <span class="msg-sender">{{ resolveAuthor(item) }}</span>
+            <button class="bubble-del" @click.stop="deleteLocalImg(item)" :title="$t('common.remove')">×</button>
           </div>
-          <div class="sticker-body">
+          <div class="msg-inner" :class="item.sphere === 'agent' ? 'msg-inner--agent' : 'msg-inner--social'">
+            <div class="sticker-body">
             <div v-if="msgExpiredCache.has(item.ts)" class="msg-expired">Inhalt abgelaufen</div>
             <template v-else>
               <!-- Local cached image -->
@@ -178,10 +177,11 @@
               </template>
             </template>
             <p v-for="(para, j) in paragraphs(cleanVaultRef(cleanMsgContent(item)))" :key="j" v-html="renderText(para)"></p>
+            </div>
           </div>
           <div class="sticker-foot">
             <span v-if="item.to && item.to !== 'peer'" class="sticker-to">→ {{ peerLabelForTo(item.to) }}</span>
-            <time class="sticker-time">{{ fmtMsgDate(item.ts) }}</time>
+            <time class="msg-time-ai">{{ fmtMsgDate(item.ts) }}</time>
             <span
               v-if="item.from === 'me' && item.to !== 'agent' && item.to !== 'ki' && msgDeliveryStatus.has(item.ts)"
               class="sticker-delivery"
@@ -189,7 +189,7 @@
               :title="deliveryTitle(item.ts)"
             >{{ deliveryIcon(item.ts) }}</span>
           </div>
-        </div></div>
+        </div>
 
         <!-- ── Synthesis / sonstige Bubbles (Archivar etc.) ──────────── -->
         <div
@@ -197,10 +197,12 @@
           class="msg-bubble"
           :class="item.from === 'me' ? 'msg-bubble--me' : 'msg-bubble--other'"
         >
-          <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
-          <div v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
-            :style="{ color: item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
-            {{ resolveAuthor(item) }}
+          <div class="msg-head">
+            <span v-if="item.from !== 'me' || item.content?.startsWith('[KI]')" class="msg-sender"
+              :style="{ color: item.content?.startsWith('[KI]') ? 'var(--accent)' : 'var(--accent-bright)' }">
+              {{ resolveAuthor(item) }}
+            </span>
+            <button class="bubble-del" @click.stop="ctxItem = { _item: item }; ctxDelete()" :title="$t('chat.delete')">×</button>
           </div>
           <div class="msg-inner"
             :class="item.from === 'me' ? (item.content?.startsWith('[KI]') ? 'msg-inner--ki-out' : 'msg-inner--me') : 'msg-inner--synthesis'">
@@ -303,6 +305,10 @@
             <span style="font-size:12px;line-height:1;">🙂</span>
             Emoji
           </button>
+          <span class="mp-divider" />
+          <button v-for="c in AT_COMMANDS" :key="c.cmd" class="mp-btn" @click="insertCommand(c)" :title="c.desc">
+            <span class="cmd-at">@</span>{{ c.label }}
+          </button>
         </div>
       </Transition>
 
@@ -318,35 +324,22 @@
         </div>
       </Transition>
 
-      <!-- @-Command chip strip — toggled via @ button -->
-      <Transition name="cmd-strip">
-        <div v-show="cmdsOpen" class="cmd-strip">
-          <button v-for="c in AT_COMMANDS" :key="c.cmd" class="cmd-chip" @click="insertCommand(c)" :title="c.desc">
-            <span class="cmd-at">@</span>{{ c.label }}
-          </button>
-        </div>
-      </Transition>
-
       <!-- Input row -->
       <div class="dock-main">
-        <!-- Open media picker -->
+        <!-- Open media/emoji/@-command picker -->
         <button
           class="dock-icon dock-plus"
           :class="{ active: mediaPickerOpen || emojiOpen }"
-          @click="mediaPickerOpen = !mediaPickerOpen; cmdsOpen = false; emojiOpen = false"
+          @click="mediaPickerOpen = !mediaPickerOpen; emojiOpen = false"
           :disabled="props.growthLocked"
           :title="(mediaPickerOpen || emojiOpen) ? $t('chat.close') : $t('chat.media_or_emoji')"
         >
-          <svg v-if="!mediaPickerOpen && !emojiOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+          <svg v-if="!mediaPickerOpen && !emojiOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
           </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dock-icon-svg">
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="dock-icon-svg">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
-        </button>
-        <!-- @ button toggles command strip -->
-        <button class="dock-icon dock-at" :class="{ active: cmdsOpen }" @click="cmdsOpen = !cmdsOpen; mediaPickerOpen = false; emojiOpen = false" :disabled="props.growthLocked" title="@ Befehle">
-          <span class="dock-at-sym">@</span>
         </button>
         <div class="input-wrap">
           <textarea
@@ -400,68 +393,9 @@
         </Transition>
       </div>
 
-      <!-- Speicher Panel -->
-      <Transition name="archivar-panel-fade">
-        <div v-if="showArchivPanel" class="archivar-panel">
-          <div v-if="archivPanelLoading" class="archivar-panel-loading">{{ $t('chat.loading') }}</div>
-          <template v-else>
-            <div class="archivar-panel-row">
-              <span class="archivar-panel-key">Facts</span>
-              <span class="archivar-panel-val" :class="archivFacts > 0 ? 'archivar-panel-ok' : ''">
-                {{ archivFacts > 0 ? $t('chat.facts_saved', { n: archivFacts }) : $t('chat.no_facts') }}
-              </span>
-            </div>
-            <div class="archivar-panel-row">
-              <span class="archivar-panel-key">{{ $t('chat.last_cleanup') }}</span>
-              <span class="archivar-panel-val">{{ archivUpdated || '—' }}</span>
-            </div>
-            <div class="archivar-panel-row">
-              <span class="archivar-panel-key">{{ $t('chat.size') }}</span>
-              <span class="archivar-panel-val">{{ archivSizeKb }}</span>
-            </div>
-            <div class="archivar-panel-row">
-              <span class="archivar-panel-key">{{ $t('chat.chaos') }}</span>
-              <span class="archivar-panel-val archivar-chaos-wrap">
-                <span class="archivar-chaos-bar">
-                  <span class="archivar-chaos-fill" :style="{ width: archivChaos.pct + '%', background: archivChaos.color }" />
-                </span>
-                <span :style="{ color: archivChaos.color }">{{ archivChaos.label }}</span>
-              </span>
-            </div>
-            <button class="archivar-panel-btn" :disabled="archivCrystallizeBusy" @click="chatCrystallize">
-              <span v-if="archivCrystallizeBusy" class="dots-running">{{ $t('chat.cleanup_running') }}</span><template v-else>{{ $t('chat.cleanup_now') }}</template>
-            </button>
-            <div v-if="archivPanelMsg" class="archivar-panel-msg" :class="archivPanelMsg.ok ? 'ok' : 'err'">
-              {{ archivPanelMsg.text }}
-            </div>
-          </template>
-        </div>
-      </Transition>
-
-      <!-- Mode bar — always below input -->
-      <div class="dock-mode-bar">
-        <button class="archivar-toggle" :class="{ active: autonomousKi }" @click="autonomousKi = !autonomousKi">
-          <span class="archivar-dot"></span>{{ $t('chat.ki_auto') }}
-        </button>
-        <button class="archivar-toggle" :class="{ active: showArchivPanel }" @click="toggleArchivPanel">
-          <span class="archivar-dot"></span>{{ $t('chat.memory') }}<span v-if="archivFacts > 0" class="archivar-facts-count">{{ archivFacts }}</span>
-        </button>
-        <span class="mode-sep"></span>
-        <button class="model-btn" @click="cycleModel">{{ MODELS.find(m => m.id === selectedModel)?.label }}</button>
-        <span v-if="isLoading || isSavingAgent || isRefreshing" class="mode-activity"><span></span><span></span><span></span></span>
-        <span class="mode-sep"></span>
-        <Transition name="fade-quick">
-          <span v-if="clearAllConfirm" class="clear-confirm">
-            {{ $t('chat.clear_all_confirm') }}
-            <button class="clear-ok" @click="clearAll">{{ $t('common.ok') }}</button>
-            <button class="clear-cancel" @click="clearAllConfirm = false">{{ $t('chat.cancel') }}</button>
-          </span>
-          <button v-else class="clear-all-btn" @click="clearAllConfirm = true" :title="$t('chat.clear_all_title')">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 4h12M5.5 4V2.5h5V4M3.5 4L4.8 13a1 1 0 001 .8h4.4a1 1 0 001-.8L12.5 4"/>
-            </svg>
-          </button>
-        </Transition>
+      <!-- Mode bar — only takes space while something is actually happening -->
+      <div v-if="isLoading || isSavingAgent || isRefreshing" class="dock-mode-bar">
+        <span class="mode-activity"><span></span><span></span><span></span></span>
       </div>
 
       <!-- Audio recording indicator -->
@@ -656,82 +590,6 @@ watch(autonomousKi, async (v) => {
     else stopHerzHeartbeat()
   } catch { /* silent */ }
 })
-
-// ── Archivar LONGMEM Panel ──────────────────────────────────────────
-const showArchivPanel       = ref(false)
-const archivPanelLoading    = ref(false)
-const archivFacts           = ref(0)
-const archivUpdated         = ref('')
-const archivBootstrapPending = ref(false)
-const archivSizeBytes       = ref(0)
-const archivLogEntries      = ref(0)
-const archivDaysSince       = ref(0)
-
-const archivSizeKb = computed(() => {
-  const kb = archivSizeBytes.value / 1024
-  return kb < 1 ? archivSizeBytes.value + ' B' : kb.toFixed(1) + ' KB'
-})
-
-const archivChaos = computed(() => {
-  const e = archivLogEntries.value, d = archivDaysSince.value
-  const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
-  if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: 'ruhig' }
-  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: t('chat.growth_chaos_label') }
-  return { pct: 100, color: '#ef4444', label: 'chaotisch' }
-})
-const archivCrystallizeBusy = ref(false)
-const archivPanelMsg        = ref(null)
-
-async function loadArchivPanel() {
-  archivPanelLoading.value = true
-  try {
-    const res = await fetch('/api/soul/longmem-status', {
-      headers: { Authorization: `Bearer ${props.soulCert}` }
-    }).then(r => r.json()).catch(() => null)
-    archivFacts.value           = res?.facts ?? 0
-    archivUpdated.value         = res?.updated ?? ''
-    archivBootstrapPending.value = res?.bootstrap_pending ?? false
-    archivSizeBytes.value       = res?.size_bytes ?? 0
-    archivLogEntries.value      = res?.log_entries ?? 0
-    archivDaysSince.value       = res?.days_since_cleanup ?? 0
-  } finally {
-    archivPanelLoading.value = false
-  }
-}
-
-async function toggleArchivPanel() {
-  showArchivPanel.value = !showArchivPanel.value
-  if (showArchivPanel.value) loadArchivPanel()
-}
-
-async function chatCrystallize() {
-  archivCrystallizeBusy.value = true
-  archivPanelMsg.value = null
-  try {
-    const res = await fetch('/api/soul/herz/crystallize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-    })
-    const data = await res.json()
-    if (data?.ok) {
-      setTimeout(async () => {
-        await syncLongmemFromServer()
-        loadArchivPanel()
-        archivCrystallizeBusy.value = false
-        archivPanelMsg.value = { ok: true, text: t('chat.cleanup_done') }
-        setTimeout(() => { archivPanelMsg.value = null }, 5000)
-      }, 18000)
-    } else {
-      archivCrystallizeBusy.value = false
-      archivPanelMsg.value = { ok: false, text: data?.error || 'Fehler' }
-      setTimeout(() => { archivPanelMsg.value = null }, 8000)
-    }
-  } catch {
-    archivCrystallizeBusy.value = false
-    archivPanelMsg.value = { ok: false, text: 'Netzwerkfehler' }
-    setTimeout(() => { archivPanelMsg.value = null }, 8000)
-  }
-}
 
 // ── Config status (Preflight-Checks) ───────────────────────────────
 const configStatus = ref(null)
@@ -971,9 +829,7 @@ function insertEmoji(emoji) {
   emojiOpen.value = false
 }
 
-// ── @-Command strip ─────────────────────────────────────────────────
-const cmdsOpen = ref(false)
-
+// ── @-Command list (lives inside the media/+ picker) ─────────────────
 const AT_COMMANDS = computed(() => [
   { cmd: '@food-log ',    label: 'food-log',                      desc: t('chat.cmd_food_log_desc'),     direct: false, hint: t('chat.cmd_food_log_hint')     },
   { cmd: '@product ',     label: 'product',                       desc: t('chat.cmd_product_desc'),      direct: false, hint: t('chat.cmd_product_hint')      },
@@ -992,7 +848,7 @@ const AT_COMMANDS = computed(() => [
 ])
 
 function insertCommand(cmd) {
-  cmdsOpen.value = false
+  mediaPickerOpen.value = false
   if (cmd.direct) {
     draft.value = cmd.cmd
     handleSend()
@@ -1085,8 +941,9 @@ async function clearAll() {
 }
 
 // ── Dynamic stream padding (tracks real dock height) ─────────────────
+// Dock is a floating overlay on both desktop and mobile now, so the stream
+// always needs bottom padding to keep the last messages from hiding behind it.
 const streamPadStyle = computed(() => {
-  if (!isMobile.value) return {}
   return { paddingBottom: `calc(${dockHeight.value}px + max(12px, env(safe-area-inset-bottom, 0px)) + 8px)` }
 })
 let _dockRO = null
@@ -3542,7 +3399,7 @@ async function handleSend() {
   const raw = draft.value.trim()
   if (!raw && !msgMedia.value && !msgDoc.value) return
   draft.value = ''
-  cmdsOpen.value = false
+  mediaPickerOpen.value = false
   closeMobileComposer()
   await nextTick(autoResize)
 
@@ -3856,6 +3713,12 @@ defineExpose({
   sendExternal:         (text) => { if (text?.trim() && !isLoading.value) dispatchToChat(text, {}) },
   getSocialMessages:    () => displayMessages.value,
   addAssistantMessage:  (text) => addMessage('assistant', text),
+  // ── Bridge for the header settings menu (session.vue) ──────────────
+  autonomousKi,
+  MODELS,
+  selectedModel,
+  clearAllConfirm,
+  clearAll,
 })
 </script>
 
@@ -3871,9 +3734,9 @@ defineExpose({
   --rule:    rgba(236,236,236,0.07);
   --rule-2:  rgba(236,236,236,0.12);
   --fg:      #ececec;
-  --fg-2:    rgba(236,236,236,0.72);
-  --fg-3:    rgba(236,236,236,0.48);
-  --fg-4:    rgba(236,236,236,0.30);
+  --fg-2:    #ececec;
+  --fg-3:    #ececec;
+  --fg-4:    #ececec;
   --accent:  #6db89a;
   --accent-bright: #8ad0b3;
   --accent-dim:    rgba(109,184,154,0.14);
@@ -3884,12 +3747,13 @@ defineExpose({
 
   display: flex; flex-direction: column;
   flex: 1; min-height: 0; min-width: 0; overflow: hidden;
+  position: relative;
 }
 
 /* ── Stream ──────────────────────────────────────────────────────── */
 .stream {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: clamp(20px,3vw,40px) clamp(12px,3vw,32px) clamp(28px,4vw,56px);
+  padding: 0;
   display: flex; flex-direction: column; position: relative;
 }
 .stream::before {
@@ -3905,6 +3769,8 @@ defineExpose({
   width: 100%;
   min-width: 0;
   overflow-x: hidden;
+  box-sizing: border-box;
+  padding: 0 clamp(12px, 3vw, 32px);
 }
 .anchor { height: 1px; }
 
@@ -3914,7 +3780,7 @@ defineExpose({
 
 /* ── AI message timestamp ────────────────────────────────────────── */
 .msg-time-ai {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  font-family: var(--sans); font-size: clamp(13px, 1.3vw, 14px); letter-spacing: 0.02em;
   color: var(--fg-4); padding: 1px 4px;
   align-self: flex-start; margin-top: 2px;
 }
@@ -3980,11 +3846,14 @@ defineExpose({
 .msg-bubble--me      { align-items: flex-end; }
 .msg-bubble--other   { align-items: flex-start; }
 
+.msg-head {
+  display: flex; align-items: center; gap: 4px;
+}
 .msg-sender {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: clamp(13px, 1.3vw, 14px);
+  letter-spacing: 0.02em;
+  text-transform: none;
   opacity: 0.85;
   padding: 0 6px;
 }
@@ -3998,6 +3867,7 @@ defineExpose({
 .msg-bubble--me    .msg-bubble-wrap { align-self: flex-end; }
 
 .msg-inner {
+  position: relative;
   padding: 12px 16px;
   font-family: var(--sans);
   font-size: clamp(15px, 1.5vw, 17px);
@@ -4031,7 +3901,7 @@ defineExpose({
   background: rgba(0,0,0,0.52);
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 50%;
-  color: rgba(255,255,255,0.75);
+  color:#fff;
   font-size: 13px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0; opacity: 0;
@@ -4060,7 +3930,7 @@ defineExpose({
 }
 .mia-btn {
   flex: 1; background: transparent; border: none;
-  color: rgba(255,255,255,0.55);
+  color:#fff;
   cursor: pointer; padding: 9px 4px; min-height: 40px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
@@ -4068,7 +3938,7 @@ defineExpose({
   text-transform: uppercase;
   transition: background 0.12s, color 0.12s;
 }
-.mia-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
+.mia-btn:hover { background: rgba(255,255,255,0.08); color:#fff; }
 .mia-btn--del { color: rgba(248,113,113,0.55); }
 .mia-btn--del:hover { background: rgba(248,113,113,0.10); color: #f87171; }
 .mia-btn + .mia-btn { border-left: 1px solid rgba(255,255,255,0.08); }
@@ -4185,115 +4055,18 @@ defineExpose({
   color: var(--fg);
 }
 
-/* ── Sticker: Social / Agent (persistent pinboard) ──────────────── */
-.sticker {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: fit-content;
-  max-width: clamp(160px, 48vw, 240px);
-  padding: 9px 11px 7px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.055);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.18);
-  font-family: var(--sans);
-  font-size: clamp(15px, 1.5vw, 17px);
-  line-height: 1.58;
-  color: var(--fg);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  box-sizing: border-box;
-  cursor: default;
-  margin: 3px 0;
-}
-/* Thin colored top bar — sole color indicator */
-.sticker::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  border-radius: 6px 6px 0 0;
-}
-.sticker-wrap { display: flex; justify-content: center; width: 100%; }
-.sticker--social { border: 1px solid rgba(91,170,135,0.25); }
-.sticker--agent  { border: 1px solid rgba(109,184,154,0.18); }
-.sticker--social::before { background: #5baa87; }
-.sticker--agent::before  { background: var(--accent-bright); }
-
-/* Header row — NO background, just labels */
-.sticker-head {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 6px;
-  padding-top: 2px;
-}
-.sticker-dir {
-  font-family: var(--mono);
-  font-size: 0.84em;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.sticker--social .sticker-dir { color: #5baa87; }
-.sticker--agent  .sticker-dir { color: var(--accent-bright); }
-
-.sticker-pin {
-  font-family: var(--mono);
-  font-size: 0.84em;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  opacity: 0.60;
-  flex-shrink: 0;
-}
-
-.sticker-author {
-  font-family: var(--mono);
-  font-size: 0.84em;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  opacity: 0.90;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ✕ button */
-.sticker-x {
-  width: 20px; height: 20px; min-height: 20px;
-  border: none;
-  background: transparent;
-  color: var(--fg-2);
-  border-radius: 50%;
-  font-size: 15px; line-height: 1;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.12s, background 0.12s, color 0.12s;
-}
-.sticker:hover .sticker-x { opacity: 1; }
-.sticker-x:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
-@media (hover: none) { .sticker-x { opacity: 0.75; } }
-
 .bubble-del {
-  position: absolute; top: 4px; right: 4px;
-  width: 20px; height: 20px; min-height: 20px;
+  width: 18px; height: 18px; min-height: 18px; flex: none;
   border: none;
   background: transparent;
   color: var(--fg-2);
   border-radius: 50%;
-  font-size: 15px; line-height: 1;
+  font-size: 14px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   opacity: 0;
   transition: opacity 0.12s, background 0.12s, color 0.12s;
-  z-index: 2;
 }
 .msg-bubble:hover .bubble-del { opacity: 1; }
 .bubble-del:hover { background: rgba(224,108,117,0.14); color: #e06c75; }
@@ -4305,40 +4078,25 @@ defineExpose({
 .sticker-body p:last-child { margin-bottom: 0; }
 .sticker-body a { color: var(--accent-bright); }
 
-/* Images inside: flush to edges */
-.sticker .msg-img-wrap {
-  margin: 4px -11px 6px;
-  max-width: calc(100% + 22px);
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-}
-.sticker .msg-img-actions { background: rgba(0,0,0,0.50); }
-
-/* Footer row — NO background */
+/* Footer row — sits below the bubble, like .msg-time-ai */
 .sticker-foot {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 2px;
+  align-self: flex-start;
 }
+.msg-bubble--me .sticker-foot { align-self: flex-end; flex-direction: row-reverse; }
 .sticker-to {
-  font-family: var(--mono);
-  font-size: 0.84em;
-  letter-spacing: 0.05em;
-  opacity: 0.75;
-  margin-right: auto;
-}
-.sticker-time {
-  font-family: var(--mono);
-  font-size: 0.84em;
-  color: var(--fg-2);
-  letter-spacing: 0.04em;
+  font-family: var(--sans);
+  font-size: clamp(13px, 1.3vw, 14px);
+  letter-spacing: 0.01em;
+  color: var(--fg-4);
 }
 .sticker-delivery {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
+  font-family: var(--sans);
+  font-size: clamp(13px, 1.3vw, 14px);
+  letter-spacing: 0.01em;
   transition: color 0.2s;
   cursor: default; user-select: none;
 }
@@ -4572,15 +4330,24 @@ defineExpose({
    ════════════════════════════════════════════════════════════════════ */
 
 .dock {
-  border-top: 1px solid var(--rule);
-  background: rgba(23,23,23,0.88);
+  position: absolute;
+  left: clamp(16px, 4vw, 40px);
+  right: clamp(16px, 4vw, 40px);
+  bottom: clamp(40px, 6vw, 64px);
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  background: rgba(23,23,23,0.55);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  flex-shrink: 0;
   display: flex; flex-direction: column;
-  padding: 10px clamp(10px, 2vw, 18px) 12px;
-  gap: 8px;
-  position: relative;
+  padding: 5px clamp(5px, 1vw, 9px) 8px;
+  gap: 4px;
+  z-index: 20;
+  transition: border-color 0.18s ease;
+}
+.dock:hover,
+.dock:focus-within {
+  border-color: rgba(109,184,154,0.55);
 }
 
 .dock-growth-lock {
@@ -4621,64 +4388,7 @@ defineExpose({
   background: var(--accent-dim);
 }
 .mode-at { color: var(--accent); font-weight: 700; }
-.archivar-facts-count {
-  margin-left: 4px;
-  background: var(--accent); color: #0e1a14;
-  font-size: 9px; font-weight: 700;
-  padding: 1px 5px; border-radius: 999px;
-  line-height: 1.4;
-}
 
-.archivar-panel {
-  margin: 0 4px 6px;
-  border: 1px solid var(--sys-rule);
-  border-radius: var(--r-xs);
-  background: var(--surface-2);
-  overflow: hidden;
-}
-.archivar-panel-loading {
-  padding: 12px 14px;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
-}
-.archivar-panel-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--sys-rule);
-  font-family: var(--mono); font-size: 11px;
-}
-.archivar-panel-key { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
-.archivar-panel-val { color: var(--fg); letter-spacing: 0.04em; }
-.archivar-panel-ok  { color: var(--sys-ok); }
-.archivar-panel-warn { color: var(--sys-warn); }
-.archivar-panel-btn {
-  display: block; width: calc(100% - 28px); margin: 10px 14px;
-  padding: 7px 0; border-radius: var(--r-xs);
-  border: 1px solid rgba(109,184,154,0.35);
-  background: var(--accent-dim); color: var(--accent);
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
-  cursor: pointer; transition: background 0.15s;
-}
-.archivar-panel-btn:hover { background: rgba(109,184,154,0.18); }
-.archivar-panel-btn:disabled { opacity: 0.5; cursor: default; }
-.archivar-panel-msg {
-  margin: 0 14px 10px;
-  padding: 7px 10px;
-  font-family: var(--mono); font-size: 10px;
-  border-left: 2px solid;
-  border-radius: 0 var(--r-xs) var(--r-xs) 0;
-}
-.archivar-panel-msg.ok  { border-color: var(--sys-ok);  color: var(--sys-ok);  background: rgba(184,220,196,0.06); }
-.archivar-panel-msg.err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
-.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
-.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
-.archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
-.archivar-panel-fade-enter-active, .archivar-panel-fade-leave-active { transition: opacity 0.15s, transform 0.15s; }
-.archivar-panel-fade-enter-from, .archivar-panel-fade-leave-to { opacity: 0; transform: translateY(4px); }
-
-.mode-sep {
-  width: 1px; height: 12px; flex: none;
-  background: var(--rule-2);
-}
 .mode-status {
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.10em; text-transform: uppercase;
@@ -4694,48 +4404,6 @@ defineExpose({
 }
 .mode-activity span:nth-child(2) { animation-delay: 0.2s; }
 .mode-activity span:nth-child(3) { animation-delay: 0.4s; }
-
-.model-btn {
-  background: var(--accent-dim);
-  border: 1px solid rgba(109,184,154,0.30);
-  border-radius: 999px;
-  color: var(--accent);
-  font-family: var(--mono); font-size: 12px;
-  letter-spacing: 0.04em;
-  padding: 4px 13px;
-  cursor: pointer;
-  outline: 0;
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.model-btn:hover { color: var(--accent-bright); border-color: var(--accent); background: rgba(109,184,154,0.22); }
-
-.archivar-toggle {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line-2);
-  background: var(--surface-2); cursor: pointer;
-  font-family: var(--mono); font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--fg-2); padding: 4px 12px;
-  border-radius: 999px;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-}
-.archivar-toggle:hover { color: var(--fg); border-color: var(--line-2); }
-.archivar-toggle.active {
-  color: var(--accent);
-  border-color: rgba(109, 184, 154, 0.35);
-  background: var(--accent-dim);
-}
-.archivar-dot {
-  width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid currentColor;
-  transition: background 0.15s;
-}
-.archivar-toggle.active .archivar-dot {
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-}
 
 .cmd-toggle {
   margin-left: auto;
@@ -4776,25 +4444,6 @@ defineExpose({
 .dock-emoji-sym { line-height: 1; display: block; }
 .dock-emoji.active { opacity: 0.7; }
 
-.cmd-strip {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 8px 2px;
-  width: 100%; min-width: 0; box-sizing: border-box;
-}
-
-.cmd-chip {
-  display: inline-flex; align-items: center; gap: 1px;
-  padding: 6px 13px; border-radius: 999px;
-  background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
-  color: var(--accent);
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
-  cursor: pointer; white-space: nowrap;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.cmd-chip:hover {
-  background: rgba(109,184,154,0.22); border-color: var(--accent);
-  color: var(--accent-bright);
-}
 
 /* ── Filter strip (mobile dock) ── */
 .filter-strip {
@@ -4819,7 +4468,7 @@ defineExpose({
 .dock-filter-btn.active { color: var(--accent); }
 .dock-filter-btn.filter-on { color: var(--accent-bright); }
 .dock-filter-btn { display: none; }
-.cmd-at { color: var(--accent); font-size: 10px; }
+.cmd-at { color: var(--fg); font-size: 10px; }
 
 .cmd-strip-enter-active { transition: opacity 0.14s ease, transform 0.16s ease; }
 .cmd-strip-leave-active { transition: opacity 0.10s ease, transform 0.12s ease; }
@@ -4828,21 +4477,22 @@ defineExpose({
 
 /* ── Media picker (compact chip row) ── */
 .media-picker {
-  display: flex; flex-wrap: nowrap; gap: 5px; padding: 6px 2px 2px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 2px 2px;
+  max-height: 40vh; overflow-y: auto;
   scrollbar-width: none;
 }
 .media-picker::-webkit-scrollbar { display: none; }
+.mp-divider { width: 100%; height: 1px; background: var(--rule); margin: 3px 0; }
 .mp-btn {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 5px 10px; border-radius: 999px; flex-shrink: 0;
-  background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
-  color: var(--accent); cursor: pointer;
+  background: transparent; border: 1px solid var(--line-2);
+  color: var(--fg); cursor: pointer;
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.03em;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .mp-btn:hover:not(:disabled) {
-  background: rgba(109,184,154,0.22); border-color: var(--accent); color: var(--accent-bright);
+  background: rgba(255,255,255,0.06); border-color: var(--fg); color: var(--fg);
 }
 .mp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -4867,22 +4517,13 @@ defineExpose({
 .peer-audio-stop { color: #ef4444 !important; }
 .peer-audio-stop:hover { background: rgba(239,68,68,0.15) !important; }
 
-/* ── @ dock button ── */
-.dock-at { font-size: 15px; font-weight: 600; }
-.dock-at-sym { font-family: var(--mono); font-size: 14px; color: var(--accent); transition: color 0.12s; }
-.dock-at.active .dock-at-sym { color: var(--accent-bright); }
-
 .dock-main {
   display: flex; align-items: center;
   min-height: 48px;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--rule);
   padding: 4px 0;
   gap: 4px;
-}
-.dock-main:focus-within {
-  border-top-color: rgba(109, 184, 154, 0.30);
 }
 
 .dock-icon {
@@ -4900,8 +4541,9 @@ defineExpose({
 .dock-icon:disabled { opacity: 0.3; cursor: not-allowed; }
 .dock-icon-svg { width: 16px; height: 16px; }
 
-.dock-plus { color: var(--fg-2); }
+.dock-plus { color: var(--fg); }
 .dock-plus.active { color: var(--accent); }
+.dock-plus .dock-icon-svg { width: 19px; height: 19px; }
 .dock-plus svg { transition: transform 0.2s; }
 .dock-plus.active svg { transform: rotate(45deg); }
 
@@ -5018,11 +4660,8 @@ defineExpose({
   white-space: nowrap; letter-spacing: 0.04em;
 }
 
-/* ── Desktop dock: mehr Abstand unten — Input-Feld optisch höher ── */
 @media (min-width: 901px) {
-  .dock { padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
-  /* Desktop: center the stream column, constrain bubble widths */
-  .stream-inner { max-width: 780px; margin: 0 auto; }
+  /* Desktop: constrain bubble widths (stream-inner itself stays full-width) */
   .msg-bubble { max-width: min(78%, 580px); }
   .msg-bubble--me    { align-self: flex-end;   margin-right: 8px; }
   .msg-bubble--other { align-self: flex-start; }
@@ -5040,7 +4679,7 @@ defineExpose({
   .stream { padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 80px); box-sizing: border-box; overflow-x: hidden; width: 100%; }
   .mob-composer-open .stream { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 260px); }
   /* No margin:auto or max-width on desktop → no overrides needed here. Just tighten gap. */
-  .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; }
+  .stream-inner { gap: 14px; overflow-x: hidden; box-sizing: border-box; padding: 0 clamp(24px, 8vw, 120px); }
 
   /* Mobile bubbles: same left/right alignment as desktop, just wider max-width */
   .msg-bubble     { max-width: 82%; gap: 4px; margin-right: 0; margin-left: 0; }
@@ -5049,7 +4688,6 @@ defineExpose({
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
   .msg-bubble--me .msg-inner  { border-radius: 16px 4px 16px 16px; }
-  .msg-sender { font-size: 9.5px; letter-spacing: 0.12em; padding: 0 4px; }
   .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe { max-width: 100%; width: auto; }
@@ -5077,18 +4715,23 @@ defineExpose({
     box-sizing: border-box;
   }
 
-  /* Dock: always visible on mobile, fixed at bottom */
+  /* Dock: always visible on mobile, fixed at bottom (Teleport target, same
+     floating-pill look as desktop — position:fixed since it lives outside
+     .sys-chat once teleported to #teleports). Permanent subtle border since
+     touch has no :hover to reveal the accent edge like on desktop. */
   .dock {
     position: fixed;
-    bottom: 0;
-    left: 0; right: 0;
+    left: clamp(16px, 4vw, 40px);
+    right: clamp(16px, 4vw, 40px);
+    bottom: calc(clamp(80px, 18vw, 130px) + env(safe-area-inset-bottom, 0px));
     z-index: 200;
-    padding: 10px 14px max(12px, env(safe-area-inset-bottom, 12px)); gap: 7px;
-    background: rgba(23,23,23, 0.96);
+    padding: 5px clamp(5px, 1vw, 9px) 8px;
+    gap: 4px;
+    border-color: rgba(255,255,255,0.10);
+    background: rgba(23,23,23,0.55);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
-    border-top: 1px solid rgba(109, 184, 154, 0.14);
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
   }
   /* chip strip padding adjustment on mobile */
   .cmd-strip { padding: 4px 0 2px; }
@@ -5107,9 +4750,6 @@ defineExpose({
   }
   .emoji-btn { width: 40px; height: 40px; font-size: 22px; border-radius: 8px; }
   .dock-mode-bar { gap: 6px; flex-wrap: wrap; min-height: 20px; }
-  .archivar-toggle { font-size: 12px; padding: 4px 10px; }
-  .archivar-dot { width: 5px; height: 5px; }
-  .model-btn { font-size: 12px; padding: 4px 10px; }
   .mode-cmd-toggle { font-size: 11px; padding: 2px 8px; }
   .dock-icon { width: 40px; }
   .input-wrap { padding: 0 10px; }
@@ -5273,29 +4913,5 @@ defineExpose({
 .ctx-pop-enter-active, .ctx-pop-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .ctx-pop-enter-from, .ctx-pop-leave-to { opacity: 0; }
 
-/* ── Clear-all button + confirm ── */
-.clear-all-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 6px;
-  background: transparent; border: 1px solid transparent;
-  color: var(--fg-3); cursor: pointer; transition: all 0.12s;
-}
-.clear-all-btn:hover { color: #e06c75; border-color: rgba(224,108,117,0.3); background: rgba(224,108,117,0.06); }
-.clear-confirm {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--fg-2);
-}
-.clear-ok {
-  padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(224,108,117,0.5);
-  background: rgba(224,108,117,0.1); color: #e06c75;
-  font-family: var(--mono); font-size: 10.5px; cursor: pointer;
-}
-.clear-ok:hover { background: rgba(224,108,117,0.2); }
-.clear-cancel {
-  padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line);
-  background: transparent; color: var(--fg-3);
-  font-family: var(--mono); font-size: 10.5px; cursor: pointer;
-}
-.clear-cancel:hover { color: var(--fg-1); border-color: var(--fg-3); }
 
 </style>

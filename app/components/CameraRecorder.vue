@@ -35,10 +35,10 @@
             class="flex-none px-6 py-4 bg-black/80 backdrop-blur-sm flex flex-col gap-3"
             style="padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem)"
           >
-            <p class="text-xs text-white/40 tracking-[0.18em] uppercase text-center">
+            <p class="text-xs text-white tracking-[0.18em] uppercase text-center">
               {{ captureBuffer?.type === 'video' ? 'Was hast du gesagt?' : 'Was soll ich dazu wissen?' }}
             </p>
-            <p class="text-xs text-white/25 text-center -mt-1">
+            <p class="text-xs text-white text-center -mt-1">
               Verwende das Mikro oder tippe ein…
             </p>
             <div class="relative">
@@ -55,7 +55,7 @@
               <button
                 v-show="!captionText.trim() || isListening"
                 @click="startListening"
-                :class="isListening ? 'text-red-400' : 'text-white/40 hover:text-white/70'"
+                :class="isListening ? 'text-red-400' : 'text-white hover:text-white'"
                 class="absolute right-3 bottom-3 transition-colors"
                 type="button"
                 :aria-label="isListening ? $t('camera.listening') : $t('camera.speak')"
@@ -68,7 +68,7 @@
             <div class="flex gap-3">
               <button
                 @click="cancelCaption"
-                class="flex-1 py-2.5 rounded-xl border border-white/15 text-sm text-white/50 hover:text-white hover:border-white/30 transition-all"
+                class="flex-1 py-2.5 rounded-xl border border-white/15 text-sm text-white hover:text-white hover:border-white/30 transition-all"
               >
                 {{ $t('camera.btn_discard') }}
               </button>
@@ -104,7 +104,7 @@
               <span class="text-xs text-white font-mono tracking-widest">
                 {{ formatDuration(recDuration) }}
               </span>
-              <svg class="w-3 h-3 text-white/60 flex-none" viewBox="0 0 24 24" fill="currentColor">
+              <svg class="w-3 h-3 text-white flex-none" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4Zm6.5 10.5a.75.75 0 0 1 .75.75A7.25 7.25 0 0 1 12.75 19.4V22h-1.5v-2.6A7.25 7.25 0 0 1 4.75 12.25a.75.75 0 0 1 1.5 0A5.75 5.75 0 0 0 12 18a5.75 5.75 0 0 0 5.75-5.75.75.75 0 0 1 .75-.75Z"/>
               </svg>
             </div>
@@ -114,7 +114,7 @@
               v-if="!streamReady && !previewError"
               class="absolute inset-0 flex items-center justify-center"
             >
-              <span class="text-xs text-white/50 tracking-[0.2em] uppercase animate-pulse">
+              <span class="text-xs text-white tracking-[0.2em] uppercase animate-pulse">
                 {{ $t('camera.loading') }}
               </span>
             </div>
@@ -124,14 +124,14 @@
               v-if="previewError"
               class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 text-center"
             >
-              <svg class="w-8 h-8 text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
               </svg>
-              <p class="text-sm text-white/50">{{ $t('camera.unavailable') }}</p>
+              <p class="text-sm text-white">{{ $t('camera.unavailable') }}</p>
               <button
                 @click="cancel"
-                class="px-4 py-1.5 rounded-full border border-white/20 text-xs text-white/60 hover:text-white hover:border-white/40 transition-all"
+                class="px-4 py-1.5 rounded-full border border-white/20 text-xs text-white hover:text-white hover:border-white/40 transition-all"
               >
                 {{ $t('common.close') }}
               </button>
@@ -163,7 +163,7 @@
             <!-- Abbrechen -->
             <button
               @click="cancel"
-              class="w-12 h-12 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all"
+              class="w-12 h-12 flex items-center justify-center rounded-full text-white hover:text-white hover:bg-white/10 transition-all"
               aria-label="Abbrechen"
             >
               <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -196,7 +196,7 @@
                 v-if="!isRecording"
                 @click="switchCamera"
                 :disabled="isSwitching"
-                class="w-12 h-12 flex flex-col items-center justify-center gap-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-all"
+                class="w-12 h-12 flex flex-col items-center justify-center gap-1 rounded-full text-white hover:text-white hover:bg-white/10 disabled:opacity-30 transition-all"
                 aria-label="Kamera wechseln"
               >
                 <svg
@@ -212,7 +212,7 @@
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/>
                 </svg>
-                <span class="text-xs tracking-wide text-white/40">Video</span>
+                <span class="text-xs tracking-wide text-white">Video</span>
               </div>
             </div>
           </div>
@@ -223,7 +223,7 @@
             class="absolute text-center pointer-events-none"
             style="bottom: max(calc(env(safe-area-inset-bottom, 0px) + 104px), 120px); left: 0; right: 0"
           >
-            <p class="text-xs text-white/35 tracking-[0.18em] uppercase">
+            <p class="text-xs text-white tracking-[0.18em] uppercase">
               Tippen = Foto · 2 Sek. halten = Video
             </p>
           </div>

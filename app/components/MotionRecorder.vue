@@ -15,7 +15,7 @@
           ></span>
           <span
             class="text-xs tracking-[0.1em] uppercase font-semibold"
-            :class="isRecording ? 'text-red-400' : isPreview ? 'text-white/60' : 'text-[var(--sys-fg-dim)]'"
+            :class="isRecording ? 'text-red-400' : isPreview ? 'text-white' : 'text-[var(--sys-fg-dim)]'"
           >
             {{ isRecording ? (selectedMode === 'face' ? $t('motion.status_face') : $t('motion.status_body')) : isPreview ? $t('motion.status_preview') : $t('motion.status_idle') }}
           </span>
@@ -49,7 +49,7 @@
             @click="selectedMode = 'face'; handleOpenCamera()"
             class="flex flex-col items-center justify-center gap-2.5 px-3 py-5 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.07)] hover:bg-[rgba(255,255,255,0.14)] hover:border-white/30 active:scale-[0.97] transition-all text-center"
           >
-            <svg class="w-8 h-8 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
               <circle cx="12" cy="8" r="5"/>
               <path stroke-linecap="round" d="M9.5 8.5c.5.8 1.5 1.3 2.5 1.3s2-.5 2.5-1.3"/>
               <path stroke-linecap="round" d="M10 7h.01M14 7h.01"/>
@@ -62,7 +62,7 @@
             @click="selectedMode = 'body'; handleOpenCamera()"
             class="flex flex-col items-center justify-center gap-2.5 px-3 py-5 rounded-xl border border-white/20 bg-[rgba(255,255,255,0.07)] hover:bg-[rgba(255,255,255,0.14)] hover:border-white/30 active:scale-[0.97] transition-all text-center"
           >
-            <svg class="w-8 h-8 text-white/75" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
               <circle cx="12" cy="4" r="2"/>
               <path stroke-linecap="round" d="M12 6v8M9 10h6M9 22l3-8 3 8"/>
               <path stroke-linecap="round" d="M7 10l-2 4M17 10l2 4" opacity=".5"/>
@@ -180,7 +180,7 @@
             <div v-if="currentPrompt" class="absolute bottom-0 left-0 right-0 pointer-events-none">
               <div class="bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-8 pb-3 px-3">
                 <p class="text-white text-xs font-semibold leading-snug">{{ currentPrompt.text }}</p>
-                <p v-if="currentPrompt.sub" class="text-white/55 text-xs mt-0.5 leading-relaxed">{{ currentPrompt.sub }}</p>
+                <p v-if="currentPrompt.sub" class="text-white text-xs mt-0.5 leading-relaxed">{{ currentPrompt.sub }}</p>
                 <div class="mt-2 h-0.5 bg-white/15 rounded-full overflow-hidden">
                   <div
                     class="h-full rounded-full transition-none"
@@ -227,7 +227,7 @@
           <button
             v-if="!isRecording && !isPreview"
             @click="handleStart"
-            class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all border border-white/20 bg-[rgba(255,255,255,0.08)] text-white/80 hover:bg-[rgba(255,255,255,0.14)]"
+            class="sys-btn sys-fab mx-auto flex items-center gap-2 transition-all border border-white/20 bg-[rgba(255,255,255,0.08)] text-white hover:bg-[rgba(255,255,255,0.14)]"
           >
             <span class="w-2.5 h-2.5 rounded-full bg-white flex-none"></span>
             {{ $t('motion.record') }}
@@ -272,7 +272,7 @@
             <button
               v-if="initialMode === 'face'"
               @click="$emit('next-mode')"
-              class="sys-btn flex items-center gap-1.5 border border-white/12 bg-[rgba(255,255,255,0.04)] text-white/55 hover:bg-[rgba(255,255,255,0.08)] transition-all"
+              class="sys-btn flex items-center gap-1.5 border border-white/12 bg-[rgba(255,255,255,0.04)] text-white hover:bg-[rgba(255,255,255,0.08)] transition-all"
             >
               {{ $t('motion.next_mode') }}
               <svg class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -284,8 +284,8 @@
               :disabled="isSaving || (!vaultConnected && !soulToken)"
               class="sys-btn flex items-center gap-2 transition-all disabled:opacity-30"
               :class="saved
-                ? 'border border-white/15 bg-[rgba(255,255,255,0.08)] text-white/65'
-                : 'border border-white/12 bg-[rgba(255,255,255,0.05)] text-white/55 hover:bg-[rgba(255,255,255,0.09)]'"
+                ? 'border border-white/15 bg-[rgba(255,255,255,0.08)] text-white'
+                : 'border border-white/12 bg-[rgba(255,255,255,0.05)] text-white hover:bg-[rgba(255,255,255,0.09)]'"
               :title="(!vaultConnected && !soulToken) ? $t('motion.vault_title') : ''"
             >
               <svg v-if="saved" class="w-3 h-3 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

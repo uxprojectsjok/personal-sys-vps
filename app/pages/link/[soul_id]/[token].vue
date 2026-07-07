@@ -175,7 +175,7 @@ onMounted(async () => {
 .link-page {
   min-height: 100vh;
   background: #0e0e0c;
-  color: rgba(255,255,255,0.82);
+  color:#fff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -193,7 +193,7 @@ onMounted(async () => {
   padding: 2px 7px; border-radius: 4px;
 }
 .link-label {
-  font-size: 13px; color: rgba(255,255,255,0.55); font-family: monospace;
+  font-size: 13px; color:#fff; font-family: monospace;
 }
 
 /* ── Main ── */
@@ -204,13 +204,13 @@ onMounted(async () => {
 }
 
 /* ── Markdown body ── */
-.link-body { font-size: 15px; line-height: 1.75; color: rgba(255,255,255,0.78); }
+.link-body { font-size: 15px; line-height: 1.75; color:#fff; }
 .link-body :deep(h1) { font-size: 1.6em; font-weight: 700; color: #fff; margin: 1.2em 0 0.5em; line-height: 1.3; }
-.link-body :deep(h2) { font-size: 1.25em; font-weight: 600; color: rgba(255,255,255,0.9); margin: 1.4em 0 0.5em; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0.3em; }
-.link-body :deep(h3) { font-size: 1.05em; font-weight: 600; color: rgba(255,255,255,0.85); margin: 1.2em 0 0.4em; }
+.link-body :deep(h2) { font-size: 1.25em; font-weight: 600; color:#fff; margin: 1.4em 0 0.5em; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 0.3em; }
+.link-body :deep(h3) { font-size: 1.05em; font-weight: 600; color:#fff; margin: 1.2em 0 0.4em; }
 .link-body :deep(h4),
 .link-body :deep(h5),
-.link-body :deep(h6) { font-size: 0.95em; font-weight: 600; color: rgba(255,255,255,0.75); margin: 1em 0 0.3em; }
+.link-body :deep(h6) { font-size: 0.95em; font-weight: 600; color:#fff; margin: 1em 0 0.3em; }
 .link-body :deep(p)  { margin: 0.6em 0; }
 .link-body :deep(br) { display: block; margin: 0.3em 0; content: ""; }
 .link-body :deep(ul) { padding-left: 1.4em; margin: 0.5em 0; list-style: disc; }
@@ -219,7 +219,7 @@ onMounted(async () => {
 .link-body :deep(blockquote) {
   border-left: 3px solid rgba(109,184,154,0.5);
   padding: 0.4em 1em; margin: 0.8em 0;
-  color: rgba(255,255,255,0.5); font-style: italic;
+  color:#fff; font-style: italic;
   background: rgba(255,255,255,0.03);
 }
 .link-body :deep(code) {
@@ -231,11 +231,11 @@ onMounted(async () => {
   background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px; padding: 1em 1.2em; overflow-x: auto; margin: 1em 0;
 }
-.link-body :deep(pre code) { background: none; padding: 0; font-size: 0.9em; color: rgba(255,255,255,0.75); }
+.link-body :deep(pre code) { background: none; padding: 0; font-size: 0.9em; color:#fff; }
 .link-body :deep(a) { color: #6db89a; text-decoration: none; }
 .link-body :deep(a:hover) { text-decoration: underline; }
 .link-body :deep(hr) { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 1.5em 0; }
-.link-body :deep(strong) { color: rgba(255,255,255,0.95); font-weight: 600; }
+.link-body :deep(strong) { color:#fff; font-weight: 600; }
 
 /* ── Loading/Error ── */
 .link-center {
@@ -250,13 +250,13 @@ onMounted(async () => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .link-error-box { text-align: center; }
-.link-error-icon { width: 40px; height: 40px; color: rgba(255,255,255,0.2); margin: 0 auto 12px; display: block; }
-.link-error-title { font-size: 15px; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
-.link-error-sub   { font-size: 13px; color: rgba(255,255,255,0.3); }
+.link-error-icon { width: 40px; height: 40px; color:#fff; margin: 0 auto 12px; display: block; }
+.link-error-title { font-size: 15px; color:#fff; margin-bottom: 6px; }
+.link-error-sub   { font-size: 13px; color:#fff; }
 
 /* ── Footer ── */
 .link-footer {
-  text-align: center; font-size: 11px; color: rgba(255,255,255,0.2);
+  text-align: center; font-size: 11px; color:#fff;
   padding: 16px; border-top: 1px solid rgba(255,255,255,0.05);
   letter-spacing: 0.05em;
 }

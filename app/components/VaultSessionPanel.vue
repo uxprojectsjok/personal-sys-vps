@@ -16,7 +16,7 @@
         <span
           v-if="isUnlocked"
           class="text-xs tracking-widest font-mono px-2 py-0.5 rounded-full border"
-          :class="vaultKey ? 'bg-[rgba(255,255,255,0.07)] text-white/75 border-[rgba(255,255,255,0.18)]' : 'bg-[rgba(255,255,255,0.07)] text-white/75 border-[rgba(255,255,255,0.18)]'"
+          :class="vaultKey ? 'bg-[rgba(255,255,255,0.07)] text-white border-[rgba(255,255,255,0.18)]' : 'bg-[rgba(255,255,255,0.07)] text-white border-[rgba(255,255,255,0.18)]'"
         >
           {{ vaultKey ? '🔐 ' : '' }}{{ $t('vault_session.open_status', { time: timeRemaining }) }}
         </span>
@@ -144,7 +144,7 @@
                   autocorrect="off"
                   spellcheck="false"
                 />
-                <p v-if="mnemonicInput.trim() && mnemonicWordCount !== 12" class="text-xs text-white/55">
+                <p v-if="mnemonicInput.trim() && mnemonicWordCount !== 12" class="text-xs text-white">
                   {{ $t('vault_session.word_count', { n: mnemonicWordCount }) }}
                 </p>
               </div>

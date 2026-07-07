@@ -131,7 +131,7 @@
                     <div class="flex gap-1 flex-none">
                       <button
                         @click="startEdit(i)"
-                        class="w-7 h-7 flex items-center justify-center rounded-lg text-white/35 hover:text-[var(--sys-violet)] hover:bg-[var(--sys-violet)]/10 transition"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg text-white hover:text-[var(--sys-violet)] hover:bg-[var(--sys-violet)]/10 transition"
                         :title="$t('calendar.btn_edit')"
                       >
                         <i class="ri-pencil-line text-xs" />
@@ -139,7 +139,7 @@
                       <button
                         @click="deleteEntry(i)"
                         :disabled="row.deleting"
-                        class="w-7 h-7 flex items-center justify-center rounded-lg text-white/35 hover:text-red-400 hover:bg-red-950/30 transition disabled:opacity-30"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg text-white hover:text-red-400 hover:bg-red-950/30 transition disabled:opacity-30"
                         :title="$t('common.delete')"
                       >
                         <svg v-if="row.deleting" class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
