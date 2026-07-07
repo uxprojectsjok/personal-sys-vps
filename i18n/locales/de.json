@@ -373,8 +373,6 @@
     "connect": "Verbinden",
     "checking": "Prüfe…",
     "overwrite_placeholder": "Neu eingeben zum Überschreiben…",
-    "hide_key": "Key verbergen",
-    "show_key": "Key anzeigen",
     "valid": "Key gültig ✓",
     "format_ok": "Format OK (Hex-Key erkannt)",
     "invalid_format": "Ungültiges Format — Hex erwartet",

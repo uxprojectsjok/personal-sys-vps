@@ -20,7 +20,7 @@
           </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail sys-rail--7">
+          <div class="sys-rail">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_api') }}</span></span>
             </button>
@@ -62,9 +62,9 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="wavespeedKey"
-                    :type="showWavespeedKey ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="wavespeedKeySet ? $t('common.overwrite_placeholder') : $t('settings.wavespeed_key') + '…'"
                     autocomplete="off"
@@ -72,14 +72,6 @@
                     @input="wavespeedDirty = true"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showWavespeedKey = !showWavespeedKey"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showWavespeedKey ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showWavespeedKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="wavespeedKeySet" style="display:flex;gap:8px">
                   <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -95,9 +87,9 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="elevenlabsKey"
-                    :type="showElevenlabsKey ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="elevenlabsKeySet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="elevenlabsKeySet ? $t('common.overwrite_placeholder') : $t('settings.elevenlabs_key') + '…'"
                     autocomplete="off"
@@ -105,14 +97,6 @@
                     @input="elevenlabsDirty = true"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showElevenlabsKey = !showElevenlabsKey"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showElevenlabsKey ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showElevenlabsKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="elevenlabsKeySet" style="display:flex;gap:8px">
                   <button @click="deleteKey('elevenlabs_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -192,23 +176,15 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="apiKey"
-                    :type="showKey ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
                     placeholder="sk-ant-..."
                     autocomplete="off"
                     spellcheck="false"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showKey = !showKey"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showKey ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
                   <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -238,9 +214,9 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="braveKey"
-                    :type="showBraveKey ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="braveKeySet ? $t('common.overwrite_placeholder') : 'BSA…'"
                     autocomplete="off"
@@ -248,14 +224,6 @@
                     @input="braveDirty = true"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showBraveKey = !showBraveKey"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showBraveKey ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showBraveKey ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="braveKeySet" style="display:flex;gap:8px">
                   <button @click="deleteKey('brave_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -271,9 +239,9 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="reownProjectId"
-                    :type="showReownId ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="reownSet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="reownSet ? $t('common.overwrite_placeholder') : 'a1b2c3d4…'"
                     autocomplete="off"
@@ -281,14 +249,6 @@
                     @input="reownDirty = true"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showReownId = !showReownId"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showReownId ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showReownId ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="reownSet" style="display:flex;gap:8px">
                   <button @click="deleteKey('reown_project_id')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -304,9 +264,9 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="mcpUrl"
-                    :type="showMcpUrl ? 'text' : 'password'"
+                    type="password"
                     class="sys-input sys-input--mono"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="mcpUrlSet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="mcpUrlSet ? $t('common.overwrite_placeholder') : 'https://mcp.zapier.com/api/mcp/s/…/mcp'"
                     autocomplete="off"
@@ -314,14 +274,6 @@
                     @input="mcpDirty = true"
                     @keyup.enter="saveConfig"
                   />
-                  <button
-                    @click="showMcpUrl = !showMcpUrl"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showMcpUrl ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showMcpUrl ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="mcpUrlSet" style="display:flex;gap:8px">
                   <button @click="deleteKey('mcp_url')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -337,23 +289,15 @@
                 <div style="display:flex;gap:0">
                   <input
                     v-model="pinataJwt"
-                    :type="showPinataJwt ? 'text' : 'password'"
+                    type="password"
                     class="sys-input"
-                    style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                    style="flex:1;border-radius:var(--r-xs)"
                     :style="pinataJwtSet ? 'border-color:var(--sys-ok)' : ''"
                     :placeholder="pinataJwtSet ? $t('common.overwrite_placeholder') : 'eyJ…'"
                     autocomplete="off"
                     spellcheck="false"
                     @keyup.enter="savePinataJwt"
                   />
-                  <button
-                    @click="showPinataJwt = !showPinataJwt"
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                    :aria-label="showPinataJwt ? $t('common.hide_key') : $t('common.show_key')"
-                  >
-                    <i :class="showPinataJwt ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                  </button>
                 </div>
                 <div v-if="pinataJwtSet || pinataFeedback" style="display:flex;align-items:center;gap:8px">
                   <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
@@ -461,22 +405,14 @@
                     <div style="display:flex;gap:0">
                       <input
                         v-model="connectToken"
-                        :type="showConnectToken ? 'text' : 'password'"
+                        type="password"
                         class="sys-input sys-input--mono"
-                        style="flex:1;border-right:none;border-radius:var(--r-xs) 0 0 var(--r-xs)"
+                        style="flex:1;border-radius:var(--r-xs)"
                         placeholder="adm_..."
                         autocomplete="off"
                         spellcheck="false"
                         @keyup.enter="connectAdmin"
                       />
-                      <button
-                        @click="showConnectToken = !showConnectToken"
-                        class="sys-btn-ed sys-btn-ed--ghost"
-                        style="padding:0 12px;border-left:none;border-radius:0 var(--r-xs) var(--r-xs) 0"
-                        :aria-label="showConnectToken ? $t('common.hide_key') : $t('common.show_key')"
-                      >
-                        <i :class="showConnectToken ? 'ri-eye-off-line' : 'ri-eye-line'" class="ri-fw" style="font-size:13px" />
-                      </button>
                     </div>
                   </div>
                   <button class="sys-btn-ed sys-btn-ed--primary" @click="connectAdmin" :disabled="connectingAdmin || !connectToken">
@@ -1007,7 +943,6 @@ async function submitMfa() {
 // ── API-Key Tab State ─────────────────────────────────────────────────────────
 const apiKey    = ref('')
 const model     = ref('')
-const showKey   = ref(false)
 const saving    = ref(false)
 const feedback  = ref(null)
 
@@ -1018,38 +953,32 @@ const keySource  = ref('none')   // 'soul' | 'master' | 'env' | 'none'
 const keyPreview = ref('')
 
 const wavespeedKey      = ref('')
-const showWavespeedKey  = ref(false)
 const wavespeedKeySet   = ref(false)
 const wavespeedPreview  = ref('')
 const wavespeedDirty    = ref(false)
 
 const elevenlabsKey     = ref('')
-const showElevenlabsKey = ref(false)
 const elevenlabsKeySet  = ref(false)
 const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
 
 const braveKey     = ref('')
-const showBraveKey = ref(false)
 const braveKeySet  = ref(false)
 const bravePreview = ref('')
 const braveDirty   = ref(false)
 
 const reownProjectId = ref('')
-const showReownId    = ref(false)
 const reownSet       = ref(false)
 const reownPreview   = ref('')
 const reownDirty     = ref(false)
 
 const mcpUrl     = ref('')
-const showMcpUrl = ref(false)
 const mcpUrlSet  = ref(false)
 const mcpPreview = ref('')
 const mcpDirty   = ref(false)
 
 
 const pinataJwt      = ref('')
-const showPinataJwt  = ref(false)
 const pinataJwtSet   = ref(false)
 const pinataPreview  = ref('')
 const pinataFeedback = ref(null)
@@ -1348,7 +1277,6 @@ async function saveConfig() {
 
 // ── Connect Tab State ─────────────────────────────────────────────────────────
 const connectToken      = ref('')
-const showConnectToken  = ref(false)
 const connectingAdmin   = ref(false)
 const connectFeedback   = ref(null)
 

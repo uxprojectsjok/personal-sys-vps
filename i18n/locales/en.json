@@ -373,8 +373,6 @@
     "connect": "Connect",
     "checking": "Checking…",
     "overwrite_placeholder": "Re-enter to overwrite…",
-    "hide_key": "Hide key",
-    "show_key": "Show key",
     "valid": "Key valid ✓",
     "format_ok": "Format OK (Hex key detected)",
     "invalid_format": "Invalid format — Hex expected",
