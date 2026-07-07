@@ -240,12 +240,12 @@ function onNav(id) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 .earn-page {
   max-width: 900px; margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
   display: flex; flex-direction: column; gap: 32px;
 }
 
@@ -256,7 +256,7 @@ function onNav(id) {
   font-weight: 400; letter-spacing: -0.03em; color: var(--fg); margin: 8px 0 12px;
 }
 .earn-title em { font-style: italic; color: var(--accent); }
-.earn-sub { font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px; }
+.earn-sub { font-size: 17px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px; }
 
 /* ── Step ── */
 .earn-steps { display: flex; flex-direction: column; gap: 8px; }
@@ -270,12 +270,12 @@ function onNav(id) {
 .earn-step-num {
   width: 24px; height: 24px; border-radius: 50%; flex: none;
   border: 1.5px solid var(--line-2); display: grid; place-items: center;
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
 }
 .earn-step--on .earn-step-num { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .earn-step-lbl { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.earn-step-t { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
-.earn-step-s { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
+.earn-step-t { font-family: var(--mono); font-size: 15px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
+.earn-step-s { font-family: var(--mono); font-size: 14px; color: var(--fg-2); }
 .earn-step--on .earn-step-s { color: var(--accent); }
 
 /* ── Stats ── */
@@ -286,7 +286,7 @@ function onNav(id) {
   display: flex; flex-direction: column; gap: 6px;
 }
 .earn-stat-label {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--fg-2);
 }
 .earn-stat-value {
@@ -294,11 +294,11 @@ function onNav(id) {
   color: var(--fg); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;
 }
 .earn-stat--on  { color: var(--accent); }
-.earn-stat--off { color: var(--fg); font-size: 15px; font-family: var(--sans); }
+.earn-stat--off { color: var(--fg); font-size: 17px; font-family: var(--sans); }
 .earn-stat--pol { color: var(--accent-bright); }
 .earn-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
-.earn-stat-sub { font-family: var(--mono); font-size: 12px; color: var(--fg-2); }
-.earn-stat-dynamic { font-size: 10px; font-family: var(--mono); color: var(--fg-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
+.earn-stat-sub { font-family: var(--mono); font-size: 14px; color: var(--fg-2); }
+.earn-stat-dynamic { font-size: 12px; font-family: var(--mono); color: var(--fg-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
 
 /* ── Table ── */
 .earn-table-wrap { }
@@ -306,14 +306,14 @@ function onNav(id) {
 .earn-table-head {
   display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
   padding: 10px 18px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-2);
   border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
 .earn-table-row {
   display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
   padding: 12px 18px; border-bottom: 1px solid var(--line);
-  font-size: 13px; color: var(--fg); align-items: center;
+  font-size: 15px; color: var(--fg); align-items: center;
   transition: background 0.12s;
 }
 .earn-table-row:last-child { border-bottom: none; }
@@ -324,19 +324,19 @@ function onNav(id) {
 .earn-tx-from { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-pol  { font-family: var(--mono); color: var(--accent-bright); font-weight: 600; }
 .earn-tx-date { font-family: var(--mono); color: var(--fg-2); }
-.earn-tx-status { font-family: var(--mono); font-size: 12px; }
+.earn-tx-status { font-family: var(--mono); font-size: 14px; }
 .earn-status--on  { color: var(--accent); }
 .earn-status--off { color: var(--fg-3); }
 
 .earn-empty {
   padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
-  font-size: 15px; color: var(--fg); line-height: 1.65;
+  font-size: 17px; color: var(--fg); line-height: 1.65;
 }
 
 /* ── Restore Banner ── */
 .earn-restored-banner {
   padding: 10px 16px; background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.25);
-  border-radius: var(--r); font-size: 13px; color: var(--fg); margin-bottom: 4px;
+  border-radius: var(--r); font-size: 15px; color: var(--fg); margin-bottom: 4px;
 }
 
 /* ── CSV Export ── */
@@ -345,8 +345,8 @@ function onNav(id) {
   padding: 20px 24px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r); flex-wrap: wrap;
 }
-.earn-export-title { font-size: 15px; font-weight: 500; color: var(--fg); margin-bottom: 4px; }
-.earn-export-sub { font-size: 13px; color: var(--fg); line-height: 1.5; max-width: 500px; }
+.earn-export-title { font-size: 17px; font-weight: 500; color: var(--fg); margin-bottom: 4px; }
+.earn-export-sub { font-size: 15px; color: var(--fg); line-height: 1.5; max-width: 500px; }
 
 @media (max-width: 720px) {
   .earn-stats { grid-template-columns: 1fr 1fr; }
