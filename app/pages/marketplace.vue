@@ -87,9 +87,9 @@ function onNav(id) {
 
 /* ── Hero ── */
 .mk-hero {
-  padding-bottom: 28px;
+  padding-bottom: 22px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 .mk-eyebrow {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
@@ -179,74 +179,13 @@ function onNav(id) {
 /* 3. Hide close button and drag handle */
 .mk-panel :deep(.amm-head) { display: none !important; }
 
-/* 4. Step rail — horizontal chips */
-.mk-panel :deep(.amm-rail) {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  margin-bottom: 36px;
-  overflow: visible !important;
-  width: 100% !important;
+/* 4. Tabs */
+.mk-panel :deep(.amm-tabs-row) {
+  padding: 0 !important;
+  margin-bottom: 32px;
 }
-.mk-panel :deep(.amm-rail-item) {
-  flex: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 16px !important;
-  padding: 18px 22px !important;
-  min-width: 0 !important;
-  border: 1px solid var(--line) !important;
-  border-radius: var(--r) !important;
-  background: var(--surface) !important;
-  transition: background 0.15s, border-color 0.15s !important;
-}
-.mk-panel :deep(.amm-rail-item:first-child) {
-  border-right: 1px solid var(--line) !important;
-}
-/* Connector dash between chips */
-.mk-panel :deep(.amm-rail-item:not(:last-child))::after {
-  content: '—' !important;
-  display: block !important;
-  flex: none !important;
-  width: 32px !important;
-  text-align: center !important;
-  color: var(--fg-4) !important;
-  font-family: var(--serif) !important;
+.mk-panel :deep(.amm-tab) {
   font-size: 16px !important;
-  margin: 0 4px !important;
-}
-.mk-panel :deep(.amm-rail-item.on) {
-  background: var(--accent-dim) !important;
-  border-color: rgba(109,184,154,0.35) !important;
-}
-.mk-panel :deep(.amm-rail-item.done) {
-  border-color: rgba(109,184,154,0.25) !important;
-}
-.mk-panel :deep(.amm-rail-item .num) {
-  width: 38px !important;
-  height: 38px !important;
-  font-size: 17px !important;
-  flex: none !important;
-}
-.mk-panel :deep(.amm-rail-item.on .num) {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: var(--on-accent) !important;
-}
-.mk-panel :deep(.amm-rail-item .t) {
-  font-size: 18px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-.mk-panel :deep(.amm-rail-item .sub) {
-  font-size: 13px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
 }
 
 /* 5. Body */
@@ -312,22 +251,6 @@ function onNav(id) {
 
 @media (max-width: 900px) {
   .mk-title { font-size: clamp(24px, 7vw, 32px); }
-
-  /* Step rail: stack vertically on mobile */
-  .mk-panel :deep(.amm-rail) {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-  .mk-panel :deep(.amm-rail-item) {
-    padding: 14px 18px !important;
-    width: 100% !important;
-  }
-  .mk-panel :deep(.amm-rail-item:not(:last-child))::after {
-    display: none !important;
-  }
-  .mk-panel :deep(.amm-rail-item .t) {
-    white-space: normal !important;
-  }
 
   /* 2-col grids → single col */
   .mk-panel :deep(.mode-grid),
