@@ -420,6 +420,9 @@ function onNav(id) {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border: 1px solid var(--line);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 .kal-cell {
   position: relative;
@@ -470,7 +473,9 @@ function onNav(id) {
 /* ── Day detail panel ── */
 .kal-detail {
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -583,7 +588,9 @@ function onNav(id) {
   padding: 24px;
 }
 .modal-box {
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line);
   width: 100%; max-width: 420px;
   display: flex; flex-direction: column;

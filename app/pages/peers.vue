@@ -531,7 +531,9 @@ function onNav(id) {
 .pr-add-form {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: var(--surface-2);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 20px;
   display: flex; flex-direction: column; gap: 12px;
   margin-bottom: 24px;
@@ -550,7 +552,9 @@ function onNav(id) {
   display: flex; align-items: flex-start; gap: 14px;
   border: 1px solid var(--line);
   border-bottom: none;
-  background: var(--surface-2);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 16px 20px;
 }
 .pr-atall-ic { width: 20px; height: 20px; flex: none; color: var(--accent); margin-top: 2px; }
@@ -565,7 +569,9 @@ function onNav(id) {
   border: 1px solid var(--line); border-bottom: none;
   border-radius: var(--r) var(--r) 0 0;
   padding: 13px 20px;
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   font-family: var(--sans); font-size: 17px; font-weight: 500;
   letter-spacing: 0; text-transform: none; color: var(--fg);
 }
@@ -603,7 +609,9 @@ function onNav(id) {
 /* ── Removed list ── */
 .pr-removed-list {
   border: 1px solid var(--line); border-top: none;
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 0 0 var(--r) var(--r);
 }
 .pr-removed {
@@ -623,7 +631,9 @@ function onNav(id) {
   border-radius: 0 0 var(--r) var(--r);
   padding: 32px 20px;
   font-family: var(--mono); font-size: 16px; color: var(--fg-2);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* ── Buttons ── */
