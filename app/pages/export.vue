@@ -366,7 +366,9 @@ function onNav(id) {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 16px;
   border-right: 1px solid var(--line);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   opacity: 0.45;
   transition: opacity 0.2s, background 0.2s;
 }
@@ -401,7 +403,9 @@ function onNav(id) {
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 var(--r) var(--r);
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   padding: 28px 24px 24px;
   display: flex; flex-direction: column; gap: 16px;
 }

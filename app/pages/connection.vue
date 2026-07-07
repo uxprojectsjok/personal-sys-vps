@@ -331,7 +331,7 @@ function onNav(id) {
 .cn-mcp-actions { display:flex; gap:10px; flex:none; }
 
 /* QR Action card */
-.cn-action-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; margin-bottom:32px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); }
+.cn-action-card { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; margin-bottom:32px; border:1px solid var(--line); border-radius:var(--r); background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
 .cn-action-left { display:flex; align-items:center; gap:16px; min-width:0; }
 .cn-action-ic { width:48px; height:48px; flex:none; border-radius:var(--r-xs); background:var(--accent-dim); border:1px solid rgba(109,184,154,0.25); display:flex; align-items:center; justify-content:center; color:var(--accent); }
 .cn-action-ic svg { width:22px; height:22px; }
@@ -346,7 +346,7 @@ function onNav(id) {
 /* QR Dual panel */
 .cn-dual { display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-bottom:40px; }
 .cn-panel { display:flex; flex-direction:column; min-height:300px; }
-.cn-panel--owner   { border-right:1px solid var(--line); background:var(--surface); }
+.cn-panel--owner   { border-right:1px solid var(--line); background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
 .cn-panel--stranger { background:var(--surface-2); }
 .cn-panel-label { display:flex; align-items:center; gap:8px; padding:12px 20px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg); }
 .cn-label-ic { width:14px; height:14px; flex:none; }
@@ -386,14 +386,14 @@ function onNav(id) {
 
 /* Getrustete Souls verwalten */
 .cn-trusted-list { display:flex; flex-direction:column; gap:1px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-bottom:32px; }
-.cn-trusted-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; background:var(--surface); }
+.cn-trusted-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
 .cn-trusted-row + .cn-trusted-row { border-top:1px solid var(--line); }
 .cn-trusted-info { min-width:0; }
 .cn-trusted-label { font-family:var(--sans); font-size:16px; font-weight:600; color:var(--fg); }
 .cn-trusted-id { font-family:var(--mono); font-size:14px; color:var(--fg-2); margin-top:2px; }
 
 /* Verifikation info card */
-.cn-info-card { display:flex; align-items:flex-start; gap:16px; padding:20px 22px; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); }
+.cn-info-card { display:flex; align-items:flex-start; gap:16px; padding:20px 22px; border:1px solid var(--line); border-radius:var(--r); background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
 .cn-info-ic { width:40px; height:40px; flex:none; border-radius:var(--r-xs); background:var(--accent-dim); border:1px solid rgba(109,184,154,0.2); display:flex; align-items:center; justify-content:center; color:var(--accent); margin-top:2px; }
 .cn-info-ic svg { width:20px; height:20px; }
 .cn-info-body { flex:1; min-width:0; }
