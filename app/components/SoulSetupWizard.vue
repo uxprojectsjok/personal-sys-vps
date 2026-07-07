@@ -49,47 +49,20 @@
       <div v-if="open || modal" class="border-t border-[var(--sys-border)]">
 
         <!-- Step Navigator -->
-        <div class="flex relative step-nav">
-          <!-- Progress track -->
-          <div class="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--sys-border)]" />
-          <div
-            class="absolute bottom-0 left-0 h-[2px] transition-all duration-500 rounded-r"
-            :style="`width: ${(currentStep / (steps.length - 1)) * 100}%; background: var(--sys-violet)`"
-          />
-
-          <button
-            v-for="(step, i) in steps"
-            :key="i"
-            class="flex-1 flex flex-col items-center gap-3 px-2 pt-5 pb-4 transition-all duration-200 relative group"
-            style="min-width:76px"
-            @click="currentStep = i"
-          >
-            <!-- Step icon circle -->
-            <div
-              class="w-8 h-8 flex items-center justify-center transition-all duration-200 relative"
-              :class="currentStep === i ? 'scale-110' : 'scale-100'"
-              :style="currentStep === i
-                ? 'background:var(--surface-3);border:1.5px solid var(--line-2);border-radius:var(--r-xs)'
-                : step.done
-                  ? 'background:var(--surface-2);border:1.5px solid var(--line);border-radius:var(--r-xs)'
-                  : 'background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-xs)'"
+        <div class="wiz-tabs-row">
+          <nav class="wiz-tabs">
+            <button
+              v-for="(step, i) in steps"
+              :key="i"
+              class="wiz-tab"
+              :class="{ on: currentStep === i }"
+              @click="currentStep = i"
             >
-              <!-- Done checkmark -->
-              <svg v-if="step.done && currentStep !== i" class="w-3.5 h-3.5" style="color:var(--fg-2)"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-              </svg>
-              <!-- Step icon -->
-              <component v-else :is="step.icon" class="w-3.5 h-3.5"
-                :style="currentStep === i ? 'color:var(--fg)' : step.done ? 'color:var(--fg-2)' : 'color:var(--fg-4)'"
-              />
-            </div>
-            <!-- Label -->
-            <span
-              class="text-sm font-semibold tracking-wider uppercase transition-colors leading-none"
-              :style="currentStep === i ? 'color:var(--fg)' : step.done ? 'color:var(--fg-2)' : 'color:var(--fg-4)'"
-            >{{ step.label }}</span>
-          </button>
+              <component :is="step.icon" class="w-3.5 h-3.5" style="flex:none" />
+              {{ step.label }}
+              <span v-if="step.done" class="wiz-tab-dot" aria-hidden="true" />
+            </button>
+          </nav>
         </div>
 
         <!-- ── Step Content ─────────────────────────────────────────────── -->
@@ -618,6 +591,12 @@ async function handleRotateCert() {
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(-6px); }
 .cert-result-enter-active, .cert-result-leave-active { transition: opacity 0.25s, transform 0.25s; }
 .cert-result-enter-from, .cert-result-leave-to { opacity: 0; transform: translateY(-4px); }
-.step-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-.step-nav::-webkit-scrollbar { display: none; }
+.wiz-tabs-row { padding: 16px 20px 0; }
+.wiz-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: fit-content; max-width: 100%; }
+.wiz-tabs::-webkit-scrollbar { display: none; }
+.wiz-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; white-space: nowrap; flex: none; box-shadow: inset 0 -2px 0 0 transparent; }
+.wiz-tab:last-child { border-right: none; }
+.wiz-tab.on { background: var(--surface); color: var(--fg); box-shadow: inset 0 -2px 0 0 var(--accent); }
+.wiz-tab:hover:not(.on) { color: var(--fg); background: rgba(255,255,255,0.03); }
+.wiz-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex: none; }
 </style>

@@ -851,10 +851,10 @@ onMounted(() => {
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
 .dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; flex: none; }
-.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; }
+.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; }
 .dt-tab:last-child { border-right: none; }
-.dt-tab.on { background: var(--surface); color: var(--fg); }
-.dt-tab:hover:not(.on) { color: var(--fg-2); }
+.dt-tab.on { background: var(--surface); color: var(--fg); box-shadow: inset 0 -2px 0 0 var(--accent); }
+.dt-tab:hover:not(.on) { color: var(--fg-2); background: rgba(255,255,255,0.03); }
 .dt-tab-desc { font-family: var(--mono); font-size: 13px; color: var(--fg-2); letter-spacing: 0.04em; }
 
 /* ── Storage ── */
