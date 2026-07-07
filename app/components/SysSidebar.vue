@@ -4,14 +4,14 @@
       <div class="sb-head-top">
         <span class="sb-mark">SYS<span class="dot">.</span></span>
         <button class="sb-collapse" @click="$emit('collapse')" :title="$t('nav.sidebar_toggle')" :aria-label="$t('nav.sidebar_collapse')">
-          <SysIcon name="panel" style="width:17px;height:17px" />
+          <SysIcon name="panel" style="width:19px;height:19px" />
         </button>
       </div>
       <div class="sb-node">
         <span class="live-dot" />
         <span>Private Node</span>
         <button class="lock" :title="$t('nav.lock_node')" :aria-label="$t('nav.lock_node')" @click="$emit('lock')">
-          <SysIcon name="lock" style="width:16px;height:16px" />
+          <SysIcon name="lock" style="width:20px;height:20px" />
         </button>
       </div>
     </div>

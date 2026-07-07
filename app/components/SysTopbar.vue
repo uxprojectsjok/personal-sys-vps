@@ -1,7 +1,7 @@
 <template>
   <header class="topbar">
     <button class="icon-btn mob-only" @click="$emit('open-drawer')" :aria-label="$t('common.menu')" style="margin-right:-4px">
-      <SysIcon name="menu" style="width:20px;height:20px" />
+      <SysIcon name="menu" style="width:22px;height:22px" />
     </button>
     <div class="tb-crumbs">
       <template v-for="(c, i) in crumbs" :key="i">

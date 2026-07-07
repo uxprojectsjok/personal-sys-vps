@@ -4688,7 +4688,7 @@ defineExpose({
   .msg-bubble--archivar { align-self: stretch; max-width: 100%; }
 
   .msg-bubble--me .msg-inner  { border-radius: 16px 4px 16px 16px; }
-  .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 15px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
+  .msg-inner  { max-width: 100%; padding: 11px 14px; font-size: 16px; line-height: 1.50; overflow-wrap: anywhere; word-break: break-word; box-sizing: border-box; }
   .msg-media-img { max-width: 100%; }
   .msg-inner img, .msg-inner video, .msg-inner iframe { max-width: 100%; width: auto; }
   .media-audio { min-width: 220px; }

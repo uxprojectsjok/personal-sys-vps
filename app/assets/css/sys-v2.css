@@ -116,7 +116,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--fg-3); font-weight: 500;
 }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
   box-shadow: 0 0 0 0 var(--accent-glow); animation: pulse-ring 2.6s var(--ease) infinite; flex: none; }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 var(--accent-glow); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
@@ -148,7 +148,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   display: flex; align-items: center; gap: 11px; margin-bottom: 8px;
 }
 .sb-mark {
-  font-family: var(--serif); font-weight: 700; font-size: 21px;
+  font-family: var(--serif); font-weight: 700; font-size: 28px;
   letter-spacing: -0.03em; color: var(--fg); white-space: nowrap;
 }
 .sb-mark .dot { color: var(--accent); }
@@ -172,15 +172,15 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .sb-soul:hover { background: var(--surface-2); }
 .sb-avatar {
-  width: 38px; height: 38px; border-radius: 50%; flex: none;
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
   display: grid; place-items: center;
-  font-family: var(--serif); font-size: 18px; color: var(--on-accent);
+  font-family: var(--serif); font-size: 20px; color: var(--on-accent);
   background: radial-gradient(circle at 32% 28%, var(--accent-bright), var(--accent-deep));
   box-shadow: 0 0 0 3px rgba(109,184,154,0.13);
 }
 .sb-soul-meta { min-width: 0; line-height: 1.3; display: flex; flex-direction: column; }
-.sb-soul-name { display: block; font-weight: 600; font-size: 14px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-soul-id { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--fg-3); letter-spacing: 0.02em; }
+.sb-soul-name { display: block; font-weight: 600; font-size: 18px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-soul-id { display: block; font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.02em; }
 .is-collapsed .sb-soul-meta { display: none; }
 .is-collapsed .sb-soul { justify-content: center; margin: 4px 0 6px; padding: 8px 0; }
 
@@ -189,7 +189,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .sb-group { margin-top: 16px; }
 .sb-group:first-child { margin-top: 6px; }
 .sb-group-label {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--fg); font-weight: 500;
   padding: 0 12px 7px;
 }
@@ -197,11 +197,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .nav-item {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 9px 12px; border-radius: var(--r-sm);
-  color: var(--fg); font-size: 14px; font-weight: 500;
+  color: var(--fg); font-size: 16px; font-weight: 500;
   text-align: left; transition: background .14s, color .14s;
   position: relative;
 }
-.nav-item .nav-ic { width: 19px; height: 19px; flex: none; color: var(--fg-3); transition: color .14s; }
+.nav-item .nav-ic { width: 22px; height: 22px; flex: none; color: var(--fg-3); transition: color .14s; }
 .nav-item:hover { background: var(--surface-2); color: var(--fg); }
 .nav-item:hover .nav-ic { color: var(--fg-2); }
 .nav-item.active { background: var(--accent-dim); color: var(--accent-bright); }
@@ -221,13 +221,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 /* sidebar footer */
 .sb-foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
-.sb-node { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--fg-2); margin-bottom: 11px; }
+.sb-node { display: flex; align-items: center; gap: 9px; font-size: 18px; color: var(--fg-2); margin-bottom: 11px; }
 .sb-node .lock {
-  margin-left: auto; width: 28px; height: 28px; border-radius: var(--r-xs);
+  margin-left: auto; width: 32px; height: 32px; border-radius: var(--r-xs);
   display: grid; place-items: center; color: var(--fg-3); transition: background .15s, color .15s;
 }
 .sb-node .lock:hover { background: var(--surface-3); color: var(--fg); }
-.sb-mat-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--fg-3); margin-bottom: 6px; }
+.sb-mat-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--fg-3); margin-bottom: 6px; }
 .sb-mat-row b { color: var(--accent-bright); font-weight: 600; }
 .sb-mat-bar { height: 4px; border-radius: 99px; background: rgba(236,236,236,0.08); overflow: hidden; }
 .sb-mat-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-deep), var(--accent-bright)); }
@@ -481,14 +481,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .mob-tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     background: none; border: none; cursor: pointer;
-    color: rgba(236,236,236,0.38); transition: color 0.15s;
+    color: var(--fg); transition: color 0.15s;
     padding: 0; -webkit-tap-highlight-color: transparent;
   }
   .mob-tab.active { color: #6db89a; }
   .mob-tab-icon { width: 22px; height: 22px; stroke-width: 1.6; }
   .mob-tab-label {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
   }
 }
 
