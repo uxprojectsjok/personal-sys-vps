@@ -221,10 +221,6 @@
 
           <!-- ───── STEP 2 · IPFS REGISTRATION ───── -->
           <section v-else-if="step === 'ipfs'" class="step">
-            <div class="step-head">
-              <h2 class="step-title">{{ $t('marketplace.step2_title') }} <em>{{ $t('marketplace.step2_title_em') }}</em></h2>
-            </div>
-
             <p class="prose">{{ $t('marketplace.step2_prose') }}</p>
 
             <div v-if="!pinataOk" class="prereq">
@@ -284,10 +280,6 @@
 
           <!-- ───── STEP 3 · MANUELLE TOKENS ───── -->
           <section v-else-if="step === 'tokens'" class="step">
-            <div class="step-head">
-              <h2 class="step-title">{{ $t('marketplace.step3_title') }} <em>{{ $t('marketplace.step3_title_em') }}</em></h2>
-            </div>
-
             <p class="prose">{{ $t('marketplace.step3_prose') }}</p>
 
             <div class="card">
@@ -340,8 +332,6 @@
         <!-- ═══════════ FOOT ═══════════ -->
         <footer class="amm-foot">
           <div class="amm-foot-actions">
-            <button v-if="step !== 'mode'" class="btn btn-ghost" @click="prevStep">{{ $t('marketplace.btn_back') }}</button>
-
             <button
               v-if="step === 'mode'"
               class="btn btn-primary"
@@ -396,12 +386,6 @@ function goTo(id) {
     step.value = id
     if (id === 'tokens') loadTokenList()
   }
-}
-
-function prevStep() {
-  const order = ['mode', 'ipfs', 'tokens']
-  const i = order.indexOf(step.value)
-  if (i > 0) step.value = order[i - 1]
 }
 
 const canAdvance = computed(() => {
@@ -1002,10 +986,10 @@ async function register() {
 /* ─── TABS ─── */
 .amm-tabs-row { display: flex; align-items: center; gap: 14px; padding: 16px 32px 0; }
 .amm-tabs { display: flex; border: 1px solid var(--rule); border-radius: var(--r-xs); overflow: hidden; flex: none; }
-.amm-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--rule); cursor: pointer; transition: all 0.15s; }
+.amm-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--rule); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; }
 .amm-tab:last-child { border-right: none; }
-.amm-tab.on { background: var(--paper); color: var(--fg); }
-.amm-tab:hover:not(.on) { color: var(--fg); }
+.amm-tab.on { background: var(--paper); color: var(--fg); box-shadow: inset 0 -2px 0 0 var(--accent); }
+.amm-tab:hover:not(.on) { color: var(--fg); background: rgba(255,255,255,0.03); }
 .amm-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); flex: none; }
 
 /* ─── BODY ─── */
