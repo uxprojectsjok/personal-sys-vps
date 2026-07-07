@@ -333,13 +333,13 @@ function onNav(id) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 .exp-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 80px;
+  padding: 36px clamp(22px, 4vw, 42px) 88px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -378,7 +378,7 @@ function onNav(id) {
   width: 22px; height: 22px; flex: none; border-radius: 50%;
   border: 1px solid var(--line-2);
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-3);
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 .exp-step--on   .exp-step-num { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
@@ -387,12 +387,12 @@ function onNav(id) {
 
 .exp-step-lbl   { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .exp-step-title {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .exp-step-sub {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em;
   color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -412,11 +412,11 @@ function onNav(id) {
 }
 .exp-section-title em { font-style: italic; color: var(--accent); }
 .exp-prose {
-  font-family: var(--sans); font-size: 15px; color: var(--fg);
+  font-family: var(--sans); font-size: 17px; color: var(--fg);
   line-height: 1.65; margin: 0; max-width: 560px;
 }
 .exp-code {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-2);
   background: var(--surface-2); padding: 1px 5px; border-radius: 2px;
 }
 
@@ -436,13 +436,13 @@ function onNav(id) {
 .exp-word-row--invalid { border-color: rgba(224,108,117,0.35); }
 
 .exp-word-num {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 14px; color: var(--fg-3);
   width: 16px; flex: none; text-align: right;
 }
 .exp-word-input {
   flex: 1; min-width: 0;
   background: transparent; border: none; outline: none;
-  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  font-family: var(--mono); font-size: 15px; font-weight: 700;
   color: var(--fg);
 }
 .exp-word-input::placeholder { color: var(--fg-3); font-weight: 400; }
@@ -456,14 +456,14 @@ function onNav(id) {
   margin-top: -4px;
 }
 .exp-count {
-  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 15px; color: var(--fg-2);
 }
 .exp-count--full { color: var(--accent-bright); }
 
 .exp-random {
   display: flex; align-items: center; gap: 6px;
   background: transparent; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 15px; color: var(--fg-2);
   transition: color 0.12s;
 }
 .exp-random:hover { color: var(--fg); }
@@ -478,7 +478,7 @@ function onNav(id) {
   border-radius: var(--r-xs);
 }
 .exp-warn-box svg { width: 15px; height: 15px; flex: none; color: var(--fg-3); margin-top: 1px; }
-.exp-warn-box p   { font-size: 13px; color: var(--fg); font-weight: 600; line-height: 1.6; margin: 0; }
+.exp-warn-box p   { font-size: 15px; color: var(--fg); font-weight: 600; line-height: 1.6; margin: 0; }
 .exp-warn-box--yellow svg { color: rgba(251,191,36,0.65); }
 .exp-warn-box--yellow p   { color: rgba(251,191,36,0.65); }
 
@@ -489,7 +489,7 @@ function onNav(id) {
   padding: 8px 10px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-xs);
 }
-.exp-word-ro { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--fg); }
+.exp-word-ro { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--fg); }
 
 /* ── Confirm checkbox ── */
 .exp-confirm-label {
@@ -506,7 +506,7 @@ function onNav(id) {
 .exp-checkbox--on { background: var(--fg); border-color: var(--fg); }
 .exp-checkbox svg { width: 12px; height: 12px; color: var(--bg); }
 .exp-confirm-text {
-  font-size: 14px; color: var(--fg); line-height: 1.55; user-select: none;
+  font-size: 16px; color: var(--fg); line-height: 1.55; user-select: none;
 }
 
 /* ── State center (step 2) ── */
@@ -514,7 +514,7 @@ function onNav(id) {
   display: flex; flex-direction: column; align-items: center;
   gap: 16px; padding: 32px 0; text-align: center;
 }
-.exp-state-lbl { font-size: 15px; color: var(--fg); }
+.exp-state-lbl { font-size: 17px; color: var(--fg); }
 .exp-state-lbl--err { color: #e06c75; }
 
 .exp-spinner {
@@ -541,14 +541,14 @@ function onNav(id) {
   font-family: var(--serif); font-size: 17px; font-weight: 400; color: var(--fg); margin-bottom: 4px;
 }
 .exp-success-sub {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fg-2);
 }
 .exp-info-box {
   width: 100%; padding: 14px 16px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-xs);
 }
-.exp-info-box p { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0; }
+.exp-info-box p { font-size: 15px; color: var(--fg-2); line-height: 1.6; margin: 0; }
 .exp-success .exp-warn-box { width: 100%; }
 
 /* ── Footer ── */
@@ -566,7 +566,7 @@ function onNav(id) {
 /* ── Buttons ── */
 .exp-btn {
   height: 44px; padding: 0 20px;
-  font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 14.5px; letter-spacing: 0.08em;
   cursor: pointer; border-radius: var(--r-xs);
   display: inline-flex; align-items: center; justify-content: center;
   transition: all 0.15s;

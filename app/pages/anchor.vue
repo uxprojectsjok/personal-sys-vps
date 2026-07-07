@@ -422,13 +422,13 @@ function onNav(id) {
 .sys-loading {
   min-height: 100dvh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); color: var(--fg-3);
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 .vank-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 32px) 100px;
+  padding: 36px clamp(22px, 4vw, 42px) 100px;
 }
 
 /* ── Header ── */
@@ -440,7 +440,7 @@ function onNav(id) {
 }
 .vank-title em { font-style: italic; color: var(--accent); }
 .vank-lede {
-  font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px;
+  font-size: 17px; line-height: 1.65; color: var(--fg); margin: 0; max-width: 560px;
 }
 
 /* ── Status + Wallet card ── */
@@ -449,7 +449,7 @@ function onNav(id) {
   border-radius: var(--r);
   background: var(--surface);
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   transition: border-color 0.3s;
 }
 .vank-card--on { border-color: rgba(109,184,154,0.30); }
@@ -458,7 +458,7 @@ function onNav(id) {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+  font-family: var(--sans); font-size: 16px; letter-spacing: 0;
   color: var(--fg);
 }
 .vank-card--on .vank-status-row { color: var(--fg); background: rgba(109,184,154,0.04); }
@@ -468,11 +468,11 @@ function onNav(id) {
 .vank-wallet-row {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 20px;
-  font-family: var(--sans); font-size: 14px; color: var(--fg);
+  font-family: var(--sans); font-size: 16px; color: var(--fg);
   min-height: 44px;
 }
 .vank-wallet-addr { flex: 1; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vank-wallet-net  { flex: none; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg); }
+.vank-wallet-net  { flex: none; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg); }
 .vank-wallet-hint { color: var(--fg); }
 
 /* ── Dot ── */
@@ -490,7 +490,7 @@ function onNav(id) {
 @keyframes vank-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
 /* ── Section ── */
-.vank-section { margin-top: 8px; }
+.vank-section { margin-top: 12px; }
 
 .vank-divider {
   display: flex; align-items: center; gap: 12px;
@@ -502,7 +502,7 @@ function onNav(id) {
   content: ''; flex: 1; height: 1px; background: var(--line);
 }
 .vank-divider span {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 12px 0; white-space: nowrap;
 }
 
@@ -517,14 +517,14 @@ function onNav(id) {
 
 /* ── Tags ── */
 .vank-hint {
-  font-family: var(--sans); font-size: 14px; color: var(--fg);
+  font-family: var(--sans); font-size: 16px; color: var(--fg);
   margin: 0; line-height: 1.55;
 }
 .vank-input {
   width: 100%; box-sizing: border-box;
   background: var(--surface-2); border: 1px solid var(--line-2);
   border-radius: var(--r-xs); color: var(--fg);
-  font-family: var(--sans); font-size: 14px;
+  font-family: var(--sans); font-size: 16px;
   padding: 9px 12px; outline: none; transition: border-color 0.15s;
 }
 .vank-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
@@ -533,7 +533,7 @@ function onNav(id) {
 
 .vank-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .vank-chip {
-  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 13.5px; letter-spacing: 0.08em;
   padding: 3px 10px; border-radius: 99px;
   background: var(--accent-dim); border: 1px solid rgba(109,184,154,0.30);
   color: var(--accent-bright);
@@ -548,7 +548,7 @@ function onNav(id) {
   min-height: 44px; padding: 0 16px;
   border: 1px solid var(--line-2); border-radius: var(--r-xs);
   background: transparent; cursor: pointer;
-  font-family: var(--sans); font-size: 14px; letter-spacing: 0;
+  font-family: var(--sans); font-size: 16px; letter-spacing: 0;
   color: var(--fg);
   transition: all 0.15s; white-space: nowrap;
 }
@@ -573,20 +573,20 @@ function onNav(id) {
 
 /* ── Notes ── */
 .vank-note {
-  font-family: var(--sans); font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0;
+  font-family: var(--sans); font-size: 17px; line-height: 1.65; color: var(--fg); margin: 0;
 }
-.vank-note--muted { color: var(--fg); font-family: var(--sans); font-size: 14px; }
+.vank-note--muted { color: var(--fg); font-family: var(--sans); font-size: 16px; }
 .vank-note--info { display: flex; align-items: center; gap: 8px; color: var(--fg); }
 .vank-note--warn {
   padding: 10px 14px; border-radius: var(--r-xs);
   background: rgba(109,184,154,0.06); border: 1px solid rgba(109,184,154,0.18);
-  color: var(--accent-bright); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+  color: var(--accent-bright); font-family: var(--mono); font-size: 14px; letter-spacing: 0.04em;
 }
 .vank-note--warn strong { color: var(--accent-bright); }
 .vank-note--err {
   padding: 10px 14px; border-radius: var(--r-xs);
   background: rgba(224,108,117,0.06); border: 1px solid rgba(224,108,117,0.20);
-  color: #e06c75; font-family: var(--mono); font-size: 12px;
+  color: #e06c75; font-family: var(--mono); font-size: 14px;
 }
 
 /* ── TX ── */
@@ -596,12 +596,12 @@ function onNav(id) {
 }
 .vank-tx-head {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--accent);
 }
 .vank-tx-hash {
   display: flex; align-items: flex-start; gap: 6px;
-  font-family: var(--mono); font-size: 12px; color: var(--fg);
+  font-family: var(--mono); font-size: 14px; color: var(--fg);
   text-decoration: none; word-break: break-all;
 }
 .vank-tx-hash:hover { color: var(--accent-bright); text-decoration: underline; }
@@ -614,50 +614,50 @@ function onNav(id) {
 .vank-proof-head { display: flex; align-items: center; justify-content: space-between; }
 .vank-proof-title {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--accent);
 }
 .vank-proof-copy {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.10em; text-transform: uppercase;
   color: var(--fg-2); background: transparent;
   border: 1px solid var(--line); border-radius: var(--r-xs); padding: 3px 10px; cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }
 .vank-proof-copy:hover { color: var(--fg); border-color: var(--line-2); }
 .vank-proof-data { display: flex; flex-direction: column; gap: 5px; }
-.vank-proof-row { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; }
+.vank-proof-row { display: flex; gap: 12px; font-family: var(--mono); font-size: 14px; }
 .vank-proof-key { color: var(--fg-2); min-width: 56px; }
 .vank-proof-val { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .vank-proof-text {
-  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 13.5px; letter-spacing: 0.06em;
   line-height: 1.6; color: var(--fg); margin: 0;
 }
 
 /* ── Genesis Chain Card ── */
 .vank-genesis-card {
-  border: 1px solid rgba(212,175,55,0.25);
+  border: 1px solid var(--line);
   border-radius: var(--r);
-  background: linear-gradient(135deg, rgba(212,175,55,0.04) 0%, rgba(212,175,55,0.02) 100%);
+  background: var(--surface);
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 .vank-genesis-head {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 18px;
-  border-bottom: 1px solid rgba(212,175,55,0.15);
+  border-bottom: 1px solid var(--line);
 }
 .vank-genesis-badge {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 2px 8px;
   background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.35);
   border-radius: 99px; color: #d4af37; flex: none;
 }
 .vank-genesis-title {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fg); flex: 1;
 }
 .vank-genesis-since {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
   letter-spacing: 0.04em; white-space: nowrap;
 }
 .vank-genesis-metrics {
@@ -669,22 +669,22 @@ function onNav(id) {
   padding: 14px 18px;
 }
 .vank-genesis-metric:first-child {
-  border-right: 1px solid rgba(212,175,55,0.15);
+  border-right: 1px solid var(--line);
 }
 .vank-genesis-val {
   font-family: var(--mono); font-size: 22px; font-weight: 500;
   letter-spacing: -0.02em; color: #d4af37; line-height: 1;
 }
 .vank-genesis-unit {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; color: rgba(212,175,55,0.6); margin-top: 2px;
 }
 .vank-genesis-label {
-  font-family: var(--sans); font-size: 12px; color: var(--fg-2);
+  font-family: var(--sans); font-size: 14px; color: var(--fg-2);
   margin-top: 6px;
 }
 .vank-genesis-sub {
-  font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-3);
   letter-spacing: 0.04em;
 }
 
@@ -692,27 +692,17 @@ function onNav(id) {
 .vank-visibility-card {
   border-radius: var(--r);
   overflow: hidden;
-  margin-bottom: 8px;
-  border: 1px solid rgba(109,184,154,0.30);
-  background: linear-gradient(135deg, rgba(109,184,154,0.05) 0%, rgba(109,184,154,0.02) 100%);
-}
-.vank-visibility--fading {
-  border-color: rgba(212,175,55,0.30);
-  background: linear-gradient(135deg, rgba(212,175,55,0.05) 0%, rgba(212,175,55,0.02) 100%);
-}
-.vank-visibility--invisible {
-  border-color: rgba(224,108,117,0.30);
-  background: linear-gradient(135deg, rgba(224,108,117,0.06) 0%, rgba(224,108,117,0.02) 100%);
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
 }
 .vank-vis-head {
   display: flex; align-items: center; gap: 10px;
   padding: 14px 20px;
-  border-bottom: 1px solid rgba(109,184,154,0.15);
+  border-bottom: 1px solid var(--line);
 }
-.vank-visibility--fading .vank-vis-head    { border-bottom-color: rgba(212,175,55,0.15); }
-.vank-visibility--invisible .vank-vis-head { border-bottom-color: rgba(224,108,117,0.15); }
 .vank-vis-badge {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 4px 12px;
   background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.35);
   border-radius: 99px; color: var(--teal); flex: none;
@@ -724,7 +714,7 @@ function onNav(id) {
   background: rgba(224,108,117,0.12); border-color: rgba(224,108,117,0.35); color: #e06c75;
 }
 .vank-vis-title {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fg); flex: 1;
 }
 .vank-vis-metrics {
@@ -733,11 +723,9 @@ function onNav(id) {
 .vank-vis-metric {
   display: flex; flex-direction: column; gap: 2px;
   padding: 18px 20px;
-  border-right: 1px solid rgba(109,184,154,0.12);
+  border-right: 1px solid var(--line);
   min-width: 120px;
 }
-.vank-visibility--fading .vank-vis-metric   { border-right-color: rgba(212,175,55,0.12); }
-.vank-visibility--invisible .vank-vis-metric { border-right-color: rgba(224,108,117,0.12); }
 .vank-vis-val {
   font-family: var(--mono); font-size: 32px; font-weight: 500;
   letter-spacing: -0.02em; color: var(--teal); line-height: 1;
@@ -745,13 +733,13 @@ function onNav(id) {
 .vank-visibility--fading .vank-vis-val    { color: #d4af37; }
 .vank-visibility--invisible .vank-vis-val { color: #e06c75; }
 .vank-vis-unit {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; color: rgba(109,184,154,0.6); margin-top: 2px;
 }
 .vank-visibility--fading .vank-vis-unit    { color: rgba(212,175,55,0.6); }
 .vank-visibility--invisible .vank-vis-unit { color: rgba(224,108,117,0.6); }
 .vank-vis-label {
-  font-family: var(--sans); font-size: 12px; color: var(--fg-2); margin-top: 6px;
+  font-family: var(--sans); font-size: 14px; color: var(--fg-2); margin-top: 6px;
 }
 .vank-vis-bar-wrap {
   display: flex; align-items: center; gap: 8px; margin-top: 10px;
@@ -773,14 +761,14 @@ function onNav(id) {
   background: rgba(255,255,255,0.22);
 }
 .vank-vis-bar-label {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
   color: var(--fg-3); white-space: nowrap;
 }
 .vank-vis-hint-col {
   display: flex; align-items: center; padding: 18px 20px;
 }
 .vank-vis-hint {
-  font-family: var(--sans); font-size: 14px; color: var(--fg-2);
+  font-family: var(--sans); font-size: 16px; color: var(--fg-2);
   line-height: 1.6; margin: 0;
 }
 .vank-visibility--invisible .vank-vis-hint { color: #e06c75; }
