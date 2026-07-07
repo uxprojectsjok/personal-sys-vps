@@ -330,11 +330,6 @@
 
         <!-- ═══════════ FOOT ═══════════ -->
         <footer class="amm-foot">
-          <div class="amm-foot-meta">
-            <span class="dot" :class="overallStatus.kind"></span>
-            {{ overallStatus.text }}
-          </div>
-
           <div class="amm-foot-actions">
             <button v-if="step !== 'mode'" class="btn btn-ghost" @click="prevStep">{{ $t('marketplace.btn_back') }}</button>
 
@@ -415,13 +410,6 @@ async function primaryAction() {
     }
   }
 }
-
-const overallStatus = computed(() => {
-  const done = steps.value.filter(s => s.id !== 'tokens' && s.done).length
-  if (done === 2) return { kind: 'ok',   text: t('marketplace.status_done') }
-  if (done > 0)   return { kind: 'live', text: t('marketplace.status_progress', { done }) }
-  return            { kind: 'idle', text: t('marketplace.status_idle') }
-})
 
 // ═══════════ STATE ═══════════
 const pinataJwt     = ref('')
@@ -1165,12 +1153,7 @@ async function register() {
 .token-exp { font-family: var(--mono); font-size: 14px; color: var(--fg-3); }
 
 /* ─── FOOT ─── */
-.amm-foot { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 20px 32px; border-top: 1px solid var(--rule); background: var(--paper-3); align-items: center; }
-.amm-foot-meta { font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-2); display: flex; align-items: center; gap: 10px; }
-.dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
-.dot.idle { background: var(--fg-4); }
-.dot.live { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-.dot.ok   { background: var(--ok); box-shadow: 0 0 10px rgba(184,220,196,0.5); }
+.amm-foot { display: flex; justify-content: flex-end; gap: 16px; padding: 20px 32px; border-top: 1px solid var(--rule); background: var(--paper-3); align-items: center; }
 .amm-foot-actions { display: flex; gap: 12px; align-items: center; }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; font-family: var(--sans); font-size: 15px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; border: 1px solid transparent; background: transparent; color: inherit; transition: all 0.15s; white-space: nowrap; }
@@ -1253,8 +1236,7 @@ async function register() {
   .mode-name { font-size: 18px; }
   .mode-desc { font-size: 15px; }
 
-  .amm-foot { grid-template-columns: 1fr; padding: 14px 20px 20px; gap: 12px; }
-  .amm-foot-meta { order: -1; }
+  .amm-foot { padding: 14px 20px 20px; gap: 12px; }
   .amm-foot-actions { width: 100%; }
   .amm-foot-actions .btn { flex: 1; justify-content: center; }
 }
