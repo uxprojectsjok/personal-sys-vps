@@ -714,7 +714,7 @@ function onNav(id) {
 @media(max-width:720px){ .hl-cards{ grid-template-columns:repeat(2,1fr); } }
 @media(max-width:480px){ .hl-cards{ grid-template-columns:1fr; } }
 
-.hl-card { background:var(--surface); border:1px solid var(--line); padding:18px 16px 16px; display:flex; flex-direction:column; gap:8px; border-radius:var(--r); }
+.hl-card { background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); padding:18px 16px 16px; display:flex; flex-direction:column; gap:8px; border-radius:var(--r); }
 .hl-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:2px; }
 .hl-card-icon { width:20px; height:20px; color:var(--fg-3); flex:none; }
 .hl-card-icon svg { width:20px; height:20px; }
@@ -736,7 +736,7 @@ function onNav(id) {
 
 /* Setup section */
 .hl-setup-section { border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin-top:8px; }
-.hl-setup-header { display:flex; align-items:center; justify-content:space-between; width:100%; padding:16px 20px; background:var(--surface); border:none; cursor:pointer; text-align:left; }
+.hl-setup-header { display:flex; align-items:center; justify-content:space-between; width:100%; padding:16px 20px; background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:none; cursor:pointer; text-align:left; }
 .hl-setup-label { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:14px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg); }
 .hl-chevron { width:16px; height:16px; color:var(--fg-2); transition:transform 0.2s; flex:none; }
 .hl-chevron.open { transform:rotate(180deg); }
@@ -778,7 +778,7 @@ function onNav(id) {
 /* Charts */
 .hl-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:40px; }
 @media(max-width:680px){ .hl-charts-grid{ grid-template-columns:1fr; } }
-.hl-chart-box { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px 20px 16px; }
+.hl-chart-box { background:rgba(23,23,23,0.55); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); border-radius:var(--r); padding:20px 20px 16px; }
 .hl-chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
 .hl-chart-title { font-family:var(--serif); font-size:16px; font-weight:400; letter-spacing:-0.01em; color:var(--fg); }
 .hl-chart-filters { display:flex; gap:6px; }
