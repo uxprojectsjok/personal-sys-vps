@@ -642,15 +642,15 @@ function onNav(id) {
   margin-bottom: 12px;
 }
 .vank-genesis-head {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
   padding: 12px 18px;
   border-bottom: 1px solid var(--line);
 }
 .vank-genesis-badge {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 2px 8px;
-  background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.35);
-  border-radius: 99px; color: #d4af37; flex: none;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 99px; color: var(--fg); flex: none;
 }
 .vank-genesis-title {
   font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em;
@@ -658,7 +658,7 @@ function onNav(id) {
 }
 .vank-genesis-since {
   font-family: var(--mono); font-size: 13px; color: var(--fg-2);
-  letter-spacing: 0.04em; white-space: nowrap;
+  letter-spacing: 0.04em; flex-basis: 100%;
 }
 .vank-genesis-metrics {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -673,11 +673,11 @@ function onNav(id) {
 }
 .vank-genesis-val {
   font-family: var(--mono); font-size: 22px; font-weight: 500;
-  letter-spacing: -0.02em; color: #d4af37; line-height: 1;
+  letter-spacing: -0.02em; color: var(--fg); line-height: 1;
 }
 .vank-genesis-unit {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: rgba(212,175,55,0.6); margin-top: 2px;
+  text-transform: uppercase; color: var(--fg-3); margin-top: 2px;
 }
 .vank-genesis-label {
   font-family: var(--sans); font-size: 14px; color: var(--fg-2);
@@ -704,8 +704,8 @@ function onNav(id) {
 .vank-vis-badge {
   font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em;
   text-transform: uppercase; padding: 4px 12px;
-  background: rgba(109,184,154,0.15); border: 1px solid rgba(109,184,154,0.35);
-  border-radius: 99px; color: var(--teal); flex: none;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 99px; color: var(--fg); flex: none;
 }
 .vank-visibility--fading .vank-vis-badge {
   background: rgba(212,175,55,0.15); border-color: rgba(212,175,55,0.35); color: #d4af37;
@@ -728,13 +728,13 @@ function onNav(id) {
 }
 .vank-vis-val {
   font-family: var(--mono); font-size: 32px; font-weight: 500;
-  letter-spacing: -0.02em; color: var(--teal); line-height: 1;
+  letter-spacing: -0.02em; color: var(--fg); line-height: 1;
 }
 .vank-visibility--fading .vank-vis-val    { color: #d4af37; }
 .vank-visibility--invisible .vank-vis-val { color: #e06c75; }
 .vank-vis-unit {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  text-transform: uppercase; color: rgba(109,184,154,0.6); margin-top: 2px;
+  text-transform: uppercase; color: var(--fg-3); margin-top: 2px;
 }
 .vank-visibility--fading .vank-vis-unit    { color: rgba(212,175,55,0.6); }
 .vank-visibility--invisible .vank-vis-unit { color: rgba(224,108,117,0.6); }
