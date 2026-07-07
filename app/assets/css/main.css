@@ -205,8 +205,8 @@
 
 :root {
   /* Backgrounds – obsidian violet scale */
-  --sys-bg:         #12101a;
-  --sys-bg-elevated: rgba(22, 19, 32, 0.96);   /* violet-paper */
+  --sys-bg:         #171717;
+  --sys-bg-elevated: rgba(23, 23, 23, 0.96);
   --sys-bg-surface:  rgba(14, 12, 22, 0.97);
   --sys-bg-overlay:  rgba(8, 7, 12, 0.95);
 

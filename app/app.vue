@@ -59,23 +59,23 @@ if (import.meta.client) {
    CSS-Variablen werden hier definiert, damit die teleportierten Elemente
    außerhalb von .sys-chat trotzdem korrekte Farb- und Schriftwerte erben. */
 #teleports {
-  --bg:           #161513;
-  --surface:      #1c1b18;
-  --surface-2:    #232220;
-  --surface-3:    #2b2926;
-  --line:         rgba(245,241,234,0.07);
-  --line-2:       rgba(245,241,234,0.12);
-  --fg:           #f4f1ea;
-  --fg-2:         rgba(244,241,234,0.72);
-  --fg-3:         rgba(244,241,234,0.48);
-  --fg-4:         rgba(244,241,234,0.30);
+  --bg:           #171717;
+  --surface:      #1a1a1a;
+  --surface-2:    #212121;
+  --surface-3:    #2a2a2a;
+  --line:         rgba(236,236,236,0.07);
+  --line-2:       rgba(236,236,236,0.12);
+  --fg:           #ececec;
+  --fg-2:         rgba(236,236,236,0.72);
+  --fg-3:         rgba(236,236,236,0.48);
+  --fg-4:         rgba(236,236,236,0.30);
   --accent:       #6db89a;
   --accent-bright: #8ad0b3;
   --accent-deep:  #4f9a7e;
   --accent-dim:   rgba(109,184,154,0.14);
   --accent-glow:  rgba(109,184,154,0.28);
   --on-accent:    #0c1410;
-  --scrim:        rgba(10,9,8,0.66);
+  --scrim:        rgba(10,10,10,0.66);
   --r:    13px; --r-sm: 10px; --r-xs: 7px;
   --serif: 'Noto Serif', Georgia, serif;
   --sans:  'Inter', system-ui, sans-serif;

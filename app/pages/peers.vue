@@ -671,7 +671,7 @@ function onNav(id) {
   width: 42px; height: 42px; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--serif); font-size: 18px; font-weight: 600;
-  color: rgba(244,241,234,0.90);
+  color: rgba(236,236,236,0.90);
 }
 .pr-chip-body { flex: 1; min-width: 0; }
 .pr-chip-alias {

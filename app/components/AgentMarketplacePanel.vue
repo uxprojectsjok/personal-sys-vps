@@ -960,7 +960,7 @@ async function register() {
 <style scoped>
 /* ═══════════════ SYS · violet editorial system ═══════════════ */
 .sys-amm-overlay {
-  --ink:#08070c; --paper:#12101a; --paper-2:#1a1726; --paper-3:#0d0b14;
+  --ink:#08070c; --paper:#171717; --paper-2:#1a1726; --paper-3:#0d0b14;
   --rule:rgba(226,220,240,0.10); --rule-2:rgba(226,220,240,0.20);
   --fg:#ece7f5; --fg-2:rgba(236,231,245,0.88); --fg-3:rgba(236,231,245,0.70); --fg-4:rgba(236,231,245,0.55);
   --accent:#8b5cf6; --accent-2:rgba(139,92,246,0.14); --accent-bright:#a78bfa; --accent-deep:#6d28d9; --on-accent:#0a0810;

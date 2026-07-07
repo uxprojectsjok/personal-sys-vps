@@ -2,7 +2,7 @@
   <ClientOnly>
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul">
-      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1d1c19 0%,var(--bg) 60%)">
+      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
         <div class="gate-card">
           <div class="gate-mark">SYS<span class="dot">.</span></div>
           <div class="gate-sub">{{ config.public.nodeName }}</div>

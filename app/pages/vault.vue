@@ -907,7 +907,7 @@ onMounted(() => {
 .dt-icon-audio { background: rgba(109,184,154,0.15); color: var(--accent); }
 .dt-icon-video { background: rgba(122,184,212,0.15); color: #7ab8d4; }
 .dt-icon-image { background: rgba(196,169,110,0.15); color: #c4a96e; }
-.dt-icon-doc   { background: rgba(244,241,234,0.07); color: var(--fg-3); }
+.dt-icon-doc   { background: rgba(236,236,236,0.07); color: var(--fg-3); }
 .dt-name-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .dt-filename { font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dt-filetype { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.04em; }

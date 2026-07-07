@@ -463,7 +463,7 @@ function onNav(id) {
   width: 5px; height: 5px; border-radius: 50%; flex: none;
 }
 .dot-session { background: #4a9eff; }
-.dot-post    { background: rgba(244,241,234,0.35); }
+.dot-post    { background: rgba(236,236,236,0.35); }
 .dot-vault   { background: var(--accent); }
 .dot-anker   { background: #f59e0b; }
 

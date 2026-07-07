@@ -478,7 +478,7 @@ function onNav(id) {
 /* ── Dot ── */
 .vank-dot {
   width: 8px; height: 8px; border-radius: 50%; flex: none;
-  background: rgba(244,241,234,0.20);
+  background: rgba(236,236,236,0.20);
   transition: background 0.3s, box-shadow 0.3s;
 }
 .vank-dot--on {

@@ -361,7 +361,7 @@ function copyProof() {
 /* ── Design tokens ─────────────────────────────────────── */
 .anc-backdrop {
   --ink:    #08070c;
-  --paper:  #12101a;
+  --paper:  #171717;
   --paper-2:#1a1726;
   --paper-3:#0d0b14;
   --rule:   rgba(226,220,240,0.10);

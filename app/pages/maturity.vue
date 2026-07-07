@@ -20,7 +20,7 @@
             <!-- Circular ring -->
             <div class="rf-ring-wrap">
               <svg viewBox="0 0 160 160" class="rf-ring-svg">
-                <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="12" />
+                <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="12" />
                 <circle cx="80" cy="80" r="66" fill="none" stroke="var(--accent)" stroke-width="12"
                   stroke-linecap="round"
                   :stroke-dasharray="CIRC"

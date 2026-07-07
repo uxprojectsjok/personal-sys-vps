@@ -95,7 +95,7 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px;
   padding: 0 clamp(20px,4vw,44px); height: 64px; border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 100;
-  background: rgba(22,21,19,0.95); backdrop-filter: blur(12px);
+  background: rgba(23,23,23,0.95); backdrop-filter: blur(12px);
 }
 .lockup { display: flex; align-items: center; gap: 10px; }
 .mark { font-family: var(--serif); font-size: clamp(20px,3vw,26px); font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }

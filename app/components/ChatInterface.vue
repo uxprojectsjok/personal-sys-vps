@@ -3868,17 +3868,17 @@ defineExpose({
 
 /* ── Design tokens ───────────────────────────────────────────────── */
 .sys-chat {
-  --rule:    rgba(245,241,234,0.07);
-  --rule-2:  rgba(245,241,234,0.12);
-  --fg:      #f4f1ea;
-  --fg-2:    rgba(244,241,234,0.72);
-  --fg-3:    rgba(244,241,234,0.48);
-  --fg-4:    rgba(244,241,234,0.30);
+  --rule:    rgba(236,236,236,0.07);
+  --rule-2:  rgba(236,236,236,0.12);
+  --fg:      #ececec;
+  --fg-2:    rgba(236,236,236,0.72);
+  --fg-3:    rgba(236,236,236,0.48);
+  --fg-4:    rgba(236,236,236,0.30);
   --accent:  #6db89a;
   --accent-bright: #8ad0b3;
   --accent-dim:    rgba(109,184,154,0.14);
   --on-accent: #0c1410;
-  --paper-3: #161513;
+  --paper-3: #171717;
   --serif:   'Noto Serif', Georgia, serif;
   --mono:    'JetBrains Mono', ui-monospace, monospace;
 
@@ -4573,7 +4573,7 @@ defineExpose({
 
 .dock {
   border-top: 1px solid var(--rule);
-  background: rgba(22,21,19,0.88);
+  background: rgba(23,23,23,0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   flex-shrink: 0;
@@ -5084,7 +5084,7 @@ defineExpose({
     left: 0; right: 0;
     z-index: 200;
     padding: 10px 14px max(12px, env(safe-area-inset-bottom, 12px)); gap: 7px;
-    background: rgba(22, 21, 19, 0.96);
+    background: rgba(23,23,23, 0.96);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
     border-top: 1px solid rgba(109, 184, 154, 0.14);

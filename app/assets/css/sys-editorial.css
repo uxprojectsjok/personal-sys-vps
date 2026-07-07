@@ -12,7 +12,7 @@
 :root {
   --sys-rule:        rgba(226, 220, 240, 0.10);   /* same as --sys-border, semantic alias */
   --sys-rule-strong: rgba(226, 220, 240, 0.20);
-  --sys-paper:       #12101a;                      /* mirrors --sys-bg */
+  --sys-paper:       #171717;                      /* mirrors --sys-bg */
   --sys-paper-2:     #1a1726;                      /* one step elevated */
   --sys-paper-3:     #0d0b14;                      /* one step recessed */
   --sys-on-accent:   #0a0810;                      /* text on violet fill */

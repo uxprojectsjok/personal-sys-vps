@@ -35,7 +35,7 @@
             <div class="hl-hero">
               <div class="hl-ring-wrap">
                 <svg viewBox="0 0 160 160" class="hl-ring-svg">
-                  <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="12" />
+                  <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="12" />
                   <circle cx="80" cy="80" r="66" fill="none" :stroke="ringColor" stroke-width="12"
                     stroke-linecap="round"
                     :stroke-dasharray="CIRC"
@@ -95,7 +95,7 @@
                 <div class="hl-card-desc">{{ rhrDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="5"/>
+                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="5"/>
                     <circle cx="30" cy="30" r="24" fill="none" :stroke="ringColor" stroke-width="5"
                       stroke-linecap="round"
                       :stroke-dasharray="MINI_CIRC"
@@ -118,7 +118,7 @@
                 <div class="hl-card-desc">{{ sleepDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="5"/>
+                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="5"/>
                     <circle cx="30" cy="30" r="24" fill="none" :stroke="ringColor" stroke-width="5"
                       stroke-linecap="round"
                       :stroke-dasharray="MINI_CIRC"
@@ -141,7 +141,7 @@
                 <div class="hl-card-desc">{{ stepsDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="5"/>
+                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="5"/>
                     <circle cx="30" cy="30" r="24" fill="none" :stroke="ringColor" stroke-width="5"
                       stroke-linecap="round"
                       :stroke-dasharray="MINI_CIRC"
@@ -164,7 +164,7 @@
                 <div class="hl-card-desc">{{ activeDaysDesc }}</div>
                 <div class="hl-mini-ring-wrap">
                   <svg viewBox="0 0 60 60" class="hl-mini-ring">
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(245,241,234,0.07)" stroke-width="5"/>
+                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(236,236,236,0.07)" stroke-width="5"/>
                     <circle cx="30" cy="30" r="24" fill="none" :stroke="ringColor" stroke-width="5"
                       stroke-linecap="round"
                       :stroke-dasharray="MINI_CIRC"
@@ -234,7 +234,7 @@
                   <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
                     <line v-for="s in [0,25,50,75,100]" :key="s"
                       x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
-                      stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                      stroke="rgba(236,236,236,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
                     <path v-if="healthChart.area" :d="healthChart.area" fill="rgba(109,184,154,0.10)" />
                     <path v-if="healthChart.line" :d="healthChart.line" fill="none" stroke="#6db89a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
                     <g v-for="pt in healthChart.dots" :key="pt.date">
@@ -259,7 +259,7 @@
                   <svg class="hl-chart-svg" viewBox="0 0 600 150" preserveAspectRatio="none">
                     <line v-for="s in [0,25,50,75,100]" :key="s"
                       x1="20" :y1="120 - s * 1.1" x2="580" :y2="120 - s * 1.1"
-                      stroke="rgba(245,241,234,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
+                      stroke="rgba(236,236,236,0.06)" stroke-width="1" :stroke-dasharray="s === 0 ? '' : '4,6'" />
                     <path v-if="foodChart.area" :d="foodChart.area" fill="rgba(184,165,109,0.10)" />
                     <path v-if="foodChart.line" :d="foodChart.line" fill="none" stroke="#b8a56d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
                     <g v-for="pt in foodChart.dots" :key="pt.date">
@@ -445,7 +445,7 @@ const LEVELS = computed(() => [
 const currentLevel = computed(() => LEVELS.value.find(l => score.value >= l.min && score.value <= l.max) ?? LEVELS.value[0])
 const nextLevel    = computed(() => LEVELS.value.find(l => l.min > score.value))
 const nextHint     = computed(() => nextLevel.value ? (nextLevel.value.min - score.value) + ' Punkte' : null)
-const ringColor    = computed(() => score.value >= 46 ? '#6db89a' : score.value >= 21 ? '#b8a56d' : 'rgba(245,241,234,0.3)')
+const ringColor    = computed(() => score.value >= 46 ? '#6db89a' : score.value >= 21 ? '#b8a56d' : 'rgba(236,236,236,0.3)')
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadAll() {

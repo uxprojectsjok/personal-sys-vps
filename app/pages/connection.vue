@@ -185,7 +185,7 @@ async function startSession() {
 async function drawQr(url) {
   if (!qrCanvas.value) return
   const Q = (await import('qrcode')).default
-  Q.toCanvas(qrCanvas.value, url, { width:220, margin:2, color:{ dark:'#f4f1ea', light:'#1a1917' } })
+  Q.toCanvas(qrCanvas.value, url, { width:220, margin:2, color:{ dark:'#ececec', light:'#1a1917' } })
 }
 function startCountdown() {
   clearInterval(countdownTimer)

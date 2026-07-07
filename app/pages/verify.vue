@@ -477,7 +477,7 @@ async function generateQr() {
     url.searchParams.set('m', ms)
     qrDataUrl.value = await QRCode.toDataURL(url.toString(), {
       width: 200, margin: 2, errorCorrectionLevel: 'M',
-      color: { dark: '#1a1917', light: '#f4f1ea' },
+      color: { dark: '#1a1917', light: '#ececec' },
     })
   } catch (_) {}
 }
