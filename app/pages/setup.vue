@@ -117,7 +117,9 @@ function onNav(id) {
   border: 1px solid var(--line);
   border-radius: var(--r);
   overflow: hidden;
-  background: var(--surface);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* ── Map old wizard tokens to Warm Ash & Sage ── */
