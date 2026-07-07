@@ -76,7 +76,7 @@
                   <div class="mat-bar" style="margin-top:10px">
                     <div class="mat-fill" :style="{ width: maturity + '%' }" />
                   </div>
-                  <div class="stat-foot" :class="{ off: !hasAnchor }">
+                  <div class="stat-foot" :class="{ on: hasAnchor }">
                     <span class="d" />{{ hasAnchor ? $t('home.anchored') : $t('home.no_anchor') }}
                   </div>
                 </div>
@@ -90,7 +90,7 @@
                 <div class="stat">
                   <div class="stat-val" style="font-size:22px">{{ $t('home.local') }}</div>
                   <div class="stat-label">{{ $t('home.soul_file') }}</div>
-                  <div class="stat-foot" :class="{ off: !vaultConnected }">
+                  <div class="stat-foot" :class="{ on: vaultConnected }">
                     <span class="d" />{{ vaultConnected ? $t('home.ready') : $t('home.offline') }}
                   </div>
                 </div>

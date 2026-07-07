@@ -318,8 +318,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .stat .stat-val { font-family: var(--serif); font-size: 32px; color: var(--fg); line-height: 1; }
 .stat .stat-val small { font-size: 16px; color: var(--fg-3); font-family: var(--mono); margin-left: 3px; }
 .stat .stat-label { font-size: 14px; color: var(--fg-2); }
-.stat .stat-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--c-ok); }
-.stat .stat-foot.off { color: var(--fg-3); }
+.stat .stat-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--fg-3); }
+.stat .stat-foot.on { color: var(--c-ok); }
 .stat .stat-foot .d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .stat .mat-bar { height: 5px; border-radius: 99px; background: rgba(236,236,236,0.08); overflow: hidden; margin-top: 11px; }
 .stat .mat-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-deep), var(--accent-bright)); transition: width .6s var(--ease); }
