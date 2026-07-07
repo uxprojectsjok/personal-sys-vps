@@ -395,6 +395,7 @@ function handleClose() {
   display: flex; align-items: center; justify-content: center; padding: 16px;
   background: rgba(7,6,11,0.78);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* ── Panel ─────────────────────────────────────────────── */

@@ -426,6 +426,7 @@ async function handleSave() {
   gap: 4px;
   background: rgba(0,0,0,0.65);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-radius: 100px;
   padding: 3px 7px;
 }

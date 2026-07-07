@@ -152,6 +152,7 @@ function formatTime(iso) {
   display: flex; align-items: center; justify-content: center; padding: 16px;
   background: rgba(4,3,8,0.85);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .em-panel {

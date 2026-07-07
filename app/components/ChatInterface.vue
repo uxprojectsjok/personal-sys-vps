@@ -3926,6 +3926,7 @@ defineExpose({
   display: flex;
   background: rgba(10,10,20,0.82);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid rgba(255,255,255,0.10);
 }
 .mia-btn {

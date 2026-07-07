@@ -951,7 +951,7 @@ async function register() {
   --mono:'JetBrains Mono', ui-monospace, monospace;
 
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(7,6,11,0.78); backdrop-filter: blur(10px);
+  background: rgba(7,6,11,0.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--sans); color: var(--fg);
   padding: 24px;

@@ -716,7 +716,7 @@ onMounted(() => {
 .sys-modal-wrap {
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: var(--scrim); backdrop-filter: blur(10px);
+  background: var(--scrim); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .sys-modal-panel {
   position: relative; z-index: 10;
@@ -745,7 +745,7 @@ onMounted(() => {
 
 /* ── PWA Banner ───────────────────────────────────────────────────────── */
 .pwa-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 9000; width: min(calc(100vw - 32px), 500px); }
-.pwa-banner-inner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--accent-glow); border-radius: var(--r); backdrop-filter: blur(16px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.pwa-banner-inner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--accent-glow); border-radius: var(--r); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
 .pwa-banner-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pwa-banner-title { font-size: 13px; font-weight: 500; color: var(--fg); }
 .pwa-banner-sub { font-family: var(--mono); font-size: 11px; color: var(--fg-3); }
