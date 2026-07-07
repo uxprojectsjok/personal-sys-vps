@@ -868,6 +868,7 @@ server {
     content_by_lua_file /etc/openresty/lua/vault_shared_view.lua;
   }
 
+  # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   # ── EU-Widerruf-PDF (bewusst KEIN Auth — Sicherheit über UUID-Unratbarkeit) ──
   location ~ ^/api/vault/consent/ {
     limit_except GET { deny all; }
@@ -892,6 +893,7 @@ server {
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/vault_consent_delete.lua;
   }
+  # ── EU-CONSENT:END ───────────────────────────────────────────────────────────
 
   # ── Vault Shared: internes Filesystem-Serving für X-Accel-Redirect ──────────
   location /internal/vault-shared/ {
@@ -1585,6 +1587,7 @@ server {
     try_files $uri $uri.html /join/index.html /index.html;
   }
 
+  # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   ################################
   # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus
   # show_withdrawal_terms für Käufer ohne eigene Soul/Session auf diesem Node.
@@ -1596,6 +1599,7 @@ server {
     add_header Expires "0" always;
     try_files /agb/index.html /index.html;
   }
+  # ── EU-CONSENT:END ───────────────────────────────────────────────────────────
 
   ################################
   # SPA Root (Nuxt static)

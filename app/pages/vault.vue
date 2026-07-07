@@ -46,7 +46,7 @@
                   </svg>
                   {{ $t('files.tab_shared') }}
                 </button>
-                <button class="dt-tab" :class="{ on: tab === 'widerruf' }" @click="switchToConsent">
+                <button v-if="euConsumerRights" class="dt-tab" :class="{ on: tab === 'widerruf' }" @click="switchToConsent">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
                     <rect x="3" y="2" width="14" height="16" rx="1.5"/>
                     <path stroke-linecap="round" d="M6.5 6.5h7M6.5 9.5h7M6.5 12.5h4"/>
@@ -798,8 +798,15 @@ function onNav(id) {
   router.push('/')
 }
 
+const euConsumerRights = ref(false)
 onMounted(() => {
   if (soulToken.value && !serverLoaded.value) loadContext(soulToken.value).catch(() => {})
+  if (soulToken.value) {
+    fetch('/api/get-config', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) euConsumerRights.value = !!d.eu_consumer_rights })
+      .catch(() => {})
+  }
 })
 </script>
 

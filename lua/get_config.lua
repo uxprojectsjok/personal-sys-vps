@@ -97,9 +97,17 @@ else
   end
 end
 
+local eu_flag = io.open("/var/lib/sys/config/eu_consumer_rights", "r")
+local eu_consumer_rights = false
+if eu_flag then
+  eu_consumer_rights = eu_flag:read("*a") == "true"
+  eu_flag:close()
+end
+
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 ngx.say(cjson.encode({
+  eu_consumer_rights   = eu_consumer_rights,
   has_own_key          = has_own_key,
   key_preview          = key_preview,
   key_source           = key_source,

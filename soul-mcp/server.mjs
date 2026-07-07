@@ -33,6 +33,10 @@ app.use(express.urlencoded({ extended: true }));
 const BASE_URL = process.env.BASE_URL;
 if (!BASE_URL) throw new Error('BASE_URL is not set. Add it to your .env file.');
 
+// EU withdrawal-rights consent flow — off by default, opt-in via init.sh
+// ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
+const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
+
 // ── CORS ──────────────────────────────────────────────────────────────────
 // Claude.ai und Claude Desktop rufen den MCP-Server von deren Backend aus auf.
 app.use((req, res, next) => {
@@ -1182,7 +1186,9 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
   lines.push('');
   lines.push('**Non-crypto alternative**');
-  lines.push('Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
+  lines.push(EU_CONSUMER_RIGHTS
+    ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
+    : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
   lines.push('');
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');

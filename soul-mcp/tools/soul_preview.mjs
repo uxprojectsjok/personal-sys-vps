@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// EU withdrawal-rights consent flow — off by default, opt-in via init.sh
+// ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
+const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
+
 /**
  * soul_preview — Free teaser of a paid Soul before committing to payment.
  *
@@ -30,18 +34,25 @@ export function register(server, _token) {
       'If the preview looks promising: call soul_pay_read with the same',
       'pay_endpoint and soul_id to get full access.',
       '',
-      'Some Souls also accept PayPal for human buyers without crypto — if the',
-      'preview shows paypal_accepted, mention that option to the human.',
-      '',
-      'STOP — before telling the human to send the PayPal payment: ask if they are',
-      'in the EU (if unknown). If yes (or unsure), you MUST call',
-      'show_withdrawal_terms FIRST (then accept_digital_content_terms once they',
-      'agree) — this is the legally required withdrawal-rights waiver for digital',
-      'content, not optional.',
-      'Do not skip straight from preview to "send PayPal to X" for EU buyers.',
-      'Only after that (or immediately, for confirmed non-EU buyers): the human',
-      'pays externally, then contacts the Soul owner directly — access is granted',
-      'manually, typically within 48h, not instantly like POL.',
+      ...(EU_CONSUMER_RIGHTS ? [
+        'Some Souls also accept PayPal for human buyers without crypto — if the',
+        'preview shows paypal_accepted, mention that option to the human.',
+        '',
+        'STOP — before telling the human to send the PayPal payment: ask if they are',
+        'in the EU (if unknown). If yes (or unsure), you MUST call',
+        'show_withdrawal_terms FIRST (then accept_digital_content_terms once they',
+        'agree) — this is the legally required withdrawal-rights waiver for digital',
+        'content, not optional.',
+        'Do not skip straight from preview to "send PayPal to X" for EU buyers.',
+        'Only after that (or immediately, for confirmed non-EU buyers): the human',
+        'pays externally, then contacts the Soul owner directly — access is granted',
+        'manually, typically within 48h, not instantly like POL.',
+      ] : [
+        'Some Souls also accept PayPal for human buyers without crypto — if the',
+        'preview shows paypal_accepted, mention that option to the human. The',
+        'human pays externally, then contacts the Soul owner directly — access is',
+        'granted manually, typically within 48h, not instantly like POL.',
+      ]),
       '',
       'Parameters:',
       '  pay_endpoint  full URL of the Soul\'s pay endpoint (from soul_discover)',

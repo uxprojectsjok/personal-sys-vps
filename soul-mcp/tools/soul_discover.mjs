@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 const MCP_BASE = () => `http://127.0.0.1:${process.env.PORT || '3098'}`;
 
+// EU withdrawal-rights consent flow — off by default, opt-in via init.sh
+// ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
+const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
+
 export function register(server, token) {
   server.tool(
     'soul_discover',
@@ -49,13 +53,15 @@ export function register(server, token) {
       'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Polygon-Wallet:',
       'Souls mit amortization.paypal_enabled zeigen zusätzlich price_eur + paypal_target.',
       '',
-      'WICHTIG — BEVOR du zur Zahlung überleitest: Frage den Nutzer (falls unklar), ob',
-      'er/sie in der EU ist. Bei EU-Nutzern IMMER zuerst show_withdrawal_terms',
-      'aufrufen, dessen Link zeigen, dann bei Zustimmung accept_digital_content_terms —',
-      'gesetzliches 14-tägiges Widerrufsrecht bei digitalen Leistungen, das durch',
-      'sofortigen Zugang erlischt. Ohne diese Schritte NICHT direkt zur PayPal-Zahlung',
-      'auffordern. Nicht-EU-Nutzer können diesen Schritt überspringen.',
-      '',
+      ...(EU_CONSUMER_RIGHTS ? [
+        'WICHTIG — BEVOR du zur Zahlung überleitest: Frage den Nutzer (falls unklar), ob',
+        'er/sie in der EU ist. Bei EU-Nutzern IMMER zuerst show_withdrawal_terms',
+        'aufrufen, dessen Link zeigen, dann bei Zustimmung accept_digital_content_terms —',
+        'gesetzliches 14-tägiges Widerrufsrecht bei digitalen Leistungen, das durch',
+        'sofortigen Zugang erlischt. Ohne diese Schritte NICHT direkt zur PayPal-Zahlung',
+        'auffordern. Nicht-EU-Nutzer können diesen Schritt überspringen.',
+        '',
+      ] : []),
       'Danach: Der Mensch zahlt außerhalb des Systems per PayPal, der Betreiber prüft',
       'manuell (i.d.R. binnen 48h) und schickt dann einen fertigen access_token zurück —',
       'meist direkt in diesem Chat eingefügt, ohne vorherigen soul_pay_read-Aufruf.',

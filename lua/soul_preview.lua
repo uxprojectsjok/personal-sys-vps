@@ -9,6 +9,16 @@ local resty_aes = require("resty.aes")
 local SOULS_DIR  = "/var/lib/sys/souls/"
 local PREVIEW_CHARS = 200
 
+-- EU withdrawal-rights consent flow — off by default, opt-in via init.sh
+-- ("Set up EU consumer rights?"), written to this flag file by init.sh.
+local function eu_consumer_rights()
+  local f = io.open("/var/lib/sys/config/eu_consumer_rights", "r")
+  if not f then return false end
+  local v = f:read("*a"); f:close()
+  return v == "true"
+end
+local EU_CONSUMER_RIGHTS = eu_consumer_rights()
+
 ngx.header["Content-Type"]                = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
 ngx.header["Access-Control-Allow-Origin"] = "*"
@@ -207,12 +217,19 @@ if amort.paypal_enabled then
   response.price_note      = (amort.trader_vat_note and amort.trader_vat_note ~= "")
                               and amort.trader_vat_note
                               or "Alle Preise sind Endpreise (inkl. ggf. anfallender gesetzl. MwSt.)."
-  response.paypal_note     = "Für Nicht-Krypto-Zugang: WENN der Käufer in der EU ist, ZUERST" ..
-    " show_withdrawal_terms aufrufen (gesetzliches Widerrufsrecht, nicht optional)," ..
-    " erst danach zur Zahlung übergehen. Dann PayPal an " .. target ..
-    " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
-    " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
-    " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
+  if EU_CONSUMER_RIGHTS then
+    response.paypal_note   = "Für Nicht-Krypto-Zugang: WENN der Käufer in der EU ist, ZUERST" ..
+      " show_withdrawal_terms aufrufen (gesetzliches Widerrufsrecht, nicht optional)," ..
+      " erst danach zur Zahlung übergehen. Dann PayPal an " .. target ..
+      " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
+      " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
+      " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
+  else
+    response.paypal_note   = "Für Nicht-Krypto-Zugang: PayPal an " .. target ..
+      " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
+      " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
+      " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
+  end
 end
 
 ngx.say(cjson.encode(response))
