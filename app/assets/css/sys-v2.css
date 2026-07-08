@@ -189,7 +189,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .sb-group { margin-top: 16px; }
 .sb-group:first-child { margin-top: 6px; }
 .sb-group-label {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+  font-family: var(--mono); font-size: 18px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--fg); font-weight: 500;
   padding: 0 12px 7px;
 }

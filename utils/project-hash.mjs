@@ -10,7 +10,7 @@ import { join, relative } from "path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template"]);
+const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template", ".css"]);
 const EXCLUDE_DIRS = new Set([
   "node_modules", ".output", ".nuxt", ".git", ".claude",
   "soul-whatsapp", "soul-voice-clone",
