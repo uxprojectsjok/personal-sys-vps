@@ -173,7 +173,8 @@ function onNav(id) {
   box-shadow: none !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
 }
 
 /* 3. Hide close button and drag handle */
