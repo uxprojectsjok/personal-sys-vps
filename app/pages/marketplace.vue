@@ -229,6 +229,20 @@ function onNav(id) {
   overflow-x: hidden !important;
 }
 
+/* 5b. Tool picker (agent-tools settings card, step 1 pay-form) — same modal-only
+   max-height/overflow-y trap as .amm-body: on the fixed-height modal it needs its
+   own internal scroll, but inline on a full page it just needs to lay out flat so
+   touches over it still scroll .scroll instead of getting eaten by this nested box. */
+.mk-panel :deep(.tools-picker) {
+  max-height: none !important;
+  overflow-y: visible !important;
+  touch-action: auto !important;
+  -webkit-overflow-scrolling: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 /* 6. Footer */
 .mk-panel :deep(.amm-foot) {
   border-top: 1px solid var(--rule) !important;
