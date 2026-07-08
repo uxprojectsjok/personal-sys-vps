@@ -103,6 +103,7 @@ body {
 h1, h2, h3, h4 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.02em; margin: 0; }
 ::selection { background: var(--accent-glow); color: #fff; }
 
+* { scrollbar-color: rgba(236,236,236,0.20) transparent; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: rgba(236,236,236,0.10); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(236,236,236,0.2); background-clip: padding-box; }
