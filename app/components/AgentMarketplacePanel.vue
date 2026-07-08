@@ -1219,10 +1219,14 @@ async function register() {
   .amm-body { padding: 24px 20px; }
   .step-head { gap: 10px; margin-bottom: 12px; padding-bottom: 12px; }
   .step-title { font-size: 22px; }
-  .prose { font-size: 16px; margin-bottom: 18px; }
-  .mode-card { padding: 18px; min-height: auto; }
-  .mode-name { font-size: 18px; }
-  .mode-desc { font-size: 15px; }
+  .prose { font-size: 16px; margin-bottom: 14px; }
+  .mode-grid { gap: 10px; margin-bottom: 16px; }
+  .mode-card { padding: 14px; min-height: auto; gap: 6px; }
+  .mode-card-head { gap: 8px; }
+  .mode-mark { width: 14px; height: 14px; }
+  .mode-name { font-size: 16px; }
+  .mode-desc { font-size: 14px; line-height: 1.4; }
+  .mode-tag { font-size: 12px; padding: 2px 6px; }
 
   .amm-foot { padding: 14px 20px 20px; gap: 12px; }
   .amm-foot-actions { width: 100%; }
