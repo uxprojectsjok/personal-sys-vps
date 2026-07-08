@@ -1003,7 +1003,7 @@ async function register() {
 .amm-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); flex: none; }
 
 /* ─── BODY ─── */
-.amm-body { overflow-y: auto; overscroll-behavior-y: contain; padding: 36px 40px; min-height: 0; }
+.amm-body { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: contain; padding: 36px 40px; min-height: 0; }
 .step { animation: fade-in 0.22s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1216,7 +1216,7 @@ async function register() {
 
   .amm-tab { padding: 7px 12px; font-size: 15px; }
 
-  .amm-body { padding: 24px 20px; }
+  .amm-body { padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
   .step-head { gap: 10px; margin-bottom: 12px; padding-bottom: 12px; }
   .step-title { font-size: 22px; }
   .prose { font-size: 16px; margin-bottom: 14px; }
