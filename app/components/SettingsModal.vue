@@ -20,7 +20,7 @@
           </template>
 
           <!-- Rail / Tabs -->
-          <div class="sys-rail">
+          <div class="sys-rail" @wheel="onTabWheel">
             <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_api') }}</span></span>
             </button>
@@ -864,6 +864,16 @@ function detectAdmin() {
 
 // ── Tab ──────────────────────────────────────────────────────────────────────
 const tab = ref('api')
+
+// Vertical mouse wheel -> horizontal scroll for the overflowing tab rail
+// (no visible scrollbar, so without this desktop mouse users can't reach
+// tabs past the fold — no drag/touch, no horizontal wheel on most mice).
+function onTabWheel(e) {
+  const el = e.currentTarget
+  if (el.scrollWidth <= el.clientWidth) return
+  el.scrollLeft += e.deltaY
+  e.preventDefault()
+}
 
 // ── Gesundheit Tab State ──────────────────────────────────────────────────────
 const healthHasPassword   = ref(false)

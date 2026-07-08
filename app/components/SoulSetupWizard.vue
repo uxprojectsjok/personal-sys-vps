@@ -50,7 +50,7 @@
 
         <!-- Step Navigator -->
         <div class="wiz-tabs-row">
-          <nav class="wiz-tabs">
+          <nav class="wiz-tabs" @wheel="onTabWheel">
             <button
               v-for="(step, i) in steps"
               :key="i"
@@ -320,6 +320,16 @@ const open        = ref(false)
 const currentStep = ref(0)
 const { isDark } = useColorScheme()
 const deleteLoading = ref(false)
+
+// Vertical mouse wheel -> horizontal scroll for the overflowing tab bar
+// (no visible scrollbar, so without this desktop mouse users can't reach
+// tabs past the fold — no drag/touch, no horizontal wheel on most mice).
+function onTabWheel(e) {
+  const el = e.currentTarget
+  if (el.scrollWidth <= el.clientWidth) return
+  el.scrollLeft += e.deltaY
+  e.preventDefault()
+}
 
 const { isUnlocked, vaultKey } = useVaultSession()
 const { enabled, encryptData, saveContext, resetContext } = useApiContext()

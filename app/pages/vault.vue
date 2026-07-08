@@ -23,7 +23,7 @@
 
             <!-- ── Tab toggle ── -->
             <div class="dt-tabs-row">
-              <div class="dt-tabs">
+              <div class="dt-tabs" @wheel="onTabWheel">
                 <button class="dt-tab" :class="{ on: tab === 'lokal' }" @click="tab = 'lokal'">
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
                     <rect x="2" y="3" width="16" height="12" rx="1.5"/>
@@ -320,6 +320,16 @@ const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 const tab              = ref('lokal')
 const typeFilter       = ref('all')
+
+// Vertical mouse wheel -> horizontal scroll for the overflowing tab bar
+// (no visible scrollbar, so without this desktop mouse users can't reach
+// tabs past the fold — no drag/touch, no horizontal wheel on most mice).
+function onTabWheel(e) {
+  const el = e.currentTarget
+  if (el.scrollWidth <= el.clientWidth) return
+  el.scrollLeft += e.deltaY
+  e.preventDefault()
+}
 const searchQuery      = ref('')
 const refreshing       = ref(false)
 const soulInput        = ref(null)

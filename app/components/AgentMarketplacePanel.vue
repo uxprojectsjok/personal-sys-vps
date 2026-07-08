@@ -20,7 +20,7 @@
 
         <!-- ═══════════ TABS ═══════════ -->
         <div class="amm-tabs-row">
-          <nav class="amm-tabs" :aria-label="$t('marketplace.steps_aria')">
+          <nav class="amm-tabs" :aria-label="$t('marketplace.steps_aria')" @wheel="onTabWheel">
             <button class="amm-tab" :class="{ on: step === 'mode' }" @click="goTo('mode')">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
                 <rect x="3" y="2" width="14" height="16" rx="1.5"/>
@@ -370,6 +370,16 @@ const { t } = useI18n()
 
 // ═══════════ STEP MACHINE ═══════════
 const step = ref('mode') // 'mode' | 'ipfs' | 'tokens'
+
+// Vertical mouse wheel -> horizontal scroll for the overflowing tab bar
+// (no visible scrollbar, so without this desktop mouse users can't reach
+// tabs past the fold — no drag/touch, no horizontal wheel on most mice).
+function onTabWheel(e) {
+  const el = e.currentTarget
+  if (el.scrollWidth <= el.clientWidth) return
+  el.scrollLeft += e.deltaY
+  e.preventDefault()
+}
 
 const steps = computed(() => [
   { id: 'mode',   title: t('marketplace.step_mode_title'), subtitle: t('marketplace.step_mode_sub'), done: amortActive.value || (!amort.enabled && modeTouched.value) },
