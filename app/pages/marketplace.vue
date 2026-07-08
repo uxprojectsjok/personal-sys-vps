@@ -225,7 +225,7 @@ function onNav(id) {
   max-width: 100% !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
+  overflow-x: hidden !important;
 }
 
 /* 6. Footer */
