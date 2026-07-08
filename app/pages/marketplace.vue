@@ -188,9 +188,14 @@ function onNav(id) {
   font-size: 16px !important;
 }
 
-/* 5. Body */
+/* 5. Body — inline usage has no fixed viewport height, so defer scrolling
+   to the page's own .scroll wrapper (like Settings) instead of the
+   component's modal touch-scroll fix, which fights with overflow:hidden here. */
 .mk-panel :deep(.amm-body) {
-  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  touch-action: auto !important;
+  -webkit-overflow-scrolling: auto !important;
   padding: 0 0 32px !important;
   min-height: auto !important;
   width: 100% !important;
