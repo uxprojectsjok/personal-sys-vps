@@ -172,10 +172,6 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
-.sys-rail::-webkit-scrollbar { height: 6px; }
-.sys-rail::-webkit-scrollbar-track { background: transparent; }
-.sys-rail::-webkit-scrollbar-thumb { background: rgba(236,236,236,0.25); border-radius: 99px; }
-.sys-rail::-webkit-scrollbar-thumb:hover { background: rgba(236,236,236,0.4); }
 
 .sys-rail-item {
   display: flex; align-items: center; gap: 6px;
