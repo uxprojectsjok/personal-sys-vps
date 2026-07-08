@@ -1,15 +1,17 @@
 <template>
   <Transition name="sys-modal" appear>
     <div
-      class="sys-amm-overlay"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="$t('marketplace.aria_label')"
-      @click.self="$emit('close')"
+      :class="['sys-amm-overlay', { inline }]"
+      :role="inline ? undefined : 'dialog'"
+      :aria-modal="inline ? undefined : 'true'"
+      :aria-label="inline ? undefined : $t('marketplace.aria_label')"
+      @click.self="!inline && $emit('close')"
     >
-      <div class="sys-amm">
+      <div :class="['sys-amm', { inline }]">
         <!-- ═══════════ HEADER ═══════════ -->
-        <header class="amm-head">
+        <!-- Modal chrome only — inline embedding (marketplace.vue) has its own
+             page header/back-nav and doesn't need a close button or sheet handle. -->
+        <header v-if="!inline" class="amm-head">
           <button class="amm-close" @click="$emit('close')" :aria-label="$t('common.close')">
             <span aria-hidden="true">×</span>
           </button>
@@ -19,7 +21,7 @@
         </header>
 
         <!-- ═══════════ TABS ═══════════ -->
-        <div class="amm-tabs-row">
+        <div :class="['amm-tabs-row', { inline }]">
           <nav class="amm-tabs" :aria-label="$t('marketplace.steps_aria')" @wheel="onTabWheel">
             <button class="amm-tab" :class="{ on: step === 'mode' }" @click="goTo('mode')">
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14">
@@ -49,7 +51,7 @@
         </div>
 
         <!-- ═══════════ BODY ═══════════ -->
-        <div class="amm-body">
+        <div :class="['amm-body', { inline }]">
           <!-- ───── STEP 1 · ZUGANGSMODUS ───── -->
           <section v-if="step === 'mode'" class="step">
             <div class="step-head">
@@ -177,7 +179,7 @@
                     <input v-model="agentToolsStr" type="text" class="input mono" placeholder="soul_read, verify_human" />
                     <button class="tools-add" type="button" :class="{ on: showToolPicker }" @click.stop="showToolPicker = !showToolPicker" :aria-label="$t('marketplace.tool_select_aria')">+</button>
                   </div>
-                  <div v-if="showToolPicker" class="tools-picker" @click.stop>
+                  <div v-if="showToolPicker" :class="['tools-picker', { inline }]" @click.stop>
                     <button
                       v-for="tool in AVAILABLE_TOOLS"
                       :key="tool"
@@ -363,6 +365,10 @@ import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   soulCert: { type: String, default: '' },
+  // True when embedded flat in a page (marketplace.vue) instead of shown as a
+  // fixed modal (index.vue) — drives the .inline CSS modifiers below instead
+  // of the page having to fight the modal's position/overflow from outside.
+  inline: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close'])
 
@@ -966,6 +972,13 @@ async function register() {
   font-family: var(--sans); color: var(--fg);
   padding: 24px;
 }
+/* Embedded in a page instead of shown as a fixed modal: no overlay chrome,
+   just hand color tokens down to the flat content below. */
+.sys-amm-overlay.inline {
+  position: static; inset: auto; z-index: auto;
+  background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+  display: block; padding: 0;
+}
 
 .sys-amm {
   width: 100%; max-width: 720px;
@@ -977,6 +990,14 @@ async function register() {
   grid-template-rows: auto auto 1fr auto;
   overflow: hidden;
   box-shadow: 0 60px 140px rgba(0,0,0,0.7), 0 0 0 1px rgba(139,92,246,0.06);
+}
+/* display:block instead of the modal's fixed row grid — inline has no header
+   row and no viewport height to budget for, content just flows naturally and
+   the page's own scroll container handles scrolling (see .amm-body.inline). */
+.sys-amm.inline {
+  max-width: none; max-height: none;
+  background: transparent; border: none; border-radius: 0; box-shadow: none;
+  display: block; overflow: visible;
 }
 
 /* ─── HEAD ─── */
@@ -995,6 +1016,7 @@ async function register() {
 
 /* ─── TABS ─── */
 .amm-tabs-row { display: flex; align-items: center; gap: 14px; padding: 16px 32px 0; }
+.amm-tabs-row.inline { padding: 0; margin-bottom: 32px; }
 .amm-tabs { display: flex; border: 1px solid var(--rule); border-radius: var(--r-xs); overflow: hidden; flex: none; }
 .amm-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg-2); background: transparent; border: none; border-right: 1px solid var(--rule); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; }
 .amm-tab:last-child { border-right: none; }
@@ -1004,6 +1026,9 @@ async function register() {
 
 /* ─── BODY ─── */
 .amm-body { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: contain; padding: 36px 40px; min-height: 0; }
+/* No internal scroll box inline — the page's own scroll container owns
+   scrolling, so this must never become a nested touch-scroll trap. */
+.amm-body.inline { overflow-y: visible; touch-action: auto; -webkit-overflow-scrolling: auto; padding: 0; min-height: auto; }
 .step { animation: fade-in 0.22s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1085,6 +1110,9 @@ async function register() {
 .tools-add:hover, .tools-add.on { color: var(--fg); border-color: var(--accent); background: var(--accent-2); }
 
 .tools-picker { position: static; margin-top: 8px; background: var(--paper-2); border: 1px solid var(--rule-2); padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow-y: auto; }
+/* Same reasoning as .amm-body.inline: no fixed modal height to budget for,
+   so this doesn't need its own scroll box (and must not trap page scroll). */
+.tools-picker.inline { max-height: none; overflow-y: visible; touch-action: auto; -webkit-overflow-scrolling: auto; }
 .tool-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--rule-2); background: var(--paper-3); color: var(--fg-3); font-family: var(--mono); font-size: 14px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.12s; white-space: nowrap; }
 .tool-chip:hover { color: var(--fg); border-color: var(--rule-2); background: var(--paper); }
 .tool-chip.active { color: var(--ok); border-color: rgba(184,220,196,0.35); background: rgba(184,220,196,0.06); }
@@ -1158,33 +1186,6 @@ async function register() {
 .btn-ghost { border-color: var(--rule-2); color: var(--fg-2); }
 .btn-ghost:hover { color: var(--fg); border-color: var(--accent); }
 
-/* ─── VERBUNDENE NODES ─── */
-.connected-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--rule); }
-.connected-head { margin-bottom: 12px; }
-.connected-title { font-family: var(--serif); font-weight: 400; font-size: clamp(20px, 2.5vw, 24px); letter-spacing: -0.02em; margin: 0; color: var(--fg); }
-.connected-title em { font-style: italic; color: var(--accent); }
-
-.bearer-row { display: flex; align-items: stretch; gap: 8px; }
-.bearer-val { flex: 1; min-width: 0; padding: 10px 14px; background: var(--paper-3); border: 1px solid var(--rule-2); font-family: var(--mono); font-size: 14px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 1.4; }
-.bearer-copy { flex: none; padding: 0 14px; border: 1px solid var(--rule-2); background: var(--paper-2); color: var(--fg-3); font-family: var(--mono); font-size: 14px; letter-spacing: 0.10em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-.bearer-copy:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); background: var(--accent-2); }
-.bearer-copy.copied { color: var(--ok); border-color: rgba(184,220,196,0.35); background: rgba(184,220,196,0.06); }
-.bearer-copy:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.node-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.node-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--rule-2); }
-.node-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.node-label { font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--fg); }
-.node-url { font-family: var(--mono); font-size: 14px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.node-remove { flex: none; width: 28px; height: 28px; border: 1px solid var(--rule-2); background: transparent; color: var(--fg-4); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
-.node-remove:hover { color: var(--err); border-color: rgba(240,163,163,0.3); background: rgba(240,163,163,0.04); }
-
-.no-nodes { font-family: var(--mono); font-size: 14px; letter-spacing: 0.12em; color: var(--fg-3); text-align: center; padding: 14px 0; border: 1px dashed var(--rule-2); margin-bottom: 16px; }
-
-.add-node-form { margin-top: 8px; }
-.add-node-row { display: flex; gap: 8px; align-items: stretch; }
-.add-node-row .input { min-width: 0; }
-
 .sys-modal-enter-active, .sys-modal-leave-active { transition: opacity 0.2s; }
 .sys-modal-enter-active .sys-amm, .sys-modal-leave-active .sys-amm { transition: transform 0.25s ease, opacity 0.2s; }
 .sys-modal-enter-from { opacity: 0; }
@@ -1233,36 +1234,4 @@ async function register() {
   .amm-foot-actions .btn { flex: 1; justify-content: center; }
 }
 
-.peer-form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.peer-form-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.peer-form-row { display: flex; gap: 8px; align-items: stretch; }
-.peer-sep { color: var(--fg-4); margin: 0 2px; }
-.peer-endpoint-row { margin-top: 4px; }
-.peer-endpoint-input { font-size: 14px; padding: 3px 7px; height: auto; width: 100%; box-sizing: border-box; }
-.section-divider { height: 1px; background: var(--rule); margin: 24px 0; }
-
-@media (max-width: 639px) {
-  .peer-form-inputs { grid-template-columns: 1fr; }
-}
-
-.own-endpoint-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; margin-bottom: 12px;
-  background: var(--paper-3); border: 1px solid var(--rule-2);
-}
-.oe-label {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.10em;
-  text-transform: uppercase; color: var(--fg-4); flex-shrink: 0;
-}
-.oe-val {
-  font-family: var(--mono); font-size: 14px; color: var(--accent-bright);
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.oe-copy {
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
-  background: transparent; border: 1px solid var(--rule-2); color: var(--fg-3);
-  cursor: pointer; padding: 2px 8px; flex-shrink: 0; transition: all 0.15s;
-}
-.oe-copy:hover { color: var(--fg); border-color: var(--accent); background: var(--accent-2); }
-.oe-copy.copied { color: var(--ok); border-color: rgba(184,220,196,0.35); }
 </style>

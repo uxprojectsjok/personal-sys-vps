@@ -17,9 +17,9 @@
               <p class="mk-sub">{{ $t('marketplace.hero_sub') }}</p>
             </div>
 
-            <!-- ── Panel (inline, modal stripped) ── -->
+            <!-- ── Panel, embedded flat via the `inline` prop (see AgentMarketplacePanel.vue) ── -->
             <div class="mk-panel">
-              <AgentMarketplacePanel :soul-cert="soulToken" @close="router.push('/')" />
+              <AgentMarketplacePanel inline :soul-cert="soulToken" @close="router.push('/')" />
             </div>
 
           </div>
@@ -114,17 +114,18 @@ function onNav(id) {
 }
 
 /* ════════════════════════════════════════════════
-   PANEL OVERRIDES
-   Override the violet design system inside
-   AgentMarketplacePanel with Warm Ash & Sage.
-   :deep() compiles to .mk-panel .sys-amm-overlay
-   which has higher specificity than the scoped
-   component rule [data-v-xxx].sys-amm-overlay.
+   PANEL THEME
+   AgentMarketplacePanel's own `inline` prop (see
+   its <script setup>) handles laying out flat —
+   nothing here needs to fight position/overflow
+   anymore. This just reskins its violet design
+   tokens as Warm Ash & Sage, and covers page-level
+   presentation (footer border, responsive columns)
+   that's a legitimate per-page choice rather than a
+   modal-vs-inline structural concern.
    ════════════════════════════════════════════════ */
 
-/* 1. Override all design tokens on the overlay root */
 .mk-panel :deep(.sys-amm-overlay) {
-  /* Warm Ash & Sage color tokens */
   --ink:         #0e0d0b;
   --paper:       #171717;
   --paper-2:     rgba(255,255,255,0.03);
@@ -146,172 +147,29 @@ function onNav(id) {
   --serif:       'Noto Serif', Georgia, serif;
   --sans:        'Inter', system-ui, -apple-system, sans-serif;
   --mono:        'JetBrains Mono', ui-monospace, monospace;
-
-  /* Strip modal overlay behavior */
-  position: static !important;
-  inset: auto !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  padding: 0 !important;
-  display: block !important;
-  z-index: auto !important;
-  font-family: var(--sans);
-  color: var(--fg);
 }
 
-/* 2. Strip the modal panel chrome */
-.mk-panel :deep(.sys-amm) {
-  position: static !important;
-  inset: auto !important;
-  max-width: 100% !important;
-  width: 100% !important;
-  max-height: none !important;
-  height: auto !important;
-  border-radius: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
-}
+.mk-panel :deep(.amm-tab) { font-size: 16px; }
 
-/* 3. Hide close button and drag handle */
-.mk-panel :deep(.amm-head) { display: none !important; }
-
-/* 4. Tabs */
-.mk-panel :deep(.amm-tabs-row) {
-  padding: 0 !important;
-  margin-bottom: 32px;
-}
-.mk-panel :deep(.amm-tab) {
-  font-size: 16px !important;
-}
-
-/* 5. Body — inline usage has no fixed viewport height, so defer scrolling
-   to the page's own .scroll wrapper (like Settings) instead of the
-   component's modal touch-scroll fix, which fights with overflow:hidden here. */
-.mk-panel :deep(.amm-body) {
-  overflow-x: hidden !important;
-  overflow-y: visible !important;
-  touch-action: auto !important;
-  -webkit-overflow-scrolling: auto !important;
-  padding: 0 0 32px !important;
-  min-height: auto !important;
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-/* 5a. Step + every direct layout container: can't bleed wider than body */
-.mk-panel :deep(.step),
-.mk-panel :deep(.step-head),
-.mk-panel :deep(.node-list),
-.mk-panel :deep(.node-row),
-.mk-panel :deep(.node-info),
-.mk-panel :deep(.own-endpoint-row),
-.mk-panel :deep(.peer-form),
-.mk-panel :deep(.peer-form-inputs),
-.mk-panel :deep(.peer-form-row),
-.mk-panel :deep(.bearer-row),
-.mk-panel :deep(.mode-grid),
-.mk-panel :deep(.mode-card),
-.mk-panel :deep(.pay-form),
-.mk-panel :deep(.pay-fields),
-.mk-panel :deep(.state-ok),
-.mk-panel :deep(.field),
-.mk-panel :deep(.card),
-.mk-panel :deep(.card-body) {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
-  overflow-x: hidden !important;
-}
-
-/* 5b. Tool picker (agent-tools settings card, step 1 pay-form) — same modal-only
-   max-height/overflow-y trap as .amm-body: on the fixed-height modal it needs its
-   own internal scroll, but inline on a full page it just needs to lay out flat so
-   touches over it still scroll .scroll instead of getting eaten by this nested box. */
-.mk-panel :deep(.tools-picker) {
-  max-height: none !important;
-  overflow-y: visible !important;
-  touch-action: auto !important;
-  -webkit-overflow-scrolling: auto !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* 6. Footer */
 .mk-panel :deep(.amm-foot) {
-  border-top: 1px solid var(--rule) !important;
-  background: transparent !important;
-  padding: 20px 0 !important;
-}
-
-/* 7. Global overflow guard on all deep children */
-.mk-panel :deep(*) {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-.mk-panel :deep(input),
-.mk-panel :deep(textarea),
-.mk-panel :deep(code),
-.mk-panel :deep(.bearer-val),
-.mk-panel :deep(.oe-val) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mk-panel :deep(textarea) {
-  white-space: pre-wrap;
+  border-top: 1px solid var(--rule);
+  background: transparent;
+  padding: 20px 0;
 }
 
 @media (max-width: 900px) {
   .mk-title { font-size: clamp(24px, 7vw, 32px); }
 
-  /* 2-col grids → single col */
+  /* The component's own 2-col → 1-col collapse only kicks in at 720px
+     (sized for the centered modal); the sidebar eats more of the viewport
+     here, so this page needs the same collapse a bit earlier. */
   .mk-panel :deep(.mode-grid),
-  .mk-panel :deep(.pay-fields),
-  .mk-panel :deep(.peer-form-inputs) {
+  .mk-panel :deep(.pay-fields) {
     grid-template-columns: 1fr !important;
   }
 
-  /* Peer form row stacks */
-  .mk-panel :deep(.peer-form-row) {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  /* Bearer row: wrap */
-  .mk-panel :deep(.bearer-row) {
-    flex-wrap: wrap !important;
-  }
-  .mk-panel :deep(.bearer-copy) {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  /* Footer stacks */
-  .mk-panel :deep(.amm-foot) {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
   .mk-panel :deep(.amm-foot-actions) {
-    justify-content: flex-end !important;
-  }
-
-  /* Own endpoint row: wrap */
-  .mk-panel :deep(.own-endpoint-row) {
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-  }
-  .mk-panel :deep(.oe-val) {
-    width: 100% !important;
-    white-space: normal !important;
-    word-break: break-all !important;
+    justify-content: flex-end;
   }
 }
 </style>
