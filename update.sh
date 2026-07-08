@@ -83,14 +83,37 @@ fi
 
 # ── 7. soul-mcp: sync + restart ──────────────────────────────────────────────
 # Erkennt ob der Service aus dem Repo oder aus /opt/sys/soul-mcp läuft.
-# Bei /opt/sys/ (Legacy-Setup): JS-Dateien aus Repo dorthin kopieren.
+# Bei /opt/sys/ (Legacy-Setup): JS-Dateien aus Repo dorthin kopieren — ALLE
+# Top-Level-*.mjs plus lib/, tools/, prompts/, nicht nur server.mjs. Die
+# eigentliche MCP-Tool-Logik lebt in tools/ (40+ Dateien) — wurde die früher
+# vergessen, blieben Tool-Änderungen auf Legacy-Installs unwirksam.
 # Bei $SCRIPT_DIR (modernes Init): git pull hat die Dateien schon aktualisiert.
 _MCP_WD=$(systemctl show soul-mcp --property=WorkingDirectory --value 2>/dev/null || true)
 if [ -d "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" = "/opt/sys/soul-mcp" ]; then
   info "Syncing soul-mcp to /opt/sys/soul-mcp/ ..."
-  cp "$SCRIPT_DIR/soul-mcp/server.mjs" /opt/sys/soul-mcp/server.mjs
-  cp -r "$SCRIPT_DIR/soul-mcp/lib/"    /opt/sys/soul-mcp/lib/
+  cp "$SCRIPT_DIR"/soul-mcp/*.mjs        /opt/sys/soul-mcp/
+  cp -r "$SCRIPT_DIR/soul-mcp/lib/"      /opt/sys/soul-mcp/lib/
+  cp -r "$SCRIPT_DIR/soul-mcp/tools/"    /opt/sys/soul-mcp/tools/
+  cp -r "$SCRIPT_DIR/soul-mcp/prompts/"  /opt/sys/soul-mcp/prompts/
+  chown -R www-data:www-data /opt/sys/soul-mcp/*.mjs /opt/sys/soul-mcp/lib/ /opt/sys/soul-mcp/tools/ /opt/sys/soul-mcp/prompts/
 fi
+
+# ── 8. EU_CONSUMER_RIGHTS backward-compat ─────────────────────────────────────
+# Installs von vor diesem Toggle (init.sh schreibt es seit Kurzem immer in
+# soul-mcp/.env) hatten den EU-Widerrufsrecht-Code fest aktiv, ohne Flag.
+# Fehlt die Variable komplett (nicht: ist auf false gesetzt — das ist eine
+# bewusste Wahl aus einem neueren init.sh-Lauf), war's ein Alt-Setup — Flag auf
+# "true" setzen, damit sich das bisherige Verhalten nicht still ändert.
+_MCP_ENV="$SCRIPT_DIR/soul-mcp/.env"
+[ "$_MCP_WD" = "/opt/sys/soul-mcp" ] && _MCP_ENV="/opt/sys/soul-mcp/.env"
+if [ -f "$_MCP_ENV" ] && ! grep -q "^EU_CONSUMER_RIGHTS=" "$_MCP_ENV"; then
+  warn "EU_CONSUMER_RIGHTS fehlt in $_MCP_ENV (Alt-Setup) — setze auf true, um bisheriges Verhalten zu erhalten."
+  echo "EU_CONSUMER_RIGHTS=true" >> "$_MCP_ENV"
+  mkdir -p /var/lib/sys/config
+  echo -n "true" > /var/lib/sys/config/eu_consumer_rights
+  chmod 644 /var/lib/sys/config/eu_consumer_rights
+fi
+
 if systemctl is-enabled --quiet soul-mcp 2>/dev/null; then
   systemctl restart soul-mcp && info "soul-mcp restarted ✓"
 fi
