@@ -499,6 +499,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 @media (max-width: 900px) {
   .app, .app.is-collapsed { grid-template-columns: 1fr; }
+  /* Reserve space for the fixed .mob-tab-bar so .scroll's box doesn't extend
+     under it — .mob-tab-bar is outside .scroll in the DOM, so touches starting
+     on it can't scroll anything (dead zone otherwise). */
+  .app { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
   .sidebar {
     background: var(--bg);
     position: fixed; top: 0; bottom: 0; left: 0; width: 276px; z-index: 60;
