@@ -993,7 +993,7 @@ async function register() {
 .amm-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); flex: none; }
 
 /* ─── BODY ─── */
-.amm-body { overflow-y: auto; padding: 36px 40px; min-height: 0; }
+.amm-body { overflow-y: auto; overscroll-behavior-y: contain; padding: 36px 40px; min-height: 0; }
 .step { animation: fade-in 0.22s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 

@@ -219,6 +219,7 @@
 
 .sys-modal-body {
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 36px 40px;
   min-height: 0;
   animation: sys-fade-in 0.25s ease;
