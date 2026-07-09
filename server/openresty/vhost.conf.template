@@ -864,6 +864,7 @@ server {
   location ~ ^/api/vault/shared-view/ {
     limit_except GET { deny all; }
     limit_req zone=api burst=20 nodelay;
+    access_log off;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     content_by_lua_file /etc/openresty/lua/vault_shared_view.lua;
   }
@@ -873,6 +874,7 @@ server {
   location ~ ^/api/vault/consent/ {
     limit_except GET { deny all; }
     limit_req zone=api burst=10 nodelay;
+    access_log off;
     content_by_lua_file /etc/openresty/lua/vault_consent_serve.lua;
   }
 
@@ -880,6 +882,7 @@ server {
   location = /api/vault/consent-list {
     limit_except GET { deny all; }
     limit_req zone=api burst=20 nodelay;
+    access_log off;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/vault_consent_list.lua;
@@ -889,6 +892,7 @@ server {
   location ~ ^/api/vault/consent-doc/[^/]+$ {
     limit_except DELETE { deny all; }
     limit_req zone=api burst=10 nodelay;
+    access_log off;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/vault_consent_delete.lua;
@@ -1242,6 +1246,8 @@ server {
 
   # ── POL-Token Validierung (intern, nur 127.0.0.1) ────────────────────────────
   location = /internal/validate-pol-token {
+    allow 127.0.0.1;
+    deny all;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_pol_validate.lua;
@@ -1374,6 +1380,7 @@ server {
   # ── ElevenLabs Agent Webhooks: soul_write + web_search (vault_auth = token ok) ──
   location = /api/elevenlabs-soul-write {
     limit_except POST { deny all; }
+    limit_req zone=chat burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
@@ -1382,6 +1389,7 @@ server {
 
   location = /api/elevenlabs-web-search {
     limit_except POST { deny all; }
+    limit_req zone=api burst=5 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
@@ -1501,6 +1509,7 @@ server {
 
   location = /api/agent/post-call {
     limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/agent_post_call.lua;
