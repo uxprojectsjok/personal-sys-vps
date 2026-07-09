@@ -143,7 +143,7 @@ oauthRouter.post('/authorize', async (req, res) => {
   try {
     tokenData = await createServiceToken(
       soul_cert,
-      `Claude (${client_id || 'oauth'})`,
+      `Client (${client_id || 'oauth'})`,
       permissions,
       '365d'
     );
