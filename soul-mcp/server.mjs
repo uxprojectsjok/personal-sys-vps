@@ -163,6 +163,10 @@ async function unauthorized(res, soulId) {
 async function handleMcp(req, res) {
   const token = extractToken(req);
   const soulIdParam = req.query.soul_id ?? null;
+  // TEMP DEBUG (2026-07-09) — tracking down a client sending the token
+  // inconsistently across calls (soul_read ok, beme_chat 401 with the same
+  // session). Redacted: never log the full token. Remove once diagnosed.
+  console.log(`[mcp-auth-debug] header=${!!req.headers.authorization} query_token=${!!req.query.token} tool=${req.body?.params?.name ?? req.body?.method ?? '-'} token=${token ? token.slice(0, 6) + '…' + token.slice(-4) : 'none'}`);
   if (!token) return unauthorized(res, soulIdParam);
 
   const server = new McpServer({ name: 'soul-mcp', version: '1.0.0' });
