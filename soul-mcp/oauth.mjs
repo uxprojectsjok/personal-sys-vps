@@ -2,12 +2,22 @@
  * OAuth 2.0 Authorization Code Flow
  *
  * Ablauf:
+ * 0. POST /oauth/register  → Dynamic Client Registration (RFC 7591, optional —
+ *    nur nötig für Clients wie ChatGPTs Connector-UI, die keine manuelle
+ *    client_id-Eingabe anbieten und ohne registration_endpoint komplett
+ *    verweigern zu starten)
  * 1. GET  /oauth/authorize  → Consent-Seite (HTML)
  * 2. POST /oauth/authorize  → Cert validieren, Service-Token erstellen, Code ausstellen
  * 3. POST /oauth/token      → Code → Access Token (= Service-Token)
  *
  * Der Access Token IST der SaveYourSoul Service-Token.
- * Keine eigene Token-Datenbank nötig.
+ * Keine eigene Token-Datenbank nötig — und aus demselben Grund führt auch
+ * /oauth/register keinen Client-Store: jeder Registrierungs-Request bekommt
+ * einfach eine client_id zurück (den client_name, falls angegeben, sonst
+ * eine zufällige ID). client_id ist ohnehin nur ein Anzeige-Label für den
+ * späteren Service-Token ("Client (${client_id})") — die eigentliche
+ * Sicherheit kommt aus soul_cert + PKCE in Schritt 2/3, nicht aus einem
+ * vorregistrierten Client.
  */
 
 import { Router } from 'express';
@@ -87,6 +97,35 @@ function scopesToPermissions(scopes = []) {
 
 export const oauthRouter = Router();
 oauthRouter.use((req, _res, next) => { req.body = req.body || {}; next(); });
+
+// ── Dynamic Client Registration (RFC 7591) ──────────────────────────────────
+// Stateless: siehe Kommentar oben. client_metadata wird nur validiert/
+// echoed, nie gespeichert.
+
+oauthRouter.post('/register', (req, res) => {
+  const body = req.body || {};
+  const redirect_uris = Array.isArray(body.redirect_uris) ? body.redirect_uris : [];
+  if (!redirect_uris.length || !redirect_uris.every((u) => typeof u === 'string' && /^https?:\/\//i.test(u))) {
+    return res.status(400).json({ error: 'invalid_client_metadata', error_description: 'redirect_uris muss ein Array aus http(s)-URLs sein.' });
+  }
+
+  const client_name = typeof body.client_name === 'string' && body.client_name.trim()
+    ? body.client_name.trim().slice(0, 64)
+    : null;
+  const client_id = client_name
+    ? client_name.replace(/[^\w.-]/g, '_')
+    : `client_${Math.random().toString(36).slice(2, 10)}`;
+
+  res.status(201).json({
+    client_id,
+    client_id_issued_at: Math.floor(Date.now() / 1000),
+    redirect_uris,
+    ...(client_name ? { client_name } : {}),
+    token_endpoint_auth_method: 'none', // public client, PKCE-gesichert — kein Secret
+    grant_types: ['authorization_code'],
+    response_types: ['code'],
+  });
+});
 
 // ── Consent-Seite ──────────────────────────────────────────────────────────
 
