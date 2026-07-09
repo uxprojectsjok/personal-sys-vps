@@ -1461,6 +1461,10 @@ function extractToken(req) {
   const auth = req.headers.authorization || '';
   const match = auth.match(/^Bearer\s+(.+)$/i);
   if (match) return match[1].trim();
+  // Fallback for MCP clients that can't set a custom Authorization header
+  // (e.g. some hosted connector integrations that only take a URL) — same
+  // pattern vault_auth.lua already uses for shared-view links (?token=...).
+  if (typeof req.query.token === 'string' && req.query.token) return req.query.token.trim();
   return null;
 }
 
