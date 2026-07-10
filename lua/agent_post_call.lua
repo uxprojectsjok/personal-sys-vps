@@ -38,14 +38,15 @@ local function verify_signature(body_str)
   -- Replay-Schutz: max 5 Minuten alt
   if math.abs(ngx.now() - tonumber(ts)) > 300 then return false, "signature_expired" end
 
-  -- Webhook-Secret aus config.json des Souls laden und HMAC prüfen
+  -- Webhook-Secret aus api_context.json des Souls laden und HMAC prüfen
+  -- (create_agent.lua persistiert elevenlabs_webhook_secret dort, nicht in config.json)
   local souls_dir = "/var/lib/sys/souls"
   local handle = io.popen("ls " .. souls_dir .. " 2>/dev/null")
   if not handle then return false, "no_souls" end
   local soul_id = nil
   for dir in handle:lines() do
     if dir:match("^[a-zA-Z0-9%-]+$") and #dir <= 64 then
-      local cf = io.open(souls_dir .. "/" .. dir .. "/config.json", "r")
+      local cf = io.open(souls_dir .. "/" .. dir .. "/api_context.json", "r")
       if cf then
         local raw_cfg = cf:read("*a"); cf:close()
         local ok_c, cfg = pcall(cjson.decode, raw_cfg)
