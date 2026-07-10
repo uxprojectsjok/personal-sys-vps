@@ -161,12 +161,23 @@ async function unauthorized(res, soulId) {
   });
 }
 
+// Wird beim MCP-Handshake (initialize) an den Client übergeben — anders als
+// server.prompt() (muss der Client explizit aufrufen) landet das laut MCP-Spec
+// automatisch im Kontext der KI, direkt beim Verbinden, bevor irgendein Tool
+// aufgerufen wird. Nur für Owner-Tokens relevant (verified-Gate sitzt in
+// vault_auth.lua, gilt nicht für paid/peer-Tokens).
+const OWNER_INSTRUCTIONS = [
+  'At the start of a new conversation, call soul_read first.',
+  'If the result says verification is required (mentions verify_identity),',
+  'call verify_identity immediately and do not attempt any other tool until',
+  'it reports verified=true. This is a one-time confirmation per connection —',
+  'once verified, proceed normally without repeating it.',
+].join(' ');
+
 async function handleMcp(req, res) {
   const token = extractToken(req);
   const soulIdParam = req.query.soul_id ?? null;
   if (!token) return unauthorized(res, soulIdParam);
-
-  const server = new McpServer({ name: 'soul-mcp', version: '1.0.0' });
 
   // Token-Typ erkennen:
   //   service_token → "{64hex}"        — OAuth-Inhaber, voller Zugang
@@ -174,6 +185,11 @@ async function handleMcp(req, res) {
   //   peer_cert     → "{uuid}.{32hex}" — whitelisted Soul, alle Tools
   const isPaidToken = /^[0-9a-f]{48}$/i.test(token) && !token.includes('.');
   const isPeerToken = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{32}$/i.test(token);
+
+  const server = new McpServer(
+    { name: 'soul-mcp', version: '1.0.0' },
+    (!isPaidToken && !isPeerToken) ? { instructions: OWNER_INSTRUCTIONS } : undefined
+  );
 
   if (isPaidToken) {
     // pol_access_token validieren + agent_tools laden
