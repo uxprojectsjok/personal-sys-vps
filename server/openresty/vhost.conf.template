@@ -1340,43 +1340,6 @@ server {
     content_by_lua_file /etc/openresty/lua/vision_analyze.lua;
   }
 
-  # ── WaveSpeed Task einreichen (POST) ─────────────────────────────────────────
-  location = /api/wavespeed-submit {
-    limit_except POST { deny all; }
-    limit_req zone=chat burst=3 nodelay;
-    client_max_body_size 8M;
-    client_body_buffer_size 8M;
-    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
-    resolver_timeout 5s;
-    rewrite_by_lua_file /etc/openresty/lua/emergency_guard.lua;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/wavespeed_submit.lua;
-  }
-
-  # ── WaveSpeed Ergebnis abfragen (GET, Polling) ────────────────────────────────
-  location = /api/wavespeed-result {
-    limit_except GET { deny all; }
-    limit_req zone=api burst=30 nodelay;
-    resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
-    resolver_timeout 5s;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/wavespeed_result.lua;
-  }
-
-  # ── Brave Search (POST) ──────────────────────────────────────────────────────
-  location = /api/web-search {
-    limit_except POST { deny all; }
-    limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/web_search.lua;
-  }
-
   # ── ElevenLabs Agent Webhooks: soul_write + web_search (vault_auth = token ok) ──
   location = /api/elevenlabs-soul-write {
     limit_except POST { deny all; }
@@ -1624,7 +1587,7 @@ server {
     add_header Pragma        "no-cache" always;
     add_header Expires       "0" always;
     add_header Vary          "Accept-Encoding" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net https://api.anthropic.com https://api.wavespeed.ai https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.wavespeed.ai https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.wavespeed.ai https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net https://api.anthropic.com https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
 
     body_filter_by_lua_block {
       local chunk, eof = ngx.arg[1], ngx.arg[2]

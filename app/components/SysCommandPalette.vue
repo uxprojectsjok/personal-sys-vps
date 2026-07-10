@@ -89,8 +89,6 @@ const NAV_ITEMS = computed(() => [
 ])
 
 const AT_COMMANDS = computed(() => [
-  { cmd: '@suche',        desc: t('cmdk.at_search_desc') },
-  { cmd: '@create-media', desc: t('cmdk.at_media_desc') },
   { cmd: '@audio',        desc: t('cmdk.at_audio_desc') },
   { cmd: '@gesicht',      desc: t('cmdk.at_face_desc') },
   { cmd: '@bewegung',     desc: t('cmdk.at_motion_desc') },

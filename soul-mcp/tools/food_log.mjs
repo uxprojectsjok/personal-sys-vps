@@ -10,7 +10,7 @@ import { postJson } from '../lib/api.mjs';
 export function register(server, token) {
   server.tool(
     'food_log',
-    'Trägt eine bewertete Mahlzeit in health.md ein (Skala A–E, angelehnt an Nutri-Score/WHO). Beim Monatswechsel wird der abgelaufene Monat automatisch ins Annual Journal archiviert und der Food Log zurückgesetzt. Aufruf: nach eigener Bildanalyse der Mahlzeit, optional nach web_search für Nährwertdaten.',
+    'Trägt eine bewertete Mahlzeit in health.md ein (Skala A–E, angelehnt an Nutri-Score/WHO). Beim Monatswechsel wird der abgelaufene Monat automatisch ins Annual Journal archiviert und der Food Log zurückgesetzt. Aufruf: nach eigener Bildanalyse der Mahlzeit.',
     {
       name:   z.string().describe('Name der Mahlzeit, z.B. "Avocado Toast mit Ei"'),
       rating: z.enum(['A', 'B', 'C', 'D', 'E']).describe('A = ausgezeichnet · B = gut · C = moderat · D = schlecht · E = sehr schlecht'),

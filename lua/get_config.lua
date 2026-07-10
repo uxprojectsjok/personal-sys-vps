@@ -40,13 +40,6 @@ if has_own_key then
   key_preview = k:sub(1, 12) .. "..." .. k:sub(-4)
 end
 
-local has_wavespeed = type(soul_cfg.wavespeed_key) == "string" and soul_cfg.wavespeed_key ~= ""
-local wavespeed_preview = ""
-if has_wavespeed then
-  local k = soul_cfg.wavespeed_key
-  wavespeed_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
-end
-
 local has_elevenlabs = type(soul_cfg.elevenlabs_key) == "string" and soul_cfg.elevenlabs_key ~= ""
 local elevenlabs_preview = ""
 if has_elevenlabs then
@@ -111,8 +104,6 @@ ngx.say(cjson.encode({
   has_own_key          = has_own_key,
   key_preview          = key_preview,
   key_source           = key_source,
-  wavespeed_key_set    = has_wavespeed,
-  wavespeed_preview    = wavespeed_preview,
   elevenlabs_key_set   = has_elevenlabs,
   elevenlabs_preview   = elevenlabs_preview,
   brave_key_set          = has_brave,

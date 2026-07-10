@@ -50,8 +50,6 @@ import { register as shopLog }               from './shop_log.mjs';
 import { register as contextWrite }          from './context_write.mjs';
 import { register as sessionEnd }            from './session_end.mjs';
 
-// ── Owner API-Tools (neu) ─────────────────────────────────────────────────────
-import { register as webSearch }             from './web_search.mjs';
 
 // ── Peer Messaging (MCP-WhatsApp) ─────────────────────────────────────────────
 import { register as peerInbox }             from './peer_inbox.mjs';
@@ -131,7 +129,6 @@ export function registerTools(server, token, soulId = null) {
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
-  webSearch(server, token);
   soulChainMetrics(server, token);
 
   peerInbox(server, token);

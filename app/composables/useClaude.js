@@ -18,7 +18,7 @@ Keine Analyse-Kommentare, keine Floskeln. Bodenständig, klar, wirklich neugieri
 // ── Soul-Tools für In-App-Chat (spiegelt soul-mcp MCP-Tools) ─────────────────
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
-  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write", "web_search",
+  "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write",
   "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
   "health_check", "food_log", "health_sync",
   "shop_log", "shop_check"
@@ -75,17 +75,6 @@ const SOUL_TOOLS = [
         mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang" }
       },
       required: ["section", "content"]
-    }
-  },
-  {
-    name: "web_search",
-    description: "Sucht im Web nach aktuellen Informationen — Wetter, Nachrichten, Fakten, Preise, Ereignisse. Nutzen wenn die Frage Echtzeit-Daten erfordert.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Suchanfrage auf Deutsch oder in der Sprache des Nutzers" }
-      },
-      required: ["query"]
     }
   },
   {
@@ -164,7 +153,7 @@ const SOUL_TOOLS = [
   },
   {
     name: "shop_check",
-    description: "Liest shopping.md: Wunschliste, letzte Käufe, Monatszusammenfassung, Jahreskategorien. Gibt auch Standort aus sys.md zurück für lokale Händler-Suche. Danach web_search für Preisvergleich und lokale Quellen nutzen. Als Lifestyle-Berater: Passt das Produkt zu Stil, Alter und Persönlichkeit der Person?",
+    description: "Liest shopping.md: Wunschliste, letzte Käufe, Monatszusammenfassung, Jahreskategorien. Gibt auch Standort aus sys.md zurück für lokale Händler-Suche. Als Lifestyle-Berater: Passt das Produkt zu Stil, Alter und Persönlichkeit der Person?",
     input_schema: { type: "object", properties: {}, required: [] }
   }
 ];
@@ -361,7 +350,6 @@ Du rufst Tools auf wenn du sie brauchst — ohne Ankündigung, ohne Kommentar. D
 Wann welches Tool:
 - soul_read → deine Geschichte, Werte, Fakten aus der sys.md
 - soul_write (section: "Selbstreflexion", mode: "append") → nach bedeutsamen Momenten: ein Satz, Datum, fertig. Format: "YYYY-MM-DD: [ein Satz]"
-- web_search → aktuelle Fakten die du nicht weißt
 - vault_manifest → wenn Dateien relevant sind
 - context_get → für eine spezifische Kontext-Datei
 - mind_read → deine eigene Konfiguration
@@ -373,7 +361,7 @@ Wann welches Tool:
 - health_check → bei Körper, Schlaf, Puls, Wohlbefinden — vollständige Analyse zurück
 - food_log → bei Foto von Essen, Trinken, Süßigkeiten oder Snacks: sofort loggen ohne Kommentar. Den GESAMTEN User-Text verwenden — alle genannten Zutaten, Toppings und Zusätze gehören in name und beeinflussen das rating. Beispiel: "Vollkornbrot mit Butter und Marmelade" → name="Vollkornbrot mit Butter und Marmelade", rating=B (nicht A, weil Butter+Marmelade). Bild ist nur Fallback wenn kein Text vorhanden. Rating A–E (A=Vollwert/frisch; B=gut z.B. Vollkornbrot pur, Ei; C=moderat z.B. Brot mit Aufschnitt/Marmelade/Butter, Pasta; D=schlecht z.B. Frittiertes, Schokolade; E=Junk). Nach dem Tool-Call IMMER genau dieses Format antworten: "Name · Rating · gespeichert" — nichts anderes, keine Variationen wie "Gespeichert." oder "Ich habe …". Beispiel: "Wasser · A · gespeichert". Dann einmal kurz fragen: "Soll ich ein Restaurant in der Nähe suchen?" — nur wenn Wohnort bekannt.
 - shop_log → bei Foto von Nicht-Lebensmittel-Produkten (Elektronik, USB-Sticks, Gadgets, Kabel, Kleidung, Schuhe, Möbel, Geräte, Bücher, Spielzeug etc.) oder wenn jemand etwas kauft/kaufen will: sofort erfassen ohne Ankündigung. name + category SELBST bestimmen, price falls sichtbar/genannt, status=purchased wenn gekauft, wishlist wenn gewünscht. DIREKT danach immer shop_check aufrufen.
-- shop_check → immer direkt nach shop_log aufrufen. Danach als Lifestyle-Berater in 3 Schritten: 1) Preisvergleich via web_search("[Produktname] Preisvergleich") 2) lokale Händler via web_search("[Produktname] kaufen [Wohnort]") falls Wohnort vorhanden 3) kurze Einschätzung ob Produkt zu Stil/Persönlichkeit passt. Auch bei expliziten Fragen zu Produkten oder Wunschliste.
+- shop_check → immer direkt nach shop_log aufrufen. Danach als Lifestyle-Berater eine kurze Einschätzung geben ob das Produkt zu Stil/Persönlichkeit passt. Auch bei expliziten Fragen zu Produkten oder Wunschliste.
 
 Tools rufst du auf ohne es anzusagen. Das Ergebnis verarbeitest du still und antwortest dann direkt.
 ${externalTools.length > 0 ? `
@@ -411,7 +399,6 @@ Profil-Aufnahmen (einmalig, im Vault gespeichert):
 Maximal 2-3 Sätze. Kein Markdown. Kein Vortrag.
 Sprache folgt der letzten Nachricht — Deutsch bleibt Deutsch, Englisch bleibt Englisch.
 Kurz, direkt, wie Menschen wirklich sprechen.
-web_search bei aktuellen Fakten — ohne zu fragen.
 Wenn du etwas nicht sicher verstanden hast, frage einmal kurz nach — bevor du antwortest oder handelst.
 Vor jeder Aktion mit Außenwirkung (E-Mail senden, Nachricht versenden, Daten ändern): Empfänger und Inhalt laut zusammenfassen und Bestätigung abwarten. Nie ohne explizites "ja" oder "senden" ausführen.
 ---`;
@@ -544,24 +531,8 @@ ${mediaSignalInstructions}`;
         return { allBlocks, stopReason };
       }
 
-      // ── executeTool: soul-tools → /api/soul-tool | web_search → /api/web-search | MCP-tools → /api/mcp-call ─
+      // ── executeTool: soul-tools → /api/soul-tool | MCP-tools → /api/mcp-call ─
       async function executeTool(name, input) {
-        if (name === "web_search") {
-          try {
-            const r = await fetch("/api/web-search", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${soulCert || "anonymous"}` },
-              body: JSON.stringify({ query: input.query || "" })
-            });
-            const j = await r.json().catch(() => ({ results: [] }));
-            if (j.error) return `Websuche nicht verfügbar: ${j.error}`;
-            const results = j.results || [];
-            if (!results.length) return "Keine Suchergebnisse gefunden.";
-            return results.slice(0, 4).map(r => `${r.title}\n${r.description || ""}`).join("\n\n");
-          } catch {
-            return "Websuche nicht erreichbar.";
-          }
-        }
         const isSoulTool = SOUL_TOOL_NAMES.has(name);
         const endpoint = isSoulTool ? "/api/soul-tool" : "/api/mcp-call";
         const body = isSoulTool

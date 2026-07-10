@@ -10,8 +10,6 @@ local BLOCK_AT = {
   ["/api/chat"]              = 1,
   ["/api/soul-update"]       = 1,
   ["/api/beme"]              = 1,
-  ["/api/wavespeed-submit"]  = 2,
-  ["/api/wavespeed-result"]  = 2,
 }
 
 local uri       = ngx.var.request_uri:match("^[^?]*") or ""

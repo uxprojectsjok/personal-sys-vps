@@ -35,10 +35,6 @@ export default defineEventHandler(async (event) => {
     else if (process.env.ANTHROPIC_API_KEY) keySource = 'env'
   }
 
-  const hasWavespeed     = typeof soulCfg.wavespeed_key === 'string' && soulCfg.wavespeed_key !== ''
-  const wavespeedPreview = hasWavespeed
-    ? soulCfg.wavespeed_key.slice(0, 6) + '…' + soulCfg.wavespeed_key.slice(-4) : ''
-
   const hasElevenlabs     = typeof soulCfg.elevenlabs_key === 'string' && soulCfg.elevenlabs_key !== ''
   const elevenlabsPreview = hasElevenlabs
     ? soulCfg.elevenlabs_key.slice(0, 6) + '…' + soulCfg.elevenlabs_key.slice(-4) : ''
@@ -55,8 +51,6 @@ export default defineEventHandler(async (event) => {
     has_own_key:         hasOwnKey,
     key_preview:         keyPreview,
     key_source:          keySource,
-    wavespeed_key_set:   hasWavespeed,
-    wavespeed_preview:   wavespeedPreview,
     elevenlabs_key_set:  hasElevenlabs,
     elevenlabs_preview:  elevenlabsPreview,
     brave_key_set:       hasBrave,

@@ -52,10 +52,8 @@ if body.use_stored == true then
     body.anthropic_key = cfg_data.anthropic_key
   elseif key_type == "elevenlabs" then
     body.elevenlabs_key = cfg_data.elevenlabs_key
-  elseif key_type == "wavespeed" then
-    body.wavespeed_key = cfg_data.wavespeed_key
   end
-  if not body.anthropic_key and not body.elevenlabs_key and not body.wavespeed_key then
+  if not body.anthropic_key and not body.elevenlabs_key then
     ngx.status = 200
     ngx.say('{"ok":false,"error":"no_stored_key"}')
     return
@@ -113,30 +111,6 @@ if type(body.elevenlabs_key) == "string" then
   if not res then
     ngx.status = 502
     ngx.say(cjson.encode({ ok = false, status = 0, error = tostring(err) }))
-    return
-  end
-  ngx.status = 200
-  ngx.say(cjson.encode({ ok = res.status == 200, status = res.status }))
-  return
-end
-
--- ── WaveSpeed ─────────────────────────────────────────────────────────────────
-if type(body.wavespeed_key) == "string" then
-  local key = body.wavespeed_key
-  if #key < 16 then
-    ngx.status = 400
-    ngx.say(cjson.encode({ ok = false, status = 400, error = "key_format_invalid" }))
-    return
-  end
-  local res, err = httpc:request_uri("https://api.wavespeed.ai/api/v3/me", {
-    method  = "GET",
-    headers = { ["Authorization"] = "Bearer " .. key },
-    ssl_verify = false,
-  })
-  if not res then
-    -- Fallback: nur Format-Check wenn API nicht erreichbar
-    ngx.status = 200
-    ngx.say(cjson.encode({ ok = true, status = 0, error = "format_ok_api_unreachable" }))
     return
   end
   ngx.status = 200

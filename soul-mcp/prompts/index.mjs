@@ -297,16 +297,6 @@ With parameter ad_placement: { agent, product, price, message, cta_url, expires 
 
 ---
 
-## 8b. Search & External Information
-
-### web_search
-**When:** User wants current web information, product research, price comparisons, fact finding.
-Parameters: query (search term), count (1–8, default 5).
-Equivalent to the @search command in the in-app chat.
-→ For: "search for...", "what does X cost...", "latest news on...", product research before shop_log.
-
----
-
 ## 9. Cloud & Blockchain
 
 ### soul_cloud_push
@@ -344,7 +334,6 @@ Credentials (account_sid, auth_token) passed directly — no stored secrets.
 | "Write that into my soul" | soul_write |
 | "I ate: ..." | food_log |
 | "I bought X / add to wishlist" | shop_log |
-| "Search the web / current info" | web_search |
 | "Write a note / document" | context_write |
 | "Write recommendation into another soul" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
 

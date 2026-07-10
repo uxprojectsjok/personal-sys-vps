@@ -156,10 +156,6 @@ export function register(server, soulId) {
           monthly_summary:      data.monthly_summary,
           annual_categories:    data.annual_categories,
           agent_recommendations: data.agent_recommendations,
-          search_tips: {
-            price_comparison: 'web_search("[Produktname] Preisvergleich")',
-            local_shops:      'web_search("[Produktname] kaufen [Wohnort]")',
-          },
         }, null, 2) }] };
       } catch (err) {
         return { content: [{ type: 'text', text: JSON.stringify({ available: false, message: `shopping.md nicht verfügbar: ${err.message}` }, null, 2) }] };

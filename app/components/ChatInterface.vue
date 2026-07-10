@@ -605,14 +605,6 @@ function preflightCheck(type) {
   const s = configStatus.value
   if (!s) return null // noch nicht geladen → API-Fehler übernimmt
 
-  if (type === 'web-search' && !s.brave_key_set) {
-    return [t('chat.preflight_brave_title'), '', t('chat.preflight_brave_body')].join('\n')
-  }
-
-  if (type === 'create-media' && !s.wavespeed_key_set) {
-    return [t('chat.preflight_wavespeed_title'), '', t('chat.preflight_wavespeed_body')].join('\n')
-  }
-
   if (type === 'create-agent' && !s.elevenlabs_key_set) {
     return [t('chat.preflight_elevenlabs_title'), '', t('chat.preflight_agent_body')].join('\n')
   }
@@ -833,8 +825,6 @@ function insertEmoji(emoji) {
 const AT_COMMANDS = computed(() => [
   { cmd: '@food-log ',    label: 'food-log',                      desc: t('chat.cmd_food_log_desc'),     direct: false, hint: t('chat.cmd_food_log_hint')     },
   { cmd: '@product ',     label: 'product',                       desc: t('chat.cmd_product_desc'),      direct: false, hint: t('chat.cmd_product_hint')      },
-  { cmd: '@suche ',       label: t('chat.cmd_search_label'),      desc: t('chat.cmd_search_desc'),       direct: false, hint: t('chat.cmd_search_hint')       },
-  { cmd: '@create-media ',label: 'create-media',                  desc: t('chat.cmd_create_media_desc'), direct: false, hint: t('chat.cmd_create_media_hint') },
   { cmd: '@audio',        label: 'audio',                         desc: t('chat.cmd_audio_desc'),        direct: true                                         },
   { cmd: '@gesicht',      label: t('chat.cmd_face_label'),        desc: t('chat.cmd_face_desc'),         direct: true                                         },
   { cmd: '@bewegung',     label: t('chat.cmd_motion_label'),      desc: t('chat.cmd_motion_desc'),       direct: true                                         },
@@ -2052,9 +2042,6 @@ function detectIntent(text) {
   // Spotify / music
   const spMatch = t.match(/^(?:spiele?\s+(?:(?:das\s+)?(?:lied|song|musik)\s+)?|musik\s+|song\s+|spotify\s+)(.+)/i)
   if (spMatch) return { type: 'spotify', query: spMatch[1].trim() }
-  // Web search (natural language → KI-Suche)
-  const webMatch = t.match(/^such[e]?\s+(?:(?:im\s+)?(?:netz|web|internet|google)\s+(?:nach\s+)?|nach\s+)(.+)/i)
-  if (webMatch) return { type: 'web-search', query: webMatch[1].trim() }
   // Capture intents — checked before generic @name match
   if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
   if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
@@ -2067,18 +2054,12 @@ function detectIntent(text) {
   // @abbruch → laufende Chat-Aktion abbrechen
   if (/^@abbruch\b/i.test(t)) return { type: 'abbruch' }
   if (/^@session-end\b/i.test(t)) return { type: 'session-end' }
-  // @create-media → KI-Bildgenerierung via WaveSpeed
-  const mediaMatch = t.match(/^@create-media\b\s*(.*)/is)
-  if (mediaMatch) return { type: 'create-media', query: mediaMatch[1].trim() }
   // @food-log / @food → food_log via KI (kein Bild nötig)
   const foodMatch = t.match(/^@food(?:-log)?\b\s*(.*)/is)
   if (foodMatch) return { type: 'food-log', query: foodMatch[1].trim() }
   // @product / @product-log → shop_log via KI (kein Bild nötig)
   const productMatch = t.match(/^@product(?:-log)?\b\s*(.*)/is)
   if (productMatch) return { type: 'product-log', query: productMatch[1].trim() }
-  // @suche → KI-Websuche
-  const sucheMatch = t.match(/^@suche\b\s*(.*)/is)
-  if (sucheMatch) return { type: 'web-search', query: sucheMatch[1].trim() }
   // @all/@alle → community (send to everyone)
   const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
   if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
@@ -2186,117 +2167,6 @@ async function handleSearchCommand(cmd) {
     return { text: `[Web-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://www.google.com/search?q=${encodeURIComponent(safe)}`, service: 'google', label: safe } }
   }
   return null
-}
-
-// ── KI-Websuche ────────────────────────────────────────────────────
-async function handleWebSearch(query) {
-  const safe = query.replace(/<[^>]*>/g, '').trim().slice(0, 300)
-  const preErr = preflightCheck('web-search')
-  if (preErr) { addMessage('user', `@suche ${safe}`); addMessage('assistant', preErr); return }
-  addMessage('user', `@suche ${safe}`)
-  const statusMsg = addMessage('assistant', t('chat.search_running'), { streaming: true })
-  await scrollToBottom()
-
-  // ── Schritt 1: Brave Search ──────────────────────────────────────
-  let results = []
-  try {
-    const sRes = await fetch('/api/web-search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-      body: JSON.stringify({ query: safe }),
-    })
-    const sData = await sRes.json().catch(() => ({}))
-    if (!sRes.ok) {
-      const msg = sData.message === 'brave_key_missing'
-        ? t('chat.search_brave_key')
-        : t('chat.search_error', { msg: sData.message || sData.error || '?' })
-      setMessageMetaById(statusMsg.id, 'text', msg)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-    results = sData.results || []
-  } catch (e) {
-    setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: e.message }))
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-    return
-  }
-
-  if (!results.length) {
-    setMessageMetaById(statusMsg.id, 'text', 'Keine Suchergebnisse gefunden.')
-    setMessageMetaById(statusMsg.id, 'streaming', false)
-    return
-  }
-
-  // ── Schritt 2: Claude KI-Zusammenfassung (streaming) ─────────────
-  const resultCtx = results.map((r, i) =>
-    `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.description}`
-  ).join('\n\n')
-
-  const searchSystem = mindContent.value
-    ? (() => {
-        const m = mindContent.value.match(/^## Websearch\s*\n([\s\S]*?)(?=\n## |$)/m)
-        return m?.[1]?.trim() || null
-      })()
-    : null
-
-  const systemPrompt = searchSystem ||
-    'Du bist ein präziser Web-Suchassistent. Beantworte die Frage auf Basis der Suchergebnisse auf Deutsch. Zitiere Quellen als [1], [2] etc.'
-
-  const userMsg = `Suchergebnisse:\n\n${resultCtx}\n\nFrage: ${safe}`
-
-  setMessageMetaById(statusMsg.id, 'text', '')
-
-  try {
-    const chatRes = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-      body: JSON.stringify({
-        model: selectedModel.value,
-        max_tokens: 1024,
-        stream: true,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMsg }],
-      }),
-    })
-
-    if (!chatRes.ok) {
-      setMessageMetaById(statusMsg.id, 'text', `KI-Fehler ${chatRes.status}`)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-
-    const reader  = chatRes.body.getReader()
-    const decoder = new TextDecoder()
-    let buf = ''
-    let full = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() ?? ''
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-        const data = line.slice(6).trim()
-        if (data === '[DONE]') break
-        try {
-          const p = JSON.parse(data)
-          if (p?.type === 'content_block_delta' && p.delta?.type === 'text_delta') {
-            full += p.delta.text
-            setMessageMetaById(statusMsg.id, 'text', full)
-            scrollToBottom()
-          }
-        } catch { /* ignore parse errors */ }
-      }
-    }
-  } catch (e) {
-    setMessageMetaById(statusMsg.id, 'text', `Streaming-Fehler: ${e.message}`)
-  }
-
-  setMessageMetaById(statusMsg.id, 'streaming', false)
-  setMessageMetaById(statusMsg.id, 'sources', results)
-  await scrollToBottom()
 }
 
 // ── @create-agent ─────────────────────────────────────────────────
@@ -2893,134 +2763,6 @@ async function handlePin(query) {
   addMessage('assistant', t('chat.pin_unknown_cmd'))
 }
 
-// ── @create-media — KI-Bildgenerierung ────────────────────────────
-async function handleCreateMedia(userPrompt) {
-  const preErr = preflightCheck('create-media')
-  if (preErr) { addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media'); addMessage('assistant', preErr); return }
-  const authHeader = { Authorization: `Bearer ${props.soulCert}` }
-  addMessage('user', userPrompt ? `@create-media ${userPrompt}` : '@create-media')
-  const statusMsg = addMessage('assistant', t('chat.img_generating'), { streaming: true })
-  await scrollToBottom()
-
-  let imagePrompt = userPrompt
-
-  // mind.md Grenzen-Sektion extrahieren (kein m-Flag — $ = Stringende, nicht Zeilenende)
-  const grenzenSection = (() => {
-    const m = (mindContent.value || '').match(/## Grenzen[ \t]*\n([\s\S]*?)(?=\n## |$)/)
-    return m ? m[1].trim() : ''
-  })()
-
-  // Direkter Prompt → gegen Grenzen prüfen bevor WaveSpeed aufgerufen wird
-  if (imagePrompt && grenzenSection) {
-    try {
-      const checkRes = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 10,
-          stream: false,
-          system: `Du prüfst ob ein Bildprompt gegen die definierten Grenzen verstößt.\n\nGrenzen:\n${grenzenSection}\n\nAntworte NUR mit "JA" wenn der Prompt eine Grenze verletzt, oder "NEIN" wenn nicht.`,
-          messages: [{ role: 'user', content: imagePrompt }],
-        }),
-      })
-      if (checkRes.ok) {
-        const cd = await checkRes.json()
-        const verdict = (cd?.content?.[0]?.text || '').trim().toUpperCase()
-        if (verdict.startsWith('JA')) {
-          setMessageMetaById(statusMsg.id, 'text', t('chat.img_boundary_violation'))
-          setMessageMetaById(statusMsg.id, 'streaming', false)
-          return
-        }
-      }
-    } catch { /* bei Fehler: weiter, nicht blockieren */ }
-  }
-
-  // Kein Prompt → Claude erzeugt einen soul-basierten visuellen Prompt
-  if (!imagePrompt) {
-    setMessageMetaById(statusMsg.id, 'text', t('chat.img_analysing_soul'))
-    const soulSnippet = (props.soulContent || '').slice(0, 1200)
-    const grenzenHint = grenzenSection ? `\n\nVerbotene Inhalte laut Grenzen:\n${grenzenSection}` : ''
-    try {
-      const genRes = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify({
-          model: (typeof window !== 'undefined' && localStorage.getItem('sys_chat_model')) || 'claude-haiku-4-5-20251001',
-          max_tokens: 120,
-          stream: false,
-          system: `Du bist ein Bildprompt-Spezialist. Erstelle einen präzisen, atmosphärischen englischen Bildprompt (max. 80 Wörter) für einen KI-Bildgenerator. Basiere ihn auf dem Soul-Content des Menschen — seine Persönlichkeit, Ästhetik, Werte. Antworte NUR mit dem Prompt, ohne Kommentar oder Erklärung.${grenzenHint}`,
-          messages: [{ role: 'user', content: `Soul-Content:\n${soulSnippet}` }],
-        }),
-      })
-      if (genRes.ok) {
-        const d = await genRes.json()
-        imagePrompt = d?.content?.[0]?.text?.trim() || ''
-      }
-    } catch { /* weiter ohne soul-prompt */ }
-
-    if (!imagePrompt) {
-      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'prompt generation failed' }))
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-    setMessageMetaById(statusMsg.id, 'text', `Generiere: _${imagePrompt}_`)
-  }
-
-  // WaveSpeed text-to-image
-  try {
-    const submitRes = await fetch('/api/wavespeed-submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader },
-      body: JSON.stringify({ outputMode: 'text-to-image', prompt: imagePrompt }),
-    })
-
-    if (!submitRes.ok) {
-      const err = await submitRes.json().catch(() => ({}))
-      const msg = err.message === 'wavespeed_key_missing'
-        ? t('chat.wavespeed_key_inline')
-        : t('chat.error_prefix', { msg: err.message || submitRes.status })
-      setMessageMetaById(statusMsg.id, 'text', msg)
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-
-    const { taskId } = await submitRes.json()
-    if (!taskId) {
-      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'no task ID received' }))
-      setMessageMetaById(statusMsg.id, 'streaming', false)
-      return
-    }
-
-    // Poll alle 4 s, max. 30 Versuche (~2 min)
-    let imageUrl = null
-    for (let i = 0; i < 30; i++) {
-      await new Promise(r => setTimeout(r, 4000))
-      try {
-        const pollRes = await fetch(`/api/wavespeed-result?id=${encodeURIComponent(taskId)}`, { headers: authHeader })
-        if (pollRes.ok) {
-          const p = await pollRes.json()
-          if (p.url) { imageUrl = p.url; break }
-          if (p.error && p.status !== 'pending' && p.status !== 'running') break
-        }
-      } catch { /* retry */ }
-    }
-
-    if (imageUrl) {
-      setMessageMetaById(statusMsg.id, 'text', imagePrompt)
-      setMessageMetaById(statusMsg.id, 'mediaUrl',  imageUrl)
-      setMessageMetaById(statusMsg.id, 'mediaType', 'image')
-    } else {
-      setMessageMetaById(statusMsg.id, 'text', t('chat.error_prefix', { msg: 'no image result received' }))
-    }
-  } catch (err) {
-    setMessageMetaById(statusMsg.id, 'text', t('chat.net_error', { msg: err.message }))
-  }
-
-  setMessageMetaById(statusMsg.id, 'streaming', false)
-  await scrollToBottom()
-}
-
 // ── Shared vision pipeline (camera + file upload) ──────────────────
 async function runVisionAnalysis(base64, caption, previewUrl) {
   const authHeader = { Authorization: `Bearer ${props.soulCert}` }
@@ -3147,15 +2889,6 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
 
   updateLastMessage(soulReaction || 'Ich sehe das Bild.')
 
-  if (outputMode === 'edit-multi' && genPrompt) {
-    setLastMessageMeta('genPrompt',     genPrompt)
-    setLastMessageMeta('pendingBase64', base64)
-    setLastMessageMeta('actions', [
-      { label: t('chat.img_generate_btn'), primary: true,  type: 'wavespeed-generate' },
-      { label: t('chat.img_skip_btn'),    primary: false,  type: 'skip' },
-    ])
-  }
-
   setLastMessageMeta('streaming', false)
   await scrollToBottom()
 }
@@ -3265,69 +2998,6 @@ async function handleMsgAction(msg, action) {
     setMessageMetaById(msg.id, 'actions', [])
     return
   }
-  if (action.type === 'wavespeed-generate') {
-    setMessageMetaById(msg.id, 'actionsDisabled', true)
-    await runWavespeedGeneration(msg)
-    setMessageMetaById(msg.id, 'actions', [])
-  }
-}
-
-async function runWavespeedGeneration(msg) {
-  const authHeader = { Authorization: `Bearer ${props.soulCert}` }
-  addMessage('assistant', '', { streaming: true })
-  await scrollToBottom()
-
-  try {
-    const submitRes = await fetch('/api/wavespeed-submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader },
-      body: JSON.stringify({
-        outputMode:  'edit-multi',
-        prompt:      msg.genPrompt,
-        imageBase64: msg.pendingBase64,
-      }),
-    })
-    if (!submitRes.ok) {
-      updateLastMessage('_(Bildgenerierung fehlgeschlagen)_')
-      setLastMessageMeta('streaming', false)
-      return
-    }
-    const { taskId } = await submitRes.json()
-    if (!taskId) {
-      updateLastMessage('_(Keine Task-ID erhalten)_')
-      setLastMessageMeta('streaming', false)
-      return
-    }
-
-    // Poll every 4 s, max 25 attempts (~100 s)
-    let imageUrl = null
-    for (let i = 0; i < 25; i++) {
-      await new Promise(r => setTimeout(r, 4000))
-      try {
-        const pollRes = await fetch(`/api/wavespeed-result?id=${encodeURIComponent(taskId)}`, {
-          headers: authHeader,
-        })
-        if (pollRes.ok) {
-          const pollData = await pollRes.json()
-          if (pollData.url) { imageUrl = pollData.url; break }
-          if (pollData.error && pollData.status !== 'pending' && pollData.status !== 'running') break
-        }
-      } catch { /* retry */ }
-    }
-
-    if (imageUrl) {
-      updateLastMessage('[Generiertes Bild]')
-      setLastMessageMeta('mediaUrl',   imageUrl)
-      setLastMessageMeta('mediaType',  'image')
-    } else {
-      updateLastMessage('_(Bildgenerierung: kein Ergebnis)_')
-    }
-  } catch {
-    updateLastMessage('_(Bildgenerierung fehlgeschlagen)_')
-  }
-
-  setLastMessageMeta('streaming', false)
-  await scrollToBottom()
 }
 
 // ── History compression ────────────────────────────────────────────
@@ -3441,20 +3111,6 @@ async function handleSend() {
   if (intent.type === 'session-end') {
     addMessage('user', '@session-end')
     emit('session-end')
-    return
-  }
-
-  if (intent.type === 'create-media') {
-    await handleCreateMedia(intent.query)
-    return
-  }
-
-  if (intent.type === 'web-search') {
-    if (!intent.query) {
-      addMessage('assistant', t('chat.search_no_query'))
-      return
-    }
-    await handleWebSearch(intent.query)
     return
   }
 

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   if (!soul_id) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const body = await readBody(event)
-  const { anthropic_key, wavespeed_key, elevenlabs_key, brave_key, mcp_url, model } = body || {}
+  const { anthropic_key, elevenlabs_key, brave_key, mcp_url, model } = body || {}
 
   if (anthropic_key !== undefined) {
     if (typeof anthropic_key !== 'string')
@@ -27,8 +27,6 @@ export default defineEventHandler(async (event) => {
     if (anthropic_key !== '' && !anthropic_key.startsWith('sk-ant-'))
       throw createError({ statusCode: 400, message: 'Key must start with sk-ant- or be empty to remove' })
   }
-  if (wavespeed_key !== undefined && typeof wavespeed_key !== 'string')
-    throw createError({ statusCode: 400, message: 'invalid_wavespeed_key' })
   if (elevenlabs_key !== undefined && typeof elevenlabs_key !== 'string')
     throw createError({ statusCode: 400, message: 'invalid_elevenlabs_key' })
   if (brave_key !== undefined && typeof brave_key !== 'string')
@@ -47,10 +45,6 @@ export default defineEventHandler(async (event) => {
   if (anthropic_key !== undefined) {
     if (anthropic_key === '') delete existing.anthropic_key
     else existing.anthropic_key = anthropic_key
-  }
-  if (wavespeed_key !== undefined) {
-    if (wavespeed_key === '') delete existing.wavespeed_key
-    else existing.wavespeed_key = wavespeed_key
   }
   if (elevenlabs_key !== undefined) {
     if (elevenlabs_key === '') delete existing.elevenlabs_key
@@ -74,7 +68,6 @@ export default defineEventHandler(async (event) => {
   return {
     ok:                  true,
     has_own_key:         typeof existing.anthropic_key === 'string' && existing.anthropic_key.startsWith('sk-ant-'),
-    wavespeed_key_set:   typeof existing.wavespeed_key === 'string' && existing.wavespeed_key !== '',
     elevenlabs_key_set:  typeof existing.elevenlabs_key === 'string' && existing.elevenlabs_key !== '',
     model:               existing.model || null,
   }

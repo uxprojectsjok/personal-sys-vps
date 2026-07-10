@@ -165,18 +165,6 @@
                 :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
 
-            <!-- WaveSpeed -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_wavespeed') }}
-                <span v-if="cfgWaveSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgWaveKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgWaveSet ? $t('setup.placeholder_overwrite') : 'WaveSpeed API-Key…'"
-                autocomplete="off" spellcheck="false" @input="cfgWaveDirty = true"
-                :style="cfgWaveSet ? 'border-color:var(--sys-ok)' : ''" />
-            </div>
-
             <!-- ElevenLabs -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
@@ -433,9 +421,6 @@ const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushTo
 const cfgModel     = ref('')
 const cfgAnthKey   = ref('')
 const cfgAnthSet   = ref(false)
-const cfgWaveKey   = ref('')
-const cfgWaveSet   = ref(false)
-const cfgWaveDirty = ref(false)
 const cfgLabsKey   = ref('')
 const cfgLabsSet   = ref(false)
 const cfgLabsDirty = ref(false)
@@ -459,7 +444,6 @@ async function loadCfgStep() {
     const data = await res.json()
     cfgModel.value   = data.model || ''
     cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
-    cfgWaveSet.value  = !!data.wavespeed_key_set
     cfgLabsSet.value  = !!data.elevenlabs_key_set
     cfgBraveSet.value = !!data.brave_key_set
     cfgAgentUrl.value = data.elevenlabs_agent_url || ''
@@ -482,7 +466,6 @@ async function saveCfgStep() {
     const body = {}
     if (cfgModel.value)   body.model         = cfgModel.value
     if (cfgAnthKey.value) body.anthropic_key  = sanitizeKey(cfgAnthKey.value)
-    if (cfgWaveKey.value)  body.wavespeed_key  = sanitizeKey(cfgWaveKey.value)
     if (cfgLabsKey.value)  body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
     if (cfgBraveKey.value) body.brave_key      = sanitizeKey(cfgBraveKey.value)
     if (cfgAgentUrl.value !== undefined) body.elevenlabs_agent_url = cfgAgentUrl.value.trim()
@@ -494,7 +477,6 @@ async function saveCfgStep() {
     if (!res.ok) { cfgFeedback.value = { ok: false, message: t('setup.cfg_save_error') }; return }
 
     if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
-    if (cfgWaveKey.value) { cfgWaveSet.value = true; cfgWaveKey.value = ''; cfgWaveDirty.value = false }
     if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
     if (cfgBraveKey.value) { cfgBraveSet.value = true; cfgBraveKey.value = ''; cfgBraveDirty.value = false }
     cfgAgentSet.value = !!cfgAgentUrl.value.trim()

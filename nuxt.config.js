@@ -20,8 +20,6 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // Server-only key (nicht im Client-Bundle)
-    wavespeedKey: process.env.WAVESPEED_KEY || "",
     public: {
       // Spotify App Client ID (developer.spotify.com → App → Client ID)
       spotifyClientId: process.env.SPOTIFY_CLIENT_ID || "",

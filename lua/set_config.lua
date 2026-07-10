@@ -34,7 +34,6 @@ end
 
 -- ── Validierung ────────────────────────────────────────────────────────────────
 local anthropic_key        = body.anthropic_key
-local wavespeed_key        = body.wavespeed_key
 local elevenlabs_key       = body.elevenlabs_key
 local elevenlabs_agent_url = body.elevenlabs_agent_url
 local brave_key            = body.brave_key
@@ -56,13 +55,6 @@ if anthropic_key ~= nil then
     ngx.say('{"error":"invalid_anthropic_key","message":"Key must start with sk-ant- or be empty to remove"}')
     return
   end
-end
-
-if wavespeed_key ~= nil and type(wavespeed_key) ~= "string" then
-  ngx.status = 400
-  ngx.header["Content-Type"] = "application/json"
-  ngx.say('{"error":"invalid_wavespeed_key"}')
-  return
 end
 
 if elevenlabs_key ~= nil and type(elevenlabs_key) ~= "string" then
@@ -142,9 +134,6 @@ end
 if anthropic_key ~= nil then
   existing.anthropic_key = (anthropic_key ~= "") and anthropic_key or nil
 end
-if wavespeed_key ~= nil then
-  existing.wavespeed_key = (wavespeed_key ~= "") and wavespeed_key or nil
-end
 if elevenlabs_key ~= nil then
   existing.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil
 end
@@ -188,7 +177,6 @@ if mf then
   local mok, mdata = pcall(cjson.decode, mr)
   if mok and type(mdata) == "table" and not mdata.multi_hoster then
     if anthropic_key  ~= nil then mdata.anthropic_key  = (anthropic_key  ~= "") and anthropic_key  or nil end
-    if wavespeed_key  ~= nil then mdata.wavespeed_key  = (wavespeed_key  ~= "") and wavespeed_key  or nil end
     if elevenlabs_key ~= nil then mdata.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil end
     if brave_key      ~= nil then mdata.brave_key      = (brave_key      ~= "") and brave_key      or nil end
     if model          ~= nil then mdata.model          = model end
@@ -230,7 +218,6 @@ ngx.header["Cache-Control"] = "no-store"
 ngx.say(cjson.encode({
   ok                 = true,
   has_own_key        = type(existing.anthropic_key) == "string" and existing.anthropic_key ~= "",
-  wavespeed_key_set  = type(existing.wavespeed_key) == "string" and existing.wavespeed_key ~= "",
   elevenlabs_key_set = type(existing.elevenlabs_key) == "string" and existing.elevenlabs_key ~= "",
   brave_key_set          = type(existing.brave_key) == "string" and existing.brave_key ~= "",
   elevenlabs_agent_url   = existing.elevenlabs_agent_url or cjson.null,
