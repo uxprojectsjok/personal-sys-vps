@@ -119,13 +119,21 @@ end
 
 -- ── Soul-Name aus sys.md lesen ────────────────────────────────────────────────
 local soul_name = "Soul"
+local soul_name_resolved = false
 local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
--- Verschlüsselte sys.md (SYSCRYPT01 beginnt mit "SY") nicht als Klartext lesen —
--- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name liefern
--- und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
+-- Verschlüsselte sys.md (SYSCRYPT01, beginnt mit VAULT_MAGIC) mit vault_key
+-- entschlüsseln falls vorhanden -- sonst bliebe soul_name immer beim Default
+-- "Soul", weil sys.md im Ruhezustand immer verschlüsselt gespeichert ist.
+if sys_text:sub(1, 4) == VAULT_MAGIC and vault_key_hex ~= "" then
+  local dec = try_decrypt_vault(sys_text, vault_key_hex)
+  if dec and #dec > 0 then sys_text = dec end
+end
+-- Falls immer noch verschlüsselt (kein/ungültiger vault_key) nicht als Klartext
+-- lesen -- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name
+-- liefern und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
-  if m and m ~= '""' and m ~= "" then soul_name = m end
+  if m and m ~= '""' and m ~= "" then soul_name = m; soul_name_resolved = true end
 end
 
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
@@ -141,7 +149,7 @@ local function get_mind_section(section)
 end
 
 local agent_template    = get_mind_section("ElevenLabs Agent")
-local first_msg_tpl     = get_mind_section("ElevenLabs Erstbegruß ung") or get_mind_section("ElevenLabs Erstbegrussung")
+local first_msg_tpl     = get_mind_section("ElevenLabs Greeting") or get_mind_section("ElevenLabs Erstbegrüßung") or get_mind_section("ElevenLabs Erstbegrussung")
 local language          = "de"
 
 -- ── Webhook-Token + Permissions sicherstellen ─────────────────────────────────
@@ -344,8 +352,11 @@ if agent_template and agent_template ~= "" then
     -- ElevenLabs treat any remaining {var} as undefined conversation variables → strip braces
     :gsub("{([^}]+)}", function(v) return v end)
 else
+  local identity_line = soul_name_resolved
+    and ("Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n")
+    or "Du bist die persoenliche KI dieses SYS-Nodes -- kein generischer Assistent, sondern die digitale Praesenz seines Betreibers.\n\n"
   system_prompt =
-    "Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n" ..
+    identity_line ..
     "## SCHRITT 1 -- VERIFIKATION (Pflicht, immer zuerst)\n\n" ..
     "Rufe sofort verify_identity auf.\n" ..
     "Wenn verify_identity einen Fehler zurueckgibt (error-Feld vorhanden, oder HTTP-Fehler):\n" ..
@@ -372,7 +383,9 @@ else
     "## IDENTITAET\n\n" ..
     "Du sprichst durchgehend in der ersten Person. Kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
     "Wenn jemand fragt ob du eine KI bist:\n" ..
-    '"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n' ..
+    (soul_name_resolved
+      and ('"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n')
+      or '"Ich bin die digitale Version des Node-Betreibers. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n') ..
     "Sprache: Deutsch -- wechsle wenn der Gespraechspartner eine andere Sprache spricht."
 end
 
@@ -387,7 +400,9 @@ if first_msg_tpl and first_msg_tpl ~= "" then
   end
 end
 if not first_message then
-  first_message = "Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Verifikation bitte."
+  first_message = soul_name_resolved
+    and ("Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Verifikation bitte.")
+    or "Hey -- du sprichst mit meiner digitalen Version. Verifikation bitte."
 end
 
 -- ── Agent erstellen ───────────────────────────────────────────────────────────
