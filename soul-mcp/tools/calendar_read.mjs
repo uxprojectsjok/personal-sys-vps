@@ -1,4 +1,4 @@
-import { getText } from '../lib/api.mjs';
+import { getText, verificationRequiredMsg } from '../lib/api.mjs';
 import { parseCalendar, parseFrontmatter } from '../lib/soul_parser.mjs';
 
 export function register(server, token) {
@@ -28,6 +28,8 @@ export function register(server, token) {
 }
 
 function apiErrMsg(err) {
+  const vr = verificationRequiredMsg(err);
+  if (vr) return vr;
   if (err.status === 403) return 'Kalender-Berechtigung nicht aktiviert oder Vault gesperrt.';
   if (err.status === 401) return 'Token ungültig.';
   return err.message;

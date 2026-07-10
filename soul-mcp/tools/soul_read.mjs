@@ -1,4 +1,4 @@
-import { getText } from '../lib/api.mjs';
+import { getText, verificationRequiredMsg } from '../lib/api.mjs';
 import { extractLongmem, extractLongmemIndex, queryLongmem } from '../lib/soul_parser.mjs';
 
 export function register(server, token) {
@@ -43,6 +43,8 @@ export function register(server, token) {
 }
 
 function apiErrMsg(err) {
+  const vr = verificationRequiredMsg(err);
+  if (vr) return vr;
   if (err.status === 403) return 'Vault ist gesperrt oder Berechtigung fehlt. Bitte Vault in der SYS App entsperren.';
   if (err.status === 401) return 'Token ungültig oder abgelaufen.';
   return err.message;

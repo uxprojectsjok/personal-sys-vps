@@ -6,7 +6,7 @@
  * So können Menschen Gespräche mit sich selbst führen.
  */
 
-import { postJson } from '../lib/api.mjs';
+import { postJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { z } from 'zod';
 
 export function register(server, token) {
@@ -63,7 +63,10 @@ export function register(server, token) {
           ],
         };
       } catch (err) {
-        const msg = err.status === 403
+        const vr = verificationRequiredMsg(err);
+        const msg = vr
+          ? vr
+          : err.status === 403
           ? 'Vault ist gesperrt. Bitte in der SYS App entsperren.'
           : err.status === 404
           ? 'Noch kein sys.md synchronisiert. Bitte Vault in der SYS App synchronisieren.'

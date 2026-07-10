@@ -58,6 +58,24 @@ export async function deleteJson(path, token) {
   return (await request(path, { method: 'DELETE', token })).json();
 }
 
+/**
+ * Prüft ob ein ApiError von einem unverifizierten Service-Token stammt
+ * (vault_auth.lua: 403 "verification_required" — Token muss erst einmalig
+ * eine verify_identity-Challenge durchlaufen). Gibt die Server-Message
+ * zurück, damit das aufrufende Tool sie statt einer generischen "Vault
+ * gesperrt"-Meldung an die KI weiterreicht. Sonst null.
+ */
+export function verificationRequiredMsg(err) {
+  if (err.status !== 403) return null;
+  try {
+    const body = JSON.parse(err.body || '{}');
+    if (body.error === 'verification_required') {
+      return body.message || 'Verification required — call verify_identity first.';
+    }
+  } catch { /* body kein JSON */ }
+  return null;
+}
+
 /** Prüft ob ein Soul-Cert gültig ist */
 export async function validateCert(soulCert) {
   try {

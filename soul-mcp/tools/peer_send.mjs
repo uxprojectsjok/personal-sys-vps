@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
-import { getText, putJson, getJson } from '../lib/api.mjs';
+import { getText, putJson, getJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
 
 const _queues = new Map();
@@ -168,12 +168,17 @@ export function register(server, token, soulId = null) {
         });
       } catch (err) {
         let msg = err.message;
-        try {
-          const body = JSON.parse(err.body || '{}');
-          if (body.error === 'vault_locked' || body.error === 'encrypted') {
-            msg = 'Vault gesperrt — Vault in der App entsperren, dann erneut versuchen.';
-          }
-        } catch { /* kein JSON */ }
+        const vr = verificationRequiredMsg(err);
+        if (vr) {
+          msg = vr;
+        } else {
+          try {
+            const body = JSON.parse(err.body || '{}');
+            if (body.error === 'vault_locked' || body.error === 'encrypted') {
+              msg = 'Vault gesperrt — Vault in der App entsperren, dann erneut versuchen.';
+            }
+          } catch { /* kein JSON */ }
+        }
         return { content: [{ type: 'text', text: `Fehler: ${msg}` }], isError: true };
       }
     }

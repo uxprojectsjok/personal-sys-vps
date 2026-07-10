@@ -1,4 +1,4 @@
-import { getJson } from '../lib/api.mjs';
+import { getJson, verificationRequiredMsg } from '../lib/api.mjs';
 
 export function register(server, token) {
   server.tool(
@@ -17,6 +17,8 @@ export function register(server, token) {
 }
 
 function apiErrMsg(err) {
+  const vr = verificationRequiredMsg(err);
+  if (vr) return vr;
   if (err.status === 403) return 'Vault gesperrt oder Bild-Berechtigung fehlt.';
   return err.message;
 }
