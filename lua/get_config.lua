@@ -47,13 +47,6 @@ if has_elevenlabs then
   elevenlabs_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
 end
 
-local has_brave = type(soul_cfg.brave_key) == "string" and soul_cfg.brave_key ~= ""
-local brave_preview = ""
-if has_brave then
-  local k = soul_cfg.brave_key
-  brave_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
-end
-
 local has_mcp = type(soul_cfg.mcp_url) == "string" and soul_cfg.mcp_url ~= ""
 local mcp_preview = ""
 if has_mcp then
@@ -106,8 +99,6 @@ ngx.say(cjson.encode({
   key_source           = key_source,
   elevenlabs_key_set   = has_elevenlabs,
   elevenlabs_preview   = elevenlabs_preview,
-  brave_key_set          = has_brave,
-  brave_preview          = brave_preview,
   elevenlabs_agent_url   = soul_cfg.elevenlabs_agent_url or cjson.null,
   model                  = soul_cfg.model or cjson.null,
   mcp_url_set            = has_mcp,

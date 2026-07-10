@@ -498,7 +498,7 @@ local conv_config = {
           whget("soul_discover",  "Entdeckt andere Souls.",           tool_url("soul_discover")),
           -- Web
           wh("web_search", "Sucht im Web nach aktuellen Informationen.", search_url,
-            { query=sd("Suchanfrage"), count=nd("Anzahl Ergebnisse") }, { "query" }),
+            { query=sd("Suchanfrage") }, { "query" }),
           -- Verifikation (Mensch-Check)
           whget("verify_human", "Prueft ob der Nutzer ein Mensch ist (Anti-Bot).", tool_url("verify_human")),
           -- Session-Ende

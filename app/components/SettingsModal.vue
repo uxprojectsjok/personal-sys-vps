@@ -180,31 +180,6 @@
             <!-- ── Tab: Plugins ── -->
             <template v-if="tab === 'plugins'">
 
-              <!-- Brave Search Key -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.brave_key_label') }}
-                  <span v-if="braveKeySet" class="sm-key-ok">{{ bravePreview }}</span>
-                </label>
-                <div style="display:flex;gap:0">
-                  <input
-                    v-model="braveKey"
-                    type="password"
-                    class="sys-input sys-input--mono"
-                    style="flex:1;border-radius:var(--r-xs)"
-                    :style="braveKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="braveKeySet ? $t('common.overwrite_placeholder') : 'BSA…'"
-                    autocomplete="off"
-                    spellcheck="false"
-                    @input="braveDirty = true"
-                    @keyup.enter="saveConfig"
-                  />
-                </div>
-                <div v-if="braveKeySet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('brave_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
-                </div>
-              </div>
-
               <!-- Reown Project ID -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">
@@ -941,11 +916,6 @@ const elevenlabsKeySet  = ref(false)
 const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
 
-const braveKey     = ref('')
-const braveKeySet  = ref(false)
-const bravePreview = ref('')
-const braveDirty   = ref(false)
-
 const reownProjectId = ref('')
 const reownSet       = ref(false)
 const reownPreview   = ref('')
@@ -990,8 +960,6 @@ async function loadStatus() {
     elevenlabsPreview.value = d.elevenlabs_preview || ''
     agentUrlSet.value = !!d.elevenlabs_agent_url
     agentUrl.value    = d.elevenlabs_agent_url || ''
-    braveKeySet.value  = !!d.brave_key_set
-    bravePreview.value = d.brave_preview || ''
     mcpUrlSet.value  = !!d.mcp_url_set
     mcpPreview.value = d.mcp_preview || ''
     reownSet.value     = !!d.reown_project_id_set
@@ -1134,7 +1102,6 @@ async function deleteKey(field) {
     })
     if (field === 'anthropic_key')    { keySource.value = 'none'; keyPreview.value = '' }
     if (field === 'elevenlabs_key')   { elevenlabsKeySet.value = false; elevenlabsPreview.value = '' }
-    if (field === 'brave_key')        { braveKeySet.value = false; bravePreview.value = '' }
     if (field === 'reown_project_id') { reownSet.value = false; reownPreview.value = '' }
     if (field === 'mcp_url')          { mcpUrlSet.value = false; mcpPreview.value = ''; clearMcpCache() }
     await loadStatus()
@@ -1209,7 +1176,6 @@ async function saveConfig() {
     if (apiKey.value) body.anthropic_key = sanitizeKey(apiKey.value)
     if (model.value) body.model = model.value
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
-    if (braveDirty.value) body.brave_key = sanitizeKey(braveKey.value)
     if (mcpDirty.value) body.mcp_url = sanitizeKey(mcpUrl.value)
     if (reownDirty.value) body.reown_project_id = reownProjectId.value.trim()
     const res = await fetch('/api/set-config', {
@@ -1227,8 +1193,6 @@ async function saveConfig() {
       apiKey.value        = ''
       elevenlabsKey.value  = ''
       elevenlabsDirty.value = false
-      braveKey.value  = ''
-      braveDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
       reownProjectId.value = ''

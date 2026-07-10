@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   if (!soul_id) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const body = await readBody(event)
-  const { anthropic_key, elevenlabs_key, brave_key, mcp_url, model } = body || {}
+  const { anthropic_key, elevenlabs_key, mcp_url, model } = body || {}
 
   if (anthropic_key !== undefined) {
     if (typeof anthropic_key !== 'string')
@@ -29,8 +29,6 @@ export default defineEventHandler(async (event) => {
   }
   if (elevenlabs_key !== undefined && typeof elevenlabs_key !== 'string')
     throw createError({ statusCode: 400, message: 'invalid_elevenlabs_key' })
-  if (brave_key !== undefined && typeof brave_key !== 'string')
-    throw createError({ statusCode: 400, message: 'invalid_brave_key' })
   if (mcp_url !== undefined && typeof mcp_url !== 'string')
     throw createError({ statusCode: 400, message: 'invalid_mcp_url' })
 
@@ -49,10 +47,6 @@ export default defineEventHandler(async (event) => {
   if (elevenlabs_key !== undefined) {
     if (elevenlabs_key === '') delete existing.elevenlabs_key
     else existing.elevenlabs_key = elevenlabs_key
-  }
-  if (brave_key !== undefined) {
-    if (brave_key === '') delete existing.brave_key
-    else existing.brave_key = brave_key
   }
   if (mcp_url !== undefined) {
     if (mcp_url === '') delete existing.mcp_url

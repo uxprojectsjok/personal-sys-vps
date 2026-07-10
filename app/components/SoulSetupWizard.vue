@@ -189,18 +189,6 @@
                 :style="cfgAgentSet ? 'border-color:var(--sys-ok)' : ''" />
             </div>
 
-            <!-- Brave Search -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_brave') }}
-                <span v-if="cfgBraveSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgBraveKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgBraveSet ? $t('setup.placeholder_overwrite') : 'BSA…'"
-                autocomplete="off" spellcheck="false" @input="cfgBraveDirty = true"
-                :style="cfgBraveSet ? 'border-color:var(--sys-ok)' : ''" />
-            </div>
-
             <!-- Pinata JWT -->
             <div style="display:flex;flex-direction:column;gap:12px">
               <label class="sys-field-label">
@@ -424,9 +412,6 @@ const cfgAnthSet   = ref(false)
 const cfgLabsKey   = ref('')
 const cfgLabsSet   = ref(false)
 const cfgLabsDirty = ref(false)
-const cfgBraveKey  = ref('')
-const cfgBraveSet  = ref(false)
-const cfgBraveDirty = ref(false)
 const cfgPinataJwt  = ref('')
 const cfgPinataSet  = ref(false)
 const cfgAgentUrl   = ref('')
@@ -445,7 +430,6 @@ async function loadCfgStep() {
     cfgModel.value   = data.model || ''
     cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
     cfgLabsSet.value  = !!data.elevenlabs_key_set
-    cfgBraveSet.value = !!data.brave_key_set
     cfgAgentUrl.value = data.elevenlabs_agent_url || ''
     cfgAgentSet.value = !!data.elevenlabs_agent_url
   } catch {}
@@ -467,7 +451,6 @@ async function saveCfgStep() {
     if (cfgModel.value)   body.model         = cfgModel.value
     if (cfgAnthKey.value) body.anthropic_key  = sanitizeKey(cfgAnthKey.value)
     if (cfgLabsKey.value)  body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
-    if (cfgBraveKey.value) body.brave_key      = sanitizeKey(cfgBraveKey.value)
     if (cfgAgentUrl.value !== undefined) body.elevenlabs_agent_url = cfgAgentUrl.value.trim()
     const res = await fetch('/api/set-config', {
       method:  'POST',
@@ -478,7 +461,6 @@ async function saveCfgStep() {
 
     if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
     if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
-    if (cfgBraveKey.value) { cfgBraveSet.value = true; cfgBraveKey.value = ''; cfgBraveDirty.value = false }
     cfgAgentSet.value = !!cfgAgentUrl.value.trim()
     if (cfgPinataJwt.value) {
       try {

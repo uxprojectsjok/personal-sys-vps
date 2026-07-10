@@ -39,10 +39,6 @@ export default defineEventHandler(async (event) => {
   const elevenlabsPreview = hasElevenlabs
     ? soulCfg.elevenlabs_key.slice(0, 6) + '…' + soulCfg.elevenlabs_key.slice(-4) : ''
 
-  const hasBrave     = typeof soulCfg.brave_key === 'string' && soulCfg.brave_key !== ''
-  const bravePreview = hasBrave
-    ? soulCfg.brave_key.slice(0, 6) + '…' + soulCfg.brave_key.slice(-4) : ''
-
   const hasMcp     = typeof soulCfg.mcp_url === 'string' && soulCfg.mcp_url !== ''
   const mcpPreview = hasMcp
     ? soulCfg.mcp_url.replace(/^https?:\/\//, '').slice(0, 30) + '…' : ''
@@ -53,8 +49,6 @@ export default defineEventHandler(async (event) => {
     key_source:          keySource,
     elevenlabs_key_set:  hasElevenlabs,
     elevenlabs_preview:  elevenlabsPreview,
-    brave_key_set:       hasBrave,
-    brave_preview:       bravePreview,
     mcp_url_set:         hasMcp,
     mcp_preview:         mcpPreview,
     model:               soulCfg.model || null,
