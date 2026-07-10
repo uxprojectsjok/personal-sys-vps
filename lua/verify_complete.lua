@@ -9,6 +9,22 @@ local soul_id    = ngx.ctx.soul_id
 local VERIFY_DIR = "/var/lib/sys/verify/"
 os.execute("mkdir -p " .. VERIFY_DIR)
 
+-- Markiert den Service-Token, der diese Challenge ausgelöst hat (falls vorhanden),
+-- als verifiziert — schaltet damit den vollen Tool-Zugriff frei (siehe vault_auth.lua).
+local function mark_token_verified(sid, tok)
+  if type(tok) ~= "string" or tok == "" then return end
+  local svc_path = "/var/lib/sys/souls/" .. sid .. "/authorized_services.json"
+  local f = io.open(svc_path, "r")
+  if not f then return end
+  local raw = f:read("*a"); f:close()
+  local ok, svcs = pcall(cjson.decode, raw)
+  if not ok or type(svcs) ~= "table" or type(svcs[tok]) ~= "table" then return end
+  if svcs[tok].verified == true then return end  -- schon markiert, nichts zu tun
+  svcs[tok].verified = true
+  local wf = io.open(svc_path, "w")
+  if wf then wf:write(cjson.encode(svcs)); wf:close() end
+end
+
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
@@ -53,6 +69,7 @@ if body.finalize == true then
   end
   local vat = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
   d2.status = "verified"; d2.verified_at = vat
+  mark_token_verified(soul_id, d2.triggering_token)
   local ok3, upd = pcall(cjson.encode, d2)
   if ok3 then local fw2=io.open(fpath2,"w"); if fw2 then fw2:write(upd); fw2:close() end end
   ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, score=d2.score, status="verified", completed_methods=comp2, is_2fa=d2.is_2fa }))
@@ -127,6 +144,7 @@ if has_multi then
     if all_done then
       d.status      = "verified"
       d.verified_at = verified_at
+      mark_token_verified(soul_id, d.triggering_token)
     end
   end
   -- Fehlgeschlagen: nichts speichern, Phase bleibt pending → retry möglich
@@ -144,6 +162,7 @@ else
   d.is_2fa      = is_2fa
   d.score       = verified and 1 or 0
   d.completed_methods = verified and { method } or cjson.empty_array
+  if verified then mark_token_verified(soul_id, d.triggering_token) end
 end
 
 local ok_e, updated = pcall(cjson.encode, d)

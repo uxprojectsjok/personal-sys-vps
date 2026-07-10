@@ -21,6 +21,11 @@ info "Deploying Lua files to /etc/openresty/lua/ ..."
 cp "$SCRIPT_DIR"/lua/*.lua /etc/openresty/lua/
 chown www-data:www-data /etc/openresty/lua/*.lua
 
+# ── 2b. Deploy shared config templates ────────────────────────────────────────
+info "Deploying shared config templates to /var/lib/sys/config/ ..."
+cp "$SCRIPT_DIR/shared/constants/pricing_params.json" /var/lib/sys/config/pricing_params.json
+cp "$SCRIPT_DIR/shared/constants/default_mind.md"     /var/lib/sys/config/default_mind.md
+
 # ── 3. Reload OpenResty ───────────────────────────────────────────────────────
 info "Reloading OpenResty..."
 openresty -t && openresty -s reload && info "OpenResty reloaded."

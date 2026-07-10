@@ -67,6 +67,10 @@ if vt_file then vt_file:write(soul_id); vt_file:close() end
 
 local req_methods_encoded = #methods > 0 and methods or cjson.empty_array
 
+-- Falls diese Challenge von einem Service-Token (OAuth-Client) ausgelöst wurde:
+-- Token merken, damit verify_complete.lua ihn bei Erfolg als verifiziert markieren kann.
+local triggering_token = ngx.ctx.service_token
+
 local data = cjson.encode({
   soul_id           = soul_id,
   challenge_id      = challenge_id,
@@ -79,6 +83,7 @@ local data = cjson.encode({
   expires_at        = expires_at,
   verified_at       = cjson.null,
   verify_token      = verify_token,
+  triggering_token  = triggering_token or cjson.null,
 })
 
 local f = io.open(VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json", "w")

@@ -52,7 +52,8 @@ if method == "GET" then
       name        = svc.name,
       permissions = svc.permissions,
       expires_at  = svc.expires_at or cjson.null,
-      created_at  = svc.created_at
+      created_at  = svc.created_at,
+      verified    = svc.verified ~= false
     })
   end
   -- Sort by created_at descending
@@ -132,7 +133,11 @@ if method == "POST" and uri == "/api/vault/services" then
     name        = name,
     permissions = permissions,
     expires_at  = (expires_at == cjson.null) and nil or expires_at,
-    created_at  = math.floor(ngx.now())
+    created_at  = math.floor(ngx.now()),
+    -- Neue Tokens starten unverifiziert: erst nach einer erfolgreichen
+    -- verify_identity-Challenge (siehe verify_complete.lua) volle Rechte.
+    -- Bestehende Tokens (Feld fehlt) gelten als verifiziert — siehe vault_auth.lua.
+    verified    = false
   }
 
   if not save_services(svcs) then
@@ -160,7 +165,8 @@ if method == "POST" and uri == "/api/vault/services" then
     soul_id     = soul_id,
     name        = name,
     permissions = permissions,
-    expires_at  = expires_at
+    expires_at  = expires_at,
+    verified    = false
   }))
   return
 end

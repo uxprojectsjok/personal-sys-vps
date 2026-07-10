@@ -137,6 +137,7 @@ local function check_soul_cert(token)
 
   if not ngx.ctx.vault_key then ngx.ctx.vault_key = "" end
 
+  ngx.ctx.via_soul_cert = true
   return soul_id
 end
 
@@ -150,9 +151,13 @@ local function check_service_token(token)
   local handle = io.popen("ls " .. souls_dir .. " 2>/dev/null")
   if not handle then return nil end
 
-  local found_id    = nil
-  local found_perms = nil
-  local found_key   = ""
+  local found_id       = nil
+  local found_perms    = nil
+  local found_key      = ""
+  local found_actor    = nil
+  -- verified: fehlt das Feld (Tokens von vor diesem Feature) → true (Bestandsschutz).
+  -- Explizit false (neue Tokens bis zur ersten verify_identity-Challenge) → gate greift.
+  local found_verified = true
 
   for dir in handle:lines() do
     -- Nur alphanumerisch + Bindestrich: kein Dot (verhindert ../ Traversal)
@@ -166,8 +171,10 @@ local function check_service_token(token)
           local svc = data[token]
           -- Ablaufdatum prüfen (0 = permanent, kein Ablauf)
           if type(svc.expires_at) ~= "number" or svc.expires_at == 0 or ngx.now() < svc.expires_at then
-            found_id    = dir
-            found_perms = svc.permissions
+            found_id       = dir
+            found_perms    = svc.permissions
+            found_verified = (svc.verified ~= false)
+            found_actor    = svc.name
             break
           end
         end
@@ -224,6 +231,9 @@ local function check_service_token(token)
   ngx.ctx.vault_key           = vault_key
   ngx.ctx.via_webhook         = true
   ngx.ctx.service_permissions = found_perms
+  ngx.ctx.service_verified    = found_verified
+  ngx.ctx.service_token       = token
+  ngx.ctx.service_actor       = found_actor
   return found_id
 end
 
@@ -358,4 +368,33 @@ if not check_soul_cert(token) then
     end
   end
   end
+end
+
+-- ── Unverifizierte Service-Tokens: nur der Verify-Flow ist erlaubt ───────────
+-- Neue OAuth-Tokens (ChatGPT, Mistral, Claude...) müssen einmalig eine
+-- verify_identity-Challenge durchlaufen, bevor sie auf Soul-Inhalte zugreifen
+-- dürfen. Bestandsschutz für ältere Tokens über found_verified-Default=true.
+if ngx.ctx.service_verified == false then
+  local VERIFY_ALLOWED = {
+    ["/api/verify/challenge"] = true,
+    ["/api/verify/status"]    = true,
+    ["/api/verify/complete"]  = true,
+  }
+  if not VERIFY_ALLOWED[ngx.var.uri] then
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.status = 403
+    ngx.say('{"error":"verification_required","message":"Dieser Zugang muss erst einmalig bestaetigt werden. Rufe verify_identity auf und warte bis verified=true."}')
+    return ngx.exit(403)
+  end
+end
+
+-- ── Activity-Log: wer hat geschrieben ─────────────────────────────────────────
+-- Verbundene Clients (ChatGPT, Mistral, ...) über ihren Service-Token-Namen,
+-- der Owner selbst (soul_cert, z.B. via SYS-Web-App) als "Owner". Nicht erfasst:
+-- pol_access_token (zahlende externe Agenten, ohnehin stark eingeschränkt) und
+-- verify_token (kein Schreibzugriff im relevanten Sinn). Siehe activity_log.lua.
+if ngx.req.get_method() ~= "GET" and (ngx.ctx.service_token or ngx.ctx.via_soul_cert) then
+  local actor = ngx.ctx.service_token and ngx.ctx.service_actor or "Owner"
+  require("activity_log").record(ngx.ctx.soul_id, actor, ngx.req.get_method(), ngx.var.uri)
 end
