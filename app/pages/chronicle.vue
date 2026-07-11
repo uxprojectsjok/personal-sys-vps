@@ -204,7 +204,9 @@ const allEntries = computed(() => {
         const m = line.match(/^-\s+\*\*([^*:]+):?\*\*:?\s*(.*)/)
         if (m) {
           if (current) entries.push(current)
-          current = { dateStr: m[1].trim(), body: m[2].trim(), src: 'soul' }
+          // [herz]-Kristallisationszusammenfassungen sind System-Housekeeping,
+          // keine erzählenswerten Chronicle-Momente — aus der Story-Ansicht ausblenden.
+          current = /\[herz\]/.test(m[1]) ? null : { dateStr: m[1].trim(), body: m[2].trim(), src: 'soul' }
         } else if (current && line.trim() && !line.trim().startsWith('-')) {
           current.body += ' ' + line.trim()
         }
