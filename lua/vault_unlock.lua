@@ -183,7 +183,7 @@ if method == "POST" and uri == "/api/vault/unlock" then
     local ctx = {
       enabled      = false,
       cipher_mode  = "ciphered",
-      permissions  = { soul = false, calendar = false, audio = false, video = false, images = false, context_files = false },
+      permissions  = { soul = false, audio = false, video = false, images = false, context_files = false },
       synced_files = {},
       active_files = {}
     }

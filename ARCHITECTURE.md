@@ -287,9 +287,9 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 `soul-mcp/` — Node.js MCP server with OAuth 2.0 + PKCE, port 3098, accessible via OpenResty at `/mcp`.
 
-**Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `calendar_read`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
+**Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `verify_human`, `beme_chat`, `elevenlabs_agent_update`
 
-**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools` (14 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `calendar_read`, `verify_human`)
+**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools` (13 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `verify_human`)
 
 **Available tools (trusted peer soul):** same list as paid agents — `soul_read` returns the Social Sphere block only; `soul_write` and `soul_comment` write only to the Social Sphere block
 

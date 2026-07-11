@@ -86,7 +86,7 @@ if method == "POST" and uri == "/api/vault/services" then
   name = name:gsub("[%c]", ""):sub(1, 128)
 
   -- Permissions validieren – akzeptiert Object {soul:true,...} (OAuth) und Array ["soul",...] (API)
-  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, calendar = true, network = true }
+  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, network = true }
   local permissions = {}
   if type(payload.permissions) == "table" then
     -- Object-Format: {soul: true, context_files: true, ...}
@@ -222,7 +222,7 @@ if method == "POST" and uri:match("^/api/vault/services/agent%-runner/rotate$") 
   -- Neuen Token eintragen
   svcs[new_token] = {
     name        = "SYS Agent Runner",
-    permissions = { soul = true, calendar = true, context_files = true, images = true, audio = true, video = true },
+    permissions = { soul = true, context_files = true, images = true, audio = true, video = true },
     expires_at  = math.floor(ngx.now()) + (365 * 86400),
     created_at  = math.floor(ngx.now())
   }

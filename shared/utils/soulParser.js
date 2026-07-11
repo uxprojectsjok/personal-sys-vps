@@ -238,9 +238,8 @@ export function buildSoulContext(soulMarkdown, messages = []) {
     }
   }
 
-  // Vault und Kalender immer dabei wenn vorhanden
+  // Vault immer dabei wenn vorhanden
   if (sections["Vault"]) selected.add("Vault");
-  if (sections["Kalender"]) selected.add("Kalender");
 
   // Wenn kein spezifisches Thema erkannt → Emotionale Signatur als Standard dazu
   if (selected.size <= 3) {
@@ -290,55 +289,6 @@ export function updateFrontmatterField(markdown, key, value) {
   // Neues Feld am Ende des Frontmatter-Blocks einfügen
   const newBody = fmBody.trimEnd() + `\n${key}: ${value}\n`;
   return before + newBody + after;
-}
-
-/**
- * Fügt einen datierten Eintrag in den ## Kalender Abschnitt der Soul.md ein.
- * Neueste Einträge stehen oben.
- * @param {string} markdown
- * @param {string} date - ISO-Datum "YYYY-MM-DD"
- * @param {string} note - Notiztext
- * @returns {string}
- */
-export function appendCalendarEntry(markdown, date, note) {
-  const entry = `- **${date}:** ${note.trim()}`;
-
-  if (/^## Kalender\b/m.test(markdown)) {
-    return markdown.replace(/(## Kalender[^\n]*\n)/, `$1${entry}\n`);
-  }
-
-  return markdown.trimEnd() + `\n\n## Kalender\n${entry}\n`;
-}
-
-/**
- * Aktualisiert einen bestehenden Kalender-Eintrag in der Soul.md.
- * Unterstützt beide Format-Varianten: **date:** und **date**:
- */
-export function updateCalendarEntry(markdown, date, oldText, newText) {
-  const lines = markdown.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/^(- \*\*)(\d{4}-\d{2}-\d{2})(:\*\*|\*\*:)\s*(.+)$/);
-    if (m && m[2] === date && m[4].trim() === oldText.trim()) {
-      lines[i] = `${m[1]}${date}${m[3]} ${newText.trim()}`;
-      break;
-    }
-  }
-  return lines.join('\n');
-}
-
-/**
- * Löscht einen Kalender-Eintrag aus der Soul.md.
- * Unterstützt beide Format-Varianten: **date:** und **date**:
- */
-export function deleteCalendarEntry(markdown, date, text) {
-  return markdown
-    .split('\n')
-    .filter(line => {
-      const m = line.match(/^- \*\*(\d{4}-\d{2}-\d{2})(:\*\*|\*\*:)\s*(.+)$/);
-      if (!m) return true;
-      return !(m[1] === date && m[3].trim() === text.trim());
-    })
-    .join('\n');
 }
 
 /**

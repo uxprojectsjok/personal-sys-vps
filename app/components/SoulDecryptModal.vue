@@ -380,7 +380,7 @@ async function finishDecrypt(ok) {
         await saveContext(token, {
           enabled: false,
           permissions: {
-            soul: true, calendar: false, audio: false,
+            soul: true, audio: false,
             video: false, images: false, context_files: false
           }
         });

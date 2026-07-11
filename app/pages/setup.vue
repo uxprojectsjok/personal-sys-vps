@@ -66,7 +66,6 @@ function onNav(id) {
   if (id === 'earnings') { router.push('/earnings');   return }
   if (id === 'maturity') { router.push('/maturity');       return }
   if (id === 'health')   { router.push('/health'); return }
-  if (id === 'calendar') { router.push('/calendar');    return }
   if (id === 'anchor')   { router.push('/anchor');    return }
   if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }

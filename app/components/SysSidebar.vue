@@ -77,7 +77,6 @@ const nav = computed(() => [
   ]},
   { group: t('nav.group_vault'), items: [
     { id: 'files',    icon: 'files',    label: t('nav.files') },
-    { id: 'calendar', icon: 'calendar', label: t('nav.calendar') },
   ]},
   { group: t('nav.group_network'), items: [
     { id: 'peers',    icon: 'peers',  label: t('nav.peers') },

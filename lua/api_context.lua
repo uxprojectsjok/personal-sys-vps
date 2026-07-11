@@ -52,7 +52,7 @@ local function read_context()
       enabled       = false,
       cipher_mode   = "ciphered",
       webhook_token = "",
-      permissions   = { soul = false, calendar = false, audio = false, video = false, images = false, context_files = false },
+      permissions   = { soul = false, audio = false, video = false, images = false, context_files = false },
       synced_files  = { audio = cjson.empty_array, video = cjson.empty_array, images = cjson.empty_array, context = cjson.empty_array },
       active_files  = { audio = "", video = "", images = "", context = "" }
     }

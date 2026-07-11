@@ -79,7 +79,6 @@ const NAV_ITEMS = computed(() => [
   { id: 'chronik',  icon: 'history',  label: t('cmdk.chronik_label'),  sub: t('cmdk.chronik_sub') },
   { id: 'maturity', icon: 'spark',    label: t('cmdk.maturity_label'), sub: t('cmdk.maturity_sub') },
   { id: 'files',    icon: 'files',    label: t('cmdk.files_label'),    sub: t('cmdk.files_sub') },
-  { id: 'calendar', icon: 'calendar', label: t('cmdk.calendar_label'), sub: t('cmdk.calendar_sub') },
   { id: 'peers',    icon: 'peers',    label: t('cmdk.peers_label'),    sub: t('cmdk.peers_sub') },
   { id: 'connect',  icon: 'qr',       label: t('cmdk.connect_label'),  sub: t('cmdk.connect_sub') },
   { id: 'market',   icon: 'market',   label: t('cmdk.market_label'),   sub: t('cmdk.market_sub') },

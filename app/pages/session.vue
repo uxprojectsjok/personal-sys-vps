@@ -456,7 +456,6 @@ function onNav(id) {
   if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'maturity') { router.push('/maturity');       return }
   if (id === 'health')   { router.push('/health'); return }
-  if (id === 'calendar') { router.push('/calendar');    return }
   drawerOpen.value = false
   router.push('/')
 }

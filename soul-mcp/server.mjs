@@ -47,7 +47,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const SCOPES = ['soul', 'calendar', 'audio', 'images', 'video', 'context', 'network'];
+const SCOPES = ['soul', 'audio', 'images', 'video', 'context', 'network'];
 
 // ── OAuth Discovery (RFC 8414) ────────────────────────────────────────────
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {

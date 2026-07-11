@@ -12,7 +12,6 @@ import { register as videoList }             from './video_list.mjs';
 import { register as videoGet }              from './video_get.mjs';
 import { register as contextList }           from './context_list.mjs';
 import { register as contextGet }            from './context_get.mjs';
-import { register as calendarRead }          from './calendar_read.mjs';
 import { register as verifyHuman }           from './verify_human.mjs';
 import { register as verifyIdentity }        from './verify_identity.mjs';
 import { register as soulEarnings }          from './soul_earnings.mjs';
@@ -30,8 +29,6 @@ import { register as profileGet }            from './profile_get.mjs';
 import { register as profileSave }           from './profile_save.mjs';
 import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as createAgent }           from './create_agent.mjs';
-import { register as calendarWrite }         from './calendar_write.mjs';
-import { register as calendarDelete }        from './calendar_delete.mjs';
 import { register as callMe }                from './call_me.mjs';
 import { register as soulPayRead }           from './soul_pay_read.mjs';
 import { register as soulPreview }          from './soul_preview.mjs';
@@ -71,7 +68,6 @@ import { register as soulMaturityPeer }      from './soul_maturity_peer.mjs';
 import { register as soulSkillsPeer }        from './soul_skills_peer.mjs';
 import { register as soulContextQueryPeer }  from './soul_context_query_peer.mjs';
 import { register as soulWritePeer }         from './soul_write_peer.mjs';
-import { register as calendarReadPeer }      from './calendar_read_peer.mjs';
 import { register as profileGetPeer }        from './profile_get_peer.mjs';
 import { registerList as vaultListPeer }     from './vault_list_peer.mjs';
 import { registerGet as vaultGetPeer }       from './vault_get_peer.mjs';
@@ -110,15 +106,12 @@ export function registerTools(server, token, soulId = null) {
   videoGet(server, token);
   contextList(server, token);
   contextGet(server, token);
-  calendarRead(server, token);
   profileGet(server, token);
   profileSave(server, token);
   soulSkills(server, token);
   soulContextQuery(server, token);
   soulCloudPush(server, token);
   createAgent(server, token);
-  calendarWrite(server, token);
-  calendarDelete(server, token);
   callMe(server, token, soulId);
   soulPreview(server, token);
   soulPayRead(server, token);
@@ -148,7 +141,7 @@ export function registerTools(server, token, soulId = null) {
  * Vault-Media-Endpunkte (audio/images/video/context/profile) akzeptiert
  * vault_auth.lua bereits für pol_access_token → bestehende Tool-Implementierungen
  * funktionieren direkt.
- * Alle anderen Tools (soul_read, verify_human, soul_maturity, calendar_read,
+ * Alle anderen Tools (soul_read, verify_human, soul_maturity,
  * soul_skills) benötigen Filesystem-Varianten da /api/soul für pol_access_token
  * gesperrt ist.
  *
@@ -172,9 +165,6 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
 
   // soul_skills: /api/soul gesperrt → Filesystem
   if (allowed.has('soul_skills') && soulId) soulSkillsPeer(server, soulId);
-
-  // calendar_read: /api/soul gesperrt → Filesystem
-  if (allowed.has('calendar_read') && soulId) calendarReadPeer(server, soulId);
 
   // soul_discover / soul_preview: interne Endpoints, kein Auth nötig — immer verfügbar
   soulDiscover(server, polToken);
@@ -227,7 +217,6 @@ export function registerPeerTools(server, peerToken, _freeTools = [], targetSoul
   soulMaturityPeer(server, targetSoulId);
   soulSkillsPeer(server, targetSoulId);
   soulContextQueryPeer(server, targetSoulId, peerToken);
-  calendarReadPeer(server, targetSoulId);
   profileGetPeer(server, targetSoulId);
   soulWritePeer(server, targetSoulId);
 

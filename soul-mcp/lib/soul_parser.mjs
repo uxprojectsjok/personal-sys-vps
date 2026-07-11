@@ -38,20 +38,6 @@ export function extractAllSections(md) {
   return result;
 }
 
-/** Parst Kalender-Einträge aus dem Kalender-Abschnitt */
-export function parseCalendar(md) {
-  const raw = extractSection(md, 'Kalender');
-  if (!raw) return { entries: [], raw: '' };
-
-  const entries = [];
-  for (const line of raw.split('\n')) {
-    // Format: - **2026-04-15:** Titel  oder  - 2026-04-15: Titel  oder  - 2026-04-15 Titel
-    const m = line.match(/[-*]\s*\*{0,2}(\d{4}-\d{2}-\d{2})\*{0,2}[:\s]+(.+)/);
-    if (m) entries.push({ date: m[1], title: m[2].trim() });
-  }
-  return { entries, raw };
-}
-
 // LONGMEM block markers — verwende eindeutige Marker die nicht in Session-Logs auftauchen
 const LM_START = '<!-- SYS:LONGMEM:START -->';
 const LM_END   = '<!-- SYS:LONGMEM:END -->';

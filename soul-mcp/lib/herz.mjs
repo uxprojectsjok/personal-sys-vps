@@ -509,37 +509,6 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     }
   }
 
-  // ── 6a. Kalender — Geburtstage → Fact, vergangene Events entfernen ──────────
-  const kalContent = extractSectionFull(current, 'Kalender');
-  if (kalContent && !kalContent.includes('Noch nicht beschrieben') && kalContent.trim().length > 10) {
-    const kalLines = kalContent.split('\n').filter(l => l.trim());
-    const futureLines = kalLines.filter(l => {
-      const m = l.match(/\*\*(\d{4}-\d{2}-\d{2})\*\*/);
-      return m && m[1] >= today;
-    });
-    const birthdayLines = kalLines.filter(l => /geburtstag/i.test(l));
-    if (birthdayLines.length > 0) {
-      const bdText = birthdayLines
-        .map(l => l.replace(/^-\s*\*\*[^*]+\*\*:?\s*/, '').trim())
-        .join(', ');
-      const existingBd = (existing.facts ?? []).find(f => f.id === 'family_dates');
-      if (!existingBd) {
-        existing.facts = [...(existing.facts ?? []), {
-          id: 'family_dates', cat: 'identity',
-          text: `Geburtstage: ${bdText}`,
-          score: 4, since: today,
-        }];
-      }
-    }
-    // Kein Kalender im Template → Sektion ganz entfernen (oder nur Zukunft behalten)
-    if (futureLines.length > 0) {
-      current = replaceSection(current, 'Kalender', futureLines.join('\n'));
-    } else {
-      current = removeSection(current, 'Kalender');
-    }
-    changed = true;
-  }
-
   // ── 6b. Food Log → health.md verschieben, Standort → LONGMEM Fact ──────────
   // Food Log: Einträge in vault/context/health.md anhängen, dann entfernen
   const foodContent = extractSectionFull(current, 'Food Log');
@@ -594,7 +563,7 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     // Preserved blocks — never touch
     'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
     // Already handled
-    'Kalender', 'Food Log', 'Standort', 'Wohnort',
+    'Food Log', 'Standort', 'Wohnort',
   ]);
   for (const part of current.split(/\n(?=## )/)) {
     const hm = part.match(/^## (.+)\n/);
@@ -715,7 +684,7 @@ async function onSoulHealthCheck(soulId, soul, apiKey, state, chainLen) {
     'Session-Log', 'Session-Log (komprimiert)',
     // Preserved
     'Sozialsphäre', 'Social Sphere', 'Agent-Sandbox', 'Agent Sandbox', 'Vault',
-    'Kalender', 'Food Log', 'Standort', 'Wohnort',
+    'Food Log', 'Standort', 'Wohnort',
   ]);
   for (const part of soul.split(/\n(?=## )/)) {
     const hm = part.match(/^## (.+)\n/);

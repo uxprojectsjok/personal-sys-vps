@@ -46,8 +46,6 @@ if ngx.ctx.via_webhook then
     vault_manifest  = "soul", mind_read       = "soul",
     mind_write      = "soul", profile_get     = "soul",
     profile_save    = "soul",
-    calendar_read   = "calendar", calendar_write  = "calendar",
-    calendar_delete = "calendar",
     audio_get       = "audio",         audio_list      = "audio",
     video_get       = "video",         video_list      = "video",
     image_get       = "images",        image_list      = "images",

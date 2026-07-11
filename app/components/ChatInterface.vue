@@ -2455,7 +2455,6 @@ const PIN_TOOLS = computed(() => [
   { id: 'context_get',         name: t('pin_tools.context_get_name'),   desc: t('pin_tools.context_get_desc')   },
   { id: 'context_list',        name: t('pin_tools.context_list_name'),  desc: t('pin_tools.context_list_desc')  },
   { id: 'profile_get',         name: t('pin_tools.profile_get_name'),   desc: t('pin_tools.profile_get_desc')   },
-  { id: 'calendar_read',       name: t('pin_tools.calendar_read_name'), desc: t('pin_tools.calendar_read_desc') },
   { id: 'health_check_payed',  name: t('pin_tools.health_check_name'),  desc: t('pin_tools.health_check_desc')  },
   { id: 'shop_write_read',     name: t('pin_tools.shop_name'),          desc: t('pin_tools.shop_desc')          },
 ])

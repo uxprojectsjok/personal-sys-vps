@@ -17,7 +17,6 @@ const enabled          = ref(false);
 const cipherMode       = ref("ciphered"); // "open" | "ciphered" — zuletzt auf VPS gespeicherter Modus
 const permissions      = ref({
   soul:          false,
-  calendar:      false,
   audio:         false,
   video:         false,
   images:        false,
@@ -108,7 +107,7 @@ export function useApiContext() {
       const data = await res.json();
       enabled.value         = data.enabled            ?? false;
       cipherMode.value      = data.cipher_mode        ?? "ciphered";
-      permissions.value     = { soul: false, calendar: false, audio: false, video: false, images: false, context_files: false, ...data.permissions };
+      permissions.value     = { soul: false, audio: false, video: false, images: false, context_files: false, ...data.permissions };
       // Normalisieren: Server kann leere Arrays als {} (cjson empty-object) senden
       const sf = data.synced_files || {};
       syncedFiles.value = {

@@ -154,16 +154,6 @@ if uri == "/api/soul" then
     soul_content = decrypted
   end
 
-  if ngx.ctx.via_webhook and not perm.calendar then
-    local cal_start = soul_content:find("\n## Kalender")
-    if cal_start then
-      local heading_end = soul_content:find("\n", cal_start + 1, true)
-      local next_sec = heading_end and soul_content:find("\n## ", heading_end, true)
-      soul_content = soul_content:sub(1, cal_start - 1) ..
-                     (next_sec and soul_content:sub(next_sec) or "")
-    end
-  end
-
   ngx.header["Content-Type"]  = "text/markdown; charset=utf-8"
   ngx.header["Cache-Control"] = "no-store"
   ngx.say(soul_content)

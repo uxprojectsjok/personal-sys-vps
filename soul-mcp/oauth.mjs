@@ -69,7 +69,6 @@ function randomHex(bytes) {
 // Scope → SaveYourSoul Permission mapping
 const SCOPE_PERMISSIONS = {
   soul:     { soul: true },
-  calendar: { soul: true, calendar: true },
   audio:    { audio: true },
   images:   { images: true },
   video:    { video: true },
@@ -79,7 +78,6 @@ const SCOPE_PERMISSIONS = {
 
 const SCOPE_LABELS = {
   soul:     'Soul-Inhalt lesen (Persönlichkeit, Werte, Biografie)',
-  calendar: 'Kalender-Einträge einsehen',
   audio:    'Audio-Dateien abspielen (Stimme, Memos)',
   images:   'Bilder anzeigen (Fotos, Gesicht)',
   video:    'Videos abspielen (Bewegung, Aufnahmen)',

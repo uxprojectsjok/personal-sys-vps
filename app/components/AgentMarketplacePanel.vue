@@ -610,7 +610,6 @@ const showToolPicker = ref(false)
 // Nur Tools die registerPaidTools() tatsächlich registriert
 const AVAILABLE_TOOLS = [
   'audio_get', 'audio_list',
-  'calendar_read',
   'context_get', 'context_list',
   'health_check_payed',
   'image_get', 'image_list',
@@ -624,7 +623,6 @@ const AVAILABLE_TOOLS = [
 const TOOL_LABELS = computed(() => ({
   audio_get:          t('marketplace.tool_audio_get'),
   audio_list:         t('marketplace.tool_audio_list'),
-  calendar_read:      t('marketplace.tool_calendar_read'),
   context_get:        t('marketplace.tool_context_get'),
   context_list:       t('marketplace.tool_context_list'),
   health_check_payed: t('marketplace.tool_health_check'),

@@ -640,7 +640,6 @@ function onNav(id) {
   if (id === 'chronik')  { navigateTo('/chronicle');    return }
   if (id === 'maturity') { navigateTo('/maturity');      return }
   if (id === 'health')   { navigateTo('/health'); return }
-  if (id === 'calendar') { navigateTo('/calendar');   return }
   if (id === 'files')    { navigateTo('/vault');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/connection'); return }
@@ -653,7 +652,7 @@ function onNav(id) {
 
 const navLabels = computed(() => ({
   home: t('nav.home'), chat: t('nav.session'), soul: 'sys.md', chronik: t('nav.chronik'), maturity: t('nav.maturity'),
-  files: t('nav.files'), calendar: t('nav.calendar'), peers: t('nav.peers'), connect: t('nav.connect'),
+  files: t('nav.files'), peers: t('nav.peers'), connect: t('nav.connect'),
   market: t('nav.marketplace'), anchor: t('nav.anchor'), export: t('nav.export'), settings: t('nav.settings'),
 }))
 const crumbs = computed(() => ['SYS', navLabels.value[route.value] || t('nav.home')])

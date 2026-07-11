@@ -1452,14 +1452,6 @@ server {
     content_by_lua_file /etc/openresty/lua/agent_mind_write.lua;
   }
 
-  location = /api/agent/calendar {
-    limit_except POST OPTIONS { deny all; }
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/agent_calendar.lua;
-  }
-
   location = /api/agent/peer-send {
     limit_except POST OPTIONS { deny all; }
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;

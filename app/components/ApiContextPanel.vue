@@ -102,7 +102,6 @@ const saveSuccess = ref(false);
 
 const permLabels = computed(() => ({
   soul:          { label: t('api_context.perm_soul'),     hint: t('api_context.perm_soul_hint')    },
-  calendar:      { label: t('api_context.perm_calendar'), hint: t('api_context.perm_calendar_hint') },
   audio:         { label: t('api_context.perm_audio'),    hint: t('api_context.perm_audio_hint')   },
   video:         { label: t('api_context.perm_video'),    hint: t('api_context.perm_video_hint')   },
   images:        { label: t('api_context.perm_images'),   hint: t('api_context.perm_images_hint')  },

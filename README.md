@@ -128,7 +128,6 @@ No third-party messaging service involved. No WhatsApp, no Telegram. The AI is t
 - Vault Shared: peer-accessible file store (`/var/lib/sys/souls/{soul_id}/vault_shared/`)
 - Optional vault encryption (AES-256-CBC, magic header `SYSCRYPT01`)
 - File viewer, audio player, video player built in
-- Calendar view — vault-based event entries
 
 **Local Vault Folder Structure**
 ```
@@ -203,14 +202,14 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 
 ```
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
-│   ├── pages/               session, soul, gate, dateien, kalender, chronik, einnahmen,
+│   ├── pages/               session, soul, gate, dateien, chronik, einnahmen,
 │   │                        marketplace, peers, reife, verankern, verbindung, connect,
 │   │                        einrichten, einstellungen, exportieren
 │   ├── components/          ChatInterface, VaultExplorer, SoulViewer, AgentMarketplacePanel,
 │   │                        AgentSandboxCard, ApiContextPanel, AudioCaptureCard, CameraRecorder,
 │   │                        ConfirmModal, EmergencyModal, FirstSetupModal, LiveProfile,
 │   │                        MediaPlayer, ModalCreateSoul, MotionCaptureCard, MotionRecorder,
-│   │                        SettingsModal, SoulAnchorModal, SoulCalendar, SoulDecryptModal,
+│   │                        SettingsModal, SoulAnchorModal, SoulDecryptModal,
 │   │                        SoulDownload, SoulEncryptModal, SoulMaturityMeter, SoulSetupWizard,
 │   │                        SoulSyncModal, SoulUpload, SysCommandPalette, SysIcon, SysMobileNav,
 │   │                        SysSidebar, SysTopbar, VaultServicesPanel, VaultSessionPanel,
@@ -253,7 +252,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   ├── oauth.mjs            OAuth 2.0 + PKCE token management
 │   ├── tools/               50+ tools — soul_read/write, vault_manifest, health_check,
 │   │                        health_sync, food_log, mind_read/write, soul_discover,
-│   │                        soul_skills, beme_chat, calendar_read, verify_human,
+│   │                        soul_skills, beme_chat, verify_human,
 │   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
 │   │                        soul_paid_comment, soul_pay_read, shop_write_read,
 │   │                        elevenlabs_agent_update, twilio_call_config,
@@ -467,7 +466,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 0d27c4732de62519
+Current release fingerprint: 0642b562f5f01f70
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

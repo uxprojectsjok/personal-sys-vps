@@ -19,7 +19,7 @@ Keine Analyse-Kommentare, keine Floskeln. Bodenständig, klar, wirklich neugieri
 // Namen-Set für Routing: soul tools → /api/soul-tool, alle anderen → /api/mcp-call
 const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write",
-  "calendar_read", "audio_list", "image_list", "video_list", "context_list", "profile_get",
+  "audio_list", "image_list", "video_list", "context_list", "profile_get",
   "health_check", "food_log", "health_sync",
   "shop_log", "shop_check"
 ]);
@@ -76,11 +76,6 @@ const SOUL_TOOLS = [
       },
       required: ["section", "content"]
     }
-  },
-  {
-    name: "calendar_read",
-    description: "Liest den Kalender aus der sys.md und gibt strukturierte Termine zurück.",
-    input_schema: { type: "object", properties: {}, required: [] }
   },
   {
     name: "audio_list",
@@ -354,7 +349,6 @@ Wann welches Tool:
 - context_get → für eine spezifische Kontext-Datei
 - mind_read → deine eigene Konfiguration
 - mind_write → wenn du etwas über dich selbst gelernt hast
-- calendar_read → bei Terminen und Zeitplanung
 - audio_list / image_list / video_list / context_list → für Vault-Inhalte nach Typ
 - profile_get → bei Profil-Analysen (Gesicht, Stimme, Bewegung, Fachkompetenz)
 - health_sync → bei "sync", "garmin", "aktualisier" — wird vom System direkt ausgeführt (~30 Sek. synchron), Ergebnis erscheint automatisch. Nicht selbst aufrufen.

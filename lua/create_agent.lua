@@ -375,7 +375,6 @@ else
     "soul_read: Kontext laden wenn du deine Identitaet oder Erinnerungen brauchst.\n" ..
     "soul_write: Nach bedeutsamen Erkenntnissen -- section='Selbstreflexion', mode='append', content='YYYY-MM-DD: ein Satz'.\n" ..
     "mind_read / mind_write: Gedanken und Stimmung lesen und festhalten.\n" ..
-    "calendar_read / calendar_write: Termine lesen und eintragen.\n" ..
     "peer_inbox / peer_send: Nachrichten von Peers lesen und senden.\n" ..
     "web_search: Aktuelle Fakten, Wetter, Preise -- ohne Rueckfrage aufrufen.\n" ..
     "health_check / food_log: Gesundheits- und Ernaehrungsdaten.\n" ..
@@ -460,16 +459,6 @@ local conv_config = {
             tool_url("mind_write"),
             { section=sd("Sektionsname"), content=sd("Inhalt"), mode=sd("append | replace | prepend") },
             { "section", "content" }),
-          -- Kalender
-          whget("calendar_read",   "Laedt Kalender-Eintraege.", tool_url("calendar_read")),
-          wh("calendar_write", "Traegt Termin in den Kalender ein.",
-            tool_url("calendar_write"),
-            { date=sd("Datum YYYY-MM-DD"), title=sd("Titel"), time=sd("Uhrzeit HH:MM"), duration=nd("Dauer Minuten"), description=sd("Details") },
-            { "date", "title" }),
-          wh("calendar_delete", "Loescht einen Kalender-Eintrag.",
-            tool_url("calendar_delete"),
-            { date=sd("Datum YYYY-MM-DD"), title=sd("Titel") },
-            { "date", "title" }),
           -- Peers
           wh("peer_inbox", "Liest eingehende Peer-Nachrichten.",
             tool_url("peer_inbox"),

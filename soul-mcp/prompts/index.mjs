@@ -244,15 +244,7 @@ The agent runner processes tasks automatically every hour and marks them done or
 
 ---
 
-## 6. Calendar & Time
-
-### calendar_read
-**When:** User asks about appointments, free slots, today's entries, or a calendar overview.
-Reads the linked calendar integration (iCal/Google).
-
----
-
-## 7. Health & Body Data
+## 6. Health & Body Data
 
 ### health_check
 **When:** User asks about health data — heart rate, sleep, steps, activity.
@@ -270,7 +262,7 @@ Writes to health.md, automatically archives older months.
 
 ---
 
-## 8. Shopping & Consumption
+## 7. Shopping & Consumption
 
 ### shop_log
 **When:** User mentions a purchase or wants to add something to the wishlist.
@@ -297,7 +289,7 @@ With parameter ad_placement: { agent, product, price, message, cta_url, expires 
 
 ---
 
-## 9. Cloud & Blockchain
+## 8. Cloud & Blockchain
 
 ### soul_cloud_push
 **When:** User wants to pin their soul publicly on IPFS (agent marketplace).
@@ -305,7 +297,7 @@ Publishes metadata (name, tags, MCP endpoint) — no private data.
 
 ---
 
-## 10. Infrastructure & Integrations
+## 9. Infrastructure & Integrations
 
 ### elevenlabs_agent_update
 **When:** User wants to update their ElevenLabs voice agent (prompt, voice).
@@ -325,7 +317,6 @@ Credentials (account_sid, auth_token) passed directly — no stored secrets.
 | "What's on my wishlist?" | shop_write_read |
 | "Which files do I have?" | vault_manifest |
 | "Show me my images/videos/audios" | image_list / video_list / audio_list |
-| "What do I have today?" | calendar_read |
 | "Search other souls / AI agents" | soul_discover |
 | "I want to access another soul" | soul_discover → soul_pay_read |
 | "Is my soul verified?" | verify_human |
