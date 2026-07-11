@@ -82,11 +82,35 @@ local entry = {
   size = soul_size,
 }
 if block_number then entry.block = block_number end
+local history_count_before = #history
 if #history == 0 then entry.genesis = true end
 table.insert(history, entry)
 
-local hfw = io.open(hist_path, "w")
-if hfw then hfw:write(cjson.encode(history)); hfw:close() end
+local hist_json = cjson.encode(history)
+if not hist_json then
+  ngx.log(ngx.ERR, "[register-anchor] cjson.encode(history) fehlgeschlagen für soul_id=", soul_id,
+          " — #history vor Insert=", history_count_before, ", nach Insert=", #history,
+          " — anchor_history.json NICHT aktualisiert, fahre mit chain_anchor.json fort")
+else
+  local hfw, hfw_err = io.open(hist_path, "w")
+  if not hfw then
+    ngx.log(ngx.ERR, "[register-anchor] anchor_history.json konnte nicht geöffnet werden: ", hfw_err or "unbekannt")
+  else
+    hfw:write(hist_json)
+    hfw:close()
+    -- Sofort gegenlesen — deckt stille Schreibfehler (Disk voll, Berechtigung) auf.
+    local verify_f = io.open(hist_path, "r")
+    if verify_f then
+      local verify_raw = verify_f:read("*a"); verify_f:close()
+      local verify_ok, verify_decoded = pcall(cjson.decode, verify_raw)
+      if not verify_ok or type(verify_decoded) ~= "table" or #verify_decoded ~= #history then
+        ngx.log(ngx.ERR, "[register-anchor] anchor_history.json Verifikation fehlgeschlagen für soul_id=", soul_id,
+                " — erwartet #history=", #history,
+                ", gelesen=", (verify_ok and type(verify_decoded) == "table") and #verify_decoded or -1)
+      end
+    end
+  end
+end
 
 local path     = soul_dir .. "/chain_anchor.json"
 

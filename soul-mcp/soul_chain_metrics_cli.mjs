@@ -45,8 +45,25 @@ try {
       };
     });
 
+    // Schutz gegen RPC-Lag: register-anchor schreibt den TX sofort nach dem Broadcast,
+    // getHistory() liest aber nur bestätigten Contract-Zustand — kurz nach einem frischen
+    // Anchor kann die On-Chain-Abfrage den Eintrag noch nicht sehen. Ohne diesen Schutz
+    // überschreibt genau dieser Merge dann den gerade erst korrekt geschriebenen lokalen
+    // Eintrag mit einer unvollständigen Rekonstruktion (tx geht verloren).
+    // Lokale Einträge mit echtem TX, die im On-Chain-Ergebnis nicht auftauchen, bleiben
+    // erhalten statt verworfen zu werden.
+    const knownTx = new Set(history.map(h => h.tx).filter(Boolean));
+    for (const local of localHistory) {
+      if (local.tx && !knownTx.has(local.tx)) {
+        history.push({ tx: local.tx, ts: local.ts, size: local.size ?? 0, ...(local.block && { block: local.block }) });
+        knownTx.add(local.tx);
+      }
+    }
+    history.sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));
+
     // Genesis markieren
-    if (history.length > 0 && !history[0].genesis) history[0].genesis = true;
+    history.forEach(e => delete e.genesis);
+    if (history.length > 0) history[0].genesis = true;
 
     await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
     rpcOk = true;
