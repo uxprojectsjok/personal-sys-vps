@@ -299,9 +299,6 @@ Publishes metadata (name, tags, MCP endpoint) — no private data.
 
 ## 9. Infrastructure & Integrations
 
-### elevenlabs_agent_update
-**When:** User wants to update their ElevenLabs voice agent (prompt, voice).
-
 ### twilio_call_config
 **When:** User wants to configure a Twilio number (voice/SMS webhooks).
 Credentials (account_sid, auth_token) passed directly — no stored secrets.

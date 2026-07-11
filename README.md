@@ -255,7 +255,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   │                        soul_skills, beme_chat, verify_human,
 │   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
 │   │                        soul_paid_comment, soul_pay_read, shop_write_read,
-│   │                        elevenlabs_agent_update, twilio_call_config,
+│   │                        twilio_call_config,
 │   │                        audio/image/video list+get, context_get/list, profile_get/save,
 │   │                        soul_read_by_token, *_peer variants, …
 │   ├── lib/                 api.mjs, blockchain.mjs, herz.mjs, soul_indexer.mjs,
@@ -466,7 +466,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 0642b562f5f01f70
+Current release fingerprint: f1099c8198a0cd87
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
