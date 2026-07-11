@@ -1278,7 +1278,7 @@ app.get('/api/soul/scan', async (req, res) => {
       soul_id:             s.soul_id,
       name:                s.name || s.soul_id?.slice(0, 8),
       description:         s.description ? s.description.slice(0, 120) : '',
-      tags:                Array.isArray(s.tags) ? s.tags.slice(0, 6) : [],
+      tags:                Array.isArray(s.tags) ? s.tags : [],
       pol_per_request:     basePol,
       pol_current:         polCurrent,
       dynamic_pricing:     dynamic,
