@@ -22,7 +22,7 @@ local TTL        = 300   -- 5 Minuten
 ngx.req.read_body()
 local body_raw = ngx.req.get_body_data() or ""
 
-local VALID = { fingerprint = true, face = true, voice = true }
+local VALID = { fingerprint = true, face = true, voice = true, face_hq = true }
 local methods = {}
 
 if body_raw ~= "" then

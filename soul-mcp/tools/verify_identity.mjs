@@ -57,7 +57,7 @@ async function buildVerifiedResult(status, challenge_id) {
   const score       = status.score ?? (level === '2fa' ? 3 : 1)
   const completed   = Array.isArray(status.completed_methods) ? status.completed_methods : (status.method ? [status.method] : [])
   const methodResults = Array.isArray(status.method_results) ? status.method_results : null
-  const methodLabels  = { fingerprint: 'Fingerabdruck', face: 'Gesichtserkennung', voice: 'Stimm-Analyse' }
+  const methodLabels  = { fingerprint: 'Fingerabdruck', face: 'Gesichtserkennung', voice: 'Stimm-Analyse', face_hq: 'Gesichtserkennung HQ' }
 
   // Biometrische Detail-Zeilen
   const bioLines = completed.map(m => {
@@ -116,13 +116,19 @@ export function register(server, token) {
       'The tool runs multiple times in succession until the person has verified.',
       '',
       'Methods (optional — empty = user chooses on the verify page):',
-      '  fingerprint  WebAuthn/Face ID/Touch ID — Score 1–2',
-      '  face         Claude Vision face — Score 2–3',
-      '  voice        FFT voice — Score 2–3',
+      '  fingerprint  WebAuthn/Face ID/Touch ID — weight 1',
+      '  face         Claude Vision face — weight 1',
+      '  voice        FFT voice — weight 1',
+      '  face_hq      Claude Vision face, stricter prompt: explicit confidence',
+      '               tier + liveness signals (screen reflection, paper edge/',
+      '               curl, flat lighting, moire) — weight 2. Use for sensitive',
+      '               actions (large payments, wallet signing, data deletion)',
+      '               instead of plain "face" — same camera flow for the user,',
+      '               just a stricter check server-side.',
       'Score +1 if mobile (2FA). Wallet signature in UI → Score 3/3.',
     ].join('\n'),
     {
-      methods:      z.array(z.enum(['fingerprint', 'face', 'voice'])).optional().describe('Methods (one or more) — each increases score by 1. Empty = user chooses.'),
+      methods:      z.array(z.enum(['fingerprint', 'face', 'voice', 'face_hq'])).optional().describe('Methods (one or more). Use face_hq instead of face for sensitive actions. Empty = user chooses.'),
       challenge_id: z.string().length(32).optional().describe('From previous pending result — call again immediately'),
     },
     async ({ methods, challenge_id }) => {

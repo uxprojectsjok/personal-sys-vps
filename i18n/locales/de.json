@@ -405,6 +405,7 @@
     "method_fingerprint": "Fingerabdruck",
     "method_face": "Gesichtserkennung",
     "method_voice": "Stimm-Analyse",
+    "method_face_hq": "Gesichtserkennung HQ",
     "step_finger": "Finger",
     "step_face": "Gesicht",
     "step_voice": "Stimme",

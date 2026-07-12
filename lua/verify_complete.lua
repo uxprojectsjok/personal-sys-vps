@@ -76,9 +76,18 @@ if body.finalize == true then
   return
 end
 
-local VALID = { fingerprint = true, face = true, voice = true }
+local VALID = { fingerprint = true, face = true, voice = true, face_hq = true }
 if not VALID[method] then
   ngx.status = 400; ngx.say('{"error":"invalid_method"}'); return
+end
+
+-- HQ-Methoden zählen höher als Standard-Methoden (schärferer Prompt +
+-- explizite Liveness-Prüfung, siehe verify_face_check.lua)
+local METHOD_WEIGHT = { fingerprint = 1, face = 1, voice = 1, face_hq = 2 }
+local function scoreOf(methodList)
+  local sum = 0
+  for _, m in ipairs(methodList) do sum = sum + (METHOD_WEIGHT[m] or 1) end
+  return sum
 end
 
 local fpath = VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json"
@@ -126,7 +135,7 @@ if has_multi then
   if verified then
     table.insert(completed, method)
     d.completed_methods = completed
-    d.score  = #completed
+    d.score  = scoreOf(completed)
     d.is_2fa = d.is_2fa or is_2fa
     d.method = method
     -- Konsensus-Layer: pro-Methode Ergebnis tracken
@@ -160,7 +169,7 @@ else
   d.verified_at = verified_at
   d.method      = method
   d.is_2fa      = is_2fa
-  d.score       = verified and 1 or 0
+  d.score       = verified and scoreOf({ method }) or 0
   d.completed_methods = verified and { method } or cjson.empty_array
   if verified then mark_token_verified(soul_id, d.triggering_token) end
 end

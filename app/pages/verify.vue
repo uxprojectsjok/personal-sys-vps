@@ -168,13 +168,13 @@
             <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
           </template>
 
-          <!-- ── FACE ── -->
-          <template v-else-if="method === 'face'">
+          <!-- ── FACE (inkl. HQ — gleiche UI, schärferer Server-Check) ── -->
+          <template v-else-if="method === 'face' || method === 'face_hq'">
             <template v-if="phase === 'idle' || phase === 'verifying'">
               <div class="vfy-ic" :class="icClass">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M11.25 12.75H12m-.375 0H12m.75 0h-.375M6.75 7.5c0-.69.56-1.25 1.25-1.25h8a1.25 1.25 0 0 1 0 2.5h-8A1.25 1.25 0 0 1 6.75 7.5ZM12 3a9 9 0 1 1 0 18A9 9 0 0 1 12 3Z"/></svg>
               </div>
-              <h1>{{ $t('verify.face') }}<em>.</em></h1>
+              <h1>{{ method === 'face_hq' ? $t('verify.method_face_hq') : $t('verify.face') }}<em>.</em></h1>
               <p class="vfy-desc">{{ $t('verify.face_desc') }}</p>
               <button class="btn btn-primary btn-lg" :disabled="phase === 'verifying'" @click="doFace">
                 <span v-if="phase === 'verifying'" class="btn-spinner" />
@@ -311,11 +311,12 @@ const methodParam  = route.query.m  || ''
 const vt           = route.query.vt || ''
 
 // Methoden aus URL parsen (komma-getrennt oder einzeln)
-const VALID_METHODS  = ['fingerprint', 'face', 'voice']
+const VALID_METHODS  = ['fingerprint', 'face', 'voice', 'face_hq']
 const METHOD_LABELS  = computed(() => ({
   fingerprint: t('verify.method_fingerprint'),
   face:        t('verify.method_face'),
   voice:       t('verify.method_voice'),
+  face_hq:     t('verify.method_face_hq'),
 }))
 const urlMethods    = methodParam
   ? methodParam.split(',').filter(m => VALID_METHODS.includes(m))
@@ -734,7 +735,7 @@ async function captureFace() {
     const b64 = faceCanvas.value.toDataURL('image/jpeg', 0.85).split(',')[1]
     const r   = await fetch('/api/verify/face-check', {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ image_base64: b64, mime: 'image/jpeg' }),
+      body: JSON.stringify({ image_base64: b64, mime: 'image/jpeg', hq: method.value === 'face_hq' }),
     })
     const d  = await r.json()
     const ok = d.match === true

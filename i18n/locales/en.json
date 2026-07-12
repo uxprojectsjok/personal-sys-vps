@@ -405,6 +405,7 @@
     "method_fingerprint": "Fingerprint",
     "method_face": "Facial recognition",
     "method_voice": "Voice analysis",
+    "method_face_hq": "Facial recognition HQ",
     "step_finger": "Finger",
     "step_face": "Face",
     "step_voice": "Voice",

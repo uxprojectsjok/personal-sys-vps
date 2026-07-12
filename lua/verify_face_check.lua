@@ -36,6 +36,8 @@ if not ok_b or type(body) ~= "table" or type(body.image_base64) ~= "string" then
   ngx.status = 400; ngx.say('{"error":"invalid_body"}'); return
 end
 
+local hq = body.hq == true
+
 local live_b64 = body.image_base64
 local live_mime = (type(body.mime) == "string" and body.mime ~= "") and body.mime or "image/jpeg"
 -- Strip data-URI prefix if present
@@ -69,16 +71,35 @@ end
 
 local profile_b64 = ngx.encode_base64(raw)
 
--- Claude Vision Anfrage
+-- HQ-Modus: schärferer Prompt statt binärem MATCH/NO_MATCH — fragt explizit
+-- Konfidenz-Stufe UND Liveness-Signale ab (Screen-Reflexion, Papierkante/
+-- -wölbung, flaches Licht, Moiré-Muster). Kein neuer Anbieter, kein neuer
+-- Call — nur ein anderer Prompt im selben Claude-Vision-Request.
+local prompt = hq and
+  "You are comparing a reference photo (first image) against a live capture " ..
+  "(second image) for identity verification. Reply with EXACTLY this format, " ..
+  "nothing else:\n\n" ..
+  "CONFIDENCE: <high|medium|low|none>\n" ..
+  "LIVENESS: <pass|fail>\n" ..
+  "LIVENESS_NOTES: <brief reason>\n\n" ..
+  "CONFIDENCE reflects how likely the two photos show the same person " ..
+  "(high = clearly same person, none = clearly different or unclear).\n" ..
+  "LIVENESS reflects whether the live capture shows red flags of being a " ..
+  "photo-of-a-photo or screen replay: reflections/glare consistent with a " ..
+  "screen, visible paper edges or curling, unnaturally flat/uniform " ..
+  "lighting, moire/interference patterns. LIVENESS fails if ANY such " ..
+  "signal is present, regardless of confidence."
+  or "Do these two photos show the same person? Reply with exactly one word: MATCH or NO_MATCH."
+
 local payload_ok, payload = pcall(cjson.encode, {
   model      = "claude-haiku-4-5-20251001",
-  max_tokens = 30,
+  max_tokens = hq and 80 or 30,
   messages   = {{
     role    = "user",
     content = {
       { type="image", source={ type="base64", media_type="image/png",  data=profile_b64 } },
       { type="image", source={ type="base64", media_type=live_mime,    data=live_b64    } },
-      { type="text",  text="Do these two photos show the same person? Reply with exactly one word: MATCH or NO_MATCH." },
+      { type="text",  text=prompt },
     }
   }}
 })
@@ -109,11 +130,41 @@ if not ok_r or type(resp) ~= "table" then
   ngx.status = 502; ngx.say('{"error":"parse_error"}'); return
 end
 
-local answer = ""
+local raw_text = ""
 if type(resp.content) == "table" and type(resp.content[1]) == "table" then
-  answer = (resp.content[1].text or ""):upper():match("MATCH") or ""
+  raw_text = resp.content[1].text or ""
 end
 
+if hq then
+  local upper_text  = raw_text:upper()
+  local confidence  = upper_text:match("CONFIDENCE:%s*(%u+)") or "NONE"
+  local liveness    = upper_text:match("LIVENESS:%s*(%u+)") or "FAIL"
+  -- Case-insensitiv nach dem Label suchen (wie oben), aber Notes-Inhalt aus
+  -- dem Original-Text schneiden statt aus der Upper-Case-Kopie — sonst wäre
+  -- z.B. eine kleingeschriebene Antwort leer statt nur schlecht lesbar.
+  local notes = ""
+  local notes_start = upper_text:find("LIVENESS_NOTES:")
+  if notes_start then
+    local content_start = notes_start + #"LIVENESS_NOTES:"
+    notes = raw_text:sub(content_start):match("^%s*(.-)%s*$")
+  end
+  confidence = confidence:lower(); liveness = liveness:lower()
+
+  -- Streng: nur high-Konfidenz UND bestandene Liveness zählen als Match —
+  -- HQ soll strenger sein als der Standard-Check, nicht nur "besser raten".
+  local match = confidence == "high" and liveness == "pass"
+  ngx.say(cjson.encode({
+    match      = match,
+    confidence = confidence,
+    liveness   = liveness,
+    message    = match and "Gesicht erkannt (HQ)."
+                 or (liveness ~= "pass" and ("Liveness-Prüfung fehlgeschlagen: " .. notes)
+                     or "Gesicht nicht mit ausreichender Konfidenz erkannt."),
+  }))
+  return
+end
+
+local answer = raw_text:upper():match("MATCH") or ""
 local match = answer == "MATCH"
 ngx.say(cjson.encode({
   match      = match,
