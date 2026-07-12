@@ -281,7 +281,7 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
-import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul } from './lib/soul_indexer.mjs';
+import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul, reindexLocal } from './lib/soul_indexer.mjs';
 import { writeFile, readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -1019,6 +1019,23 @@ app.post('/internal/herz/heartbeat', (req, res) => {
 });
 
 // POST /internal/deregister-soul  { soul_id }
+// POST /internal/reindex-local — erzwingt sofortiges Neu-Einlesen von api_context.json
+// für eine bereits indizierte Soul (z.B. nach discoverable-/amortization-Änderung),
+// statt auf den nächsten on-chain Anchor-Event zu warten. Kein Auth nötig — nur
+// localhost erreichbar (gleiches Muster wie /internal/run-tool).
+app.post('/internal/reindex-local', async (req, res) => {
+  const { soul_id } = req.body || {};
+  if (!soul_id || !/^[a-f0-9-]{36}$/i.test(soul_id)) {
+    return res.status(400).json({ error: 'soul_id erforderlich' });
+  }
+  try {
+    const updated = await reindexLocal(soul_id);
+    res.json({ ok: true, updated, soul_id });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/internal/deregister-soul', async (req, res) => {
   const { soul_id } = req.body || {};
   if (!soul_id || !/^[a-f0-9-]{36}$/i.test(soul_id)) {
@@ -1068,7 +1085,7 @@ app.get('/internal/discover-souls', (req, res) => {
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
 
-  const souls = querySouls({ q, amortized, limit });
+  const souls = querySouls({ q, amortized, discoverableOnly: true, limit });
   const stats = indexStats();
 
   res.json({
@@ -1088,7 +1105,7 @@ app.get('/llms.txt', async (_req, res) => {
 
   // Nur Souls, die tatsächlich auf diesem Node laufen — querySouls() liefert den
   // globalen, per Chain-Scan aggregierten Index (inkl. fremder Nodes).
-  const souls = querySouls({ limit: 100 }).filter(s => s.mcp_endpoint?.startsWith(BASE_URL));
+  const souls = querySouls({ limit: 100, discoverableOnly: true }).filter(s => s.mcp_endpoint?.startsWith(BASE_URL));
   const lines = [];
   lines.push(`# SYS Node — ${BASE_URL}`);
   lines.push('');
@@ -1183,7 +1200,7 @@ app.get('/api/soul/scan', async (req, res) => {
   // ── 1. Alle indizierten Souls holen und in lokal / remote aufteilen ─────────
   // Der soul_indexer (WebSocket, inkrementell) findet alle on-chain Souls.
   // Remote-Souls haben keinen lokalen Vault — wir fetchen deren Scan-Endpoint.
-  const allIndexed = querySouls({ limit: 100, minSessions: 0 });
+  const allIndexed = querySouls({ limit: 100, minSessions: 0, discoverableOnly: true });
   const localSoulIds = new Set();
   const remoteOrigins = new Map(); // origin → Set<soul_id>
   for (const s of allIndexed) {

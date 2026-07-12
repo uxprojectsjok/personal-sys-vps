@@ -664,15 +664,20 @@ export function useChainAnchor() {
       let anchorData;
       try {
         const meta = { id: soulMeta.value.id, mcp: `${window.location.origin}/mcp` };
-        if (soulMeta.value.name) meta.name = soulMeta.value.name;
-        // agent_registry_cid + tags einbetten falls vorhanden
+        // agent_registry_cid einbetten falls vorhanden; name/tags nur wenn discoverable
+        // (Datenschutz-Opt-out, siehe soul_privacy.lua — bereits verankerte Calldata
+        // bleibt unveränderlich, aber neue Anchors verankern dann keine Klartext-
+        // Identifikatoren mehr).
+        let discoverable = true;
         try {
           const ctx = await fetch('/api/context', {
             headers: { Authorization: `Bearer ${soulToken.value}` },
           }).then(r => r.ok ? r.json() : null);
           if (ctx?.agent_registry_cid) meta.cid = ctx.agent_registry_cid;
+          if (ctx?.discoverable === false) discoverable = false;
         } catch { /* non-critical */ }
-        if (Array.isArray(tags) && tags.length) meta.tags = tags;
+        if (discoverable && soulMeta.value.name) meta.name = soulMeta.value.name;
+        if (discoverable && Array.isArray(tags) && tags.length) meta.tags = tags;
 
         const marker = '\x00SYS1\x00';
         const payload = new TextEncoder().encode(marker + JSON.stringify(meta));

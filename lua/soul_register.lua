@@ -290,6 +290,17 @@ if type(amort) == "table" then
   }
 end
 
+-- discoverable=false: identifizierende Felder aus dem IPFS-Pin entfernen (Datenschutz-
+-- Opt-out, siehe soul_privacy.lua). soul_id/mcp_endpoint bleiben (technisch nötig für
+-- Eigentumsnachweis on-chain), aber ohne Name/Beschreibung/Tags ist der Pin für den
+-- Homepage-Scan-Fallback nicht mehr sinnvoll verwertbar (scan.vue zeigt Stubs ohne
+-- Namen gar nicht erst an).
+if ctx.discoverable == false then
+  meta.name        = "Private Soul"
+  meta.description = nil
+  meta.tags         = nil
+end
+
 -- Pinata-Pinning via MCP-internem Endpoint
 local httpc = http.new()
 httpc:set_timeout(20000)

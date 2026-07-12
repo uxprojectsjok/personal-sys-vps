@@ -158,7 +158,9 @@ if ngx.req.get_method() == "GET" then
     has_token    = (ctx.webhook_token or "") ~= "",
     permissions  = ctx.permissions  or {},
     synced_files = synced,
-    active_files = ctx.active_files or {}
+    active_files = ctx.active_files or {},
+    discoverable = ctx.discoverable ~= false,
+    agent_registry_cid = ctx.agent_registry_cid,
   }
   ngx.header["Content-Type"]  = "application/json"
   ngx.header["Cache-Control"] = "no-store"

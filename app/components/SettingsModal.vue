@@ -345,6 +345,25 @@
                 </Transition>
               </div>
 
+              <!-- Datenschutz: Scan-Sichtbarkeit -->
+              <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
+                <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.privacy_title') }}</div>
+                <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.privacy_desc') }}</p>
+                <label class="api-panel-row" style="cursor:pointer">
+                  <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
+                    <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>
+                  </div>
+                  <input type="checkbox" :checked="discoverable" class="sr-only" :disabled="discoverableSaving" @change="toggleDiscoverable" />
+                  <span class="api-panel-row-label">{{ $t('settings.privacy_toggle_label') }}</span>
+                </label>
+                <p class="sm-desc" style="margin-top:10px" :style="discoverable ? '' : 'color:var(--sys-warn)'">
+                  {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
+                </p>
+                <Transition name="sys-modal-fade">
+                  <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
+                </Transition>
+              </div>
+
               <!-- Admin verbinden (Multi-Hoster, kein Admin) -->
               <template v-if="!isAdmin && isMultiHoster">
                 <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
@@ -908,6 +927,9 @@ const feedback  = ref(null)
 
 const anthTest  = ref(null)  // { loading, ok, message }
 const labsTest  = ref(null)
+const discoverable        = ref(true)
+const discoverableSaving  = ref(false)
+const discoverableFeedback = ref(null)
 const keySource  = ref('none')   // 'soul' | 'master' | 'env' | 'none'
 const keyPreview = ref('')
 
@@ -986,6 +1008,37 @@ async function loadStatus() {
       webhookTokenPreview.value = wd.preview || ''
     }
   } catch {}
+  try {
+    const dr = await fetch('/api/soul/privacy', {
+      headers: { Authorization: `Bearer ${soulToken.value}` }
+    })
+    if (dr.ok) {
+      const dd = await dr.json()
+      discoverable.value = dd.discoverable !== false
+    }
+  } catch {}
+}
+
+async function toggleDiscoverable() {
+  const next = !discoverable.value
+  discoverableSaving.value   = true
+  discoverableFeedback.value = null
+  try {
+    const res = await fetch('/api/soul/privacy', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ discoverable: next }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok && d.ok) {
+      discoverable.value = next
+    } else {
+      discoverableFeedback.value = { ok: false, message: t('settings.privacy_save_failed') }
+    }
+  } catch {
+    discoverableFeedback.value = { ok: false, message: t('settings.privacy_save_failed') }
+  }
+  discoverableSaving.value = false
 }
 
 async function confirmRotateWebhook() {

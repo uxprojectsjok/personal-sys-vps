@@ -643,6 +643,14 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_amortization.lua;
   }
 
+  location = /api/soul/privacy {
+    limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_privacy.lua;
+  }
+
   # ── Manuelle Token-Ausstellung (Nicht-Krypto-Zahlung, z.B. PayPal) ───────────
   location = /api/soul/pay/manual {
     limit_except POST { deny all; }

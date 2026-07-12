@@ -251,6 +251,7 @@ async function enrichFromLocal(entry, soulId) {
   try {
     const raw = await readFile(`/var/lib/sys/souls/${soulId}/api_context.json`, 'utf8');
     const ctx = JSON.parse(raw);
+    entry.discoverable = ctx?.discoverable !== false;
     const am = ctx?.amortization;
     if (!am || typeof am !== 'object') return;
     const BASE_URL = process.env.BASE_URL ?? '';
@@ -678,10 +679,17 @@ async function seedFromLocalAnchors() {
 
 // ── Query-API ─────────────────────────────────────────────────────────────────
 
-export function querySouls({ q = '', amortized = false, limit = 20, minSessions = 1 } = {}) {
+export function querySouls({ q = '', amortized = false, discoverableOnly = false, limit = 20, minSessions = 1 } = {}) {
   let results = [..._souls.values()].filter(s =>
     (s.sessions ?? 0) >= minSessions && s.mcp_endpoint
   );
+
+  // Souls, die den discoverable-Opt-out gesetzt haben, aus öffentlichen Auflistungen
+  // (Scan, llms.txt, soul_discover) ausblenden — direkte Aufrufe bei bekanntem
+  // soul_id/Endpunkt bleiben davon unberührt (kein Filter in soul_read_by_token etc.).
+  if (discoverableOnly) {
+    results = results.filter(s => s.discoverable !== false);
+  }
 
   if (q) {
     const lq = q.toLowerCase();
@@ -712,6 +720,21 @@ export function querySouls({ q = '', amortized = false, limit = 20, minSessions 
 }
 
 export { seedFromLocalAnchors, retryFailedEnrichments };
+
+// Erzwingt eine Neu-Einlesung von api_context.json für eine bereits indizierte Soul —
+// enrichFromLocal() läuft sonst nur beim nächsten on-chain Anchor-Event (siehe
+// verarbeiteAnchorEvent), was für sofort wirksame Owner-Einstellungen (z.B.
+// discoverable-Umschalter) zu langsam ist. Von soul_privacy.lua/soul_amortization.lua
+// nach jedem erfolgreichen Schreiben aufgerufen.
+export async function reindexLocal(soulId) {
+  if (!soulId || !UUID_RE.test(soulId)) return false;
+  const key = soulIdToBytes32(soulId);
+  const entry = _souls.get(key);
+  if (!entry) return false;
+  await enrichFromLocal(entry, soulId);
+  _dirty = true;
+  return true;
+}
 
 export async function deregisterSoul(soulId) {
   if (!soulId || !UUID_RE.test(soulId)) return false;
