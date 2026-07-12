@@ -76,14 +76,14 @@ if body.finalize == true then
   return
 end
 
-local VALID = { fingerprint = true, face = true, voice = true, face_hq = true }
+local VALID = { fingerprint = true, face = true, voice = true, face_hq = true, voice_hq = true }
 if not VALID[method] then
   ngx.status = 400; ngx.say('{"error":"invalid_method"}'); return
 end
 
 -- HQ-Methoden zählen höher als Standard-Methoden (schärferer Prompt +
 -- explizite Liveness-Prüfung, siehe verify_face_check.lua)
-local METHOD_WEIGHT = { fingerprint = 1, face = 1, voice = 1, face_hq = 2 }
+local METHOD_WEIGHT = { fingerprint = 1, face = 1, voice = 1, face_hq = 2, voice_hq = 2 }
 local function scoreOf(methodList)
   local sum = 0
   for _, m in ipairs(methodList) do sum = sum + (METHOD_WEIGHT[m] or 1) end
@@ -104,6 +104,15 @@ end
 if d.soul_id ~= soul_id then
   ngx.status = 403; ngx.say('{"error":"forbidden"}'); return
 end
+
+-- voice_hq: der Client meldet nur das (kostenlose, unveränderte) FFT-Ergebnis
+-- selbst — der Anti-Replay-Ziffern-Check muss server-seitig aus der Challenge-
+-- Datei stammen (von verify_voice_hq_check.lua gesetzt), sonst könnte ein
+-- Client einfach "verified: true" ohne echten Ziffern-Match behaupten.
+if method == "voice_hq" and verified and d.voice_hq_digits_verified ~= true then
+  verified = false
+end
+
 local verified_at = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
 local required    = type(d.required_methods) == "table" and d.required_methods or {}
 local completed   = type(d.completed_methods) == "table" and d.completed_methods or {}

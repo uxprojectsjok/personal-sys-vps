@@ -22,7 +22,7 @@ local TTL        = 300   -- 5 Minuten
 ngx.req.read_body()
 local body_raw = ngx.req.get_body_data() or ""
 
-local VALID = { fingerprint = true, face = true, voice = true, face_hq = true }
+local VALID = { fingerprint = true, face = true, voice = true, face_hq = true, voice_hq = true }
 local methods = {}
 
 if body_raw ~= "" then
@@ -71,6 +71,20 @@ local req_methods_encoded = #methods > 0 and methods or cjson.empty_array
 -- Token merken, damit verify_complete.lua ihn bei Erfolg als verifiziert markieren kann.
 local triggering_token = ngx.ctx.service_token
 
+-- voice_hq: zufälligen 6-stelligen Anti-Replay-Code generieren, den der Nutzer
+-- vorlesen muss (siehe verify_voice_hq_check.lua). Muss server-seitig entstehen,
+-- sonst könnte eine alte Aufnahme einfach wiederverwendet werden.
+local voice_code = nil
+for _, m in ipairs(methods) do
+  if m == "voice_hq" then
+    local digit_bytes = random.bytes(6, true)
+    local digits = {}
+    for i = 1, 6 do digits[i] = tostring(digit_bytes:byte(i) % 10) end
+    voice_code = table.concat(digits)
+    break
+  end
+end
+
 local data = cjson.encode({
   soul_id           = soul_id,
   challenge_id      = challenge_id,
@@ -84,6 +98,7 @@ local data = cjson.encode({
   verified_at       = cjson.null,
   verify_token      = verify_token,
   triggering_token  = triggering_token or cjson.null,
+  voice_code        = voice_code or cjson.null,
 })
 
 local f = io.open(VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json", "w")

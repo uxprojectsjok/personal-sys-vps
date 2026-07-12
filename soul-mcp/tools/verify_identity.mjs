@@ -57,7 +57,7 @@ async function buildVerifiedResult(status, challenge_id) {
   const score       = status.score ?? (level === '2fa' ? 3 : 1)
   const completed   = Array.isArray(status.completed_methods) ? status.completed_methods : (status.method ? [status.method] : [])
   const methodResults = Array.isArray(status.method_results) ? status.method_results : null
-  const methodLabels  = { fingerprint: 'Fingerabdruck', face: 'Gesichtserkennung', voice: 'Stimm-Analyse', face_hq: 'Gesichtserkennung HQ' }
+  const methodLabels  = { fingerprint: 'Fingerabdruck', face: 'Gesichtserkennung', voice: 'Stimm-Analyse', face_hq: 'Gesichtserkennung HQ', voice_hq: 'Stimm-Analyse HQ' }
 
   // Biometrische Detail-Zeilen
   const bioLines = completed.map(m => {
@@ -125,10 +125,16 @@ export function register(server, token) {
       '               actions (large payments, wallet signing, data deletion)',
       '               instead of plain "face" — same camera flow for the user,',
       '               just a stricter check server-side.',
+      '  voice_hq     Same FFT voice match as "voice", plus a server-generated',
+      '               6-digit code the user reads aloud — a cheap STT call',
+      '               confirms the code was actually spoken (anti-replay), so',
+      '               an old recording cannot be reused — weight 2. Same use',
+      '               case as face_hq: prefer it over "voice" for sensitive',
+      '               actions.',
       'Score +1 if mobile (2FA). Wallet signature in UI → Score 3/3.',
     ].join('\n'),
     {
-      methods:      z.array(z.enum(['fingerprint', 'face', 'voice', 'face_hq'])).optional().describe('Methods (one or more). Use face_hq instead of face for sensitive actions. Empty = user chooses.'),
+      methods:      z.array(z.enum(['fingerprint', 'face', 'voice', 'face_hq', 'voice_hq'])).optional().describe('Methods (one or more). Use face_hq/voice_hq instead of face/voice for sensitive actions. Empty = user chooses.'),
       challenge_id: z.string().length(32).optional().describe('From previous pending result — call again immediately'),
     },
     async ({ methods, challenge_id }) => {

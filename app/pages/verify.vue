@@ -80,7 +80,7 @@
               }"
             >
               <span class="vfy-step-dot" />
-              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice') }[m] }}</span>
+              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice'), face_hq: $t('verify.step_face'), voice_hq: $t('verify.step_voice') }[m] }}</span>
             </div>
           </div>
           <div class="vfy-ic vfy-ic--ok">
@@ -144,7 +144,7 @@
               }"
             >
               <span class="vfy-step-dot" />
-              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice') }[m] }}</span>
+              <span class="vfy-step-lbl">{{ { fingerprint: $t('verify.step_finger'), face: $t('verify.step_face'), voice: $t('verify.step_voice'), face_hq: $t('verify.step_face'), voice_hq: $t('verify.step_voice') }[m] }}</span>
             </div>
           </div>
 
@@ -225,6 +225,33 @@
               <template v-else-if="phase === 'failed'">{{ errorMsg || $t('verify.voice_failed', { pct: (voiceScore * 100).toFixed(0) }) }}</template>
             </p>
             <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doVoice">{{ $t('verify.start_recording') }}</button>
+            <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">{{ $t('verify.retry') }}</button>
+            <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
+          </template>
+
+          <!-- ── VOICE HQ (Code vorlesen — Identität per FFT + Anti-Replay per STT) ── -->
+          <template v-else-if="method === 'voice_hq'">
+            <div class="vfy-ic" :class="icClass">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
+            </div>
+            <h1 v-if="phase === 'idle'">{{ $t('verify.method_voice_hq') }}<em>.</em></h1>
+            <h1 v-else-if="phase === 'verifying'">{{ $t('verify.loading_audio') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'recording'">{{ $t('verify.recording') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'comparing'">{{ $t('verify.comparing') }}<em>…</em></h1>
+            <h1 v-else-if="voiceHqPhase === 'checking_replay'">{{ $t('verify.checking_replay') }}<em>…</em></h1>
+            <h1 v-else-if="phase === 'failed'">{{ $t('verify.no_match') }}<em>.</em></h1>
+            <p class="vfy-desc">
+              <template v-if="phase === 'idle'">{{ $t('verify.voice_hq_desc') }}</template>
+              <template v-else-if="phase === 'verifying'">{{ $t('verify.loading_vault_audio') }}</template>
+              <template v-else-if="phase === 'comparing'">{{ $t('verify.spectral_analysis') }}</template>
+              <template v-else-if="phase === 'failed'">{{ errorMsg || $t('verify.voice_failed', { pct: (voiceScore * 100).toFixed(0) }) }}</template>
+            </p>
+            <div v-if="voiceCode && (phase === 'idle' || phase === 'recording')" class="vfy-code-box">
+              <span class="vfy-code-label">{{ phase === 'recording' ? $t('verify.voice_hq_say_code') : $t('verify.voice_hq_code_label') }}</span>
+              <span class="vfy-code-digits">{{ voiceCode }}</span>
+              <span v-if="phase === 'recording'" class="vfy-desc" style="margin:8px 0 0">{{ $t('verify.please_speak', { n: recCountdown }) }} <span class="vfy-rec-dot" /></span>
+            </div>
+            <button v-if="phase === 'idle'" class="btn btn-primary btn-lg" @click="doVoiceHq">{{ $t('verify.start_recording') }}</button>
             <button v-else-if="phase === 'failed'" class="btn btn-primary btn-lg" @click="reset">{{ $t('verify.retry') }}</button>
             <button v-if="(phase === 'idle' || phase === 'failed') && completedMethodsList.length > 0" class="btn btn-ghost" @click="finalizeEarly">{{ $t('verify.finalize_early', { score: verifyScore }) }}</button>
           </template>
@@ -311,12 +338,13 @@ const methodParam  = route.query.m  || ''
 const vt           = route.query.vt || ''
 
 // Methoden aus URL parsen (komma-getrennt oder einzeln)
-const VALID_METHODS  = ['fingerprint', 'face', 'voice', 'face_hq']
+const VALID_METHODS  = ['fingerprint', 'face', 'voice', 'face_hq', 'voice_hq']
 const METHOD_LABELS  = computed(() => ({
   fingerprint: t('verify.method_fingerprint'),
   face:        t('verify.method_face'),
   voice:       t('verify.method_voice'),
   face_hq:     t('verify.method_face_hq'),
+  voice_hq:    t('verify.method_voice_hq'),
 }))
 const urlMethods    = methodParam
   ? methodParam.split(',').filter(m => VALID_METHODS.includes(m))
@@ -335,6 +363,8 @@ const faceVideo            = ref(null)
 const faceCanvas           = ref(null)
 const recCountdown         = ref(3)
 const voiceScore           = ref(0)
+const voiceCode            = ref('')
+const voiceHqPhase         = ref('')  // '' | 'checking_replay' — Zwischenzustand während des Ziffern-Checks
 const verifyScore          = ref(0)
 const verifyIs2fa          = ref(false)
 const walletSigned         = ref(false)
@@ -493,6 +523,7 @@ async function checkAlreadyVerified() {
     const r = await fetch(`/api/verify/status?id=${challengeId}`, { headers: authHeaders() })
     if (!r.ok) return false
     const st = await r.json()
+    if (st.voice_code) voiceCode.value = st.voice_code
 
     // Vollständig verifiziert oder teilweise (wallet noch offen)
     if (st.status === 'verified' || st.verified_level) {
@@ -795,7 +826,12 @@ function recordAudio(stream, ms) {
   return new Promise((resolve, reject) => {
     const chunks = [], mr = new MediaRecorder(stream)
     mr.ondataavailable = e => e.data.size && chunks.push(e.data)
-    mr.onstop = () => new Blob(chunks).arrayBuffer().then(resolve).catch(reject)
+    mr.onstop = () => {
+      const mimeType = mr.mimeType || 'audio/webm'
+      new Blob(chunks, { type: mimeType }).arrayBuffer()
+        .then(buffer => resolve({ buffer, mimeType }))
+        .catch(reject)
+    }
     mr.onerror = reject; mr.start(); setTimeout(() => mr.stop(), ms)
   })
 }
@@ -812,7 +848,7 @@ async function doVoice() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     phase.value = 'recording'; recCountdown.value = 3
     const timer = setInterval(() => { recCountdown.value--; if (recCountdown.value <= 0) clearInterval(timer) }, 1000)
-    const recBuf = await recordAudio(stream, 3000)
+    const { buffer: recBuf } = await recordAudio(stream, 3000)
     clearInterval(timer)
     stream.getTracks().forEach(t => t.stop())
     phase.value = 'comparing'
@@ -823,6 +859,65 @@ async function doVoice() {
     voiceScore.value = score
     const ok = score > 0.78
     if (!ok) errorMsg.value = `Stimm-Match zu niedrig (${(score * 100).toFixed(0)}%).`
+    await submitResult(ok)
+    await advanceAfterMethod(ok)
+  } catch (e) {
+    errorMsg.value = e?.message || 'Stimm-Verifikation fehlgeschlagen.'
+    phase.value = 'failed'
+  }
+}
+
+// ── Voice HQ (Identität weiter per FFT, zusätzlich Anti-Replay per STT) ────────
+async function doVoiceHq() {
+  claimChallenge()
+  phase.value = 'verifying'; voiceScore.value = 0; voiceHqPhase.value = ''
+  try {
+    const listRes  = await fetch('/api/vault/audio', { headers: authHeaders() })
+    const listData = await listRes.json()
+    const refUrl   = listData.active_url || listData.files?.[0]?.url
+    if (!refUrl) throw new Error('Keine Stimme im Vault')
+    const refBuf = await fetch(refUrl, { headers: authHeaders() }).then(r => r.arrayBuffer())
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    // 5s statt 3s wie bei "voice" — sechs Ziffern brauchen mehr Zeit als ein Wort.
+    phase.value = 'recording'; recCountdown.value = 5
+    const timer = setInterval(() => { recCountdown.value--; if (recCountdown.value <= 0) clearInterval(timer) }, 1000)
+    const { buffer: recBuf, mimeType } = await recordAudio(stream, 5000)
+    clearInterval(timer)
+    stream.getTracks().forEach(t => t.stop())
+    phase.value = 'comparing'
+    const ctx = new AudioContext()
+    // .slice(0) für die FFT-Kopie — decodeAudioData neutert den übergebenen
+    // ArrayBuffer in manchen Browsern, recBuf wird unten nochmal für den
+    // Anti-Replay-Upload gebraucht.
+    const [refDecoded, recDecoded] = await Promise.all([
+      ctx.decodeAudioData(refBuf), ctx.decodeAudioData(recBuf.slice(0)),
+    ])
+    ctx.close()
+    const score = cosineSim(spectralEnvelope(refDecoded), spectralEnvelope(recDecoded))
+    voiceScore.value = score
+    const fftOk = score > 0.78
+
+    // Anti-Replay: Aufnahme an den Server schicken, der prüft server-seitig ob
+    // der vorgelesene Code tatsächlich in der Transkription vorkommt.
+    voiceHqPhase.value = 'checking_replay'
+    let digitsOk = false
+    try {
+      const r = await fetch(`/api/verify/voice-hq-check?challenge_id=${challengeId}`, {
+        method:  'POST',
+        headers: { Authorization: authHeaders().Authorization, 'Content-Type': mimeType },
+        body:    recBuf,
+      })
+      const d = await r.json()
+      digitsOk = d.digits_match === true
+    } catch {}
+    voiceHqPhase.value = ''
+
+    const ok = fftOk && digitsOk
+    if (!ok) {
+      errorMsg.value = !fftOk
+        ? `Stimm-Match zu niedrig (${(score * 100).toFixed(0)}%).`
+        : t('verify.voice_hq_digits_failed')
+    }
     await submitResult(ok)
     await advanceAfterMethod(ok)
   } catch (e) {
@@ -917,6 +1012,10 @@ h1 em { font-style: italic; color: var(--accent-bright, var(--accent)); }
 
 .vfy-rec-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e06c75; animation: vfy-blink 1s ease-in-out infinite; margin-left: 6px; }
 @keyframes vfy-blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+.vfy-code-box { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 16px; padding: 16px; border-radius: 12px; background: var(--bg); border: 1.5px solid var(--border); width: 100%; }
+.vfy-code-label { font-size: 11px; color: var(--fg-2); letter-spacing: .08em; text-transform: uppercase; }
+.vfy-code-digits { font-size: 30px; font-weight: 800; letter-spacing: .18em; color: var(--fg); font-variant-numeric: tabular-nums; }
 
 .vfy-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: vfy-spin .8s linear infinite; margin: 24px auto; }
 
