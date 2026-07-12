@@ -107,6 +107,10 @@ export function register(server, token) {
     [
       'Biometric identity verification. Runs in short steps (15s per call).',
       '',
+      'TIP: before a sensitive action, call soul_chain_status first — it tells',
+      'you whether an existing, recent verification already covers the',
+      'sensitivity tier needed, so you can skip re-verifying if it does.',
+      '',
       'FLOW:',
       '  1. Without challenge_id → creates challenge, shows verify URL, polls 15s.',
       '  2. While status="pending" → call this tool again immediately with challenge_id.',

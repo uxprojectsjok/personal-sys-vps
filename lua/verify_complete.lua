@@ -183,6 +183,26 @@ else
   if verified then mark_token_verified(soul_id, d.triggering_token) end
 end
 
+-- Kontinuitäts-Kette: jede erfolgreiche Verifikation wird als eigenes Glied
+-- angehängt (siehe chain_lib.lua + verify-identity-hq-plan.md). Bewusst
+-- fire-and-forget — ein Kette-Schreibfehler darf die eigentliche
+-- Verifikation nicht blockieren, die läuft über das bestehende
+-- completed_methods/score-System unabhängig weiter.
+if verified then
+  local ok_chain, chain = pcall(require, "chain_lib")
+  if not ok_chain then
+    ngx.log(ngx.ERR, "[verify_complete] chain_lib require fehlgeschlagen: ", tostring(chain))
+  else
+    local CONFIDENCE = { face_hq = "high", voice_hq = "high" }
+    local ok_append, link_or_err, append_err = pcall(chain.append, soul_id, "continuity", method, CONFIDENCE[method] or "medium", challenge_id)
+    if not ok_append then
+      ngx.log(ngx.ERR, "[verify_complete] chain.append warf einen Fehler: ", tostring(link_or_err))
+    elseif not link_or_err then
+      ngx.log(ngx.ERR, "[verify_complete] chain.append fehlgeschlagen: ", tostring(append_err))
+    end
+  end
+end
+
 local ok_e, updated = pcall(cjson.encode, d)
 if not ok_e then ngx.status = 500; ngx.say('{"error":"encode_failed"}'); return end
 local fw = io.open(fpath, "w")

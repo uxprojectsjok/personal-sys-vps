@@ -36,6 +36,7 @@ import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 import { register as mindRead }              from './mind_read.mjs';
 import { register as mindWrite }             from './mind_write.mjs';
+import { register as soulChainStatus }       from './soul_chain_status.mjs';
 import { register as healthCheck }           from './health_check.mjs';
 import { register as foodLog }               from './food_log.mjs';
 import { register as healthSync }            from './health_sync.mjs';
@@ -119,6 +120,7 @@ export function registerTools(server, token, soulId = null) {
   soulPaidComment(server, token);
   mindRead(server, token, soulId);
   mindWrite(server, token, soulId);
+  soulChainStatus(server, token, soulId);
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
