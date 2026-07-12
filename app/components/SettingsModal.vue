@@ -347,18 +347,20 @@
 
               <!-- Datenschutz: Scan-Sichtbarkeit -->
               <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
-                <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.privacy_title') }}</div>
-                <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.privacy_desc') }}</p>
-                <label class="api-panel-row" style="cursor:pointer">
+                <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
+                <div class="sm-infoblock">
+                  {{ $t('settings.privacy_desc') }}
+                </div>
+                <label class="api-panel-row" style="cursor:pointer;margin-bottom:14px">
                   <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
                     <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>
                   </div>
                   <input type="checkbox" :checked="discoverable" class="sr-only" :disabled="discoverableSaving" @change="toggleDiscoverable" />
                   <span class="api-panel-row-label">{{ $t('settings.privacy_toggle_label') }}</span>
                 </label>
-                <p class="sm-desc" style="margin-top:10px" :style="discoverable ? '' : 'color:var(--sys-warn)'">
+                <div class="sm-infoblock" :class="{ 'sm-infoblock--warn': !discoverable }" style="margin-bottom:0">
                   {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
-                </p>
+                </div>
                 <Transition name="sys-modal-fade">
                   <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
                 </Transition>
@@ -1868,6 +1870,11 @@ onMounted(() => { if (props.inline) initSettings() })
   background: var(--surface-2);
   font-size: 13px; line-height: 1.55;
   color: var(--fg-2);
+}
+.sm-infoblock--warn {
+  border-left-color: var(--sys-warn);
+  background: rgba(232,163,63,0.06);
+  color: var(--sys-warn);
 }
 
 /* Override: Rail scrollbar auf Mobile */
