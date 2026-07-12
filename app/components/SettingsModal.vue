@@ -1821,6 +1821,16 @@ onMounted(() => { if (props.inline) initSettings() })
 <style scoped>
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Toggle switch (Datenschutz/Discoverable) — Muster wie ApiContextPanel.vue,
+   dort aber scoped, deshalb hier dupliziert ── */
+.api-panel-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-top: 0; }
+.api-panel-row-label { font-family: var(--sys-mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }
+.api-panel-row:hover .api-panel-row-label { color: var(--sys-fg); }
+.api-toggle { position: relative; width: 36px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; flex-shrink: 0; transition: background 0.2s; }
+.api-toggle.is-on { background: var(--sys-ok); }
+.api-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s; }
+.api-toggle-thumb.is-on { transform: translateX(16px); }
+
 /* ── Settings form atoms ─────────────────────────────────────────────── */
 /* Small action button (Test / Save inline) */
 .sm-test-btn {
