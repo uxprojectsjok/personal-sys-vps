@@ -1112,6 +1112,10 @@ app.get('/llms.txt', async (_req, res) => {
       lines.push(`- **Price:** ${base} POL per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
       lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
       if (a.wallet) lines.push(`- **Wallet (Polygon):** \`${a.wallet}\``);
+      if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
+        lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
+      }
+      if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
       if (a.paypal_enabled) {
         const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
         lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
@@ -1292,6 +1296,8 @@ app.get('/api/soul/scan', async (req, res) => {
       wallet:              amort.wallet || null,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,
+      agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : [],
+      contact_email:       amort.trader_email || null,
       paypal_enabled:      amort.paypal_enabled === true,
       paypal_target:       amort.paypal_enabled === true ? (amort.paypal_target || null) : null,
       price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,

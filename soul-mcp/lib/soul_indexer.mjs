@@ -225,6 +225,7 @@ async function enrichFromIpfs(entry, rawCid) {
         ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
         token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
         ...(aTools?.length && { agent_tools: aTools }),
+        ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
         ...(am.paypal_enabled === true && {
           paypal_enabled: true,
           paypal_target:  str(am.paypal_target, 200) ?? null,
@@ -264,6 +265,7 @@ async function enrichFromLocal(entry, soulId) {
       ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
       ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
       ...(aTools?.length && { agent_tools: aTools }),
+      ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
       ...(am.paypal_enabled === true && {
         paypal_enabled: true,
         paypal_target:  str(paypalTarget, 200) ?? null,
@@ -546,6 +548,7 @@ async function seedFromLocalAnchors() {
               ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
               ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
               ...(aTools?.length && { agent_tools: aTools }),
+              ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
               ...(am.paypal_enabled === true && {
                 paypal_enabled: true,
                 paypal_target:  str(paypalTarget, 200) ?? null,
