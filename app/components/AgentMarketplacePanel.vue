@@ -50,6 +50,11 @@
           </nav>
         </div>
 
+        <!-- Datenschutz-Opt-out-Warnung: Marketplace/IPFS-Pin wirken ohne Scan-Auffindbarkeit nur eingeschränkt -->
+        <div v-if="!discoverable" class="amm-discover-warn">
+          {{ $t('marketplace.discoverable_off_warning') }}
+        </div>
+
         <!-- ═══════════ BODY ═══════════ -->
         <div :class="['amm-body', { inline }]">
           <!-- ───── STEP 1 · ZUGANGSMODUS ───── -->
@@ -414,6 +419,7 @@ const pinataPreview = ref('')
 const pinataOk      = ref(false)
 const savingPinata  = ref(false)
 const pinataError   = ref('')
+const discoverable  = ref(true)
 
 const amort = reactive({
   enabled:              false,
@@ -717,11 +723,20 @@ async function revokeManualToken(token) {
 // ═══════════ LOAD ═══════════
 onMounted(async () => {
   if (!props.soulCert) return
-  await Promise.all([loadPinata(), loadAmort(), loadTokenList()])
+  await Promise.all([loadPinata(), loadAmort(), loadTokenList(), loadDiscoverable()])
   if (!amortActive.value && !modeTouched.value) step.value = 'mode'
   else if (!registered.value) step.value = 'ipfs'
   if (step.value === 'ipfs') loadPreview()
 })
+
+async function loadDiscoverable() {
+  try {
+    const r = await fetch(`${BASE()}/api/soul/privacy`, { headers: authHeader() })
+    if (!r.ok) return
+    const d = await r.json()
+    discoverable.value = d.discoverable !== false
+  } catch { /* ignore */ }
+}
 
 async function loadPinata() {
   try {
@@ -1123,6 +1138,8 @@ async function register() {
 .readonly-list { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; padding: 18px; margin: 0; border-top: 1px solid var(--rule); }
 .readonly-list dt { font-family: var(--mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg-2); }
 .readonly-list dd { font-family: var(--mono); font-size: 14px; color: var(--fg); margin: 0; word-break: break-all; }
+
+.amm-discover-warn { font-family: var(--mono); font-size: 13px; line-height: 1.6; color: #e8a33f; border: 1px solid rgba(232,163,63,0.35); background: rgba(232,163,63,0.06); padding: 12px 20px; margin: 0 20px 4px; }
 
 .prereq { display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: center; padding: 14px 18px; border: 1px solid rgba(167,139,250,0.3); background: rgba(167,139,250,0.05); margin-bottom: 24px; }
 .prereq-mark { width: 28px; height: 28px; border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 16px; color: var(--accent); }

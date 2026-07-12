@@ -16,6 +16,11 @@
               <p class="vank-lede">{{ $t('anchor.lede') }}</p>
             </div>
 
+            <!-- ── Datenschutz-Opt-out-Warnung ── -->
+            <div v-if="!discoverable" class="anc-discover-warn">
+              {{ $t('anchor.discoverable_off_warning') }}
+            </div>
+
             <!-- ── Status + Wallet card ── -->
             <div class="vank-card" :class="{ 'vank-card--on': hasAnchor }">
               <div class="vank-status-row">
@@ -254,7 +259,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 
 const router = useRouter()
-const { hasSoul, soulMeta, soulContent, pushToServer, isLoaded } = useSoul()
+const { hasSoul, soulMeta, soulContent, soulToken, pushToServer, isLoaded } = useSoul()
 
 const {
   walletAddress, currentNetwork, isConnected, isAnchoring, isProvingIdentity,
@@ -281,6 +286,7 @@ const isCancelled          = ref(false)
 const identityProof        = ref(null)
 const proofCopied          = ref(false)
 const isConnectingForProof = ref(false)
+const discoverable         = ref(true)
 
 const tagsArray = computed(() =>
   tagsRaw.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0 && t.length <= 32).slice(0, 10)
@@ -307,6 +313,10 @@ onMounted(async () => {
   walletRestoring.value = false
   refreshRateLimit()
   fetchChainMetrics()
+  fetch('/api/soul/privacy', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) discoverable.value = d.discoverable !== false })
+    .catch(() => {})
   syncAnchorFromChain().then(result => {
     if (!result) return
     pushToServer()
@@ -590,6 +600,11 @@ function onNav(id) {
   padding: 10px 14px; border-radius: var(--r-xs);
   background: rgba(224,108,117,0.06); border: 1px solid rgba(224,108,117,0.20);
   color: #e06c75; font-family: var(--mono); font-size: 14px;
+}
+.anc-discover-warn {
+  padding: 12px 16px; border-radius: var(--r-xs); margin-bottom: 16px;
+  background: rgba(232,163,63,0.06); border: 1px solid rgba(232,163,63,0.25);
+  color: #e8a33f; font-family: var(--mono); font-size: 13px; line-height: 1.6;
 }
 
 /* ── TX ── */

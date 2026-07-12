@@ -1103,6 +1103,7 @@
     "model_fast": "Claude Haiku 4.5 — schnell"
   },
   "marketplace": {
+    "discoverable_off_warning": "Auffindbarkeit ist deaktiviert (Settings → Config → Datenschutz) — dein Node erscheint nicht in SYS.Scan, llms.txt oder der KI-Freitextsuche. Marketplace-Zugang und IPFS-Pin funktionieren weiterhin, aber nur bei bereits bekanntem Endpunkt.",
     "aria_label": "Agent Marketplace einrichten",
     "steps_aria": "Schritte",
     "step_mode_title": "Zugang",
@@ -1197,6 +1198,7 @@
     "hero_sub": "Mache deine Soul für externe KI-Assistenten zugänglich — über MCP-Tools, kostenlos oder gegen POL. Danach ist sie im Marketplace auffindbar."
   },
   "anchor": {
+    "discoverable_off_warning": "Auffindbarkeit ist deaktiviert (Settings → Config → Datenschutz) — neue Anker verankern kein Name/Tags mehr in der Calldata und erscheinen nicht in SYS.Scan. Die Verankerung selbst (Eigentumsnachweis) funktioniert unverändert.",
     "title": "Soul verankern",
     "status_anchored": "On-chain verankert",
     "status_not_anchored": "Noch nicht verankert",

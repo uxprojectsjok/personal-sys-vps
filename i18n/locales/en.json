@@ -1103,6 +1103,7 @@
     "model_fast": "Claude Haiku 4.5 — fast"
   },
   "marketplace": {
+    "discoverable_off_warning": "Discoverability is turned off (Settings → Config → Privacy) — your node won't appear in SYS.Scan, llms.txt, or AI free-text search. Marketplace access and the IPFS pin still work, but only for already-known endpoints.",
     "aria_label": "Set up Agent Marketplace",
     "steps_aria": "Steps",
     "step_mode_title": "Access",
@@ -1197,6 +1198,7 @@
     "hero_sub": "Make your Soul accessible to external AI assistants — via MCP tools, free or for POL. After that it's discoverable in the Marketplace."
   },
   "anchor": {
+    "discoverable_off_warning": "Discoverability is turned off (Settings → Config → Privacy) — new anchors won't embed your name/tags in the calldata and won't appear in SYS.Scan. Anchoring itself (proof of ownership) still works normally.",
     "title": "Anchor soul",
     "status_anchored": "Anchored on-chain",
     "status_not_anchored": "Not yet anchored",
