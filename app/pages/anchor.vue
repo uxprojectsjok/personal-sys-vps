@@ -58,13 +58,13 @@
                 </div>
                 <div class="vank-genesis-metrics">
                   <div class="vank-genesis-metric">
-                    <span class="vank-genesis-val">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
+                    <span class="vank-genesis-val" :key="'age-'+chainMetrics.chain_age_blocks">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
                     <span class="vank-genesis-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
                     <span class="vank-genesis-label">{{ $t('anchor.chain_age_label') }}</span>
                     <span class="vank-genesis-sub">~ {{ chainMetrics.chain_age_human }}</span>
                   </div>
                   <div class="vank-genesis-metric">
-                    <span class="vank-genesis-val">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                    <span class="vank-genesis-val" :key="'kb-'+chainMetrics.knowledge_blocks">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
                     <span class="vank-genesis-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
                     <span class="vank-genesis-label">{{ $t('anchor.chain_knowledge_label') }}</span>
                     <span class="vank-genesis-sub">{{ $t('anchor.chain_anchors_label') }}: {{ chainMetrics.anchor_count }}</span>
@@ -735,6 +735,11 @@ function onNav(id) {
 .vank-genesis-val {
   font-family: var(--mono); font-size: 22px; font-weight: 500;
   letter-spacing: -0.02em; color: var(--fg); line-height: 1;
+  display: inline-block; animation: sys-blip 550ms ease-out;
+}
+@keyframes sys-blip {
+  0%   { color: var(--accent); text-shadow: 0 0 16px rgba(109,184,154,0.9); transform: scale(1.08); }
+  100% { color: var(--fg); text-shadow: none; transform: scale(1); }
 }
 .vank-genesis-unit {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
@@ -859,7 +864,10 @@ function onNav(id) {
 }
 .vank-chain-title { font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); flex: 1; }
 .vank-chain-count { font-family: var(--mono); font-size: 14px; color: var(--fg-2); }
-.vank-chain-list { padding: 4px 18px 14px; }
+.vank-chain-list {
+  padding: 4px 18px 14px; max-height: 340px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
+}
 .vank-chain-link { position: relative; padding: 10px 0 10px 30px; }
 .vank-chain-idx { font-family: var(--mono); font-size: 13px; color: var(--fg-3); position: absolute; left: 0; top: 11px; width: 22px; }
 .vank-chain-connector {

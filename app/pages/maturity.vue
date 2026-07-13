@@ -73,12 +73,12 @@
             </div>
             <div class="rf-chain">
               <div class="rf-chain-item">
-                <span class="rf-chain-val">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                <span class="rf-chain-val" :key="'kb-'+chainMetrics.knowledge_blocks">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
                 <span class="rf-chain-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
                 <span class="rf-chain-label">{{ $t('anchor.chain_knowledge_label') }}</span>
               </div>
               <div class="rf-chain-item">
-                <span class="rf-chain-val">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
+                <span class="rf-chain-val" :key="'age-'+chainMetrics.chain_age_blocks">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
                 <span class="rf-chain-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
                 <span class="rf-chain-label">{{ $t('anchor.chain_age_label') }} · {{ chainMetrics.chain_age_human }}</span>
               </div>
@@ -86,6 +86,32 @@
                 <span class="rf-chain-val">{{ chainMetrics.anchor_count }}</span>
                 <span class="rf-chain-unit">×</span>
                 <span class="rf-chain-label">{{ $t('anchor.chain_anchors_label') }} · {{ chainMetrics.genesis_ts ? new Date(chainMetrics.genesis_ts).toLocaleDateString() : '—' }}</span>
+              </div>
+            </div>
+          </template>
+
+          <!-- ── Kontinuitäts-Kette: Zahlen & Verknüpfungen, keine Icons ── -->
+          <template v-if="chainLinks && chainLinks.length">
+            <div class="rf-section-head rf-chain-head">
+              {{ $t('anchor.chain_links_title') }}
+              <span class="rf-genesis-badge">{{ chainLinks.length }}</span>
+            </div>
+            <div class="rf-chainlist">
+              <div v-for="(link, idx) in chainLinks" :key="link.link_id" class="rf-chainlist-link">
+                <span v-if="idx < chainLinks.length - 1" class="rf-chainlist-connector" />
+                <div class="rf-chainlist-row">
+                  <span class="rf-chainlist-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <span class="rf-chainlist-type">{{ link.attestation_type }}</span>
+                  <span class="rf-chainlist-conf" :class="`rf-chainlist-conf--${link.confidence}`">{{ $t(`anchor.chain_conf_${link.confidence}`) }}</span>
+                  <span class="rf-chainlist-ts">{{ new Date(link.timestamp).toLocaleString() }}</span>
+                </div>
+                <div class="rf-chainlist-hash-row">
+                  <span class="rf-chainlist-hash">{{ link.link_hash?.slice(0, 12) }}</span>
+                  <span class="rf-chainlist-prev">
+                    ↳ {{ link.prev_link_hash ? $t('anchor.chain_built_on') : '' }}
+                    {{ link.prev_link_hash ? link.prev_link_hash.slice(0, 12) : $t('anchor.chain_genesis_link') }}
+                  </span>
+                </div>
               </div>
             </div>
           </template>
@@ -102,7 +128,7 @@
 
 <script setup>
 definePageMeta({ layout: false })
-import { ref, computed, h, onMounted } from 'vue'
+import { ref, computed, h, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
@@ -114,7 +140,7 @@ const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, clear: _clear, isLoaded } = useSoul()
 const { allFiles } = useVault()
-const { chainMetrics, fetchChainMetrics } = useChainAnchor()
+const { chainMetrics, fetchChainMetrics, chainLinks, fetchChainList } = useChainAnchor()
 
 const peerCount = ref(0)
 async function loadPeerCount() {
@@ -139,7 +165,16 @@ async function loadPeerCount() {
     peerCount.value = ids.size
   } catch { /* silent */ }
 }
-onMounted(() => { loadPeerCount(); fetchChainMetrics() })
+let chainMetricsTimer = null
+onMounted(() => {
+  loadPeerCount(); fetchChainMetrics(); fetchChainList()
+  // Gleicher Heartbeat wie auf /anchor: alle ~2.5s neu holen, pausiert wenn
+  // der Tab nicht sichtbar ist.
+  chainMetricsTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') fetchChainMetrics()
+  }, 2_500)
+})
+onUnmounted(() => { if (chainMetricsTimer) clearInterval(chainMetricsTimer) })
 
 const drawerOpen      = ref(false)
 const sidebarCollapsed = ref(false)
@@ -409,6 +444,11 @@ function cardDesc(card) {
 .rf-chain-val {
   font-family: var(--serif); font-size: 28px; color: var(--fg);
   letter-spacing: -0.02em; line-height: 1;
+  display: inline-block; animation: sys-blip 550ms ease-out;
+}
+@keyframes sys-blip {
+  0%   { color: var(--accent); text-shadow: 0 0 16px rgba(109,184,154,0.9); transform: scale(1.08); }
+  100% { color: var(--fg); text-shadow: none; transform: scale(1); }
 }
 .rf-chain-unit {
   font-family: var(--mono); font-size: 13px; color: var(--fg-3);
@@ -417,4 +457,29 @@ function cardDesc(card) {
 .rf-chain-label {
   font-size: 15px; color: var(--fg-2); margin-top: 4px;
 }
+
+/* ── Kontinuitäts-Kette (Zahlen & Verknüpfungen, keine Icons) ── */
+.rf-chainlist {
+  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
+  margin-top: 16px; padding: 4px 18px 14px; max-height: 340px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
+}
+.rf-chainlist-link { position: relative; padding: 10px 0 10px 30px; }
+.rf-chainlist-idx { font-family: var(--mono); font-size: 13px; color: var(--fg-3); position: absolute; left: 0; top: 11px; width: 22px; }
+.rf-chainlist-connector {
+  position: absolute; left: 10px; top: 30px; bottom: -2px; width: 1px;
+  background: var(--line-2);
+}
+.rf-chainlist-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rf-chainlist-type { font-family: var(--sans); font-size: 14px; color: var(--fg); }
+.rf-chainlist-conf {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  color: var(--fg-2); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px;
+}
+.rf-chainlist-conf--low { color: #d4af37; border-color: rgba(212,175,55,0.35); }
+.rf-chainlist-ts { font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin-left: auto; }
+.rf-chainlist-hash-row { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.rf-chainlist-hash { font-family: var(--mono); font-size: 12px; color: var(--fg); background: var(--surface-2); border-radius: 4px; padding: 1px 6px; }
+.rf-chainlist-prev { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 </style>
