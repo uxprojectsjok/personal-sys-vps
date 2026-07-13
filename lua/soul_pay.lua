@@ -59,6 +59,47 @@ if not tx_hash or not tx_hash:match("^0x[0-9a-fA-F]+$") or #tx_hash ~= 66 then
   return
 end
 
+-- reference_id ist immer ein optionales Feld (Notiz zur Zuordnung des Tokens).
+local reference_id = type(incoming.reference_id) == "string" and incoming.reference_id:match("^%s*(.-)%s*$") or nil
+if reference_id == "" then reference_id = nil end
+
+-- ── EU-Widerrufsrecht: Referenz-ID technisch erzwingen ───────────────────────
+-- Nur wenn EU_CONSUMER_RIGHTS via init.sh aktiviert wurde. Ohne existierenden
+-- Consent-Beleg (aus accept_digital_content_terms) dann kein Token — verhindert,
+-- dass der EU-Pflichtschritt (auch bei POL-Zahlungen, siehe show_withdrawal_terms)
+-- einfach übersprungen wird.
+local eu_flag = io.open("/var/lib/sys/config/eu_consumer_rights", "r")
+local eu_consumer_rights = false
+if eu_flag then
+  eu_consumer_rights = eu_flag:read("*a") == "true"
+  eu_flag:close()
+end
+
+if eu_consumer_rights then
+  local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+
+  if not reference_id or not reference_id:match(UUID_PAT) then
+    ngx.status = 400
+    ngx.say(cjson.encode({
+      error   = "reference_id_required",
+      message = "Referenz-ID aus accept_digital_content_terms erforderlich — der Käufer muss zuerst der Widerrufsbelehrung zustimmen.",
+    }))
+    return
+  end
+
+  local consent_path = "/var/lib/sys/souls/" .. soul_id .. "/consent_docs/" .. reference_id .. ".pdf"
+  local cf = io.open(consent_path, "r")
+  if not cf then
+    ngx.status = 404
+    ngx.say(cjson.encode({
+      error   = "consent_not_found",
+      message = "Keine Einwilligung mit dieser Referenz-ID gefunden — accept_digital_content_terms wurde für sie nicht aufgerufen.",
+    }))
+    return
+  end
+  cf:close()
+end
+
 local SOULS_DIR = "/var/lib/sys/souls/"
 local ctx_file  = SOULS_DIR .. soul_id .. "/api_context.json"
 
@@ -394,6 +435,7 @@ local token_data = cjson.encode({
   tx_hash      = tx_hash:lower(),
   pol_amount   = vdata.pol_amount,
   from         = vdata.from,
+  reference_id = reference_id,
   issued_at    = os.date("!%Y-%m-%dT%H:%M:%SZ"),
   expires_at   = expires_iso,
 })

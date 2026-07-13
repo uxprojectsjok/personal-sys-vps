@@ -60,6 +60,32 @@ async function nextInvoiceNumber(soulId, traderName, date = new Date()) {
 
 export { nextInvoiceNumber };
 
+// Zahlungsmethoden-spezifische Texte — PayPal hat ein Notizfeld, in das der
+// Käufer selbst die Referenz-ID einträgt; POL/Polygon-Transaktionen haben
+// keins, dort läuft die Zuordnung über reference_id im POST /api/soul/pay-
+// Aufruf (server-seitig gegen consent_docs/ geprüft, siehe soul_pay.lua).
+function paymentMethodTexts(paymentMethod, { target, wallet }) {
+  if (paymentMethod === 'pol') {
+    return {
+      targetLabel: 'Wallet-Adresse (Polygon)',
+      targetValue: wallet || '(nicht konfiguriert)',
+      referenceNote: 'Diese Referenz-ID muss beim Einlösen der Zahlung als reference_id an ' +
+        'POST /api/soul/pay mitgeschickt werden — nur so kann der Anbieter die Zahlung dieser ' +
+        'Einwilligung zuordnen. Sie steht NICHT in der Blockchain-Transaktion selbst.',
+      provisionNote: 'Zugang erfolgt über ein Zugriffs-Token, automatisch ausgestellt direkt nach ' +
+        'Bestätigung der Zahlung auf der Polygon-Blockchain (kein manuelles Prüfen nötig).',
+    };
+  }
+  return {
+    targetLabel: 'PayPal-Zahlungsziel',
+    targetValue: target || '(nicht konfiguriert)',
+    referenceNote: 'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — ' +
+      'nur so kann der Anbieter die Zahlung dieser Einwilligung zuordnen.',
+    provisionNote: 'Zugang erfolgt über ein Zugriffs-Token, gültig ab Ausstellung. Das Token wird ' +
+      'nach manueller Prüfung des Zahlungseingangs per E-Mail oder direkt im Chat übermittelt.',
+  };
+}
+
 export const LEGAL_SECTIONS = [
   {
     title: 'Widerrufsrecht',
@@ -110,8 +136,9 @@ export function writeLegalSections(doc) {
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
 // Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
 // voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
-export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, priceEur, target, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
+export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
   const { default: PDFDocument } = await import('pdfkit');
+  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const chunks = [];
@@ -131,10 +158,7 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND_DARK).text('Widerrufsbelehrung');
     doc.moveDown(0.5);
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#8a5a1c').text(`Referenz-ID: ${termsToken}`);
-    doc.font('Helvetica').fontSize(9).fillColor(BRAND_DARK).text(
-      'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — ' +
-      'nur so kann der Anbieter die Zahlung dieser Einwilligung zuordnen.'
-    );
+    doc.font('Helvetica').fontSize(9).fillColor(BRAND_DARK).text(pm.referenceNote);
     doc.fontSize(9).fillColor(BRAND_DIM).text(
       'Vorschau — noch keine Zustimmung erteilt. Dieses Dokument beschreibt dein ' +
       'gesetzliches Widerrufsrecht beim Kauf digitaler Inhalte, bevor du zustimmst.'
@@ -142,7 +166,7 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     doc.fillColor(BRAND_DARK).moveDown();
     doc.font('Helvetica').fontSize(10).text(`Soul: ${soulName} (${soulId})`);
     doc.text(`Preis: ${priceEur} EUR`);
-    doc.text(`Zahlungsziel: ${target}`);
+    doc.text(`${pm.targetLabel}: ${pm.targetValue}`);
     doc.moveDown();
 
     doc.font('Helvetica-Bold').fontSize(12).fillColor(BRAND_DARK).text('Anbieter');
@@ -164,16 +188,10 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
 
     doc.font('Helvetica-Bold').fontSize(12).fillColor(BRAND_DARK).text('Funktionsweise & Bereitstellung');
     doc.font('Helvetica').fontSize(10).text(
-      `Zugang erfolgt über ein Zugriffs-Token (pol_access_token), gültig für ` +
-      `${tokenDurationDays || 1} Tag(e) ab Ausstellung. Das Token wird nach ` +
-      `manueller Prüfung des Zahlungseingangs per E-Mail (an die in der PayPal-` +
-      `Zahlungsnotiz hinterlegte Adresse) oder direkt im Chat übermittelt, sofern ` +
-      `dort bereits vereinbart. Die digitale Leistung beginnt mit Erhalt und ` +
-      `Einsatz des Tokens. Zahlungsbedingungen: Zahlung per PayPal (oder POL/` +
-      `Kryptowährung über den technischen Zahlungsweg) im Voraus; Zugang wird nach ` +
-      `Zahlungseingang freigeschaltet, i.d.R. binnen 48 Stunden. Es gilt das ` +
-      `gesetzliche Mängelhaftungsrecht; bei technischen Problemen wende dich an ` +
-      `die oben genannte Kontakt-E-Mail des Anbieters.`
+      `Zugang erfolgt über ein Zugriffs-Token, gültig für ${tokenDurationDays || 1} Tag(e) ab ` +
+      `Ausstellung. ${pm.provisionNote} Die digitale Leistung beginnt mit Erhalt und Einsatz des ` +
+      `Tokens. Es gilt das gesetzliche Mängelhaftungsrecht; bei technischen Problemen wende dich ` +
+      `an die oben genannte Kontakt-E-Mail des Anbieters.`
     );
     doc.moveDown();
 
@@ -190,10 +208,11 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
 // Rechnungserzeugung (z.B. über PayPals eigenes Invoice-Feature, das dafür die
 // Leistungsbeschreibung an PayPal übermitteln müsste — bewusst vermieden, siehe
 // verify-identity-hq-plan.md, Abschnitt Datensparsamkeit/Rechnungsstellung).
-export async function buildConsentPdf({ soulName, soulId, priceEur, target, contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
+export async function buildConsentPdf({ soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
   const { default: PDFDocument } = await import('pdfkit');
   const invoiceNumber = await nextInvoiceNumber(soulId, traderName);
   const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
+  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -241,7 +260,7 @@ export async function buildConsentPdf({ soulName, soulId, priceEur, target, cont
     const refBoxTop   = doc.y;
     const refBoxPad   = 10;
     const refTitleH   = doc.fontSize(10).heightOfString(`Referenz-ID: ${referenceId}`, { width: pageWidth - refBoxPad * 2 });
-    const refNoteText = 'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — nur so kann der Anbieter die Zahlung zuordnen.';
+    const refNoteText = pm.referenceNote;
     const refNoteH    = doc.fontSize(8.5).heightOfString(refNoteText, { width: pageWidth - refBoxPad * 2 });
     const refBoxH     = refBoxPad * 2 + refTitleH + 3 + refNoteH;
 
@@ -312,15 +331,11 @@ export async function buildConsentPdf({ soulName, soulId, priceEur, target, cont
     doc.moveDown(2.5);
 
     // ── Zahlungsziel ──────────────────────────────────────────────────────
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(BRAND_DIM).text('ZAHLUNGSZIEL', left, doc.y, { characterSpacing: 0.5 });
-    doc.font('Helvetica').fontSize(10).fillColor(BRAND_DARK).text(target, left, doc.y + 2);
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(BRAND_DIM).text(pm.targetLabel.toUpperCase(), left, doc.y, { characterSpacing: 0.5 });
+    doc.font('Helvetica').fontSize(10).fillColor(BRAND_DARK).text(pm.targetValue, left, doc.y + 2);
     doc.moveDown();
 
-    doc.font('Helvetica').fontSize(9).text(
-      `Zugang erfolgt über ein Zugriffs-Token, gültig ab Ausstellung. Zahlung per PayPal im Voraus; ` +
-      `Zugang wird nach Zahlungseingang freigeschaltet, i.d.R. binnen 48 Stunden.`,
-      left, doc.y, { width: pageWidth }
-    );
+    doc.font('Helvetica').fontSize(9).text(pm.provisionNote, left, doc.y, { width: pageWidth });
     doc.moveDown();
 
     // ── Widerrufsbelehrung ────────────────────────────────────────────────

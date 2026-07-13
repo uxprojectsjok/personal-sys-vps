@@ -14,7 +14,8 @@
  */
 
 import 'dotenv/config';
-import { readFile, readdir, mkdir } from 'fs/promises';
+import { readFile, readdir, mkdir, stat, writeFile } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
@@ -25,6 +26,8 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
+import { loadCtx } from './lib/vault_fs.mjs';
+import { buildTermsPreviewPdf, buildConsentPdf, legalTextForChat } from './lib/eu_withdrawal_terms.mjs';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -282,7 +285,7 @@ app.get('/health', (_req, res) => {
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
 import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul, reindexLocal } from './lib/soul_indexer.mjs';
-import { writeFile, readFile as readFileFs }   from 'fs/promises';
+import { readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
 
@@ -1128,14 +1131,20 @@ app.get('/llms.txt', async (_req, res) => {
       lines.push(`- **soul_id:** \`${s.soul_id}\``);
       lines.push(`- **Price:** ${base} POL per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
       lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
-      if (a.wallet) lines.push(`- **Wallet (Polygon):** \`${a.wallet}\``);
+      if (a.wallet) {
+        lines.push(EU_CONSUMER_RIGHTS
+          ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="pol") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
+          : `- **Wallet (Polygon):** \`${a.wallet}\``);
+      }
       if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
         lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
       }
       if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
       if (a.paypal_enabled) {
         const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-        lines.push(`- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
+        lines.push(EU_CONSUMER_RIGHTS
+          ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
+          : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
       }
       if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
       // read default_model from soul config
@@ -1157,13 +1166,29 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push(`\`\`\`\nGET ${BASE_URL}/api/soul/preview?soul_id={soul_id}\n\`\`\``);
   lines.push('Returns public profile and confirmed live price before payment.');
   lines.push('');
-  lines.push('**2. Pay on Polygon**');
-  lines.push('Send the exact POL amount to the soul\'s wallet on Polygon (chainId 137).');
-  lines.push('');
-  lines.push('**3. Get access token**');
-  lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}" }\n\`\`\``);
-  lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`');
-  lines.push('');
+  if (EU_CONSUMER_RIGHTS) {
+    lines.push('**2. Consent first (EU withdrawal rights)**');
+    lines.push('Before paying: call show_withdrawal_terms(payment_method="pol"), show its link to the buyer,');
+    lines.push('then call accept_digital_content_terms once they agree. Its response contains the wallet');
+    lines.push('address AND a reference_id (UUID) — both are required for step 4, neither is known before this.');
+    lines.push('');
+    lines.push('**3. Pay on Polygon**');
+    lines.push('Send the exact POL amount to the wallet address from step 2 (chainId 137).');
+    lines.push('');
+    lines.push('**4. Get access token**');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}", "reference_id": "{uuid from step 2}" }\n\`\`\``);
+    lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`. Without a valid reference_id');
+    lines.push('from step 2 this call is rejected — the consent step cannot be skipped.');
+    lines.push('');
+  } else {
+    lines.push('**2. Pay on Polygon**');
+    lines.push('Send the exact POL amount to the soul\'s wallet on Polygon (chainId 137).');
+    lines.push('');
+    lines.push('**3. Get access token**');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}" }\n\`\`\``);
+    lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`');
+    lines.push('');
+  }
   lines.push('**4. Use token**');
   lines.push('```\nAuthorization: Bearer {access_token}\nPOST {mcp_endpoint}\n```');
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
@@ -1310,15 +1335,22 @@ app.get('/api/soul/scan', async (req, res) => {
       anchor_date:         s.anchor_date ?? null,
       days_since_last_anchor: daysSinceLastAnchor !== null ? Math.round(daysSinceLastAnchor * 10) / 10 : null,
       visibility_zone:     visibilityZone,
-      wallet:              amort.wallet || null,
+      // Bei aktivem EU_CONSUMER_RIGHTS werden Zahlungsziele (Wallet-Adresse,
+      // PayPal-Link) erst nach show_withdrawal_terms/accept_digital_content_terms
+      // genannt (im Consent-PDF) — hier nur noch ein Verfügbarkeits-Flag, damit
+      // die Homepage-Methods-Pille weiterhin funktioniert, ohne das Ziel selbst
+      // vorab öffentlich zu zeigen.
+      wallet:              EU_CONSUMER_RIGHTS ? null : (amort.wallet || null),
+      wallet_available:    !!amort.wallet,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,
       agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : [],
       contact_email:       amort.trader_email || null,
       paypal_enabled:      amort.paypal_enabled === true,
-      paypal_target:       amort.paypal_enabled === true ? (amort.paypal_target || null) : null,
+      paypal_target:       (amort.paypal_enabled === true && !EU_CONSUMER_RIGHTS) ? (amort.paypal_target || null) : null,
       price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,
       price_note:          amort.paypal_enabled === true ? (amort.price_note || null) : null,
+      consent_required:    EU_CONSUMER_RIGHTS,
     };
   }));
 
@@ -1327,6 +1359,142 @@ app.get('/api/soul/scan', async (req, res) => {
   const merged   = [...souls, ...remoteSouls.filter(s => !localIds.has(s.soul_id))];
 
   res.json({ ok: true, souls: merged, indexed: stats.souls, scanning: stats.scanning });
+});
+
+// ── EU-Widerrufsrecht-Flow als reines REST-API (kein MCP-Client nötig) ────────
+// Gleiche Logik/Gates wie show_withdrawal_terms.mjs / accept_digital_content_terms.mjs
+// (MCP-Tools, für KI-Chat-Clients), hier zusätzlich als plain-HTTP-Endpoints,
+// damit z.B. die Homepage (scan.vue, kein MCP-Client) denselben Pflicht-Consent-
+// Flow vor Anzeige des Zahlungsziels durchlaufen kann.
+app.post('/api/soul/terms/show', async (req, res) => {
+  const { soul_id, payment_method } = req.body || {};
+  if (!soul_id || !['paypal', 'pol'].includes(payment_method)) {
+    return res.status(400).json({ error: 'soul_id und payment_method ("paypal"|"pol") erforderlich' });
+  }
+  try {
+    const ctx   = await loadCtx(soul_id);
+    const amort = ctx.amortization || {};
+    const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+    const paypalAvailable = amort.paypal_enabled === true;
+
+    if (payment_method === 'paypal' && !paypalAvailable) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
+    }
+    if (payment_method === 'pol' && !polAvailable) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' });
+    }
+
+    const termsToken = randomUUID();
+    const previewPdf  = await buildTermsPreviewPdf({
+      termsToken,
+      soulName: ctx.name || soul_id.slice(0, 8),
+      soulId: soul_id,
+      priceEur: amort.price_eur || '?',
+      target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
+      wallet:   amort.wallet || '',
+      paymentMethod: payment_method,
+      traderName:      amort.trader_name || '',
+      traderAddress:   amort.trader_address || '',
+      traderEmail:     amort.trader_email || '',
+      traderLegalForm: amort.trader_legal_form || '',
+      traderVatNote:   amort.trader_vat_note || '',
+      tokenDurationDays: amort.token_duration_days || 1,
+    });
+    const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
+    await mkdir(consentDir, { recursive: true });
+    await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
+
+    res.json({
+      ok: true,
+      terms_token: termsToken,
+      preview_url: `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.pdf`,
+      legal_text: legalTextForChat(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/soul/terms/accept', async (req, res) => {
+  const {
+    soul_id, terms_token, payment_method,
+    consent_immediate_performance, consent_withdrawal_waiver, contact_note,
+  } = req.body || {};
+
+  if (!soul_id || !terms_token || !['paypal', 'pol'].includes(payment_method)) {
+    return res.status(400).json({ error: 'soul_id, terms_token und payment_method ("paypal"|"pol") erforderlich' });
+  }
+  if (!consent_immediate_performance || !consent_withdrawal_waiver) {
+    return res.status(400).json({
+      error: 'Kauf erst nach beiden ausdrücklichen Einwilligungen möglich: ' +
+        'consent_immediate_performance UND consent_withdrawal_waiver müssen true sein.',
+    });
+  }
+
+  try {
+    const ctx   = await loadCtx(soul_id);
+    const amort = ctx.amortization || {};
+    const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+    const paypalAvailable = amort.paypal_enabled === true;
+
+    if (payment_method === 'paypal' && !paypalAvailable) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
+    }
+    if (payment_method === 'pol' && !polAvailable) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' });
+    }
+
+    const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
+    const docPath     = `${consentDir}/${terms_token}.pdf`;
+    try {
+      await stat(docPath);
+    } catch {
+      return res.status(404).json({
+        error: 'Ungültiger oder unbekannter terms_token. Zuerst /api/soul/terms/show aufrufen.',
+      });
+    }
+
+    const target = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
+    const wallet  = amort.wallet || '';
+    const priceEur = amort.price_eur || '?';
+    const now = new Date();
+    const timestampDisplay = now.toLocaleString('de-DE', {
+      timeZone: 'Europe/Berlin',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZoneName: 'short',
+    });
+
+    const pdfBuffer = await buildConsentPdf({
+      soulName: ctx.name || soul_id.slice(0, 8),
+      soulId: soul_id,
+      priceEur,
+      target,
+      wallet,
+      paymentMethod: payment_method,
+      contactNote: contact_note || '',
+      timestamp: timestampDisplay,
+      referenceId: terms_token,
+      traderName:      amort.trader_name || '',
+      traderAddress:   amort.trader_address || '',
+      traderEmail:     amort.trader_email || '',
+      traderLegalForm: amort.trader_legal_form || '',
+      traderVatNote:   amort.trader_vat_note || '',
+    });
+    await writeFile(docPath, pdfBuffer);
+
+    res.json({
+      ok: true,
+      download_url: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.pdf`,
+      reference_id: terms_token,
+      payment: payment_method === 'pol'
+        ? { method: 'pol', label: 'Wallet-Adresse (Polygon)', value: wallet }
+        : { method: 'paypal', label: 'PayPal-Zahlungsziel', value: target },
+      price_eur: priceEur,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /internal/generate-prompts — regeneriert prompts.md in allen Soul-Vaults

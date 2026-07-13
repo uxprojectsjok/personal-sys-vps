@@ -15,6 +15,7 @@
  * Garantie — aber ein anderer Hebel als die bisherigen.
  */
 
+import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
@@ -26,9 +27,16 @@ export function register(server, soulId) {
   server.tool(
     'show_withdrawal_terms',
     [
-      'PFLICHT-ERSTAUFRUF vor jedem Nicht-Krypto-Kauf (PayPal etc.) bei dieser Soul.',
-      'Muss aufgerufen werden BEVOR accept_digital_content_terms aufgerufen wird —',
-      'ohne den hier erzeugten terms_token schlägt accept_digital_content_terms fehl.',
+      'PFLICHT-ERSTAUFRUF vor jedem Kauf bei dieser Soul — sowohl PayPal als auch',
+      'POL/Polygon. Muss aufgerufen werden BEVOR accept_digital_content_terms',
+      'aufgerufen wird — ohne den hier erzeugten terms_token schlägt',
+      'accept_digital_content_terms fehl.',
+      '',
+      'WICHTIG: Die Wallet-Adresse bzw. das PayPal-Ziel werden NICHT vorab genannt',
+      '(auch nicht von soul_preview/soul_discover) — sie erscheinen erst in der',
+      'PDF-Antwort von accept_digital_content_terms, nach erteilter Zustimmung.',
+      'Das gilt für BEIDE Zahlungswege gleichermaßen (Vorsichtsprinzip beim',
+      'ungeklärten Anwendungsbereich des Widerrufsrechts bei Krypto-Zahlungen).',
       '',
       'Gibt eine gesetzlich vorgeschriebene EU-Widerrufsbelehrung zurück (Link zu',
       'einem PDF + Volltext). Das ist eine rechtliche Informationspflicht, keine',
@@ -37,19 +45,25 @@ export function register(server, soulId) {
       'Eine eigene Zusammenfassung des Inhalts reicht rechtlich nicht aus und',
       'ersetzt nicht die Weitergabe des Links.',
       '',
-      'Diese Soul akzeptiert PayPal als Nicht-Krypto-Zahlungsweg — ein Kauf',
-      'berührt daher das gesetzliche 14-tägige Widerrufsrecht des Käufers.',
       'Zeige dem Nutzer den zurückgegebenen Link, bevor du fortfährst.',
     ].join('\n'),
-    {},
-    async () => {
+    {
+      payment_method: z.enum(['paypal', 'pol']).describe('Gewählter Zahlungsweg — bestimmt, welches Zahlungsziel später in accept_digital_content_terms genannt wird.'),
+    },
+    async ({ payment_method }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
-      if (!amort.paypal_enabled) {
-        return {
-          content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Nicht-Krypto-Zahlungsweg.' }],
-          isError: true,
-        };
+      const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+      const paypalAvailable = amort.paypal_enabled === true;
+
+      if (payment_method === 'paypal' && !paypalAvailable) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
+      }
+      if (payment_method === 'pol' && !polAvailable) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' }], isError: true };
+      }
+      if (!paypalAvailable && !polAvailable) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Zahlungsweg.' }], isError: true };
       }
 
       try {
@@ -60,6 +74,8 @@ export function register(server, soulId) {
           soulId,
           priceEur: amort.price_eur || '?',
           target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
+          wallet:   amort.wallet || '',
+          paymentMethod: payment_method,
           traderName:      amort.trader_name || '',
           traderAddress:   amort.trader_address || '',
           traderEmail:     amort.trader_email || '',

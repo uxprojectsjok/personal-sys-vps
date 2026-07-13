@@ -46,14 +46,19 @@ export function register(server, soulId) {
       'Kaufbeleg (PDF) aktualisiert. PFLICHT: Diesen Link IMMER wörtlich an den',
       'Nutzer weitergeben — als klickbaren Markdown-Link, nicht nur in eigenen',
       'Worten zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich darauf',
-      'hinweisen: die Referenz-ID (= terms_token) MUSS in der PayPal-Zahlungsnotiz',
-      'angegeben werden, sonst kann der Betreiber die Zahlung nicht dem Vorgang',
-      'zuordnen. Der Käufer zahlt danach außerhalb des Systems und kontaktiert den',
-      'Soul-Inhaber direkt — Zugang wird manuell freigeschaltet, i.d.R. binnen 48h.',
+      'hinweisen: die Referenz-ID (= terms_token) MUSS bei der Zahlung angegeben',
+      'werden (PayPal: in der Notiz; POL: als reference_id beim Aufruf von',
+      'POST /api/soul/pay), sonst kann der Betreiber/das System die Zahlung nicht',
+      'zuordnen.',
+      '',
+      'payment_method MUSS identisch zu dem in show_withdrawal_terms gewählten',
+      'Zahlungsweg sein — das Zahlungsziel (Wallet-Adresse oder PayPal-Ziel) wird',
+      'erst HIER, nach erteilter Zustimmung, zum ersten Mal genannt.',
     ].join('\n'),
     {
       terms_token: z.string().uuid()
         .describe('Referenz-ID aus der Antwort von show_withdrawal_terms — dieses Tool muss vorher aufgerufen worden sein.'),
+      payment_method: z.enum(['paypal', 'pol']).describe('Gewählter Zahlungsweg — muss zu dem in show_withdrawal_terms gewählten passen.'),
       consent_immediate_performance: z.boolean()
         .describe('Zustimmung: die digitale Leistung soll sofort beginnen, vor Ablauf der 14-tägigen Widerrufsfrist. Nur auf true setzen nach echter, im Chat erklärter Zustimmung des Nutzers.'),
       consent_withdrawal_waiver: z.boolean()
@@ -61,14 +66,17 @@ export function register(server, soulId) {
       contact_note: z.string().max(200).optional()
         .describe('Optionale Notiz/Kontakt (z.B. E-Mail), für den späteren manuellen Abgleich durch den Soul-Inhaber'),
     },
-    async ({ terms_token, consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
+    async ({ terms_token, payment_method, consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
-      if (!amort.paypal_enabled) {
-        return {
-          content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Nicht-Krypto-Zahlungsweg.' }],
-          isError: true,
-        };
+      const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+      const paypalAvailable = amort.paypal_enabled === true;
+
+      if (payment_method === 'paypal' && !paypalAvailable) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
+      }
+      if (payment_method === 'pol' && !polAvailable) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' }], isError: true };
       }
 
       const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
@@ -102,6 +110,7 @@ export function register(server, soulId) {
 
       try {
         const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
+        const wallet       = amort.wallet || '';
         const priceEur     = amort.price_eur || '?';
         const now          = new Date();
         // Lokale Zeit statt UTC — für ein an Verbraucher gerichtetes Rechtsdokument
@@ -118,6 +127,8 @@ export function register(server, soulId) {
           soulId,
           priceEur,
           target,
+          wallet,
+          paymentMethod: payment_method,
           contactNote: contact_note || '',
           timestamp: timestampDisplay,
           referenceId: terms_token,
@@ -131,6 +142,23 @@ export function register(server, soulId) {
         await writeFile(docPath, pdfBuffer);
 
         const downloadUrl = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
+
+        const paymentLines = payment_method === 'pol'
+          ? [
+              `POL/Polygon: ${priceEur} EUR (in POL) an ${wallet}`,
+              `WICHTIG: Diese Referenz-ID MUSS als reference_id beim Aufruf von`,
+              `POST /api/soul/pay mitgeschickt werden — sonst kann das System die`,
+              `Zahlung nicht zuordnen und lehnt sie ab.`,
+              'Der Zugang wird nach Bestätigung der Transaktion auf der Blockchain',
+              'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
+            ]
+          : [
+              `PayPal: ${priceEur} EUR an ${target}`,
+              `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
+              `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
+              'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
+              'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
+            ];
 
         return {
           content: [
@@ -146,12 +174,7 @@ export function register(server, soulId) {
                 'als reine URL zum Kopieren. Nicht in einer eigenen Zusammenfassung weglassen.',
                 '',
                 `Referenz-ID: ${terms_token}`,
-                `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
-                `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
-                '',
-                `PayPal: ${priceEur} EUR an ${target}`,
-                'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
-                'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
+                ...paymentLines,
               ].join('\n'),
             },
             { type: 'resource', resource: { uri: downloadUrl, mimeType: 'application/pdf', blob: pdfBuffer.toString('base64') } },
