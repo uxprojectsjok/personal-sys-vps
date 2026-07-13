@@ -682,7 +682,7 @@ server {
 
   location = /api/soul/anchor/start {
     limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_anchor_start.lua;
@@ -690,7 +690,7 @@ server {
 
   location = /api/soul/anchor/confirm {
     limit_req zone=chat burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/soul_anchor_confirm.lua;
@@ -722,6 +722,18 @@ server {
     add_header Cache-Control "no-store" always;
     add_header Access-Control-Allow-Origin "*" always;
     content_by_lua_file /etc/openresty/lua/soul_chain_metrics.lua;
+  }
+
+  # ── Volle Kontinuitäts-Kette (alle Glieder, für Chain-Visualisierung) ────────
+  # Owner-only (im Gegensatz zu chain-metrics): Verifikations-Historie ist nicht
+  # on-chain öffentlich, anders als reine Block-Metriken.
+  location = /api/soul/chain-list {
+    limit_except GET { deny all; }
+    limit_req zone=api burst=30 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_chain_list.lua;
   }
 
   # ── Soul Price: dynamischer POL-Preis (öffentlich, kein Auth) ────────────────

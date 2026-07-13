@@ -1254,7 +1254,14 @@
     "vis_zone_invisible": "Nicht auffindbar",
     "vis_hint_discoverable": "Deine Soul erscheint im Event-Search. KI-Agenten können dich via soul_discover finden.",
     "vis_hint_fading": "Du verlässt das Discovery-Fenster. Bald nicht mehr via Event-Search auffindbar.",
-    "vis_hint_invisible": "Kein Lebenszeichen auf der Chain. Jetzt ankern um wieder auffindbar zu werden."
+    "vis_hint_invisible": "Kein Lebenszeichen auf der Chain. Jetzt ankern um wieder auffindbar zu werden.",
+    "chain_links_badge": "Kette",
+    "chain_links_title": "Kontinuitäts-Kette",
+    "chain_conf_low": "gering",
+    "chain_conf_medium": "mittel",
+    "chain_conf_high": "hoch",
+    "chain_built_on": "verknüpft mit",
+    "chain_genesis_link": "Ursprungsglied"
   },
   "services": {
     "title": "Verbundene Dienste",

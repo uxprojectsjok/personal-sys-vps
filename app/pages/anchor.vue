@@ -104,6 +104,35 @@
               </div>
             </Transition>
 
+            <!-- ── Kontinuitäts-Kette: alle Glieder, Zahlen & Verknüpfungen ── -->
+            <Transition name="slide-up">
+              <div v-if="chainLinks && chainLinks.length" class="vank-chain-card">
+                <div class="vank-chain-head">
+                  <span class="vank-chain-badge">{{ $t('anchor.chain_links_badge') }}</span>
+                  <span class="vank-chain-title">{{ $t('anchor.chain_links_title') }}</span>
+                  <span class="vank-chain-count">{{ chainLinks.length }}</span>
+                </div>
+                <div class="vank-chain-list">
+                  <div v-for="(link, idx) in chainLinks" :key="link.link_id" class="vank-chain-link">
+                    <span v-if="idx < chainLinks.length - 1" class="vank-chain-connector" />
+                    <div class="vank-chain-link-row">
+                      <span class="vank-chain-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
+                      <span class="vank-chain-type">{{ link.attestation_type }}</span>
+                      <span class="vank-chain-conf" :class="`vank-chain-conf--${link.confidence}`">{{ $t(`anchor.chain_conf_${link.confidence}`) }}</span>
+                      <span class="vank-chain-ts">{{ new Date(link.timestamp).toLocaleString() }}</span>
+                    </div>
+                    <div class="vank-chain-hash-row">
+                      <span class="vank-chain-hash">{{ link.link_hash?.slice(0, 12) }}</span>
+                      <span class="vank-chain-prev">
+                        ↳ {{ link.prev_link_hash ? $t('anchor.chain_built_on') : '' }}
+                        {{ link.prev_link_hash ? link.prev_link_hash.slice(0, 12) : $t('anchor.chain_genesis_link') }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+
             <!-- ── Discovery-Tags ── -->
             <section class="vank-section">
               <div class="vank-section-body">
@@ -248,7 +277,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
@@ -267,6 +296,7 @@ const {
   connectWallet, disconnectWallet, anchorSoul, cancelAnchor, checkNextAnchorAllowed,
   syncAnchorFromChain, proveIdentity, recheckWallet,
   chainMetrics, fetchChainMetrics,
+  chainLinks, fetchChainList,
 } = useChainAnchor()
 
 // ── Shell state ──────────────────────────────────────────────────────────────
@@ -287,6 +317,7 @@ const identityProof        = ref(null)
 const proofCopied          = ref(false)
 const isConnectingForProof = ref(false)
 const discoverable         = ref(true)
+let chainMetricsTimer      = null
 
 const tagsArray = computed(() =>
   tagsRaw.value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0 && t.length <= 32).slice(0, 10)
@@ -313,6 +344,7 @@ onMounted(async () => {
   walletRestoring.value = false
   refreshRateLimit()
   fetchChainMetrics()
+  fetchChainList()
   fetch('/api/soul/privacy', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d) discoverable.value = d.discoverable !== false })
@@ -322,7 +354,15 @@ onMounted(async () => {
     pushToServer()
     if (result.nextAllowed > 0) rateLimitUntil.value = result.nextAllowed
   })
+
+  // Chain-Metrics-Heartbeat: alle ~2.5s neu holen (trifft Polygons Block-Kadenz,
+  // damit chain_age_blocks live tickt) — pausiert wenn der Tab nicht sichtbar ist,
+  // statt im Hintergrund unnötig weiter zu pollen.
+  chainMetricsTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') fetchChainMetrics()
+  }, 2_500)
 })
+onUnmounted(() => { if (chainMetricsTimer) clearInterval(chainMetricsTimer) })
 
 watch(isConnected, v => { if (v) refreshRateLimit() })
 watch(walletAddress, v => { if (v) refreshRateLimit() })
@@ -375,6 +415,7 @@ async function handleAnchor() {
     }
     refreshRateLimit()
     fetchChainMetrics()
+    fetchChainList()
     pushToServer()
   }
 }
@@ -794,6 +835,48 @@ function onNav(id) {
   line-height: 1.6; margin: 0;
 }
 .vank-visibility--invisible .vank-vis-hint { color: #e06c75; }
+
+/* ── Kontinuitäts-Kette (Zahlen & Verknüpfungen, bewusst ohne Icons) ── */
+.vank-chain-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: rgba(23,23,23,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.vank-chain-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.vank-chain-badge {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
+  text-transform: uppercase; padding: 2px 8px;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 99px; color: var(--fg); flex: none;
+}
+.vank-chain-title { font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); flex: 1; }
+.vank-chain-count { font-family: var(--mono); font-size: 14px; color: var(--fg-2); }
+.vank-chain-list { padding: 4px 18px 14px; }
+.vank-chain-link { position: relative; padding: 10px 0 10px 30px; }
+.vank-chain-idx { font-family: var(--mono); font-size: 13px; color: var(--fg-3); position: absolute; left: 0; top: 11px; width: 22px; }
+.vank-chain-connector {
+  position: absolute; left: 10px; top: 30px; bottom: -2px; width: 1px;
+  background: var(--line-2);
+}
+.vank-chain-link-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vank-chain-type { font-family: var(--sans); font-size: 14px; color: var(--fg); }
+.vank-chain-conf {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  color: var(--fg-2); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px;
+}
+.vank-chain-conf--low { color: #d4af37; border-color: rgba(212,175,55,0.35); }
+.vank-chain-ts { font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin-left: auto; }
+.vank-chain-hash-row { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.vank-chain-hash { font-family: var(--mono); font-size: 12px; color: var(--fg); background: var(--surface-2); border-radius: 4px; padding: 1px 6px; }
+.vank-chain-prev { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 
 /* ── Shared ── */
 .vank-ic { width: 14px; height: 14px; flex: none; }

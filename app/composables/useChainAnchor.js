@@ -1176,6 +1176,7 @@ export function useChainAnchor() {
   // ── Chain Metrics ─────────────────────────────────────────────────────────
 
   const chainMetrics = ref(null);
+  const chainLinks   = ref(null);
 
   async function fetchChainMetrics() {
     const id = soulMeta.value?.id
@@ -1189,6 +1190,21 @@ export function useChainAnchor() {
       }
     } catch { /* ignorieren — Metriken sind optional */ }
     return chainMetrics.value;
+  }
+
+  // Volle Kontinuitäts-Kette (alle Glieder) für die Chain-Visualisierung —
+  // separat von chainMetrics (Block-Zahlen), da owner-only und nicht on-chain.
+  async function fetchChainList() {
+    try {
+      const res = await fetch(`/api/soul/chain-list`, {
+        headers: { Authorization: `Bearer ${soulToken.value}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        chainLinks.value = Array.isArray(data.links) ? data.links : [];
+      }
+    } catch { /* ignorieren — Visualisierung ist optional */ }
+    return chainLinks.value;
   }
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -1219,8 +1235,10 @@ export function useChainAnchor() {
     hasGrowthChain,
     sessionCount,
     chainMetrics,
+    chainLinks,
     isGenesisSoul,
     fetchChainMetrics,
+    fetchChainList,
     connectWallet,
     disconnectWallet,
     computeContentHash,

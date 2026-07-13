@@ -1254,7 +1254,14 @@
     "vis_zone_invisible": "Not discoverable",
     "vis_hint_discoverable": "Your soul appears in event search. AI agents can find you via soul_discover.",
     "vis_hint_fading": "You are leaving the discovery window. Soon no longer findable via event search.",
-    "vis_hint_invisible": "No sign of life on chain. Anchor now to become discoverable again."
+    "vis_hint_invisible": "No sign of life on chain. Anchor now to become discoverable again.",
+    "chain_links_badge": "Chain",
+    "chain_links_title": "Continuity Chain",
+    "chain_conf_low": "low",
+    "chain_conf_medium": "medium",
+    "chain_conf_high": "high",
+    "chain_built_on": "linked to",
+    "chain_genesis_link": "origin link"
   },
   "services": {
     "title": "Connected services",
