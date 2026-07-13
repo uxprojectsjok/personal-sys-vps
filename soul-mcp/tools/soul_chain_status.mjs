@@ -29,7 +29,9 @@ function summarize(chain) {
     if (isRevoked(chain, l.link_id)) continue;
     const age = daysAgo(l.timestamp);
     if (CONTINUITY_TYPES.has(l.attestation_type) && age < freshestContinuity) freshestContinuity = age;
-    if (ANCHOR_TYPES.has(l.attestation_type)) {
+    // "low"-Confidence-Anker (human_override) zählen bewusst nicht — siehe
+    // chain_lib.lua confirmPendingAnchor/summarize.
+    if (ANCHOR_TYPES.has(l.attestation_type) && l.confidence !== 'low') {
       anyAnchor = true;
       if (age < freshestAnchor) freshestAnchor = age;
       anchorTypes.add(l.attestation_type);

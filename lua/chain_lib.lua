@@ -160,15 +160,33 @@ end
 -- Erfolg ein "anchor"-Kettenglied an. evidence_ref bewusst NUR der Referenzcode
 -- (kein Klartext-Zahlername/Transaktions-ID in der Kette — die liegen, falls
 -- gebraucht, außerhalb der Kette, analog zu Fotos/Audio bei face_hq/voice_hq).
-function M.confirmPendingAnchor(soul_id, reference_code, amount)
+--
+-- Confidence-Stufen (bewusst niedriger als IDV/SEPA — Selbstzahlung ist ein
+-- leichtgewichtiger PoC-Anker, kein unabhängig geprüfter Ausweis/Bankbeleg):
+--   "medium" — normale automatisierte Bestätigung, Betrag stimmt mit Toleranz
+--   "low"    — human_override: der Mensch bestätigt trotz gescheitertem/
+--              übersprungenem automatischem Abgleich manuell im Chat. Bewusst
+--              schwächer vertraut als der automatisierte Weg (evidence_ref
+--              trägt ":override"-Marker für Nachvollziehbarkeit).
+function M.confirmPendingAnchor(soul_id, reference_code, amount, opts)
+  opts = opts or {}
   local pending = M.loadPendingAnchor(soul_id)
   if not pending then return nil, "no_pending_anchor" end
   if pending.reference_code ~= reference_code then return nil, "reference_mismatch" end
   if ngx.time() > pending.expires_at then return nil, "expired" end
-  -- Toleranz von 1 Cent für Rundungsdifferenzen beim Zahlungsanbieter.
-  if amount and math.abs(amount - pending.amount) > 0.01 then return nil, "amount_mismatch" end
 
-  local link, err = M.append(soul_id, "anchor", pending.kind, "high", pending.reference_code)
+  local confidence = "medium"
+  local evidence    = pending.reference_code
+
+  if opts.human_override then
+    confidence = "low"
+    evidence   = evidence .. ":override"
+  else
+    -- Toleranz von 1 Cent für Rundungsdifferenzen beim Zahlungsanbieter.
+    if amount and math.abs(amount - pending.amount) > 0.01 then return nil, "amount_mismatch" end
+  end
+
+  local link, err = M.append(soul_id, "anchor", pending.kind, confidence, evidence)
   if not link then return nil, err end
 
   os.remove(pending_path(soul_id))
@@ -222,7 +240,10 @@ function M.summarize(soul_id)
       if CONTINUITY_TYPES[l.attestation_type] and age < freshestContinuity then
         freshestContinuity = age
       end
-      if ANCHOR_TYPES[l.attestation_type] then
+      -- "low"-Confidence-Anker (human_override, siehe confirmPendingAnchor)
+      -- zählen bewusst NICHT für die Stufen-Berechnung — ein per Override
+      -- unbestätigter Anker darf die Sicherheit der Kette nicht heben.
+      if ANCHOR_TYPES[l.attestation_type] and l.confidence ~= "low" then
         anyAnchor = true
         if age < freshestAnchor then freshestAnchor = age end
         anchorTypes[l.attestation_type] = true

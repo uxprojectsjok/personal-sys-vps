@@ -4,7 +4,10 @@
 -- Owner-Tool, kein separates Credential für Zapier/Vermittlungsdienste nötig,
 -- da die KI diesen Endpunkt innerhalb ihrer eigenen authentifizierten Session
 -- aufruft (siehe verify-identity-hq-plan.md, Abschnitt Anchor-PoC).
--- Body: { reference_code, amount }
+-- Body: { reference_code, amount, human_override }
+-- human_override=true: Mensch bestätigt manuell trotz gescheitertem/
+-- übersprungenem automatischem Abgleich — landet mit reduzierter Confidence
+-- ("low" statt "medium") in der Kette, siehe chain_lib.lua.
 
 local cjson   = require("cjson.safe")
 local chain   = require("chain_lib")
@@ -36,8 +39,9 @@ if not ok_b or type(body) ~= "table" or type(body.reference_code) ~= "string" th
 end
 
 local amount = tonumber(body.amount)
+local opts   = { human_override = body.human_override == true }
 
-local link, err = chain.confirmPendingAnchor(soul_id, body.reference_code, amount)
+local link, err = chain.confirmPendingAnchor(soul_id, body.reference_code, amount, opts)
 if not link then
   ngx.status = 409
   ngx.say(cjson.encode({ error = err or "confirm_failed" }))
