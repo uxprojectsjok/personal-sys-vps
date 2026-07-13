@@ -137,9 +137,9 @@ export function register(server, soulId) {
             {
               type: 'text',
               text: [
-                'Einwilligung erfasst. Widerrufsbelehrung + Kaufbeleg als PDF erzeugt.',
+                'Einwilligung erfasst. Rechnung + Widerrufsbelehrung als PDF erzeugt.',
                 '',
-                `📄 [Widerrufsdokument herunterladen](${downloadUrl})`,
+                `📄 [Rechnung & Widerrufsbelehrung herunterladen](${downloadUrl})`,
                 `${downloadUrl}`,
                 '',
                 'PFLICHT: Gib dem Nutzer IMMER den Link oben — als klickbaren Link UND',
