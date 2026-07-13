@@ -170,6 +170,35 @@ server {
     proxy_set_header Host $host;
   }
 
+  # ── EU-Widerrufsrecht-Consent-Flow als reines REST-API (öffentlich, CORS) ────
+  # Für Nicht-MCP-Clients wie die Homepage (scan.vue) — gleiche Logik/Gates wie
+  # die MCP-Tools show_withdrawal_terms/accept_digital_content_terms.
+  location = /api/soul/terms/show {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:3098/api/soul/terms/show;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/terms/accept {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:3098/api/soul/terms/accept;
+    proxy_set_header Host $host;
+  }
+
   # ── Gate-Status (öffentlich – gibt nur soul_registered zurück) ───────────────
   location = /api/gate-status {
     limit_req zone=api burst=20 nodelay;
