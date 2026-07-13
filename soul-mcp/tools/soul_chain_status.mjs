@@ -9,7 +9,7 @@ import { SOULS_DIR } from '../lib/vault_fs.mjs';
 // verify-identity-hq-plan.md). Bei Änderung der Stufen-Logik: beide Stellen
 // pflegen (hier + chain_lib.lua gateCheck/summarize).
 
-const ANCHOR_TYPES = new Set(['idv_document', 'sim_verification', 'sepa_transfer', 'eudi_wallet', 'eid_chip']);
+const ANCHOR_TYPES = new Set(['idv_document', 'sim_verification', 'sepa_transfer', 'eudi_wallet', 'eid_chip', 'paypal_transfer']);
 const CONTINUITY_TYPES = new Set(['face_hq', 'voice_hq', 'face', 'voice', 'fingerprint', 'longmem_interview', 'peer_vouch', 'passkey_wallet']);
 
 function daysAgo(isoTs) {
@@ -69,10 +69,10 @@ export function register(server, token, soulId = null) {
       '  high   — continuity link younger than 1 day AND anchor younger than',
       '           12 months AND at least 2 independent anchor types',
       '',
-      'Note: no anchor link type (IDV/SIM/SEPA) is implemented yet in this',
-      'deployment — medium/high are therefore currently unreachable. This is',
-      'expected, not an error; treat it as "not yet strongly bound to a',
-      'verified real-world identity", not as a malfunction.',
+      'Anchor types: paypal_transfer implemented (PoC — self-payment via PayPal,',
+      'see soul_anchor_paypal_start). IDV/SIM/SEPA not implemented yet. "high"',
+      'needs 2 independent anchor types, so it stays unreachable until a second',
+      'anchor type exists — expected, not an error.',
     ].join('\n'),
     {},
     async () => {

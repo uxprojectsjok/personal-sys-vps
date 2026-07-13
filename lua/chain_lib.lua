@@ -108,10 +108,77 @@ function M.revoke(soul_id, link_id, reason)
   return M.append(soul_id, "revocation", "revocation", "high", link_id .. (reason and (":" .. reason) or ""))
 end
 
+-- ── Anchor-PoC: Selbst-Zahlung als Anker (siehe verify-identity-hq-plan.md) ────
+-- Grundidee: der Soul-Owner zahlt sich selbst einen kleinen, eindeutigen Betrag
+-- (z.B. via PayPal) — der Wert des Ankers kommt nicht aus einer "Identitäts-
+-- Entdeckung" (der Owner kennt seinen eigenen Namen ja schon), sondern aus einer
+-- echten, KYC-geprüften Transaktion, die Sybil-Angriffe verteuert. Bewusst
+-- generisch gehalten: "kind" (z.B. "paypal_transfer", später "sepa_transfer")
+-- ist der einzige anbieterspezifische Teil, der Rest des Flows ist identisch.
+local PENDING_TTL = 2 * 3600  -- 2h — reicht für den KI-gesteuerten Bezahl-und-Bestätigen-Flow
+
+local function pending_path(soul_id)
+  return SOULS_DIR .. soul_id .. "/pending_anchor.json"
+end
+
+local function random_reference_code()
+  local bytes = random.bytes(4, true)
+  return rstr.to_hex(bytes):upper():sub(1, 6)
+end
+
+-- Erzeugt eine offene Anker-Anfrage: Referenzcode + leicht variierter Betrag
+-- (Basis + Zufalls-Cent-Betrag), damit mehrere gleichzeitige Anfragen anhand
+-- des überwiesenen Betrags allein schon unterscheidbar sind.
+function M.createPendingAnchor(soul_id, kind, base_amount)
+  local cents  = random.bytes(1, true):byte(1) % 100
+  local amount = math.floor((base_amount + cents / 100) * 100 + 0.5) / 100
+  local pending = {
+    reference_code = random_reference_code(),
+    kind           = kind,
+    amount         = amount,
+    created_at     = ngx.time(),
+    expires_at     = ngx.time() + PENDING_TTL,
+  }
+  local ok, encoded = pcall(cjson.encode, pending)
+  if not ok then return nil, "encode_failed" end
+  local f = io.open(pending_path(soul_id), "w")
+  if not f then return nil, "write_failed" end
+  f:write(encoded); f:close()
+  return pending
+end
+
+function M.loadPendingAnchor(soul_id)
+  local f = io.open(pending_path(soul_id), "r")
+  if not f then return nil end
+  local raw = f:read("*a"); f:close()
+  local ok, data = pcall(cjson.decode, raw)
+  if ok and type(data) == "table" then return data end
+  return nil
+end
+
+-- Bestätigt eine offene Anker-Anfrage anhand des Referenzcodes und hängt bei
+-- Erfolg ein "anchor"-Kettenglied an. evidence_ref bewusst NUR der Referenzcode
+-- (kein Klartext-Zahlername/Transaktions-ID in der Kette — die liegen, falls
+-- gebraucht, außerhalb der Kette, analog zu Fotos/Audio bei face_hq/voice_hq).
+function M.confirmPendingAnchor(soul_id, reference_code, amount)
+  local pending = M.loadPendingAnchor(soul_id)
+  if not pending then return nil, "no_pending_anchor" end
+  if pending.reference_code ~= reference_code then return nil, "reference_mismatch" end
+  if ngx.time() > pending.expires_at then return nil, "expired" end
+  -- Toleranz von 1 Cent für Rundungsdifferenzen beim Zahlungsanbieter.
+  if amount and math.abs(amount - pending.amount) > 0.01 then return nil, "amount_mismatch" end
+
+  local link, err = M.append(soul_id, "anchor", pending.kind, "high", pending.reference_code)
+  if not link then return nil, err end
+
+  os.remove(pending_path(soul_id))
+  return link
+end
+
 -- ── Stufen-Prüfung ────────────────────────────────────────────────────────────
 local ANCHOR_TYPES = {
   idv_document = true, sim_verification = true, sepa_transfer = true,
-  eudi_wallet = true, eid_chip = true,
+  eudi_wallet = true, eid_chip = true, paypal_transfer = true,
 }
 local CONTINUITY_TYPES = {
   face_hq = true, voice_hq = true, face = true, voice = true, fingerprint = true,

@@ -37,6 +37,8 @@ import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 import { register as mindRead }              from './mind_read.mjs';
 import { register as mindWrite }             from './mind_write.mjs';
 import { register as soulChainStatus }       from './soul_chain_status.mjs';
+import { register as soulAnchorPaypalStart }   from './soul_anchor_paypal_start.mjs';
+import { register as soulAnchorPaypalConfirm } from './soul_anchor_paypal_confirm.mjs';
 import { register as healthCheck }           from './health_check.mjs';
 import { register as foodLog }               from './food_log.mjs';
 import { register as healthSync }            from './health_sync.mjs';
@@ -121,6 +123,8 @@ export function registerTools(server, token, soulId = null) {
   mindRead(server, token, soulId);
   mindWrite(server, token, soulId);
   soulChainStatus(server, token, soulId);
+  soulAnchorPaypalStart(server, token);
+  soulAnchorPaypalConfirm(server, token);
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
