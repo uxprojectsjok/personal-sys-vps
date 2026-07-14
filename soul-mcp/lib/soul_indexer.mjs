@@ -532,9 +532,19 @@ async function seedFromLocalAnchors() {
         let localAmort    = null;
         let localPayEp    = null;
         let localVerifyEp = null;
+        let localName     = null;
+        let localDesc     = null;
+        let localTags     = null;
         try {
           const ctx = JSON.parse(await readFile(`${SOULS_DIR}${dir}/api_context.json`, 'utf8'));
           if (ctx?.agent_registry_cid) rawCid = validCid(ctx.agent_registry_cid) ?? undefined;
+          // Owner-editable Meta-Felder (Settings/Marketplace-UI) — ohne das hier
+          // bleiben sie bis zum nächsten on-chain Anchor auf dem alten Stand,
+          // weil unten sonst nur chain_anchor.json (Anker-Zeitpunkt) gelesen wird.
+          localName = str(ctx?.name);
+          localDesc = str(ctx?.description, MAX_DESC);
+          const t = tags(ctx?.tags);
+          if (t.length) localTags = t;
           const am = ctx?.amortization;
           console.log(`[soul-seed] ${dir.slice(0,8)}: amort.enabled=${am?.enabled ?? 'n/a'}, wallet=${am?.wallet?.slice(0,8) ?? '-'}, cid=${rawCid?.slice(0,10) ?? '-'}`);
           if (am && typeof am === 'object') {
@@ -575,12 +585,16 @@ async function seedFromLocalAnchors() {
           if (localPayEp)    existing.pay_endpoint   = localPayEp;
           if (localVerifyEp) existing.verify_endpoint = localVerifyEp;
           if (!existing.cid && rawCid) existing.cid = rawCid;
-          // chain_anchor.json für Tags/Sessions (optional)
+          if (localName) existing.name        = localName;
+          if (localDesc) existing.description = localDesc;
+          if (localTags) existing.tags        = localTags;
+          // chain_anchor.json für Tags/Sessions (optional) — nur Fallback, falls
+          // api_context.json (s.o., aktueller da Owner-editierbar) nichts liefert.
           try {
             const anchor = JSON.parse(await readFile(`${SOULS_DIR}${dir}/chain_anchor.json`, 'utf8'));
             const newTags = Array.isArray(anchor.tags) ? anchor.tags : [];
-            if (newTags.length) existing.tags = newTags;
-            if (anchor.name)    existing.name = anchor.name;
+            if (!localTags && newTags.length) existing.tags = newTags;
+            if (!localName && anchor.name)    existing.name = anchor.name;
             if (anchor.sessions > (existing.sessions ?? 0)) existing.sessions = Math.max(anchor.sessions, 1);
           } catch { /* kein chain_anchor.json — nicht schlimm */ }
           _dirty = true;
