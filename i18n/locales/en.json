@@ -783,6 +783,7 @@
     "privacy_toggle_label": "Discoverable in the Scan network",
     "privacy_on_hint": "Your node appears in SYS.Scan and is findable via AI search.",
     "privacy_off_hint": "Your node no longer appears in SYS.Scan, llms.txt, or AI free-text search. Note: not all SYS functions are available once this is off — external AI assistants can no longer stumble onto your soul randomly, only reach it via an already-known endpoint, QR code, or an existing trust connection. Anchor transactions already on the blockchain remain permanently public regardless — only future anchors will stop embedding your name/tags.",
+    "privacy_permanence_warning": "While discoverability is enabled, your name and tags are permanently and irrevocably written into a public Polygon transaction with every blockchain anchor; a Marketplace registration additionally pins your name, description, tags and wallet address to IPFS permanently. Disabling this later only prevents future publications — data already anchored or pinned cannot be retracted.",
     "privacy_save_failed": "Could not save the change — please try again.",
     "soul_cert": "Soul-Cert",
     "cert_rotating": "Rotating…",

@@ -783,6 +783,7 @@
     "privacy_toggle_label": "Im Scan-Netzwerk auffindbar",
     "privacy_on_hint": "Dein Node erscheint in SYS.Scan und ist über die KI-Suche auffindbar.",
     "privacy_off_hint": "Dein Node erscheint nicht mehr in SYS.Scan, llms.txt oder der KI-Freitextsuche. Achtung: dann stehen nicht alle SYS-Funktionen zur Verfügung — externe KI-Agenten können deine Soul nicht mehr zufällig finden, nur noch über einen bereits bekannten Endpunkt, QR-Code oder eine bestehende Vertrauensverbindung. Bereits verankerte Anchor-Transaktionen bleiben unveränderlich auf der Blockchain öffentlich einsehbar — nur zukünftige Anker verankern keinen Namen/Tags mehr.",
+    "privacy_permanence_warning": "Solange die Auffindbarkeit aktiv ist, werden Name und Tags bei jedem Blockchain-Anker dauerhaft und unlöschbar in eine öffentliche Polygon-Transaktion geschrieben; eine Marketplace-Registrierung pinnt zusätzlich Name, Beschreibung, Tags und Wallet-Adresse dauerhaft auf IPFS. Ein späteres Deaktivieren verhindert nur zukünftige Veröffentlichungen — bereits verankerte/gepinnte Daten lassen sich nicht zurückholen.",
     "privacy_save_failed": "Änderung konnte nicht gespeichert werden — bitte erneut versuchen.",
     "soul_cert": "Soul-Cert",
     "cert_rotating": "Rotiert…",
