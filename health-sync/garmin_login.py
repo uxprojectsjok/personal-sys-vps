@@ -12,6 +12,9 @@ import time
 import argparse
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+import vault_crypto
+
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--soul-id",     default=None)
 parser.add_argument("--mfa-file",    default=None, help="Path to file where MFA code will appear")
@@ -37,8 +40,9 @@ with open(config_path) as f:
     config = json.load(f)
 
 soul_id   = config.get("soul_id", config_path.stem.replace("health_sync_", ""))
-email     = config["garmin_email"]
-password  = config["garmin_password"]
+vault_key = vault_crypto.read_vault_key(soul_id)
+email     = vault_crypto.decrypt_field(config["garmin_email"], vault_key)
+password  = vault_crypto.decrypt_field(config["garmin_password"], vault_key)
 token_dir = TOKEN_BASE / soul_id
 token_dir.mkdir(parents=True, exist_ok=True)
 

@@ -8,9 +8,14 @@ TOKEN_DIR and reused on subsequent syncs — no MFA prompt needed again.
 """
 
 import os
+import sys
 import time
 from datetime import date, timedelta
+from pathlib import Path
 from statistics import mean
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import vault_crypto
 
 TOKEN_DIR_BASE = "/var/lib/sys/config/garmin_tokens"
 
@@ -109,7 +114,11 @@ def get_data(config: dict, soul_id: str = None) -> dict:
     if token_dir:
         os.makedirs(token_dir, exist_ok=True)
 
-    api = Garmin(config["garmin_email"], config["garmin_password"])
+    vault_key = vault_crypto.read_vault_key(soul_id) if soul_id else None
+    email    = vault_crypto.decrypt_field(config["garmin_email"], vault_key)
+    password = vault_crypto.decrypt_field(config["garmin_password"], vault_key)
+
+    api = Garmin(email, password)
 
     # Skip portal strategies — they're slow, hit the same rate limits,
     # and don't handle MFA better than the mobile/widget methods.

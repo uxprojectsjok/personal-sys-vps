@@ -9,6 +9,9 @@ Usage:
 import json, sys, base64
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+import vault_crypto
+
 CONFIG_DIR = Path("/var/lib/sys/config")
 TOKEN_BASE  = Path("/var/lib/sys/config/garmin_tokens")
 
@@ -53,11 +56,13 @@ token_dir.chmod(0o700)
 print(f"\n  Token saved to {token_file}")
 print("  Testing sync…\n")
 
-sys.path.insert(0, str(Path(__file__).parent))
 try:
     from garminconnect import Garmin
     garmin_config = json.loads(Path(config_path).read_text())
-    api = Garmin(garmin_config["garmin_email"], garmin_config["garmin_password"])
+    vault_key = vault_crypto.read_vault_key(soul_id)
+    email    = vault_crypto.decrypt_field(garmin_config["garmin_email"], vault_key)
+    password = vault_crypto.decrypt_field(garmin_config["garmin_password"], vault_key)
+    api = Garmin(email, password)
     api.login(tokenstore=str(token_dir))
     import datetime
     stats = api.get_stats(str(datetime.date.today()))

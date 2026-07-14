@@ -5,8 +5,12 @@ the weekly health sync does not wipe manually logged meals.
 """
 
 import re
+import sys
 from datetime import date, datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import vault_crypto
 
 
 def _extract_section(text: str, header: str) -> str:
@@ -55,11 +59,15 @@ def write_health_md(data: dict, soul_id: str) -> None:
     else:
         activities_block = ""
 
+    vault_key = vault_crypto.read_vault_key(soul_id)
+
     # Preserve Food Log and Annual Journal from previous write
     food_log_block    = ""
     annual_journal_block = ""
     if out_path.exists():
-        existing = out_path.read_text(encoding="utf-8")
+        existing_raw = out_path.read_bytes()
+        existing_plain = vault_crypto.decrypt(existing_raw, vault_key)
+        existing = existing_plain.decode("utf-8") if existing_plain else ""
         fl = _extract_section(existing, "Food Log")
         aj = _extract_section(existing, "Annual Journal")
         if fl:
@@ -88,7 +96,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
         f"{annual_journal_block}\n"
     )
 
-    out_path.write_text(content, encoding="utf-8")
+    out_path.write_bytes(vault_crypto.encrypt(content.encode("utf-8"), vault_key))
     try:
         import shutil
         shutil.chown(out_path, user="www-data", group="www-data")
