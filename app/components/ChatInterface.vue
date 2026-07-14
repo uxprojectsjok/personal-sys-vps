@@ -934,7 +934,7 @@ async function clearAll() {
 // Dock is a floating overlay on both desktop and mobile now, so the stream
 // always needs bottom padding to keep the last messages from hiding behind it.
 const streamPadStyle = computed(() => {
-  return { paddingBottom: `calc(${dockHeight.value}px + max(12px, env(safe-area-inset-bottom, 0px)) + 8px)` }
+  return { paddingBottom: `calc(${dockHeight.value}px + max(12px, env(safe-area-inset-bottom, 0px)) + 28px)` }
 })
 let _dockRO = null
 
