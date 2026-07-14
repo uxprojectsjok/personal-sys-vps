@@ -843,9 +843,10 @@ async function uploadSelectedLocal() {
           const file = await readVaultFile(name);
           if (!file) { fail++; continue; }
           const serverType = type === "images" ? "image" : type;
-          // mind.md/earnings.md/income.md bleiben immer Klartext; health.md wird
-          // serverseitig verschlüsselt (vault_sync.lua) — hier bewusst kein
-          // Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan übersprungen
+          // mind.md/health.md/earnings.md/income.md werden serverseitig verschlüsselt
+          // (mind.lua/health_config.lua+writer.py/soul_pay.lua/vault_sync.lua) — hier
+          // bewusst kein Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan
+          // übersprungen bzw. mind.lua's Sektions-Merge auf Ciphertext laufen
           const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
           const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
             ? ""
@@ -1180,9 +1181,10 @@ async function uploadToServer(type, name) {
     const file = await readVaultFile(name);
     if (!file) { showError(t('vault.file_not_readable')); return; }
     const serverType = type === "images" ? "image" : type;
-    // mind.md/earnings.md/income.md bleiben immer Klartext; health.md wird
-    // serverseitig verschlüsselt (vault_sync.lua) — hier bewusst kein
-    // Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan übersprungen
+    // mind.md/health.md/earnings.md/income.md werden serverseitig verschlüsselt
+    // (mind.lua/health_config.lua+writer.py/soul_pay.lua/vault_sync.lua) — hier
+    // bewusst kein Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan
+    // übersprungen bzw. mind.lua's Sektions-Merge auf Ciphertext laufen
     const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
     const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
       ? ""

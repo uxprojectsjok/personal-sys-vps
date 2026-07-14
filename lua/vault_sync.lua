@@ -215,9 +215,10 @@ if not decoded then
   return
 end
 
--- mind.md, income.md, earnings.md und sys.md müssen immer als Klartext vorliegen
--- (health.md wird serverseitig ohnehin verschlüsselt geschrieben/gelesen, siehe health_config.lua/writer.py)
-if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md" or safe_name == "income.md" or safe_name == "earnings.md") then
+-- sys.md muss immer als Klartext vorliegen (wird über den eigenen Pfad unten
+-- behandelt). mind.md/income.md/earnings.md/health.md werden serverseitig
+-- verschlüsselt geschrieben/gelesen (mind.lua, soul_pay.lua, health_config.lua/writer.py).
+if data.type == "context" and safe_name == "sys.md" then
   if decoded:sub(1, 4) == "SYS\x01" then
     ngx.status = 400
     ngx.header["Content-Type"] = "application/json"
@@ -378,13 +379,9 @@ end
 -- NACH den Sicherheitsprüfungen oben (damit ClamAV den echten Klartext scannt).
 -- Deckt sowohl Re-Uploads bereits entschlüsselter Downloads ab (api_serve.lua
 -- entschlüsselt generisch beim Ausliefern) als auch Recorder-Uploads (Voice-/
--- Motion-Capture), die nie clientseitig verschlüsseln. mind.md/income.md/
--- earnings.md bleiben immer Klartext (Sperrliste oben); sys.md hat bereits
--- einen eigenen Rückgabepfad weiter oben.
-local PLAINTEXT_ALWAYS = { ["mind.md"] = true, ["income.md"] = true, ["earnings.md"] = true }
-local skip_encrypt = data.type == "context" and PLAINTEXT_ALWAYS[safe_name:lower()]
-
-if not skip_encrypt then
+-- Motion-Capture), die nie clientseitig verschlüsseln. sys.md hat bereits
+-- einen eigenen Rückgabepfad weiter oben und erreicht diesen Code nicht mehr.
+do
   local final_path = dir_path .. "/" .. registered_name
   local rf = io.open(final_path, "rb")
   if rf then

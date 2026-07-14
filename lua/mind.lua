@@ -13,10 +13,52 @@ if not soul_id or not soul_id:match("^[a-zA-Z0-9%-]+$") or #soul_id > 64 then
   return
 end
 
-local MIND_PATH = "/var/lib/sys/souls/" .. soul_id .. "/vault/context/mind.md"
-local MIND_DIR  = "/var/lib/sys/souls/" .. soul_id .. "/vault/context"
+local base_dir  = "/var/lib/sys/souls/" .. soul_id
+local MIND_PATH = base_dir .. "/vault/context/mind.md"
+local MIND_DIR  = base_dir .. "/vault/context"
 
 local DEFAULT_MIND = require("default_mind").get()
+
+-- ── Verschlüsselung (soul_auth.lua setzt ngx.ctx.vault_key nicht -- Key wird
+-- eigenständig aus api_context.json gelesen, gleiches Muster wie vault_sync.lua) ──
+local MAGIC = "SYS\x01"
+local function hex_to_bin(hex)
+  return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
+end
+
+local function load_vault_meta()
+  local cf = io.open(base_dir .. "/api_context.json", "r")
+  if not cf then return nil, "ciphered" end
+  local raw = cf:read("*a"); cf:close()
+  local ok, ctx = pcall(cjson.decode, raw)
+  if not ok or type(ctx) ~= "table" then return nil, "ciphered" end
+  local key = type(ctx.vault_key_hex) == "string" and #ctx.vault_key_hex == 64 and ctx.vault_key_hex or nil
+  return key, ctx.cipher_mode or "ciphered"
+end
+
+local function decrypt_content(data, vault_key_hex)
+  if not vault_key_hex then return nil end
+  local resty_aes  = require("resty.aes")
+  local iv         = data:sub(5, 20)
+  local ciphertext = data:sub(21)
+  local key        = hex_to_bin(vault_key_hex)
+  local aes_ctx    = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  return aes_ctx:decrypt(ciphertext)
+end
+
+local function encrypt_content(plaintext, vault_key_hex)
+  local resty_aes    = require("resty.aes")
+  local resty_random = require("resty.random")
+  local iv = resty_random.bytes(16, true)
+  if not iv then return nil end
+  local key = hex_to_bin(vault_key_hex)
+  local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  local ciphertext = aes_ctx:encrypt(plaintext)
+  if not ciphertext then return nil end
+  return MAGIC .. iv .. ciphertext
+end
 
 local function read_mind()
   local f = io.open(MIND_PATH, "rb")
@@ -27,10 +69,12 @@ local function read_mind()
     return DEFAULT_MIND
   end
   local content = f:read("*a"); f:close()
-  -- Verschlüsselte mind.md (SYS\x01 Magic-Bytes) → Default wiederherstellen
-  if content:sub(1, 4) == "SYS\x01" then
-    local wf = io.open(MIND_PATH, "w")
-    if wf then wf:write(DEFAULT_MIND); wf:close() end
+  if content:sub(1, 4) == MAGIC then
+    local vault_key = load_vault_meta()
+    local decrypted = vault_key and decrypt_content(content, vault_key)
+    if decrypted then return decrypted end
+    -- Kein/ungültiger Vault-Key verfügbar: Datei NICHT überschreiben, nur für
+    -- diese eine Antwort auf das Default-Template zurückfallen.
     return DEFAULT_MIND
   end
   return content
@@ -38,9 +82,15 @@ end
 
 local function write_mind(content)
   os.execute("mkdir -p " .. MIND_DIR)
-  local f = io.open(MIND_PATH, "w")
+  local vault_key, cipher_mode = load_vault_meta()
+  local to_write = content
+  if cipher_mode == "ciphered" and vault_key then
+    local encrypted = encrypt_content(content, vault_key)
+    if encrypted then to_write = encrypted end
+  end
+  local f = io.open(MIND_PATH, "wb")
   if not f then return false end
-  f:write(content); f:close()
+  f:write(to_write); f:close()
   return true
 end
 

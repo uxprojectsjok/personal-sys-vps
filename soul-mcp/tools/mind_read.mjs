@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { getText } from '../lib/api.mjs';
-import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { SOULS_DIR, decryptIfNeeded, loadVaultMeta } from '../lib/vault_fs.mjs';
 
 // Single Source of Truth: shared/constants/default_mind.md (siehe lua/default_mind.lua).
 let DEFAULT_MIND;
@@ -41,19 +41,25 @@ export function register(server, token, soulId = null) {
         if (soulId) {
           const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
           let text;
+          let raw;
           try {
-            const raw = await readFile(mindPath);
-            // Verschlüsselte mind.md (SYS\x01 Magic-Bytes) → Default wiederherstellen
-            if (raw.length >= 4 && raw[0] === 0x53 && raw[1] === 0x59 && raw[2] === 0x53 && raw[3] === 0x01) {
-              await writeFile(mindPath, DEFAULT_MIND, 'utf8');
-              text = DEFAULT_MIND;
-            } else {
-              text = raw.toString('utf8');
-            }
+            raw = await readFile(mindPath);
           } catch {
+            // Datei existiert wirklich nicht -> Default anlegen (kein Datenverlust möglich)
             await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
             await writeFile(mindPath, DEFAULT_MIND, 'utf8');
+            raw = null;
             text = DEFAULT_MIND;
+          }
+          if (raw) {
+            try {
+              const { vaultKeyHex } = await loadVaultMeta(soulId);
+              text = decryptIfNeeded(raw, vaultKeyHex).toString('utf8');
+            } catch {
+              // Verschlüsselt, aber kein/ungültiger Vault-Key: Datei NICHT anfassen,
+              // nur für diese eine Antwort auf das Default-Template zurückfallen.
+              text = DEFAULT_MIND;
+            }
           }
           return { content: [{ type: 'text', text }] };
         }

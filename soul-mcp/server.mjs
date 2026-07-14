@@ -441,27 +441,38 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const { name } = input;
         if (!name) return res.status(400).json({ error: 'name erforderlich' });
         const ctxPath = `${SOULS_DIR}${soulId}/vault/context/${name}`;
-        const text = await readFile(ctxPath, 'utf8').catch(() => null);
-        if (!text) return res.json({ content: [{ type: 'text', text: `Datei "${name}" nicht gefunden.` }] });
+        const rawCtxBuf = await readFile(ctxPath).catch(() => null);
+        if (!rawCtxBuf) return res.json({ content: [{ type: 'text', text: `Datei "${name}" nicht gefunden.` }] });
+        let text;
+        try {
+          const { vaultKeyHex: ctxVaultKeyHex } = await loadVaultMeta(soulId);
+          text = decryptIfNeeded(rawCtxBuf, ctxVaultKeyHex).toString('utf8');
+        } catch (err) {
+          return res.json({ content: [{ type: 'text', text: `Datei "${name}" verschlüsselt, aber nicht lesbar: ${err.message}` }] });
+        }
         return res.json({ content: [{ type: 'text', text }] });
       }
 
       case 'mind_read': {
         const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
         let text;
+        let rawMind = null;
         try {
-          const raw = await readFile(mindPath);
-          // Verschlüsselte mind.md (SYS\x01 Magic-Bytes) → Default wiederherstellen
-          if (raw.length >= 4 && raw[0] === 0x53 && raw[1] === 0x59 && raw[2] === 0x53 && raw[3] === 0x01) {
-            await writeFile(mindPath, DEFAULT_MIND, 'utf8');
-            text = DEFAULT_MIND;
-          } else {
-            text = raw.toString('utf8');
-          }
+          rawMind = await readFile(mindPath);
         } catch {
           await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
           await writeFile(mindPath, DEFAULT_MIND, 'utf8');
           text = DEFAULT_MIND;
+        }
+        if (rawMind) {
+          try {
+            const { vaultKeyHex: mindVaultKeyHex } = await loadVaultMeta(soulId);
+            text = decryptIfNeeded(rawMind, mindVaultKeyHex).toString('utf8');
+          } catch {
+            // Verschlüsselt, aber kein/ungültiger Vault-Key: Datei NICHT anfassen,
+            // nur für diese eine Antwort auf das Default-Template zurückfallen.
+            text = DEFAULT_MIND;
+          }
         }
         return res.json({ content: [{ type: 'text', text }] });
       }
@@ -474,7 +485,18 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
           return res.status(403).json({ error: `Sektion "${section}" ist schreibgeschützt.` });
 
         const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
-        let md = await readFile(mindPath, 'utf8').catch(() => DEFAULT_MIND);
+        const { vaultKeyHex: mwVaultKeyHex, cipherMode: mwCipherMode } = await loadVaultMeta(soulId);
+        const rawMwBuf = await readFile(mindPath).catch(() => null);
+        let md;
+        if (!rawMwBuf) {
+          md = DEFAULT_MIND;
+        } else {
+          try {
+            md = decryptIfNeeded(rawMwBuf, mwVaultKeyHex).toString('utf8');
+          } catch (err) {
+            return res.status(403).json({ error: `mind.md verschlüsselt, aber Vault-Key nicht verfügbar: ${err.message}` });
+          }
+        }
 
         const re = new RegExp(
           `(## ${escapeRegex(section)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`
@@ -493,7 +515,9 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         }
 
         await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
-        await writeFile(mindPath, md, 'utf8');
+        let mwOutBuf = Buffer.from(md, 'utf8');
+        if (mwCipherMode === 'ciphered' && mwVaultKeyHex) mwOutBuf = encryptBuf(mwOutBuf, mwVaultKeyHex);
+        await writeFile(mindPath, mwOutBuf);
         const verb = mode === 'prepend' ? 'ergänzt (Anfang)' : mode === 'append' ? 'ergänzt (Ende)' : 'ersetzt';
         return res.json({ content: [{ type: 'text', text: `Sektion "${section}" in mind.md ${verb}.` }] });
       }

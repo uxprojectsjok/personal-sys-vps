@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { z } from 'zod';
 import { putJson } from '../lib/api.mjs';
-import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { SOULS_DIR, decryptIfNeeded, encryptBuf, loadVaultMeta } from '../lib/vault_fs.mjs';
 
 const WRITE_PROTECTED = new Set(['Identität', 'Grenzen', 'Identity', 'Boundaries']);
 
@@ -62,12 +62,24 @@ export function register(server, token, soulId = null) {
       try {
         if (soulId) {
           const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
+          const { vaultKeyHex, cipherMode } = await loadVaultMeta(soulId);
           let md;
+          let raw = null;
           try {
-            md = await readFile(mindPath, 'utf8');
+            raw = await readFile(mindPath);
           } catch {
             // mind.md existiert noch nicht → leer starten
             md = '';
+          }
+          if (raw) {
+            try {
+              md = decryptIfNeeded(raw, vaultKeyHex).toString('utf8');
+            } catch (err) {
+              return {
+                content: [{ type: 'text', text: `mind_write fehlgeschlagen: ${err.message}` }],
+                isError: true,
+              };
+            }
           }
 
           const re = new RegExp(
@@ -88,7 +100,9 @@ export function register(server, token, soulId = null) {
           }
 
           await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
-          await writeFile(mindPath, md, 'utf8');
+          let outBuf = Buffer.from(md, 'utf8');
+          if (cipherMode === 'ciphered' && vaultKeyHex) outBuf = encryptBuf(outBuf, vaultKeyHex);
+          await writeFile(mindPath, outBuf);
 
           const verb = mode === 'replace' ? 'replaced' : mode === 'append' ? 'extended (end)' : 'extended (start)';
           return {

@@ -139,7 +139,11 @@ end
 -- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
-  if text == "" then return nil end
+  if text:sub(1, 4) == VAULT_MAGIC and vault_key_hex ~= "" then
+    local dec = try_decrypt_vault(text, vault_key_hex)
+    if dec and #dec > 0 then text = dec end
+  end
+  if text == "" or text:sub(1, 2) == "SY" then return nil end
   local m = text:match("## " .. section .. ":?%s*\n([^\1]-)\n## [^#]")
   if not m then
     m = text:match("## " .. section .. ":?%s*\n([^\1]-)$")
@@ -148,8 +152,6 @@ local function get_mind_section(section)
   return nil
 end
 
-local agent_template    = get_mind_section("ElevenLabs Agent")
-local first_msg_tpl     = get_mind_section("ElevenLabs Greeting") or get_mind_section("ElevenLabs Erstbegrüßung") or get_mind_section("ElevenLabs Erstbegrussung")
 local language          = "de"
 
 -- ── Webhook-Token + Permissions sicherstellen ─────────────────────────────────
@@ -165,6 +167,11 @@ end
 if vault_key_hex == "" and type(ctx.vault_key_hex) == "string" and #ctx.vault_key_hex == 64 then
   vault_key_hex = ctx.vault_key_hex
 end
+
+-- Mind.md-Abschnitte erst NACH dem Vault-Key-Fallback lesen, sonst wäre
+-- vault_key_hex bei verschlüsselter mind.md noch leer.
+local agent_template    = get_mind_section("ElevenLabs Agent")
+local first_msg_tpl     = get_mind_section("ElevenLabs Greeting") or get_mind_section("ElevenLabs Erstbegrüßung") or get_mind_section("ElevenLabs Erstbegrussung")
 
 if not ctx.webhook_token or ctx.webhook_token == "" then
   -- Einfacher Token: wh_ + soul_id-basierter Hash
