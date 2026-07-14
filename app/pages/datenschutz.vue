@@ -16,7 +16,7 @@
       <h1>{{ t('datenschutz.h1') }}</h1>
       <p class="lead">{{ t('datenschutz.sub') }}</p>
 
-      <div class="callout" v-html="t('datenschutz.introBox')"></div>
+      <div class="callout" v-html="introBoxResolved"></div>
 
       <h2>{{ t('datenschutz.s1h2') }}</h2>
       <div v-html="t('datenschutz.s1Content')"></div>
@@ -89,6 +89,14 @@ function switchLocale(code) {
   setLocale(code)
   localStorage.setItem('sys-locale', code)
 }
+
+// Node-Domain nicht hartcodiert (Installer-Vorlage für beliebige Betreiber)
+// — zur Laufzeit aus der tatsächlichen Domain dieser Installation aufgelöst.
+const nodeHost = ref('')
+onMounted(() => { nodeHost.value = window.location.host })
+const introBoxResolved = computed(() =>
+  t('datenschutz.introBox').replaceAll('__NODE_HOST__', nodeHost.value)
+)
 
 // Consent-Status (Plausible) — gleiche Logik wie ConsentBanner.vue, hier nur
 // gespiegelt damit die Datenschutzseite selbst auch widerrufen/erlauben kann.

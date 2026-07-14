@@ -29,7 +29,7 @@
       <p>{{ t('impressum.s4Content') }}</p>
 
       <h2>{{ t('impressum.s5h2') }}</h2>
-      <div v-html="t('impressum.s5Content')"></div>
+      <div v-html="s5ContentResolved"></div>
 
       <h2>{{ t('impressum.s6h2') }}</h2>
       <div v-html="t('impressum.s6Content')"></div>
@@ -55,6 +55,7 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 definePageMeta({ layout: false })
@@ -65,6 +66,15 @@ function switchLocale(code) {
   setLocale(code)
   localStorage.setItem('sys-locale', code)
 }
+
+// Node-URL wird nicht hartcodiert (dieses Repo ist eine Installer-Vorlage
+// für beliebige Betreiber) — zur Laufzeit aus der tatsächlichen Domain
+// dieser Installation aufgelöst, damit die Vorlage neutral bleibt.
+const nodeUrl = ref('')
+onMounted(() => { nodeUrl.value = window.location.origin })
+const s5ContentResolved = computed(() =>
+  t('impressum.s5Content').replaceAll('__NODE_URL__', nodeUrl.value)
+)
 </script>
 
 <style scoped>
