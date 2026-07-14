@@ -1115,6 +1115,11 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('> Personal AI identity node running the SYS open protocol.');
   lines.push('> Self-hosted, cryptographically secured. Access requires POL payment on Polygon.');
   lines.push('');
+  lines.push('This node is operated independently. The operator is solely responsible for');
+  lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
+  lines.push(`legal notice and privacy policy — see ${BASE_URL}/impressum and ${BASE_URL}/datenschutz.`);
+  lines.push('SYS provides infrastructure, not legal services.');
+  lines.push('');
 
   if (souls.length > 0) {
     lines.push('## Souls on this node');

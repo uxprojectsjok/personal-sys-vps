@@ -3,6 +3,7 @@
     <NuxtPage />
   </NuxtLayout>
   <SysMobileNav v-if="hasSoul" />
+  <ConsentBanner />
   <div id="teleports"></div>
 </template>
 

@@ -1637,6 +1637,49 @@ server {
   }
 
   ################################
+  # Node-Legal-Seiten (/impressum, /datenschutz, /lizenz): öffentlich, kein
+  # Gate-Check — Betreiber-Verantwortung des Nodes, immer vorhanden (kein Toggle).
+  ################################
+  location = /impressum {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /impressum/index.html /index.html;
+  }
+  location ^~ /impressum/ {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /impressum/index.html /index.html;
+  }
+
+  location = /datenschutz {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /datenschutz/index.html /index.html;
+  }
+  location ^~ /datenschutz/ {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /datenschutz/index.html /index.html;
+  }
+
+  location = /lizenz {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /lizenz/index.html /index.html;
+  }
+  location ^~ /lizenz/ {
+    root /var/www/me.uxprojects-jok.com;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /lizenz/index.html /index.html;
+  }
+
+  ################################
   # SPA Root (Nuxt static)
   ################################
   location / {

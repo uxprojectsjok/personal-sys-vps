@@ -17,6 +17,10 @@ export default defineNuxtConfig({
     lazy: true,
     langDir: "locales/",
     detectBrowserLanguage: false,
+    // Legal-Seiten (impressum/datenschutz/lizenz) speichern Absätze bewusst als
+    // HTML-Fragmente in den Locale-Dateien (via v-html gerendert) — der
+    // Standard-Linter von unplugin-vue-i18n lehnt HTML in Messages sonst ab.
+    compilation: { strictMessage: false },
   },
 
   runtimeConfig: {

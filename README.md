@@ -466,7 +466,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: b1a9ba3cbb3260ac
+Current release fingerprint: ef25375baa24632d
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -544,6 +544,8 @@ The only technical touchpoint between a running SYS node and UX-Projects infrast
 **Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
+
+**Reference legal pages:** This repo ships `/impressum`, `/datenschutz`, and `/lizenz` as a working example of the node-operator-responsibility split described above — populated with my own (Jan-Oliver Karo / UX-Projects) details, exactly as `/agb` already was. If you run your own node, **replace the contents of these pages with your own operator details** before going live; they are not templated per-installation. The same applies to `ConsentBanner.vue`: it points at my own self-hosted Plausible instance (`analytics.uxprojects-jok.com`) — replace this with your own analytics endpoint (or remove the component) so visitor data from your installation doesn't get sent to mine.
 
 ---
 
