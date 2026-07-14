@@ -656,7 +656,14 @@ export function useApiContext() {
           // keine "aktive Session" nötig). Kein Skip mehr nötig; würde eine Datei
           // im echten Fehlerfall ohnehin nur unwiderruflich aus dem Export droppen
           // statt sie wenigstens als Rohbytes zu sichern.
-          results.push({ name, buffer })
+          // Kategorie-Unterordner voranstellen, damit writeFile() beim Import (SoulDecryptModal)
+          // dieselbe Struktur trifft wie ein lokal verbundener Vault (readAllVaultFiles() liefert
+          // dort "audio/foo.mp3" etc. via rekursivem Scan) — sonst landen alle VPS-Only-Dateien
+          // flach im Vault-Root statt in audio/video/images/context.
+          // Ausnahme: das root-level Profilbild (profile.png/.jpg/.webp) gehört laut
+          // useVault.js scanVault()-Konvention bewusst NICHT in images/, sondern an die Wurzel.
+          const isRootProfilePic = cat === 'images' && /^profile\.(png|jpe?g|webp)$/i.test(baseName)
+          results.push({ name: isRootProfilePic ? baseName : `${cat}/${name}`, buffer })
         } catch { /* Timeout oder Netzwerkfehler → weiter */ }
       }
     }
@@ -677,7 +684,9 @@ export function useApiContext() {
         if (buffer.byteLength < 2) continue
         // vault_profile.lua entschlüsselt serverseitig (oder liefert 403 statt
         // Ciphertext, bereits über res.ok abgefangen) — kein Skip mehr nötig.
-        results.push({ name: `profile_${ptype}.json`, buffer })
+        // profile/-Unterordner: KI-Profil-JSONs werden von scanVault() nur erkannt,
+        // wenn sie direkt in einem Ordner namens "profile" liegen (prefix === "profile").
+        results.push({ name: `profile/profile_${ptype}.json`, buffer })
       } catch { /* weiter */ }
     }
 
