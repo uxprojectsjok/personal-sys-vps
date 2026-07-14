@@ -135,11 +135,14 @@ async function submit() {
 
 .gate-legal-links {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
   z-index: 10;
+  max-width: calc(100vw - 32px); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
-.gate-legal-links a { color: var(--fg-3); text-decoration: none; }
+.gate-legal-links::-webkit-scrollbar { display: none; }
+.gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
 .gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
 .gate-legal-sep { color: var(--line-2); }
 </style>
