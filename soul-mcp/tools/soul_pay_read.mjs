@@ -27,18 +27,27 @@ export function register(server, _token) {
       '- User has transferred POL to soul.amortization.wallet (exact amount from /price)',
       '- TX is confirmed on Polygon',
       '- pay_endpoint and soul_id come from soul_discover',
+      '- If the Soul requires EU withdrawal consent, show_withdrawal_terms +',
+      '  accept_digital_content_terms must have been called first — pass the',
+      '  terms_token from accept_digital_content_terms as reference_id here.',
+      '  Without it, souls with EU_CONSUMER_RIGHTS enabled reject the payment',
+      '  with reference_id_required, even if the TX itself is valid.',
       '',
       'Parameters:',
-      '- pay_endpoint: full URL, e.g. https://example.com/api/soul/pay',
-      '- soul_id:      UUID of the target Soul',
-      '- tx_hash:      Polygon TX hash of the POL payment (0x…)',
+      '- pay_endpoint:  full URL, e.g. https://example.com/api/soul/pay',
+      '- soul_id:       UUID of the target Soul',
+      '- tx_hash:       Polygon TX hash of the POL payment (0x…)',
+      '- reference_id:  optional — terms_token from accept_digital_content_terms',
+      '                 (required by souls that enforce EU withdrawal consent)',
     ].join('\n'),
     {
       pay_endpoint: z.string().url().describe('Vollständige URL des pay-Endpoints der Ziel-Soul'),
       soul_id:      z.string().uuid().describe('UUID der Ziel-Soul'),
       tx_hash:      z.string().regex(/^0x[a-fA-F0-9]{64}$/).describe('Polygon TX-Hash der POL-Zahlung'),
+      reference_id: z.string().uuid().optional()
+        .describe('terms_token aus accept_digital_content_terms — bei Souls mit EU-Widerrufspflicht erforderlich, sonst optional'),
     },
-    async ({ pay_endpoint, soul_id, tx_hash }) => {
+    async ({ pay_endpoint, soul_id, tx_hash, reference_id }) => {
       try {
         // ── 0. Preis + Quote abrufen ──────────────────────────────────────────
         const priceUrl = pay_endpoint.replace(/\/pay(\?.*)?$/, '/price') + `?soul_id=${soul_id}`;
@@ -68,7 +77,11 @@ export function register(server, _token) {
         const payRes = await fetch(pay_endpoint, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ soul_id, tx_hash, ...(quoteId ? { quote_id: quoteId } : {}) }),
+          body:    JSON.stringify({
+            soul_id, tx_hash,
+            ...(quoteId ? { quote_id: quoteId } : {}),
+            ...(reference_id ? { reference_id } : {}),
+          }),
           signal:  AbortSignal.timeout(20000),
         });
 
@@ -78,6 +91,12 @@ export function register(server, _token) {
           if (payRes.status === 409) {
             return {
               content: [{ type: 'text', text: `TX bereits verwendet — access_token für diese Transaktion wurde schon ausgestellt.` }],
+              isError: true,
+            };
+          }
+          if (err.error === 'reference_id_required' || err.error === 'consent_not_found') {
+            return {
+              content: [{ type: 'text', text: `${msg}\n\nErst show_withdrawal_terms(payment_method="pol") dann accept_digital_content_terms aufrufen (nach echter Zustimmung des Nutzers) und den daraus resultierenden terms_token als reference_id an soul_pay_read übergeben — nicht erfinden.` }],
               isError: true,
             };
           }
