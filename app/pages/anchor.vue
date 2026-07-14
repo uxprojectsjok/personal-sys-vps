@@ -137,6 +137,7 @@
             <section class="vank-section">
               <div class="vank-section-body">
                 <p class="vank-hint">{{ $t('marketplace.field_tags_hint') }}</p>
+                <p class="vank-hint vank-hint--sub">{{ $t('anchor.tags_synced_hint') }}</p>
                 <input
                   v-model="tagsRaw"
                   type="text"
@@ -348,6 +349,16 @@ onMounted(async () => {
   fetch('/api/soul/privacy', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d) discoverable.value = d.discoverable !== false })
+    .catch(() => {})
+  // Discovery-Tags aus dem Marketplace vorausfüllen statt leer zu starten —
+  // Marketplace (api_context.json) ist die eine Quelle der Wahrheit, Anchoring
+  // soll davon abhängen statt einen eigenen, abweichenden Tag-Satz zu pflegen.
+  // Manuelles Überschreiben bleibt möglich, ist aber nur die Ausnahme.
+  fetch('/api/soul/register-preview', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (d?.preview?.tags?.length && !tagsRaw.value) tagsRaw.value = d.preview.tags.join(', ')
+    })
     .catch(() => {})
   syncAnchorFromChain().then(result => {
     if (!result) return
@@ -574,6 +585,7 @@ function onNav(id) {
   font-family: var(--sans); font-size: 16px; color: var(--fg);
   margin: 0; line-height: 1.55;
 }
+.vank-hint--sub { font-size: 13px; color: var(--fg-3); margin-top: 2px; }
 .vank-input {
   width: 100%; box-sizing: border-box;
   background: var(--surface-2); border: 1px solid var(--line-2);

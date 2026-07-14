@@ -1117,7 +1117,8 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('');
   lines.push('This node is operated independently. The operator is solely responsible for');
   lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
-  lines.push(`legal notice and privacy policy — see ${BASE_URL}/impressum and ${BASE_URL}/datenschutz.`);
+  lines.push(`legal notice, privacy policy, and license terms — see ${BASE_URL}/impressum,`);
+  lines.push(`${BASE_URL}/datenschutz, and ${BASE_URL}/lizenz.`);
   lines.push('SYS provides infrastructure, not legal services.');
   lines.push('');
 

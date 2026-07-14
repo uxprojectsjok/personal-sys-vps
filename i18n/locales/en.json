@@ -1232,6 +1232,7 @@
     "title_prefix": "Soul",
     "title_em": "anchor",
     "tags_placeholder": "Marburg, AI, Design, Decentralization…",
+    "tags_synced_hint": "Pre-filled from the Marketplace (Network panel) — edit tags there so anchoring and Marketplace don't drift apart. Manual editing here only if really necessary.",
     "wallet_disconnect": "Disconnect wallet",
     "connect_wallet_note": "Connect a wallet first to anchor. At least one real session is required.",
     "kicker": "Polygon · Blockchain",
