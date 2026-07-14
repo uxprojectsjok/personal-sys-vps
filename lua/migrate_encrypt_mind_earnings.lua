@@ -1,6 +1,6 @@
 -- migrate_encrypt_mind_earnings.lua
--- One-time migration: encrypts existing plaintext mind.md/earnings.md/income.md
--- for every soul with cipher_mode=ciphered + a vault_key.
+-- One-time migration: encrypts existing plaintext mind.md/earnings.md/income.md/
+-- activity.md/agent.md for every soul with cipher_mode=ciphered + a vault_key.
 -- Idempotent — files already starting with the SYS\x01 magic are skipped.
 -- Not wired into any nginx location; run manually:
 --   resty lua/migrate_encrypt_mind_earnings.lua
@@ -69,6 +69,7 @@ local function migrate_soul(soul_id)
 
   local files = {
     "vault/context/mind.md", "vault/context/earnings.md", "vault/context/income.md",
+    "vault/context/activity.md", "vault/context/agent.md",
   }
   local results = {}
   for _, rel in ipairs(files) do
