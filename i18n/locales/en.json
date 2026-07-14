@@ -1164,6 +1164,7 @@
     "free_mode_active": "Free mode active",
     "free_mode_state": "Every AI assistant can read your Soul data for free.",
     "step2_prose": "Pins ERC-8004 metadata via Pinata. Your Soul then appears in the Marketplace and is discoverable by external agents.",
+    "permanence_warning": "Name, description, tags, wallet address and, if set, PayPal target are pinned permanently and irretrievably to IPFS (publicly accessible). Later disabling discoverability or re-pinning does not replace the already-published version — it remains reachable via the old CID/anchor.",
     "pinata_missing": "Pinata JWT missing — please add it in settings",
     "field_desc": "Description",
     "field_desc_hint": "optional",
@@ -1199,6 +1200,7 @@
   },
   "anchor": {
     "discoverable_off_warning": "Discoverability is turned off (Settings → Config → Privacy) — new anchors won't embed your name/tags in the calldata and won't appear in SYS.Scan. Anchoring itself (proof of ownership) still works normally.",
+    "permanence_warning": "Name and tags will be written permanently and irreversibly into the Polygon blockchain with this anchor (public calldata) — later turning off \"discoverable\" only hides them from search/scan, it cannot retract data already anchored. In addition, the wallet address and, if set, the PayPal target are permanently pinned publicly on IPFS once the Marketplace listing is registered.",
     "title": "Anchor soul",
     "status_anchored": "Anchored on-chain",
     "status_not_anchored": "Not yet anchored",

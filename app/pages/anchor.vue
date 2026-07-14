@@ -151,6 +151,12 @@
               </div>
             </section>
 
+            <!-- ── Permanenz-Warnung: Name/Tags landen bei discoverable=true dauerhaft
+                 und unlöschbar in der Blockchain-Calldata + auf IPFS ── -->
+            <div v-if="discoverable" class="anc-permanence-warn">
+              {{ $t('anchor.permanence_warning') }}
+            </div>
+
             <!-- ── Aktionen ── -->
             <section class="vank-section">
               <div class="vank-section-body">
@@ -658,6 +664,11 @@ function onNav(id) {
   padding: 12px 16px; border-radius: var(--r-xs); margin-bottom: 16px;
   background: rgba(232,163,63,0.06); border: 1px solid rgba(232,163,63,0.25);
   color: #e8a33f; font-family: var(--mono); font-size: 13px; line-height: 1.6;
+}
+.anc-permanence-warn {
+  padding: 12px 16px; border-radius: var(--r-xs); margin: 0 0 16px;
+  background: rgba(224,108,117,0.07); border: 1px solid rgba(224,108,117,0.3);
+  color: #e06c75; font-family: var(--sans); font-size: 14px; line-height: 1.6;
 }
 
 /* ── TX ── */

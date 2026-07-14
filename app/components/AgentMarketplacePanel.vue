@@ -218,6 +218,10 @@
           <section v-else-if="step === 'ipfs'" class="step">
             <p class="prose">{{ $t('marketplace.step2_prose') }}</p>
 
+            <div class="amm-permanence-warn">
+              {{ $t('marketplace.permanence_warning') }}
+            </div>
+
             <div v-if="!pinataOk" class="prereq">
               <span class="prereq-mark">!</span>
               <div>
@@ -1140,6 +1144,12 @@ async function register() {
 .readonly-list dd { font-family: var(--mono); font-size: 14px; color: var(--fg); margin: 0; word-break: break-all; }
 
 .amm-discover-warn { font-family: var(--mono); font-size: 13px; line-height: 1.6; color: #e8a33f; border: 1px solid rgba(232,163,63,0.35); background: rgba(232,163,63,0.06); padding: 12px 20px; margin: 0 20px 4px; }
+
+.amm-permanence-warn {
+  padding: 12px 18px; margin-bottom: 20px;
+  background: rgba(224,108,117,0.07); border: 1px solid rgba(224,108,117,0.3);
+  color: #e06c75; font-family: var(--sans); font-size: 14px; line-height: 1.6;
+}
 
 .prereq { display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: center; padding: 14px 18px; border: 1px solid rgba(167,139,250,0.3); background: rgba(167,139,250,0.05); margin-bottom: 24px; }
 .prereq-mark { width: 28px; height: 28px; border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 16px; color: var(--accent); }
