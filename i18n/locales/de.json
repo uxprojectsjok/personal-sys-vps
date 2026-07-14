@@ -586,7 +586,8 @@
     "vault_connecting": "Ordner wird verbunden…",
     "vault_retry": "Erneut versuchen",
     "vault_choose_folder": "Lokalen Ordner wählen",
-    "go_to_dashboard": "Zum Dashboard →"
+    "go_to_dashboard": "Zum Dashboard →",
+    "vault_unsupported": "Dein Browser unterstützt keine lokale Ordnerverbindung (nur Chrome/Edge auf Desktop/Android). Der Admin-Key bleibt trotzdem in den Einstellungen abrufbar."
   },
   "encrypt": {
     "aria_label": "Soul verschlüsseln",

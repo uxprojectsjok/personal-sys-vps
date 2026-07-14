@@ -586,7 +586,8 @@
     "vault_connecting": "Connecting folder…",
     "vault_retry": "Try again",
     "vault_choose_folder": "Choose local folder",
-    "go_to_dashboard": "To dashboard →"
+    "go_to_dashboard": "To dashboard →",
+    "vault_unsupported": "Your browser doesn't support connecting a local folder (Chrome/Edge on desktop/Android only). The admin key remains available in Settings either way."
   },
   "encrypt": {
     "aria_label": "Encrypt Soul",
