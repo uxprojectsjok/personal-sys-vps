@@ -717,7 +717,9 @@ async function uploadToServer(file) {
   try {
     const buf = await readVaultFile(file.displayName)
     if (!buf) { showToast(t('files.file_unreadable'), 'err'); return }
-    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+    // Nie clientseitig verschlüsseln: der Server verschlüsselt jede Vault-Datei
+    // selbst (vault_sync.lua, nach Malware-Scan + ffmpeg-Konvertierung).
+    const key = ''
     const res = await syncFile(soulToken.value, file.apiType, file.displayName, buf, key)
     if (res.ok) { showToast(t('files.uploaded_ok', { name: file.displayName })); await loadContext(soulToken.value); await scanLocalVault() }
     else showToast(res.error || t('files.upload_failed'), 'err')
@@ -755,7 +757,9 @@ async function pushVaultToServer() {
   if (syncing.value) return
   syncing.value = true
   try {
-    const key = vaultKey.value === '__encrypted__' ? '' : (vaultKey.value || '')
+    // Nie clientseitig verschlüsseln: der Server verschlüsselt jede Vault-Datei
+    // selbst (vault_sync.lua, nach Malware-Scan + ffmpeg-Konvertierung).
+    const key = ''
     let ok = 0, fail = 0
     const uploadable = localFileList.value.filter(f => f.type !== 'soul')
     for (const file of uploadable) {
