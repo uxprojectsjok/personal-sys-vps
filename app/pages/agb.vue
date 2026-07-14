@@ -70,7 +70,7 @@
 
       <h2>Streitbeilegung</h2>
       <p>
-        Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor
+        Ich bin nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor
         einer Verbraucherschlichtungsstelle teilzunehmen (§ 36 VSBG).
       </p>
 
