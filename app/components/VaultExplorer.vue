@@ -843,14 +843,12 @@ async function uploadSelectedLocal() {
           const file = await readVaultFile(name);
           if (!file) { fail++; continue; }
           const serverType = type === "images" ? "image" : type;
-          // mind.md/health.md/earnings.md/income.md werden serverseitig verschlüsselt
-          // (mind.lua/health_config.lua+writer.py/soul_pay.lua/vault_sync.lua) — hier
-          // bewusst kein Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan
-          // übersprungen bzw. mind.lua's Sektions-Merge auf Ciphertext laufen
-          const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
-          const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
-            ? ""
-            : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
+          // Nie clientseitig verschlüsseln: der Server verschlüsselt jede Vault-Datei
+          // selbst (vault_sync.lua, nach Malware-Scan + ffmpeg-Konvertierung), damit
+          // JEDER Upload-Weg (Recorder-Autoupload, manueller Upload hier, "push whole
+          // vault" in vault.vue) gleich behandelt wird — keine Sonderfälle pro Datei,
+          // kein übersprungener Scan durch schon-verschlüsselten Client-Upload.
+          const key = "";
           const res = await syncFile(props.soulCert, serverType, name, file, key);
           if (res.ok) ok++; else fail++;
         } catch { fail++; }
@@ -1181,14 +1179,10 @@ async function uploadToServer(type, name) {
     const file = await readVaultFile(name);
     if (!file) { showError(t('vault.file_not_readable')); return; }
     const serverType = type === "images" ? "image" : type;
-    // mind.md/health.md/earnings.md/income.md werden serverseitig verschlüsselt
-    // (mind.lua/health_config.lua+writer.py/soul_pay.lua/vault_sync.lua) — hier
-    // bewusst kein Client-seitiges Pre-Encrypt, sonst würde der Malware-Scan
-    // übersprungen bzw. mind.lua's Sektions-Merge auf Ciphertext laufen
-    const plainContextFiles = ["mind.md", "health.md", "earnings.md", "income.md"];
-    const key = (serverType === "context" && plainContextFiles.includes(name.toLowerCase()))
-      ? ""
-      : (vaultKey.value === "__encrypted__" ? "" : (vaultKey.value || ""));
+    // Nie clientseitig verschlüsseln: der Server verschlüsselt jede Vault-Datei
+    // selbst (vault_sync.lua, nach Malware-Scan + ffmpeg-Konvertierung) — gleiche
+    // Behandlung für jeden Upload-Weg, siehe uploadSelectedLocal() oben.
+    const key = "";
     const res = await syncFile(props.soulCert, serverType, name, file, key);
     if (res.ok) {
       if (name.toLowerCase() === "mind.md") clearMindCache();

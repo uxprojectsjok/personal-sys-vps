@@ -372,7 +372,9 @@ export function useApiContext() {
         if (!type) continue;
         // mind.md wird vom KI-System verwaltet und nicht automatisch synchronisiert
         if (type === "context" && baseName.toLowerCase() === "mind.md") continue;
-        const res = await syncFile(soulCert, type, baseName, buffer, vaultKeyHex);
+        // Nie clientseitig verschlüsseln (nur sys.md oben ist die Ausnahme): der
+        // Server verschlüsselt jede Vault-Datei selbst, nach Malware-Scan/ffmpeg.
+        const res = await syncFile(soulCert, type, baseName, buffer, "");
         if (!res.ok) {
           errors++;
           failedFiles.push({ name: baseName, reason: res.error || `HTTP-Fehler` });
