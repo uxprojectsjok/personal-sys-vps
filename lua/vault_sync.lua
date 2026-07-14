@@ -215,8 +215,9 @@ if not decoded then
   return
 end
 
--- mind.md, health.md, income.md und sys.md müssen immer als Klartext vorliegen
-if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md" or safe_name == "health.md" or safe_name == "income.md" or safe_name == "earnings.md") then
+-- mind.md, income.md, earnings.md und sys.md müssen immer als Klartext vorliegen
+-- (health.md wird serverseitig ohnehin verschlüsselt geschrieben/gelesen, siehe health_config.lua/writer.py)
+if data.type == "context" and (safe_name == "mind.md" or safe_name == "sys.md" or safe_name == "income.md" or safe_name == "earnings.md") then
   if decoded:sub(1, 4) == "SYS\x01" then
     ngx.status = 400
     ngx.header["Content-Type"] = "application/json"
