@@ -77,6 +77,13 @@
         <span class="live-dot" />
         {{ $t('gate.footer') }}
       </div>
+      <div class="gate-legal-links">
+        <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+        <span class="gate-legal-sep">·</span>
+        <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+        <span class="gate-legal-sep">·</span>
+        <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
+      </div>
 
       </template><!-- end v-if="ready" -->
     </div>
@@ -309,4 +316,14 @@ const showPw = ref(false)
 .gate-link:hover { color: var(--accent-bright); }
 .gate-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: gate-spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
 @keyframes gate-spin { to { transform: rotate(360deg); } }
+
+.gate-legal-links {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+  z-index: 10;
+}
+.gate-legal-links a { color: var(--fg-3); text-decoration: none; }
+.gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
+.gate-legal-sep { color: var(--line-2); }
 </style>
