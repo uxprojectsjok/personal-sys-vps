@@ -28,11 +28,32 @@ local earnings_file = SOULS_DIR .. soul_id .. "/earnings.json"
 local earnings_md  = SOULS_DIR .. soul_id .. "/vault/context/earnings.md"
 local income_md    = SOULS_DIR .. soul_id .. "/vault/context/income.md"
 
+-- ── Entschlüsselung (CBC, gleiches Format wie überall im Vault) ──────────────
+local MAGIC = "SYS\x01"
+local function hex_to_bin(hex)
+  return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
+end
+local function try_decrypt(data)
+  if not data or data == "" then return data end
+  if data:sub(1, 4) ~= MAGIC then return data end
+  local vault_key = ngx.ctx.vault_key
+  if not vault_key or #vault_key ~= 64 then return nil end
+  local resty_aes  = require("resty.aes")
+  local iv         = data:sub(5, 20)
+  local ciphertext = data:sub(21)
+  local key        = hex_to_bin(vault_key)
+  local aes_ctx    = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  return aes_ctx:decrypt(ciphertext)
+end
+
 -- ── Hilfsfunktion: earnings.md / income.md → earnings-Struktur rekonstruieren ─
 local function rebuild_from_income_md()
-  local f = io.open(earnings_md, "r") or io.open(income_md, "r")
+  local f = io.open(earnings_md, "rb") or io.open(income_md, "rb")
   if not f then return nil end
-  local raw = f:read("*a"); f:close()
+  local raw_enc = f:read("*a"); f:close()
+  local raw = try_decrypt(raw_enc)
+  if not raw then return nil end
 
   local entries   = {}
   local total_pol = 0.0

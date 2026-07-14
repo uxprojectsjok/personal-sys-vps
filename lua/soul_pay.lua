@@ -352,21 +352,61 @@ local ewf = io.open(earnings_file, "w")
 if ewf then ewf:write(cjson.encode(earnings)); ewf:close() end
 
 -- ── Vault: earnings.md anhängen (VaultExplorer Server-Tab + soul-Import) ──────
+-- CBC-Ciphertext kann nicht angehängt werden -- deshalb komplett lesen,
+-- entschlüsseln, anhängen, komplett neu verschlüsselt zurückschreiben
+-- (gleiches Muster wie food_log.lua/herz.mjs).
+local MAGIC = "SYS\x01"
+local function hex_to_bin(hex)
+  return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
+end
+local function decrypt_earnings(data, vault_key_hex)
+  if not data or data == "" then return data end
+  if data:sub(1, 4) ~= MAGIC then return data end
+  if not vault_key_hex or #vault_key_hex ~= 64 then return nil end
+  local resty_aes = require("resty.aes")
+  local iv         = data:sub(5, 20)
+  local ciphertext = data:sub(21)
+  local key        = hex_to_bin(vault_key_hex)
+  local aes_ctx    = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  return aes_ctx:decrypt(ciphertext)
+end
+local function encrypt_earnings(plaintext, vault_key_hex)
+  if not vault_key_hex or #vault_key_hex ~= 64 then return nil end
+  local resty_aes    = require("resty.aes")
+  local resty_random = require("resty.random")
+  local iv = resty_random.bytes(16, true)
+  if not iv then return nil end
+  local key = hex_to_bin(vault_key_hex)
+  local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  local ciphertext = aes_ctx:encrypt(plaintext)
+  if not ciphertext then return nil end
+  return MAGIC .. iv .. ciphertext
+end
+
 local earnings_dir  = SOULS_DIR .. soul_id .. "/vault/context"
 local earnings_md   = earnings_dir .. "/earnings.md"
 os.execute("mkdir -p " .. earnings_dir)
-local needs_header = true
-local eh = io.open(earnings_md, "r")
-if eh then eh:close(); needs_header = false end
-local emf = io.open(earnings_md, "a")
-if emf then
-  if needs_header then
-    emf:write("# Soul Earnings\n\n")
-    emf:write("| Date (UTC) | POL | From | TX Hash | Confirmed |\n")
-    emf:write("|---|---|---|---|---|\n")
+
+local eh = io.open(earnings_md, "rb")
+local existing_raw = eh and eh:read("*a") or ""
+if eh then eh:close() end
+local existing_md = decrypt_earnings(existing_raw, ctx.vault_key_hex)
+
+if existing_md == nil then
+  ngx.log(ngx.ERR, "[soul_pay] earnings.md verschlüsselt, aber vault_key fehlt -- Eintrag übersprungen")
+else
+  local out = {}
+  if existing_md == "" then
+    out[#out+1] = "# Soul Earnings\n\n"
+    out[#out+1] = "| Date (UTC) | POL | From | TX Hash | Confirmed |\n"
+    out[#out+1] = "|---|---|---|---|---|\n"
+  else
+    out[#out+1] = existing_md
   end
   local short_tx = new_entry.tx_hash:sub(1, 10) .. "…" .. new_entry.tx_hash:sub(-6)
-  emf:write(string.format(
+  out[#out+1] = string.format(
     "| %s | %s | `%s` | [`%s`](https://polygonscan.com/tx/%s) | %s |\n",
     new_entry.redeemed_at,
     (new_entry.pol_amount or "0"),
@@ -374,16 +414,29 @@ if emf then
     short_tx,
     new_entry.tx_hash,
     (new_entry.confirmed_at or "unknown")
-  ))
-  emf:write(string.format(
+  )
+  out[#out+1] = string.format(
     "<!-- @income redeemed:%s tx:%s from:%s pol:%s confirmed:%s -->\n",
     new_entry.redeemed_at,
     new_entry.tx_hash,
     (new_entry.from or "unknown"):gsub("%s", "_"),
     (new_entry.pol_amount or "0"),
     (new_entry.confirmed_at or "unknown")
-  ))
-  emf:close()
+  )
+  local updated_md = table.concat(out)
+
+  local cipher_mode = ctx.cipher_mode or "ciphered"
+  local to_write = updated_md
+  if cipher_mode == "ciphered" then
+    local encrypted = encrypt_earnings(updated_md, ctx.vault_key_hex)
+    if encrypted then to_write = encrypted end
+  end
+
+  local emf = io.open(earnings_md, "wb")
+  if emf then
+    emf:write(to_write)
+    emf:close()
+  end
 
   -- earnings.md in synced_files.context registrieren (VaultExplorer Server-Tab)
   if not ctx.synced_files then ctx.synced_files = {} end
