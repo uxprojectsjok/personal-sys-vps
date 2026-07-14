@@ -1164,6 +1164,7 @@
     "free_mode_active": "Frei-Modus aktiv",
     "free_mode_state": "Jeder KI-Assistent kann deine Soul-Daten kostenlos lesen.",
     "step2_prose": "Pinnt ERC-8004-Metadaten via Pinata. Deine Soul erscheint danach im Marketplace und ist für externe Agenten auffindbar.",
+    "permanence_warning": "Name, Beschreibung, Tags, Wallet-Adresse und ggf. PayPal-Ziel werden dauerhaft und unlöschbar auf IPFS gepinnt (öffentlich abrufbar). Ein späteres Deaktivieren der Auffindbarkeit oder erneutes Pinnen ersetzt nicht die bereits veröffentlichte Version — sie bleibt über die alte CID/den alten Anker weiter erreichbar.",
     "pinata_missing": "Pinata-JWT fehlt — bitte in den Einstellungen hinterlegen",
     "field_desc": "Beschreibung",
     "field_desc_hint": "optional",
@@ -1199,6 +1200,7 @@
   },
   "anchor": {
     "discoverable_off_warning": "Auffindbarkeit ist deaktiviert (Settings → Config → Datenschutz) — neue Anker verankern kein Name/Tags mehr in der Calldata und erscheinen nicht in SYS.Scan. Die Verankerung selbst (Eigentumsnachweis) funktioniert unverändert.",
+    "permanence_warning": "Name und Tags werden bei diesem Anker dauerhaft und unlöschbar in die Polygon-Blockchain geschrieben (öffentliche Calldata) — ein späteres Abschalten von \"Auffindbarkeit\" versteckt sie nur in Suche/Scan, kann bereits verankerte Daten aber nicht zurückholen. Zusätzlich werden Wallet-Adresse und ggf. PayPal-Ziel dauerhaft öffentlich auf IPFS gepinnt, sobald der Marketplace-Eintrag registriert wird.",
     "title": "Soul verankern",
     "status_anchored": "On-chain verankert",
     "status_not_anchored": "Noch nicht verankert",
