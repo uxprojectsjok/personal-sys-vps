@@ -361,6 +361,9 @@
                 <div class="sm-infoblock" :class="{ 'sm-infoblock--warn': !discoverable }" style="margin-bottom:0">
                   {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
                 </div>
+                <div v-if="discoverable" class="sm-infoblock sm-infoblock--warn" style="margin-top:10px">
+                  {{ $t('settings.privacy_permanence_warning') }}
+                </div>
                 <Transition name="sys-modal-fade">
                   <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
                 </Transition>

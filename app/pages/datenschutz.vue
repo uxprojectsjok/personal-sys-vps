@@ -38,6 +38,12 @@
       <h3>{{ t('datenschutz.s2LogsH3') }}</h3>
       <p v-html="t('datenschutz.s2LogsContent')"></p>
 
+      <h3>{{ t('datenschutz.s2AiH3') }}</h3>
+      <p v-html="t('datenschutz.s2AiContent')"></p>
+
+      <h3>{{ t('datenschutz.s2ChainH3') }}</h3>
+      <p v-html="t('datenschutz.s2ChainContent')"></p>
+
       <h2>{{ t('datenschutz.s3h2') }}</h2>
       <p>{{ t('datenschutz.s3Content') }}</p>
 
