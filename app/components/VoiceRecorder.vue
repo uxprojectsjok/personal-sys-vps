@@ -309,8 +309,10 @@ async function handleSave() {
         "voice_samples/voice_profile.json",
         new Blob([JSON.stringify(profile, null, 2)], { type: "application/json" })
       );
-    } else if (soulToken.value) {
-      // Mobile / kein Vault: direkt zum VPS hochladen
+    }
+    // Immer auf Server syncen (unabhängig von lokalem Vault) — @create-agent
+    // liest aus vault/audio/, nicht erst nach dem nächsten manuellen syncAll().
+    if (soulToken.value) {
       await syncFile(soulToken.value, "audio", filename, blob);
     }
 
