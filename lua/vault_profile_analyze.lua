@@ -7,10 +7,44 @@
 -- Body: { type: "face"|"voice"|"motion", filename: "...", file_type: "images"|"audio"|"video" }
 -- Auth: Soul-Cert oder Service-Token (vault_auth.lua)
 
-local cjson = require "cjson.safe"
-local http  = require "resty.http"
+local cjson        = require "cjson.safe"
+local http         = require "resty.http"
+local resty_aes    = require "resty.aes"
+local resty_random = require "resty.random"
 
-local soul_id = ngx.ctx.soul_id
+local MAGIC     = "SYS\x01"
+local soul_id   = ngx.ctx.soul_id
+local vault_key = ngx.ctx.vault_key or ""
+
+local function hex_to_bin(hex)
+  return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
+end
+
+-- Entschlüsselt wenn Magic-Bytes erkannt, sonst Klartext unverändert zurückgeben.
+local function try_decrypt(data)
+  if #data < 36 then return data end
+  if data:sub(1, 4) ~= MAGIC then return data end
+  if vault_key == "" then return nil end
+  local iv         = data:sub(5, 20)
+  local ciphertext = data:sub(21)
+  local key        = hex_to_bin(vault_key)
+  local aes_ctx    = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  return aes_ctx:decrypt(ciphertext)
+end
+
+-- Verschlüsselt mit vault_key (AES-256-CBC + MAGIC), analog vault_profile.lua.
+local function encrypt_data(plaintext)
+  if vault_key == "" then return nil end
+  local key = hex_to_bin(vault_key)
+  local iv  = resty_random.bytes(16, true)
+  if not iv then return nil end
+  local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return nil end
+  local encrypted = aes_ctx:encrypt(plaintext)
+  if not encrypted then return nil end
+  return MAGIC .. iv .. encrypted
+end
 if not soul_id then
   ngx.status = 401
   ngx.header["Content-Type"] = "application/json"
@@ -86,8 +120,15 @@ if not f then
   ngx.say(cjson.encode({ error = "Datei nicht gefunden: " .. filename }))
   return
 end
-local image_bytes = f:read("*all")
+local raw_bytes = f:read("*all")
 f:close()
+
+local image_bytes = try_decrypt(raw_bytes)
+if image_bytes == nil then
+  ngx.status = 403
+  ngx.say(cjson.encode({ error = "Bild ist verschlüsselt – Vault entsperren." }))
+  return
+end
 
 -- Base64 kodieren
 local function b64(data)
@@ -188,14 +229,17 @@ profile.type       = "face"
 profile.source     = filename
 profile.updated_at = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
--- Profil speichern
+-- Profil speichern (verschlüsselt, analog vault_profile.lua PUT)
 local profile_dir  = "/var/lib/sys/souls/" .. soul_id .. "/vault/profile/"
 local profile_path = profile_dir .. "face.json"
 os.execute("mkdir -p " .. profile_dir)
 
-local pf = io.open(profile_path, "w")
+local encoded  = cjson.encode(profile)
+local to_write = encrypt_data(encoded)
+
+local pf = io.open(profile_path, "wb")
 if pf then
-  pf:write(cjson.encode(profile))
+  pf:write(to_write or encoded)
   pf:close()
 end
 
