@@ -1637,49 +1637,6 @@ server {
   }
 
   ################################
-  # Node-Legal-Seiten (/impressum, /datenschutz, /lizenz): öffentlich, kein
-  # Gate-Check — Betreiber-Verantwortung des Nodes, immer vorhanden (kein Toggle).
-  ################################
-  location = /impressum {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    add_header Pragma "no-cache" always;
-    add_header Expires "0" always;
-    try_files /impressum/index.html /index.html;
-  }
-  location ^~ /impressum/ {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    try_files $uri $uri.html /impressum/index.html /index.html;
-  }
-
-  location = /datenschutz {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    add_header Pragma "no-cache" always;
-    add_header Expires "0" always;
-    try_files /datenschutz/index.html /index.html;
-  }
-  location ^~ /datenschutz/ {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    try_files $uri $uri.html /datenschutz/index.html /index.html;
-  }
-
-  location = /lizenz {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    add_header Pragma "no-cache" always;
-    add_header Expires "0" always;
-    try_files /lizenz/index.html /index.html;
-  }
-  location ^~ /lizenz/ {
-    root /var/www/me.uxprojects-jok.com;
-    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-    try_files $uri $uri.html /lizenz/index.html /index.html;
-  }
-
-  ################################
   # SPA Root (Nuxt static)
   ################################
   location / {
@@ -1693,7 +1650,7 @@ server {
     add_header Pragma        "no-cache" always;
     add_header Expires       "0" always;
     add_header Vary          "Accept-Encoding" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://analytics.uxprojects-jok.com; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic' https://analytics.uxprojects-jok.com; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' https://analytics.uxprojects-jok.com wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net https://api.anthropic.com https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://www.googleapis.com https://api.spotify.com https://accounts.spotify.com https://*.cloudfront.net https://api.anthropic.com https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://i.ytimg.com https://mosaic.scdn.co https://i.scdn.co https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org https://www.youtube-nocookie.com https://open.spotify.com; frame-ancestors 'self'; upgrade-insecure-requests" always;
 
     body_filter_by_lua_block {
       local chunk, eof = ngx.arg[1], ngx.arg[2]

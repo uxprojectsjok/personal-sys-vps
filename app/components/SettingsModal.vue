@@ -750,15 +750,6 @@
             </div>
           </div>
 
-          <!-- Rechtliches -->
-          <div class="sys-legal-links">
-            <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
-            <span class="sys-legal-sep">·</span>
-            <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
-            <span class="sys-legal-sep">·</span>
-            <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
-          </div>
-
         </div>
       </div>
     </Transition>
@@ -1965,13 +1956,4 @@ onMounted(() => { if (props.inline) initSettings() })
   animation: soul-pulse 1.4s ease-in-out infinite;
 }
 
-/* Rechtliches-Links */
-.sys-legal-links {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 10px 0 4px;
-  font-family: var(--sys-mono); font-size: 11px; letter-spacing: 0.06em;
-}
-.sys-legal-links a { color: var(--sys-fg-dim); text-decoration: none; }
-.sys-legal-links a:hover { color: var(--sys-fg); text-decoration: underline; }
-.sys-legal-sep { color: var(--sys-rule); }
 </style>

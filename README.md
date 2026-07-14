@@ -466,7 +466,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 2243972ebae03d90
+Current release fingerprint: f09080282ab3a915
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -545,7 +545,7 @@ The only technical touchpoint between a running SYS node and UX-Projects infrast
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 
-**Reference legal pages:** This repo ships `/impressum`, `/datenschutz`, and `/lizenz` as a working example of the node-operator-responsibility split described above — populated with my own (Jan-Oliver Karo / UX-Projects) details, exactly as `/agb` already was. If you run your own node, **replace the contents of these pages with your own operator details** before going live; they are not templated per-installation. The same applies to `ConsentBanner.vue`: it points at my own self-hosted Plausible instance (`analytics.uxprojects-jok.com`) — replace this with your own analytics endpoint (or remove the component) so visitor data from your installation doesn't get sent to mine.
+**No legal pages included:** This repo deliberately ships no `/impressum`, `/datenschutz`, or `/lizenz` pages and no analytics/consent-banner component — that content is inherently operator-specific (your name, address, jurisdiction, chosen analytics provider) and I don't want to be responsible for what other operators run under their own name. If your jurisdiction requires a legal notice or privacy policy, build and add your own pages for your own node.
 
 ---
 
