@@ -57,7 +57,7 @@ export async function readVaultFile(soulId, vaultType, filename, vaultKeyHex) {
   return decryptIfNeeded(buf, vaultKeyHex);
 }
 
-/** Gibt { vaultKeyHex, syncedFiles } aus api_context zurück */
+/** Gibt { vaultKeyHex, syncedFiles, activeFiles, cipherMode } aus api_context zurück */
 export async function loadVaultMeta(soulId) {
   try {
     const ctx = await loadCtx(soulId);
@@ -65,8 +65,9 @@ export async function loadVaultMeta(soulId) {
       vaultKeyHex:  ctx?.vault_key_hex || '',
       syncedFiles:  ctx?.synced_files  || {},
       activeFiles:  ctx?.active_files  || {},
+      cipherMode:   ctx?.cipher_mode   || 'ciphered',
     };
   } catch {
-    return { vaultKeyHex: '', syncedFiles: {}, activeFiles: {} };
+    return { vaultKeyHex: '', syncedFiles: {}, activeFiles: {}, cipherMode: 'ciphered' };
   }
 }
