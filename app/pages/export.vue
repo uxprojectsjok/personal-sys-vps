@@ -160,7 +160,6 @@
                   </div>
                   <div class="exp-success-text">
                     <p class="exp-success-title">{{ $t('encrypt.success_title') }}</p>
-                    <p class="exp-success-sub">{{ $t('encrypt.success_sub') }}</p>
                   </div>
                   <div class="exp-info-box">
                     <p>{{ $t('encrypt.soul_downloaded') }}</p>
@@ -216,7 +215,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, isLoaded } = useSoul()
-const { syncedFiles, fetchVpsVaultFiles } = useApiContext()
+const { syncedFiles, fetchVpsVaultFiles, loadContext } = useApiContext()
 const { readAllVaultFiles, isConnected: vaultConnected } = useVault()
 const { mnemonic, isEncrypting, encryptError, encrypt } = useSoulEncrypt()
 
@@ -269,6 +268,12 @@ async function handleEncrypt() {
   isEncrypting.value = true
 
   try {
+    // syncedFiles wird nirgends sonst auf dieser Seite geladen — ohne diesen
+    // Aufruf bleibt es beim leeren Default ({audio:[],video:[],images:[],
+    // context:[]}), vpsOnlyCount ist dann immer 0 und fetchVpsVaultFiles wird
+    // nie aufgerufen: der Export enthält dann nur sys.md + evtl. lokale Dateien.
+    if (soulToken.value) await loadContext(soulToken.value)
+
     const localFiles = vaultConnected.value ? await readAllVaultFiles() : []
     const localBaseNames = new Set(localFiles.map(f => f.name.split('/').pop()))
     const vpsOnlyCount = ['audio', 'video', 'images', 'context'].reduce((sum, cat) =>
@@ -542,10 +547,6 @@ function onNav(id) {
 .exp-success-text { text-align: center; }
 .exp-success-title {
   font-family: var(--serif); font-size: 17px; font-weight: 400; color: var(--fg); margin-bottom: 4px;
-}
-.exp-success-sub {
-  font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--fg-2);
 }
 .exp-info-box {
   width: 100%; padding: 14px 16px;

@@ -618,7 +618,6 @@
     "encrypting_soul": "Soul & Vault werden verschlüsselt…",
     "back_btn": "← Zurück",
     "success_title": "Vault gesichert",
-    "success_sub": "sys.md · Bilder · Stimme · Motion · AES-256-GCM · 12 Wörter",
     "soul_downloaded": "Deine .soul-Datei wurde heruntergeladen. Bewahre sie sicher auf – sie enthält deinen verschlüsselten Vault.",
     "vps_warning": "{n} VPS-Datei(en) konnten nicht geladen werden (Vault-Session abgelaufen oder Timeout). Nur lokale Dateien wurden eingebunden.",
     "words_required": "Alle 12 Felder müssen gültige Wörter enthalten.",

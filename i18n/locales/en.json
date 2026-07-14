@@ -618,7 +618,6 @@
     "encrypting_soul": "Encrypting Soul & Vault…",
     "back_btn": "← Back",
     "success_title": "Vault secured",
-    "success_sub": "sys.md · Images · Voice · Motion · AES-256-GCM · 12 words",
     "soul_downloaded": "Your .soul file was downloaded. Keep it safe — it contains your encrypted vault.",
     "vps_warning": "{n} VPS file(s) could not be loaded (vault session expired or timeout). Only local files were included.",
     "words_required": "All 12 fields must contain valid words.",

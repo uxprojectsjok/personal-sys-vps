@@ -184,7 +184,6 @@
                 </div>
                 <div class="senc-success-text">
                   <p class="senc-success-title">{{ $t('encrypt.success_title') }}</p>
-                  <p class="senc-success-sub">{{ $t('encrypt.success_sub') }}</p>
                 </div>
 
                 <div class="senc-info-box">
@@ -640,10 +639,6 @@ function handleClose() {
 .senc-success-title {
   font-family: var(--serif); font-size: 16px; font-weight: 400; color: var(--fg);
   margin-bottom: 4px;
-}
-.senc-success-sub {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
-  color: var(--fg-3);
 }
 .senc-info-box {
   padding: 14px 16px;
