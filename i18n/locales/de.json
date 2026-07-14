@@ -1232,6 +1232,7 @@
     "title_prefix": "Soul",
     "title_em": "verankern",
     "tags_placeholder": "Marburg, AI, Design, Dezentralität…",
+    "tags_synced_hint": "Vorausgefüllt aus dem Marketplace (Network-Panel) — bearbeite die Tags dort, damit Anchoring und Marketplace nicht auseinanderlaufen. Manuelle Änderung hier nur wenn wirklich nötig.",
     "wallet_disconnect": "Wallet trennen",
     "connect_wallet_note": "Verbinde zuerst eine Wallet, um zu verankern. Mindestens eine echte Session ist erforderlich.",
     "kicker": "Polygon · Blockchain",
