@@ -621,14 +621,10 @@ export function useApiContext() {
   }
 
   /**
-   * Fetcht alle Vault-Dateien vom VPS als Plaintext-ArrayBuffer.
-   * Falls VPS eine aktive Vault-Session hat, entschlüsselt er CBC-Dateien automatisch.
-   * Dateien die noch verschlüsselt ankommen (SYS\x01-Magic) werden übersprungen.
-   * @param {string} soulToken – soul_id.cert
-   * @returns {Promise<Array<{ name: string, buffer: ArrayBuffer }>>}
-   */
-  /**
    * Fetcht Vault-Dateien vom VPS die noch nicht lokal vorhanden sind.
+   * Der Server entschlüsselt jede Datei generisch beim Ausliefern (api_serve.lua/
+   * vault_profile.lua, nutzt den persistierten vault_key_hex) — die Antwort ist
+   * bereits Plaintext, kein Sonderfall für verschlüsselte Dateien nötig.
    * @param {string}  soulToken  – soul_id.cert
    * @param {Set}     skipNames  – Basisnamen (z.B. "voice.webm") die lokal schon existieren
    * @param {number}  timeoutMs  – Timeout pro Datei in ms (default 25 s)
@@ -655,10 +651,11 @@ export function useApiContext() {
           if (!res.ok) continue
           const buffer = await res.arrayBuffer()
           if (buffer.byteLength < 4) continue
-          // CBC-verschlüsselte Dateien (SYS\x01-Magic) überspringen —
-          // VPS kann sie nur entschlüsseln wenn eine aktive Vault-Session vorliegt.
-          const head = new Uint8Array(buffer, 0, 4)
-          if (head[0] === 0x53 && head[1] === 0x59 && head[2] === 0x53 && head[3] === 0x01) continue
+          // Server entschlüsselt jede Vault-Datei generisch beim Ausliefern
+          // (api_serve.lua, nutzt den serverseitig persistierten vault_key_hex —
+          // keine "aktive Session" nötig). Kein Skip mehr nötig; würde eine Datei
+          // im echten Fehlerfall ohnehin nur unwiderruflich aus dem Export droppen
+          // statt sie wenigstens als Rohbytes zu sichern.
           results.push({ name, buffer })
         } catch { /* Timeout oder Netzwerkfehler → weiter */ }
       }
@@ -678,8 +675,8 @@ export function useApiContext() {
         if (!res.ok) continue
         const buffer = await res.arrayBuffer()
         if (buffer.byteLength < 2) continue
-        const head = new Uint8Array(buffer, 0, 4)
-        if (head[0] === 0x53 && head[1] === 0x59 && head[2] === 0x53 && head[3] === 0x01) continue
+        // vault_profile.lua entschlüsselt serverseitig (oder liefert 403 statt
+        // Ciphertext, bereits über res.ok abgefangen) — kein Skip mehr nötig.
         results.push({ name: `profile_${ptype}.json`, buffer })
       } catch { /* weiter */ }
     }

@@ -284,7 +284,9 @@ async function handleSave() {
         created: date, updated: date
       }
       await writeFile('motion_samples/motion_profile.json', new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' }))
-    } else if (soulToken.value) {
+    }
+    // Immer auf Server syncen (unabhängig von lokalem Vault) — @create-agent liest aus vault/video/
+    if (soulToken.value) {
       await syncFile(soulToken.value, 'video', filename, blob)
     }
 

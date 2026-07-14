@@ -938,7 +938,7 @@ const streamPadStyle = computed(() => {
   // that far above the container's actual bottom edge. Must add that offset
   // here too, or the padding only clears the dock's own height and the last
   // message ends up behind the dock's top edge, not just close to it.
-  return { paddingBottom: `calc(${dockHeight.value}px + clamp(40px, 6vw, 64px) + max(12px, env(safe-area-inset-bottom, 0px)) + 28px)` }
+  return { paddingBottom: `calc(${dockHeight.value}px + clamp(40px, 6vw, 64px) + max(12px, env(safe-area-inset-bottom, 0px)) + 44px)` }
 })
 let _dockRO = null
 
