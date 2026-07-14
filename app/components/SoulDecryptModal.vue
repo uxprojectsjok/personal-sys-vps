@@ -216,6 +216,11 @@
                   <span class="text-xs font-semibold">{{ $t('decrypt.local_vault_connected') }}</span>
                 </div>
 
+                <!-- Browser ohne File System Access API (z.B. Safari/iOS) -->
+                <p v-if="!isVaultSupported" class="text-xs text-[var(--sys-fg-dim)] leading-relaxed">
+                  {{ $t('decrypt.vault_unsupported') }}
+                </p>
+
                 <!-- Connect / Retry -->
                 <button
                   v-else
@@ -273,8 +278,8 @@ const emit  = defineEmits(["close", "uploaded", "openFaq"]);
 
 const { t } = useI18n()
 const router = useRouter();
-const { importAndSetup, isLoginInProgress, soulToken, soulMeta, soulContent, firstSetupToken } = useSoul();
-const { clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();
+const { importAndSetup, isLoginInProgress, soulToken, soulMeta, soulContent } = useSoul();
+const { isSupported: isVaultSupported, clearVault, connectVault, writeFile, writeSoulMd, scanVault } = useVault();
 const { resetContext, saveContext } = useApiContext();
 const {
   bundle, isDecrypting, decryptError,
@@ -369,10 +374,9 @@ async function finishDecrypt(ok) {
       resetContext();
       isLoginInProgress.value = true;
 
-      await importAndSetup(soulMd);
-      // Bundle-Import: FirstSetupModal überspringen — Soul ist bereits vollständig importiert.
-      // Admin-Token (Multi-Hoster) ist in localStorage gespeichert und via Settings abrufbar.
-      firstSetupToken.value = null;
+      // silent: FirstSetupModal überspringen — Soul ist bereits vollständig importiert.
+      // Admin-Token (Multi-Hoster) landet trotzdem in localStorage und ist via Settings abrufbar.
+      await importAndSetup(soulMd, { silent: true });
 
       // Permissions & enabled in api_context.json initialisieren
       const token = soulToken.value;

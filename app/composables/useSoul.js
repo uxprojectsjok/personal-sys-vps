@@ -251,7 +251,13 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
   // holt einen neuen Cert vom Server (kein proof nötig auf frischem Server),
   // aktualisiert den Cert in der sys.md, legt das Soul-Verzeichnis an und
   // schreibt sys.md auf den Server — identisch zu createNew().
-  async function importAndSetup(markdown) {
+  // opts.silent: firstSetupToken-Ref wird NICHT gesetzt (kein FirstSetupModal-Öffnen).
+  // Für Bundle-Import (SoulDecryptModal): das await pushToServer() weiter unten gibt
+  // Vue's Reactivity genug Zeit, die Ref-Änderung zu flushen und das Modal zu öffnen,
+  // bevor der Aufrufer sie danach synchron wieder auf null setzt — das erzeugte ein
+  // sichtbares Aufblitzen des Admin-Key-Dialogs. silent verhindert das an der Quelle,
+  // statt die Ref zu setzen und gleich wieder zu löschen.
+  async function importAndSetup(markdown, opts = {}) {
     if (!isClient) return { ok: false, error: 'not_client' };
     const idMatch = markdown.match(/soul_id:\s*([a-f0-9-]{36})/i);
     const soulId  = idMatch?.[1]?.trim();
@@ -281,9 +287,9 @@ ${idea ? idea : "*Noch nicht beschrieben.*"}
 
       if (data.first_setup) {
         if (data.admin_token && data.is_soul_admin) {
-          firstSetupToken.value = data.admin_token;
+          if (!opts.silent) firstSetupToken.value = data.admin_token;
           localStorage.setItem(`sys_admin_token_${soulId}`, data.admin_token);
-        } else {
+        } else if (!opts.silent) {
           firstSetupToken.value = '__single__';
         }
       }
