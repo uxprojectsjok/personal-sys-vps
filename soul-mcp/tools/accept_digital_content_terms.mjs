@@ -143,6 +143,8 @@ export function register(server, soulId) {
 
         const downloadUrl = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
 
+        const traderEmail = amort.trader_email || '(keine Kontakt-E-Mail konfiguriert)';
+
         const paymentLines = payment_method === 'pol'
           ? [
               `POL/Polygon: ${priceEur} EUR (in POL) an ${wallet}`,
@@ -151,13 +153,18 @@ export function register(server, soulId) {
               `Zahlung nicht zuordnen und lehnt sie ab.`,
               'Der Zugang wird nach Bestätigung der Transaktion auf der Blockchain',
               'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
+              '',
+              `ZUSÄTZLICH PFLICHT: Eine E-Mail mit der Referenz-ID an ${traderEmail}`,
+              'schicken, damit der Betreiber die Zahlung auf seiner Seite registrieren',
+              'kann — auch wenn der Zugang technisch schon automatisch freigeschaltet ist.',
             ]
           : [
               `PayPal: ${priceEur} EUR an ${target}`,
               `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
               `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
-              'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
-              'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
+              `ZUSÄTZLICH PFLICHT: Eine E-Mail mit der Referenz-ID an ${traderEmail}`,
+              'schicken, damit der Betreiber die Zahlung registrieren und den Zugang',
+              'freischalten kann — in der Regel innerhalb von 48 Stunden.',
             ];
 
         return {
