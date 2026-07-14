@@ -431,6 +431,78 @@ if not first_message then
     or "Hey -- du sprichst mit meiner digitalen Version. Verifikation bitte."
 end
 
+-- ── Alten Agenten + alte Tools bei ElevenLabs aufräumen ─────────────────────
+-- Jede Regenerierung legt bisher einen komplett NEUEN Agenten mit frisch
+-- inline definierten Tools an -- ElevenLabs persistiert diese Tools als
+-- eigenständige Workspace-Objekte, die bei jeder weiteren Regenerierung liegen
+-- bleiben (Fund 2026-07-14: 1022 verwaiste Tools nach ~29 Regenerierungen,
+-- manuell aufgeräumt). Vor dem Neuanlegen erst alles Alte entfernen, damit
+-- sich das nicht wieder anhäuft. Best-effort: Fehler hier blockieren die
+-- eigentliche Agent-Erstellung nicht.
+do
+  local old_agent_id = nil
+  local cfg_r = read_file(BASE_DIR .. "/config.json")
+  if cfg_r then
+    local ok_c, cfg_d = pcall(cjson.decode, cfg_r)
+    if ok_c and type(cfg_d) == "table" and type(cfg_d.elevenlabs_agent_id) == "string" then
+      old_agent_id = cfg_d.elevenlabs_agent_id
+    end
+  end
+
+  local hc_cleanup = http.new()
+  hc_cleanup:set_timeout(15000)
+
+  if old_agent_id and old_agent_id ~= "" then
+    hc_cleanup:request_uri(ELEVEN .. "/convai/agents/" .. old_agent_id .. "?force=true", {
+      method = "DELETE",
+      ssl_verify = true,
+      headers = { ["xi-api-key"] = eleven_key },
+    })
+  end
+
+  -- Nur Tools löschen, deren Name zu den von diesem Skript erzeugten passt --
+  -- kein Blanket-Delete, falls das Workspace je einen unabhängigen Tool
+  -- bekommen sollte. (Namen aus früheren Skript-Versionen, die hier nicht
+  -- mehr auftauchen, z.B. altes soul_tool/calendar_write, wurden 2026-07-14
+  -- einmalig manuell aufgeräumt.)
+  local SYS_TOOL_NAMES = {
+    verify_identity = true, verify_status   = true,
+    soul_read       = true, soul_write      = true,
+    mind_read       = true, mind_write      = true,
+    peer_inbox      = true, peer_send       = true,
+    context_list    = true, context_get     = true, context_write = true,
+    health_check    = true, food_log        = true,
+    vault_manifest  = true, vault_shared_list = true, vault_shared_get = true,
+    audio_list      = true, image_list      = true, video_list     = true,
+    profile_get     = true, shop_log        = true,
+    soul_earnings   = true, soul_maturity   = true, soul_skills    = true,
+    soul_discover   = true, verify_human    = true, session_end    = true,
+  }
+
+  local tres, _ = hc_cleanup:request_uri(ELEVEN .. "/convai/tools", {
+    method = "GET",
+    ssl_verify = true,
+    headers = { ["xi-api-key"] = eleven_key },
+  })
+  if tres and tres.status == 200 then
+    local tok, tdata = pcall(cjson.decode, tres.body)
+    if tok and type(tdata) == "table" and type(tdata.tools) == "table" then
+      for _, t in ipairs(tdata.tools) do
+        local tname = type(t) == "table" and type(t.tool_config) == "table" and t.tool_config.name
+        if type(t) == "table" and type(t.id) == "string" and tname and SYS_TOOL_NAMES[tname] then
+          local hc_del = http.new()
+          hc_del:set_timeout(10000)
+          hc_del:request_uri(ELEVEN .. "/convai/tools/" .. t.id .. "?force=true", {
+            method = "DELETE",
+            ssl_verify = true,
+            headers = { ["xi-api-key"] = eleven_key },
+          })
+        end
+      end
+    end
+  end
+end
+
 -- ── Agent erstellen ───────────────────────────────────────────────────────────
 -- tts.model_id immer setzen: nicht-englische Agenten brauchen flash/turbo v2_5.
 -- Ohne explizites Modell greift ElevenLabs auf ein englisches Standardmodell zurueck
