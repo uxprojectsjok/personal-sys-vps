@@ -515,8 +515,12 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
   if (foodContent && foodContent.trim().length > 0) {
     try {
       const healthPath = `${SOULS_DIR}${soulId}/vault/context/health.md`;
-      let healthMd = await readFile(healthPath, 'utf8').catch(() => null);
-      if (healthMd) {
+      const healthRaw  = await readFile(healthPath).catch(() => null);
+      if (healthRaw) {
+        const { vaultKeyHex } = await loadVaultMeta(soulId);
+        const wasEncrypted = healthRaw.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
+        let healthMd = decryptIfNeeded(healthRaw, vaultKeyHex).toString('utf8');
+
         const foodLines = foodContent.split('\n').filter(l => l.trim());
         const foodIdx = healthMd.indexOf('\n## Food Log');
         if (foodIdx !== -1) {
@@ -525,7 +529,10 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
         } else {
           healthMd += '\n\n## Food Log\n' + foodLines.join('\n') + '\n';
         }
-        await writeFile(healthPath, healthMd, 'utf8');
+
+        let outBuf = Buffer.from(healthMd, 'utf8');
+        if (wasEncrypted && vaultKeyHex) outBuf = encryptBuf(outBuf, vaultKeyHex);
+        await writeFile(healthPath, outBuf);
         current = removeSection(current, 'Food Log');
         changed = true;
       }
