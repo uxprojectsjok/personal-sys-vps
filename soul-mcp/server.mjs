@@ -500,7 +500,12 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
 
       case 'health_check': {
         const healthPath = `${SOULS_DIR}${soulId}/vault/context/health.md`;
-        const rawText = await readFile(healthPath, 'utf8').catch(() => null);
+        const healthBuf = await readFile(healthPath).catch(() => null);
+        let rawText = null;
+        if (healthBuf) {
+          const { vaultKeyHex } = await loadVaultMeta(soulId);
+          try { rawText = decryptIfNeeded(healthBuf, vaultKeyHex).toString('utf8'); } catch { rawText = null; }
+        }
         if (!rawText) {
           return res.json({ content: [{ type: 'text', text: JSON.stringify({
             available: false,
@@ -581,7 +586,10 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const newEntry     = cleanNotes ? `- ${today} | ${r} | ${name} — ${cleanNotes}` : `- ${today} | ${r} | ${name}`;
         const healthPath   = `${SOULS_DIR}${soulId}/vault/context/health.md`;
         await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
-        const content = await readFile(healthPath, 'utf8').catch(() => '');
+        const healthRawBuf = await readFile(healthPath).catch(() => null);
+        const { vaultKeyHex: foodVaultKeyHex } = await loadVaultMeta(soulId);
+        const wasHealthEncrypted = !!healthRawBuf && healthRawBuf.slice(0, 4).equals(Buffer.from([0x53, 0x59, 0x53, 0x01]));
+        const content = healthRawBuf ? decryptIfNeeded(healthRawBuf, foodVaultKeyHex).toString('utf8') : '';
         // Parse zones
         let head = '', foodLines = [], annualLines = [], zone = 'head';
         for (const line of (content+'\n').split('\n').slice(0,-1)) {
@@ -614,7 +622,9 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const existingAnnual = annualLines.join('\n').trim();
         if (existingAnnual) out += '\n'+existingAnnual;
         out += '\n';
-        await writeFile(healthPath, out, 'utf8');
+        let healthOutBuf = Buffer.from(out, 'utf8');
+        if (wasHealthEncrypted && foodVaultKeyHex) healthOutBuf = encryptBuf(healthOutBuf, foodVaultKeyHex);
+        await writeFile(healthPath, healthOutBuf);
         await ensureContextRegistered(soulId, 'health.md');
         const msg = newSummaries.length>0
           ? `Eingetragen: ${newEntry}\n\nMonatswechsel: Vormonat ins Annual Journal archiviert.`
@@ -1117,8 +1127,7 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('');
   lines.push('This node is operated independently. The operator is solely responsible for');
   lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
-  lines.push(`legal notice, privacy policy, and license terms — see ${BASE_URL}/impressum,`);
-  lines.push(`${BASE_URL}/datenschutz, and ${BASE_URL}/lizenz.`);
+  lines.push('a legal notice and privacy policy if required by their jurisdiction.');
   lines.push('SYS provides infrastructure, not legal services.');
   lines.push('');
 
