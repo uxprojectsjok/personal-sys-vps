@@ -677,7 +677,7 @@ onMounted(() => {
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
 
 .landing-legal-links {
-  position: fixed; bottom: 16px; left: 16px;
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
   z-index: 10;
