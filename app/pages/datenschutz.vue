@@ -49,6 +49,11 @@
 
       <h2>{{ t('datenschutz.s6h2') }}</h2>
       <p v-html="t('datenschutz.s6Content')"></p>
+      <div class="consent-row">
+        <span class="consent-status">{{ t('datenschutz.consentCurrent') }} <strong :class="`consent-${consentStatus}`">{{ consentLabel }}</strong></span>
+        <button v-if="consentStatus === 'granted'" class="consent-btn revoke" @click="revokeConsent">{{ t('datenschutz.consentRevoke') }}</button>
+        <button v-else class="consent-btn grant" @click="grantConsent">{{ t('datenschutz.consentGrant') }}</button>
+      </div>
 
       <h2>{{ t('datenschutz.s7h2') }}</h2>
       <p>{{ t('datenschutz.s7Intro') }}</p>
@@ -73,6 +78,7 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 definePageMeta({ layout: false })
@@ -82,6 +88,44 @@ const { t, locale, setLocale } = useI18n()
 function switchLocale(code) {
   setLocale(code)
   localStorage.setItem('sys-locale', code)
+}
+
+// Consent-Status (Plausible) — gleiche Logik wie ConsentBanner.vue, hier nur
+// gespiegelt damit die Datenschutzseite selbst auch widerrufen/erlauben kann.
+const CONSENT_KEY = 'plausible-consent'
+const consentStatus = ref('unknown')
+const consentLabel = computed(() => t(`datenschutz.consentStatus_${consentStatus.value}`))
+
+function readConsent() {
+  const v = localStorage.getItem(CONSENT_KEY)
+  consentStatus.value = v === 'granted' ? 'granted' : v === 'denied' ? 'denied' : 'unknown'
+}
+function onStorage(e) { if (e.key === CONSENT_KEY) readConsent() }
+
+onMounted(() => {
+  readConsent()
+  window.addEventListener('storage', onStorage)
+})
+onUnmounted(() => window.removeEventListener('storage', onStorage))
+
+function revokeConsent() {
+  localStorage.setItem(CONSENT_KEY, 'denied')
+  consentStatus.value = 'denied'
+  const script = document.getElementById('plausible-script')
+  if (script) script.remove()
+}
+
+function grantConsent() {
+  localStorage.setItem(CONSENT_KEY, 'granted')
+  consentStatus.value = 'granted'
+  if (!document.getElementById('plausible-script')) {
+    const s = document.createElement('script')
+    s.async = true
+    s.setAttribute('data-domain', 'uxprojects-jok.com')
+    s.src = 'https://analytics.uxprojects-jok.com/js/script.js'
+    s.id = 'plausible-script'
+    document.head.appendChild(s)
+  }
 }
 </script>
 
@@ -131,6 +175,18 @@ function switchLocale(code) {
 
 .rights-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .rights-row { display: flex; gap: 12px; font-size: 15px; color: var(--fg); }
+
+.consent-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 4px 0 20px; }
+.consent-status { font-size: 14px; color: var(--fg-3); }
+.consent-granted { color: var(--accent); }
+.consent-denied, .consent-unknown { color: var(--fg); }
+.consent-btn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 6px 14px; border: 1px solid; cursor: pointer; background: transparent; transition: opacity 0.15s;
+}
+.consent-btn:hover { opacity: 0.8; }
+.consent-btn.revoke { color: var(--fg-3); border-color: var(--line-2); }
+.consent-btn.grant { background: var(--accent); color: #fff; border-color: var(--accent); }
 .rights-label { font-weight: 600; min-width: 120px; flex: none; }
 
 @media (max-width: 640px) {
