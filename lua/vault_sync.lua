@@ -307,39 +307,6 @@ end
 
 audit("UPLOAD_OK", safe_name .. " type=" .. data.type .. " size=" .. file_size)
 
--- health.md: bei cipher_mode=ciphered serverseitig verschlüsselt ablegen (nach
--- Sicherheitsprüfungen, damit ClamAV den echten Klartext scannt). Der Download
--- liefert bereits entschlüsselten Klartext (api_serve.lua entschlüsselt generisch
--- beim Ausliefern) – ohne diesen Schritt würde ein Re-Upload dieses Klartexts
--- die Verschlüsselung wieder aufheben.
-if data.type == "context" and safe_name == "health.md" and decoded:sub(1, 4) ~= "SYS\x01" then
-  local cf2 = io.open(base_dir .. "/api_context.json", "r")
-  if cf2 then
-    local raw2 = cf2:read("*a"); cf2:close()
-    local cok2, ctx2 = pcall(cjson.decode, raw2)
-    if cok2 and type(ctx2) == "table"
-       and type(ctx2.vault_key_hex) == "string" and #ctx2.vault_key_hex == 64
-       and (ctx2.cipher_mode or "ciphered") == "ciphered" then
-      local resty_aes    = require("resty.aes")
-      local resty_random = require("resty.random")
-      local function hex_to_bin(hex)
-        return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
-      end
-      local iv = resty_random.bytes(16, true)
-      if iv then
-        local key = hex_to_bin(ctx2.vault_key_hex)
-        local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
-        if aes_ctx then
-          local ciphertext = aes_ctx:encrypt(decoded)
-          if ciphertext then
-            decoded = "SYS\x01" .. iv .. ciphertext
-          end
-        end
-      end
-    end
-  end
-end
-
 -- Verzeichnis anlegen + Datei schreiben
 local dir_path  = base_dir .. "/" .. sub_dir
 -- Single-Quotes im Dateinamen escapen (ffmpeg-Shell-Schutz: ' → '\'' )
@@ -403,6 +370,57 @@ elseif not data.encrypted and data.type == "video" then
     os.remove(file_path)
   else
     ngx.log(ngx.WARN, "[vault_sync] ffmpeg video fehlgeschlagen für ", safe_name, " (ret=", tostring(ret), ")")
+  end
+end
+
+-- Verschlüsselung: bei cipher_mode=ciphered serverseitig auf der finalen Datei
+-- anwenden — NACH ffmpeg (das braucht echten Klartext zum Konvertieren) und
+-- NACH den Sicherheitsprüfungen oben (damit ClamAV den echten Klartext scannt).
+-- Deckt sowohl Re-Uploads bereits entschlüsselter Downloads ab (api_serve.lua
+-- entschlüsselt generisch beim Ausliefern) als auch Recorder-Uploads (Voice-/
+-- Motion-Capture), die nie clientseitig verschlüsseln. mind.md/income.md/
+-- earnings.md bleiben immer Klartext (Sperrliste oben); sys.md hat bereits
+-- einen eigenen Rückgabepfad weiter oben.
+local PLAINTEXT_ALWAYS = { ["mind.md"] = true, ["income.md"] = true, ["earnings.md"] = true }
+local skip_encrypt = data.type == "context" and PLAINTEXT_ALWAYS[safe_name:lower()]
+
+if not skip_encrypt then
+  local final_path = dir_path .. "/" .. registered_name
+  local rf = io.open(final_path, "rb")
+  if rf then
+    local final_content = rf:read("*a")
+    rf:close()
+    if final_content:sub(1, 4) ~= "SYS\x01" then
+      local cf2 = io.open(base_dir .. "/api_context.json", "r")
+      if cf2 then
+        local raw2 = cf2:read("*a"); cf2:close()
+        local cok2, ctx2 = pcall(cjson.decode, raw2)
+        if cok2 and type(ctx2) == "table"
+           and type(ctx2.vault_key_hex) == "string" and #ctx2.vault_key_hex == 64
+           and (ctx2.cipher_mode or "ciphered") == "ciphered" then
+          local resty_aes    = require("resty.aes")
+          local resty_random = require("resty.random")
+          local function hex_to_bin(hex)
+            return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
+          end
+          local iv = resty_random.bytes(16, true)
+          if iv then
+            local key = hex_to_bin(ctx2.vault_key_hex)
+            local aes_ctx = resty_aes:new(key, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+            if aes_ctx then
+              local ciphertext = aes_ctx:encrypt(final_content)
+              if ciphertext then
+                local wf = io.open(final_path, "wb")
+                if wf then
+                  wf:write("SYS\x01" .. iv .. ciphertext)
+                  wf:close()
+                end
+              end
+            end
+          end
+        end
+      end
+    end
   end
 end
 
