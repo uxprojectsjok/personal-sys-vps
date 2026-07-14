@@ -195,15 +195,35 @@ if svc_raw then
   local ok_s, sd = pcall(cjson.decode, svc_raw)
   if ok_s and type(sd) == "table" then svc_data = sd end
 end
-if not svc_data[ctx.webhook_token] then
+-- Muss zu den tatsächlich unten registrierten Tools passen: audio_list/
+-- image_list/video_list/vault_manifest brauchen audio/images/video-Permission,
+-- sonst 403 permission_denied trotz angebotenem Tool (agent_tool_proxy.lua).
+local REQUIRED_PERMS = { soul = true, context_files = true, audio = true, video = true, images = true }
+local existing = svc_data[ctx.webhook_token]
+if not existing then
   svc_data[ctx.webhook_token] = {
     name        = "ElevenLabs Agent",
-    permissions = { soul = true, context_files = true },
+    permissions = REQUIRED_PERMS,
     expires_at  = 0,
     created_at  = math.floor(ngx.now()),
   }
   local _svok, _svjs = pcall(cjson.encode, svc_data)
   if _svok and _svjs then write_file(svc_path, _svjs) end
+else
+  -- Fehlende Permissions bei Regenerierung nachtragen (self-heal für ältere
+  -- Registrierungen, die vor Einführung von audio/video/images entstanden sind).
+  if type(existing.permissions) ~= "table" then existing.permissions = {} end
+  local changed = false
+  for perm, _ in pairs(REQUIRED_PERMS) do
+    if existing.permissions[perm] ~= true then
+      existing.permissions[perm] = true
+      changed = true
+    end
+  end
+  if changed then
+    local _svok, _svjs = pcall(cjson.encode, svc_data)
+    if _svok and _svjs then write_file(svc_path, _svjs) end
+  end
 end
 
 local host       = ngx.var.host or "localhost"
