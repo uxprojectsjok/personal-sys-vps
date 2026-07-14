@@ -5,7 +5,7 @@
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { z } from 'zod';
-import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { SOULS_DIR, encryptBuf, loadVaultMeta } from '../lib/vault_fs.mjs';
 
 async function ensureContextRegistered(soulId, filename) {
   const ctxPath = `${SOULS_DIR}${soulId}/api_context.json`;
@@ -44,7 +44,11 @@ export function register(server, soulId) {
         await mkdir(dir, { recursive: true });
 
         const existed = await readFile(filePath).then(() => true).catch(() => false);
-        await writeFile(filePath, content, 'utf8');
+
+        const { vaultKeyHex, cipherMode } = await loadVaultMeta(soulId);
+        let outBuf = Buffer.from(content, 'utf8');
+        if (cipherMode === 'ciphered' && vaultKeyHex) outBuf = encryptBuf(outBuf, vaultKeyHex);
+        await writeFile(filePath, outBuf);
         await ensureContextRegistered(soulId, filename);
 
         const action = existed ? 'Aktualisiert' : 'Angelegt';
