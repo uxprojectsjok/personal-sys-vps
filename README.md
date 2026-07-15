@@ -400,23 +400,48 @@ Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `soul_disc
 
 ## Installation
 
-The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
+> **This is `personal-sys-vps-private`** — a private clone of my own running node
+> (`SaveYourSoul_me_live`), kept as a self-contained base for standing up a **new**
+> personal node. Unlike the public `personal-sys-vps` template, this repo already
+> includes `init.sh`/`reset.sh`/`recover-password.sh`/`deinstall.sh` — no separate
+> installer checkout needed. It also still contains **my own** data in a few spots
+> (see "Before you install" below) — review and replace those before going live
+> on a domain that isn't `me.uxprojects-jok.com`.
 
-**Full guide:** [ONBOARDING.md](ONBOARDING.md)
+The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
 
 > **Note:** You need a domain with an A record pointing to your server's IP — SSL issuance fails without a valid DNS entry.
 
 **Requirements:** Ubuntu 24.04 VPS (min. 2 GB RAM), a domain
 
 ```bash
-git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
+git clone https://github.com/uxprojectsjok/personal-sys-vps-private.git /opt/sys
+cd /opt/sys
+sudo bash init.sh
 ```
 
-> **Note:** The installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are not included in this public repository.
-> They are distributed via a private installer repository and will be released together with full documentation at official launch.
-> If you are part of the testing group, you have received access separately.
-
 The setup script prompts for domain, email, and optionally an Anthropic API key and Reown Project ID — everything else runs automatically. Change the root password with `passwd` when done.
+
+### Before you install (this repo only, not the public template)
+
+This repo carries over content from my own live instance that's specific to
+me, not to whoever runs the new node:
+
+- **Legal pages** (`app/pages/impressum.vue`, `datenschutz.vue`, `lizenz.vue`) —
+  populated with my own operator details (name, address, contact). Replace
+  with the new operator's details before the node is publicly reachable —
+  German law requires an accurate Impressum for anything beyond a purely
+  private, password-gated instance.
+- **`app/components/ConsentBanner.vue`** — points at my own self-hosted
+  Plausible analytics endpoint. Replace with your own analytics (or remove
+  the component) rather than sending a new node's traffic to my instance.
+- **API keys** (ElevenLabs, WaveSpeed, Anthropic) are *not* in this repo —
+  they live in `/var/lib/sys/souls/{soul_id}/config.json` on the server,
+  outside version control, and start empty on a fresh `init.sh` run. Add
+  them via Settings → Dienste after setup.
+- **`README.md`'s release fingerprint** (below) reflects *my* build at
+  push time — regenerate it after your own changes with
+  `node utils/project-hash.mjs`.
 
 ### Node modes
 
@@ -454,7 +479,9 @@ If `init.sh` detects other active sites on the server (via `sites-enabled`), it 
 > `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
 > Forgot password: soul stays. Reset: tenant moves out. Uninstall: house is torn down.
 
-> **Note:** These scripts are not included in the public repository. They are distributed via the private installer repository alongside `init.sh`.
+> All four scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are included
+> in this repo, in the repo root — no separate installer checkout needed. The public
+> `personal-sys-vps` template does not include them; they're distributed separately there.
 
 ---
 
@@ -466,7 +493,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint: 0a8111e1ffe9b63a
+Current release fingerprint: c6e15e0aaa07eadc
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
