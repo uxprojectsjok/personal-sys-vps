@@ -25,7 +25,16 @@ if ngx.req.get_method() ~= "GET" then
   return
 end
 
-local soul_id, file_uuid, ext = ngx.var.uri:match("^/api/vault/consent/([^/]+)/([^/]+)%.(pdf|txt)$")
+-- Lua-Patterns kennen kein Regex-"|" für Alternation (anders als PCRE) — erst
+-- die Extension generisch fangen, dann gegen die Whitelist prüfen.
+local soul_id, file_uuid, ext = ngx.var.uri:match("^/api/vault/consent/([^/]+)/([^/]+)%.(%a+)$")
+
+if ext ~= "pdf" and ext ~= "txt" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid_extension"}')
+  return
+end
 
 if not soul_id or not soul_id:match(UUID_PAT) then
   ngx.status = 400
