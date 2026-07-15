@@ -27,7 +27,7 @@ import { registerTools, registerPaidTools, registerPeerTools, registerTrustReque
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
-import { buildTermsPreviewPdf, buildConsentPdf, legalTextForChat } from './lib/eu_withdrawal_terms.mjs';
+import { buildTermsPreviewPdf, buildTermsPreviewTxt, buildConsentPdf, buildConsentTxt, legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt } from './lib/eu_withdrawal_terms.mjs';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -1207,9 +1207,18 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('');
   if (EU_CONSUMER_RIGHTS) {
     lines.push('**2. Consent first (EU withdrawal rights)**');
-    lines.push('Before paying: call show_withdrawal_terms(payment_method="pol"), show its link to the buyer,');
-    lines.push('then call accept_digital_content_terms once they agree. Its response contains the wallet');
-    lines.push('address AND a reference_id (UUID) — both are required for step 4, neither is known before this.');
+    lines.push('You do NOT have an /mcp session yet at this point (it always requires a token, and none');
+    lines.push('exists before payment) — use the plain HTTP twins, not the MCP tool names, unless you');
+    lines.push('already hold an owner/peer/paid token for this node:');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "payment_method": "pol" }\n\`\`\``);
+    lines.push('Returns `{ terms_token, preview_url, preview_url_txt, terms_url, terms_url_txt, legal_text }`.');
+    lines.push('Show preview_url (or preview_url_txt if you cannot render a PDF) to the buyer. Once they');
+    lines.push('explicitly agree to both (a) immediate performance and (b) losing their 14-day withdrawal right:');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "terms_token": "{from above}", "payment_method": "pol", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
+    lines.push('Returns `{ download_url, download_url_txt, reference_id, payment: { value: wallet }, invoice_number }`');
+    lines.push('— the wallet address AND a reference_id (UUID) are only revealed here, both required for step 4.');
+    lines.push('(If you already have an MCP session on this node, the equivalent tools are show_withdrawal_terms');
+    lines.push('and accept_digital_content_terms — same fields, same rules.)');
     lines.push('');
     lines.push('**3. Pay on Polygon**');
     lines.push('Send the exact POL amount to the wallet address from step 2 (chainId 137).');
@@ -1405,7 +1414,14 @@ app.get('/api/soul/scan', async (req, res) => {
 // (MCP-Tools, für KI-Chat-Clients), hier zusätzlich als plain-HTTP-Endpoints,
 // damit z.B. die Homepage (scan.vue, kein MCP-Client) denselben Pflicht-Consent-
 // Flow vor Anzeige des Zahlungsziels durchlaufen kann.
+// Plain-HTTP-Zwilling der show_withdrawal_terms-MCP-Tool-Logik — für externe
+// Agenten, die noch KEINE /mcp-Session haben (die verlangt immer einen Token,
+// den es vor der ersten Zahlung noch nicht gibt). soul_preview.lua verweist
+// genau hierher. Gleiches Muster wie POST /api/soul/pay neben soul_pay_read.
 app.post('/api/soul/terms/show', async (req, res) => {
+  if (!EU_CONSUMER_RIGHTS) {
+    return res.status(404).json({ error: 'not_enabled', message: 'Dieser Node hat EU_CONSUMER_RIGHTS nicht aktiviert.' });
+  }
   const { soul_id, payment_method } = req.body || {};
   if (!soul_id || !['paypal', 'pol'].includes(payment_method)) {
     return res.status(400).json({ error: 'soul_id und payment_method ("paypal"|"pol") erforderlich' });
@@ -1424,7 +1440,8 @@ app.post('/api/soul/terms/show', async (req, res) => {
     }
 
     const termsToken = randomUUID();
-    const previewPdf  = await buildTermsPreviewPdf({
+    const tokenDurationDays = amort.token_duration_days || 1;
+    const previewFields = {
       termsToken,
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
@@ -1437,16 +1454,24 @@ app.post('/api/soul/terms/show', async (req, res) => {
       traderEmail:     amort.trader_email || '',
       traderLegalForm: amort.trader_legal_form || '',
       traderVatNote:   amort.trader_vat_note || '',
-      tokenDurationDays: amort.token_duration_days || 1,
-    });
+      tokenDurationDays,
+    };
+    const previewPdf = await buildTermsPreviewPdf(previewFields);
+    const previewTxt = buildTermsPreviewTxt(previewFields);
     const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
     await mkdir(consentDir, { recursive: true });
     await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
+    await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
+
+    sweepExpiredConsentTxt(soul_id, tokenDurationDays).catch(() => {});
 
     res.json({
       ok: true,
       terms_token: termsToken,
-      preview_url: `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.pdf`,
+      preview_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.pdf`,
+      preview_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.txt`,
+      terms_url:     `${BASE_URL}/agb`,
+      terms_url_txt: `${BASE_URL}/agb.txt`,
       legal_text: legalTextForChat(),
     });
   } catch (err) {
@@ -1455,6 +1480,9 @@ app.post('/api/soul/terms/show', async (req, res) => {
 });
 
 app.post('/api/soul/terms/accept', async (req, res) => {
+  if (!EU_CONSUMER_RIGHTS) {
+    return res.status(404).json({ error: 'not_enabled', message: 'Dieser Node hat EU_CONSUMER_RIGHTS nicht aktiviert.' });
+  }
   const {
     soul_id, terms_token, payment_method,
     consent_immediate_performance, consent_withdrawal_waiver, contact_note,
@@ -1485,6 +1513,7 @@ app.post('/api/soul/terms/accept', async (req, res) => {
 
     const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
     const docPath     = `${consentDir}/${terms_token}.pdf`;
+    const txtPath     = `${consentDir}/${terms_token}.txt`;
     try {
       await stat(docPath);
     } catch {
@@ -1504,7 +1533,12 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       timeZoneName: 'short',
     });
 
-    const pdfBuffer = await buildConsentPdf({
+    // Einmal ziehen, an PDF UND TXT weiterreichen — siehe accept_digital_content_terms.mjs,
+    // gleiches "lückenlos fortlaufend"-Argument (§ 14 Abs. 4 Nr. 4 UStG).
+    const invoiceNumber = await nextInvoiceNumber(soul_id, amort.trader_name || '');
+    const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
+
+    const consentFields = {
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
       priceEur,
@@ -1519,17 +1553,25 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       traderEmail:     amort.trader_email || '',
       traderLegalForm: amort.trader_legal_form || '',
       traderVatNote:   amort.trader_vat_note || '',
-    });
+      invoiceNumber,
+      invoiceDate,
+    };
+
+    const pdfBuffer = await buildConsentPdf(consentFields);
     await writeFile(docPath, pdfBuffer);
+    const txtContent = buildConsentTxt(consentFields);
+    await writeFile(txtPath, txtContent, 'utf8');
 
     res.json({
       ok: true,
-      download_url: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.pdf`,
+      download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.pdf`,
+      download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.txt`,
       reference_id: terms_token,
       payment: payment_method === 'pol'
         ? { method: 'pol', label: 'Wallet-Adresse (Polygon)', value: wallet }
         : { method: 'paypal', label: 'PayPal-Zahlungsziel', value: target },
       price_eur: priceEur,
+      invoice_number: invoiceNumber,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
