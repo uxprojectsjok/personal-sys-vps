@@ -28,8 +28,29 @@ echo "  Apache License 2.0 · github.com/uxprojectsjok/sys-installer"
 echo "  Use at your own risk. No warranty. Always back up your data."
 echo ""
 
-# ── 1. Node type selection ────────────────────────────────────────────────────
-echo -e "${YELLOW}  Which node type do you want to set up?${NC}"
+# ── 0. Node visibility (Public/Private) ───────────────────────────────────────
+echo -e "${YELLOW}  Should this node be public or private?${NC}"
+echo ""
+echo "  [1] Public Node     — Full feature set (default)"
+echo "      Includes the Agent Marketplace: other AI agents can discover this"
+echo "      node, pay in POL or PayPal, and read from the Agent Sandbox."
+echo ""
+echo "  [2] Private Node    — No Marketplace, no paid agent access"
+echo "      This soul stays reachable for its owner and trusted peers only —"
+echo "      amortization/paid access can never be turned on later without"
+echo "      re-running init.sh (enforced server-side, not just hidden in the UI)."
+echo ""
+while true; do
+  read -p "  Visibility [1/2]: " NODE_VISIBILITY
+  [[ "$NODE_VISIBILITY" == "1" || "$NODE_VISIBILITY" == "2" ]] && break
+  warn "Please enter 1 or 2."
+done
+PUBLIC_NODE=true
+[[ "$NODE_VISIBILITY" == "2" ]] && PUBLIC_NODE=false
+echo ""
+
+# ── 1. Node structure selection ───────────────────────────────────────────────
+echo -e "${YELLOW}  Which node structure do you want to set up?${NC}"
 echo ""
 echo "  [1] Personal Node   — Exactly one soul, one owner (default)"
 echo "      Perfect for: individual use, your own instance, maximum control"
@@ -321,6 +342,14 @@ cp "$SCRIPT_DIR/shared/constants/default_mind.md" /var/lib/sys/config/default_mi
 # choice via EU_CONSUMER_RIGHTS in soul-mcp/.env instead.
 echo -n "$EU_CONSUMER_RIGHTS" > /var/lib/sys/config/eu_consumer_rights
 chmod 644 /var/lib/sys/config/eu_consumer_rights
+
+# Node visibility flag (Public/Private) — same rationale as eu_consumer_rights
+# above. Checked server-side wherever amortization/paid access could be turned
+# on (soul_amortization.lua, soul_pay.lua, soul_pay_manual.lua), not just
+# hidden in the UI, so a private node can never accidentally start accepting
+# paid agent traffic.
+echo -n "$PUBLIC_NODE" > /var/lib/sys/config/public_node
+chmod 644 /var/lib/sys/config/public_node
 
 # ── 7a. Interner API-Listener (127.0.0.1:8081, kein TLS) ──────────────────────
 # Für same-process Calls aus soul-mcp heraus (z.B. /internal/validate-pol-token),

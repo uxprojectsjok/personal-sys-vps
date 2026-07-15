@@ -97,10 +97,21 @@ if eu_flag then
   eu_flag:close()
 end
 
+-- Altinstallationen ohne die Datei: Default bleibt public (true), damit bestehende
+-- Marketplace-Nutzer nicht plötzlich ausgesperrt werden — nur explizit als Private
+-- Node eingerichtete Nodes (init.sh schreibt "false") sind betroffen.
+local public_flag = io.open("/var/lib/sys/config/public_node", "r")
+local public_node = true
+if public_flag then
+  public_node = public_flag:read("*a") ~= "false"
+  public_flag:close()
+end
+
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 ngx.say(cjson.encode({
   eu_consumer_rights   = eu_consumer_rights,
+  public_node          = public_node,
   has_own_key          = has_own_key,
   key_preview          = key_preview,
   key_source           = key_source,

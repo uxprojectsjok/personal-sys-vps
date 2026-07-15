@@ -59,6 +59,22 @@ if not tx_hash or not tx_hash:match("^0x[0-9a-fA-F]+$") or #tx_hash ~= 66 then
   return
 end
 
+-- Private Node: serverseitig gesperrt (erste Verteidigungslinie sitzt in
+-- soul_amortization.lua und verhindert amort.enabled=true von vornherein) —
+-- ganz vorne geprüft, damit die Fehlermeldung unabhängig vom EU-Consent-Status
+-- und vom amort-Ladezustand immer den eigentlichen Grund nennt.
+do
+  local pf = io.open("/var/lib/sys/config/public_node", "r")
+  if pf then
+    local pv = pf:read("*a"); pf:close()
+    if pv == "false" then
+      ngx.status = 403
+      ngx.say('{"error":"private_node","message":"Dieser Node akzeptiert keine zahlenden Agenten (Private Node)."}')
+      return
+    end
+  end
+end
+
 -- reference_id ist immer ein optionales Feld (Notiz zur Zuordnung des Tokens).
 local reference_id = type(incoming.reference_id) == "string" and incoming.reference_id:match("^%s*(.-)%s*$") or nil
 if reference_id == "" then reference_id = nil end
