@@ -23,6 +23,20 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
+-- Private Node: auch der manuelle (owner-getriebene) Token-Weg bleibt zu — sonst
+-- könnte ein Private Node über diesen Umweg trotzdem zahlende Agenten zulassen.
+do
+  local pf = io.open("/var/lib/sys/config/public_node", "r")
+  if pf then
+    local pv = pf:read("*a"); pf:close()
+    if pv == "false" then
+      ngx.status = 403
+      ngx.say('{"error":"private_node","message":"Dieser Node akzeptiert keine zahlenden Agenten (Private Node)."}')
+      return
+    end
+  end
+end
+
 ngx.req.read_body()
 local body = ngx.req.get_body_data()
 local ok_b, incoming = pcall(cjson.decode, body or "")

@@ -9,7 +9,7 @@
       </div>
       <div class="sb-node">
         <span class="live-dot" />
-        <span>Private Node</span>
+        <span>{{ props.publicNode ? $t('nav.public_node') : $t('nav.private_node') }}</span>
         <button class="lock" :title="$t('nav.lock_node')" :aria-label="$t('nav.lock_node')" @click="$emit('lock')">
           <SysIcon name="lock" style="width:20px;height:20px" />
         </button>
@@ -55,6 +55,7 @@ const props = defineProps({
   route: { type: String, default: 'home' },
   soulMeta: { type: Object, default: null },
   collapsed: { type: Boolean, default: false },
+  publicNode: { type: Boolean, default: true },
 })
 
 defineEmits(['collapse', 'lock', 'go'])
@@ -81,8 +82,13 @@ const nav = computed(() => [
   { group: t('nav.group_network'), items: [
     { id: 'peers',    icon: 'peers',  label: t('nav.peers') },
     { id: 'connect',  icon: 'qr',     label: t('nav.connect') },
-    { id: 'market',   icon: 'market', label: t('nav.marketplace') },
-    { id: 'earnings', icon: 'earn',   label: t('nav.earnings') },
+    // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
+    // Zugriff (soul_amortization.lua/soul_pay.lua lehnen ab) — hier zusätzlich
+    // aus der Navigation genommen, damit der Nutzer nicht ins Leere klickt.
+    ...(props.publicNode ? [
+      { id: 'market',   icon: 'market', label: t('nav.marketplace') },
+      { id: 'earnings', icon: 'earn',   label: t('nav.earnings') },
+    ] : []),
   ]},
   { group: t('nav.group_tools'), items: [
     { id: 'anchor',   icon: 'anchor',   label: t('nav.anchor') },

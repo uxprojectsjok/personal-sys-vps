@@ -3,6 +3,8 @@
     "sidebar_toggle": "Sidebar",
     "sidebar_collapse": "Collapse sidebar",
     "lock_node": "Lock node",
+    "public_node": "Public Node",
+    "private_node": "Private Node",
     "group_soul": "Soul",
     "group_vault": "Vault",
     "group_network": "Network",
@@ -1104,6 +1106,7 @@
     "model_fast": "Claude Haiku 4.5 — fast"
   },
   "marketplace": {
+    "private_node_disabled": "This node was set up as a Private Node — the Marketplace (payments, Agent Sandbox access for external agents) is disabled and can only be enabled by re-running init.sh.",
     "discoverable_off_warning": "Discoverability is turned off (Settings → Config → Privacy) — your node won't appear in SYS.Scan, llms.txt, or AI free-text search. Marketplace access and the IPFS pin still work, but only for already-known endpoints.",
     "aria_label": "Set up Agent Marketplace",
     "steps_aria": "Steps",

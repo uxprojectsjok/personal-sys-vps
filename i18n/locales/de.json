@@ -3,6 +3,8 @@
     "sidebar_toggle": "Seitenleiste",
     "sidebar_collapse": "Seitenleiste einklappen",
     "lock_node": "Node sperren",
+    "public_node": "Public Node",
+    "private_node": "Private Node",
     "group_soul": "Seele",
     "group_vault": "Vault",
     "group_network": "Netzwerk",
@@ -1104,6 +1106,7 @@
     "model_fast": "Claude Haiku 4.5 — schnell"
   },
   "marketplace": {
+    "private_node_disabled": "Dieser Node wurde als Private Node eingerichtet — der Marketplace (Zahlungen, Agent-Sandbox-Zugang für fremde Agenten) ist deaktiviert und kann nur durch erneuten init.sh-Lauf aktiviert werden.",
     "discoverable_off_warning": "Auffindbarkeit ist deaktiviert (Settings → Config → Datenschutz) — dein Node erscheint nicht in SYS.Scan, llms.txt oder der KI-Freitextsuche. Marketplace-Zugang und IPFS-Pin funktionieren weiterhin, aber nur bei bereits bekanntem Endpunkt.",
     "aria_label": "Agent Marketplace einrichten",
     "steps_aria": "Schritte",

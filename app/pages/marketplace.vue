@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="market" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="market" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -19,7 +19,8 @@
 
             <!-- ── Panel, embedded flat via the `inline` prop (see AgentMarketplacePanel.vue) ── -->
             <div class="mk-panel">
-              <AgentMarketplacePanel inline :soul-cert="soulToken" @close="router.push('/')" />
+              <AgentMarketplacePanel v-if="publicNode" inline :soul-cert="soulToken" @close="router.push('/')" />
+              <p v-else class="empty-hint">{{ $t('marketplace.private_node_disabled') }}</p>
             </div>
 
           </div>
@@ -32,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import AgentMarketplacePanel from '~/components/AgentMarketplacePanel.vue'
@@ -45,6 +46,17 @@ const { soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
+const publicNode       = ref(true)
+
+watch(soulToken, async (tok) => {
+  if (!tok) return
+  try {
+    const r = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${tok}` } })
+    if (!r.ok) return
+    const d = await r.json()
+    publicNode.value = d.public_node !== false
+  } catch {}
+}, { immediate: true })
 
 function lockGate() {
   document.cookie = 'sys_token=; Max-Age=0; path=/'

@@ -34,6 +34,7 @@
           :route="route"
           :soul-meta="soulMeta ? { ...soulMeta, maturity } : null"
           :collapsed="sidebarCollapsed"
+          :public-node="publicNode"
           @go="onNav"
           @collapse="sidebarCollapsed = !sidebarCollapsed"
           @lock="lockGate"
@@ -366,6 +367,17 @@ const encryptOpen       = ref(false)
 const anchorOpen        = ref(false)
 const marketplaceOpen   = ref(false)
 const settingsOpen      = ref(false)
+const publicNode        = ref(true)
+
+watch(soulToken, async (tok) => {
+  if (!tok) return
+  try {
+    const r = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${tok}` } })
+    if (!r.ok) return
+    const d = await r.json()
+    publicNode.value = d.public_node !== false
+  } catch {}
+}, { immediate: true })
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const initial      = computed(() => (soulMeta.value?.name || 'S').charAt(0).toUpperCase())

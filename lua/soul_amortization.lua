@@ -111,6 +111,25 @@ for k, v in pairs(DEFAULTS) do
   if amort[k] == nil then amort[k] = v end
 end
 
+-- Private Node: Marketplace/Paid-Access serverseitig unterbunden, nicht nur in
+-- der UI versteckt — via init.sh gesetzt (/var/lib/sys/config/public_node),
+-- kann nur durch erneuten init.sh-Lauf geändert werden.
+local function is_public_node()
+  local f = io.open("/var/lib/sys/config/public_node", "r")
+  if not f then return true end  -- Altinstallationen ohne die Datei: Default bleibt public
+  local v = f:read("*a"); f:close()
+  return v ~= "false"
+end
+
+if not is_public_node() and (incoming.enabled == true or incoming.paypal_enabled == true) then
+  ngx.status = 403
+  ngx.say(cjson.encode({
+    error   = "private_node",
+    message = "Dieser Node wurde als Private Node eingerichtet — Marketplace/Paid-Access kann nur durch erneuten init.sh-Lauf aktiviert werden.",
+  }))
+  return
+end
+
 -- Aktivieren
 if incoming.enabled == true and amort.enabled ~= true then
   amort.enabled      = true
