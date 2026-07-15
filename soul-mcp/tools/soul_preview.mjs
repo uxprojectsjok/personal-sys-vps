@@ -106,16 +106,22 @@ export function register(server, _token) {
 
         const paypalLines = d.paypal_accepted
           ? [
-              `PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`,
+              d.paypal_target
+                ? `PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`
+                : `PayPal: ${d.price_eur || '?'} EUR — ${d.paypal_note}`,
               ...(d.price_note ? [`Price note: ${d.price_note}`] : []),
               ``,
             ]
           : [];
 
+        const walletLine = d.wallet
+          ? `Wallet:  ${d.wallet}`
+          : `Wallet:  ${d.wallet_note || '(not set)'}`;
+
         const lines = [
           `Soul preview · ${soul_id.slice(0, 8)}…`,
           `Price:   ${priceLine}`,
-          `Wallet:  ${d.wallet || '(not set)'}`,
+          walletLine,
           ...paypalLines,
           ``,
           `--- AGENT block preview ---`,

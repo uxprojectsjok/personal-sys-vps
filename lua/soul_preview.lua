@@ -201,30 +201,43 @@ local response = {
   anchor_count      = anchor_count,
   chain_age_days    = math.floor(chain_age_days * 10 + 0.5) / 10,
   buyers_30d        = buyers_30d,
-  wallet            = amort.wallet or "",
   pay_endpoint      = base_url .. "/api/soul/pay",
   price_endpoint    = base_url .. "/api/soul/price",
 }
+
+-- Wallet-Adresse: bei aktivem EU_CONSUMER_RIGHTS bewusst NICHT vorab nennen (siehe
+-- show_withdrawal_terms.mjs) — erst nach erteilter Zustimmung über terms/accept.
+-- Ohne das Flag ist Vorab-Nennung unproblematisch (kein Widerrufsrecht durchgesetzt).
+if EU_CONSUMER_RIGHTS then
+  response.wallet      = ""
+  response.wallet_note = "Zahlungsziel wird erst nach show_withdrawal_terms + accept_digital_content_terms genannt (EU-Widerrufsrecht)."
+else
+  response.wallet = amort.wallet or ""
+end
 
 -- Nicht-Krypto-Zahlungsweg (manuell bestätigt, kein Auto-Verify) — nur wenn aktiviert
 if amort.paypal_enabled then
   local target = (amort.paypal_link and amort.paypal_link ~= "") and amort.paypal_link
               or (amort.paypal_email or "")
   response.paypal_accepted = true
-  response.paypal_target   = target
   response.price_eur       = amort.price_eur or ""
   -- Preisangabe MwSt. (PAngV §6) — Endpreis-Klarstellung, Pflichtangabe vor Vertragsschluss
   response.price_note      = (amort.trader_vat_note and amort.trader_vat_note ~= "")
                               and amort.trader_vat_note
                               or "Alle Preise sind Endpreise (inkl. ggf. anfallender gesetzl. MwSt.)."
   if EU_CONSUMER_RIGHTS then
+    -- Ziel bewusst NICHT in paypal_target oder im Hinweistext — sonst wäre die
+    -- Zustimmungspflicht unten wirkungslos (Ziel stünde ja schon hier).
+    response.paypal_target = ""
     response.paypal_note   = "Für Nicht-Krypto-Zugang: WENN der Käufer in der EU ist, ZUERST" ..
       " show_withdrawal_terms aufrufen (gesetzliches Widerrufsrecht, nicht optional)," ..
-      " erst danach zur Zahlung übergehen. Dann PayPal an " .. target ..
-      " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
-      " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..
-      " Token direkt mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
+      " erst danach zur Zahlung übergehen — das Zahlungsziel wird erst in der Antwort von" ..
+      " accept_digital_content_terms genannt, nach erteilter Zustimmung. Nach Zahlung in der" ..
+      " Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token geschickt werden" ..
+      " kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen Token direkt" ..
+      " mit soul_read_by_token(read_endpoint, access_token) verwenden — keine erneute Zahlung anfordern."
   else
+    response.paypal_target = target
     response.paypal_note   = "Für Nicht-Krypto-Zugang: PayPal an " .. target ..
       " senden und dabei in der Zahlungsnotiz eine E-Mail-Adresse hinterlassen, an die der Zugangs-Token" ..
       " geschickt werden kann. Manuelle Prüfung, in der Regel innerhalb von 48 Stunden. Den erhaltenen" ..

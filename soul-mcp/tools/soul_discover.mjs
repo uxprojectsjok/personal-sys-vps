@@ -47,11 +47,16 @@ export function register(server, token) {
       '2. soul_preview(pay_endpoint, soul_id) → kostenloser Teaser + Live-Preis (bei dynamic_pricing)',
       '   Zeigt den ersten ~200 Zeichen des AGENT-Blocks + aktuellem POL-Preis mit Multiplikator.',
       '   IMMER aufrufen bevor bezahlt wird — besonders bei dynamic_pricing=true Souls.',
-      '3. POL-Transaktion an soul.amortization.wallet senden (Preis aus soul_preview)',
+      '   Wallet/PayPal-Ziel erscheinen NICHT hier, sondern erst in soul_preview bzw. nach',
+      '   erteilter Zustimmung (falls die Ziel-Soul EU-Widerrufsrecht durchsetzt) — dieses Tool',
+      '   durchsucht Souls über mehrere fremde Nodes hinweg, ein lokales EU-Flag ist hier nicht',
+      '   bekannt, daher wird das Zahlungsziel grundsätzlich nie an dieser Stelle genannt.',
+      '3. POL-Transaktion an das von soul_preview genannte Zahlungsziel senden',
       '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
       '',
       'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Polygon-Wallet:',
-      'Souls mit amortization.paypal_enabled zeigen zusätzlich price_eur + paypal_target.',
+      'Souls mit amortization.paypal_enabled akzeptieren zusätzlich PayPal — Ziel/Preis auch',
+      'hier erst über soul_preview auf der Ziel-Soul selbst abrufen.',
       '',
       ...(EU_CONSUMER_RIGHTS ? [
         'WICHTIG — BEVOR du zur Zahlung überleitest: Frage den Nutzer (falls unklar), ob',
@@ -127,15 +132,17 @@ export function register(server, token) {
             } else {
               lines.push(`- **Preis:** ${s.amortization.pol_per_request} POL pro Anfrage`);
             }
-            lines.push(`- **Wallet:** \`${s.amortization.wallet}\``);
+            // Zahlungsziel (Wallet/PayPal) bewusst NICHT hier — siehe Tool-Beschreibung:
+            // soul_discover sucht node-übergreifend, ein lokales EU-Widerrufsrecht-Flag der
+            // Ziel-Soul ist hier nicht bekannt. Immer über soul_preview auf der Ziel-Soul selbst
+            // abrufen, das läuft lokal auf deren Node und respektiert deren Flag korrekt.
             const aTools = s.amortization.agent_tools || s.amortization.free_tools;
             if (Array.isArray(aTools) && aTools.length) {
               lines.push(`- **Agent-Tools:** ${aTools.join(', ')}`);
             }
-            if (s.pay_endpoint) lines.push(`- **Zahlung:** POST ${s.pay_endpoint}`);
+            if (s.pay_endpoint) lines.push(`- **Preview/Zahlung:** soul_preview(pay_endpoint="${s.pay_endpoint}", soul_id="${s.soul_id}") aufrufen — nennt Preis und Zahlungsziel`);
             if (s.amortization.paypal_enabled) {
-              const eur = s.amortization.price_eur ? `${s.amortization.price_eur} EUR` : 'Preis auf Anfrage';
-              lines.push(`- **Nicht-Krypto-Zugang:** PayPal (${eur}) an ${s.amortization.paypal_target} — bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.${s.amortization.price_note ? ` Preishinweis: ${s.amortization.price_note}` : ''}`);
+              lines.push(`- **Nicht-Krypto-Zugang:** PayPal verfügbar — Ziel/Preis über soul_preview abrufen. Bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.`);
             }
           } else {
             lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);
