@@ -121,15 +121,22 @@ export function useSoulPasskey() {
   const passkeyError   = ref(null)
   const hasPasskey     = ref(getSavedCredentialIds().length > 0)
   const prfOutput      = ref(null)  // ArrayBuffer — temporär im Memory, nie persistiert
+  const lastAssertion  = ref(null)  // { credentialId, clientDataJson, authenticatorData, signature } — nur bei serverChallengeB64url gesetzt
 
   /**
    * Passkey erstellen (einmalig, beim ersten Verschlüsseln).
    * Nutzer wird via Face ID / Fingerabdruck / Windows Hello bestätigen.
    *
    * @param {string} username  – Anzeigename (z.B. Soul-Name)
+   * @param {() => Record<string,string>} [getAuthHeaders]  Liefert Auth-Header für
+   *   die Public-Key-Registrierung — Aufrufer-spezifisch (z.B. verify.vue nutzt bei
+   *   QR-Scan-Flow ein vt:-Token statt des normalen Soul-Tokens), daher als Callback
+   *   statt hier eine Annahme über die Token-Quelle zu treffen. Ohne Callback wird
+   *   die Registrierung übersprungen (Fingerprint-Score-Check greift dann nicht,
+   *   Vault-Verschlüsselung selbst funktioniert trotzdem unverändert).
    * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler
    */
-  async function registerPasskey(username = 'Soul') {
+  async function registerPasskey(username = 'Soul', getAuthHeaders = null) {
     isRegistering.value  = true
     passkeyError.value   = null
 
@@ -168,6 +175,27 @@ export function useSoulPasskey() {
       saveCredentialId(credId)
       hasPasskey.value = true
 
+      // Public Key server-seitig registrieren — Voraussetzung dafür, dass
+      // /verify später eine echte Signatur prüfen kann statt dem Client zu
+      // vertrauen (siehe verify_fingerprint_check.lua). getPublicKey() liefert
+      // SPKI-DER, unabhängig von der PRF-Extension (die bleibt rein für die
+      // client-seitige Vault-Schlüsselableitung zuständig).
+      try {
+        const spki = credential.response.getPublicKey?.()
+        const alg  = credential.response.getPublicKeyAlgorithm?.()
+        if (spki && getAuthHeaders) {
+          await fetch('/api/verify/passkey-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({
+              credential_id: credId,
+              public_key:    bufferToBase64url(spki),
+              alg,
+            }),
+          })
+        }
+      } catch { /* Registrierung best-effort — Fingerprint-Score-Check greift dann später einfach nicht */ }
+
       // PRF-Output aus Registration (falls verfügbar — nicht alle Browser liefern ihn)
       const prfResult = credential.getClientExtensionResults?.()?.prf?.results?.first
       if (prfResult) {
@@ -193,17 +221,26 @@ export function useSoulPasskey() {
   }
 
   /**
-   * Vorhandenen Passkey nutzen (für Entschlüsseln / erneutes Verschlüsseln).
+   * Vorhandenen Passkey nutzen (für Entschlüsseln / erneutes Verschlüsseln, oder
+   * für den /verify-Fingerprint-Score-Check).
    * Nutzer bestätigt via Face ID / Fingerabdruck / Windows Hello.
    *
-   * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler
+   * @param {string} [serverChallengeB64url]  Server-ausgestellte Challenge (base64url) —
+   *   MUSS für den /verify-Score-Check verwendet werden (siehe verify_fingerprint_check.lua,
+   *   das die Signatur gegen genau diese Challenge prüft — ein client-generiertes Zufalls-
+   *   Nonce wäre für den Server nicht verifizierbar/anti-replay-sicher). Ohne Angabe wird
+   *   wie bisher ein rein clientseitiges Zufalls-Nonce verwendet (Vault-Entschlüsseln
+   *   braucht keine Serverprüfung, siehe Kommentar am Dateianfang).
+   * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler — die dazugehörige
+   *   rohe Signatur (falls serverChallengeB64url gesetzt war) steht danach in lastAssertion.value.
    */
-  async function authenticatePasskey() {
+  async function authenticatePasskey(serverChallengeB64url = null) {
     isAuthenticating.value = true
     passkeyError.value     = null
+    lastAssertion.value    = null
 
     try {
-      const challenge   = crypto.getRandomValues(new Uint8Array(32))
+      const challenge   = serverChallengeB64url ? base64ToBuffer(serverChallengeB64url) : crypto.getRandomValues(new Uint8Array(32))
       const prfSalt     = strToBuffer(PRF_SALT_STRING)
       const savedIds    = getSavedCredentialIds()
       const allowCreds  = savedIds.map(id => ({
@@ -229,8 +266,21 @@ export function useSoulPasskey() {
 
       if (!assertion) { passkeyError.value = 'Authentifizierung abgebrochen.'; return null }
 
+      if (serverChallengeB64url) {
+        lastAssertion.value = {
+          credentialId:      bufferToBase64url(assertion.rawId),
+          clientDataJson:    bufferToBase64url(assertion.response.clientDataJSON),
+          authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+          signature:         bufferToBase64url(assertion.response.signature),
+        }
+      }
+
       const prfResult = assertion.getClientExtensionResults?.()?.prf?.results?.first
       if (!prfResult) {
+        // Für den Fingerprint-Score-Check reicht die Signatur allein — PRF ist nur
+        // für die Vault-Schlüsselableitung nötig. Nicht als Fehler behandeln, wenn
+        // eine gültige Assertion (also lastAssertion) vorliegt.
+        if (lastAssertion.value) return null
         passkeyError.value = 'Dieser Browser unterstützt die PRF-Extension nicht. ' +
           'Bitte Chrome 116+ oder Safari 16.4+ verwenden.'
         return null
@@ -303,6 +353,7 @@ export function useSoulPasskey() {
     isAuthenticating,
     passkeyError,
     hasPasskey,
+    lastAssertion,
     // Methoden
     registerPasskey,
     authenticatePasskey,

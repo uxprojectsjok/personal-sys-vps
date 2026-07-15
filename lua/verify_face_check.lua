@@ -1,8 +1,15 @@
 -- /etc/openresty/lua/verify_face_check.lua
 -- POST /api/verify/face-check  (soul_cert auth)
 -- Vergleicht Live-Kamerabild mit vault/images/profile.png via Claude Vision.
--- Body: { image_base64: "<base64 ohne data-URI-Prefix>", mime: "image/jpeg" }
+-- Body: { image_base64: "<base64 ohne data-URI-Prefix>", mime: "image/jpeg", challenge_id }
 -- Returns: { match: bool, confidence: "high|medium|low", message: string }
+--
+-- challenge_id ist optional (Rückwärtskompatibilität), aber PFLICHT für einen
+-- gültigen /api/verify/complete-Aufruf mit method=face/face_hq: bei einem Match
+-- wird hier ein Serverbeweis in die Challenge-Datei geschrieben, den
+-- verify_complete.lua gegenprüft (gleiches Muster wie voice_hq_digits_verified) —
+-- sonst könnte ein Client den Face-Check komplett überspringen und einfach
+-- "verified: true" an /api/verify/complete posten, ohne dass je ein Bild verglichen wurde.
 
 local cjson  = require("cjson.safe")
 local http   = require("resty.http")
@@ -37,6 +44,29 @@ if not ok_b or type(body) ~= "table" or type(body.image_base64) ~= "string" then
 end
 
 local hq = body.hq == true
+local challenge_id = type(body.challenge_id) == "string" and body.challenge_id or nil
+
+-- Serverbeweis in die Challenge-Datei schreiben, den verify_complete.lua bei
+-- method=face/face_hq gegenprüft. face_hq_verified nur bei match+hq=true, damit
+-- ein einfacher (nicht-HQ) Match nicht als Beweis für den strengeren HQ-Schritt
+-- durchgeht (Downgrade-Schutz, analog zur HQ/Non-HQ-Trennung bei voice).
+local function persist_face_proof(match)
+  if not challenge_id or match ~= true then return end
+  local VERIFY_DIR = "/var/lib/sys/verify/"
+  local fpath = VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json"
+  local f = io.open(fpath, "r")
+  if not f then return end
+  local raw_c = f:read("*a"); f:close()
+  local ok_c, d = pcall(cjson.decode, raw_c)
+  if not ok_c or type(d) ~= "table" or d.soul_id ~= soul_id then return end
+  d.face_check_verified = true
+  if hq then d.face_hq_check_verified = true end
+  local ok_e, enc = pcall(cjson.encode, d)
+  if ok_e then
+    local wf = io.open(fpath, "w")
+    if wf then wf:write(enc); wf:close() end
+  end
+end
 
 local live_b64 = body.image_base64
 local live_mime = (type(body.mime) == "string" and body.mime ~= "") and body.mime or "image/jpeg"
@@ -153,6 +183,7 @@ if hq then
   -- Streng: nur high-Konfidenz UND bestandene Liveness zählen als Match —
   -- HQ soll strenger sein als der Standard-Check, nicht nur "besser raten".
   local match = confidence == "high" and liveness == "pass"
+  persist_face_proof(match)
   ngx.say(cjson.encode({
     match      = match,
     confidence = confidence,
@@ -166,6 +197,7 @@ end
 
 local answer = raw_text:upper():match("MATCH") or ""
 local match = answer == "MATCH"
+persist_face_proof(match)
 ngx.say(cjson.encode({
   match      = match,
   confidence = match and "high" or "low",
