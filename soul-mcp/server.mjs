@@ -114,7 +114,11 @@ async function loadPaymentHint(soulId) {
       pol_per_request: a.pol_per_request ?? '0.001',
       pol_current:     polCurrent.toFixed(4),
       dynamic_pricing: dynamic,
-      wallet:          a.wallet ?? '',
+      // Bei aktivem EU_CONSUMER_RIGHTS erst nach Zustimmung nennen (siehe soul_preview.lua) —
+      // dieser Hint erscheint sonst schon in der 401-Antwort auf einen nicht-authentifizierten
+      // /mcp-Zugriff, also VOR jeder Consent-Interaktion.
+      wallet:          EU_CONSUMER_RIGHTS ? '' : (a.wallet ?? ''),
+      consent_required: EU_CONSUMER_RIGHTS,
       pay_endpoint:    `${BASE_URL}/api/soul/pay`,
       price_endpoint:  `${BASE_URL}/api/soul/price`,
     };
@@ -154,9 +158,14 @@ async function unauthorized(res, soulId) {
     `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`
   );
   const hint = await loadPaymentHint(soulId ?? null);
-  const message = hint
-    ? `Payment required. Send ${hint.dynamic_pricing ? hint.pol_current + ' POL (dynamic, call ' + hint.price_endpoint + ' for live quote)' : hint.pol_per_request + ' POL'} to wallet ${hint.wallet}, then POST tx_hash to ${hint.pay_endpoint} to receive an access token.`
-    : 'Authorization required.';
+  const priceNote = hint
+    ? (hint.dynamic_pricing ? hint.pol_current + ' POL (dynamic, call ' + hint.price_endpoint + ' for live quote)' : hint.pol_per_request + ' POL')
+    : null;
+  const message = !hint
+    ? 'Authorization required.'
+    : hint.consent_required
+    ? `Payment required (${priceNote}). This soul enforces EU withdrawal-rights consent before revealing a payment target — call POST /api/soul/terms/show first (or show_withdrawal_terms if you already hold an MCP session for this node).`
+    : `Payment required. Send ${priceNote} to wallet ${hint.wallet}, then POST tx_hash to ${hint.pay_endpoint} to receive an access token.`;
   return res.status(401).json({
     jsonrpc: '2.0',
     error: { code: -32001, message, ...(hint ? { payment: hint } : {}) },
