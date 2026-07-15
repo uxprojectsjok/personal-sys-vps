@@ -36,6 +36,7 @@ end
 local anthropic_key        = body.anthropic_key
 local elevenlabs_key       = body.elevenlabs_key
 local elevenlabs_agent_url = body.elevenlabs_agent_url
+local wavespeed_key        = body.wavespeed_key
 local model                = body.model
 local mcp_url              = body.mcp_url
 local reown_project_id     = body.reown_project_id
@@ -60,6 +61,13 @@ if elevenlabs_key ~= nil and type(elevenlabs_key) ~= "string" then
   ngx.status = 400
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"invalid_elevenlabs_key"}')
+  return
+end
+
+if wavespeed_key ~= nil and type(wavespeed_key) ~= "string" then
+  ngx.status = 400
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"invalid_wavespeed_key"}')
   return
 end
 
@@ -129,6 +137,9 @@ end
 if elevenlabs_key ~= nil then
   existing.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil
 end
+if wavespeed_key ~= nil then
+  existing.wavespeed_key = (wavespeed_key ~= "") and wavespeed_key or nil
+end
 if elevenlabs_agent_url ~= nil then
   existing.elevenlabs_agent_url = (elevenlabs_agent_url ~= "") and elevenlabs_agent_url or nil
 end
@@ -167,6 +178,7 @@ if mf then
   if mok and type(mdata) == "table" and not mdata.multi_hoster then
     if anthropic_key  ~= nil then mdata.anthropic_key  = (anthropic_key  ~= "") and anthropic_key  or nil end
     if elevenlabs_key ~= nil then mdata.elevenlabs_key = (elevenlabs_key ~= "") and elevenlabs_key or nil end
+    if wavespeed_key  ~= nil then mdata.wavespeed_key  = (wavespeed_key  ~= "") and wavespeed_key  or nil end
     if model          ~= nil then mdata.model          = model end
     local mwf = io.open(master_path, "w")
     if mwf then
@@ -207,6 +219,7 @@ ngx.say(cjson.encode({
   ok                 = true,
   has_own_key        = type(existing.anthropic_key) == "string" and existing.anthropic_key ~= "",
   elevenlabs_key_set = type(existing.elevenlabs_key) == "string" and existing.elevenlabs_key ~= "",
+  wavespeed_key_set  = type(existing.wavespeed_key) == "string" and existing.wavespeed_key ~= "",
   elevenlabs_agent_url   = existing.elevenlabs_agent_url or cjson.null,
   model                  = existing.model or cjson.null,
   reown_project_id_set   = type(existing.reown_project_id) == "string" and existing.reown_project_id ~= "",
