@@ -12,19 +12,19 @@
       <h1>Kaufbedingungen &amp; Vorabinformationen</h1>
       <p class="lead">
         Diese Seite fasst die gesetzlichen Informationspflichten vor Vertragsschluss
-        zusammen (Art. 246a EGBGB), die für den Kauf von Zugang zu dieser Soul über
-        den Nicht-Krypto-Zahlungsweg (PayPal) gelten. Sie ergänzt die Widerrufsbelehrung,
-        die du vor der Zustimmung separat als PDF erhältst.
+        zusammen (Art. 246a EGBGB), die für den Kauf von Zugang zu dieser Soul gelten —
+        sowohl über PayPal als auch über den POL/Kryptowährungs-Zahlungsweg. Sie ergänzt
+        die Widerrufsbelehrung, die du vor der Zustimmung separat als PDF erhältst.
       </p>
 
-      <h2>Wesentliche Eigenschaften der Leistung</h2>
+      <h2>1. Wesentliche Eigenschaften der Leistung</h2>
       <p>
         Zeitlich begrenzter, interaktiver Lesezugriff auf den Agent-Sandbox-Bereich dieser
         Soul über ein Zugriffs-Token — Gültigkeitsdauer je nach Konfiguration der Soul,
         siehe Angabe im Kaufhinweis der Vorschau bzw. der Widerrufsbelehrung.
       </p>
 
-      <h2>Anbieter</h2>
+      <h2>2. Anbieter</h2>
       <p>
         UX-Projects – Jan-Oliver Karo<br>
         [REDACTED-ADDRESS], [REDACTED-ADDRESS], Deutschland<br>
@@ -33,49 +33,53 @@
         Umsatzsteuer erhoben.
       </p>
 
-      <h2>Gesamtpreis</h2>
+      <h2>3. Gesamtpreis</h2>
       <p>
-        Der Preis in EUR wird bei der jeweiligen Soul in der Vorschau (<code>soul_preview</code>)
-        angezeigt und ist als Endpreis zu verstehen (siehe Preishinweis dort).
+        Der Preis in EUR (bzw. der entsprechende POL-Betrag) wird bei der jeweiligen Soul
+        in der Vorschau (<code>soul_preview</code>) angezeigt und ist als Endpreis zu
+        verstehen (siehe Preishinweis dort).
       </p>
 
-      <h2>Zahlungsbedingungen</h2>
+      <h2>4. Zahlungsbedingungen</h2>
       <p>
-        Zahlung per PayPal (oder wahlweise POL/Kryptowährung über den technischen
-        Zahlungsweg der Soul). Der Zugang wird nach Zahlungseingang manuell durch den
-        Betreiber freigeschaltet, in der Regel innerhalb von 48 Stunden — nicht sofort
-        wie beim automatisierten POL-Zahlungsweg.
+        Zahlung per PayPal oder POL/Kryptowährung über den technischen Zahlungsweg der
+        Soul. Beim POL-Weg wird der Zugang nach Bestätigung der Transaktion auf der
+        Blockchain automatisch freigeschaltet. Beim PayPal-Weg wird der Zugang nach
+        Zahlungseingang manuell durch den Betreiber freigeschaltet, in der Regel
+        innerhalb von 48 Stunden.
       </p>
 
-      <h2>Leistungsbeginn</h2>
+      <h2>5. Leistungsbeginn</h2>
       <p>
-        Die digitale Leistung beginnt nach Freischaltung durch den Anbieter, nicht bereits
-        mit Zahlungseingang. Mit deiner ausdrücklichen Zustimmung (siehe Widerrufsbelehrung)
-        beginnt sie vor Ablauf der 14-tägigen Widerrufsfrist — dadurch erlischt dein
-        Widerrufsrecht vorzeitig.
+        Die digitale Leistung beginnt beim POL-Weg mit Bestätigung der Transaktion, beim
+        PayPal-Weg nach Freischaltung durch den Anbieter — in beiden Fällen nicht bereits
+        mit bloßem Zahlungseingang. Mit deiner ausdrücklichen Zustimmung (siehe
+        Widerrufsbelehrung) beginnt sie vor Ablauf der 14-tägigen Widerrufsfrist — dadurch
+        erlischt dein Widerrufsrecht vorzeitig.
       </p>
 
-      <h2>Funktionsweise digitaler Inhalte</h2>
+      <h2>6. Funktionsweise digitaler Inhalte</h2>
       <p>
-        Zugang erfolgt über ein Zugriffs-Token (<code>pol_access_token</code>), das nach
-        Prüfung des Zahlungseingangs per E-Mail oder direkt im Chat übermittelt wird.
-        Gültigkeitsdauer je nach Soul-Konfiguration, siehe Widerrufsbelehrungs-PDF.
+        Zugang erfolgt über ein Zugriffs-Token (<code>pol_access_token</code>), das beim
+        POL-Weg automatisch, beim PayPal-Weg nach Prüfung des Zahlungseingangs per E-Mail
+        oder direkt im Chat übermittelt wird. Gültigkeitsdauer je nach Soul-Konfiguration,
+        siehe Widerrufsbelehrungs-PDF.
       </p>
 
-      <h2>Mängelhaftung</h2>
+      <h2>7. Mängelhaftung</h2>
       <p>
         Es gilt das gesetzliche Mängelhaftungsrecht. Bei technischen Problemen wende dich
         an: info@uxprojects-jok.com
       </p>
 
-      <h2>Streitbeilegung</h2>
+      <h2>8. Streitbeilegung</h2>
       <p>
         Ich bin nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor
         einer Verbraucherschlichtungsstelle teilzunehmen (§ 36 VSBG).
       </p>
 
       <p class="fine">
-        Stand: 06.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
+        Stand: 15.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
       </p>
     </main>
   </div>
@@ -108,7 +112,7 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
 
 .content { max-width: 720px; margin: 0 auto; padding: 56px clamp(20px,4vw,44px) 80px; }
 .content h1 { font-family: var(--serif); font-size: clamp(26px,4vw,42px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 12px; }
-.content h2 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright); margin: 40px 0 12px; font-weight: 500; }
+.content h2 { font-family: var(--sans); font-size: 16px; letter-spacing: normal; text-transform: none; color: var(--fg); margin: 40px 0 12px; font-weight: 700; }
 .content p { font-size: 16px; line-height: 1.7; color: var(--fg); margin: 0 0 14px; }
 .content .lead { font-size: 17px; color: var(--fg); }
 .content code { font-family: var(--mono); font-size: 14px; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
