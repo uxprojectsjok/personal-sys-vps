@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
-import { legalTextForChat, buildTermsPreviewPdf } from '../lib/eu_withdrawal_terms.mjs';
+import { legalTextForChat, buildTermsPreviewPdf, buildTermsPreviewTxt, sweepExpiredConsentTxt } from '../lib/eu_withdrawal_terms.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
@@ -68,7 +68,8 @@ export function register(server, soulId) {
 
       try {
         const termsToken  = randomUUID();
-        const previewPdf  = await buildTermsPreviewPdf({
+        const tokenDurationDays = amort.token_duration_days || 1;
+        const previewFields = {
           termsToken,
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
@@ -81,12 +82,20 @@ export function register(server, soulId) {
           traderEmail:     amort.trader_email || '',
           traderLegalForm: amort.trader_legal_form || '',
           traderVatNote:   amort.trader_vat_note || '',
-          tokenDurationDays: amort.token_duration_days || 1,
-        });
+          tokenDurationDays,
+        };
+        const previewPdf  = await buildTermsPreviewPdf(previewFields);
+        const previewTxt  = buildTermsPreviewTxt(previewFields);
         const consentDir  = `${SOULS_DIR}${soulId}/consent_docs`;
         await mkdir(consentDir, { recursive: true });
         await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
-        const previewUrl  = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.pdf`;
+        await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
+        const previewUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.pdf`;
+        const previewUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.txt`;
+
+        // Best-effort, nicht blockierend: abgelaufene .txt-Begleitdateien aus früheren
+        // Käufen dieser Soul mit aufräumen (löscht nie .pdf, siehe eu_withdrawal_terms.mjs).
+        sweepExpiredConsentTxt(soulId, tokenDurationDays).catch(() => {});
 
         return {
           content: [
@@ -101,6 +110,8 @@ export function register(server, soulId) {
                 previewUrl,
                 '',
                 `Weitere Kaufbedingungen (Zahlungsweg, Leistungsbeginn, Mängelhaftung): ${BASE_URL}/agb`,
+                `Maschinenlesbare Fassung der AGB (für Agenten, kein HTML-Rendering nötig): ${BASE_URL}/agb.txt`,
+                `Maschinenlesbare Fassung dieser Widerrufsbelehrung: ${previewUrlTxt}`,
                 '',
                 'Antworte danach mit "Ja, ich stimme zu und schließe kostenpflichtig ab",',
                 'wenn du beidem zustimmst UND den kostenpflichtigen Kauf abschließen willst:',

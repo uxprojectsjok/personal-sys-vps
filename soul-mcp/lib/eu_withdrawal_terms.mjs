@@ -5,8 +5,39 @@
  * beide nie unterschiedlichen Text zeigen können.
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
 import { SOULS_DIR } from './vault_fs.mjs';
+
+// Wie lange die maschinenlesbare .txt-Fassung über die Token-Gültigkeit hinaus
+// aufbewahrt wird — Puffer für Reklamation/Nachweis, danach gilt Datensparsamkeit.
+// Betrifft NUR die .txt (für zahlende Agenten); die .pdf bleibt unbefristet für
+// die eigene steuerliche Aufbewahrungspflicht (§ 147 AO) und wird im Vault nur
+// als PDF angezeigt — siehe vault_consent_list.lua (filtert ohnehin auf *.pdf).
+export const TXT_RETENTION_BUFFER_DAYS = 14;
+
+// Löscht abgelaufene .txt-Begleitdateien in consent_docs/{soulId} — nie .pdf.
+// Best-effort, nicht blockierend für den aufrufenden Kaufvorgang; wird
+// opportunistisch bei jedem neuen show_withdrawal_terms-Aufruf mitgetriggert
+// (gleiches Muster wie der pol_tokens-Cleanup in soul_pay.lua), statt einen
+// eigenen systemd-Timer für einen bislang seltenen Pfad einzuführen.
+export async function sweepExpiredConsentTxt(soulId, tokenDurationDays = 1) {
+  const maxAgeMs = ((Number(tokenDurationDays) || 1) + TXT_RETENTION_BUFFER_DAYS) * 86400_000;
+  const dir = `${SOULS_DIR}${soulId}/consent_docs`;
+  let entries;
+  try {
+    entries = await readdir(dir);
+  } catch { return; }
+
+  const now = Date.now();
+  for (const entry of entries) {
+    if (!entry.endsWith('.txt')) continue;
+    const fpath = `${dir}/${entry}`;
+    try {
+      const st = await stat(fpath);
+      if (now - st.mtimeMs > maxAgeMs) await unlink(fpath);
+    } catch { /* Datei parallel schon weg o.ä. — ignorieren, nicht kritisch */ }
+  }
+}
 
 const BRAND_TEAL = '#4a8f74';   // gedeckter als das helle Website-Teal (#6db89a) — besser lesbar auf Papier/Druck
 const BRAND_DARK = '#1a1a1a';
@@ -201,6 +232,90 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
   });
 }
 
+// Textfassung der Vorschau — inhaltlich identisch zu buildTermsPreviewPdf, nur
+// ohne Layout. Für zahlende Agenten, die keinen PDF-Parser einsetzen wollen/
+// können — liegt unter demselben Referenz-ID-Pfad wie die PDF (nur .txt statt
+// .pdf), Sicherheit also identisch (Unratbarkeit der UUID, siehe vault_consent_serve.lua).
+export function buildTermsPreviewTxt({ termsToken, soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
+  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+  const lines = [
+    `SYS. — ${traderName || 'SaveYourSoul'}`,
+    'Widerrufsbelehrung — Vorschau (noch keine Zustimmung erteilt)',
+    '',
+    `Referenz-ID: ${termsToken}`,
+    pm.referenceNote,
+    '',
+    `Soul: ${soulName} (${soulId})`,
+    `Preis: ${priceEur} EUR`,
+    `${pm.targetLabel}: ${pm.targetValue}`,
+    '',
+    'ANBIETER',
+    traderName || 'Keine Anbieterkennzeichnung hinterlegt.',
+    traderAddress || '',
+    traderEmail ? `E-Mail: ${traderEmail}` : '',
+    traderLegalForm || '',
+    traderVatNote || '',
+    '',
+    'FUNKTIONSWEISE & BEREITSTELLUNG',
+    `Zugang erfolgt über ein Zugriffs-Token, gültig für ${tokenDurationDays || 1} Tag(e) ab ` +
+      `Ausstellung. ${pm.provisionNote} Die digitale Leistung beginnt mit Erhalt und Einsatz des ` +
+      `Tokens. Es gilt das gesetzliche Mängelhaftungsrecht; bei technischen Problemen die oben ` +
+      `genannte Kontakt-E-Mail des Anbieters nutzen.`,
+    '',
+    ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
+  ];
+  return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
+}
+
+// Textfassung des bestätigten Kaufbelegs — inhaltlich identisch zu
+// buildConsentPdf. invoiceNumber/invoiceDate werden vom Aufrufer übergeben
+// (statt hier erneut über nextInvoiceNumber gezogen zu werden), damit PDF und
+// TXT NIE unterschiedliche Rechnungsnummern für denselben Kauf bekommen — der
+// Zähler ist "lückenlos fortlaufend" (§ 14 Abs. 4 Nr. 4 UStG), ein zweiter
+// Aufruf hier hätte eine Nummer verbraucht, ohne dass ein zweiter Kauf stattfand.
+export function buildConsentTxt({ soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
+  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+  const lines = [
+    `SYS. — ${traderName || 'SaveYourSoul'}`,
+    'Rechnung & Widerrufsbelehrung',
+    '',
+    `Rechnungsnummer: ${invoiceNumber}`,
+    `Rechnungsdatum: ${invoiceDate}`,
+    `Leistungsdatum: ${invoiceDate}`,
+    '',
+    `Referenz-ID: ${referenceId}`,
+    pm.referenceNote,
+    '',
+    'ANBIETER',
+    traderName || 'Keine Anbieterkennzeichnung hinterlegt.',
+    traderAddress || '',
+    traderEmail ? `E-Mail: ${traderEmail}` : '',
+    traderLegalForm || '',
+    '',
+    'LEISTUNGSEMPFÄNGER',
+    contactNote || '—',
+    `Erstellt: ${timestamp}`,
+    '',
+    'BESCHREIBUNG · BETRAG',
+    `Digitaler Zugang — Soul „${soulName}" (${soulId.slice(0, 8)}) · ${priceEur} EUR`,
+    `Gesamtbetrag: ${priceEur} EUR`,
+    traderVatNote || '',
+    '',
+    `${pm.targetLabel.toUpperCase()}`,
+    pm.targetValue,
+    pm.provisionNote,
+    '',
+    'WIDERRUFSBELEHRUNG',
+    ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
+    'ERTEILTE EINWILLIGUNGEN',
+    `[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung: JA`,
+    `[${timestamp}] Kenntnisnahme des dadurch erlöschenden Widerrufsrechts: JA`,
+    '',
+    `${invoiceNumber} · Automatisch erzeugt vom SYS-Protokoll`,
+  ];
+  return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
+}
+
 // Bestätigter Kaufbeleg — von accept_digital_content_terms erzeugt, überschreibt
 // dieselbe Datei/denselben Link, den show_withdrawal_terms bereits ausgegeben hat.
 // Kombiniert Rechnung (§ 14 UStG) + Widerrufsbelehrung in einem Dokument —
@@ -208,10 +323,8 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
 // Rechnungserzeugung (z.B. über PayPals eigenes Invoice-Feature, das dafür die
 // Leistungsbeschreibung an PayPal übermitteln müsste — bewusst vermieden, siehe
 // verify-identity-hq-plan.md, Abschnitt Datensparsamkeit/Rechnungsstellung).
-export async function buildConsentPdf({ soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote }) {
+export async function buildConsentPdf({ soulName, soulId, priceEur, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
   const { default: PDFDocument } = await import('pdfkit');
-  const invoiceNumber = await nextInvoiceNumber(soulId, traderName);
-  const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
 
   return new Promise((resolve, reject) => {

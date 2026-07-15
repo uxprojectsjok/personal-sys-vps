@@ -1638,6 +1638,16 @@ server {
     add_header Expires "0" always;
     try_files /agb/index.html /index.html;
   }
+
+  # Maschinenlesbare Fassung von /agb — für zahlende Agenten, kein SPA-Rendering
+  # nötig. Bewusst ohne gate_check (wie /agb selbst und /llms.txt), sonst wäre
+  # ein Agent ohne Session/Cookie ausgesperrt.
+  location = /agb.txt {
+    root /var/www/{{DOMAIN}};
+    default_type text/plain;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files /agb.txt =404;
+  }
   # ── EU-CONSENT:END ───────────────────────────────────────────────────────────
 
   ################################

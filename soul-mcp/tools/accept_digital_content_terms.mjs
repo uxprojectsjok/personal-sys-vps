@@ -21,7 +21,7 @@
 import { z } from 'zod';
 import { writeFile, stat } from 'fs/promises';
 import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
-import { buildConsentPdf } from '../lib/eu_withdrawal_terms.mjs';
+import { buildConsentPdf, buildConsentTxt, nextInvoiceNumber } from '../lib/eu_withdrawal_terms.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
@@ -81,6 +81,7 @@ export function register(server, soulId) {
 
       const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
       const docPath     = `${consentDir}/${terms_token}.pdf`;
+      const txtPath     = `${consentDir}/${terms_token}.txt`;
       try {
         await stat(docPath);
       } catch {
@@ -122,7 +123,13 @@ export function register(server, soulId) {
           timeZoneName: 'short',
         });
 
-        const pdfBuffer = await buildConsentPdf({
+        // Einmal ziehen, an PDF UND TXT weiterreichen — sonst würde die TXT-Erzeugung
+        // eine zweite, ungenutzte Rechnungsnummer verbrauchen (Zähler muss lückenlos
+        // fortlaufend bleiben, § 14 Abs. 4 Nr. 4 UStG).
+        const invoiceNumber = await nextInvoiceNumber(soulId, amort.trader_name || '');
+        const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
+
+        const consentFields = {
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
           priceEur,
@@ -137,11 +144,22 @@ export function register(server, soulId) {
           traderEmail:    amort.trader_email || '',
           traderLegalForm: amort.trader_legal_form || '',
           traderVatNote:  amort.trader_vat_note || '',
-        });
+          invoiceNumber,
+          invoiceDate,
+        };
 
+        const pdfBuffer = await buildConsentPdf(consentFields);
         await writeFile(docPath, pdfBuffer);
 
-        const downloadUrl = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
+        // Maschinenlesbares Pendant — überschreibt dieselbe TXT, die show_withdrawal_terms
+        // als Vorschau angelegt hat (gleiches "ein Link, ein Zyklus"-Muster wie beim PDF).
+        // NICHT im Vault sichtbar — vault_consent_list.lua filtert ohnehin nur auf *.pdf,
+        // Menschen sehen dort weiterhin ausschließlich die PDF-Fassung.
+        const txtContent = buildConsentTxt(consentFields);
+        await writeFile(txtPath, txtContent, 'utf8');
+
+        const downloadUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
+        const downloadUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.txt`;
 
         const paymentLines = payment_method === 'pol'
           ? [
@@ -172,6 +190,9 @@ export function register(server, soulId) {
                 '',
                 'PFLICHT: Gib dem Nutzer IMMER den Link oben — als klickbaren Link UND',
                 'als reine URL zum Kopieren. Nicht in einer eigenen Zusammenfassung weglassen.',
+                '',
+                `Maschinenlesbare Fassung (für den zahlenden Agenten, kein PDF-Parsing nötig): ${downloadUrlTxt}`,
+                `Verfügbar für die Token-Gültigkeit + ${14} Tage Puffer, danach automatisch entfernt.`,
                 '',
                 `Referenz-ID: ${terms_token}`,
                 ...paymentLines,

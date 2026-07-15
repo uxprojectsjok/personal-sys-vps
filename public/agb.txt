@@ -1,0 +1,53 @@
+Kaufbedingungen & Vorabinformationen
+
+Diese Seite fasst die gesetzlichen Informationspflichten vor Vertragsschluss
+zusammen (Art. 246a EGBGB), die für den Kauf von Zugang zu dieser Soul gelten —
+sowohl über PayPal als auch über den POL/Kryptowährungs-Zahlungsweg. Sie ergänzt
+die Widerrufsbelehrung, die du vor der Zustimmung separat als PDF/TXT erhältst.
+
+1. Wesentliche Eigenschaften der Leistung
+Zeitlich begrenzter, interaktiver Lesezugriff auf den Agent-Sandbox-Bereich dieser
+Soul über ein Zugriffs-Token — Gültigkeitsdauer je nach Konfiguration der Soul,
+siehe Angabe im Kaufhinweis der Vorschau bzw. der Widerrufsbelehrung.
+
+2. Anbieter
+UX-Projects – Jan-Oliver Karo
+[REDACTED-ADDRESS], [REDACTED-ADDRESS], Deutschland
+E-Mail: info@uxprojects-jok.com
+Einzelunternehmen · Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine
+Umsatzsteuer erhoben.
+
+3. Gesamtpreis
+Der Preis in EUR (bzw. der entsprechende POL-Betrag) wird bei der jeweiligen Soul
+in der Vorschau (soul_preview) angezeigt und ist als Endpreis zu verstehen (siehe
+Preishinweis dort).
+
+4. Zahlungsbedingungen
+Zahlung per PayPal oder POL/Kryptowährung über den technischen Zahlungsweg der
+Soul. Beim POL-Weg wird der Zugang nach Bestätigung der Transaktion auf der
+Blockchain automatisch freigeschaltet. Beim PayPal-Weg wird der Zugang nach
+Zahlungseingang manuell durch den Betreiber freigeschaltet, in der Regel
+innerhalb von 48 Stunden.
+
+5. Leistungsbeginn
+Die digitale Leistung beginnt beim POL-Weg mit Bestätigung der Transaktion, beim
+PayPal-Weg nach Freischaltung durch den Anbieter — in beiden Fällen nicht bereits
+mit bloßem Zahlungseingang. Mit deiner ausdrücklichen Zustimmung (siehe
+Widerrufsbelehrung) beginnt sie vor Ablauf der 14-tägigen Widerrufsfrist — dadurch
+erlischt dein Widerrufsrecht vorzeitig.
+
+6. Funktionsweise digitaler Inhalte
+Zugang erfolgt über ein Zugriffs-Token (pol_access_token), das beim POL-Weg
+automatisch, beim PayPal-Weg nach Prüfung des Zahlungseingangs per E-Mail oder
+direkt im Chat übermittelt wird. Gültigkeitsdauer je nach Soul-Konfiguration,
+siehe Widerrufsbelehrungs-PDF/TXT.
+
+7. Mängelhaftung
+Es gilt das gesetzliche Mängelhaftungsrecht. Bei technischen Problemen wende dich
+an: info@uxprojects-jok.com
+
+8. Streitbeilegung
+Ich bin nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor
+einer Verbraucherschlichtungsstelle teilzunehmen (§ 36 VSBG).
+
+Stand: 15.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
