@@ -112,11 +112,11 @@
             <span class="vfy-check" v-if="selectedMethods.includes('face')">✓</span>
             <span class="vfy-badge" v-else>+1</span>
           </button>
-          <button class="btn btn-method" :class="{'btn-method--on': selectedMethods.includes('voice')}" @click="toggleMethod('voice')">
+          <button class="btn btn-method" :class="{'btn-method--on': selectedMethods.includes('voice_hq')}" @click="toggleMethod('voice_hq')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="btn-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
             <span class="btn-label">{{ $t('verify.method_voice') }}</span>
-            <span class="vfy-check" v-if="selectedMethods.includes('voice')">✓</span>
-            <span class="vfy-badge" v-else>+1</span>
+            <span class="vfy-check" v-if="selectedMethods.includes('voice_hq')">✓</span>
+            <span class="vfy-badge" v-else>+2</span>
           </button>
 
           <button
@@ -324,7 +324,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const route  = useRoute()
 const { hasSoul, soulToken } = useSoul()
-const { authenticatePasskey } = useSoulPasskey()
+const { authenticatePasskey, lastAssertion, registerPasskey } = useSoulPasskey()
 const {
   connectWallet,
   isConnected:   walletConnected,
@@ -364,6 +364,7 @@ const faceCanvas           = ref(null)
 const recCountdown         = ref(3)
 const voiceScore           = ref(0)
 const voiceCode            = ref('')
+const webauthnChallenge    = ref('')
 const voiceHqPhase         = ref('')  // '' | 'checking_replay' — Zwischenzustand während des Ziffern-Checks
 const verifyScore          = ref(0)
 const verifyIs2fa          = ref(false)
@@ -524,6 +525,7 @@ async function checkAlreadyVerified() {
     if (!r.ok) return false
     const st = await r.json()
     if (st.voice_code) voiceCode.value = st.voice_code
+    if (st.webauthn_challenge) webauthnChallenge.value = st.webauthn_challenge
 
     // Vollständig verifiziert oder teilweise (wallet noch offen)
     if (st.status === 'verified' || st.verified_level) {
@@ -724,13 +726,45 @@ async function doHumanCheck() {
 }
 
 // ── Fingerprint ───────────────────────────────────────────────────────────────
+// Signiert die server-ausgestellte webauthnChallenge und lässt den Server die
+// Signatur gegen den bei der Passkey-Erstellung hinterlegten Public Key prüfen
+// (siehe verify_fingerprint_check.lua) — ein bloßes "PRF kam zurück" reicht seit
+// dem Sicherheitsfix nicht mehr, das war clientseitig spoofbar.
 async function doFingerprint() {
   await claimChallenge()
   phase.value = 'verifying'
   try {
-    const prf = await authenticatePasskey()
-    const ok  = !!prf
-    if (!ok) errorMsg.value = 'Biometrische Verifikation abgelehnt.'
+    await authenticatePasskey(webauthnChallenge.value || undefined)
+    const assertion = lastAssertion.value
+    if (!assertion) {
+      errorMsg.value = 'Biometrische Verifikation abgelehnt.'
+      await submitResult(false)
+      await advanceAfterMethod(false)
+      return
+    }
+    const r = await fetch('/api/verify/fingerprint-check', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({
+        challenge_id:       challengeId,
+        credential_id:      assertion.credentialId,
+        client_data_json:   assertion.clientDataJson,
+        authenticator_data: assertion.authenticatorData,
+        signature:          assertion.signature,
+      }),
+    })
+    const d  = await r.json()
+    let ok = d.match === true
+    if (!ok && d.reason === 'unknown_credential') {
+      // Passkey wurde vor dem Sicherheitsfix erstellt, Public Key nie serverseitig
+      // registriert (kam damals noch nicht vor) — jetzt neu registrieren; die dabei
+      // erzwungene Biometrik-Bestätigung (navigator.credentials.create(), userVerification
+      // required) zählt als gültiger Nachweis für diesen Schritt.
+      const migrated = await registerPasskey('Soul', authHeaders)
+      ok = !!migrated
+      if (!ok) errorMsg.value = 'Passkey-Migration fehlgeschlagen.'
+    } else if (!ok) {
+      errorMsg.value = d.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d.reason || 'Verifikation fehlgeschlagen.')
+    }
     await submitResult(ok)
     await advanceAfterMethod(ok)
   } catch (e) {
@@ -766,7 +800,7 @@ async function captureFace() {
     const b64 = faceCanvas.value.toDataURL('image/jpeg', 0.85).split(',')[1]
     const r   = await fetch('/api/verify/face-check', {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ image_base64: b64, mime: 'image/jpeg', hq: method.value === 'face_hq' }),
+      body: JSON.stringify({ image_base64: b64, mime: 'image/jpeg', hq: method.value === 'face_hq', challenge_id: challengeId }),
     })
     const d  = await r.json()
     const ok = d.match === true

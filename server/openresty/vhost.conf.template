@@ -1236,6 +1236,24 @@ server {
     content_by_lua_file /etc/openresty/lua/verify_voice_hq_check.lua;
   }
 
+  location = /api/verify/passkey-register {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_passkey_register.lua;
+  }
+
+  location = /api/verify/fingerprint-check {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_fingerprint_check.lua;
+  }
+
   location = /api/verify/2fa {
     limit_except POST { deny all; }
     limit_req zone=auth burst=5 nodelay;

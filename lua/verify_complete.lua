@@ -76,17 +76,27 @@ if body.finalize == true then
   return
 end
 
-local VALID = { fingerprint = true, face = true, voice = true, face_hq = true, voice_hq = true }
+-- "voice" (ohne HQ) bewusst nicht mehr akzeptiert — siehe verify_challenge.lua.
+local VALID = { fingerprint = true, face = true, face_hq = true, voice_hq = true }
 if not VALID[method] then
   ngx.status = 400; ngx.say('{"error":"invalid_method"}'); return
 end
 
 -- HQ-Methoden zählen höher als Standard-Methoden (schärferer Prompt +
 -- explizite Liveness-Prüfung, siehe verify_face_check.lua)
-local METHOD_WEIGHT = { fingerprint = 1, face = 1, voice = 1, face_hq = 2, voice_hq = 2 }
+local METHOD_WEIGHT = { fingerprint = 1, face = 1, face_hq = 2, voice_hq = 2 }
 local function scoreOf(methodList)
   local sum = 0
   for _, m in ipairs(methodList) do sum = sum + (METHOD_WEIGHT[m] or 1) end
+  return sum
+end
+-- Score MUSS die Boni aus verify_human_check.lua (+1) und dem Wallet-2FA-Signing
+-- (+1) mit einrechnen — sonst überschreibt jede weitere abgeschlossene Methode
+-- diese Boni stillschweigend mit dem reinen Methoden-Score (scoreOf allein).
+local function totalScore(d, methodList)
+  local sum = scoreOf(methodList)
+  if d.human_verified == true then sum = sum + 1 end
+  if type(d.wallet_2fa) == "table" then sum = sum + 1 end
   return sum
 end
 
@@ -110,6 +120,27 @@ end
 -- Datei stammen (von verify_voice_hq_check.lua gesetzt), sonst könnte ein
 -- Client einfach "verified: true" ohne echten Ziffern-Match behaupten.
 if method == "voice_hq" and verified and d.voice_hq_digits_verified ~= true then
+  verified = false
+end
+
+-- face/face_hq: derselbe Grund — der Client meldet sein eigenes Ergebnis, der
+-- echte Claude-Vision-Vergleich lief in verify_face_check.lua, das bei einem
+-- echten Match d.face_check_verified (bzw. zusätzlich d.face_hq_check_verified
+-- für den strengeren HQ-Prompt) gesetzt hat. Ohne diesen Beweis könnte ein
+-- Client /api/verify/face-check komplett überspringen und "verified: true"
+-- ohne jeden Bildvergleich posten.
+if method == "face" and verified and d.face_check_verified ~= true then
+  verified = false
+end
+if method == "face_hq" and verified and d.face_hq_check_verified ~= true then
+  verified = false
+end
+
+-- fingerprint: gleicher Grund — der Client meldet sein eigenes Ergebnis, die echte
+-- WebAuthn-Signaturprüfung lief in verify_fingerprint_check.lua, das bei Erfolg
+-- d.fingerprint_verified gesetzt hat. Ohne diesen Beweis könnte ein Client
+-- navigator.credentials.get() komplett überspringen und "verified: true" posten.
+if method == "fingerprint" and verified and d.fingerprint_verified ~= true then
   verified = false
 end
 
@@ -144,7 +175,7 @@ if has_multi then
   if verified then
     table.insert(completed, method)
     d.completed_methods = completed
-    d.score  = scoreOf(completed)
+    d.score  = totalScore(d, completed)
     d.is_2fa = d.is_2fa or is_2fa
     d.method = method
     -- Konsensus-Layer: pro-Methode Ergebnis tracken
@@ -178,7 +209,7 @@ else
   d.verified_at = verified_at
   d.method      = method
   d.is_2fa      = is_2fa
-  d.score       = verified and scoreOf({ method }) or 0
+  d.score       = totalScore(d, verified and { method } or {})
   d.completed_methods = verified and { method } or cjson.empty_array
   if verified then mark_token_verified(soul_id, d.triggering_token) end
 end

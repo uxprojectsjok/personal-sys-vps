@@ -22,7 +22,12 @@ local TTL        = 300   -- 5 Minuten
 ngx.req.read_body()
 local body_raw = ngx.req.get_body_data() or ""
 
-local VALID = { fingerprint = true, face = true, voice = true, face_hq = true, voice_hq = true }
+-- "voice" (ohne HQ) bewusst NICHT mehr erlaubt — reiner Client-FFT-Vergleich ohne
+-- jeden Serverbeweis, trivial über POST /api/verify/complete spoofbar (siehe
+-- Sicherheitsfix von heute). voice_hq bietet dieselbe FFT-Prüfung PLUS
+-- serverseitig verifizierten Anti-Replay-Zifferncode — kein Sicherheitsverlust,
+-- nur der unsichere Pfad fällt weg.
+local VALID = { fingerprint = true, face = true, face_hq = true, voice_hq = true }
 local methods = {}
 
 if body_raw ~= "" then
@@ -85,6 +90,14 @@ for _, m in ipairs(methods) do
   end
 end
 
+-- WebAuthn-Challenge für fingerprint — MUSS server-seitig entstehen (nicht
+-- client-generiert wie vorher), sonst ist die spätere Signaturprüfung in
+-- verify_fingerprint_check.lua wirkungslos (Replay wäre trivial möglich).
+-- Immer erzeugen, unabhängig von den gewählten Methoden — leere methods[]
+-- bedeutet "Nutzer wählt im UI", da könnte fingerprint jederzeit dazukommen.
+local webauthn_bytes     = random.bytes(32, true)
+local webauthn_challenge = ngx.encode_base64(webauthn_bytes):gsub("+", "-"):gsub("/", "_"):gsub("=+$", "")
+
 local data = cjson.encode({
   soul_id           = soul_id,
   challenge_id      = challenge_id,
@@ -99,6 +112,7 @@ local data = cjson.encode({
   verify_token      = verify_token,
   triggering_token  = triggering_token or cjson.null,
   voice_code        = voice_code or cjson.null,
+  webauthn_challenge = webauthn_challenge,
 })
 
 local f = io.open(VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json", "w")
