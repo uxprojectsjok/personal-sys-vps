@@ -1,13 +1,19 @@
 -- /etc/openresty/lua/vault_consent_serve.lua
 -- GET /api/vault/consent/{soul_id}/{uuid}.pdf
+-- GET /api/vault/consent/{soul_id}/{uuid}.txt  (maschinenlesbares Pendant)
 --
--- Liefert EU-Widerrufsbestätigungs-PDFs aus consent_docs/ aus — bewusst OHNE
--- vault_auth (kein Zahlungs-Token existiert an dieser Stelle im Kaufprozess
+-- Liefert EU-Widerrufsbestätigungs-Dokumente aus consent_docs/ aus — bewusst
+-- OHNE vault_auth (kein Zahlungs-Token existiert an dieser Stelle im Kaufprozess
 -- noch). Sicherheit beruht auf der Unratbarkeit der UUID im Pfad (analog
 -- Freigabe-Links bei Dropbox/Google Docs) — NICHT auf einer Session/einem
 -- Token. consent_docs/ ist bewusst getrennt von vault_shared/, damit diese
 -- personenbezogenen Dokumente nicht über vault_shared_list/-get für andere
 -- zahlende Agenten oder Peers sichtbar werden.
+--
+-- Nur GET, nie POST/PUT/DELETE — dieser unauthentifizierte Endpunkt darf unter
+-- keinen Umständen etwas verändern oder löschen können (das übernehmen
+-- ausschließlich die owner-only Routen vault_consent_list.lua/-delete.lua
+-- bzw. der Best-effort-Sweep in eu_withdrawal_terms.mjs).
 
 local SOULS_DIR = "/var/lib/sys/souls/"
 local UUID_PAT  = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
@@ -19,7 +25,7 @@ if ngx.req.get_method() ~= "GET" then
   return
 end
 
-local soul_id, file_uuid = ngx.var.uri:match("^/api/vault/consent/([^/]+)/([^/]+)%.pdf$")
+local soul_id, file_uuid, ext = ngx.var.uri:match("^/api/vault/consent/([^/]+)/([^/]+)%.(pdf|txt)$")
 
 if not soul_id or not soul_id:match(UUID_PAT) then
   ngx.status = 400
@@ -35,7 +41,7 @@ if not file_uuid or not file_uuid:match(UUID_PAT) then
   return
 end
 
-local fpath = SOULS_DIR .. soul_id .. "/consent_docs/" .. file_uuid .. ".pdf"
+local fpath = SOULS_DIR .. soul_id .. "/consent_docs/" .. file_uuid .. "." .. ext
 local f = io.open(fpath, "rb")
 if not f then
   ngx.status = 404
@@ -47,8 +53,14 @@ end
 local size = f:seek("end")
 f:seek("set", 0)
 
-ngx.header["Content-Type"]        = "application/pdf"
-ngx.header["Content-Disposition"] = 'attachment; filename="widerrufsbestaetigung.pdf"'
+if ext == "txt" then
+  -- inline statt attachment: für einen zahlenden Agenten, der die URL direkt
+  -- fetcht und einliest, nicht für einen Browser-Download gedacht.
+  ngx.header["Content-Type"] = "text/plain; charset=utf-8"
+else
+  ngx.header["Content-Type"]        = "application/pdf"
+  ngx.header["Content-Disposition"] = 'attachment; filename="widerrufsbestaetigung.pdf"'
+end
 ngx.header["Content-Length"]      = tostring(size)
 -- Kein Caching: dieselbe URL liefert erst die Vorschau (show_withdrawal_terms),
 -- dann nach Zustimmung den aktualisierten, bestätigten Beleg (accept_digital_content_terms)
