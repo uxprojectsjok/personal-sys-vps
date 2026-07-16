@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.21] — 2026-07-16
+
+**Fixed: voice_hq verification always failed with "No security code found for this verification — please restart" when the verify challenge was created in open-choice mode (empty `methods[]`, user picks the method in the UI) and the user then chose Voice — regardless of whether an ElevenLabs API key was configured.**
+
+Root cause in `lua/verify_challenge.lua`: the server-side anti-replay `voice_code` (a 6-digit code the user reads aloud, required so an old recording can't just be replayed) was only pre-generated inside a loop over the *explicitly requested* `methods[]` at challenge-creation time — `for _, m in ipairs(methods) do if m == "voice_hq" then ...`. When a challenge is created with an empty `methods[]` (the deliberately-supported "let the user choose in the UI" mode — see the `webauthn_challenge` comment two lines below, which already explains this exact scenario for fingerprint), `voice_code` stayed `nil` forever, even if the user later picked Voice. `verify_voice_hq_check.lua` correctly rejects any check against a missing code with `no_voice_code_on_challenge` — the frontend fix from v1.0.13 (which added a *specific* error message for this exact case, distinct from "no ElevenLabs key" or a real digit mismatch) was working as designed; the challenge itself just never had a code to check against.
+
+**Fixed**
+- `lua/verify_challenge.lua`: `voice_code` is now generated unconditionally on every challenge, exactly mirroring how `webauthn_challenge` already handles the same open-choice scenario for fingerprint ("Immer erzeugen, unabhängig von den gewählten Methoden").
+
+**Notes**
+- Found live: user had a valid ElevenLabs key configured and still got the "no security code" message, which per the v1.0.13 error-differentiation fix should only appear for this specific challenge-setup gap, not a real service/key problem — pointed straight at `verify_challenge.lua` instead of the check endpoint.
+- Same underlying pattern as `webauthn_challenge`'s already-correct handling one function below it in the same file — worth remembering that "always generate, regardless of requested methods" is the right default for any per-method server-side secret when open-choice challenges are supported, not just an opt-in for the method that happened to need it first.
+
 ## [1.0.20] — 2026-07-16
 
 **Fixed: the new "Re-sync vault key" and "Change Encryption" buttons used the ghost/outline style instead of the primary/filled style, inconsistent with the sibling "Rotate Soul-Cert" button in the same Settings tab.**

@@ -78,17 +78,18 @@ local triggering_token = ngx.ctx.service_token
 
 -- voice_hq: zufälligen 6-stelligen Anti-Replay-Code generieren, den der Nutzer
 -- vorlesen muss (siehe verify_voice_hq_check.lua). Muss server-seitig entstehen,
--- sonst könnte eine alte Aufnahme einfach wiederverwendet werden.
-local voice_code = nil
-for _, m in ipairs(methods) do
-  if m == "voice_hq" then
-    local digit_bytes = random.bytes(6, true)
-    local digits = {}
-    for i = 1, 6 do digits[i] = tostring(digit_bytes:byte(i) % 10) end
-    voice_code = table.concat(digits)
-    break
-  end
-end
+-- sonst könnte eine alte Aufnahme einfach wiederverwendet werden. Immer erzeugen,
+-- unabhängig von den gewählten Methoden — wie beim webauthn_challenge unten:
+-- eine leere methods[] bedeutet "Nutzer wählt im UI", da könnte voice_hq
+-- jederzeit dazukommen. Vorher nur generiert, wenn "voice_hq" explizit in
+-- methods[] stand — bei einer offenen Challenge (leeres methods[]) blieb
+-- voice_code dadurch für immer nil, auch wenn der Nutzer Voice im UI wählte,
+-- und verify_voice_hq_check.lua lehnte jeden Versuch mit "no_voice_code_on_challenge"
+-- ab — unabhängig davon, ob ein ElevenLabs-Key konfiguriert war.
+local digit_bytes = random.bytes(6, true)
+local digits = {}
+for i = 1, 6 do digits[i] = tostring(digit_bytes:byte(i) % 10) end
+local voice_code = table.concat(digits)
 
 -- WebAuthn-Challenge für fingerprint — MUSS server-seitig entstehen (nicht
 -- client-generiert wie vorher), sonst ist die spätere Signaturprüfung in
