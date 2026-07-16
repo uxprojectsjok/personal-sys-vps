@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.17] — 2026-07-16
+
+**Fixed: the v1.0.15 credential-pruning fix only covered the Settings "Vault Key" resync flow — `VaultSessionPanel.vue`'s own "Unlock Vault" button (Soul → Set up → Vault tab) is a second, independent unlock entry point that still had the exact same stale-credential-list bug.**
+
+Found immediately when testing the *other* unlock UI right after v1.0.15 shipped — same `key_mismatch` symptom on a device that had just worked. `VaultSessionPanel.vue` already used `authenticateOrRegister()` (fixed in v1.0.10), but never called `pruneToCredentialId()` after a server-confirmed successful unlock — that step was only wired into `SettingsModal.vue`'s resync button.
+
+**Changed**
+- `app/components/VaultSessionPanel.vue`: `handleUnlock()` now prunes the local credential list to the confirmed-working one after a successful passkey unlock, same as the Settings flow.
+- `useVaultSession.js`: `unlock()`'s error handling now prefers the server's human-readable `message` field over the raw `error` code — the UI was literally showing the string `key_mismatch` to the user instead of the actual explanation ("this key can't decrypt N of M files...") that the endpoint already provides.
+
+**Notes**
+- Two independent UI entry points call the same unlock flow (`VaultSessionPanel.vue`, only rendered from `SoulSetupWizard.vue`; and the Settings "Vault Key" section added in v1.0.11) — worth remembering if a third one is ever added, the same pruning call needs to go there too rather than assuming one fix covers all callers.
+
 ## [1.0.16] — 2026-07-16
 
 **Fixed: `PUT /api/context` (the write path behind the `soul_write` MCP tool) silently wrote `sys.md` in plaintext whenever the vault was locked, instead of rejecting the write — the most severe finding in this whole vault-encryption investigation, since `sys.md` is the actual core identity content.**
