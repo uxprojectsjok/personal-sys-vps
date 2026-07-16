@@ -416,7 +416,7 @@
                 <button
                   @click="handleResyncVaultKey"
                   :disabled="vaultKeyBusy"
-                  class="sys-btn-ed sys-btn-ed--ghost"
+                  class="sys-btn-ed sys-btn-ed--primary"
                   style="width:100%;justify-content:center"
                 >{{ vaultKeyBusy ? $t('settings.vault_key_syncing') : $t('settings.vault_key_resync') }}</button>
 
@@ -436,7 +436,7 @@
                   v-if="!vaultKeyChangeMode"
                   @click="startVaultKeyChange"
                   :disabled="!vaultKeyStatus?.has_key || !vaultKeyStatus?.all_ok"
-                  class="sys-btn-ed sys-btn-ed--ghost"
+                  class="sys-btn-ed sys-btn-ed--primary"
                   style="width:100%;justify-content:center;margin-top:8px"
                 >{{ $t('settings.vault_key_change_btn') }}</button>
                 <p v-if="!vaultKeyChangeMode && !vaultKeyStatus?.has_key" class="sm-desc" style="margin-top:6px">{{ $t('settings.vault_key_change_disabled_no_key') }}</p>

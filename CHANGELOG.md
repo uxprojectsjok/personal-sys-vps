@@ -8,6 +8,13 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.20] — 2026-07-16
+
+**Fixed: the new "Re-sync vault key" and "Change Encryption" buttons used the ghost/outline style instead of the primary/filled style, inconsistent with the sibling "Rotate Soul-Cert" button in the same Settings tab.**
+
+**Changed**
+- `app/components/SettingsModal.vue`: both buttons switched from `sys-btn-ed--ghost` to `sys-btn-ed--primary`, matching "Rotate Soul-Cert"'s visual weight.
+
 ## [1.0.19] — 2026-07-16
 
 **Added: `last_verified_at` tracking on passkey credentials — a prerequisite for ever safely cleaning up the accumulated stale credentials from today's earlier passkey-registration churn (see v1.0.6–v1.0.10), which `passkeys.json` had no way to distinguish from still-active ones.**
