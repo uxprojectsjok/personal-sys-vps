@@ -8,6 +8,31 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.18] — 2026-07-16
+
+**Added: an explicit, professional vault-encryption-method feature — the vault previously had no recorded encryption method and no safe way to change it after the fact, a gap surfaced by the direct question "how do I change the vault's encryption after the fact?" (there was no answer beyond raw file surgery).**
+
+Until now `POST /api/vault/unlock` just accepted whatever key the client derived (via Passkey PRF or 12-word mnemonic) with no record of *which* method produced it, and no endpoint existed to safely migrate from one method/key to another — the only way to switch was to lock, manually decrypt everything with the old key, re-encrypt with the new one, and hope nothing was missed (exactly what earlier entries in this changelog, e.g. v1.0.11–v1.0.15, had to recover from by hand).
+
+**Added**
+- `lua/vault_unlock.lua`:
+  - `POST /api/vault/unlock` now accepts an optional `method` field (`"passkey"|"mnemonic"`) and persists it as `vault_key_method` + `vault_key_set_at` in `api_context.json` — but only on the *first* successful key establishment for a soul (`had_key_before` guard), never overwritten by a routine unlock that just re-proves knowledge of the existing key.
+  - `GET /api/vault/key-status` now also returns `vault_key_method` and `vault_key_set_at`.
+  - New `POST /api/vault/rekey` endpoint: takes `old_vault_key` + `new_vault_key` + `new_method`, re-verifies the old key against every encrypted file first (reusing `scan_vault_for_mismatches` — the same guard `/unlock` already relies on), then decrypts-and-re-encrypts each file individually with a fresh IV. Only persists the new key/method/timestamp (and recomputes `webhook_token`, and refreshes any active browser session in `ngx.shared.vault_sessions`) once *every* file has migrated successfully — a partial failure leaves the old key fully intact and reports exactly which files didn't make it, rather than a half-migrated vault.
+- `server/openresty/vhost.conf.template`: new `location = /api/vault/rekey` block, same `soul_auth.lua` + rate-limit pattern as the sibling `/unlock`/`/lock` endpoints.
+- `app/composables/useVaultSession.js`: `unlock()` gained a `method` parameter (forwarded to the backend); new `rekey(oldKey, newKey, newMethod)` function wrapping the new endpoint.
+- `app/components/VaultSessionPanel.vue`: both unlock call sites now pass `method`; added short tradeoff explanations under each method choice (Passkey: device-bound, may not sync across devices/managers; 12 words: portable but self-custody — no recovery if lost) so the initial choice is actually informed instead of an unexplained toggle.
+- `app/components/SettingsModal.vue`: Vault Key section now shows the current method + when it was established; new "Change Encryption" flow — pick a new method, authenticate via Passkey or generate+confirm-saved a fresh 12-word phrase, then call `/api/vault/rekey` with the already-displayed current `vault_key_hex` as proof of access (the server re-verifies it independently regardless). Mirrors the existing "Rotate Soul-Cert" flow's visual pattern.
+- `i18n/locales/{de,en}.json`: new `vault_session.*_tradeoff` strings and `settings.vault_key_change_*`/`vault_key_method_current`/`vault_key_set_at` strings; reworded `vault_session.method_warning` to point at the new safe migration path instead of just warning that a mismatch will happen.
+
+**Verified**
+- Full live round-trip against the real soul (`f0aad283-…`, 10 encrypted files): unlock with the real device key + `method=passkey` → `key-status` correctly showed `vault_key_method:"passkey"` and a `vault_key_set_at` timestamp → `rekey` to a random test key + `method=mnemonic` → all 10 files migrated, `key-status` reflected the new method and the new key decrypted everything (`all_ok:true`) → `rekey` back to the original key + `method=passkey` → state fully restored, byte-identical to the pre-test vault. A follow-up `rekey` attempt with a deliberately wrong `old_vault_key` correctly 409'd with `key_mismatch` and left the real key completely untouched.
+- `nuxt build`/`nuxt generate` both completed clean (all 26 routes, including `/settings`, prerendered without error) before deploying the static output to `/var/www/kro.uxprojects-jok.com`.
+
+**Notes**
+- A normal `/api/vault/unlock` deliberately does **not** change `vault_key_method` once a key already exists — only `/api/vault/rekey` is allowed to change the recorded method, so "which method is active" can't silently drift just because someone unlocked with a differently-labeled request.
+- The Settings "Change Encryption" flow reuses the vault key already displayed in that same section as `old_vault_key` rather than asking the user to re-prove access through a separate step — Settings already requires full soul-cert (owner-level) auth to reach that screen, and the server independently re-verifies the old key against every file regardless of what the client claims.
+
 ## [1.0.17] — 2026-07-16
 
 **Fixed: the v1.0.15 credential-pruning fix only covered the Settings "Vault Key" resync flow — `VaultSessionPanel.vue`'s own "Unlock Vault" button (Soul → Set up → Vault tab) is a second, independent unlock entry point that still had the exact same stale-credential-list bug.**

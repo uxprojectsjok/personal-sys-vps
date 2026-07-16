@@ -206,12 +206,25 @@ if method == "GET" and uri == "/api/vault/key-status" then
   -- Leak-Level über dem des Bearer-Tokens selbst besteht dadurch nicht.
   local key_json = cjson.null
   if persisted_key ~= "" then key_json = persisted_key end
+  local vault_key_method  = cjson.null
+  local vault_key_set_at  = cjson.null
+  local cf2 = io.open(ctx_path, "r")
+  if cf2 then
+    local raw2 = cf2:read("*a"); cf2:close()
+    local ok_j2, ctx2 = pcall(cjson.decode, raw2)
+    if ok_j2 and type(ctx2) == "table" then
+      if type(ctx2.vault_key_method) == "string" then vault_key_method = ctx2.vault_key_method end
+      if type(ctx2.vault_key_set_at) == "number" then vault_key_set_at = ctx2.vault_key_set_at end
+    end
+  end
   ngx.say(cjson.encode({
-    has_key       = (persisted_key ~= ""),
-    vault_key_hex = key_json,
-    checked       = checked,
-    mismatched    = mismatched,
-    all_ok        = (#mismatched == 0),
+    has_key         = (persisted_key ~= ""),
+    vault_key_hex   = key_json,
+    checked         = checked,
+    mismatched      = mismatched,
+    all_ok          = (#mismatched == 0),
+    vault_key_method = vault_key_method,
+    vault_key_set_at = vault_key_set_at,
   }))
   return
 end
@@ -419,13 +432,28 @@ if method == "POST" and uri == "/api/vault/unlock" then
       active_files = {}
     }
     local cf = io.open(ctx_path, "r")
+    local had_key_before = false
     if cf then
       local raw = cf:read("*a"); cf:close()
       local ok_j, existing = pcall(cjson.decode, raw)
-      if ok_j and type(existing) == "table" then ctx = existing end
+      if ok_j and type(existing) == "table" then
+        ctx = existing
+        had_key_before = (type(existing.vault_key_hex) == "string" and #existing.vault_key_hex == 64)
+      end
     end
     ctx.vault_key_hex = vault_key   -- für vault_auth: Token-Auth ohne Session
     ctx.cipher_mode   = "ciphered"
+    -- Methode + Zeitpunkt nur bei ERSTMALIGER Schlüssel-Etablierung setzen, nicht
+    -- bei jedem normalen Unlock (der nur Kenntnis des bereits bestehenden
+    -- Schlüssels beweist, siehe scan_vault_for_mismatches-Guard oben — ein
+    -- Methodenwechsel danach läuft ausschließlich über POST /api/vault/rekey,
+    -- das beide Felder explizit und bewusst überschreibt).
+    if not had_key_before then
+      local m = payload.method
+      if m ~= "passkey" and m ~= "mnemonic" then m = "unknown" end
+      ctx.vault_key_method = m
+      ctx.vault_key_set_at = math.floor(ngx.now())
+    end
     if token_hex and #token_hex == 64 then
       ctx.webhook_token = token_hex
     end
@@ -442,6 +470,171 @@ if method == "POST" and uri == "/api/vault/unlock" then
     has_key         = (vault_key ~= ""),
     newly_encrypted = newly_encrypted,
   }))
+  return
+end
+
+-- ── POST /api/vault/rekey ─────────────────────────────────────────────────────
+-- Wechselt die Vault-Verschlüsselung auf einen neuen Schlüssel + neue Methode
+-- (z.B. Passkey → 12 Wörter oder umgekehrt). Erfordert Besitznachweis des
+-- AKTUELLEN Schlüssels (alle Dateien müssen damit entschlüsselbar sein — gleicher
+-- Guard wie beim normalen Unlock), migriert danach jede verschlüsselte Datei
+-- Byte für Byte auf den neuen Schlüssel (frische IV pro Datei) und persistiert
+-- vault_key_hex + vault_key_method + vault_key_set_at erst wenn ALLE Dateien
+-- erfolgreich migriert wurden — bei auch nur einem Fehlschlag bleibt der alte
+-- Schlüssel aktiv (kein Teilzustand, der Dateien dauerhaft unlesbar macht).
+
+if method == "POST" and uri == "/api/vault/rekey" then
+  ngx.req.read_body()
+  local body = ngx.req.get_body_data() or "{}"
+  local _, payload = pcall(cjson.decode, body)
+  if type(payload) ~= "table" then payload = {} end
+
+  local old_key    = payload.old_vault_key
+  local new_key    = payload.new_vault_key
+  local new_method = payload.new_method
+
+  if type(old_key) ~= "string" or not old_key:match("^[0-9a-f]+$") or #old_key ~= 64 then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "invalid_old_key", message = "old_vault_key muss ein 64-Zeichen-Hex-String sein." }))
+    return
+  end
+  if type(new_key) ~= "string" or not new_key:match("^[0-9a-f]+$") or #new_key ~= 64 then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "invalid_new_key", message = "new_vault_key muss ein 64-Zeichen-Hex-String sein." }))
+    return
+  end
+  if new_method ~= "passkey" and new_method ~= "mnemonic" then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "invalid_method", message = "new_method muss 'passkey' oder 'mnemonic' sein." }))
+    return
+  end
+  if old_key == new_key then
+    ngx.status = 400
+    ngx.say(cjson.encode({ error = "same_key", message = "Neuer Schlüssel ist identisch mit dem alten." }))
+    return
+  end
+
+  -- Besitznachweis: alter Schlüssel muss aktuell wirklich ALLE Dateien entschlüsseln
+  local checked, mismatched = scan_vault_for_mismatches(soul_id, old_key)
+  if #mismatched > 0 then
+    ngx.status = 409
+    ngx.say(cjson.encode({
+      error      = "key_mismatch",
+      mismatched = mismatched,
+      message    = "Der angegebene aktuelle Schlüssel kann " .. #mismatched .. " von " .. checked .. " verschlüsselten Dateien nicht entschlüsseln — Wechsel abgebrochen, keine Datei wurde verändert.",
+    }))
+    return
+  end
+
+  local old_bin       = old_key:gsub("..", function(h) return string.char(tonumber(h, 16)) end)
+  local new_bin        = new_key:gsub("..", function(h) return string.char(tonumber(h, 16)) end)
+  local resty_aes     = require("resty.aes")
+  local resty_random  = require("resty.random")
+
+  local migrated, failed = {}, {}
+  each_vault_file(soul_id, function(rel_path, abs_path)
+    local sf = io.open(abs_path, "rb")
+    if not sf then return end
+    local content = sf:read("*a"); sf:close()
+    if #content < 4 + 16 + 16 or content:sub(1, 4) ~= "SYS\1" then return end -- unverschlüsselt, nichts zu migrieren
+
+    local iv        = content:sub(5, 20)
+    local ct         = content:sub(21)
+    local dec_ctx    = resty_aes:new(old_bin, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+    local plaintext  = dec_ctx and dec_ctx:decrypt(ct)
+    if type(plaintext) ~= "string" then
+      failed[#failed + 1] = rel_path
+      return
+    end
+
+    local new_iv = resty_random.bytes(16, true)
+    if not new_iv then failed[#failed + 1] = rel_path; return end
+    local enc_ctx = resty_aes:new(new_bin, nil, resty_aes.cipher(256, "cbc"), { iv = new_iv })
+    local new_ct  = enc_ctx and enc_ctx:encrypt(plaintext)
+    if type(new_ct) ~= "string" then failed[#failed + 1] = rel_path; return end
+
+    local wf = io.open(abs_path, "wb")
+    if not wf then failed[#failed + 1] = rel_path; return end
+    wf:write("SYS\1" .. new_iv .. new_ct)
+    wf:close()
+    migrated[#migrated + 1] = rel_path
+  end)
+
+  if #failed > 0 then
+    ngx.status = 500
+    ngx.say(cjson.encode({
+      error    = "partial_migration",
+      migrated = migrated,
+      failed   = failed,
+      message  = #migrated .. " Dateien migriert, " .. #failed .. " fehlgeschlagen — Schlüssel wurde NICHT umgestellt, betroffene Dateien sind noch mit dem alten Schlüssel lesbar.",
+    }))
+    return
+  end
+
+  -- Alle Dateien erfolgreich migriert → neuen Schlüssel + Methode persistieren
+  local ctx_path = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
+  local ctx = {}
+  local cf = io.open(ctx_path, "r")
+  if cf then
+    local raw = cf:read("*a"); cf:close()
+    local ok_j, existing = pcall(cjson.decode, raw)
+    if ok_j and type(existing) == "table" then ctx = existing end
+  end
+  ctx.vault_key_hex    = new_key
+  ctx.cipher_mode      = "ciphered"
+  ctx.vault_key_method = new_method
+  ctx.vault_key_set_at = math.floor(ngx.now())
+
+  -- webhook_token neu berechnen (HMAC hängt direkt vom vault_key ab)
+  local token_hex
+  local ok_lib, openssl_hmac = pcall(require, "resty.openssl.hmac")
+  if ok_lib then
+    local hmac_obj = openssl_hmac.new(new_bin, "sha256")
+    if hmac_obj then
+      local sig = hmac_obj:final(soul_id)
+      if sig then
+        token_hex = sig:gsub(".", function(c) return string.format("%02x", string.byte(c)) end)
+      end
+    end
+  end
+  if not token_hex or #token_hex ~= 64 then
+    local ts  = tostring(ngx.now()):gsub("%.", "_")
+    local t_k = "/tmp/sys_k_" .. ts
+    local t_s = "/tmp/sys_s_" .. ts
+    local t_o = "/tmp/sys_o_" .. ts
+    local fk = io.open(t_k, "w"); if fk then fk:write(new_key); fk:close() end
+    local fs = io.open(t_s, "w"); if fs then fs:write(soul_id); fs:close() end
+    os.execute(string.format(
+      "python3 -c \"import hmac,binascii;"
+      .. "vk=binascii.unhexlify(open('%s').read().strip());"
+      .. "s=open('%s').read().strip();"
+      .. "print(hmac.new(vk,s.encode(),'sha256').hexdigest())"
+      .. "\" > %s 2>/dev/null", t_k, t_s, t_o))
+    os.remove(t_k); os.remove(t_s)
+    local rf = io.open(t_o, "r")
+    if rf then token_hex = (rf:read("*a") or ""):gsub("%s+$", ""); rf:close() end
+    os.remove(t_o)
+  end
+  if token_hex and #token_hex == 64 then ctx.webhook_token = token_hex end
+
+  local wf = io.open(ctx_path, "w")
+  if wf then wf:write(cjson.encode(ctx)); wf:close() end
+
+  -- Aktive Browser-Session (falls vorhanden) auf neuen Schlüssel aktualisieren,
+  -- damit kein erneutes Unlock nötig wird.
+  if sessions then
+    local val = sessions:get(soul_id)
+    if val then
+      local expires_at = select(1, parse_session(val))
+      local ttl = 0
+      if expires_at and expires_at > 0 then
+        ttl = math.max(1, math.floor(expires_at - ngx.now()))
+      end
+      sessions:set(soul_id, cjson.encode({ expires_at = expires_at or 0, vault_key = new_key }), ttl)
+    end
+  end
+
+  ngx.say(cjson.encode({ ok = true, migrated = migrated, new_method = new_method }))
   return
 end
 

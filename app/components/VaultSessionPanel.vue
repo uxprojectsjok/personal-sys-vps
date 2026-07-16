@@ -128,6 +128,7 @@
               <div v-if="encryptMode === 'passkey'" style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
                 <p style="font-size:15px;color:var(--fg-2);margin:0">{{ hasPasskey ? $t('vault_session.passkey_confirm') : $t('vault_session.passkey_create') }}</p>
                 <p style="font-size:14px;color:var(--fg-3);margin:0">{{ $t('vault_session.biometric_methods') }}</p>
+                <p style="font-size:13px;color:var(--fg-4);margin:2px 0 0">{{ $t('vault_session.passkey_tradeoff') }}</p>
                 <p v-if="passkeyError" style="font-size:14px;color:var(--c-danger,#e06c75);margin:0">{{ passkeyError }}</p>
               </div>
             </Transition>
@@ -135,6 +136,7 @@
             <!-- 12 Wörter -->
             <Transition name="slide-up">
               <div v-if="encryptMode === 'mnemonic'" class="space-y-2">
+                <p style="font-size:13px;color:var(--fg-4);margin:0">{{ $t('vault_session.mnemonic_tradeoff') }}</p>
                 <textarea
                   v-model="mnemonicInput"
                   :placeholder="$t('vault_session.mnemonic_placeholder')"
@@ -267,7 +269,7 @@ async function handleUnlock() {
       const prf = await authenticateOrRegister()
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
-      await unlock(selectedDuration.value, '', hexKey)
+      await unlock(selectedDuration.value, '', hexKey, 'passkey')
       // Server hat gerade bestätigt, dass genau dieses Credential den richtigen
       // Vault-Schlüssel liefert (isUnlocked wird von unlock() nur bei ok:true
       // gesetzt) — lokale Credential-Liste darauf kürzen, sonst kann ein
@@ -280,7 +282,7 @@ async function handleUnlock() {
       passkeyLoading.value = false
     }
   } else {
-    await unlock(selectedDuration.value, encryptMode.value === 'mnemonic' ? mnemonicInput.value.trim() : '')
+    await unlock(selectedDuration.value, encryptMode.value === 'mnemonic' ? mnemonicInput.value.trim() : '', '', encryptMode.value)
   }
   if (isUnlocked.value) {
     saveMethod(encryptMode.value)
