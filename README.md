@@ -400,13 +400,14 @@ Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `soul_disc
 
 ## Installation
 
-> **This is `personal-sys-vps-private`** — a private clone of my own running node
-> (`SaveYourSoul_me_live`), kept as a self-contained base for standing up a **new**
-> personal node. Unlike the public `personal-sys-vps` template, this repo already
-> includes `init.sh`/`reset.sh`/`recover-password.sh`/`deinstall.sh` — no separate
-> installer checkout needed. It also still contains **my own** data in a few spots
-> (see "Before you install" below) — review and replace those before going live
-> on a domain that isn't `me.uxprojects-jok.com`.
+> **This is `personal-sys-vps-private`** — the live, running repo behind
+> **kro.uxprojects-jok.com**. `/opt/sys` on that VPS *is* this checkout (`origin`
+> = this repo) — there is no separate build/staging copy anymore. Unlike the
+> public `personal-sys-vps` template, this repo already includes
+> `init.sh`/`reset.sh`/`recover-password.sh`/`deinstall.sh` — no separate
+> installer checkout needed. It also still contains **my own** operator-specific
+> data in a few spots (see "Before you install" below) — anyone cloning this as
+> a base for a *different* node must review and replace those first.
 
 The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
 
@@ -482,6 +483,45 @@ If `init.sh` detects other active sites on the server (via `sites-enabled`), it 
 > All four scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are included
 > in this repo, in the repo root — no separate installer checkout needed. The public
 > `personal-sys-vps` template does not include them; they're distributed separately there.
+
+---
+
+## Updating This Node
+
+This repo is **not** the protocol foundation — `personal-sys-vps` (public) is. This repo is `personal-sys-vps` **plus a private layer**: the EU consent/Widerrufsrecht flow (`accept_digital_content_terms`, pdfkit), Impressum/Datenschutz/AGB pages, and other operator-specific content that must never ship in the neutral public template (see [README: No legal pages included](https://github.com/uxprojectsjok/personal-sys-vps#legal) for why). That's the whole reason this repo exists separately instead of kro pulling straight from public — see the rationale below before changing this workflow.
+
+**Why not pull straight from `personal-sys-vps`:** doing so would either drop the private layer on every update, or force it to be reapplied by hand, untracked, after each pull — the exact failure mode that has already caused real data loss here (`git diff`-before-sync is the recorded fix, not "stop tracking it"). This repo's `CHANGELOG.md` and this repo's git history are what make the private layer recoverable and diffable at all.
+
+### Update workflow (public → private → live)
+
+1. **Pull the public update into this repo, don't hand-copy files.**
+   ```bash
+   cd /opt/sys
+   git fetch upstream          # personal-sys-vps (public), remote already configured
+   git log HEAD..upstream/main --oneline    # see what's new before merging
+   git merge upstream/main     # or: git rebase upstream/main, if history should stay linear
+   ```
+   Resolve conflicts in favor of keeping the private layer (legal pages, consent flow, personalized `init.sh` text, i18n keys) — the public side of any conflict is the one that just got updated and should win everywhere else.
+
+2. **Tag and changelog this repo — independently of the public repo's version.**
+   Add an entry to `CHANGELOG.md` (this repo) noting which public tag/commit was just merged in, then:
+   ```bash
+   git tag -a v1.X.0 -m "merge personal-sys-vps v1.X.0 + private layer"
+   ```
+
+3. **Redeploy.** Since `/opt/sys` *is* the checkout (no separate build dir since `SaveYourSoul_me_live` was retired), there's no file-copy step anymore for most changes — just rebuild and restart what changed:
+   ```bash
+   npm run generate && node utils/killMetas.mjs
+   node utils/project-hash.mjs                          # update the fingerprint below if it changed
+   ```
+   If the merge touched `lua/*.lua`: `cp lua/*.lua /etc/openresty/lua/ && openresty -s reload`
+   If it touched `soul-mcp/`: `systemctl restart soul-mcp` (no copy needed — `/opt/sys/soul-mcp` is already the running path)
+
+4. **Commit and push to `origin`** (this repo) so the update is recoverable from GitHub, not just from this one VPS.
+
+5. **Local full backup (FileZilla or equivalent) stays a good idea afterward** — it protects against total VPS loss, but it is a point-in-time snapshot, not a substitute for steps 1–4. If the server is ever rebuilt from scratch, `git clone` + `git checkout <tag>` reconstructs the exact code state; the FileZilla copy is for the parts git doesn't track (`.env`, `/var/lib/sys/souls/*` soul data, TLS certs).
+
+`karo-familie.de` has no private layer and pulls tags directly from `personal-sys-vps` — steps 1–2 above don't apply there, only 3–5 in simplified form.
 
 ---
 
