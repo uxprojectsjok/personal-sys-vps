@@ -1662,6 +1662,15 @@ async function handleResyncVaultKey() {
     const result = await vaultSession.unlock('1d', '', hexKey)
     if (result?.ok) {
       vaultKeySynced.value = true
+      // Server hat gerade bestätigt, dass genau dieses Credential den richtigen
+      // Vault-Schlüssel liefert — jetzt die lokale Credential-Liste darauf
+      // kürzen. saveCredentialId() hängt bei jeder Registrierung nur an, räumt
+      // nie auf; ohne dieses Kürzen könnte ein späterer, nicht eingeschränkter
+      // authenticatePasskey()-Aufruf auf DEMSELBEN Gerät wieder eine andere,
+      // noch gespeicherte (aber falsche/veraltete) ID zugewiesen bekommen —
+      // genau der scheinbar zufällige "kann nicht sein"-Mismatch, den ein Test
+      // nach dem vorherigen Fix noch zeigte.
+      passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value)
       await fetchVaultKeyStatus()
     } else {
       vaultKeyError.value = result?.message || result?.error || t('settings.vault_key_sync_failed')

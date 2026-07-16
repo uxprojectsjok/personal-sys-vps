@@ -117,6 +117,20 @@ function clearSavedCredentialIds() {
   try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
 }
 
+// Ersetzt die gesamte gespeicherte Liste durch genau eine ID. Für den Fall,
+// dass mehrere Credentials angesammelt wurden (saveCredentialId hängt immer
+// nur an, räumt nie auf — residentKey:'preferred' erzeugt bei jeder
+// Registrierung/Migration einen neuen Eintrag) und ein nachfolgender, nicht auf
+// eine ID eingeschränkter authenticatePasskey()-Aufruf dadurch nicht-deterministisch
+// irgendeine der noch gespeicherten IDs zugewiesen bekommen kann — auch auf
+// demselben Gerät, ohne dass der Nutzer je etwas gelöscht hat. Nur aufrufen,
+// wenn extern (z.B. server-seitig) bestätigt ist, dass genau diese ID die
+// richtige ist — sonst könnte auf die falsche gekürzt werden.
+function pruneToCredentialId(id) {
+  if (!id) return
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([id])) } catch { /* ignore */ }
+}
+
 // ── Composable ─────────────────────────────────────────────────────────────────
 
 export function useSoulPasskey() {
@@ -127,6 +141,7 @@ export function useSoulPasskey() {
   const prfOutput      = ref(null)  // ArrayBuffer — temporär im Memory, nie persistiert
   const lastAssertion  = ref(null)  // { credentialId, clientDataJson, authenticatorData, signature } — nur bei serverChallengeB64url gesetzt
   const lastRegisteredCredentialId = ref(null)  // base64url — vom letzten registerPasskey()-Aufruf, für gezieltes Re-Auth direkt danach
+  const lastUsedCredentialId = ref(null)  // base64url — vom letzten erfolgreichen authenticatePasskey(), IMMER gesetzt (nicht nur mit serverChallengeB64url)
 
   /**
    * Passkey erstellen (einmalig, beim ersten Verschlüsseln).
@@ -180,6 +195,7 @@ export function useSoulPasskey() {
       saveCredentialId(credId)
       hasPasskey.value = true
       lastRegisteredCredentialId.value = credId
+      lastUsedCredentialId.value       = credId  // die neu erstellte ID ist auch die gerade "benutzte"
 
       // Public Key server-seitig registrieren — Voraussetzung dafür, dass
       // /verify später eine echte Signatur prüfen kann statt dem Client zu
@@ -279,6 +295,12 @@ export function useSoulPasskey() {
       })
 
       if (!assertion) { passkeyError.value = 'Authentifizierung abgebrochen.'; return null }
+
+      // Immer erfassen, welches Credential das Betriebssystem tatsächlich
+      // gewählt hat — unabhängig vom serverChallengeB64url-Pfad. Bei mehreren
+      // lokal gespeicherten IDs (siehe pruneToCredentialId-Kommentar) ist das
+      // die einzige Möglichkeit zu wissen, welches davon gerade benutzt wurde.
+      lastUsedCredentialId.value = bufferToBase64url(assertion.rawId)
 
       if (serverChallengeB64url) {
         lastAssertion.value = {
@@ -389,6 +411,7 @@ export function useSoulPasskey() {
     hasPasskey,
     lastAssertion,
     lastRegisteredCredentialId,
+    lastUsedCredentialId,
     // Methoden
     registerPasskey,
     authenticatePasskey,
@@ -398,5 +421,6 @@ export function useSoulPasskey() {
     deriveVaultKeyHex,
     clearPRF,
     checkPasskeySupport,
+    pruneToCredentialId,
   }
 }

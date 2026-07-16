@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.15] — 2026-07-16
+
+**Fixed: "Vault Key: Re-sync" reported `key_mismatch` on the *same* device that had already worked correctly — a residual instance of the v1.0.8 stale-credential-list problem, this time on the normal (non-self-heal) authentication path.**
+
+`saveCredentialId()` only ever appends to the locally saved credential-ID list — nothing prunes it, so it kept accumulating across every registration/migration from today's whole passkey saga. v1.0.8 fixed this specifically for the self-heal path (by restricting `allowCredentials` to the just-registered ID), but a *normal* `authenticatePasskey()` call (the common case: `hasPasskey` is true, no error) still offers the *entire* accumulated list. With several stale IDs still on file, the OS/browser can satisfy the WebAuthn ceremony with any of them — not necessarily the one whose derived key actually matches the vault — producing an apparently random mismatch on a device that had unlocked correctly moments earlier.
+
+**Changed**
+- `useSoulPasskey.js`: `authenticatePasskey()` now always records which credential was actually used in `lastUsedCredentialId` (previously only captured when a server challenge was passed). New `pruneToCredentialId(id)` replaces the entire saved list with just one ID — intentionally *not* called automatically, only when something external has confirmed that ID is the correct one.
+- `SettingsModal.vue` (`handleResyncVaultKey`): after the server confirms a successful vault unlock (definitive proof this credential produces the right key), prunes the local list down to just that credential — eliminating the ambiguity for every future authentication on this device.
+
+**Notes**
+- Deliberately scoped to the vault-resync flow only, where a server response gives real confirmation. `getEncryptKey()`/`VaultSessionPanel.vue` still use the un-pruned `authenticateOrRegister()` — those paths have no server-side check that a given key is "correct," so pruning there could lock in the wrong credential.
+- Does not retroactively fix already-affected browser sessions before this deploy — pruning only happens the next time someone runs a successful Vault Key resync in Settings.
+
 ## [1.0.14] — 2026-07-16
 
 **Added: vault files that were never encrypted (e.g. context files seeded before the first passkey/vault-key ever existed) now get encrypted automatically on unlock and on lock, not just left as plaintext indefinitely.**
