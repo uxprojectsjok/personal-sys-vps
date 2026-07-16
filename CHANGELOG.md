@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.8] — 2026-07-16
+
+**Fixed: deleting a passkey outside the app (OS/Google Password Manager) permanently stopped the app from ever offering to register a new one.**
+
+Root cause: `useSavedCreds.js`'s `hasCreds` (an encrypted password+cert blob in `localStorage`) is what `submit()` checks to decide whether to show the "save with biometric" step. This blob has no relationship to whether the underlying passkey still exists on the device — it survives an OS-level passkey deletion untouched, so the app kept assuming a working passkey existed indefinitely.
+
+**Changed**
+- `app/pages/gate.vue`: `biometricUnlock()`'s auth-failure branch now clears the stale `hasCreds` blob and drops to the manual login form instead of just showing an error and stopping.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com) via a user who deleted all their passkeys and got permanently stuck with no way to be re-offered registration. Ported here unchanged.
+- Doesn't retroactively fix an already-stuck browser session — the stale blob only clears the next time `biometricUnlock()` runs and fails.
+
 ## [1.0.7] — 2026-07-16
 
 **Fixed: the fingerprint self-heal could still fail with `unknown_credential` — the re-verify step could authenticate with the wrong local passkey.**

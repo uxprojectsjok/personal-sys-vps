@@ -165,7 +165,18 @@ async function biometricUnlock() {
   try {
     const prf = await passkey.authenticatePasskey()
     if (!prf) {
+      // WebAuthn deliberately can't distinguish "user declined" from "no matching
+      // credential exists anymore" (e.g. deleted from the OS/Google Password Manager
+      // outside this app) — both surface as the same generic failure. Clearing the
+      // stale saved-creds blob and dropping to the manual form either way is the
+      // safe default: worst case a declined-by-accident login redoes passkey setup
+      // once more, but a genuinely deleted passkey no longer leaves the user stuck
+      // with no way to ever be re-offered passkey registration (submit() below only
+      // offers it when hasCreds is false).
       error.value = passkey.passkeyError.value || t('gate.error.biometric_failed')
+      creds.clearCreds(lastSoulId.value)
+      hasSavedCreds.value = false
+      mode.value = 'form'
       return
     }
 
