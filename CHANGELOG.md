@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.13] — 2026-07-16
+
+**Fixed: `voice_hq` always showed "Security code not recognized" regardless of the actual failure reason, and there was no way to cancel out of the verify flow.**
+
+Found during manual test runs. Investigated a real "voice not recognized" report: the FFT voice match had actually succeeded — the anti-replay digit check failed because **no ElevenLabs API key was configured for the soul at all**, so `verify_voice_hq_check.lua` could never even call the STT service. The frontend showed the same generic "security code not recognized" message for this as for a genuine wrong-digits case, making a pure configuration problem look like a voice-recognition failure.
+
+**Changed**
+- `app/pages/verify.vue` (`doVoiceHq`): now distinguishes the actual failure reason returned by the server (`elevenlabs_key_missing`, `no_voice_code_on_challenge`, `elevenlabs_error`/`upstream_error`/`invalid_response`/network failure, or a genuine digit mismatch) and shows a specific message for each instead of one generic string.
+- Added a persistent close (×) button to the verify card, visible through every phase except the initial load and the final "done" screen (which already has its own explicit close flow). Previously the *only* way to back out of an in-progress verification was the face-capture step's cancel button — every other phase (fingerprint, voice, voice_hq, the method chooser) had no way to bail without closing the tab.
+
+**Notes**
+- The ElevenLabs key itself was deliberately left unconfigured for now (operator's call, not something to set up unprompted) — this fix only makes the failure mode legible, it doesn't make `voice_hq` usable without a key.
+
 ## [1.0.12] — 2026-07-16
 
 **Fixed: v1.0.11's vault-key health-check/guard only covered `sys.md` — the real exposure was much broader.**
