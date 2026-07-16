@@ -2,6 +2,13 @@
   <ClientOnly>
     <div class="vfy">
       <div class="vfy-card">
+        <button
+          v-if="phase !== 'loading' && phase !== 'done'"
+          class="vfy-close-x"
+          @click="closePage"
+          :aria-label="$t('common.close')"
+          title="Abbrechen"
+        >×</button>
         <div class="vfy-mark">SYS<span class="dot">.</span></div>
         <div class="vfy-sub">{{ $t('verify.subtitle') }}</div>
 
@@ -971,6 +978,7 @@ async function doVoiceHq() {
     // der vorgelesene Code tatsächlich in der Transkription vorkommt.
     voiceHqPhase.value = 'checking_replay'
     let digitsOk = false
+    let voiceHqError = null
     try {
       const r = await fetch(`/api/verify/voice-hq-check?challenge_id=${challengeId}`, {
         method:  'POST',
@@ -979,14 +987,32 @@ async function doVoiceHq() {
       })
       const d = await r.json()
       digitsOk = d.digits_match === true
-    } catch {}
+      if (!digitsOk) voiceHqError = d.error || null
+    } catch {
+      voiceHqError = 'network_error'
+    }
     voiceHqPhase.value = ''
 
     const ok = fftOk && digitsOk
     if (!ok) {
-      errorMsg.value = !fftOk
-        ? `Stimm-Match zu niedrig (${(score * 100).toFixed(0)}%).`
-        : t('verify.voice_hq_digits_failed')
+      // War bisher IMMER "Security code not recognized", egal ob die Ziffern
+      // wirklich falsch erkannt wurden oder der Server-Call aus einem anderen
+      // Grund gar nicht erst zustande kam (z.B. fehlender ElevenLabs-Key) — das
+      // sah für Nutzer wie ein Erkennungsproblem aus, obwohl die eigentliche
+      // Stimmerkennung (FFT) oft längst erfolgreich war. Jetzt unterscheidet die
+      // Meldung, WARUM der Anti-Replay-Check fehlschlug (siehe die error-Codes
+      // aus verify_voice_hq_check.lua).
+      if (!fftOk) {
+        errorMsg.value = `Stimm-Match zu niedrig (${(score * 100).toFixed(0)}%).`
+      } else if (voiceHqError === 'elevenlabs_key_missing') {
+        errorMsg.value = t('verify.voice_hq_no_api_key')
+      } else if (voiceHqError === 'no_voice_code_on_challenge') {
+        errorMsg.value = t('verify.voice_hq_no_code')
+      } else if (voiceHqError === 'elevenlabs_error' || voiceHqError === 'upstream_error' || voiceHqError === 'invalid_response' || voiceHqError === 'network_error') {
+        errorMsg.value = t('verify.voice_hq_service_error')
+      } else {
+        errorMsg.value = t('verify.voice_hq_digits_failed')
+      }
     }
     await submitResult(ok)
     await advanceAfterMethod(ok)
@@ -1008,6 +1034,7 @@ async function doVoiceHq() {
 }
 
 .vfy-card {
+  position: relative;
   width: 100%;
   max-width: 380px;
   background: var(--surface);
@@ -1020,6 +1047,26 @@ async function doVoiceHq() {
   gap: 8px;
   text-align: center;
 }
+
+.vfy-close-x {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--fg-4);
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: background .15s, color .15s;
+}
+.vfy-close-x:hover { background: rgba(128,128,128,.12); color: var(--fg); }
 
 .vfy-mark { font-size: 22px; font-weight: 800; letter-spacing: -.5px; color: var(--fg); line-height: 1; }
 .vfy-mark .dot { color: var(--accent); }

@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.12] — 2026-07-16
+
+**Fixed: `voice_hq` always showed "Security code not recognized" regardless of the actual failure reason, and there was no way to cancel out of the verify flow.**
+
+Found during manual test runs on `personal-sys-vps-private`: the FFT voice match had succeeded, but the anti-replay digit check failed because no ElevenLabs API key was configured for the soul — the frontend showed the same generic message for a missing-API-key configuration problem as for a genuine wrong-digits case.
+
+**Changed**
+- `app/pages/verify.vue` (`doVoiceHq`): now distinguishes the server's actual failure reason (`elevenlabs_key_missing`, `no_voice_code_on_challenge`, service/network errors, or a genuine digit mismatch) and shows a specific message for each.
+- Added a persistent close (×) button to the verify card, visible through every phase except initial load and the final "done" screen. Previously only the face-capture step had any way to back out of an in-progress verification.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged. Doesn't configure an ElevenLabs key — that's an operator decision, this just makes the failure mode legible.
+
 ## [1.0.11] — 2026-07-16
 
 **Fixed: v1.0.10's vault-key health-check/guard only covered `sys.md` — the real exposure was much broader.**
