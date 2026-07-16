@@ -754,11 +754,13 @@ async function doFingerprint() {
     })
     const d  = await r.json()
     let ok = d.match === true
-    if (!ok && d.reason === 'unknown_credential') {
-      // Passkey wurde vor dem Sicherheitsfix erstellt, Public Key nie serverseitig
-      // registriert (kam damals noch nicht vor) — jetzt neu registrieren; die dabei
-      // erzwungene Biometrik-Bestätigung (navigator.credentials.create(), userVerification
-      // required) zählt als gültiger Nachweis für diesen Schritt.
+    if (!ok && (d.reason === 'unknown_credential' || d.reason === 'no_passkey_registered')) {
+      // Passkey wurde vor dem Sicherheitsfix erstellt, oder über gate.vue's initialem
+      // Setup (das getAuthHeaders nicht übergibt) — Public Key nie serverseitig
+      // registriert. Jetzt neu registrieren; die dabei erzwungene Biometrik-Bestätigung
+      // (navigator.credentials.create(), userVerification required) zählt als gültiger
+      // Nachweis für diesen Schritt. Deckt beide Fälle ab: passkeys.json fehlt ganz
+      // (no_passkey_registered) oder existiert, aber ohne dieses Credential (unknown_credential).
       const migrated = await registerPasskey('Soul', authHeaders)
       ok = !!migrated
       if (!ok) errorMsg.value = 'Passkey-Migration fehlgeschlagen.'

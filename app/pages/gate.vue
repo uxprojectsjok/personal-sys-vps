@@ -272,7 +272,10 @@ async function doSaveCreds() {
   try {
     const prf = passkey.hasPasskey.value
       ? await passkey.authenticatePasskey()
-      : await passkey.registerPasskey('Soul')
+      : await passkey.registerPasskey('Soul', () => ({
+          Authorization: `Bearer ${currentSoulId.value}.${cert.value}`,
+          'Content-Type': 'application/json',
+        }))
     if (!prf) {
       error.value = passkey.passkeyError.value || t('gate.error.biometric_unavailable')
       return
