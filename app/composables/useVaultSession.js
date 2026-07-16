@@ -136,7 +136,10 @@ export function useVaultSession() {
         // Key in sessionStorage sichern – überlebt Seiten-Reload innerhalb desselben Tabs
         if (vault_key) _saveKeyToSession(soulToken.value, vault_key)
       } else {
-        error.value = data.error || 'Unbekannter Fehler'
+        // message (verständlicher Text, z.B. von vault_unlock.lua's key_mismatch-
+        // Guard) bevorzugen — error ist nur der rohe Maschinen-Code ("key_mismatch")
+        // und wurde bisher 1:1 in der UI angezeigt, ohne jede Erklärung.
+        error.value = data.message || data.error || 'Unbekannter Fehler'
         vaultKey.value = ''
       }
       return data

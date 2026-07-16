@@ -185,7 +185,7 @@ const { t } = useI18n()
 onMounted(() => { if (props.headless) fetchStatus() })
 
 const { isUnlocked, expiresAt, isUnlimited, loading, error, vaultKey, timeRemaining, fetchStatus, unlock, lock } = useVaultSession()
-const { hasPasskey, isAuthenticating, passkeyError, authenticateOrRegister, deriveVaultKeyHex } = useSoulPasskey()
+const { hasPasskey, isAuthenticating, passkeyError, authenticateOrRegister, deriveVaultKeyHex, lastUsedCredentialId, pruneToCredentialId } = useSoulPasskey()
 const { soulToken } = useSoul()
 
 const open             = ref(false)
@@ -268,6 +268,14 @@ async function handleUnlock() {
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
       await unlock(selectedDuration.value, '', hexKey)
+      // Server hat gerade bestätigt, dass genau dieses Credential den richtigen
+      // Vault-Schlüssel liefert (isUnlocked wird von unlock() nur bei ok:true
+      // gesetzt) — lokale Credential-Liste darauf kürzen, sonst kann ein
+      // späterer, nicht eingeschränkter authenticatePasskey()-Aufruf auf
+      // demselben Gerät wieder eine andere, noch gespeicherte ID zugewiesen
+      // bekommen. Gleicher Fix wie in SettingsModal.vue's Vault-Key-Resync,
+      // hier bisher gefehlt — zweiter Unlock-Einstiegspunkt, derselbe Bug.
+      if (isUnlocked.value) pruneToCredentialId(lastUsedCredentialId.value)
     } finally {
       passkeyLoading.value = false
     }

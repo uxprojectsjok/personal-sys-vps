@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.16] — 2026-07-16
+
+**Fixed: the previous credential-pruning fix only covered the Settings "Vault Key" resync flow — `VaultSessionPanel.vue`'s own "Unlock Vault" button is a second, independent unlock entry point with the same stale-credential-list bug.**
+
+**Changed**
+- `app/components/VaultSessionPanel.vue`: `handleUnlock()` now prunes the local credential list after a successful passkey unlock, same as the Settings flow.
+- `useVaultSession.js`: `unlock()`'s error handling now prefers the server's human-readable `message` field over the raw `error` code — the UI was showing the literal string `key_mismatch` instead of the actual explanation.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com) immediately when testing this second unlock UI, ported here unchanged. Two independent entry points call the same unlock flow — worth remembering if a third is ever added.
+
 ## [1.0.15] — 2026-07-16
 
 **Fixed: `PUT /api/context` (the write path behind the `soul_write` MCP tool) silently wrote `sys.md` in plaintext whenever the vault was locked, instead of rejecting the write.**
