@@ -8,6 +8,39 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.1] — 2026-07-16
+
+**Fixed**
+- Health Sync / Garmin login was completely non-functional: OpenResty's worker
+  (`www-data`) has no write access to `/var/log` (`root:syslog`, mode 775), so
+  the backgrounded `garmin_login.py` process silently failed to even start.
+  The UI then always hit its 25s timeout and showed a misleading "enter MFA
+  code" prompt, even though Garmin was never actually contacted and no SMS
+  was ever sent.
+- `cryptography` was missing from the health-sync venv (`vault_crypto.py`
+  needs it to decrypt stored Garmin credentials) — added to both installers'
+  `pip install` step.
+
+**Changed**
+- Health-sync log writes repointed from `/var/log/sys_health_sync.log` to
+  `/var/log/sys/health_sync.log` — a dedicated, `www-data`-writable directory.
+  `sys-installer`'s `init.sh` now creates this directory during core install;
+  `setup_server.sh` / `install.sh` create it defensively too.
+
+**Migration required**
+- Nodes that ran Health Sync setup *before* this release won't self-heal —
+  the directory/dependency fixes only apply on (re-)run of `setup_server.sh`
+  or `install.sh`. On an already-running node, apply manually:
+  ```bash
+  mkdir -p /var/log/sys && chown www-data:www-data /var/log/sys && chmod 750 /var/log/sys
+  /opt/sys/health-sync/.venv/bin/pip install -q cryptography
+  ```
+
+**Notes**
+- Integrity fingerprint for this tag: `d3edd4a4be7bbaf0` (`node utils/project-hash.mjs`).
+
+---
+
 ## [1.0.0] — 2026-07-16
 
 First tagged release. Marks the baseline for the current two-node production split:
