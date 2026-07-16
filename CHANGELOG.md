@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.5] — 2026-07-16
+
+**Fixed: a second, distinct soul-mcp crash mechanism that survived the v1.0.4 fix.**
+
+After deploying v1.0.4's `unhandledRejection` handler, the process crashed once more a couple minutes later — a genuinely different failure: `Error: Unexpected server response: 429` from the `ws` library, meaning the WebSocket *handshake itself* was rejected (HTTP 429) before any JSON-RPC exchange even happened. `ws` emits this as a synchronous `'error'` event on the WebSocket instance, and `soul_indexer.mjs`'s `subscribeWs()` only ever listened for `'close'`, never `'error'` — Node's rule is that an emitted `'error'` event with zero listeners throws and kills the process (this is a different code path from unhandled promise rejections; `unhandledRejection` cannot catch it).
+
+**Changed**
+- `soul_indexer.mjs`: added an `'error'` listener on `_ws.websocket` (logs only — reconnect is already scheduled by the paired `'close'` event for the same failure, `ws`'s `emitErrorAndClose()` fires both; a second reconnect scheduled here would race it).
+- `soul_indexer.mjs`: the historical `eth_getLogs` backfill's archive-error path (`Block-Range-Fehler`, see v1.0.x notes) was `continue`-ing past the `SCAN_DELAY_MS` pacing sleep entirely — meaning for a block range mostly beyond the public RPC's archive window (true here: scanning from block 83.5M with current height ~90.3M, ~75,880 chunks), the backfill hammered the same public endpoint the WebSocket subscription depends on with effectively no pacing on that path. Moved the sleep to run before the `continue` too. Plausible (not proven) contributing cause of the rate-limit errors in the first place, not just a response to them — worth watching whether crash frequency drops now that this is fixed.
+
+**Notes**
+- Found by checking `journalctl -u soul-mcp` immediately after the v1.0.4 deploy specifically because the fix should have stopped restarts — instead a *different* stack trace showed up, which is what surfaced this one.
+- Deployed via `systemctl restart soul-mcp`, verified running.
+
 ## [1.0.4] — 2026-07-16
 
 **Fixed: `soul-mcp` crash-looping (systemd restart counter at 90+), taking down every MCP tool for the whole node repeatedly.**

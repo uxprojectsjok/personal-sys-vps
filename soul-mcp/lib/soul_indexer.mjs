@@ -374,6 +374,16 @@ function subscribeWs() {
       enqueue(ev); // sequentielle Queue — kein concurrent RPC-Sturm
     });
 
+    // Node throws (crashes the process) if an EventEmitter emits 'error' with
+    // zero listeners attached — a failed WS handshake (e.g. HTTP 429 rate limit
+    // from the public RPC) hits exactly that path via ws's emitErrorAndClose(),
+    // which fires 'error' immediately before 'close'. Just log here — reconnect
+    // is already scheduled by the 'close' handler below for the same failure,
+    // a second reconnect scheduled here would race it.
+    _ws.websocket.on('error', (err) => {
+      console.error('[soul-index] WebSocket-Error:', err.message);
+    });
+
     _ws.websocket.on('close', () => {
       console.log('[soul-index] WebSocket getrennt — reconnect in 15s');
       _ws = null;
@@ -499,6 +509,13 @@ async function incrementalScan() {
         if (msg.includes('Archive') || msg.includes('archive') || msg.includes('personal token')) {
           console.warn(`[soul-index] Block-Range-Fehler ${from}–${to} — Chunk übersprungen`);
           _lastBlock = to + 1;
+          // continue still hits the SCAN_DELAY_MS sleep below — this path used to
+          // `continue` past it, which for a range mostly beyond the public RPC's
+          // archive window (the common case here) meant thousands of chunks per
+          // second with zero pacing. That hammering of the same public endpoint
+          // this WebSocket subscription also depends on is the most likely actual
+          // trigger for the rate-limit errors that were crashing the process.
+          await sleep(SCAN_DELAY_MS);
           continue;
         }
         console.warn(`[soul-index] Chunk ${from}–${to} übersprungen:`, msg.slice(0, 80));
