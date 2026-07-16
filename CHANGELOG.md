@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.21] — 2026-07-16
+
+**Fixed: newly registered passkeys are indistinguishable in the OS passkey manager (e.g. Windows Hello) when a user runs multiple SYS nodes on the same device — both `rp.name` and the default username were hardcoded identically across every node, so two entries both just showed "Soul" with no way to tell them apart.**
+
+**Fixed**
+- `app/composables/useSoulPasskey.js`: `registerPasskey()` now qualifies the WebAuthn `user.name`/`displayName` with the domain (`"{username} · {hostname}"`) instead of the bare, node-agnostic default.
+
+**Notes**
+- Only affects newly created passkeys going forward — WebAuthn has no rename operation, so already-registered credentials keep showing as plain "Soul" until deleted and re-registered.
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged.
+
 ## [1.0.20] — 2026-07-16
 
 **Fixed: fingerprint verification never pruned the local credential list after a successful match, unlike the vault-unlock flows — every attempt started from an unrestricted `authenticatePasskey()` call, so an OS with several accumulated resident credentials could keep returning an unregistered one, permanently re-triggering the self-heal path (fail → register new → re-auth, up to 3 biometric prompts) instead of ever converging on the working credential.**
