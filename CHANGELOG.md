@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.6] — 2026-07-16
+
+**Fixed: fingerprint's passkey self-heal (added in v1.0.2) registered a new passkey but never proved it, so the server kept rejecting the method.**
+
+Root cause: the self-heal path (`app/pages/verify.vue`) registered a fresh passkey after a `no_passkey_registered`/`unknown_credential` failure, then reported success directly — treating "I could call `navigator.credentials.create()`" as proof. But `verify_complete.lua`'s guard only trusts `d.fingerprint_verified`, set exclusively by a real signature check in `verify_fingerprint_check.lua`. The self-heal never performed that second step, so the server silently rejected the method every time despite the client reporting success.
+
+**Changed**
+- `app/pages/verify.vue`: after a successful self-heal registration, immediately sign the current challenge with the new credential and call `/api/verify/fingerprint-check` again for real — `ok` is now decided by that actual signature check, not registration success alone.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com): `passkeys.json` had accumulated 6 distinct newly-created credentials across separate attempts, `completed_methods` never contained `"fingerprint"` despite three separate real sessions. Ported here unchanged.
+
 ## [1.0.5] — 2026-07-16
 
 **Fixed: verification score not accumulating across multiple methods completed on the same challenge outside the pre-selected multi-method flow.**
