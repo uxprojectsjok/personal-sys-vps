@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.19] — 2026-07-16
+
+**Added: `last_verified_at` tracking on passkey credentials — a prerequisite for ever safely cleaning up the accumulated stale credentials from today's earlier passkey-registration churn (see v1.0.6–v1.0.10), which `passkeys.json` had no way to distinguish from still-active ones.**
+
+Direct follow-up to a user question during live testing ("why don't we just delete the 8 orphaned server entries?") after another `key_mismatch` recurrence traced back to the same known root cause (multiple accumulated passkey credentials, the OS/browser can return any of them). The honest answer: `passkeys.json` only ever recorded `created_at` — with no signal for which entries are still in active use on a real device (this soul has credentials from both a desktop browser and Android), blindly deleting any of the 7 "orphaned-looking" ones risked permanently locking out a device that was, in fact, still using one of them.
+
+**Added**
+- `lua/verify_fingerprint_check.lua`: on every successful fingerprint verification (`match:true`), the matched credential's entry in `passkeys.json` now gets `last_verified_at` set to the current UTC timestamp (same `os.date("!%Y-%m-%dT%TZ")` format `created_at` already uses).
+
+**Notes**
+- Purely additive — no change to verification logic, matching, or the response shape.
+- Enables a future safe cleanup pass: once each real device has verified at least once post-deploy, entries with no `last_verified_at` at all are confidently stale and removable; entries that DO have one are proven still in use and must stay.
+- Scoped to fingerprint verification specifically (`verify_fingerprint_check.lua`) — the vault-unlock/rekey flow (v1.0.18) never touches `passkeys.json` at all, they're independent subsystems that happen to share the same underlying WebAuthn credentials.
+
 ## [1.0.18] — 2026-07-16
 
 **Added: an explicit, professional vault-encryption-method feature — the vault previously had no recorded encryption method and no safe way to change it after the fact, a gap surfaced by the direct question "how do I change the vault's encryption after the fact?" (there was no answer beyond raw file surgery).**
