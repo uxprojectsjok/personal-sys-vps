@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.10] — 2026-07-16
+
+**Added: Vault Key health-check + manual re-sync in Settings → Config.** Previously there was no visible status for whether the server-persisted vault key actually matches `sys.md`, and no way to fix a mismatch short of the initial setup wizard — a mismatch only surfaced as a cryptic "vault locked" error on the next `soul_read`.
+
+**Added**
+- `GET /api/vault/key-status` (`lua/vault_unlock.lua`, new route in `vhost.conf.template`): reports whether the currently persisted `vault_key_hex` actually decrypts the soul's `sys.md` — the same check now guarding `POST /api/vault/unlock`, exposed as a read-only health-check.
+- `SettingsModal.vue` → Config tab, new "Vault Key" section: shows the health-check result and a "Re-sync vault key" button reusing the existing passkey → `authenticateOrRegister()` → `deriveVaultKeyHex()` → `unlock()` flow — reachable without going through `SoulSetupWizard.vue`, previously the *only* place it was wired up.
+
+**Fixed (found while building the above):**
+- `key_matches_sys_md()`'s classic Lua `and/or` ternary breaks when the true-branch value is itself `false` — collapses to the false-branch instead, hiding a real mismatch. Replaced with an explicit `if`.
+- `key_matches_sys_md()` re-validated PKCS7 padding manually on top of `resty.aes`'s decrypt output, which already strips padding internally and returns `nil` on a bad key (same as `api_serve.lua`'s proven `try_decrypt()`). The manual re-check produced false negatives for correct keys.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), verified end-to-end against real data there. Ported here unchanged.
+
 ## [1.0.9] — 2026-07-16
 
 **Fixed: "Save with biometrics" still failed after an OS-level passkey deletion — a third independently-stale piece of local state, on top of v1.0.8.**
