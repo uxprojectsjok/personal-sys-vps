@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.8] — 2026-07-16
+
+**Fixed: v1.0.7's fingerprint self-heal still failed with `unknown_credential` — the re-verify step could authenticate with the wrong local passkey.**
+
+After v1.0.7 deployed, a retry still failed: `Failed. unknown_credential`. Checked `/var/lib/sys/souls/{soul_id}/passkeys.json` — the new credential from this exact attempt *was* registered server-side, so the failure had to be client-side credential selection.
+
+Root cause: `authenticatePasskey()` (in `useSoulPasskey.js`) builds its WebAuthn `allowCredentials` list from *every* locally saved credential ID, not just the one just created. Because passkey creation uses `residentKey: 'preferred'`, each of the repeated self-heal registrations (see v1.0.3/v1.0.7 history) created a new, identically-named ("Soul") discoverable credential in the platform keychain — by this point 7 of them for one soul. With multiple matching credentials offered, the OS/browser can satisfy the WebAuthn `get()` call with any of them, not necessarily the one that was just registered — landing back on `unknown_credential` if it picks an older, differently-registered one.
+
+**Changed**
+- `useSoulPasskey.js`: `registerPasskey()` now exposes `lastRegisteredCredentialId`. `authenticatePasskey()` gained an optional second parameter to restrict `allowCredentials` to exactly one ID instead of all saved ones.
+- `app/pages/verify.vue`: the self-heal's re-verify step now passes `lastRegisteredCredentialId.value`, forcing the browser to use precisely the credential that was just registered — no ambiguity.
+
+**Notes**
+- Doesn't clean up the stray credentials already sitting in the platform keychain/passkeys.json (7 for the soul this was found on) — harmless clutter, not fixable from the server side (they live in the browser/OS Secure Enclave, not something a server request can delete). Future self-heal runs will keep working correctly regardless, since the fix constrains selection at the point of use, not at cleanup.
+- Rebuilt + redeployed (`npm run generate` + `killMetas.mjs` + `rsync --delete`).
+
 ## [1.0.7] — 2026-07-16
 
 **Fixed: fingerprint's passkey self-heal (added in v1.0.3) registered a new passkey but never proved it, so the server kept rejecting the method — root cause of the "Score 1 instead of 2" reports even after v1.0.3 and v1.0.6.**

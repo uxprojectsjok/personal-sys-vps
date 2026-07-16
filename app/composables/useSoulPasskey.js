@@ -122,6 +122,7 @@ export function useSoulPasskey() {
   const hasPasskey     = ref(getSavedCredentialIds().length > 0)
   const prfOutput      = ref(null)  // ArrayBuffer — temporär im Memory, nie persistiert
   const lastAssertion  = ref(null)  // { credentialId, clientDataJson, authenticatorData, signature } — nur bei serverChallengeB64url gesetzt
+  const lastRegisteredCredentialId = ref(null)  // base64url — vom letzten registerPasskey()-Aufruf, für gezieltes Re-Auth direkt danach
 
   /**
    * Passkey erstellen (einmalig, beim ersten Verschlüsseln).
@@ -174,6 +175,7 @@ export function useSoulPasskey() {
       const credId = bufferToBase64url(credential.rawId)
       saveCredentialId(credId)
       hasPasskey.value = true
+      lastRegisteredCredentialId.value = credId
 
       // Public Key server-seitig registrieren — Voraussetzung dafür, dass
       // /verify später eine echte Signatur prüfen kann statt dem Client zu
@@ -231,10 +233,18 @@ export function useSoulPasskey() {
    *   Nonce wäre für den Server nicht verifizierbar/anti-replay-sicher). Ohne Angabe wird
    *   wie bisher ein rein clientseitiges Zufalls-Nonce verwendet (Vault-Entschlüsseln
    *   braucht keine Serverprüfung, siehe Kommentar am Dateianfang).
+   * @param {string} [restrictToCredentialId]  base64url — wenn gesetzt, wird NUR dieses
+   *   eine Credential als allowCredentials angeboten statt aller lokal gespeicherten.
+   *   Wichtig direkt nach registerPasskey(): residentKey:'preferred' legt bei jedem
+   *   create()-Aufruf einen neuen, gleichnamigen ("Soul") Eintrag im Keychain/Password-
+   *   Manager an — ohne diese Einschränkung kann das Betriebssystem beim folgenden
+   *   get()-Aufruf einen ANDEREN, älteren lokalen Passkey wählen als den gerade neu
+   *   registrierten, was serverseitig wieder als unknown_credential scheitert, obwohl
+   *   die Registrierung selbst geklappt hat.
    * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler — die dazugehörige
    *   rohe Signatur (falls serverChallengeB64url gesetzt war) steht danach in lastAssertion.value.
    */
-  async function authenticatePasskey(serverChallengeB64url = null) {
+  async function authenticatePasskey(serverChallengeB64url = null, restrictToCredentialId = null) {
     isAuthenticating.value = true
     passkeyError.value     = null
     lastAssertion.value    = null
@@ -242,7 +252,7 @@ export function useSoulPasskey() {
     try {
       const challenge   = serverChallengeB64url ? base64ToBuffer(serverChallengeB64url) : crypto.getRandomValues(new Uint8Array(32))
       const prfSalt     = strToBuffer(PRF_SALT_STRING)
-      const savedIds    = getSavedCredentialIds()
+      const savedIds    = restrictToCredentialId ? [restrictToCredentialId] : getSavedCredentialIds()
       const allowCreds  = savedIds.map(id => ({
         type:       'public-key',
         id:         base64ToBuffer(id),
@@ -354,6 +364,7 @@ export function useSoulPasskey() {
     passkeyError,
     hasPasskey,
     lastAssertion,
+    lastRegisteredCredentialId,
     // Methoden
     registerPasskey,
     authenticatePasskey,
