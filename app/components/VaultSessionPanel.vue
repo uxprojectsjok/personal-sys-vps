@@ -185,7 +185,7 @@ const { t } = useI18n()
 onMounted(() => { if (props.headless) fetchStatus() })
 
 const { isUnlocked, expiresAt, isUnlimited, loading, error, vaultKey, timeRemaining, fetchStatus, unlock, lock } = useVaultSession()
-const { hasPasskey, isAuthenticating, passkeyError, authenticatePasskey, registerPasskey, deriveVaultKeyHex } = useSoulPasskey()
+const { hasPasskey, isAuthenticating, passkeyError, authenticateOrRegister, deriveVaultKeyHex } = useSoulPasskey()
 const { soulToken } = useSoul()
 
 const open             = ref(false)
@@ -264,7 +264,7 @@ async function handleUnlock() {
   if (encryptMode.value === 'passkey') {
     passkeyLoading.value = true
     try {
-      const prf = hasPasskey.value ? await authenticatePasskey() : await registerPasskey()
+      const prf = await authenticateOrRegister()
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
       await unlock(selectedDuration.value, '', hexKey)

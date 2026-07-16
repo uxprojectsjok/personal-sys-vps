@@ -8,6 +8,21 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.10] — 2026-07-16
+
+**Fixed: "Save with biometrics" still failed with "Biometrik-Bestätigung abgelehnt oder abgebrochen." after an OS-level passkey deletion — a third independently-stale piece of local state, on top of the two fixed in v1.0.9.**
+
+v1.0.9 fixed `hasCreds` (the encrypted password+cert blob) getting stuck stale. This is a *different* stale flag: `useSoulPasskey.js`'s own `hasPasskey` ref, backed by a separate `localStorage` key (`sys_passkey_credential_ids`) listing locally known credential IDs. Deleting a passkey via the OS/Google Password Manager doesn't touch this list either — so `hasPasskey.value` stayed `true`, and every call site using the `hasPasskey.value ? authenticatePasskey() : registerPasskey()` pattern (`gate.vue`'s `doSaveCreds()`, `VaultSessionPanel.vue`, and the composable's own `getEncryptKey()`) kept trying to *authenticate* against a deleted credential instead of registering a new one — failing every time with no path forward.
+
+**Changed**
+- `useSoulPasskey.js`: new `authenticateOrRegister(username, getAuthHeaders)` — tries authenticate first if `hasPasskey` is true, but on failure clears the stale local credential-ID list and falls back to registration, instead of just giving up. `getEncryptKey()` now uses it internally too.
+- `gate.vue` (`doSaveCreds`), `VaultSessionPanel.vue`: switched from the raw `hasPasskey.value ? authenticate : register` pattern to `authenticateOrRegister()`.
+
+**Notes**
+- Same underlying WebAuthn ambiguity as v1.0.9 (can't distinguish "declined" from "no matching credential") — same accepted tradeoff: worst case an accidental decline costs one redo, but a genuinely deleted passkey no longer leaves the user stuck.
+- Audited the rest of `app/` for the same `hasPasskey.value ?` pattern — these were the only two call sites left; both fixed.
+- Rebuilt + redeployed.
+
 ## [1.0.9] — 2026-07-16
 
 **Fixed: deleting a passkey outside the app (OS/Google Password Manager) permanently stopped the app from ever offering to register a new one.**

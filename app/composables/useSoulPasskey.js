@@ -113,6 +113,10 @@ function saveCredentialId(id) {
   }
 }
 
+function clearSavedCredentialIds() {
+  try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+}
+
 // ── Composable ─────────────────────────────────────────────────────────────────
 
 export function useSoulPasskey() {
@@ -312,16 +316,36 @@ export function useSoulPasskey() {
   }
 
   /**
+   * Nutzt einen vorhandenen Passkey, fällt aber automatisch auf Neu-Registrierung
+   * zurück, wenn hasPasskey zwar true ist (lokale Credential-ID-Liste in
+   * localStorage), das Credential aber tatsächlich nicht mehr existiert — z.B.
+   * außerhalb der App im OS/Google-Passwortmanager gelöscht. authenticatePasskey()
+   * schlägt dann fehl (WebAuthn kann das nicht von einer echten Ablehnung
+   * unterscheiden, siehe Kommentar dort), und ohne diesen Fallback bliebe
+   * hasPasskey dauerhaft fälschlich true — jeder weitere Versuch würde wieder
+   * versuchen zu authentifizieren statt neu zu registrieren, ohne je einen
+   * Biometrie-Prompt für ein neues Credential zu zeigen.
+   * @param {string} username
+   * @param {() => Record<string,string>} [getAuthHeaders]
+   * @returns {Promise<ArrayBuffer|null>}
+   */
+  async function authenticateOrRegister(username = 'Soul', getAuthHeaders = null) {
+    if (hasPasskey.value) {
+      const prf = await authenticatePasskey()
+      if (prf) return prf
+    }
+    clearSavedCredentialIds()
+    hasPasskey.value = false
+    return registerPasskey(username, getAuthHeaders)
+  }
+
+  /**
    * AES-256-GCM-Key für Verschlüsselung.
    * Erstellt Passkey wenn noch keiner vorhanden, sonst authenticate.
    */
   async function getEncryptKey(username) {
     let prf = prfOutput.value
-    if (!prf) {
-      prf = hasPasskey.value
-        ? await authenticatePasskey()
-        : await registerPasskey(username)
-    }
+    if (!prf) prf = await authenticateOrRegister(username)
     if (!prf) return null
     return deriveKeyFromPRF(prf, 'encrypt')
   }
@@ -368,6 +392,7 @@ export function useSoulPasskey() {
     // Methoden
     registerPasskey,
     authenticatePasskey,
+    authenticateOrRegister,
     getEncryptKey,
     getDecryptKey,
     deriveVaultKeyHex,

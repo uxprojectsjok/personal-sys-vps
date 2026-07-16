@@ -288,12 +288,14 @@ async function doSaveCreds() {
   loading.value = true
   error.value   = ''
   try {
-    const prf = passkey.hasPasskey.value
-      ? await passkey.authenticatePasskey()
-      : await passkey.registerPasskey('Soul', () => ({
-          Authorization: `Bearer ${currentSoulId.value}.${cert.value}`,
-          'Content-Type': 'application/json',
-        }))
+    // authenticateOrRegister self-heals a stale hasPasskey (localStorage still
+    // lists a credential ID that was deleted outside the app, e.g. via the OS/
+    // Google Password Manager) by falling back to registration instead of
+    // failing forever on an authenticate attempt with nothing to authenticate.
+    const prf = await passkey.authenticateOrRegister('Soul', () => ({
+      Authorization: `Bearer ${currentSoulId.value}.${cert.value}`,
+      'Content-Type': 'application/json',
+    }))
     if (!prf) {
       error.value = passkey.passkeyError.value || t('gate.error.biometric_unavailable')
       return
