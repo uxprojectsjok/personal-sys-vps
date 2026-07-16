@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.1] — 2026-07-16
+
+Merged the substantive fix from `personal-sys-vps` `v1.0.1` (health-sync log-path permissions). Everything else in that public tag's diff was either doc-only (public README/CHANGELOG, not applicable here) or content this repo intentionally lacks the inverse of — i.e. legal pages/consent banner/installer scripts that only exist *here*, correctly absent from public.
+
+**Fixed**
+- `fix(health-sync): www-data can't write to /var/log, Garmin login never starts` — cherry-picked `dfbe218` from `personal-sys-vps`. Log path moved from `/var/log/sys_health_sync.log` (root-owned `/var/log`, unwritable by `www-data`) to `/var/log/sys/health_sync.log` (dedicated `www-data`-owned directory, `750`). Touches `health-sync/install.sh`, `health-sync/setup_server.sh`, `lua/health_login.lua`, `lua/health_sync_status.lua`, `lua/health_sync_trigger.lua`, `docs/spec/health-sync-troubleshooting.md`.
+- Live server: `/var/log/sys` existed but was `root:root 755` (pre-dating this fix) — corrected to `www-data:www-data 750` to match. The three changed `lua/*.lua` files deployed to `/etc/openresty/lua/` and `openresty -s reload` run.
+
+**Notes**
+- Merge method: not a full `git merge` — merge-base analysis (`git diff HEAD v1.0.1 --stat`) showed the two repos' histories have independently-applied equivalent commits since the common ancestor (different SHAs, same content) for most shared work, which would have produced a wall of noise conflicts on a real merge. Cherry-picked only the one commit representing genuinely new content instead. Kept as the documented approach going forward when the tree-diff is small; revisit with a real merge if a future public update is large/tangled enough that cherry-picking individual commits stops being tractable.
+- `health-sync/.venv` does not exist yet on this VPS — Garmin sync was never installed here. The `cryptography` dependency addition and log-dir creation in `install.sh`/`setup_server.sh` will apply next time that installer is actually run; not run proactively here since it's interactive (needs Garmin credentials/soul selection).
+- No frontend (`app/`) changes in this update — no `npm run generate` needed, lua deploy + reload was sufficient.
+
 ## [1.0.0] — 2026-07-16
 
 First tagged release of the private layer. Baseline for the current production instance at kro.uxprojects-jok.com.
