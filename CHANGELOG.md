@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.16] — 2026-07-16
+
+**Fixed: `PUT /api/context` (the write path behind the `soul_write` MCP tool) silently wrote `sys.md` in plaintext whenever the vault was locked, instead of rejecting the write — the most severe finding in this whole vault-encryption investigation, since `sys.md` is the actual core identity content.**
+
+Found live: after re-encrypting `sys.md` and restoring the vault key earlier today, a later `soul_write` call (made by Claude during manual test runs, while the vault happened to be locked at that moment) silently overwrote `sys.md` back to plaintext — no error surfaced anywhere, `soul_write` just reported success as normal.
+
+Root cause, in `lua/api_context.lua`'s `PUT` handler: the code branches on `effective_mode == "ciphered" and vkh` (a key is actually available) to decide whether to encrypt. The `else` branch's own comment said *"Open mode: Klartext nur wenn explizit cipher_mode=open gesetzt"* (plaintext only if cipher_mode is explicitly "open") — but the code never actually checked that. Any time `cipher_mode` was `"ciphered"` *but no key happened to be available* (vault locked), execution fell into the same plaintext branch the comment claimed was reserved for explicit open-mode operation.
+
+**Changed**
+- `lua/api_context.lua`: split the `else` branch into two — `cipher_mode == "ciphered"` with no key now returns `423 vault_locked` and refuses the write entirely, instead of silently downgrading to plaintext. Plaintext writes now only happen when `cipher_mode` is genuinely `"open"`, matching what the pre-existing comment always claimed.
+
+**Notes**
+- Recovered by re-encrypting the current (unchanged since the last recovery) plaintext content with the known-correct key and restoring `vault_key_hex` — verified `all_ok:true`, `checked:9` afterward.
+- This is arguably the most important fix of today's whole vault-encryption thread: everything before this (v1.0.11/12/14/15) protected *secondary* files (context files, media) from key mismatches, but this bug meant the primary soul content itself could silently lose its encryption on every single write made while locked — an ongoing, repeatable data-exposure path, not a one-time artifact from the passkey churn.
+- Did not audit every other write endpoint in the codebase for the same "comment says X, code does Y" pattern — worth a dedicated sweep if there's appetite, since this exact class of bug (an author's own comment describing intent that the code silently drifted away from) evidently isn't unique to this one file.
+
 ## [1.0.15] — 2026-07-16
 
 **Fixed: "Vault Key: Re-sync" reported `key_mismatch` on the *same* device that had already worked correctly — a residual instance of the v1.0.8 stale-credential-list problem, this time on the normal (non-self-heal) authentication path.**
