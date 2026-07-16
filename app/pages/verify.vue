@@ -757,13 +757,41 @@ async function doFingerprint() {
     if (!ok && (d.reason === 'unknown_credential' || d.reason === 'no_passkey_registered')) {
       // Passkey wurde vor dem Sicherheitsfix erstellt, oder über gate.vue's initialem
       // Setup (das getAuthHeaders nicht übergibt) — Public Key nie serverseitig
-      // registriert. Jetzt neu registrieren; die dabei erzwungene Biometrik-Bestätigung
-      // (navigator.credentials.create(), userVerification required) zählt als gültiger
-      // Nachweis für diesen Schritt. Deckt beide Fälle ab: passkeys.json fehlt ganz
-      // (no_passkey_registered) oder existiert, aber ohne dieses Credential (unknown_credential).
+      // registriert. Jetzt neu registrieren — ABER die erzwungene Biometrik-Bestätigung
+      // beim create() allein reicht dem Server nicht als Beweis: d.fingerprint_verified
+      // wird ausschließlich von einer erfolgreichen Signaturprüfung in
+      // verify_fingerprint_check.lua gesetzt. Ohne einen zweiten, echten Sign+Verify-
+      // Schritt mit dem neuen Credential meldete submitResult(true) zwar "verified" an
+      // den Client, der Server wies die Methode aber wieder ab (fingerprint_verified
+      // blieb false) — sichtbar daran, dass "fingerprint" nie in completed_methods
+      // landete, obwohl die Migration selbst jedes Mal erfolgreich war (passkeys.json
+      // sammelte einen neuen Eintrag pro Versuch, statt den einen wiederzuverwenden).
       const migrated = await registerPasskey('Soul', authHeaders)
-      ok = !!migrated
-      if (!ok) errorMsg.value = 'Passkey-Migration fehlgeschlagen.'
+      if (migrated) {
+        await authenticatePasskey(webauthnChallenge.value || undefined)
+        const newAssertion = lastAssertion.value
+        if (newAssertion) {
+          const r2 = await fetch('/api/verify/fingerprint-check', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({
+              challenge_id:       challengeId,
+              credential_id:      newAssertion.credentialId,
+              client_data_json:   newAssertion.clientDataJson,
+              authenticator_data: newAssertion.authenticatorData,
+              signature:          newAssertion.signature,
+            }),
+          })
+          const d2 = await r2.json()
+          ok = d2.match === true
+          if (!ok) errorMsg.value = d2.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d2.reason || 'Verifikation fehlgeschlagen.')
+        } else {
+          ok = false
+          errorMsg.value = 'Biometrische Verifikation abgelehnt.'
+        }
+      } else {
+        ok = false
+        errorMsg.value = 'Passkey-Migration fehlgeschlagen.'
+      }
     } else if (!ok) {
       errorMsg.value = d.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d.reason || 'Verifikation fehlgeschlagen.')
     }

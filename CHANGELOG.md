@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.7] — 2026-07-16
+
+**Fixed: fingerprint's passkey self-heal (added in v1.0.3) registered a new passkey but never proved it, so the server kept rejecting the method — root cause of the "Score 1 instead of 2" reports even after v1.0.3 and v1.0.6.**
+
+Checked the actual challenge files after a fresh multi-method attempt (`required_methods:["fingerprint","face"]`): `completed_methods` only ever contained `"face"`, never `"fingerprint"`, across three separate sessions today. `passkeys.json` had accumulated **six** distinct newly-created credentials — one per attempt — instead of reusing one, confirming the self-heal's `registerPasskey()` call was succeeding every time but not actually resolving anything.
+
+Root cause: the self-heal path (`app/pages/verify.vue`, added for the v1.0.3 fix) registered a fresh passkey after a `no_passkey_registered`/`unknown_credential` failure, then called `submitResult(true)` directly — treating "I could call `navigator.credentials.create()`" as proof. But `verify_complete.lua`'s guard (`if method=="fingerprint" and verified and d.fingerprint_verified ~= true then verified=false`) only trusts `d.fingerprint_verified`, which is *exclusively* set by a real signature check in `verify_fingerprint_check.lua`. The self-heal never performed that second step, so the server silently rejected the method every time despite the client reporting success — v1.0.3's fix closed the registration gap but didn't close the loop.
+
+**Changed**
+- `app/pages/verify.vue`: after a successful self-heal registration, immediately sign the current challenge with the new credential (`authenticatePasskey(webauthnChallenge)`) and call `/api/verify/fingerprint-check` again for real — `ok` is now decided by that actual signature check, not by registration success alone. Costs one extra biometric prompt, only on this one-time migration path (subsequent normal attempts succeed on the first try once the credential is registered).
+
+**Notes**
+- v1.0.6 (score accumulation) was a real, independent fix and stays correct — it just wasn't the whole story, since fingerprint was never reaching `completed_methods` at all in these sessions to accumulate in the first place.
+- Left the 6 stray registered credentials in `passkeys.json` as-is — harmless (multiple passkeys per soul is supported by design, for multiple devices), just untidy leftover from the bug.
+- Rebuilt + redeployed (`npm run generate` + `killMetas.mjs` + `rsync --delete` to `/var/www/kro.uxprojects-jok.com`).
+
 ## [1.0.6] — 2026-07-16
 
 **Fixed: verification score not accumulating across multiple methods completed on the same challenge outside the pre-selected multi-method flow.**
