@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.5] — 2026-07-16
+
+**Fixed: verification score not accumulating across multiple methods completed on the same challenge outside the pre-selected multi-method flow.**
+
+`verify_complete.lua` has two flows: a multi-method flow (used when the challenge was created with `required_methods`, or the frontend sent `selected_methods` with >1 entries) that correctly accumulates `completed_methods`/`score`, and a single-method flow for the simple case. The single-method flow both (a) rejected any further `/complete` call once the challenge reached `status="verified"` (`409 already_completed`), and — more importantly — (b) when it did run, overwrote `d.completed_methods`/`d.score` with just the current method instead of adding to what was already there. A user completing fingerprint, then separately completing face on the same challenge would see the UI's client-side method list correctly show both as done, but the server-reported score reset to the last method's weight alone.
+
+**Changed**
+- `lua/verify_complete.lua`: single-method flow now accumulates onto `completed_methods`/`score` like the multi-method flow does, and no longer hard-rejects once `status="verified"` — each additional, individually-proven method (duplicates still rejected by the existing check) adds to the running total instead of replacing it.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com) via a user report showing "Fingerprint +1 / Facial recognition +1 / ... Score 1". Ported here unchanged.
+- Does not merge scores across genuinely separate challenge_id's — only fixes accumulation within one challenge's lifetime.
+
 ## [1.0.4] — 2026-07-16
 
 **Fixed: a second, distinct soul-mcp crash mechanism that survived the v1.0.3 fix.**

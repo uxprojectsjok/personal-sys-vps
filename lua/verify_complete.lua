@@ -199,19 +199,33 @@ if has_multi then
   -- Fehlgeschlagen: nichts speichern, Phase bleibt pending → retry möglich
 
 else
-  -- ── Einzel-Methoden-Flow (Backward Compat) ──────────────────────────────────
-  if d.status ~= "pending" then
-    ngx.status = 409
-    ngx.say('{"error":"already_completed","status":' .. cjson.encode(d.status) .. '}')
-    return
+  -- ── Einzel-Methoden-Flow ─────────────────────────────────────────────────
+  -- War früher "einmalig, dann für immer gesperrt" (status~=pending → 409),
+  -- und hat bei jeder Methode completed_methods/score komplett überschrieben
+  -- statt akkumuliert. Bug: eine zweite, separat abgeschlossene Methode (z.B.
+  -- Face nach Fingerprint, ohne dass beide vorab als required_methods gewählt
+  -- wurden) hat den Score der ersten Methode verloren — sichtbar am UI, das
+  -- clientseitig beide Methoden als erledigt zeigte, aber der Server nur den
+  -- Score der zuletzt eingereichten Methode meldete. Jetzt: jede zusätzlich
+  -- verifizierte, noch nicht abgeschlossene Methode akkumuliert auf
+  -- completed_methods/score (Duplikate sind durch die Prüfung weiter oben
+  -- schon ausgeschlossen) — konsistent mit dem Multi-Method-Flow oben und dem
+  -- Datei-Kommentar "Score = #completed_methods".
+  if verified then
+    table.insert(completed, method)
+    d.completed_methods = completed
+    d.score       = totalScore(d, completed)
+    d.status      = "verified"
+    d.verified_at = verified_at
+    d.method      = method
+    d.is_2fa      = d.is_2fa or is_2fa
+    mark_token_verified(soul_id, d.triggering_token)
+  elseif d.status == "pending" then
+    d.status      = "failed"
+    d.verified_at = verified_at
+    d.method      = method
+    d.is_2fa      = is_2fa
   end
-  d.status      = verified and "verified" or "failed"
-  d.verified_at = verified_at
-  d.method      = method
-  d.is_2fa      = is_2fa
-  d.score       = totalScore(d, verified and { method } or {})
-  d.completed_methods = verified and { method } or cjson.empty_array
-  if verified then mark_token_verified(soul_id, d.triggering_token) end
 end
 
 -- Kontinuitäts-Kette: jede erfolgreiche Verifikation wird als eigenes Glied
