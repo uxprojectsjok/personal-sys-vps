@@ -316,8 +316,22 @@ elseif type(incoming.soul_content) == "string" and #incoming.soul_content > 0 th
       ngx.say('{"error":"encryption_failed","message":"Soul konnte nicht verschlüsselt werden. Vault erneut entsperren."}')
       return
     end
+  elseif effective_mode == "ciphered" then
+    -- cipher_mode ist "ciphered", aber kein Schlüssel verfügbar (Vault gesperrt,
+    -- weder api_context.json noch aktive Session haben einen brauchbaren
+    -- vault_key_hex). Der Kommentar hier sagte schon immer "Klartext nur wenn
+    -- explizit cipher_mode=open gesetzt" — der Code hat das aber nie geprüft
+    -- und ist bei fehlendem Schlüssel einfach in den Klartext-Zweig gefallen.
+    -- Gefunden, weil genau das während eines Tests passiert ist: ein
+    -- soul_write bei gesperrtem Vault hat sys.md still und ohne Fehlermeldung
+    -- unverschlüsselt überschrieben. Jetzt: Schreiben ablehnen statt sys.md
+    -- unbemerkt unverschlüsselt zu machen.
+    ngx.status = 423
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"vault_locked","message":"Vault ist gesperrt — kein Schlüssel verfügbar, um sys.md verschlüsselt zu speichern. Bitte Vault zuerst entsperren."}')
+    return
   else
-    -- Open mode: Klartext nur wenn explizit cipher_mode="open" gesetzt
+    -- Open mode: cipher_mode explizit "open" — Klartext ist hier gewollt.
     local sf = io.open(base_dir .. "/sys.md", "w")
     if sf then sf:write(final_content); sf:close() end
     save_soul_version(incoming.soul_content)

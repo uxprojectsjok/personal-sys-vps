@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.15] — 2026-07-16
+
+**Fixed: `PUT /api/context` (the write path behind the `soul_write` MCP tool) silently wrote `sys.md` in plaintext whenever the vault was locked, instead of rejecting the write.**
+
+Root cause, in `lua/api_context.lua`'s `PUT` handler: the `else` branch's own comment said *"Open mode: Klartext nur wenn explizit cipher_mode=open gesetzt"* (plaintext only if cipher_mode is explicitly "open") — but the code never actually checked that. Any time `cipher_mode` was `"ciphered"` but no key happened to be available (vault locked), execution fell into the same plaintext branch the comment claimed was reserved for explicit open-mode operation.
+
+**Changed**
+- `lua/api_context.lua`: split the `else` branch — `cipher_mode == "ciphered"` with no key now returns `423 vault_locked` and refuses the write, instead of silently downgrading to plaintext.
+
+**Notes**
+- Found live on `personal-sys-vps-private` (kro.uxprojects-jok.com) — a `soul_write` call made while the vault happened to be locked silently overwrote `sys.md` back to plaintext, no error surfaced. Recovered there by re-encrypting the current content and restoring `vault_key_hex`. Ported here unchanged.
+- Arguably the most important fix of the whole vault-encryption thread this session — earlier fixes protected secondary files from key mismatches, but this bug meant the primary soul content itself could silently lose its encryption on every write made while locked, an ongoing exposure path rather than a one-time artifact.
+
 ## [1.0.14] — 2026-07-16
 
 **Fixed: "Vault Key: Re-sync" could report `key_mismatch` on the same device that had already worked correctly — a residual instance of the stale-credential-list problem, this time on the normal (non-self-heal) authentication path.**
