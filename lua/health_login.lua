@@ -32,14 +32,15 @@ local VENV        = "/opt/sys/health-sync/.venv/bin/python3"
 local SCRIPT      = "/opt/sys/health-sync/garmin_login.py"
 local status_file = "/tmp/garmin_login_status_" .. soul_id
 local mfa_file    = "/tmp/garmin_mfa_code_" .. soul_id
+local log_file    = "/var/log/sys/health_sync.log"
 
 -- Alte Status-/MFA-Dateien bereinigen
 os.execute("rm -f " .. status_file .. " " .. mfa_file)
 
 -- Login-Prozess im Hintergrund starten
 local cmd = string.format(
-  "/bin/sh -c '%s %s --soul-id %s --status-file %s --mfa-file %s >> /var/log/sys_health_sync.log 2>&1 &'",
-  VENV, SCRIPT, soul_id, status_file, mfa_file
+  "/bin/sh -c '%s %s --soul-id %s --status-file %s --mfa-file %s >> %s 2>&1 &'",
+  VENV, SCRIPT, soul_id, status_file, mfa_file, log_file
 )
 os.execute(cmd)
 

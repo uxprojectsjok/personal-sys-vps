@@ -13,7 +13,7 @@ end
 
 local VENV   = "/opt/sys/health-sync/.venv/bin/python3"
 local SCRIPT = "/opt/sys/health-sync/health_sync.py"
-local LOG    = "/var/log/sys_health_sync.log"
+local LOG    = "/var/log/sys/health_sync.log"
 
 -- Prüfen ob Config für diese Soul existiert
 local config_path = "/var/lib/sys/config/health_sync_" .. soul_id .. ".json"

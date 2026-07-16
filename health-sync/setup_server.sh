@@ -12,16 +12,22 @@ apt-get install -y -qq python3-venv 2>/dev/null || true
 
 # Venv anlegen / aktualisieren
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install -q --upgrade pip garminconnect
+"$VENV/bin/pip" install -q --upgrade pip garminconnect cryptography
 
 # Venv für www-data beschreibbar machen (pip install ohne sudo)
 chown -R www-data:www-data "$VENV"
+
+# Log-Verzeichnis für www-data beschreibbar machen — /var/log selbst gehört
+# root:syslog (775), www-data kann dort keine neue Datei anlegen
+mkdir -p /var/log/sys
+chown www-data:www-data /var/log/sys
+chmod 750 /var/log/sys
 
 # System-Cron anlegen (läuft als www-data, jeden Montag 06:00)
 cat > "$CRON_FILE" <<'EOF'
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 6 * * 1 www-data /opt/sys/health-sync/.venv/bin/python3 /opt/sys/health-sync/health_sync.py >> /var/log/sys_health_sync.log 2>&1
+0 6 * * 1 www-data /opt/sys/health-sync/.venv/bin/python3 /opt/sys/health-sync/health_sync.py >> /var/log/sys/health_sync.log 2>&1
 EOF
 chmod 644 "$CRON_FILE"
 
