@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.2] — 2026-07-16
+
+Caught up `init.sh` with `sys-installer` (`8d7f801`) — the same health-sync log-path fix from v1.0.1, but the `init.sh` side of it (creates `/var/log/sys` www-data-writable at install time) hadn't been ported yet since it lives in a separate repo (`sys-installer`, distributed alongside `personal-sys-vps-private`'s `init.sh`/`reset.sh`/`recover-password.sh`/`deinstall.sh`, not merged from `personal-sys-vps`).
+
+**Fixed**
+- `init.sh`: added the `/var/log/sys` mkdir/chown/chmod block (matches `health-sync/setup_server.sh`, `health-sync/install.sh` — already up to date since those came in via the v1.0.1 merge from `personal-sys-vps`).
+
+**Notes**
+- Source of truth for this diff was `/var/www/SaveYourSoul_private_installer` (local `sys-installer` checkout, fast-forwarded to `origin/main` first) diffed file-by-file against `/opt/sys/init.sh` etc. — not a git merge, since `sys-installer` and `personal-sys-vps-private` share no git history at all (separate repos with separate purposes).
+- `reset.sh`, `recover-password.sh`, `deinstall.sh`, `health-sync/install.sh`, `health-sync/setup_server.sh`: byte-identical to `sys-installer`, no changes needed.
+- One intentional, permanent diff preserved in `init.sh` (lines ~105-108): the legal-pages notice text. `sys-installer`/public says "ships no legal notice"; this repo's `init.sh` correctly says "ships /impressum, /datenschutz, /lizenz... populated with the author's own details" — this repo actually carries those pages, the public template doesn't. Never sync this block from `sys-installer`.
+- No live-server action needed beyond the repo update — `/var/log/sys` on this VPS was already corrected manually during the v1.0.1 work; this change only affects future fresh `init.sh` runs (new installs, `deinstall.sh` + reinstall).
+
 ## [1.0.1] — 2026-07-16
 
 Merged the substantive fix from `personal-sys-vps` `v1.0.1` (health-sync log-path permissions). Everything else in that public tag's diff was either doc-only (public README/CHANGELOG, not applicable here) or content this repo intentionally lacks the inverse of — i.e. legal pages/consent banner/installer scripts that only exist *here*, correctly absent from public.

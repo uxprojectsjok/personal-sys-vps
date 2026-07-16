@@ -316,6 +316,13 @@ chmod 750 /var/lib/sys/souls
 chown -R www-data:www-data /var/www/"$DOMAIN"
 chmod -R 755 /var/www/"$DOMAIN"
 
+# /var/log itself is root:syslog (775) — www-data can't create files there.
+# Dedicated, www-data-writable log dir for on-demand web-triggered scripts
+# (health sync, security audit log).
+mkdir -p /var/log/sys
+chown www-data:www-data /var/log/sys
+chmod 750 /var/log/sys
+
 # Record source dir so agent runner can locate it without hardcoded paths
 echo "$SCRIPT_DIR" > /var/lib/sys/sys_dir
 chmod 644 /var/lib/sys/sys_dir
