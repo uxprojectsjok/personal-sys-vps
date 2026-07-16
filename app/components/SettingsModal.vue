@@ -375,18 +375,35 @@
                 <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.vault_key_title') }}</div>
                 <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.vault_key_desc') }}</p>
 
-                <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);display:flex;align-items:center;gap:8px">
-                  <template v-if="!vaultKeyStatus.is_encrypted">
-                    <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_not_encrypted') }}</span>
-                  </template>
-                  <template v-else-if="vaultKeyStatus.matches">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-ok);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                    <span style="color:var(--sys-ok);font-size:12px">{{ $t('settings.vault_key_ok') }}</span>
-                  </template>
-                  <template v-else>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-err);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                    <span style="color:var(--sys-err);font-size:12px">{{ $t('settings.vault_key_mismatch') }}</span>
-                  </template>
+                <div v-if="vaultKeyStatus?.vault_key_hex" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                  <div style="display:flex;align-items:flex-start;gap:8px">
+                    <code style="flex:1;font-family:var(--sys-mono);font-size:13px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ vaultKeyStatus.vault_key_hex }}</code>
+                    <button @click="copyVaultKey" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="vaultKeyCopied ? 'color:var(--accent)' : 'color:var(--fg-4)'">
+                        <path v-if="vaultKeyCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                        <path v-else stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <template v-if="vaultKeyStatus.checked === 0">
+                      <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_not_encrypted') }}</span>
+                    </template>
+                    <template v-else-if="vaultKeyStatus.all_ok">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-ok);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                      <span style="color:var(--sys-ok);font-size:12px">{{ $t('settings.vault_key_ok', { n: vaultKeyStatus.checked }) }}</span>
+                    </template>
+                    <template v-else>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-err);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                      <span style="color:var(--sys-err);font-size:12px">{{ $t('settings.vault_key_mismatch', { n: vaultKeyStatus.mismatched.length, total: vaultKeyStatus.checked }) }}</span>
+                    </template>
+                  </div>
+                  <ul v-if="!vaultKeyStatus.all_ok && vaultKeyStatus.mismatched?.length" style="margin:8px 0 0;padding-left:18px">
+                    <li v-for="f in vaultKeyStatus.mismatched" :key="f" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">{{ f }}</li>
+                  </ul>
                 </div>
 
                 <button
@@ -1596,10 +1613,18 @@ async function handleRotateCert() {
 // (getrennt vom Soul-Cert oben — siehe vault_unlock.lua key_matches_sys_md()).
 // Existiert, weil ein Key-Mismatch bisher erst beim nächsten fehlschlagenden
 // soul_read auffiel, ohne sichtbaren Status oder erreichbaren Reparatur-Weg.
-const vaultKeyStatus = ref(null)   // { is_encrypted, has_key, matches }
+const vaultKeyStatus = ref(null)   // { is_encrypted, has_key, matches, vault_key_hex }
 const vaultKeyBusy   = ref(false)
 const vaultKeyError  = ref('')
 const vaultKeySynced = ref(false)
+const vaultKeyCopied = ref(false)
+
+function copyVaultKey() {
+  if (!vaultKeyStatus.value?.vault_key_hex) return
+  navigator.clipboard.writeText(vaultKeyStatus.value.vault_key_hex).catch(() => {})
+  vaultKeyCopied.value = true
+  setTimeout(() => { vaultKeyCopied.value = false }, 2000)
+}
 
 async function fetchVaultKeyStatus() {
   if (!soulToken.value || soulToken.value === 'anonymous') return

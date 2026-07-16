@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.11] — 2026-07-16
+
+**Fixed: v1.0.10's vault-key health-check/guard only covered `sys.md` — the real exposure was much broader.**
+
+Scanning a real soul's vault against its current key found 3 more mismatched files the sys.md-only check had missed: a profile image, a voice recording, and `activity.md` (a write-activity log) — each encrypted with a different key from passkey churn. `activity_log.lua` was found to defensively refuse to write to a file it can't decrypt, meaning a mismatched `activity.md` gets silently, permanently stuck, not just wrong.
+
+**Changed**
+- `lua/vault_unlock.lua`: generalized the single-file check into `scan_vault_for_mismatches()`, covering `sys.md`, the server-encrypted context files (`health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md`, `agent.md`), and all vault media (`images/`, `audio/`, `video/`, `profile/`).
+- Both `POST /api/vault/unlock`'s guard and `GET /api/vault/key-status` now use the full scan. Response shape changed to `{ checked, mismatched: [...], all_ok }`.
+- `SettingsModal.vue`: Vault Key section now shows a checked/mismatched-file-count summary and lists which files don't match, and displays the raw `vault_key_hex` (like the Soul-Cert box) with a copy button.
+
+**Fixed (found while extending the scan):**
+- The check required non-empty decrypted output on top of trusting `resty.aes`'s nil-on-failure — broke on a genuinely empty but validly-encrypted file. A valid decrypt of empty plaintext is a 0-length string, not a failure.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), verified end-to-end there. Ported here unchanged.
+
 ## [1.0.10] — 2026-07-16
 
 **Added: Vault Key health-check + manual re-sync in Settings → Config.** Previously there was no visible status for whether the server-persisted vault key actually matches `sys.md`, and no way to fix a mismatch short of the initial setup wizard — a mismatch only surfaced as a cryptic "vault locked" error on the next `soul_read`.
