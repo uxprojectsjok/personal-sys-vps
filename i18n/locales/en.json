@@ -802,6 +802,7 @@
     "vault_key_ok": "Key matches all {n} encrypted files",
     "vault_key_mismatch": "Key does NOT match {n} of {total} encrypted files",
     "vault_key_not_encrypted": "No encrypted files found in the vault",
+    "vault_key_locked": "Vault is locked — no key on file",
     "vault_key_resync": "Re-sync vault key",
     "vault_key_syncing": "Syncing…",
     "vault_key_synced": "✓ Vault key synced",

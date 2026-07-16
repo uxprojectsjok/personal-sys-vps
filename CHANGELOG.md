@@ -8,6 +8,23 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.14] — 2026-07-16
+
+**Added: vault files that were never encrypted (e.g. context files seeded before the first passkey/vault-key ever existed) now get encrypted automatically on unlock and on lock, not just left as plaintext indefinitely.**
+
+Follow-up to the v1.0.12 finding that `health.md`, `mind.md`, `earnings.md`, `agent.md` were still plaintext for this soul despite `cipher_mode: "ciphered"` — they were seeded during initial soul creation, before any vault key existed, and nothing ever went back to encrypt them. Worse: `POST /api/vault/lock` only ever removed the server's persisted key — it never actually protected files that were never encrypted in the first place, so "locked" gave a false sense of security for that specific vault.
+
+**Changed**
+- `lua/vault_unlock.lua`: new `sweep_encrypt_plaintext()`, sharing its core encrypt-in-place logic with the existing proven `migrate_encrypt_generic_context.lua` (a manual, one-time CLI migration script) — but wired in automatically instead of requiring a manual run.
+  - Runs in `POST /api/vault/unlock` right after the existing mismatch-guard passes (v1.0.11/v1.0.12), using the just-validated key.
+  - Runs in `POST /api/vault/lock`, using the still-available key *before* it gets cleared — ensures "locked" actually means "protected", not just "server access removed."
+  - Excludes `sys.md` deliberately (its encryption is client-driven per the README, a behavior change out of scope for this fix) and `shopping.md`/`prompts.md`/`ownagent.md` (always plaintext by design).
+- `scan_vault_for_mismatches()` and the new sweep both switched from a hardcoded 6-filename list to scanning `vault/context/` directly (excluding the same 3 names) — matches `migrate_encrypt_generic_context.lua`'s broader approach and also catches arbitrarily-named files written via the `context_write` MCP tool, which the hardcoded list would have silently skipped.
+- `SettingsModal.vue`: Vault Key section now shows a distinct neutral "vault is locked, no key on file" state instead of a scary red "N files mismatched" warning when `has_key` is false (e.g. right after a normal lock) — the old logic couldn't tell "no key at all" apart from "wrong key present."
+
+**Notes**
+- Verified end-to-end on this soul: unlock encrypted `agent.md`, `earnings.md`, `health.md`, `mind.md` (4 files), all four round-trip-verified to decrypt back to their original content. `key-status` went from `checked:4` to `checked:9` once the directory scan replaced the hardcoded list (found a `vault/profile/face.json` the old list didn't know about). Re-tested lock → key-status (correctly shows "locked", not "mismatched") → unlock (correctly shows `newly_encrypted: []`, nothing left to do).
+
 ## [1.0.13] — 2026-07-16
 
 **Fixed: `voice_hq` always showed "Security code not recognized" regardless of the actual failure reason, and there was no way to cancel out of the verify flow.**

@@ -392,6 +392,13 @@
                     <template v-if="vaultKeyStatus.checked === 0">
                       <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_not_encrypted') }}</span>
                     </template>
+                    <template v-else-if="!vaultKeyStatus.has_key">
+                      <!-- Kein Schlüssel hinterlegt (z.B. gerade gelockt) ist ein normaler,
+                           erwarteter Zustand — sähe mit der Mismatch-Logik unten sonst wie
+                           ein echter Fehler aus (alle Dateien "mismatched", weil kein Schlüssel
+                           zum Prüfen da ist), ist aber keiner. -->
+                      <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_locked') }}</span>
+                    </template>
                     <template v-else-if="vaultKeyStatus.all_ok">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-ok);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                       <span style="color:var(--sys-ok);font-size:12px">{{ $t('settings.vault_key_ok', { n: vaultKeyStatus.checked }) }}</span>
@@ -401,7 +408,7 @@
                       <span style="color:var(--sys-err);font-size:12px">{{ $t('settings.vault_key_mismatch', { n: vaultKeyStatus.mismatched.length, total: vaultKeyStatus.checked }) }}</span>
                     </template>
                   </div>
-                  <ul v-if="!vaultKeyStatus.all_ok && vaultKeyStatus.mismatched?.length" style="margin:8px 0 0;padding-left:18px">
+                  <ul v-if="vaultKeyStatus.has_key && !vaultKeyStatus.all_ok && vaultKeyStatus.mismatched?.length" style="margin:8px 0 0;padding-left:18px">
                     <li v-for="f in vaultKeyStatus.mismatched" :key="f" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">{{ f }}</li>
                   </ul>
                 </div>
