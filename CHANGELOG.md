@@ -23,6 +23,7 @@ Root cause: two independent passkey-registration call sites, only one of which r
 **Notes**
 - Confirmed root cause by checking `/var/lib/sys/souls/{soul_id}/passkeys.json` on this VPS directly — file didn't exist at all, confirming `no_passkey_registered` rather than `unknown_credential`.
 - Rebuilt (`npm run generate` + `killMetas.mjs`) and redeployed to `/var/www/kro.uxprojects-jok.com` (`rsync --delete`) — this update only touched `app/`, no lua/soul-mcp changes, no service restart needed.
+- Ported upstream to `personal-sys-vps` as its own `v1.0.2` (public repo, commit `32eab66`) — generic protocol bug, no private-specific content in either touched file. karo-familie.de should pick this up from there.
 
 ## [1.0.2] — 2026-07-16
 
