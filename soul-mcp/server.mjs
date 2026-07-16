@@ -29,6 +29,17 @@ import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
 import { buildTermsPreviewPdf, buildTermsPreviewTxt, buildConsentPdf, buildConsentTxt, legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt } from './lib/eu_withdrawal_terms.mjs';
 
+// Hardening: a rejected promise anywhere in the process (observed cause: ethers'
+// WebSocketProvider in soul_indexer.mjs internally rejecting on an RPC error —
+// e.g. the public Polygon RPC's rate limit during eth_subscribe) crashes the
+// entire service under Node's default unhandledRejection behavior, taking down
+// every MCP tool (not just the blockchain indexer) until systemd restarts it.
+// Log and keep running instead — the specific subscriber already has its own
+// reconnect/backoff logic for the failures it knows how to recover from.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason?.message || reason);
+});
+
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
