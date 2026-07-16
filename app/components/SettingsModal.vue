@@ -370,6 +370,36 @@
                 </Transition>
               </div>
 
+              <!-- Vault Key -->
+              <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px">
+                <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.vault_key_title') }}</div>
+                <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.vault_key_desc') }}</p>
+
+                <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);display:flex;align-items:center;gap:8px">
+                  <template v-if="!vaultKeyStatus.is_encrypted">
+                    <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_not_encrypted') }}</span>
+                  </template>
+                  <template v-else-if="vaultKeyStatus.matches">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-ok);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                    <span style="color:var(--sys-ok);font-size:12px">{{ $t('settings.vault_key_ok') }}</span>
+                  </template>
+                  <template v-else>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-err);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+                    <span style="color:var(--sys-err);font-size:12px">{{ $t('settings.vault_key_mismatch') }}</span>
+                  </template>
+                </div>
+
+                <button
+                  @click="handleResyncVaultKey"
+                  :disabled="vaultKeyBusy"
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="width:100%;justify-content:center"
+                >{{ vaultKeyBusy ? $t('settings.vault_key_syncing') : $t('settings.vault_key_resync') }}</button>
+
+                <p v-if="vaultKeyError" class="sm-desc" style="color:var(--sys-err);margin-top:8px">{{ vaultKeyError }}</p>
+                <p v-if="vaultKeySynced" class="sm-desc f-ok" style="margin-top:8px">{{ $t('settings.vault_key_synced') }}</p>
+              </div>
+
               <!-- Datenschutz: Scan-Sichtbarkeit -->
               <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
                 <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
@@ -790,6 +820,7 @@ import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
+import { useVaultSession } from '~/composables/useVaultSession.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { useI18n } from 'vue-i18n'
@@ -801,6 +832,7 @@ const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer,
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
+const vaultSession = useVaultSession()
 const { clearMcpCache, loadMcpTools } = useMcpTools()
 const { ask: confirmAsk } = useConfirm()
 const { t, locale, setLocale } = useI18n()
@@ -1558,6 +1590,56 @@ async function handleRotateCert() {
     certRotateBusy.value = false
   }
 }
+
+// ── Vault Key ─────────────────────────────────────────────────────────────────
+// Health-Check + manueller Re-Sync für den Vault-Verschlüsselungsschlüssel
+// (getrennt vom Soul-Cert oben — siehe vault_unlock.lua key_matches_sys_md()).
+// Existiert, weil ein Key-Mismatch bisher erst beim nächsten fehlschlagenden
+// soul_read auffiel, ohne sichtbaren Status oder erreichbaren Reparatur-Weg.
+const vaultKeyStatus = ref(null)   // { is_encrypted, has_key, matches }
+const vaultKeyBusy   = ref(false)
+const vaultKeyError  = ref('')
+const vaultKeySynced = ref(false)
+
+async function fetchVaultKeyStatus() {
+  if (!soulToken.value || soulToken.value === 'anonymous') return
+  try {
+    const res = await fetch('/api/vault/key-status', {
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    vaultKeyStatus.value = res.ok ? await res.json() : null
+  } catch {
+    vaultKeyStatus.value = null
+  }
+}
+
+async function handleResyncVaultKey() {
+  if (vaultKeyBusy.value) return
+  vaultKeyBusy.value   = true
+  vaultKeyError.value  = ''
+  vaultKeySynced.value = false
+  try {
+    // Kein getAuthHeaders-Callback — konsistent mit VaultSessionPanel.vue,
+    // vault-key-Ableitung ist unabhängig von der Fingerprint-Server-Registrierung.
+    const prf = await passkey.authenticateOrRegister()
+    if (!prf) {
+      vaultKeyError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
+      return
+    }
+    const hexKey = await passkey.deriveVaultKeyHex(prf)
+    const result = await vaultSession.unlock('1d', '', hexKey)
+    if (result?.ok) {
+      vaultKeySynced.value = true
+      await fetchVaultKeyStatus()
+    } else {
+      vaultKeyError.value = result?.message || result?.error || t('settings.vault_key_sync_failed')
+    }
+  } finally {
+    vaultKeyBusy.value = false
+  }
+}
+
+watch(tab, (val) => { if (val === 'config') fetchVaultKeyStatus() })
 
 // ── Archivar Tab ──────────────────────────────────────────────────────────────
 const herzActive       = ref(false)

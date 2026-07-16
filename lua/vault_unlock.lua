@@ -40,6 +40,71 @@ local function parse_session(val)
   return tonumber(val) or 0, ""
 end
 
+-- Prüft, ob vault_key das vorhandene sys.md tatsächlich entschlüsseln kann.
+-- Genutzt sowohl vom Unlock-Schutz (verhindert stilles Überschreiben mit einem
+-- nicht passenden Schlüssel) als auch vom Status-Endpunkt (GET /api/vault/key-status,
+-- Settings-UI-Health-Check).
+-- @return is_encrypted (bool), matches (bool|nil — nil wenn is_encrypted=false, d.h. n/a)
+local function key_matches_sys_md(sid, vault_key)
+  local sys_md_path = "/var/lib/sys/souls/" .. sid .. "/sys.md"
+  local sf = io.open(sys_md_path, "rb")
+  if not sf then return false, nil end
+  local content = sf:read("*a"); sf:close()
+  if #content < 4 + 16 + 16 or content:sub(1, 4) ~= "SYS\1" then
+    return false, nil  -- nicht (mehr) verschlüsselt, kein Mismatch möglich
+  end
+  if not vault_key or vault_key == "" then return true, false end
+
+  local iv        = content:sub(5, 20)
+  local ct         = content:sub(21)
+  local key_bin    = vault_key:gsub("..", function(h) return string.char(tonumber(h, 16)) end)
+  local resty_aes  = require("resty.aes")
+  local aes_ctx    = resty_aes:new(key_bin, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  local decrypted  = aes_ctx and aes_ctx:decrypt(ct)
+  -- resty.aes strips PKCS7 padding internally and returns nil/false when the
+  -- padding doesn't validate (i.e. wrong key) — same behavior api_serve.lua's
+  -- proven-correct try_decrypt() already relies on. An earlier version of this
+  -- function re-validated padding manually on top of that, which inspected the
+  -- last byte of the already-unpadded plaintext as if it were still a padding
+  -- byte — a false mismatch for the objectively correct key, caught by testing
+  -- this endpoint end-to-end against real data instead of trusting it blind.
+  return true, (decrypted ~= nil and decrypted ~= false and #decrypted > 0)
+end
+
+-- ── GET /api/vault/key-status ─────────────────────────────────────────────────
+-- Health-Check für die Settings-UI: entschlüsselt der aktuell in api_context.json
+-- persistierte vault_key_hex (das ist der Schlüssel, den MCP/Hintergrund-Zugriffe
+-- wie soul_read tatsächlich verwenden — nicht die evtl. abweichende Browser-Session
+-- aus ngx.shared.vault_sessions) das vorhandene sys.md? Macht sichtbar, was sonst
+-- erst beim nächsten fehlschlagenden soul_read auffällt.
+
+if method == "GET" and uri == "/api/vault/key-status" then
+  local ctx_path = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
+  local persisted_key = ""
+  local cf = io.open(ctx_path, "r")
+  if cf then
+    local raw = cf:read("*a"); cf:close()
+    local ok_j, ctx = pcall(cjson.decode, raw)
+    if ok_j and type(ctx) == "table" and type(ctx.vault_key_hex) == "string"
+       and #ctx.vault_key_hex == 64 then
+      persisted_key = ctx.vault_key_hex
+    end
+  end
+  local is_encrypted, matches = key_matches_sys_md(soul_id, persisted_key)
+  -- NICHT "is_encrypted and matches or cjson.null" — die klassische Lua and/or-
+  -- Falle bricht, wenn matches selbst false ist (genau der Fall, den dieser
+  -- Endpunkt anzeigen soll): "true and false" ist bereits false, "false or X"
+  -- liefert dann X statt false. Explizites if/else statt Kurzschluss-Idiom.
+  local matches_json = cjson.null
+  if is_encrypted then matches_json = matches end
+  ngx.say(cjson.encode({
+    is_encrypted = is_encrypted,
+    has_key      = (persisted_key ~= ""),
+    matches      = matches_json,
+  }))
+  return
+end
+
 -- ── GET /api/vault/session ────────────────────────────────────────────────────
 
 if method == "GET" then
@@ -117,6 +182,25 @@ if method == "POST" and uri == "/api/vault/unlock" then
   local vault_key = ""
   if type(payload.vault_key) == "string" and payload.vault_key:match("^[0-9a-f]+$") and #payload.vault_key == 64 then
     vault_key = payload.vault_key
+  end
+
+  -- Neuer Schlüssel muss ein vorhandenes verschlüsseltes sys.md tatsächlich
+  -- entschlüsseln können — sonst überschreibt "vault_key_hex immer schreiben"
+  -- weiter unten stillschweigend den Schlüssel, mit dem der Inhalt wirklich
+  -- verschlüsselt wurde, und macht sys.md dauerhaft unlesbar (kein Backup/keine
+  -- Historie von vault_key_hex). Passiert z.B. wenn zwischen zwei Unlocks ein
+  -- anderer Passkey/anderes Credential verwendet wurde — jedes liefert einen
+  -- eigenen, deterministischen aber UNTERSCHIEDLICHEN Schlüssel.
+  if vault_key ~= "" then
+    local is_encrypted, matches = key_matches_sys_md(soul_id, vault_key)
+    if is_encrypted and not matches then
+      ngx.status = 409
+      ngx.say(cjson.encode({
+        error   = "key_mismatch",
+        message = "Dieser Schlüssel kann das vorhandene sys.md nicht entschlüsseln — vermutlich wurde mit einem anderen Passkey/Credential entsperrt als dem, mit dem zuletzt gespeichert wurde. Vault-Sperre wurde NICHT überschrieben, um den bestehenden Inhalt nicht dauerhaft unlesbar zu machen.",
+      }))
+      return
+    end
   end
 
   local expires_at = (ttl == 0) and 0 or (math.floor(ngx.now()) + ttl)
