@@ -112,7 +112,7 @@ The fix is the token export/import above, not an MFA code.
 cat /var/lib/sys/config/health_sync_status_<soul_id>.json
 
 # Sync log
-tail -50 /var/log/sys_health_sync.log
+tail -50 /var/log/sys/health_sync.log
 
 # Run manually
 python3 /opt/sys/health-sync/health_sync.py
@@ -125,6 +125,6 @@ python3 /opt/sys/health-sync/health_sync.py
 | `/var/lib/sys/config/health_sync_{soul_id}.json` | Garmin credentials + adapter config |
 | `/var/lib/sys/config/health_sync_status_{soul_id}.json` | Last sync result (ok/error_type/message) |
 | `/var/lib/sys/config/garmin_tokens/{soul_id}/garmin_tokens.json` | OAuth token cache |
-| `/var/log/sys_health_sync.log` | Cron output |
+| `/var/log/sys/health_sync.log` | Cron output |
 | `/opt/sys/health-sync/garmin_token_export.py` | Run locally to export token |
 | `/opt/sys/health-sync/garmin_token_import.py` | Run on server to import token |

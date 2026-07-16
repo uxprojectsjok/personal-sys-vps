@@ -29,7 +29,7 @@ if sf then
 end
 
 -- Fallback: Log-Datei parsen (legacy)
-local LOG = "/var/log/sys_health_sync.log"
+local LOG = "/var/log/sys/health_sync.log"
 local f = io.open(LOG, "r")
 if not f then
   ngx.say(cjson.encode({ ok = false, error_type = "not_run", message = "Sync has not run yet." }))

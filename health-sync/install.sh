@@ -6,7 +6,7 @@ set -euo pipefail
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="/var/lib/sys/config"
 SOULS_DIR="/var/lib/sys/souls"
-LOG_FILE="/var/log/sys_health_sync.log"
+LOG_FILE="/var/log/sys/health_sync.log"
 
 echo ""
 echo "=== SYS Health Sync — Experiment Setup ==="
@@ -30,7 +30,7 @@ apt-get install -y python3-venv -qq
 VENV="$INSTALL_DIR/.venv"
 echo "Setting up virtual environment…"
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install -q garminconnect
+"$VENV/bin/pip" install -q garminconnect cryptography
 echo "python-garminconnect installed in $VENV"
 
 # ── Detect souls ──────────────────────────────────────────────────────────────
@@ -100,6 +100,9 @@ chmod 600 "$CONFIG_FILE"
 echo "Config written to $CONFIG_FILE (permissions: 600, owner: www-data)"
 
 # ── Cron job ──────────────────────────────────────────────────────────────────
+mkdir -p "$(dirname "$LOG_FILE")"
+chown www-data:www-data "$(dirname "$LOG_FILE")"
+chmod 750 "$(dirname "$LOG_FILE")"
 CRON_CMD="0 6 * * 1 $VENV/bin/python $INSTALL_DIR/health_sync.py >> $LOG_FILE 2>&1"
 (crontab -l 2>/dev/null | grep -v "health_sync.py"; echo "$CRON_CMD") | crontab -
 echo "Cron added: every Monday 06:00 → $LOG_FILE"
