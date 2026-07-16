@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.23] — 2026-07-16
+
+**Fixed: newly registered passkeys are indistinguishable in the OS passkey manager (e.g. Windows Hello) when a user runs multiple SYS nodes on the same device — both `rp.name` ("SaveYourSoul") and the default username ("Soul") were hardcoded identically across every node, so two entries both just showed "Soul" with no way to tell them apart.**
+
+User question during live testing: they run both kro.uxprojects-jok.com and karo-familie.de on the same desktop, and after the credential-pruning fix (v1.0.22) created a fresh passkey, Windows Hello showed two "Soul" entries with no visible way to tell which belongs to which site. The credentials themselves were always correctly separated (`rp.id` is the actual hostname), only the *display* was ambiguous.
+
+**Fixed**
+- `app/composables/useSoulPasskey.js`: `registerPasskey()` now qualifies the WebAuthn `user.name`/`displayName` with the domain (`"{username} · {hostname}"`, e.g. `"Soul · kro.uxprojects-jok.com"`) instead of the bare, node-agnostic default.
+
+**Notes**
+- Only affects newly created passkeys going forward — WebAuthn has no rename operation, so already-registered credentials keep showing as plain "Soul" until the user deletes and re-registers them on the affected device.
+- Where the OS actually renders this label (and how prominently) is outside this app's control — some passkey managers already show the associated site domain in a details view even without this change; this just makes the *credential's own* identity field carry that information too.
+
 ## [1.0.22] — 2026-07-16
 
 **Fixed: `doFingerprint()` in `verify.vue` never pruned the local credential list after a successful verification — every attempt started from an unrestricted `authenticatePasskey()` call, so an OS/browser with several accumulated resident "Soul" credentials could keep handing back an unregistered one, permanently triggering the self-heal path (fail → register new → re-auth = up to 3 biometric prompts) instead of ever settling on the one that actually works.**
