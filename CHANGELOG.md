@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.13] — 2026-07-16
+
+**Added: vault files that were never encrypted (e.g. context files seeded before the first vault key ever existed) now get encrypted automatically on unlock and on lock, not just left as plaintext indefinitely.**
+
+Found on `personal-sys-vps-private`: `health.md`, `mind.md`, `earnings.md`, `agent.md` were still plaintext despite `cipher_mode: "ciphered"`, seeded during initial soul creation before any vault key existed. `POST /api/vault/lock` only ever removed the server's persisted key — it never protected files that were never encrypted, so "locked" gave a false sense of security for those files.
+
+**Changed**
+- `lua/vault_unlock.lua`: new `sweep_encrypt_plaintext()`, sharing its core logic with the existing `migrate_encrypt_generic_context.lua` (a manual, one-time CLI migration script), but wired in automatically on both `POST /api/vault/unlock` (after the mismatch-guard passes) and `POST /api/vault/lock` (using the key before it gets cleared). Excludes `sys.md` (client-driven encryption, out of scope here) and `shopping.md`/`prompts.md`/`ownagent.md` (always plaintext by design).
+- Mismatch/sweep scanning switched from a hardcoded filename list to scanning `vault/context/` directly — also catches arbitrarily-named files written via `context_write`.
+- `SettingsModal.vue`: distinguishes "vault locked, no key on file" from "wrong key present" instead of showing a false mismatch warning after a normal lock.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), verified end-to-end there. Ported here unchanged.
+
 ## [1.0.12] — 2026-07-16
 
 **Fixed: `voice_hq` always showed "Security code not recognized" regardless of the actual failure reason, and there was no way to cancel out of the verify flow.**

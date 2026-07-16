@@ -71,13 +71,11 @@ local function file_matches_key(path, vault_key)
   return true, (type(decrypted) == "string")
 end
 
--- Alle Dateitypen, die laut Encryption-Rollout server-seitig verschlüsselt sein
--- können — NICHT shopping.md/prompts.md, die bewusst immer Klartext bleiben
--- (siehe README "Encrypted at rest"). Ursprünglich prüfte dieser Guard nur
--- sys.md — das ließ 3 andere Dateien (profile.png, eine Audio-Datei, activity.md)
--- unbemerkt mit einem abweichenden Schlüssel verschlüsselt zurück, gefunden erst
--- durch gezielte Nachfrage, ob der Schutz wirklich alle Vault-Inhalte abdeckt.
-local ENCRYPTED_CONTEXT_FILES = { "health.md", "mind.md", "income.md", "earnings.md", "activity.md", "agent.md" }
+-- vault/context/-Dateien, die bewusst NIE verschlüsselt werden (siehe README
+-- "Encrypted at rest, server-managed") — shopping.md/prompts.md sind technische
+-- Dateien, die auch ohne Vault-Zugriff funktionieren müssen; ownagent.md ist
+-- die ElevenLabs-Agent-Identität (Klartext by design, siehe create_agent.lua).
+local CONTEXT_EXCLUDE = { ["shopping.md"] = true, ["prompts.md"] = true, ["ownagent.md"] = true }
 local MEDIA_DIRS = { "images", "audio", "video", "profile" }
 
 local function list_dir(dir)
@@ -94,32 +92,92 @@ local function list_dir(dir)
   return out
 end
 
+-- Iteriert über alle Dateien, die potenziell server-verwaltet verschlüsselt
+-- sind: sys.md + JEDE Datei in vault/context/ außer CONTEXT_EXCLUDE (nicht nur
+-- eine feste Namensliste — deckt auch beliebig benannte, über context_write
+-- angelegte Dateien ab, analog zum bewährten migrate_encrypt_generic_context.lua)
+-- + alle Vault-Media. Ruft callback(rel_path, abs_path) für jede gefundene Datei.
+local function each_vault_file(sid, callback)
+  local base = "/var/lib/sys/souls/" .. sid
+  callback("sys.md", base .. "/sys.md")
+  local context_dir = base .. "/vault/context"
+  for _, fname in ipairs(list_dir(context_dir)) do
+    if not CONTEXT_EXCLUDE[fname:lower()] then
+      callback("vault/context/" .. fname, context_dir .. "/" .. fname)
+    end
+  end
+  for _, dname in ipairs(MEDIA_DIRS) do
+    local dir = base .. "/vault/" .. dname
+    for _, fname in ipairs(list_dir(dir)) do
+      callback("vault/" .. dname .. "/" .. fname, dir .. "/" .. fname)
+    end
+  end
+end
+
 -- Prüft ALLE potenziell verschlüsselten Dateien einer Soul gegen einen Schlüssel.
 -- @return checked (Anzahl tatsächlich verschlüsselter Dateien), mismatched (Array relativer Pfade)
 local function scan_vault_for_mismatches(sid, vault_key)
-  local base = "/var/lib/sys/souls/" .. sid
   local checked, mismatched = 0, {}
-
-  local function check(rel_path, abs_path)
+  each_vault_file(sid, function(rel_path, abs_path)
     local is_enc, matches = file_matches_key(abs_path, vault_key)
     if is_enc then
       checked = checked + 1
       if not matches then mismatched[#mismatched + 1] = rel_path end
     end
-  end
-
-  check("sys.md", base .. "/sys.md")
-  for _, fname in ipairs(ENCRYPTED_CONTEXT_FILES) do
-    check("vault/context/" .. fname, base .. "/vault/context/" .. fname)
-  end
-  for _, dname in ipairs(MEDIA_DIRS) do
-    local dir = base .. "/vault/" .. dname
-    for _, fname in ipairs(list_dir(dir)) do
-      check("vault/" .. dname .. "/" .. fname, dir .. "/" .. fname)
-    end
-  end
-
+  end)
   return checked, mismatched
+end
+
+-- Verschlüsselt eine Datei in-place, falls sie noch Klartext ist (kein SYS\x01-
+-- Magic-Header). Rührt bereits verschlüsselte Dateien nicht an (dafür ist der
+-- Mismatch-Guard oben zuständig, nicht diese Funktion). Gleiche Kernlogik wie
+-- das bewährte migrate_encrypt_generic_context.lua (dort als eigenständiges,
+-- manuell auszuführendes CLI-Migrationsscript für den Alt-Datenbestand) — hier
+-- automatisch bei jedem Unlock/Lock statt einmalig von Hand angestoßen.
+-- @return true wenn tatsächlich neu verschlüsselt wurde
+local function encrypt_file_if_plaintext(path, vault_key)
+  if not vault_key or vault_key == "" then return false end
+  local sf = io.open(path, "rb")
+  if not sf then return false end
+  local content = sf:read("*a"); sf:close()
+  if content == "" then return false end  -- nichts zu verschlüsseln
+  if content:sub(1, 4) == "SYS\1" then return false end  -- schon verschlüsselt
+
+  local key_bin   = vault_key:gsub("..", function(h) return string.char(tonumber(h, 16)) end)
+  local resty_aes = require("resty.aes")
+  local iv        = require("resty.random").bytes(16, true)
+  if not iv then return false end
+  local aes_ctx   = resty_aes:new(key_bin, nil, resty_aes.cipher(256, "cbc"), { iv = iv })
+  if not aes_ctx then return false end
+  local encrypted = aes_ctx:encrypt(content)
+  if not encrypted then return false end
+
+  local wf = io.open(path, "wb")
+  if not wf then return false end
+  wf:write("SYS\1" .. iv .. encrypted)
+  wf:close()
+  return true
+end
+
+-- Verschlüsselt alle noch-Klartext-Dateien einer Soul, für die cipher_mode das
+-- vorsieht — läuft NACH dem Mismatch-Guard (nie parallel zu einer bereits
+-- verschlüsselten-aber-falschen Datei). Existiert, weil "Vault locked" bisher
+-- nur bedeutete "Server-Schlüssel entfernt" — Dateien, die nie verschlüsselt
+-- wurden (z.B. vor der ersten Passkey-Einrichtung angelegte Context-Dateien),
+-- blieben dabei einfach offen lesbar, Locking bot ihnen keinen Schutz.
+-- sys.md bewusst ausgenommen: dessen Verschlüsselung ist client-getrieben
+-- (WebCrypto im Browser, siehe README) — dort automatisch server-seitig
+-- einzugreifen wäre ein eigenständiger Verhaltenswechsel, nicht Teil dieser
+-- Anfrage (die explizit von "Kontextdateien" sprach).
+local function sweep_encrypt_plaintext(sid, vault_key)
+  local encrypted_now = {}
+  if not vault_key or vault_key == "" then return encrypted_now end
+  each_vault_file(sid, function(rel_path, abs_path)
+    if rel_path ~= "sys.md" and encrypt_file_if_plaintext(abs_path, vault_key) then
+      encrypted_now[#encrypted_now + 1] = rel_path
+    end
+  end)
+  return encrypted_now
 end
 
 -- ── GET /api/vault/key-status ─────────────────────────────────────────────────
@@ -197,6 +255,16 @@ if method == "POST" and uri == "/api/vault/lock" then
     local raw = cf:read("*a"); cf:close()
     local ok_j, ctx = pcall(cjson.decode, raw)
     if ok_j and type(ctx) == "table" then
+      -- Bevor der Schlüssel entfernt wird: alle noch-Klartext-Dateien damit
+      -- verschlüsseln. "Locked" bedeutete bisher nur "Server hat keinen
+      -- Zugriff mehr auf verschlüsselte Dateien" — Dateien, die nie
+      -- verschlüsselt wurden, blieben dabei einfach offen lesbar, Locking bot
+      -- ihnen keinen Schutz. Spätestens jetzt sollen alle Dateien verschlüsselt
+      -- sein, bevor der Schlüssel selbst nicht mehr verfügbar ist.
+      if type(ctx.vault_key_hex) == "string" and #ctx.vault_key_hex == 64
+         and (ctx.cipher_mode or "ciphered") == "ciphered" then
+        sweep_encrypt_plaintext(soul_id, ctx.vault_key_hex)
+      end
       ctx.vault_key_hex = nil
       local wf = io.open(ctx_path, "w")
       if wf then wf:write(cjson.encode(ctx)); wf:close() end
@@ -259,6 +327,26 @@ if method == "POST" and uri == "/api/vault/unlock" then
         message    = "Dieser Schlüssel kann " .. #mismatched .. " von " .. checked .. " verschlüsselten Dateien nicht entschlüsseln — vermutlich wurde mit einem anderen Passkey/Credential entsperrt als dem, mit dem zuletzt gespeichert wurde. Vault-Sperre wurde NICHT überschrieben, um bestehenden Inhalt nicht dauerhaft unlesbar zu machen.",
       }))
       return
+    end
+  end
+
+  -- Nach bestandenem Mismatch-Guard: alle noch-Klartext-Dateien (z.B. Context-
+  -- Dateien von vor der ersten Passkey-Einrichtung) jetzt mit dem frisch
+  -- bestätigten Schlüssel verschlüsseln, statt zu warten bis irgendwann gelockt
+  -- wird. Läuft nur bei cipher_mode=ciphered — ein bewusst offener/plaintext
+  -- betriebener Vault wird nicht gegen seinen Willen umgestellt.
+  local newly_encrypted = {}
+  if vault_key ~= "" then
+    local ctx_path_check = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
+    local cfc = io.open(ctx_path_check, "r")
+    local cipher_mode = "ciphered"
+    if cfc then
+      local rawc = cfc:read("*a"); cfc:close()
+      local ok_jc, ctxc = pcall(cjson.decode, rawc)
+      if ok_jc and type(ctxc) == "table" and ctxc.cipher_mode then cipher_mode = ctxc.cipher_mode end
+    end
+    if cipher_mode == "ciphered" then
+      newly_encrypted = sweep_encrypt_plaintext(soul_id, vault_key)
     end
   end
 
@@ -346,12 +434,13 @@ if method == "POST" and uri == "/api/vault/unlock" then
   end
 
   ngx.say(cjson.encode({
-    ok         = true,
-    unlocked   = true,
-    duration   = duration,
-    expires_at = (expires_at == 0) and cjson.null or expires_at,
-    unlimited  = (expires_at == 0),
-    has_key    = (vault_key ~= "")
+    ok              = true,
+    unlocked        = true,
+    duration        = duration,
+    expires_at      = (expires_at == 0) and cjson.null or expires_at,
+    unlimited       = (expires_at == 0),
+    has_key         = (vault_key ~= ""),
+    newly_encrypted = newly_encrypted,
   }))
   return
 end

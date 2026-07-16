@@ -802,6 +802,7 @@
     "vault_key_ok": "Schlüssel passt zu allen {n} verschlüsselten Dateien",
     "vault_key_mismatch": "Schlüssel passt NICHT zu {n} von {total} verschlüsselten Dateien",
     "vault_key_not_encrypted": "Keine verschlüsselten Dateien im Vault gefunden",
+    "vault_key_locked": "Vault ist gesperrt — kein Schlüssel hinterlegt",
     "vault_key_resync": "Vault-Schlüssel neu synchronisieren",
     "vault_key_syncing": "Synchronisiert…",
     "vault_key_synced": "✓ Vault-Schlüssel synchronisiert",
