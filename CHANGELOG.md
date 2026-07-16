@@ -8,6 +8,21 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.22] — 2026-07-16
+
+**Fixed: `doFingerprint()` in `verify.vue` never pruned the local credential list after a successful verification — every attempt started from an unrestricted `authenticatePasskey()` call, so an OS/browser with several accumulated resident "Soul" credentials could keep handing back an unregistered one, permanently triggering the self-heal path (fail → register new → re-auth = up to 3 biometric prompts) instead of ever settling on the one that actually works.**
+
+Same underlying credential-accumulation issue documented across v1.0.8–v1.0.17 (multiple discoverable WebAuthn credentials for one soul, OS picks non-deterministically), but this specific call site never got the `pruneToCredentialId()` fix that `SettingsModal.vue`'s and `VaultSessionPanel.vue`'s unlock flows already have — a third independent entry point into the same underlying passkey composable, missed for the same reason the second one was initially missed (see v1.0.17): a fix at one call site doesn't automatically cover the others.
+
+Directly confirmed via the new `last_verified_at` tracking (v1.0.19/v1.0.21 public / v1.0.19 private tag numbering — see previous two entries): two brand-new passkey credentials were created within the same hour, each one only seconds before its first (and only) successful verification — proof that self-heal was firing on every single attempt, permanently, rather than being a one-time migration as designed.
+
+**Fixed**
+- `app/pages/verify.vue`: `doFingerprint()` now calls `pruneToCredentialId()` after every server-confirmed successful match — both the normal first-attempt path (using `lastUsedCredentialId`) and the self-heal path (using `lastRegisteredCredentialId`, the credential that was just registered and re-verified).
+
+**Notes**
+- User-reported symptom: fingerprint verification triggering Windows Hello two-to-three times per attempt, plus two "Soul" entries visible in Windows' passkey manager — the extra prompts are now explained by this bug; the two visible entries are unrelated and expected (kro.uxprojects-jok.com and karo-familie.de are different domains/RP IDs, WebAuthn credentials cannot be shared across them by design).
+- Does not retroactively fix a browser that's already stuck in the loop — the fix takes effect starting with the next successful verification on each device, same caveat as every previous credential-pruning fix in this series.
+
 ## [1.0.21] — 2026-07-16
 
 **Fixed: voice_hq verification always failed with "No security code found for this verification — please restart" when the verify challenge was created in open-choice mode (empty `methods[]`, user picks the method in the UI) and the user then chose Voice — regardless of whether an ElevenLabs API key was configured.**
