@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.22] — 2026-07-16
+
+**Fixed: a Passkey newly registered through either Vault flow (Settings "Re-sync"/"Change Encryption", or the setup-wizard "Unlock Vault" panel) was never registered server-side for Fingerprint-Verify — so the next fingerprint verification attempt would ignore the working Vault passkey and register yet another new one, forcing an unnecessary extra biometric "save this passkey" prompt on the same device.**
+
+**Fixed**
+- `app/components/SettingsModal.vue`: new `verifyAuthHeaders()` helper, passed to both `authenticateOrRegister()` calls (Re-sync vault key, Change Encryption).
+- `app/components/VaultSessionPanel.vue`: same helper added, passed to its `authenticateOrRegister()` call.
+
+**Notes**
+- `useSoulPasskey.js`'s `authenticateOrRegister()` already supported this via its second parameter — it just wasn't being used at these three call sites. Only takes effect for passkeys registered going forward.
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged.
+
 ## [1.0.21] — 2026-07-16
 
 **Fixed: newly registered passkeys are indistinguishable in the OS passkey manager (e.g. Windows Hello) when a user runs multiple SYS nodes on the same device — both `rp.name` and the default username were hardcoded identically across every node, so two entries both just showed "Soul" with no way to tell them apart.**

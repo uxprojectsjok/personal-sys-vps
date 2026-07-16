@@ -262,11 +262,21 @@ async function handleRefresh() {
   await fetchStatus()
 }
 
+// Ohne getAuthHeaders bleibt ein hier evtl. NEU registrierter Passkey server-
+// seitig unbekannt für /api/verify/fingerprint-check — Vault-Unlock selbst
+// braucht das nicht (nur client-seitige PRF-Ableitung), aber ein Passkey, der
+// hier neu entsteht (z.B. nach OS-seitiger Löschung des alten), sollte trotzdem
+// auch für Fingerprint-Verify nutzbar sein, statt dort eine dritte Registrierung
+// für dasselbe Gerät zu erzwingen. Gleicher Fix wie in SettingsModal.vue.
+function verifyAuthHeaders() {
+  return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' }
+}
+
 async function handleUnlock() {
   if (encryptMode.value === 'passkey') {
     passkeyLoading.value = true
     try {
-      const prf = await authenticateOrRegister()
+      const prf = await authenticateOrRegister('Soul', verifyAuthHeaders)
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
       await unlock(selectedDuration.value, '', hexKey, 'passkey')

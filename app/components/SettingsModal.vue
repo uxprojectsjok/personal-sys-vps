@@ -1720,6 +1720,19 @@ function copyVaultKey() {
   setTimeout(() => { vaultKeyCopied.value = false }, 2000)
 }
 
+// Für Passkey-Registrierungen aus den Vault-Flows unten — OHNE das hier über-
+// gebene getAuthHeaders bleibt ein frisch registrierter Passkey server-seitig
+// unbekannt für /api/verify/fingerprint-check (siehe verify_passkey_register.lua),
+// nur das Vault-Unlock funktioniert damit (das braucht nur die client-seitige
+// PRF-Ableitung, keine Server-Registrierung). Praktische Folge, live beobachtet:
+// nach einer Passkey-Löschung im OS + Neuregistrierung über "Verschlüsselung
+// ändern" bestand bereits ein funktionierender Passkey für den Vault — Verify
+// wusste trotzdem nichts davon und wollte bei der nächsten Fingerprint-Prüfung
+// erneut einen NEUEN Passkey anlegen (dritte Registrierung für dasselbe Gerät).
+function verifyAuthHeaders() {
+  return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' }
+}
+
 async function fetchVaultKeyStatus() {
   if (!soulToken.value || soulToken.value === 'anonymous') return
   try {
@@ -1738,9 +1751,10 @@ async function handleResyncVaultKey() {
   vaultKeyError.value  = ''
   vaultKeySynced.value = false
   try {
-    // Kein getAuthHeaders-Callback — konsistent mit VaultSessionPanel.vue,
-    // vault-key-Ableitung ist unabhängig von der Fingerprint-Server-Registrierung.
-    const prf = await passkey.authenticateOrRegister()
+    // getAuthHeaders übergeben, damit ein hier evtl. NEU registrierter Passkey
+    // (z.B. weil der alte im OS gelöscht wurde) auch server-seitig für Fingerprint-
+    // Verify registriert wird — siehe verifyAuthHeaders()-Kommentar oben.
+    const prf = await passkey.authenticateOrRegister('Soul', verifyAuthHeaders)
     if (!prf) {
       vaultKeyError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
       return
@@ -1818,7 +1832,7 @@ async function handleVaultKeyChange() {
   try {
     let newKey = ''
     if (newVaultKeyMethod.value === 'passkey') {
-      const prf = await passkey.authenticateOrRegister()
+      const prf = await passkey.authenticateOrRegister('Soul', verifyAuthHeaders)
       if (!prf) {
         vaultKeyChangeError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
         return
