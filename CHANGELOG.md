@@ -8,6 +8,24 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.12] — 2026-07-16
+
+**Fixed: v1.0.11's vault-key health-check/guard only covered `sys.md` — the real exposure was much broader.**
+
+Prompted by a direct question ("does resync cover all vault files?") rather than something that would have surfaced on its own. Scanning this soul's vault against the current key found **3 more mismatched files** the sys.md-only check had missed entirely: `vault/images/profile.png`, a voice recording in `vault/audio/`, and `vault/context/activity.md` — each encrypted with a different key than `sys.md`, from different points in today's passkey churn. `activity_log.lua` was found to defensively refuse to write to a file it can't decrypt (to avoid replacing real history with a near-empty one) — meaning `activity.md` was silently, permanently stuck, not just wrong.
+
+**Changed**
+- `lua/vault_unlock.lua`: `key_matches_sys_md()` generalized to `file_matches_key(path, vault_key)`, plus new `scan_vault_for_mismatches()` covering `sys.md`, the server-encrypted context files (`health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md`, `agent.md` — not `shopping.md`/`prompts.md`, which are deliberately always plaintext), and all vault media (`images/`, `audio/`, `video/`, `profile/`).
+- Both `POST /api/vault/unlock`'s guard and `GET /api/vault/key-status` now use the full scan instead of checking `sys.md` alone. Response shape changed: `{ checked, mismatched: [...], all_ok }` instead of a single `is_encrypted`/`matches` pair.
+- `SettingsModal.vue`: Vault Key section now shows a checked/mismatched-file-count summary and lists which specific files don't match, instead of a single OK/mismatch badge. Also now displays the raw `vault_key_hex` value itself (like the Soul-Cert box above it) with a copy button.
+
+**Fixed (found while extending the scan, same pattern as v1.0.11):**
+- `file_matches_key()` required `#decrypted > 0` on top of trusting `resty.aes`'s nil-on-failure behavior — broke on a genuinely empty but validly-encrypted file (this soul's `activity.md`, reset to empty as part of recovering it). A valid decrypt of empty plaintext *is* a 0-length string, not a failure. Now trusts `type(decrypted) == "string"` alone.
+
+**Notes**
+- This soul's 3 mismatched files were resolved manually: `profile.png` and the voice recording were simply re-uploaded (encrypts fresh with the current correct key automatically); `activity.md` (just an auto-regenerating request log, no durable content) was reset to a freshly-encrypted empty file — unblocks `activity_log.lua`'s write-guard.
+- Verified end-to-end post-fix: `all_ok:true`, `checked:4` for the correct key; a deliberately wrong key correctly reports all 4 as mismatched with `409 key_mismatch`.
+
 ## [1.0.11] — 2026-07-16
 
 **Added: Vault Key health-check + manual re-sync in Settings → Config.** Follow-up to today's vault-key-mismatch incident — there was no visible status for whether the server-persisted vault key actually matches `sys.md`, and no way to fix a mismatch short of the initial setup wizard. A mismatch previously surfaced only as a cryptic "vault locked" error the next time `soul_read` ran.

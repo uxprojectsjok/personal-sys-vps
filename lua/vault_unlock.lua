@@ -40,14 +40,10 @@ local function parse_session(val)
   return tonumber(val) or 0, ""
 end
 
--- Prüft, ob vault_key das vorhandene sys.md tatsächlich entschlüsseln kann.
--- Genutzt sowohl vom Unlock-Schutz (verhindert stilles Überschreiben mit einem
--- nicht passenden Schlüssel) als auch vom Status-Endpunkt (GET /api/vault/key-status,
--- Settings-UI-Health-Check).
+-- Prüft, ob vault_key eine bestimmte Datei tatsächlich entschlüsseln kann.
 -- @return is_encrypted (bool), matches (bool|nil — nil wenn is_encrypted=false, d.h. n/a)
-local function key_matches_sys_md(sid, vault_key)
-  local sys_md_path = "/var/lib/sys/souls/" .. sid .. "/sys.md"
-  local sf = io.open(sys_md_path, "rb")
+local function file_matches_key(path, vault_key)
+  local sf = io.open(path, "rb")
   if not sf then return false, nil end
   local content = sf:read("*a"); sf:close()
   if #content < 4 + 16 + 16 or content:sub(1, 4) ~= "SYS\1" then
@@ -68,15 +64,70 @@ local function key_matches_sys_md(sid, vault_key)
   -- last byte of the already-unpadded plaintext as if it were still a padding
   -- byte — a false mismatch for the objectively correct key, caught by testing
   -- this endpoint end-to-end against real data instead of trusting it blind.
-  return true, (decrypted ~= nil and decrypted ~= false and #decrypted > 0)
+  -- A later version required #decrypted > 0 on top of that, which broke on a
+  -- genuinely empty but validly-encrypted file (activity.md right after being
+  -- reset to empty) — a valid decrypt of empty plaintext IS a 0-length string,
+  -- not a failure. Trust resty.aes's type alone: string = success, nil/false = failure.
+  return true, (type(decrypted) == "string")
+end
+
+-- Alle Dateitypen, die laut Encryption-Rollout server-seitig verschlüsselt sein
+-- können — NICHT shopping.md/prompts.md, die bewusst immer Klartext bleiben
+-- (siehe README "Encrypted at rest"). Ursprünglich prüfte dieser Guard nur
+-- sys.md — das ließ 3 andere Dateien (profile.png, eine Audio-Datei, activity.md)
+-- unbemerkt mit einem abweichenden Schlüssel verschlüsselt zurück, gefunden erst
+-- durch gezielte Nachfrage, ob der Schutz wirklich alle Vault-Inhalte abdeckt.
+local ENCRYPTED_CONTEXT_FILES = { "health.md", "mind.md", "income.md", "earnings.md", "activity.md", "agent.md" }
+local MEDIA_DIRS = { "images", "audio", "video", "profile" }
+
+local function list_dir(dir)
+  local out = {}
+  local h = io.popen("ls -- '" .. dir:gsub("'", "'\\''") .. "' 2>/dev/null")
+  if h then
+    for fname in h:lines() do
+      if type(fname) == "string" and #fname > 0 and not fname:find("%.%.") and not fname:find("/") then
+        out[#out + 1] = fname
+      end
+    end
+    h:close()
+  end
+  return out
+end
+
+-- Prüft ALLE potenziell verschlüsselten Dateien einer Soul gegen einen Schlüssel.
+-- @return checked (Anzahl tatsächlich verschlüsselter Dateien), mismatched (Array relativer Pfade)
+local function scan_vault_for_mismatches(sid, vault_key)
+  local base = "/var/lib/sys/souls/" .. sid
+  local checked, mismatched = 0, {}
+
+  local function check(rel_path, abs_path)
+    local is_enc, matches = file_matches_key(abs_path, vault_key)
+    if is_enc then
+      checked = checked + 1
+      if not matches then mismatched[#mismatched + 1] = rel_path end
+    end
+  end
+
+  check("sys.md", base .. "/sys.md")
+  for _, fname in ipairs(ENCRYPTED_CONTEXT_FILES) do
+    check("vault/context/" .. fname, base .. "/vault/context/" .. fname)
+  end
+  for _, dname in ipairs(MEDIA_DIRS) do
+    local dir = base .. "/vault/" .. dname
+    for _, fname in ipairs(list_dir(dir)) do
+      check("vault/" .. dname .. "/" .. fname, dir .. "/" .. fname)
+    end
+  end
+
+  return checked, mismatched
 end
 
 -- ── GET /api/vault/key-status ─────────────────────────────────────────────────
 -- Health-Check für die Settings-UI: entschlüsselt der aktuell in api_context.json
 -- persistierte vault_key_hex (das ist der Schlüssel, den MCP/Hintergrund-Zugriffe
 -- wie soul_read tatsächlich verwenden — nicht die evtl. abweichende Browser-Session
--- aus ngx.shared.vault_sessions) das vorhandene sys.md? Macht sichtbar, was sonst
--- erst beim nächsten fehlschlagenden soul_read auffällt.
+-- aus ngx.shared.vault_sessions) ALLE verschlüsselten Dateien der Soul, nicht nur
+-- sys.md? (siehe scan_vault_for_mismatches — erweitert nach genau diesem Vorfall.)
 
 if method == "GET" and uri == "/api/vault/key-status" then
   local ctx_path = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
@@ -90,17 +141,19 @@ if method == "GET" and uri == "/api/vault/key-status" then
       persisted_key = ctx.vault_key_hex
     end
   end
-  local is_encrypted, matches = key_matches_sys_md(soul_id, persisted_key)
-  -- NICHT "is_encrypted and matches or cjson.null" — die klassische Lua and/or-
-  -- Falle bricht, wenn matches selbst false ist (genau der Fall, den dieser
-  -- Endpunkt anzeigen soll): "true and false" ist bereits false, "false or X"
-  -- liefert dann X statt false. Explizites if/else statt Kurzschluss-Idiom.
-  local matches_json = cjson.null
-  if is_encrypted then matches_json = matches end
+  local checked, mismatched = scan_vault_for_mismatches(soul_id, persisted_key)
+  -- vault_key_hex wird hier bewusst mit ausgeliefert (analog zum Soul-Cert, der
+  -- an anderer Stelle in Settings genauso im Klartext angezeigt wird) — beide
+  -- Endpunkte verlangen ohnehin schon vollen Owner-Zugriff (soul_cert-Auth), ein
+  -- Leak-Level über dem des Bearer-Tokens selbst besteht dadurch nicht.
+  local key_json = cjson.null
+  if persisted_key ~= "" then key_json = persisted_key end
   ngx.say(cjson.encode({
-    is_encrypted = is_encrypted,
-    has_key      = (persisted_key ~= ""),
-    matches      = matches_json,
+    has_key       = (persisted_key ~= ""),
+    vault_key_hex = key_json,
+    checked       = checked,
+    mismatched    = mismatched,
+    all_ok        = (#mismatched == 0),
   }))
   return
 end
@@ -184,20 +237,26 @@ if method == "POST" and uri == "/api/vault/unlock" then
     vault_key = payload.vault_key
   end
 
-  -- Neuer Schlüssel muss ein vorhandenes verschlüsseltes sys.md tatsächlich
-  -- entschlüsseln können — sonst überschreibt "vault_key_hex immer schreiben"
-  -- weiter unten stillschweigend den Schlüssel, mit dem der Inhalt wirklich
-  -- verschlüsselt wurde, und macht sys.md dauerhaft unlesbar (kein Backup/keine
-  -- Historie von vault_key_hex). Passiert z.B. wenn zwischen zwei Unlocks ein
-  -- anderer Passkey/anderes Credential verwendet wurde — jedes liefert einen
-  -- eigenen, deterministischen aber UNTERSCHIEDLICHEN Schlüssel.
+  -- Neuer Schlüssel muss ALLE vorhandenen verschlüsselten Dateien tatsächlich
+  -- entschlüsseln können (sys.md + Context-Dateien + Vault-Media, nicht nur
+  -- sys.md — siehe scan_vault_for_mismatches) — sonst überschreibt
+  -- "vault_key_hex immer schreiben" weiter unten stillschweigend den Schlüssel,
+  -- mit dem der Inhalt wirklich verschlüsselt wurde, und macht ihn dauerhaft
+  -- unlesbar (kein Backup/keine Historie von vault_key_hex). Passiert z.B. wenn
+  -- zwischen zwei Unlocks ein anderer Passkey/anderes Credential verwendet
+  -- wurde — jedes liefert einen eigenen, deterministischen aber
+  -- UNTERSCHIEDLICHEN Schlüssel. Ursprünglich prüfte das nur sys.md — ein
+  -- gezielter Nachfrage-Test deckte auf, dass Vault-Media (profile.png, eine
+  -- Audio-Datei) und activity.md mit einem abweichenden Schlüssel verschlüsselt
+  -- waren, unbemerkt vom ursprünglichen sys.md-only-Check.
   if vault_key ~= "" then
-    local is_encrypted, matches = key_matches_sys_md(soul_id, vault_key)
-    if is_encrypted and not matches then
+    local checked, mismatched = scan_vault_for_mismatches(soul_id, vault_key)
+    if #mismatched > 0 then
       ngx.status = 409
       ngx.say(cjson.encode({
-        error   = "key_mismatch",
-        message = "Dieser Schlüssel kann das vorhandene sys.md nicht entschlüsseln — vermutlich wurde mit einem anderen Passkey/Credential entsperrt als dem, mit dem zuletzt gespeichert wurde. Vault-Sperre wurde NICHT überschrieben, um den bestehenden Inhalt nicht dauerhaft unlesbar zu machen.",
+        error      = "key_mismatch",
+        mismatched = mismatched,
+        message    = "Dieser Schlüssel kann " .. #mismatched .. " von " .. checked .. " verschlüsselten Dateien nicht entschlüsseln — vermutlich wurde mit einem anderen Passkey/Credential entsperrt als dem, mit dem zuletzt gespeichert wurde. Vault-Sperre wurde NICHT überschrieben, um bestehenden Inhalt nicht dauerhaft unlesbar zu machen.",
       }))
       return
     end
