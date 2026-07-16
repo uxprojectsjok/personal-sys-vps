@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.7] — 2026-07-16
+
+**Fixed: the fingerprint self-heal could still fail with `unknown_credential` — the re-verify step could authenticate with the wrong local passkey.**
+
+Root cause: `authenticatePasskey()` (in `useSoulPasskey.js`) built its WebAuthn `allowCredentials` list from every locally saved credential ID, not just the one just created. Because passkey creation uses `residentKey: 'preferred'`, each repeated self-heal registration created a new, identically-named ("Soul") discoverable credential in the platform keychain. With multiple matching credentials offered, the OS/browser can satisfy the WebAuthn `get()` call with any of them, not necessarily the one that was just registered — landing back on `unknown_credential` if it picks an older, differently-registered one.
+
+**Changed**
+- `useSoulPasskey.js`: `registerPasskey()` now exposes `lastRegisteredCredentialId`. `authenticatePasskey()` gained an optional second parameter to restrict `allowCredentials` to exactly one ID instead of all saved ones.
+- `app/pages/verify.vue`: the self-heal's re-verify step now passes `lastRegisteredCredentialId.value`, forcing the browser to use precisely the credential that was just registered.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), 7 stray credentials had accumulated for one soul before this fix. Doesn't clean those up (lives in the browser/OS keychain, not server-reachable) — harmless clutter, future self-heal runs work correctly regardless. Ported here unchanged.
+
 ## [1.0.6] — 2026-07-16
 
 **Fixed: fingerprint's passkey self-heal (added in v1.0.2) registered a new passkey but never proved it, so the server kept rejecting the method.**

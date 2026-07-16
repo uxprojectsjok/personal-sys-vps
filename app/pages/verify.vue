@@ -324,7 +324,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const route  = useRoute()
 const { hasSoul, soulToken } = useSoul()
-const { authenticatePasskey, lastAssertion, registerPasskey } = useSoulPasskey()
+const { authenticatePasskey, lastAssertion, registerPasskey, lastRegisteredCredentialId } = useSoulPasskey()
 const {
   connectWallet,
   isConnected:   walletConnected,
@@ -768,7 +768,13 @@ async function doFingerprint() {
       // sammelte einen neuen Eintrag pro Versuch, statt den einen wiederzuverwenden).
       const migrated = await registerPasskey('Soul', authHeaders)
       if (migrated) {
-        await authenticatePasskey(webauthnChallenge.value || undefined)
+        // Auf genau das gerade neu registrierte Credential einschränken — sonst kann
+        // das Betriebssystem (residentKey:'preferred' legt bei jedem create() einen
+        // neuen, gleichnamigen "Soul"-Eintrag im Keychain an) einen ANDEREN, älteren
+        // lokalen Passkey für den folgenden get()-Aufruf wählen, was wieder als
+        // unknown_credential scheitert — beobachtet direkt nach dem ersten Migrations-
+        // Fix, mit 7 verschiedenen angesammelten Credentials für dieselbe Soul.
+        await authenticatePasskey(webauthnChallenge.value || undefined, lastRegisteredCredentialId.value)
         const newAssertion = lastAssertion.value
         if (newAssertion) {
           const r2 = await fetch('/api/verify/fingerprint-check', {
