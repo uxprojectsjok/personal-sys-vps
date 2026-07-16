@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.14] — 2026-07-16
+
+**Fixed: "Vault Key: Re-sync" could report `key_mismatch` on the same device that had already worked correctly — a residual instance of the stale-credential-list problem, this time on the normal (non-self-heal) authentication path.**
+
+`saveCredentialId()` only ever appends to the locally saved credential-ID list, never prunes. A *normal* `authenticatePasskey()` call still offers the entire accumulated list as `allowCredentials` — with several stale IDs on file, the OS/browser can satisfy the ceremony with any of them, not necessarily the one whose derived key matches the vault.
+
+**Changed**
+- `useSoulPasskey.js`: `authenticatePasskey()` now always records which credential was actually used in `lastUsedCredentialId`. New `pruneToCredentialId(id)` replaces the entire saved list with just one ID — only called when something external has confirmed that ID is correct.
+- `SettingsModal.vue` (`handleResyncVaultKey`): after the server confirms a successful vault unlock, prunes the local list down to just that credential.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged. Deliberately scoped to the vault-resync flow only, where a server response gives real confirmation.
+
 ## [1.0.13] — 2026-07-16
 
 **Added: vault files that were never encrypted (e.g. context files seeded before the first vault key ever existed) now get encrypted automatically on unlock and on lock, not just left as plaintext indefinitely.**
