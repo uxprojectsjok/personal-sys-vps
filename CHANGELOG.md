@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.19] — 2026-07-16
+
+**Fixed: voice_hq verification always failed with "No security code found for this verification — please restart" when the verify challenge was created in open-choice mode (empty `methods[]`, user picks the method in the UI) and the user then chose Voice — regardless of whether an ElevenLabs API key was configured.**
+
+**Fixed**
+- `lua/verify_challenge.lua`: the server-side anti-replay `voice_code` was only pre-generated when `voice_hq` was explicitly listed in the challenge's `methods[]` at creation time — open-choice challenges never got a code, so choosing Voice there was doomed from the start. Now generated unconditionally on every challenge, matching how `webauthn_challenge` already handles the identical scenario for fingerprint.
+
+**Notes**
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged.
+
 ## [1.0.18] — 2026-07-16
 
 **Added: `last_verified_at` tracking on passkey credentials, plus a small styling fix.**
