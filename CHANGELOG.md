@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.9] — 2026-07-16
+
+**Fixed: "Save with biometrics" still failed after an OS-level passkey deletion — a third independently-stale piece of local state, on top of v1.0.8.**
+
+`useSoulPasskey.js`'s own `hasPasskey` ref, backed by a separate `localStorage` key (`sys_passkey_credential_ids`), also survives an OS-level passkey deletion untouched — every call site using the `hasPasskey.value ? authenticatePasskey() : registerPasskey()` pattern kept trying to authenticate against a deleted credential instead of registering a new one, with no fallback.
+
+**Changed**
+- `useSoulPasskey.js`: new `authenticateOrRegister(username, getAuthHeaders)` — tries authenticate first if `hasPasskey` is true, but on failure clears the stale local credential-ID list and falls back to registration. `getEncryptKey()` uses it internally too.
+- `gate.vue` (`doSaveCreds`), `VaultSessionPanel.vue`: switched to `authenticateOrRegister()`.
+
+**Notes**
+- Found on `personal-sys-vps-private` (kro.uxprojects-jok.com). Audited the rest of `app/` for the same pattern — these were the only two call sites. Ported here unchanged.
+
 ## [1.0.8] — 2026-07-16
 
 **Fixed: deleting a passkey outside the app (OS/Google Password Manager) permanently stopped the app from ever offering to register a new one.**
