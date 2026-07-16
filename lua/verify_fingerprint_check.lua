@@ -136,4 +136,17 @@ if ok_e then
   if wf then wf:write(enc); wf:close() end
 end
 
+-- last_verified_at auf dem genutzten Credential aktualisieren — passkeys.json
+-- speicherte bisher nur created_at, wodurch sich nach mehrfacher Registrierungs-
+-- Selbstheilung (siehe CHANGELOG v1.0.8ff) nicht mehr unterscheiden ließ, welche
+-- der angesammelten Einträge noch von einem echten Gerät benutzt werden und
+-- welche verwaist sind — ein blindes Aufräumen hätte riskiert, ein noch aktives
+-- Zweitgerät (z.B. Android neben Desktop) versehentlich auszusperren.
+entry.last_verified_at = os.date("!%Y-%m-%dT%TZ")
+local ok_pe, penc = pcall(cjson.encode, passkeys)
+if ok_pe then
+  local pwf = io.open(ppath, "w")
+  if pwf then pwf:write(penc); pwf:close() end
+end
+
 ngx.say(cjson.encode({ match = true }))

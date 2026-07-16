@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.18] — 2026-07-16
+
+**Added: `last_verified_at` tracking on passkey credentials, plus a small styling fix.**
+
+**Added**
+- `lua/verify_fingerprint_check.lua`: on every successful fingerprint verification, the matched credential's entry in `passkeys.json` now gets `last_verified_at` set (same timestamp format `created_at` already uses). Prerequisite for ever safely cleaning up accumulated stale credentials from repeated registration — without a "still in use" signal, deleting an apparently-orphaned entry risks locking out a device (e.g. a second phone) that's still using it.
+
+**Changed**
+- `app/components/SettingsModal.vue`: "Re-sync vault key" and "Change Encryption" buttons switched from ghost/outline to primary/filled style, matching the sibling "Rotate Soul-Cert" button.
+
+**Notes**
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged.
+
 ## [1.0.17] — 2026-07-16
 
 **Added: an explicit, recorded vault-encryption method plus a safe way to change it — previously the vault key could be established via Passkey or a 12-word mnemonic with no record of which, and no supported way to migrate from one to the other short of manual file surgery.**
