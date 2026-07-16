@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.9] — 2026-07-16
+
+**Fixed: deleting a passkey outside the app (OS/Google Password Manager) permanently stopped the app from ever offering to register a new one.**
+
+After a user deleted all their passkeys from Android's Credential Manager and logged in manually with the password, `gate.vue` never offered to set up a new passkey again — the biometric setup step simply didn't appear.
+
+Root cause: `useSavedCreds.js`'s `hasCreds` (an encrypted password+cert blob in `localStorage`, keyed by soul) is what `submit()` checks to decide whether to show the "save with biometric" step (`if (support.supported && !creds.hasCreds.value)`). This blob has no relationship to whether the underlying passkey still exists on the device — it survives an OS-level passkey deletion untouched. So the app kept assuming "a working passkey must exist, since we have a saved encrypted blob" indefinitely, even after the credential it was encrypted with was gone. Deleting a passkey outside the app is exactly the scenario this broke.
+
+**Changed**
+- `app/pages/gate.vue`: `biometricUnlock()`'s auth-failure branch now clears the stale `hasCreds` blob and drops to the manual login form (matching the existing pattern for a failed decrypt just below it) instead of just showing an error and stopping. A subsequent manual login then correctly sees no working credentials and re-offers passkey registration.
+
+**Notes**
+- WebAuthn deliberately doesn't distinguish "user declined this prompt" from "no matching credential exists" (anti-enumeration privacy property of the spec) — so this can't cleanly detect *why* auth failed, only *that* it failed. Clearing state either way is judged the safer default: an accidental decline costs one redo of passkey setup, but a genuinely deleted passkey no longer leaves the user permanently stuck.
+- Does not retroactively fix an already-stuck browser session from before this fix was deployed — the stale blob only gets cleared the next time `biometricUnlock()` runs and fails. A user already stuck needs to reach the biometric-unlock screen once (it fails immediately, that's expected) to trigger the self-heal, then log in manually as usual.
+- Rebuilt + redeployed.
+
 ## [1.0.8] — 2026-07-16
 
 **Fixed: v1.0.7's fingerprint self-heal still failed with `unknown_credential` — the re-verify step could authenticate with the wrong local passkey.**
