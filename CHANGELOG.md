@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.20] — 2026-07-16
+
+**Fixed: fingerprint verification never pruned the local credential list after a successful match, unlike the vault-unlock flows — every attempt started from an unrestricted `authenticatePasskey()` call, so an OS with several accumulated resident credentials could keep returning an unregistered one, permanently re-triggering the self-heal path (fail → register new → re-auth, up to 3 biometric prompts) instead of ever converging on the working credential.**
+
+**Fixed**
+- `app/pages/verify.vue`: `doFingerprint()` now calls `pruneToCredentialId()` after every server-confirmed successful match — both the normal first-attempt path and the self-heal path.
+
+**Notes**
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com) via the `last_verified_at` tracking added one version earlier — confirmed two brand-new credentials were created within the same hour, each only seconds before its first successful verification, proving self-heal was firing on every attempt rather than being a one-time migration. Ported here unchanged.
+
 ## [1.0.19] — 2026-07-16
 
 **Fixed: voice_hq verification always failed with "No security code found for this verification — please restart" when the verify challenge was created in open-choice mode (empty `methods[]`, user picks the method in the UI) and the user then chose Voice — regardless of whether an ElevenLabs API key was configured.**

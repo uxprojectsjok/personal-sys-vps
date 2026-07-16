@@ -331,7 +331,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const route  = useRoute()
 const { hasSoul, soulToken } = useSoul()
-const { authenticatePasskey, lastAssertion, registerPasskey, lastRegisteredCredentialId } = useSoulPasskey()
+const { authenticatePasskey, lastAssertion, registerPasskey, lastRegisteredCredentialId, lastUsedCredentialId, pruneToCredentialId } = useSoulPasskey()
 const {
   connectWallet,
   isConnected:   walletConnected,
@@ -761,7 +761,19 @@ async function doFingerprint() {
     })
     const d  = await r.json()
     let ok = d.match === true
-    if (!ok && (d.reason === 'unknown_credential' || d.reason === 'no_passkey_registered')) {
+    if (ok) {
+      // Server hat gerade bestätigt, dass genau dieses Credential funktioniert —
+      // lokale Credential-Liste darauf kürzen. Ohne das startet jeder künftige
+      // doFingerprint()-Aufruf wieder mit einer unbeschränkten authenticatePasskey(),
+      // die bei mehreren angesammelten "Soul"-Einträgen im OS-Keychain erneut ein
+      // FALSCHES Credential zurückbekommen kann — unknown_credential, Selbstheilung
+      // registriert einen weiteren neuen Eintrag, und der Kreislauf beginnt von
+      // vorn (beobachtet: zwei brandneue Credentials innerhalb einer Stunde, beide
+      // erst Sekunden vor ihrer ersten Verifikation registriert — kein einziger
+      // wiederverwendet). Gleiches Muster wie SettingsModal.vue/VaultSessionPanel.vue,
+      // hier bisher gefehlt.
+      pruneToCredentialId(lastUsedCredentialId.value)
+    } else if (d.reason === 'unknown_credential' || d.reason === 'no_passkey_registered') {
       // Passkey wurde vor dem Sicherheitsfix erstellt, oder über gate.vue's initialem
       // Setup (das getAuthHeaders nicht übergibt) — Public Key nie serverseitig
       // registriert. Jetzt neu registrieren — ABER die erzwungene Biometrik-Bestätigung
@@ -796,7 +808,11 @@ async function doFingerprint() {
           })
           const d2 = await r2.json()
           ok = d2.match === true
-          if (!ok) errorMsg.value = d2.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d2.reason || 'Verifikation fehlgeschlagen.')
+          if (ok) {
+            pruneToCredentialId(lastRegisteredCredentialId.value)
+          } else {
+            errorMsg.value = d2.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d2.reason || 'Verifikation fehlgeschlagen.')
+          }
         } else {
           ok = false
           errorMsg.value = 'Biometrische Verifikation abgelehnt.'
