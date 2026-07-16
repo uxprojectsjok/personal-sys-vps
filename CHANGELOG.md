@@ -8,6 +8,25 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.17] — 2026-07-16
+
+**Added: an explicit, recorded vault-encryption method plus a safe way to change it — previously the vault key could be established via Passkey or a 12-word mnemonic with no record of which, and no supported way to migrate from one to the other short of manual file surgery.**
+
+**Added**
+- `lua/vault_unlock.lua`:
+  - `POST /api/vault/unlock` accepts an optional `method` field (`"passkey"|"mnemonic"`), persisted as `vault_key_method`/`vault_key_set_at` in `api_context.json` — only on the *first* successful key establishment for a soul, never overwritten by a routine unlock that just re-proves an existing key.
+  - `GET /api/vault/key-status` now also returns `vault_key_method` and `vault_key_set_at`.
+  - New `POST /api/vault/rekey`: verifies `old_vault_key` against every encrypted file (reusing the existing mismatch-scan guard), then re-encrypts each file individually with `new_vault_key` and a fresh IV. Only persists the new key/method (and refreshes any active session/`webhook_token`) once every file has migrated — a partial failure leaves the old key fully intact and reports exactly which files didn't migrate.
+- `server/openresty/vhost.conf.template`: new `location = /api/vault/rekey` block, same auth/rate-limit pattern as the sibling vault endpoints.
+- `app/composables/useVaultSession.js`: `unlock()` gained a `method` parameter; new `rekey(oldKey, newKey, newMethod)`.
+- `app/components/VaultSessionPanel.vue`: both unlock call sites pass `method`; added short tradeoff explanations for each method (Passkey: device-bound, may not sync across devices/managers; 12 words: portable but self-custody — no recovery if lost).
+- `app/components/SettingsModal.vue`: Vault Key section shows the current method + when it was established; new "Change Encryption" flow (pick a new method, authenticate or generate+confirm-saved a new mnemonic, then migrate via `/api/vault/rekey`) mirroring the existing "Rotate Soul-Cert" flow.
+- `i18n/locales/{de,en}.json`: new tradeoff/change-flow strings; `vault_session.method_warning` reworded to point at the new safe migration path.
+
+**Notes**
+- Found and verified on `personal-sys-vps-private` (kro.uxprojects-jok.com) with a full live round-trip against a real 10-file vault — unlock with method recorded, rekey to a new key/method, rekey back, and a wrong-key rekey attempt correctly rejected without touching any file — ported here unchanged.
+- A normal unlock deliberately never changes the recorded method once a key exists — only `/api/vault/rekey` may change it, so the active method can't silently drift.
+
 ## [1.0.16] — 2026-07-16
 
 **Fixed: the previous credential-pruning fix only covered the Settings "Vault Key" resync flow — `VaultSessionPanel.vue`'s own "Unlock Vault" button is a second, independent unlock entry point with the same stale-credential-list bug.**

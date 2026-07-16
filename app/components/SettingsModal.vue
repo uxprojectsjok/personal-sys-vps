@@ -422,6 +422,92 @@
 
                 <p v-if="vaultKeyError" class="sm-desc" style="color:var(--sys-err);margin-top:8px">{{ vaultKeyError }}</p>
                 <p v-if="vaultKeySynced" class="sm-desc f-ok" style="margin-top:8px">{{ $t('settings.vault_key_synced') }}</p>
+
+                <!-- Aktuelle Methode -->
+                <div v-if="vaultKeyStatus?.vault_key_method" style="margin-top:10px;padding:8px 12px;background:rgba(0,0,0,0.12);border-radius:var(--r-xs)">
+                  <span style="font-size:12px;color:var(--fg-3)">
+                    {{ $t('settings.vault_key_method_current', { method: vaultKeyStatus.vault_key_method === 'mnemonic' ? $t('vault_session.method_label_mnemonic') : (vaultKeyStatus.vault_key_method === 'passkey' ? $t('vault_session.method_label_passkey') : vaultKeyStatus.vault_key_method) }) }}
+                    <template v-if="vaultKeyStatus.vault_key_set_at">{{ $t('settings.vault_key_set_at', { date: formatVaultKeyDate(vaultKeyStatus.vault_key_set_at) }) }}</template>
+                  </span>
+                </div>
+
+                <!-- Verschlüsselung ändern -->
+                <button
+                  v-if="!vaultKeyChangeMode"
+                  @click="startVaultKeyChange"
+                  :disabled="!vaultKeyStatus?.has_key || !vaultKeyStatus?.all_ok"
+                  class="sys-btn-ed sys-btn-ed--ghost"
+                  style="width:100%;justify-content:center;margin-top:8px"
+                >{{ $t('settings.vault_key_change_btn') }}</button>
+                <p v-if="!vaultKeyChangeMode && !vaultKeyStatus?.has_key" class="sm-desc" style="margin-top:6px">{{ $t('settings.vault_key_change_disabled_no_key') }}</p>
+                <p v-else-if="!vaultKeyChangeMode && vaultKeyStatus?.has_key && !vaultKeyStatus?.all_ok" class="sm-desc" style="margin-top:6px">{{ $t('settings.vault_key_change_disabled_mismatch') }}</p>
+
+                <Transition name="sys-modal-fade">
+                  <div v-if="vaultKeyChangeMode" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                      <span class="sm-sec-head">{{ $t('settings.vault_key_change_choose') }}</span>
+                      <button @click="cancelVaultKeyChange" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
+                    </div>
+
+                    <template v-if="!vaultKeyChangeSuccess">
+                      <div class="grid grid-cols-2 gap-1.5" style="margin-bottom:10px">
+                        <button
+                          v-for="opt in [{ value: 'passkey', label: $t('vault_session.method_passkey') }, { value: 'mnemonic', label: $t('vault_session.method_mnemonic') }]"
+                          :key="opt.value"
+                          type="button"
+                          style="padding:8px 4px;min-height:38px;font-size:14px;border-radius:var(--r-xs);border:1px solid;transition:all .15s"
+                          :style="newVaultKeyMethod === opt.value
+                            ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim);font-weight:600'
+                            : 'border-color:var(--line-2);color:var(--fg-2)'"
+                          @click="newVaultKeyMethod = opt.value; newMnemonicWords = []; newMnemonicSavedConfirm = false"
+                        >{{ opt.label }}</button>
+                      </div>
+
+                      <p style="font-size:13px;color:var(--fg-4);margin:0 0 10px">
+                        {{ newVaultKeyMethod === 'mnemonic' ? $t('vault_session.mnemonic_tradeoff') : $t('vault_session.passkey_tradeoff') }}
+                      </p>
+
+                      <template v-if="newVaultKeyMethod === 'mnemonic'">
+                        <button
+                          v-if="!newMnemonicWords.length"
+                          @click="newMnemonicWords = generateMnemonicWords()"
+                          class="sys-btn-ed sys-btn-ed--ghost"
+                          style="width:100%;justify-content:center;margin-bottom:10px"
+                        >{{ $t('settings.vault_key_change_mnemonic_generate') }}</button>
+
+                        <template v-else>
+                          <div style="background:rgba(0,0,0,0.3);padding:10px 12px;margin-bottom:8px;font-family:var(--sys-mono);font-size:13px;color:var(--sys-accent-bright);line-height:1.8;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px">
+                            <span v-for="(w, i) in newMnemonicWords" :key="i">{{ i + 1 }}. {{ w }}</span>
+                          </div>
+                          <p class="sm-desc" style="margin-bottom:8px">{{ $t('settings.vault_key_change_words_title') }}</p>
+                          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg-2);margin-bottom:10px;cursor:pointer">
+                            <input type="checkbox" v-model="newMnemonicSavedConfirm" />
+                            {{ $t('settings.vault_key_change_mnemonic_saved_confirm') }}
+                          </label>
+                        </template>
+                      </template>
+
+                      <button
+                        v-if="newVaultKeyMethod === 'passkey'"
+                        @click="handleVaultKeyChange"
+                        :disabled="vaultKeyChangeBusy"
+                        class="sys-btn-ed sys-btn-ed--primary"
+                        style="width:100%;justify-content:center"
+                      >{{ vaultKeyChangeBusy ? $t('settings.vault_key_change_migrating') : $t('settings.vault_key_change_passkey_btn') }}</button>
+
+                      <button
+                        v-else-if="newVaultKeyMethod === 'mnemonic' && newMnemonicWords.length"
+                        @click="handleVaultKeyChange"
+                        :disabled="vaultKeyChangeBusy || !newMnemonicSavedConfirm"
+                        class="sys-btn-ed sys-btn-ed--primary"
+                        style="width:100%;justify-content:center"
+                      >{{ vaultKeyChangeBusy ? $t('settings.vault_key_change_migrating') : $t('settings.vault_key_change_confirm_btn') }}</button>
+                    </template>
+
+                    <p v-if="vaultKeyChangeError" class="sm-desc" style="color:var(--sys-err);margin-top:8px">{{ vaultKeyChangeError }}</p>
+                    <p v-if="vaultKeyChangeSuccess" class="sm-desc f-ok" style="margin-top:8px">{{ vaultKeyChangeSuccess }}</p>
+                  </div>
+                </Transition>
               </div>
 
               <!-- Datenschutz: Scan-Sichtbarkeit -->
@@ -845,6 +931,7 @@ import { useVault } from '~/composables/useVault.js'
 import { useSavedCreds } from '~/composables/useSavedCreds.js'
 import { useSoulPasskey } from '~/composables/useSoulPasskey.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
+import { generateMnemonicWords } from '~/composables/useSoulEncrypt.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { useI18n } from 'vue-i18n'
@@ -1677,6 +1764,88 @@ async function handleResyncVaultKey() {
     }
   } finally {
     vaultKeyBusy.value = false
+  }
+}
+
+// ── Verschlüsselung ändern ────────────────────────────────────────────────────
+// Nutzt POST /api/vault/rekey — anders als handleResyncVaultKey oben (das nur
+// einen BESTEHENDEN Schlüssel bestätigt) migriert dies alle Dateien auf einen
+// NEUEN Schlüssel + Methode. vault_key_hex steht bereits aus vaultKeyStatus zur
+// Verfügung (Settings verlangt ohnehin vollen Owner-Zugriff via soul-cert) —
+// der Server prüft alte+neue Schlüssel serverseitig trotzdem noch einmal nach.
+const vaultKeyChangeMode      = ref(false)
+const newVaultKeyMethod       = ref('passkey')
+const newMnemonicWords        = ref([])
+const newMnemonicSavedConfirm = ref(false)
+const vaultKeyChangeBusy      = ref(false)
+const vaultKeyChangeError     = ref('')
+const vaultKeyChangeSuccess   = ref('')
+
+function formatVaultKeyDate(ts) {
+  if (!ts) return ''
+  return new Date(ts * 1000).toLocaleDateString(locale.value === 'de' ? 'de-DE' : 'en-US', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  })
+}
+
+function startVaultKeyChange() {
+  vaultKeyChangeMode.value      = true
+  newVaultKeyMethod.value       = 'passkey'
+  newMnemonicWords.value        = []
+  newMnemonicSavedConfirm.value = false
+  vaultKeyChangeError.value     = ''
+  vaultKeyChangeSuccess.value   = ''
+}
+
+function cancelVaultKeyChange() {
+  vaultKeyChangeMode.value      = false
+  newMnemonicWords.value        = []
+  newMnemonicSavedConfirm.value = false
+  vaultKeyChangeError.value     = ''
+  vaultKeyChangeSuccess.value   = ''
+}
+
+async function handleVaultKeyChange() {
+  if (vaultKeyChangeBusy.value) return
+  const oldKey = vaultKeyStatus.value?.vault_key_hex
+  if (!oldKey) {
+    vaultKeyChangeError.value = t('settings.vault_key_change_disabled_no_key')
+    return
+  }
+  vaultKeyChangeBusy.value    = true
+  vaultKeyChangeError.value   = ''
+  vaultKeyChangeSuccess.value = ''
+  try {
+    let newKey = ''
+    if (newVaultKeyMethod.value === 'passkey') {
+      const prf = await passkey.authenticateOrRegister()
+      if (!prf) {
+        vaultKeyChangeError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
+        return
+      }
+      newKey = await passkey.deriveVaultKeyHex(prf)
+    } else {
+      if (!newMnemonicWords.value.length) return
+      newKey = await vaultSession.deriveVaultKey(newMnemonicWords.value.join(' '), soulToken.value.split('.')[0])
+    }
+
+    if (newKey === oldKey) {
+      vaultKeyChangeError.value = t('settings.vault_key_change_same_key')
+      return
+    }
+
+    const result = await vaultSession.rekey(oldKey, newKey, newVaultKeyMethod.value)
+    if (result?.ok) {
+      vaultKeyChangeSuccess.value = t('settings.vault_key_change_success', { n: result.migrated?.length ?? 0 })
+      if (newVaultKeyMethod.value === 'passkey') {
+        passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value)
+      }
+      await fetchVaultKeyStatus()
+    } else {
+      vaultKeyChangeError.value = result?.message || result?.error || t('settings.vault_key_change_failed')
+    }
+  } finally {
+    vaultKeyChangeBusy.value = false
   }
 }
 

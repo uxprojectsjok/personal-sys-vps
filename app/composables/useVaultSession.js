@@ -106,7 +106,10 @@ export function useVaultSession() {
 
   // mnemonic: optionaler String mit 12 Leerzeichen-getrennten BIP39-Wörtern
   // precomputedKey: optionaler 64-char Hex-String (z.B. von Passkey abgeleitet)
-  async function unlock(duration, mnemonic = '', precomputedKey = '') {
+  // method: 'passkey'|'mnemonic' — wird vom Server NUR bei allererster Schlüssel-
+  // Etablierung persistiert (siehe vault_unlock.lua had_key_before-Guard), ein
+  // normaler Unlock mit bestehendem Schlüssel überschreibt die Methode nicht.
+  async function unlock(duration, mnemonic = '', precomputedKey = '', method = '') {
     loading.value = true
     error.value   = null
     try {
@@ -126,7 +129,7 @@ export function useVaultSession() {
           Authorization:  `Bearer ${soulToken.value}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ duration, vault_key })
+        body: JSON.stringify({ duration, vault_key, method })
       })
       const data = await res.json()
       if (data.ok) {
@@ -175,6 +178,41 @@ export function useVaultSession() {
     }
   }
 
+  // Wechselt die Vault-Verschlüsselung auf einen neuen Schlüssel + neue Methode.
+  // oldVaultKey muss den AKTUELL gültigen Schlüssel enthalten (Besitznachweis,
+  // vom Server erneut gegen alle Dateien geprüft — siehe /api/vault/rekey).
+  async function rekey(oldVaultKey, newVaultKey, newMethod) {
+    loading.value = true
+    error.value   = null
+    try {
+      const res = await fetch('/api/vault/rekey', {
+        method:  'POST',
+        headers: {
+          Authorization:  `Bearer ${soulToken.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          old_vault_key: oldVaultKey,
+          new_vault_key: newVaultKey,
+          new_method:    newMethod
+        })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        vaultKey.value = newVaultKey
+        _saveKeyToSession(soulToken.value, newVaultKey)
+      } else {
+        error.value = data.message || data.error || 'Unbekannter Fehler'
+      }
+      return data
+    } catch (e) {
+      error.value = e.message
+      return { ok: false, error: e.message }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const timeRemaining = computed(() => {
     if (!isUnlocked.value) return null
     if (isUnlimited.value) return 'Unbegrenzt'
@@ -198,6 +236,7 @@ export function useVaultSession() {
     fetchStatus,
     unlock,
     lock,
+    rekey,
     deriveVaultKey
   }
 }
