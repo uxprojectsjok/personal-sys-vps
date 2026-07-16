@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.6] — 2026-07-16
+
+**Fixed: verification score not accumulating across multiple methods completed on the same challenge outside the pre-selected multi-method flow.**
+
+`verify_complete.lua` has two flows: a multi-method flow (used when the challenge was created with `required_methods`, or the frontend sent `selected_methods` with >1 entries) that correctly accumulates `completed_methods`/`score`, and a single-method flow for the simple case. The single-method flow both (a) rejected any further `/complete` call once the challenge reached `status="verified"` (`409 already_completed`), and — more importantly — (b) when it did run, overwrote `d.completed_methods`/`d.score` with just the current method instead of adding to what was already there. A user completing fingerprint, then separately completing face on the same challenge (e.g. the checkbox multi-select wasn't used, or a retry after an interruption landed back in the single-method path) would see the UI's client-side method list correctly show both as done, but the server-reported score reset to the last method's weight alone (`Score 1` instead of `2`).
+
+**Changed**
+- `lua/verify_complete.lua`: single-method flow now accumulates onto `completed_methods`/`score` like the multi-method flow does, and no longer hard-rejects once `status="verified"` — each additional, individually-proven method (duplicates are still rejected by the existing check) adds to the running total instead of replacing it. Matches the file's own top-of-file comment: "Score = #completed_methods".
+
+**Notes**
+- Found via a user report showing "Fingerprint +1 / Facial recognition +1 / ... Score 1" — the discrepancy between the per-method checklist (client-side, accumulates locally regardless of server state) and the numeric score (taken verbatim from the last server response) is what made this visible.
+- Does not merge scores across genuinely separate challenge_id's (e.g. if a new challenge was created from scratch for a later method instead of resuming the same one) — only fixes accumulation within one challenge's lifetime, which is the documented/intended scope of a single "verification session".
+- Deployed via `cp` to `/etc/openresty/lua/` + `openresty -s reload`, no rebuild needed (lua-only change).
+
 ## [1.0.5] — 2026-07-16
 
 **Fixed: a second, distinct soul-mcp crash mechanism that survived the v1.0.4 fix.**
