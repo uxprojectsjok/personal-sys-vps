@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.24] — 2026-07-16
+
+**Fixed: a Passkey newly registered through either Vault flow (Settings "Re-sync"/"Change Encryption", or the setup-wizard "Unlock Vault" panel) was never registered server-side for Fingerprint-Verify — so the very next fingerprint verification attempt would ignore the perfectly working Vault passkey and register yet another new one, forcing a third biometric "save this passkey" prompt on the same device for something that should have needed only one.**
+
+Reported live directly after the OS-level passkey deletion/re-registration walkthrough from the previous two entries: the user re-registered a fresh, correctly domain-labeled passkey via "Change Encryption" (worked, vault unlocked fine) — but the following Fingerprint-Verify attempt still wanted to create a brand new passkey despite one already existing and working.
+
+Root cause: `authenticateOrRegister(username, getAuthHeaders)` only calls `POST /api/verify/passkey-register` (registering the public key so `verify_fingerprint_check.lua` can later verify a signature against it) when its `getAuthHeaders` parameter is actually provided — and both `SettingsModal.vue`'s Vault Key handlers and `VaultSessionPanel.vue`'s unlock handler called it with no arguments at all. This was a *deliberate* prior decision (see the removed comment: "vault-key-Ableitung ist unabhängig von der Fingerprint-Server-Registrierung", i.e. vault key derivation doesn't need it) — technically true, since PRF-based vault key derivation works without any server registration. But in practice this meant every "new passkey via a vault flow" produced a credential invisible to Fingerprint-Verify, which self-heals by creating *yet another* new one on its next use — the opposite of the "one passkey per device" experience a user reasonably expects.
+
+**Fixed**
+- `app/components/SettingsModal.vue`: new `verifyAuthHeaders()` helper, now passed to both `authenticateOrRegister()` calls (Re-sync vault key, Change Encryption).
+- `app/components/VaultSessionPanel.vue`: same `verifyAuthHeaders()` helper added, passed to its `authenticateOrRegister()` call in `handleUnlock()`.
+
+**Notes**
+- No change to `useSoulPasskey.js` itself — `authenticateOrRegister()` already supported this via its second parameter, it just wasn't being used at these three call sites (the fourth and only pre-existing correct call site is `gate.vue`'s initial setup flow).
+- This does not retroactively register a passkey that was already created via one of these flows before this fix shipped — it takes effect for any passkey newly registered here going forward. A passkey created moments before this deploy would still need one more Fingerprint-Verify self-heal round to get server-registered; after that, both systems stay in sync going forward.
+
 ## [1.0.23] — 2026-07-16
 
 **Fixed: newly registered passkeys are indistinguishable in the OS passkey manager (e.g. Windows Hello) when a user runs multiple SYS nodes on the same device — both `rp.name` ("SaveYourSoul") and the default username ("Soul") were hardcoded identically across every node, so two entries both just showed "Soul" with no way to tell them apart.**
