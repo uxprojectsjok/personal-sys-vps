@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.3] — 2026-07-16
+
+**Fixed: `verify_identity` fingerprint check failing despite a working passkey ("Biometrie Fingerabdruck fehlt").**
+
+Root cause: two independent passkey-registration call sites, only one of which registers the public key server-side.
+- `gate.vue`'s initial "save credentials with biometric unlock" step calls `registerPasskey('Soul')` with no `getAuthHeaders` — by design this skips the server-side `/api/verify/passkey-register` call ("best effort", see `useSoulPasskey.js` comment). The WebAuthn credential is created and works fine for gate unlock (purely client-side), but the server never learns the public key.
+- `verify.vue`'s fingerprint check already had a self-heal path that re-registers the passkey on failure — but only for `reason === 'unknown_credential'` (passkeys.json exists, this credential isn't in it), not for `reason === 'no_passkey_registered'` (passkeys.json doesn't exist at all) — which is exactly what a gate-only-registered passkey produces. Souls that only ever went through `gate.vue` hit the uncovered case and got a hard failure instead of self-healing.
+
+**Changed**
+- `app/pages/verify.vue`: self-heal condition now also covers `no_passkey_registered`, not just `unknown_credential` — re-registers automatically on next fingerprint verification attempt, no user action beyond retrying needed.
+- `app/pages/gate.vue`: `doSaveCreds()` now passes `getAuthHeaders` to `registerPasskey('Soul', ...)`, using the just-confirmed `${currentSoulId}.${cert}` bearer — new passkeys register server-side from the start, so this doesn't recur for newly onboarded souls.
+
+**Notes**
+- Confirmed root cause by checking `/var/lib/sys/souls/{soul_id}/passkeys.json` on this VPS directly — file didn't exist at all, confirming `no_passkey_registered` rather than `unknown_credential`.
+- Rebuilt (`npm run generate` + `killMetas.mjs`) and redeployed to `/var/www/kro.uxprojects-jok.com` (`rsync --delete`) — this update only touched `app/`, no lua/soul-mcp changes, no service restart needed.
+
 ## [1.0.2] — 2026-07-16
 
 Caught up `init.sh` with `sys-installer` (`8d7f801`) — the same health-sync log-path fix from v1.0.1, but the `init.sh` side of it (creates `/var/log/sys` www-data-writable at install time) hadn't been ported yet since it lives in a separate repo (`sys-installer`, distributed alongside `personal-sys-vps-private`'s `init.sh`/`reset.sh`/`recover-password.sh`/`deinstall.sh`, not merged from `personal-sys-vps`).
