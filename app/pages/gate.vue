@@ -14,6 +14,18 @@
       <SysIcon name="arrow" style="width:14px;height:14px" />
     </button>
 
+    <!-- Abbrechen zurück zur blanken Landing — ohne das gäbe es, sobald einmal
+         aufgeklappt, keinen Weg mehr zurück außer Reload. -->
+    <button
+      v-if="revealed"
+      class="gate-close-trigger"
+      @click="revealed = false"
+      :aria-label="$t('gate.close_aria')"
+      :title="$t('gate.close_aria')"
+    >
+      <SysIcon name="close" style="width:16px;height:16px" />
+    </button>
+
     <div class="gate-card">
       <div class="gate-mark">SYS<span class="dot">.</span></div>
 
@@ -359,18 +371,38 @@ const showPw = ref(false)
 .gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
 .gate-legal-sep { color: var(--line-2); }
 
-/* Dezenter Login-Trigger: soll auf den ersten Blick nicht wie ein Login-Button
-   aussehen (niedrige Deckkraft, kein Text, kein Rahmen) — nur beim gezielten
-   Hinschauen/Hover erkennbar. Siehe Kommentar im Template. */
+/* Größere SYS-Marke nur auf dieser Seite (globale .gate-mark bleibt für
+   index.vue/join.vue unverändert) — die blanke Landing lebt fast nur von
+   dieser Marke, muss also deutlich präsenter sein als im normalen Login-Card-
+   Kontext, wo sie nur eine kleine Kopfzeile über dem eigentlichen Formular ist. */
+.gate .gate-mark { font-size: 88px; margin-bottom: 16px; }
+
+/* Dezenter Login-Trigger: kein Text, kein Rahmen, keine auffällige Fläche —
+   aber in derselben Helligkeit wie der restliche Seiteninhalt (var(--fg),
+   volle Deckkraft), damit er für den Betreiber tatsächlich gut auffindbar
+   bleibt. "Dezent" kommt hier ausschließlich aus Größe + fehlendem Label,
+   nicht aus reduziertem Kontrast — eine zu dunkle Version war live kaum
+   noch zu erkennen. */
 .gate-reveal-trigger {
   position: fixed; top: 20px; right: 20px; z-index: 20;
-  width: 32px; height: 32px; display: grid; place-items: center;
+  width: 36px; height: 36px; display: grid; place-items: center;
   background: none; border: none; border-radius: 50%;
-  color: var(--fg-3); opacity: 0.32; cursor: pointer;
-  transition: opacity .2s, background .2s, color .2s;
+  color: var(--fg); cursor: pointer;
+  transition: background .2s, color .2s;
 }
 .gate-reveal-trigger:hover, .gate-reveal-trigger:focus-visible {
-  opacity: 1; background: var(--surface-2); color: var(--fg);
+  background: var(--surface-2); color: var(--accent-bright);
+}
+
+.gate-close-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg-3); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.gate-close-trigger:hover, .gate-close-trigger:focus-visible {
+  background: var(--surface-2); color: var(--fg);
 }
 
 .gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }

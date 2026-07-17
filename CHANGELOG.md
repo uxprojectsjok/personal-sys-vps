@@ -8,6 +8,21 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.26] — 2026-07-17
+
+**Changed: refined the v1.0.25 blank `/gate` redesign based on live feedback, and fixed the PWA `start_url` still pointing at the public marketing landing (`/`) instead of the new blank gate.**
+
+**Changed**
+- `app/pages/gate.vue`:
+  - The centered "SYS." mark on the blank landing is now noticeably larger (52px → 88px, scoped to this page only via `.gate .gate-mark`) — the mark is nearly the only visible content on that screen and needed more presence.
+  - The discreet top-right trigger button no longer relies on low opacity for its "quiet" look — it's now full-brightness (`var(--fg)`, matching the login panel's own heading text) and stays subtle purely through its small size and lack of a visible label. The earlier dimmed version was live-reported as barely visible even to the owner who needs to find it.
+  - Added a close (×) button, shown only once the panel is revealed, letting the user return to the blank landing without a full page reload — there was previously no way back once opened.
+- `public/manifest.json`: `start_url` changed from `/` to `/gate`. The installed PWA/home-screen icon was opening the *public* `index.vue` landing page (a separate, unrelated page with its own "Login with Soul" soul-file-upload flow) — completely bypassing the just-redesigned discreet gate. Root cause had nothing to do with cached credentials, as first suspected — plain PWA `start_url` behavior.
+
+**Notes**
+- `start_url` changes are typically only read by the browser/OS at PWA *install* time — an already-installed home-screen icon will likely keep opening the old URL until the icon is removed and re-added, this doesn't retroactively update existing installs.
+- `/` (`index.vue`) and `/gate` (`gate.vue`) remain two intentionally separate entry points with different purposes (public soul-file import vs. this node's password/passkey login) — this change only affects which one the PWA shortcut defaults to, not the standalone-browser behavior of either page.
+
 ## [1.0.25] — 2026-07-17
 
 **Changed: redesigned `/gate` into a blank, unbranded landing screen — the login itself no longer draws any visual attention. Added because this URL is linked externally (a YouTube channel's Impressum/imprint requirement), and a page that visibly reads as a "login screen" was undesirable for a link surfaced to the general public.**
