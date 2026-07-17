@@ -27,7 +27,7 @@
     </button>
 
     <div class="gate-card">
-      <div class="gate-mark">SYS<span class="dot">.</span></div>
+      <SysMark size="120px" />
 
       <Transition name="gate-reveal">
         <div v-if="revealed && ready" class="gate-panel">
@@ -370,12 +370,6 @@ const showPw = ref(false)
 .gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
 .gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
 .gate-legal-sep { color: var(--line-2); }
-
-/* Größere SYS-Marke nur auf dieser Seite (globale .gate-mark bleibt für
-   index.vue/join.vue unverändert) — die blanke Landing lebt fast nur von
-   dieser Marke, muss also deutlich präsenter sein als im normalen Login-Card-
-   Kontext, wo sie nur eine kleine Kopfzeile über dem eigentlichen Formular ist. */
-.gate .gate-mark { font-size: 88px; margin-bottom: 16px; }
 
 /* Dezenter Login-Trigger: kein Text, kein Rahmen, keine auffällige Fläche —
    aber in derselben Helligkeit wie der restliche Seiteninhalt (var(--fg),

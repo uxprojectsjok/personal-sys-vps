@@ -1,7 +1,7 @@
 <template>
   <div class="gate">
     <div class="gate-card">
-      <div class="gate-mark">SYS<span class="dot">.</span></div>
+      <SysMark />
       <div class="gate-sub">{{ $t('join.subtitle') }}</div>
 
       <h1>{{ $t('join.heading') }}<em>.</em></h1>

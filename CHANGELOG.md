@@ -8,6 +8,26 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.28] — 2026-07-17
+
+**Changed: brought this node's `/gate`, `/`, `/join` up to the same branding-image state as `personal-sys-vps` v1.0.24/v1.0.25 — the "SYS." text wordmark is now the `logo.png` image, using a generic placeholder logo for now so the change can actually be tested live (kro's own logo comes later).**
+
+**Added**
+- `app/components/SysMark.vue`, ported unchanged from the public repo.
+- `public/logo.png`, `public/logo.ico`, `public/favicon.ico`: the same generic SYS artwork from `personal-sys-vps` v1.0.24, copied over as a **placeholder** so the image-based wordmark renders correctly instead of a broken image. This is explicitly not kro's final branding — swapping these three files later (kro's own logo, once ready) is the whole point of the branding system this enables.
+
+**Changed**
+- `app/pages/gate.vue`, `index.vue`, `join.vue`: replaced the text `.gate-mark` div with `<SysMark />` (`120px` on `/gate`'s blank landing, default `52px` elsewhere) — same as the public repo, `gate.vue`'s private-only legal-links block left untouched.
+- `app/assets/css/sys-v2.css`: removed the now-unused `.gate-mark`/`.gate-mark .dot` text-styling rules.
+- `public/icons/icon-192.png`, `icon-512.png`: regenerated from the new `logo.png` via `utils/generate-icons.mjs` (already present here since v1.0.27, just had nothing to run against until now).
+
+**Removed**
+- `public/logo/` (unused duplicate folder), `public/logo_transparent.png` (unreferenced) — same cleanup as the public repo.
+
+**Notes**
+- Live-verified on kro.uxprojects-jok.com/gate and /logo.png both returning 200 after deploy.
+- The generic placeholder logo is a deliberate, temporary state — replacing `logo.png`/`logo.ico`/`favicon.ico` with kro's own final branding later needs no further code change, `generate-icons.mjs` picks it up automatically on the next build.
+
 ## [1.0.27] — 2026-07-17
 
 **Added: the single-source branding tooling from `personal-sys-vps` v1.0.24 — `utils/generate-icons.mjs` regenerates the PWA icons from `public/logo.png` automatically on every build, so a future rebrand of this node only needs three files replaced instead of hand-editing fixed-size icons separately.**
