@@ -4,7 +4,7 @@
     <template v-if="!hasSoul">
       <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
         <div class="gate-card">
-          <div class="gate-mark">SYS<span class="dot">.</span></div>
+          <SysMark />
           <div class="gate-sub">{{ config.public.nodeName }}</div>
           <h1>Save Your Soul<em>.</em></h1>
           <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>

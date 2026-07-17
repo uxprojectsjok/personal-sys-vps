@@ -831,8 +831,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 /* ── Gate / login ───────────────────────────────────────────────────────── */
 .gate { height: 100vh; height: 100dvh; display: grid; place-items: center; background: var(--bg); padding: 24px; }
 .gate-card { width: 100%; max-width: 400px; text-align: center; }
-.gate-mark { font-family: var(--serif); font-weight: 700; font-size: 52px; letter-spacing: -0.03em; color: var(--fg); margin-bottom: 8px; }
-.gate-mark .dot { color: var(--accent); }
 .gate-sub { color: var(--fg); font-size: 15px; margin-bottom: 40px; }
 .gate-orb { width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 30px;
   background: radial-gradient(circle at 34% 30%, var(--accent-bright), var(--accent-deep) 70%, transparent);
