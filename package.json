@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build",
-    "generate": "nuxt generate",
+    "build": "node utils/generate-icons.mjs && nuxt build",
+    "generate": "node utils/generate-icons.mjs && nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
