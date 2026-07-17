@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.27] — 2026-07-17
+
+**Fixed: the "How to update your node" runbook (`README.md`) didn't account for low-memory VPS deployments — `npm run generate` OOMs during the Vite client build on a 1-2GB node, since the WalletConnect dependency tree needs more heap than the default V8 limit allows.**
+
+Hit live while updating karo-familie.de (1.8GB RAM, no swap configured) from v1.0.22 to v1.0.26: the client build crashed with "JavaScript heap out of memory" partway through bundling. Adding swap alone didn't fix it — V8's default `--max-old-space-size` is sized off *physical* RAM at process start, not swap-backed virtual memory, so the heap cap stayed low even with 2G of swap active. Both a swapfile (for physical backing) and an explicit raised heap limit (to actually make V8 use the extra room) are required together.
+
+**Changed**
+- `README.md` ("How to update your node"): added a low-memory VPS note between the rebuild step and the service-restart caveat, with the swapfile setup commands and the `NODE_OPTIONS=--max-old-space-size=3072 npm run generate` invocation.
+
 ## [1.0.26] — 2026-07-17
 
 **Fixed: direct URL entry to the bare domain (`/`) on a locked single-hoster node showed the public "Save Your Soul." marketing landing with its own soul-file-upload login — completely unauthenticated and unrelated to `/gate`'s password/passkey login. A locked single-owner node has no legitimate use for this page (it belongs to the multi-hoster "anyone can join" case, where `/join` is the correct entry point).**

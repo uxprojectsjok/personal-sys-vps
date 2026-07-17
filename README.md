@@ -488,6 +488,10 @@ node utils/project-hash.mjs                  # confirm the fingerprint matches t
 rsync -a --delete .output/public/ /var/www/<your-domain>/
 ```
 
+> **Low-memory VPS (≤2GB RAM):** `npm run generate` can OOM during the Vite client build — the WalletConnect dependency tree is heavy enough to exceed a 1-2GB heap. Two things are needed together, not just one:
+> 1. **Swap**, so there's physical backing for a larger heap: `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile`, then persist it with `echo '/swapfile none swap sw 0 0' >> /etc/fstab`.
+> 2. **A raised V8 heap limit** — swap alone doesn't help, because V8's default `--max-old-space-size` is derived from *physical* RAM, not swap: `NODE_OPTIONS="--max-old-space-size=3072" npm run generate`.
+
 If the target tag's `CHANGELOG.md` entry says **Lua**, **soul-mcp**, or **openresty config** changed, redeploy those explicitly — a `git checkout` alone does not restart running services:
 
 ```bash
@@ -535,7 +539,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.26): f18ab68b189bcb0f
+Current release fingerprint (v1.0.27): f4600645623a6443
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
