@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.23] — 2026-07-17
+
+**Changed: redesigned `/gate` into a blank, unbranded landing screen — the login itself no longer draws any visual attention, since this URL can be linked externally (e.g. an imprint-law requirement) and shouldn't visibly read as a login/access point.**
+
+Previously `/gate` always immediately showed either the biometric-unlock prompt or the password form, with a tagline and a "Local node" footer status line. Now the default view is just the centered "SYS." mark. A discreet, full-brightness (not dimmed — a low-opacity version proved hard to find even for the intended user) circular button in the top-right corner reveals the exact same existing login flow (biometric / password+cert form / save-credentials prompt — internal logic unchanged) as a smooth inline fade-in, no page navigation. A close (×) button lets the user return to the blank landing without a full reload.
+
+**Changed**
+- `app/pages/gate.vue`: new `revealed` ref gates the entire existing mode-driven login UI behind the discreet trigger button; added a `Transition` wrapper for the fade-in. Removed the tagline and footer status line entirely — no replacement text, the blank design itself communicates "not a public entry point" rather than a label. The "SYS." mark is significantly larger on this page only (scoped override, doesn't affect other pages using the same base class).
+- `i18n/locales/{de,en}.json`: new `gate.owner_login_aria`/`gate.close_aria` strings, used only as the trigger/close buttons' accessible names and tooltips — never shown as visible body text.
+- `public/manifest.json`: `start_url` changed from `/` to `/gate` — the installed PWA/home-screen icon was opening the *public* `index.vue` marketing landing (a separate page with its own soul-file-upload login), completely bypassing this redesigned entry point.
+
+**Notes**
+- `start_url` changes are typically only read at PWA *install* time — an already-installed home-screen icon likely needs to be removed and re-added for the new URL to take effect.
+- `/` (`index.vue`) and `/gate` (`gate.vue`) remain two intentionally separate entry points with different purposes; this only changes which one the PWA shortcut opens by default.
+- Found, iterated on, and verified live on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here with one adjustment: the private repo's version also always renders its Impressum/Datenschutz/Lizenz footer links regardless of login state (EU legal requirement specific to that node) — this generic template has no such pages, so that part was intentionally left out here.
+
 ## [1.0.22] — 2026-07-16
 
 **Fixed: a Passkey newly registered through either Vault flow (Settings "Re-sync"/"Change Encryption", or the setup-wizard "Unlock Vault" panel) was never registered server-side for Fingerprint-Verify — so the next fingerprint verification attempt would ignore the working Vault passkey and register yet another new one, forcing an unnecessary extra biometric "save this passkey" prompt on the same device.**

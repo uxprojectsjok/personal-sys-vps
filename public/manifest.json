@@ -2,7 +2,7 @@
   "name": "Personal SYS VPS",
   "short_name": "SYS",
   "description": "Deine kryptographisch signierte digitale Identität – lokal, dauerhaft, dein.",
-  "start_url": "/",
+  "start_url": "/gate",
   "display": "standalone",
   "background_color": "#161513",
   "theme_color": "#161513",
