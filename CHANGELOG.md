@@ -8,6 +8,18 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.27] — 2026-07-17
+
+**Added: the single-source branding tooling from `personal-sys-vps` v1.0.24 — `utils/generate-icons.mjs` regenerates the PWA icons from `public/logo.png` automatically on every build, so a future rebrand of this node only needs three files replaced instead of hand-editing fixed-size icons separately.**
+
+**Added**
+- `utils/generate-icons.mjs`: same as the public repo — regenerates `public/icons/icon-192.png`/`icon-512.png` from `public/logo.png` with an 80% maskable-safe zone, skips silently if `logo.png` isn't present.
+- `package.json`: `build`/`generate` scripts now run the icon generator first.
+
+**Notes**
+- This node's own `public/logo.png`, `logo.ico`, `favicon.ico` were deliberately **not** touched — kro's current branding is untouched, this only adds the *capability* to regenerate icons automatically if/when it's ever rebranded. The script skips cleanly without `logo.png` present, confirmed live (build completed normally, existing icons unchanged).
+- Ported from `personal-sys-vps` (public template), where the branding-file swap itself (new logo.png/logo.ico/favicon.ico, removed unused legacy duplicates) originated — see that repo's v1.0.24 entry for the full asset-replacement details, not applicable here since this is a different node's own identity.
+
 ## [1.0.26] — 2026-07-17
 
 **Changed: refined the v1.0.25 blank `/gate` redesign based on live feedback, and fixed the PWA `start_url` still pointing at the public marketing landing (`/`) instead of the new blank gate.**
