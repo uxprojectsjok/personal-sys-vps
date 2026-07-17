@@ -8,6 +8,21 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.25] — 2026-07-17
+
+**Changed: redesigned `/gate` into a blank, unbranded landing screen — the login itself no longer draws any visual attention. Added because this URL is linked externally (a YouTube channel's Impressum/imprint requirement), and a page that visibly reads as a "login screen" was undesirable for a link surfaced to the general public.**
+
+Previously `/gate` always immediately showed either the biometric-unlock prompt or the password form, with a tagline ("Your digital self · Private Node") and a footer status line ("Local node"). Now the default view is just the centered "SYS." mark — nothing else. A small, low-contrast circular button in the top-right corner (near-invisible until hovered, with an `aria-label`/`title` for accessibility) reveals the exact same existing login flow (biometric / password+cert form / save-credentials prompt — unchanged internal logic) as a smooth inline fade-in, no page navigation.
+
+**Changed**
+- `app/pages/gate.vue`: new `revealed` ref gates the entire existing mode-driven login UI behind the discreet trigger button; added a `Transition` wrapper (`gate-reveal`) for the fade-in. Removed the `gate.subtitle` ("Your digital self · Private Node") and `gate.footer` ("Local node") lines from this page entirely — no replacement tagline, consistent with the "as blank as possible" goal (the design itself, not a text label, now communicates "not a public entry point"). The legal links (Impressum/Datenschutz/Lizenz) were moved out from behind the `ready`/`revealed` gates so they render immediately and unconditionally, independent of login state — required for imprint-law findability, not optional even on the blank landing.
+- `i18n/locales/{de,en}.json`: new `gate.owner_login_aria` string (used only as the trigger button's accessible name/tooltip, never shown as visible body text).
+
+**Notes**
+- `gate.subtitle`/`gate.footer` i18n keys themselves were left in place (still potentially reused elsewhere, e.g. `join.vue`'s own separate `subtitle`/`footer` keys under a different namespace) — only their usage inside `gate.vue` was removed.
+- Explicitly designed with room to grow into a real homepage later — the blank centered-mark + discreet-corner-access pattern is meant to generalize beyond just hiding a login, per direct user intent ("das wäre für die Generik cool" — this repo is the generic public template other node operators build on).
+- Live-verified on kro.uxprojects-jok.com/gate before shipping — confirmed 200 response and the described default-blank / click-to-reveal behavior.
+
 ## [1.0.24] — 2026-07-16
 
 **Fixed: a Passkey newly registered through either Vault flow (Settings "Re-sync"/"Change Encryption", or the setup-wizard "Unlock Vault" panel) was never registered server-side for Fingerprint-Verify — so the very next fingerprint verification attempt would ignore the perfectly working Vault passkey and register yet another new one, forcing a third biometric "save this passkey" prompt on the same device for something that should have needed only one.**

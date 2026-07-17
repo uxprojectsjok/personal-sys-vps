@@ -1,91 +1,103 @@
 <template>
   <div class="gate">
+    <!-- Blanke Landing per Default (siehe gate-reveal-trigger-Kommentar unten) —
+         der Login selbst bekommt keine Aufmerksamkeit, bis er gezielt aufgerufen
+         wird. Nötig, weil diese Seite von außen (z.B. Impressumspflicht-Link auf
+         YouTube) verlinkt wird und dabei nicht wie ein Zugangspunkt aussehen soll. -->
+    <button
+      v-if="!revealed"
+      class="gate-reveal-trigger"
+      @click="revealed = true"
+      :aria-label="$t('gate.owner_login_aria')"
+      :title="$t('gate.owner_login_aria')"
+    >
+      <SysIcon name="arrow" style="width:14px;height:14px" />
+    </button>
+
     <div class="gate-card">
       <div class="gate-mark">SYS<span class="dot">.</span></div>
-      <div v-if="!ready" class="gate-sub">{{ $t('gate.subtitle') }}</div>
 
-      <template v-if="ready">
-      <div class="gate-sub">{{ $t('gate.subtitle') }}</div>
+      <Transition name="gate-reveal">
+        <div v-if="revealed && ready" class="gate-panel">
 
-      <!-- ── Biometric unlock ── -->
-      <template v-if="mode === 'biometric'">
-        <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
-        <p class="welcome">{{ isPwa ? $t('gate.biometric_prompt_pwa') : $t('gate.biometric_prompt') }}</p>
-        <p v-if="error" class="gate-error">{{ error }}</p>
-        <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock">
-          <span v-if="loading" class="gate-spinner" />
-          {{ loading ? $t('gate.loading_soul') : $t('gate.unlock') }}
-          <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
-        </button>
-        <button class="gate-link" @click="switchToForm">{{ $t('gate.manual_login') }}</button>
-      </template>
-
-      <!-- ── Save creds prompt ── -->
-      <template v-else-if="mode === 'saving'">
-        <h1>{{ $t('gate.signed_in') }}<em>.</em></h1>
-        <p class="welcome">{{ $t('gate.save_creds_prompt') }}</p>
-        <p class="gate-hint">{{ $t('gate.save_creds_hint') }}</p>
-        <p v-if="error" class="gate-error">{{ error }}</p>
-        <button class="btn btn-primary btn-lg" :disabled="loading" @click="doSaveCreds">
-          <span v-if="loading" class="gate-spinner" />
-          {{ loading ? $t('gate.saving') : $t('gate.save_with_biometric') }}
-        </button>
-        <button class="gate-link" @click="doRedirect">{{ $t('gate.skip') }}</button>
-      </template>
-
-      <!-- ── Standard form ── -->
-      <template v-else>
-        <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
-        <p v-if="error" class="gate-error">{{ error }}</p>
-        <form @submit.prevent="submit" style="width:100%">
-          <div class="gate-field">
-            <input
-              v-model="password"
-              :type="showPw ? 'text' : 'password'"
-              autocomplete="current-password"
-              :placeholder="$t('gate.password_placeholder')"
-              :aria-label="$t('gate.password_aria')"
-              :disabled="loading"
-              required
-            />
-            <button type="button" class="reveal" @click="showPw = !showPw" :aria-label="$t('gate.show_password')">
-              <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
+          <!-- ── Biometric unlock ── -->
+          <template v-if="mode === 'biometric'">
+            <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
+            <p class="welcome">{{ isPwa ? $t('gate.biometric_prompt_pwa') : $t('gate.biometric_prompt') }}</p>
+            <p v-if="error" class="gate-error">{{ error }}</p>
+            <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock">
+              <span v-if="loading" class="gate-spinner" />
+              {{ loading ? $t('gate.loading_soul') : $t('gate.unlock') }}
+              <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
             </button>
-          </div>
-          <div v-if="soulRegistered || multiHoster" class="gate-field" style="margin-bottom:14px">
-            <input
-              v-model="cert"
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              :placeholder="multiHoster ? $t('gate.cert_or_invite_placeholder') : $t('gate.cert_placeholder')"
-              :aria-label="$t('gate.cert_aria')"
-              :disabled="loading"
-              style="font-family:var(--mono);font-size:13px"
-            />
-          </div>
-          <p v-if="certAutoFilled" class="gate-autofill">{{ $t('gate.cert_auto_filled') }}</p>
-          <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
-            <span v-if="loading" class="gate-spinner" />
-            {{ loading ? $t('gate.loading') : $t('gate.sign_in') }}
-          </button>
-        </form>
-        <button v-if="hasSavedCreds && !multiHoster" class="gate-link" @click="mode = 'biometric'">{{ $t('gate.unlock_with_biometric') }}</button>
-      </template>
+            <button class="gate-link" @click="switchToForm">{{ $t('gate.manual_login') }}</button>
+          </template>
 
-      <div class="gate-foot">
-        <span class="live-dot" />
-        {{ $t('gate.footer') }}
-      </div>
-      <div class="gate-legal-links">
-        <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
-        <span class="gate-legal-sep">·</span>
-        <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
-        <span class="gate-legal-sep">·</span>
-        <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
-      </div>
+          <!-- ── Save creds prompt ── -->
+          <template v-else-if="mode === 'saving'">
+            <h1>{{ $t('gate.signed_in') }}<em>.</em></h1>
+            <p class="welcome">{{ $t('gate.save_creds_prompt') }}</p>
+            <p class="gate-hint">{{ $t('gate.save_creds_hint') }}</p>
+            <p v-if="error" class="gate-error">{{ error }}</p>
+            <button class="btn btn-primary btn-lg" :disabled="loading" @click="doSaveCreds">
+              <span v-if="loading" class="gate-spinner" />
+              {{ loading ? $t('gate.saving') : $t('gate.save_with_biometric') }}
+            </button>
+            <button class="gate-link" @click="doRedirect">{{ $t('gate.skip') }}</button>
+          </template>
 
-      </template><!-- end v-if="ready" -->
+          <!-- ── Standard form ── -->
+          <template v-else>
+            <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
+            <p v-if="error" class="gate-error">{{ error }}</p>
+            <form @submit.prevent="submit" style="width:100%">
+              <div class="gate-field">
+                <input
+                  v-model="password"
+                  :type="showPw ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  :placeholder="$t('gate.password_placeholder')"
+                  :aria-label="$t('gate.password_aria')"
+                  :disabled="loading"
+                  required
+                />
+                <button type="button" class="reveal" @click="showPw = !showPw" :aria-label="$t('gate.show_password')">
+                  <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
+                </button>
+              </div>
+              <div v-if="soulRegistered || multiHoster" class="gate-field" style="margin-bottom:14px">
+                <input
+                  v-model="cert"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :placeholder="multiHoster ? $t('gate.cert_or_invite_placeholder') : $t('gate.cert_placeholder')"
+                  :aria-label="$t('gate.cert_aria')"
+                  :disabled="loading"
+                  style="font-family:var(--mono);font-size:13px"
+                />
+              </div>
+              <p v-if="certAutoFilled" class="gate-autofill">{{ $t('gate.cert_auto_filled') }}</p>
+              <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
+                <span v-if="loading" class="gate-spinner" />
+                {{ loading ? $t('gate.loading') : $t('gate.sign_in') }}
+              </button>
+            </form>
+            <button v-if="hasSavedCreds && !multiHoster" class="gate-link" @click="mode = 'biometric'">{{ $t('gate.unlock_with_biometric') }}</button>
+          </template>
+
+        </div>
+      </Transition>
+    </div>
+
+    <!-- Immer sichtbar, unabhängig von revealed/ready — Impressumspflicht
+         verlangt leichte Auffindbarkeit, nicht erst nach einem Login-Klick. -->
+    <div class="gate-legal-links">
+      <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
     </div>
   </div>
 </template>
@@ -107,6 +119,7 @@ const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
 const hasSavedCreds  = ref(false)
 const ready          = ref(false)   // true after gate-status known (prevents flicker)
+const revealed       = ref(false)   // true after the discreet top-right button is clicked
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 
@@ -345,4 +358,21 @@ const showPw = ref(false)
 .gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
 .gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
 .gate-legal-sep { color: var(--line-2); }
+
+/* Dezenter Login-Trigger: soll auf den ersten Blick nicht wie ein Login-Button
+   aussehen (niedrige Deckkraft, kein Text, kein Rahmen) — nur beim gezielten
+   Hinschauen/Hover erkennbar. Siehe Kommentar im Template. */
+.gate-reveal-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 32px; height: 32px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg-3); opacity: 0.32; cursor: pointer;
+  transition: opacity .2s, background .2s, color .2s;
+}
+.gate-reveal-trigger:hover, .gate-reveal-trigger:focus-visible {
+  opacity: 1; background: var(--surface-2); color: var(--fg);
+}
+
+.gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
+.gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
 </style>

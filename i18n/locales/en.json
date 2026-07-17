@@ -55,6 +55,7 @@
     "sign_in": "Sign in",
     "unlock_with_biometric": "Unlock with biometrics",
     "footer": "Local node",
+    "owner_login_aria": "Login (owner only)",
     "error": {
       "biometric_failed": "Biometric failed.",
       "creds_load_failed": "Could not load credentials. Please sign in manually.",

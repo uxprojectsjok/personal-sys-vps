@@ -55,6 +55,7 @@
     "sign_in": "Einloggen",
     "unlock_with_biometric": "Mit Biometrik entsperren",
     "footer": "Lokaler Knoten",
+    "owner_login_aria": "Login (nur Betreiber)",
     "error": {
       "biometric_failed": "Biometrik fehlgeschlagen.",
       "creds_load_failed": "Zugangsdaten konnten nicht geladen werden. Bitte manuell anmelden.",
