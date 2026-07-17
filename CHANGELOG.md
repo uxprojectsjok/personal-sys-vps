@@ -8,6 +8,13 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.30] — 2026-07-17
+
+**Changed: `/gate`'s blank-landing logo enlarged again (120px → 220px) — live feedback after the SysMark image swap, the logo needed more presence on a screen that's otherwise almost entirely empty.**
+
+**Changed**
+- `app/pages/gate.vue`: `<SysMark size="220px" />` (was `120px`).
+
 ## [1.0.29] — 2026-07-17
 
 **Fixed: direct URL entry to the bare domain (`/`) on a locked single-hoster node showed the public "Save Your Soul." marketing landing with its own soul-file-upload login — completely unauthenticated, no relation to `/gate`'s password/passkey login, and with no way to prevent it. A locked single-owner node has no legitimate use for this page (it belongs to the multi-hoster "anyone can join" case, where `/join` is the correct entry point); it stayed reachable purely because `/` never checked node type before deciding what to render.**
