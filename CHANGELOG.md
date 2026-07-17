@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.29] — 2026-07-17
+
+**Fixed: direct URL entry to the bare domain (`/`) on a locked single-hoster node showed the public "Save Your Soul." marketing landing with its own soul-file-upload login — completely unauthenticated, no relation to `/gate`'s password/passkey login, and with no way to prevent it. A locked single-owner node has no legitimate use for this page (it belongs to the multi-hoster "anyone can join" case, where `/join` is the correct entry point); it stayed reachable purely because `/` never checked node type before deciding what to render.**
+
+Direct follow-up to the `/gate` blank-landing work — that made `/gate` itself unobtrusive, but `/` (`index.vue`) was a second, entirely separate and still fully public entry point into the same node, reachable with zero clicks from the bare domain.
+
+**Fixed**
+- `app/pages/index.vue`: `onMounted()` now calls the existing no-auth `GET /api/gate-status` before deciding what to render. If the node is a locked single-hoster (`soul_registered && !multi_hoster`) and the visitor has no active local session (`!hasSoul`), it silently redirects to `/gate` via `window.location.replace()` instead of ever rendering the marketing landing. A new `gateRedirectChecked` ref gates the landing template (`v-if="!hasSoul && gateRedirectChecked"`) so nothing flashes before the check resolves; the SPA-shell branch changed from a bare `v-else` to `v-else-if="hasSoul"` so it doesn't incorrectly render during that same brief window for anonymous visitors.
+- Multi-hoster nodes (`multi_hoster: true`) are unaffected — the public landing + soul-upload/create flow is exactly the intended behavior there, `/join` already handles new registrations for that case.
+
+**Notes**
+- Confirmed `GET /api/gate-status` on kro returns `{soul_registered:true, multi_hoster:false}`, matching the redirect condition. The redirect itself is a client-side `fetch` + `window.location.replace()`, which can't be verified with `curl` alone (no JS execution) — no headless browser was available in this environment to fully automate an end-to-end check; verify by visiting `https://kro.uxprojects-jok.com/` directly in a browser with no active session.
+- An already-logged-in owner (soul loaded into this tab's `sessionStorage`, `hasSoul === true`) is entirely unaffected — they still land on the normal SPA dashboard, no redirect involved.
+
 ## [1.0.28] — 2026-07-17
 
 **Changed: brought this node's `/gate`, `/`, `/join` up to the same branding-image state as `personal-sys-vps` v1.0.24/v1.0.25 — the "SYS." text wordmark is now the `logo.png` image, using a generic placeholder logo for now so the change can actually be tested live (kro's own logo comes later).**
