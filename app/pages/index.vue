@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
-    <template v-if="!hasSoul">
+    <template v-if="!hasSoul && gateRedirectChecked">
       <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
         <div class="gate-card">
           <SysMark />
@@ -26,7 +26,7 @@
     </template>
 
     <!-- ─── SPA SHELL (soul active) ─────────────────────────────────────── -->
-    <template v-else>
+    <template v-else-if="hasSoul">
       <div class="app" :class="{ 'is-collapsed': sidebarCollapsed, 'drawer-open': drawerOpen }">
 
         <!-- Sidebar -->
@@ -353,8 +353,28 @@ function fetchChainMetricsForSoul(id) {
 
 watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate: true })
 
-onMounted(() => {
+// Ein gesperrter Single-Hoster-Node (eine Soul, ein Besitzer) hat keinen
+// legitimen Grund, die öffentliche Marketing-Landing + "Login with Soul"-
+// Datei-Upload zu zeigen — die gehört zum Multi-Hoster-/"jeder kann
+// beitreten"-Fall (dort ist /join der richtige Weg). Bei direktem Aufruf von
+// "/" ohne aktive Session (kein hasSoul) auf so einem Node landet man sonst
+// immer auf dieser Seite, obwohl der Node explizit einem Besitzer gehört —
+// still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
+const gateRedirectChecked = ref(false)
+
+onMounted(async () => {
   fetchNodeStatus()
+
+  if (!hasSoul.value) {
+    try {
+      const status = await $fetch('/api/gate-status')
+      if (status?.soul_registered && !status?.multi_hoster) {
+        window.location.replace('/gate')
+        return
+      }
+    } catch { /* Status unbekannt — im Zweifel Landing zeigen statt aussperren */ }
+  }
+  gateRedirectChecked.value = true
 })
 
 // ── Modal-State ───────────────────────────────────────────────────────────

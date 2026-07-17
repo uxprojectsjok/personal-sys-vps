@@ -27,7 +27,7 @@
     </button>
 
     <div class="gate-card">
-      <SysMark size="120px" />
+      <SysMark size="220px" />
 
       <Transition name="gate-reveal">
         <div v-if="revealed && ready" class="gate-panel">

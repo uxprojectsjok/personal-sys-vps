@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.26] — 2026-07-17
+
+**Fixed: direct URL entry to the bare domain (`/`) on a locked single-hoster node showed the public "Save Your Soul." marketing landing with its own soul-file-upload login — completely unauthenticated and unrelated to `/gate`'s password/passkey login. A locked single-owner node has no legitimate use for this page (it belongs to the multi-hoster "anyone can join" case, where `/join` is the correct entry point).**
+
+**Fixed**
+- `app/pages/index.vue`: `onMounted()` now calls the existing no-auth `GET /api/gate-status` before deciding what to render. If the node is a locked single-hoster (`soul_registered && !multi_hoster`) and the visitor has no active local session, it silently redirects to `/gate` instead of ever rendering the marketing landing. A new `gateRedirectChecked` ref prevents the landing from flashing before the check resolves; the SPA-shell branch changed from a bare `v-else` to `v-else-if="hasSoul"` so it doesn't incorrectly render during that same window.
+- Multi-hoster nodes are unaffected — the public landing + soul-upload/create flow remains the intended behavior there.
+
+**Changed**
+- `app/pages/gate.vue`: blank-landing logo enlarged again (120px → 220px) — needed more presence on the otherwise near-empty screen.
+
+**Notes**
+- Found, verified live, and ported from `personal-sys-vps-private` (kro.uxprojects-jok.com) — confirmed there by direct browser test with no active session.
+
 ## [1.0.25] — 2026-07-17
 
 **Changed: the "SYS." wordmark on `/gate`, `/`, and `/join` is now the actual `logo.png` image instead of styled text — the text rendering didn't look good, and with the branding system from v1.0.24 already treating `logo.png` as the single source of truth, the wordmark itself should reflect whatever logo a node operator drops in, not a hardcoded "SYS" string.**
