@@ -8,6 +8,19 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.35] — 2026-07-18
+
+**Changed: kro's real branding replaces the generic placeholder logo introduced in v1.0.28 — `public/logo.png`/`logo.ico` swapped, PWA icons (`icon-192.png`/`icon-512.png`) regenerated from the new logo via `utils/generate-icons.mjs`, deployed live.**
+
+**Changed**
+- `public/logo.png`, `public/logo.ico`: kro's actual wordmark (dark background, "SYS." in serif, mint accent dot) — no longer the shared generic placeholder from the public template.
+- `public/icons/icon-192.png`, `icon-512.png`: regenerated from the new `logo.png` (same automatic pipeline from v1.0.24/v1.0.27 — no manual step beyond `npm run generate`).
+
+**Notes**
+- `public/favicon.ico` untouched — still the generic placeholder, kro's own `logo.ico` remains primary (per the existing `<link rel="icon" href="/logo.ico">` in `nuxt.config.js`).
+- Two new files appeared in `public/` alongside the logo swap (`favicon-16x16.png`, `favicon-32x32.png`) but aren't referenced anywhere yet (`nuxt.config.js`'s `head.link` only points at `logo.ico` + the two PWA icon sizes) — left as-is, not wired in, flagged for the user in case they're meant to be used.
+- Deployed live: `nuxt generate` (includes the icon regeneration step) → `killMetas.mjs` → rsync to `/var/www/kro.uxprojects-jok.com`. Confirmed `/gate`, `/logo.png` both 200 and `manifest.json`'s `start_url` still correctly `/gate` after the sync.
+
 ## [1.0.34] — 2026-07-18
 
 **Changed: `vault_shared_list` now labels `soul_draw` canvases distinctly ("Canvas (PNG)"/"Canvas (SVG)") instead of generic "Bild"/"Datei", so a soul can tell at a glance which listed files are ongoing, continuable artworks versus one-off uploads — plus a note added to this node's `mind.md` "Tools" section pointing at both `soul_draw` and `vault_shared_list` together.**
