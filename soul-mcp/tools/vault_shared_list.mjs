@@ -14,9 +14,22 @@ import { getJson } from '../lib/api.mjs';
 const IMAGE_EXT = new Set(['jpg','jpeg','png','webp','gif','avif']);
 const VIDEO_EXT = new Set(['mp4','webm','mov']);
 const AUDIO_EXT = new Set(['mp3','wav','ogg','m4a']);
+// soul_draw legt pro Werk {canvas_id}.png + {canvas_id}.svg an, OHNE den
+// Timestamp-Präfix, den normale Uploads (vault_shared_upload.mjs) bekommen —
+// daran lässt sich ein fortsetzbares Canvas von einer einmaligen Datei
+// unterscheiden. Eigener Typ statt "Bild"/"Datei", damit das beim Auflisten
+// direkt auffällt. Wichtig: nur das FEHLEN eines führenden Zeitstempels zählt
+// — ein erster Versuch prüfte nur den erlaubten Zeichensatz (Ziffern/Unter-
+// striche sind darin ja auch für canvas_id erlaubt) und erkannte dadurch
+// AUCH zeitgestempelte Uploads fälschlich als Canvas. Live beim Testen
+// aufgefallen (ein hochgeladenes NFT-Bild wurde als "Canvas (PNG)" gelistet).
+const HAS_TIMESTAMP_PREFIX = /^\d{10,}_/;
 
 function fileType(name) {
   const ext = name.split('.').pop().toLowerCase();
+  const looksLikeCanvas = !HAS_TIMESTAMP_PREFIX.test(name);
+  if (ext === 'svg') return looksLikeCanvas ? 'Canvas (SVG)' : 'SVG';
+  if (ext === 'png' && looksLikeCanvas) return 'Canvas (PNG)';
   if (IMAGE_EXT.has(ext)) return 'Bild';
   if (VIDEO_EXT.has(ext)) return 'Video';
   if (AUDIO_EXT.has(ext)) return 'Audio';

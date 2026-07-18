@@ -8,6 +8,21 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.34] — 2026-07-18
+
+**Changed: `vault_shared_list` now labels `soul_draw` canvases distinctly ("Canvas (PNG)"/"Canvas (SVG)") instead of generic "Bild"/"Datei", so a soul can tell at a glance which listed files are ongoing, continuable artworks versus one-off uploads — plus a note added to this node's `mind.md` "Tools" section pointing at both `soul_draw` and `vault_shared_list` together.**
+
+The listing tool itself already existed (`vault_shared_list`, unconditionally registered) — the actual gap was that nothing told a soul it existed for this purpose, or that canvases are identifiable by their lack of a timestamp prefix (unlike regular uploads via `vault_shared_upload`, which always prepend one).
+
+**Changed**
+- `soul-mcp/tools/vault_shared_list.mjs`: `fileType()` now checks for the absence of a leading `\d{10,}_` timestamp prefix on `.png`/`.svg` files to distinguish a `soul_draw` canvas from a regular image upload.
+
+**Fixed during implementation (caught by testing against a real mixed listing, not by code review)**
+- The first version of this check only validated that the filename matched a broad `[A-Za-z0-9_-]+\.(png|svg)` character-set pattern — since digits and underscores are also valid in that set, a genuinely timestamped upload (`1784297880580_NFT_Example_Bored_Apes.png`) matched it too and was mislabeled "Canvas (PNG)". Fixed to explicitly check for the *absence* of the timestamp-prefix pattern itself, not just an allowed character set.
+
+**Notes (not a code change — this node's own soul data)**
+- Added a note to this node's `mind.md` "Tools" section (via a real `mind_write` call, `mode: "append"`, verified by decrypting and re-reading the file afterward) explaining that `vault_shared_list` is how to find an existing `canvas_id` before starting new artwork, so a soul doesn't accidentally start a duplicate of something already in progress. This is soul-specific runtime data, not repo source — not part of this commit, mentioned here only for the record.
+
 ## [1.0.33] — 2026-07-18
 
 **Fixed: a soul could only ever "see" a `soul_draw` artwork in the same turn it was drawn — no existing tool could re-fetch and actually visually analyze a previously-created canvas in a later session. `vault_shared_get` (the tool that reads `vault_shared/` files by design) returned only a clickable URL for images, never the actual pixel content as something Claude's vision can look at.**
