@@ -8,6 +8,23 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.37] — 2026-07-18
+
+**Fixed: branding files (`logo.png`, `logo.ico`, `favicon.ico`, `manifest.json`, the PWA icons) were served with a 1-year `immutable` cache — the same rule correctly applied to Nuxt's content-hashed `/_nuxt/*` bundle assets, but these branding files keep the same URL forever even when their content changes. A returning visitor who'd loaded the site before a logo swap kept seeing the old logo for up to a year, even though the server was already serving the new one correctly.**
+
+Found live immediately after this session's kro logo swap (v1.0.35/v1.0.36): the user reported "nothing arrives" at `/gate`, which investigation showed was actually the page loading correctly (confirmed via access log: successful `200`s, the client-side JS executing and calling `/api/gate-status` right on schedule) — the only thing actually stale was `logo.png`'s cached bytes in the browser that had visited before the swap.
+
+**Fixed**
+- `server/openresty/vhost.conf.template`, and the equivalent live vhost: added a location block for `logo.png`/`logo.ico`/`favicon.ico`/`manifest.json`/`icons/icon-192.png`/`icons/icon-512.png`, matched *before* the broad long-cache regex (nginx evaluates regex locations in file order, first match wins), giving them `max-age=300, must-revalidate` instead of the 1-year immutable default. The broad rule itself is untouched and still correctly applies `immutable` caching to genuinely content-hashed bundle files.
+- `public/sw.js`: cache version bumped (`sys-shell-v12` → `v13`) as an additional safety net — forces any already-installed service worker to go through a fresh install/activate cycle, even though its fetch handler was already network-first and shouldn't have needed this on its own.
+
+**Verified**
+- `logo.png`, `manifest.json`, `icons/icon-192.png` now return `Cache-Control: public, max-age=300, must-revalidate`; a real hashed bundle file (`/_nuxt/CDF-vGQL.js`) still returns the original `max-age=31536000, immutable` — confirmed the exclusion is scoped correctly, not a blanket cache disable.
+- User confirmed via hard refresh that the correct (K-R-O) logo now appears, where it previously still showed the old cached one.
+
+**Notes**
+- This bug was latent since the branding system was introduced (v1.0.24) — it just never surfaced until a node operator (this session) actually swapped a logo file after already having visited the live site. Any other node using this template with the same vhost config carries the same latent issue; ported to the public template unchanged since the caching rule itself is generic infrastructure, not kro-specific content.
+
 ## [1.0.36] — 2026-07-18
 
 **Changed: v1.0.35's logo swap was accidentally the wrong file — replaced with kro's actual final branding ("K-R-O" wordmark), `favicon.ico` updated to match, PWA icons regenerated. Also fixed a visible seam in the generated icons, caught while checking this deploy.**
