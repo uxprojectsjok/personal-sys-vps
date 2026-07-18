@@ -8,6 +8,33 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.32] — 2026-07-18
+
+**Changed: `soul_draw` reworked from a one-shot renderer into a persistent, continuable canvas — a soul can now paint the same artwork across days, weeks, months, or years by calling the tool repeatedly with the same `canvas_id`, instead of every call producing an unrelated, disposable PNG.**
+
+Direct follow-up to v1.0.31: a pure PNG output can't be "continued", only overwritten — no raster format preserves the individual strokes needed to keep building on prior work. The user asked for "ein gängiges Format... das geöffnet, gelesen und weitergezeichnet werden kann" (a common/standard format that can be opened, read, and continued) as the actual source of truth alongside the PNG preview.
+
+**Changed**
+- `soul-mcp/tools/soul_draw.mjs`: new required `canvas_id` param (replaces the old one-off `filename`) identifies a persistent artwork. Each call now writes/updates **two** files in `vault_shared`, both flat (no subfolder — `lua/vault_shared_view.lua`'s filename regex rejects `/`, so the existing shared-view/`vault-shared://` infrastructure keeps working unchanged):
+  - `{canvas_id}.png` — raster preview. On continuation, the existing PNG is loaded via `@napi-rs/canvas`'s `loadImage()`, the new strokes are drawn on top of it, and it's re-saved — genuinely additive, not a fresh render each time.
+  - `{canvas_id}.svg` — real SVG (W3C open standard), the actual "common format" requested: opens in any browser/image viewer/vector editor, and is plain text a soul can read directly. New strokes are rendered to a small fragment and spliced in just before the existing file's closing `</svg>` tag — genuinely append-only, no need to parse or reconstruct prior strokes to keep drawing.
+  - On first call for a new `canvas_id`, `width`/`height`/`background` establish the canvas; on every later call for the same id they're ignored (dimensions come from the existing PNG via `loadImage()`, so a canvas can't accidentally change size mid-artwork).
+  - Response now reports whether a canvas was newly created or continued, and the running total stroke count (tracked via an `<!-- stroke -->` XML comment inserted before each stroke's SVG fragment — a stroke can expand into many `<path>` segments through the taper loop, so counting `<path>` tags directly would overcount; the comment marker is the only reliable per-logical-stroke counter).
+
+**Fixed during implementation (caught by testing against real multi-call sequences, not by code review)**
+- `@napi-rs/canvas`'s `SVGCanvas.getContent()` turned out to be **destructive** — calling it mid-drawing (to diff "before" vs "after" a stroke, the initial approach) silently discarded everything drawn before that call, so a second stroke on the same `SVGCanvas` instance would replace the first in the exported markup instead of adding to it. Fixed by giving each stroke its own throwaway `SVGCanvas` (one `getContent()` call each, at the very end) and concatenating their fragments, instead of reusing one canvas across multiple strokes and diffing snapshots.
+- The paper-texture background (1400 small speckle circles, fine as raster pixels in the PNG) turned out to cost **~2.7 MB** once exported through `SVGCanvas` — each circle becomes a fairly verbose cubic-bezier `<path>`. For a document meant to accumulate over years, that's an unacceptable fixed cost before a single stroke is even added. Fixed: the SVG's background is now a single flat `<rect>` in the paper color, no speckle texture — the textured version stays exclusive to the PNG, where it's cheap.
+
+**Verified**
+- Two-call sequence tested directly against the registered handler: canvas created with one stroke, continued with a second stroke — PNG visually shows both strokes correctly composited, response correctly reports "1 neue Striche hinzugefügt (insgesamt 2)".
+- Resulting SVG cross-checked with `sharp`/libvips (a completely independent renderer from `@napi-rs/canvas`, the library that wrote the file) — rasterized cleanly, both strokes' taper visible, confirming the file is genuinely valid, standard SVG and not just self-consistent within our own library.
+- Final SVG file size for a 2-stroke canvas: ~10.7 KB (down from ~2.7 MB before the background fix).
+- `soul-mcp` restarted clean, no crash, no error in the following log window.
+
+**Notes**
+- Still private-repo-only, not ported to `personal-sys-vps` — same reasoning as v1.0.31 (specific to this session's "KRO paints autonomously" experiment, not a generic template feature).
+- `style: 'eraser'` still works for the PNG (`destination-out` compositing removes pixels), but has no true equivalent in the append-only SVG — an eraser stroke there just paints over with the background color, documented directly in the tool's own input schema description so this limitation is visible to whoever calls it, not just in this changelog.
+
 ## [1.0.31] — 2026-07-18
 
 **Added: `soul_draw`, a new owner-only MCP tool that renders a headless PNG drawing from a small list of brush strokes and saves it to `vault_shared` — the technical basis for a soul (e.g. KRO) to "paint" autonomously via Claude, without any mouse or human drawing input.**
