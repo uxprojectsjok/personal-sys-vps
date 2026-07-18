@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.28] — 2026-07-18
+
+**Fixed: `utils/generate-icons.mjs`'s maskable-icon padding color was hardcoded to `manifest.json`'s `background_color`, which can visibly mismatch a logo's actual background — produces a faint but visible border/frame around the generated PWA icon.**
+
+**Fixed**
+- `utils/generate-icons.mjs`: now samples the source `logo.png`'s own corner pixel color at generation time and uses that as the padding color, instead of assuming it matches `manifest.json`. Falls back to the old hardcoded value only if the corner pixel is transparent or sampling fails.
+
+**Notes**
+- Found and fixed on `personal-sys-vps-private` (kro.uxprojects-jok.com) while deploying a real logo with a true `#000000` black background against the template's `#161513` charcoal default — ported here unchanged.
+
 ## [1.0.27] — 2026-07-17
 
 **Fixed: the "How to update your node" runbook (`README.md`) didn't account for low-memory VPS deployments — `npm run generate` OOMs during the Vite client build on a 1-2GB node, since the WalletConnect dependency tree needs more heap than the default V8 limit allows.**

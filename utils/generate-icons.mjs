@@ -18,12 +18,31 @@ const ROOT = path.resolve(
 );
 const LOGO_PATH = path.join(ROOT, "public/logo.png");
 const OUT_DIR   = path.join(ROOT, "public/icons");
-const BG_COLOR  = "#161513"; // aus manifest.json background_color/theme_color
+const FALLBACK_BG = "#161513"; // aus manifest.json background_color/theme_color — nur falls Ecken-Sampling scheitert
 
 const TARGETS = [
   { size: 192, file: "icon-192.png" },
   { size: 512, file: "icon-512.png" },
 ];
+
+// Padding-Farbe direkt aus der Ecke des Logos ablesen statt eine feste Farbe
+// zu raten — ein hartkodiertes manifest.json-Grau (#161513) erzeugte bei einem
+// Logo mit reinem Schwarz-Hintergrund (#000) einen sichtbaren Rand/Rahmen ums
+// Icon, live bemerkt. Sampling passt sich automatisch an jedes Logo an, egal
+// welchen Hintergrund ein Node-Betreiber tatsächlich verwendet.
+async function sampleCornerColor(logoPath) {
+  try {
+    const { data, info } = await sharp(logoPath)
+      .extract({ left: 0, top: 0, width: 1, height: 1 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const [r, g, b, a] = data;
+    if (info.channels === 4 && a < 250) return FALLBACK_BG; // transparente Ecke — Sampling hilft nicht
+    return { r, g, b };
+  } catch {
+    return FALLBACK_BG;
+  }
+}
 
 async function main() {
   if (!existsSync(LOGO_PATH)) {
@@ -32,6 +51,8 @@ async function main() {
     );
     return;
   }
+
+  const bg = await sampleCornerColor(LOGO_PATH);
 
   for (const { size, file } of TARGETS) {
     const outPath = path.join(OUT_DIR, file);
@@ -49,8 +70,8 @@ async function main() {
     // überschreibt sharps interne Resize-Konfiguration und verzerrt die Maße
     // (erster Versuch produzierte dadurch 230×230 statt 192×192).
     await sharp(LOGO_PATH)
-      .resize(inner, inner, { fit: "contain", background: BG_COLOR })
-      .extend({ top: padding, bottom: padding, left: padding, right: padding, background: BG_COLOR })
+      .resize(inner, inner, { fit: "contain", background: bg })
+      .extend({ top: padding, bottom: padding, left: padding, right: padding, background: bg })
       .png()
       .toFile(outPath);
 
