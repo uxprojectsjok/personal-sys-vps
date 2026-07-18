@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.29] — 2026-07-18
+
+**Fixed: branding files (`logo.png`, `logo.ico`, `favicon.ico`, `manifest.json`, the PWA icons) were served with a 1-year `immutable` cache — the same rule correctly applied to Nuxt's content-hashed `/_nuxt/*` bundle assets, but these branding files keep the same URL forever even when their content changes. A returning visitor who'd loaded the site before a logo swap kept seeing the old logo for up to a year, even though the server was already serving the new one correctly.**
+
+**Fixed**
+- `server/openresty/vhost.conf.template`: added a location block for `logo.png`/`logo.ico`/`favicon.ico`/`manifest.json`/`icons/icon-192.png`/`icons/icon-512.png`, matched *before* the broad long-cache regex (nginx evaluates regex locations in file order, first match wins), giving them `max-age=300, must-revalidate` instead of the 1-year immutable default. The broad rule itself is untouched and still correctly applies `immutable` caching to genuinely content-hashed bundle files.
+- `public/sw.js`: cache version bumped (`sys-shell-v12` → `v13`) as an additional safety net for any already-installed service worker.
+
+**Notes**
+- This bug was latent since the branding system was introduced (v1.0.24) — it never surfaced until a node operator actually swapped a logo file after already having visited the live site. Found and verified live on `personal-sys-vps-private` (kro.uxprojects-jok.com), ported here unchanged since the caching rule is generic infrastructure, not node-specific content.
+
 ## [1.0.28] — 2026-07-18
 
 **Fixed: `utils/generate-icons.mjs`'s maskable-icon padding color was hardcoded to `manifest.json`'s `background_color`, which can visibly mismatch a logo's actual background — produces a faint but visible border/frame around the generated PWA icon.**

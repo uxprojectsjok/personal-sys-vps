@@ -88,6 +88,24 @@ server {
   location ~ ^/(assets|_nuxt|logo|fonts|img)$  { return 404; }
 
   ################################
+  # Branding-Dateien – kurzer Cache statt der Long-Cache-Regel unten. Ein Node-
+  # Betreiber kann logo.png/logo.ico/favicon.ico/Icons jederzeit austauschen
+  # (siehe utils/generate-icons.mjs) — im Gegensatz zu Nuxts content-gehashten
+  # /_nuxt/*-Bundle-Dateien (deren Dateiname sich bei jeder Änderung automatisch
+  # ändert, "immutable" also zurecht ist) bleibt der Dateiname hier IMMER
+  # derselbe. Ohne diese Ausnahme cachte die Regel unten (1 Jahr, immutable)
+  # z.B. logo.png dauerhaft im Browser — ein Logo-Wechsel blieb für
+  # wiederkehrende Besucher unsichtbar, obwohl der Server längst die neue
+  # Datei auslieferte. Live entdeckt: Betreiber wechselte das Logo, sah im
+  # eigenen (bereits vor dem Wechsel besuchten) Browser weiter das alte.
+  ################################
+  location ~* ^/(logo\.png|logo\.ico|favicon\.ico|manifest\.json|icons/icon-(?:192|512)\.png)$ {
+    root /var/www/{{DOMAIN}};
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=300, must-revalidate" always;
+  }
+
+  ################################
   # Static Assets – Long Cache
   ################################
   location ~* ^(?!/api/).*\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|avif|svg|ico|woff2?|woff|ttf|otf|eot|map|json|xml|txt|mp4|webm)$ {
