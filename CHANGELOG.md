@@ -8,6 +8,22 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.36] — 2026-07-18
+
+**Changed: v1.0.35's logo swap was accidentally the wrong file — replaced with kro's actual final branding ("K-R-O" wordmark), `favicon.ico` updated to match, PWA icons regenerated. Also fixed a visible seam in the generated icons, caught while checking this deploy.**
+
+**Fixed**
+- `utils/generate-icons.mjs`: the padding color around the logo (for the maskable-icon safe zone) was hardcoded to `manifest.json`'s `background_color` (`#161513`, a dark charcoal) — visibly mismatched against a logo with a true `#000000` black background, producing a faint but visible border/frame around the icon. Now samples the logo's own corner pixel color at generation time and uses that as the padding color instead, so it always matches whatever background a given node's logo actually has (falls back to the old hardcoded value only if the corner is transparent or sampling fails).
+
+**Changed**
+- `public/logo.png`: corrected to kro's actual final wordmark ("K-R-O", not the "SYS." placeholder briefly shipped in v1.0.35).
+- `public/favicon.ico`: updated to match (previously still the generic placeholder).
+- `public/icons/icon-192.png`, `icon-512.png`: regenerated from the corrected logo with the new seamless-padding fix.
+
+**Notes**
+- Deployed live: `nuxt generate` → `killMetas.mjs` → rsync. Confirmed `/gate`, `/logo.png` both 200, `manifest.json` `start_url` still `/gate`.
+- `public/logo.ico` unchanged this round — still the version from v1.0.35.
+
 ## [1.0.35] — 2026-07-18
 
 **Changed: kro's real branding replaces the generic placeholder logo introduced in v1.0.28 — `public/logo.png`/`logo.ico` swapped, PWA icons (`icon-192.png`/`icon-512.png`) regenerated from the new logo via `utils/generate-icons.mjs`, deployed live.**
