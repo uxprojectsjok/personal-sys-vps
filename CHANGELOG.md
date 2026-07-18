@@ -8,6 +8,20 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.33] — 2026-07-18
+
+**Fixed: a soul could only ever "see" a `soul_draw` artwork in the same turn it was drawn — no existing tool could re-fetch and actually visually analyze a previously-created canvas in a later session. `vault_shared_get` (the tool that reads `vault_shared/` files by design) returned only a clickable URL for images, never the actual pixel content as something Claude's vision can look at.**
+
+Direct follow-up to v1.0.32, raised by the user asking specifically "kann KRO es sehen/analysieren?" and "wie bekommt er es über context_get?" — the second half of that question surfaced a second, independent gap: `context_get` only reads `.md`/`.txt`/`.pdf` from `vault/context/`, has no connection to `vault_shared/` or images at all, so it was never a viable path either. Also found in the process: `.svg` was missing from every relevant MIME map (`lua/vault_shared_view.lua`, `lua/vault_shared_mcp_get.lua`), so a `soul_draw` SVG output would have been served as `application/octet-stream` (forced download, wrong content-type) if anyone actually tried to open the view URL.
+
+**Fixed**
+- `soul-mcp/tools/vault_shared_get.mjs`: image files (`jpg`/`jpeg`/`png`/`webp`/`gif`/`avif`) now return an inline `{type:'image', data, mimeType}` content block (same shape `image_get.mjs` already uses for `vault/images/`) instead of only a text URL — a soul can now genuinely look at a previously-saved drawing again, not just get a link for a human to click. `.svg` deliberately handled as **readable text**, not as an image content block — a vision model interprets decoded pixels (PNG/JPEG), not raw vector markup, so returning SVG source as `{type:'text'}` (which it validly is — plain readable XML) is the correct fit, not a workaround.
+- `lua/vault_shared_view.lua`, `lua/vault_shared_mcp_get.lua`: added `svg="image/svg+xml"` to both MIME maps, and `image/svg+xml` to `vault_shared_view.lua`'s `INLINE_MIME` set so an SVG view URL renders inline in a browser instead of forcing a download.
+
+**Verified**
+- Full real HTTP round-trip against the live server (not just unit-testing the handler in isolation): drew a real test canvas under kro's actual soul via `soul_draw`, deployed the Lua MIME fixes and restarted OpenResty, then fetched it back through `vault_shared_get`'s real network path (`getJson` → `/api/vault/shared-mcp`, genuine bearer-token auth) — PNG came back as an actual `image` content block (27,640 base64 chars, correct `image/png` mime), SVG came back as readable text with its XML markup visible. Test artifacts removed from the real soul's `vault_shared/` afterward.
+- `soul-mcp` restarted clean, no errors in the following log window.
+
 ## [1.0.32] — 2026-07-18
 
 **Changed: `soul_draw` reworked from a one-shot renderer into a persistent, continuable canvas — a soul can now paint the same artwork across days, weeks, months, or years by calling the tool repeatedly with the same `canvas_id`, instead of every call producing an unrelated, disposable PNG.**

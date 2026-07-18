@@ -43,7 +43,7 @@ end
 -- ── MIME-Typ aus Dateiendung ──────────────────────────────────────────────────
 local MIME_MAP = {
   jpg="image/jpeg", jpeg="image/jpeg", png="image/png",
-  webp="image/webp", gif="image/gif", avif="image/avif",
+  webp="image/webp", gif="image/gif", avif="image/avif", svg="image/svg+xml",
   mp4="video/mp4",  webm="video/webm", mov="video/quicktime",
   mp3="audio/mpeg", wav="audio/wav",   ogg="audio/ogg", m4a="audio/mp4",
   pdf="application/pdf",
