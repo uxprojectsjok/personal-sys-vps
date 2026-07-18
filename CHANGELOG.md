@@ -8,6 +8,26 @@ See [README: Updating This Node](README.md#updating-this-node) for the merge/dep
 
 ---
 
+## [1.0.31] — 2026-07-18
+
+**Added: `soul_draw`, a new owner-only MCP tool that renders a headless PNG drawing from a small list of brush strokes and saves it to `vault_shared` — the technical basis for a soul (e.g. KRO) to "paint" autonomously via Claude, without any mouse or human drawing input.**
+
+Adapted from a draft written by another Claude session that didn't know this server's actual tool-registration architecture (plain `require`/`module.exports`, an invented `{name, description, inputSchema, handler}` object shape, a guessed `SYS_VAULT_SHARED_DIR` env var) — the core canvas-rendering logic (Catmull-Rom interpolation, taper envelope) was sound and reused as-is; everything touching the server itself was rewritten to match the real conventions in `tools/context_write.mjs` and `tools/vault_shared_upload.mjs`.
+
+**Added**
+- `soul-mcp/tools/soul_draw.mjs`: real `export function register(server, soulId, token)` + `server.tool(name, description, zodSchema, handler)` (the actual MCP SDK pattern, not the draft's invented one), ESM throughout (this project is `"type":"module"`, the draft was CommonJS). Accepts `strokes[]` (each with a few `points` — 3–6 is enough, `color`, `width`, `opacity`, `style: 'ink'|'solid'|'eraser'`), interpolates each stroke into a smooth curve via Catmull-Rom (so the caller doesn't need to generate hundreds of pixel coordinates), applies a sine taper envelope for a natural brush feel unless explicit per-point `pressure` is given. Renders via `@napi-rs/canvas` (new dependency — prebuilt binaries, no Cairo/Pango system libraries or build toolchain needed on the VPS, unlike `node-canvas`).
+- Output is saved to `${SOULS_DIR}${soulId}/vault_shared/` (the real shared-file staging path, not the draft's guessed one), unencrypted — matching `vault_shared_upload.mjs`'s existing behavior exactly (vault_shared is a peer-sharing staging area, not subject to the same at-rest vault encryption as `vault/context`/`vault/images`). Response includes the rendered PNG inline as an MCP `{type:'image', ...}` content block (same pattern as `image_get.mjs`/`vault_get_peer.mjs`) so Claude/the soul can see the result immediately, plus a `vault-shared://` URL and ready-to-use `peer_send` snippet, mirroring `vault_shared_upload.mjs`'s response shape.
+- `soul-mcp/tools/index.mjs`: registered alongside the other owner-only filesystem tools (`if (soulId) soulDraw(server, soulId, token)`), same gating as `context_write`/`vault_shared_upload`/`shop_log`.
+
+**Verified**
+- `npm install @napi-rs/canvas` succeeded cleanly (prebuilt binary, no compile step).
+- Full handler tested directly (bypassing the real MCP transport, calling the registered handler against a fake `server.tool()` capture) with real multi-point strokes — produced a correctly-sized PNG with visible taper on an "ink" stroke and uniform width on a "solid" stroke, confirmed visually. Re-tested the no-token path (skips the optional view-URL step) to confirm the core save+respond flow doesn't depend on it.
+- `soul-mcp` restarted cleanly live, no crash, no error in the following log window.
+
+**Notes**
+- Private-repo-only for now — this isn't a generic template feature, it's specific to this session's "KRO paints autonomously" experiment; not ported to `personal-sys-vps`.
+- No image-generation model involved — this is deterministic, prompt-free vector-style rendering from geometric brush-stroke descriptions. What actually gets drawn is entirely up to whatever coordinates/colors the calling soul provides.
+
 ## [1.0.30] — 2026-07-17
 
 **Changed: `/gate`'s blank-landing logo enlarged again (120px → 220px) — live feedback after the SysMark image swap, the logo needed more presence on a screen that's otherwise almost entirely empty.**
