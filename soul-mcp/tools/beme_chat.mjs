@@ -64,13 +64,21 @@ export function register(server, token) {
         };
       } catch (err) {
         const vr = verificationRequiredMsg(err);
-        const msg = vr
+        let msg = vr
           ? vr
           : err.status === 403
           ? 'Vault ist gesperrt. Bitte in der SYS App entsperren.'
           : err.status === 404
           ? 'Noch kein sys.md synchronisiert. Bitte Vault in der SYS App synchronisieren.'
           : err.message;
+        // 502 vom beme-Endpoint (z.B. empty_completion) liefert strukturiertes JSON im Body —
+        // lesbare Meldung statt des rohen "SYS API 502: {...}"-Dumps zeigen.
+        if (!vr && err.status === 502) {
+          try {
+            const body = JSON.parse(err.body || '{}');
+            if (body.message) msg = body.message;
+          } catch { /* body kein JSON */ }
+        }
         return {
           content: [{ type: 'text', text: `Fehler: ${msg}` }],
           isError: true,

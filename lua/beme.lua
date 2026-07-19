@@ -274,6 +274,27 @@ if type(data.content) == "table" then
   end
 end
 
+-- Anthropic kann mit HTTP 200 antworten und trotzdem keinen Text liefern
+-- (z.B. stop_reason "refusal", oder ein content-Array ohne "text"-Block).
+-- Das bisher stillschweigend als {response:""} durchzureichen sah für den
+-- Aufrufer wie eine leere/kaputte Antwort aus, ohne jeden Hinweis warum.
+if response_text == "" then
+  local block_types = {}
+  if type(data.content) == "table" then
+    for _, block in ipairs(data.content) do
+      table.insert(block_types, tostring(block.type))
+    end
+  end
+  ngx.log(ngx.WARN, "[beme] leere Completion – stop_reason=", tostring(data.stop_reason),
+    " content_blocks=[", table.concat(block_types, ","), "] soul_id=", tostring(soul_id))
+  ngx.status = 502
+  ngx.say(cjson.encode({
+    error   = "empty_completion",
+    message = "Anthropic hat keinen Text geliefert (stop_reason: " .. tostring(data.stop_reason) .. "). Bitte erneut versuchen.",
+  }))
+  return
+end
+
 ngx.say(cjson.encode({
   response  = response_text,
   soul_name = soul_name,

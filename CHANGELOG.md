@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.31] — 2026-07-19
+
+**Fixed: `beme_chat` could return a blank/void response instead of a real answer — not a transport or auth error, but Anthropic occasionally returning HTTP 200 with no usable text content, which `beme.lua` silently forwarded as `{response:""}`.**
+
+There was zero logging of *why* this happened — no `stop_reason`, no content-block breakdown — so it was previously undiagnosable when it occurred.
+
+**Fixed**
+- `lua/beme.lua`: when the extracted `response_text` is empty despite a 200 from Anthropic, no longer silently returns `{response:""}`. Now logs `stop_reason` and the response's content-block types to the OpenResty error log, and returns a proper `502 {"error":"empty_completion","message":"..."}` instead — surfaces as an actionable error rather than a confusing blank reply.
+- `soul-mcp/tools/beme_chat.mjs`: catch block now unwraps a 502's JSON body (when present) to show the real `message` instead of the raw `SYS API 502: {...}` dump.
+
+**Notes**
+- Root cause of *why* Anthropic returns an empty completion for a given message is still open — this fix doesn't prevent it, it makes it diagnosable (via the new log line) and turns it into a clear error instead of a silent blank one.
+- Found and fixed on `personal-sys-vps-private` (kro.uxprojects-jok.com) v1.0.44, where it was live-verified against a real soul (confirmed via `nginx` access-log response sizes before/after). Ported here unchanged since `beme.lua`/`beme_chat.mjs` are generic infrastructure, not node-specific content.
+
 ## [1.0.30] — 2026-07-19
 
 **Added: `.json` is now a full context-document type (visible, uploadable/syncable, AI-readable) — previously excluded at every layer of the vault stack, both client and server.**
