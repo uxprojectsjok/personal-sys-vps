@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.32] — 2026-07-19
+
+**Fixed: found the actual root cause of the `beme_chat` empty-completion bug fixed in v1.0.31 — the model was consuming its entire `max_tokens` budget on invisible extended-thinking tokens before generating any visible text, for demanding prompts under a tight token budget.**
+
+v1.0.31's diagnostic logging (`ngx.WARN`) turned out to never actually reach the log file on the reference deployment — `error_log` configured without an explicit level defaults to `error`, and `ngx.WARN` sits below that threshold. Bumped to `ngx.ERR`. With logging actually working, reproduced the bug with a demanding prompt + tight `max_tokens` and got the real answer from the log: the model spent the entire output budget on an extended-thinking block and never emitted a `text` block. Confirmed directly against the Anthropic API that `claude-sonnet-4-6` uses extended thinking even when it isn't requested.
+
+**Fixed**
+- `lua/beme.lua`: logging bumped from `ngx.WARN` to `ngx.ERR`; added `max_tokens` and `usage.output_tokens` to the log line for faster diagnosis.
+- `lua/beme.lua`: the Anthropic request now sends `thinking: {type: "disabled"}` explicitly. Verified against the Anthropic API for both allowed models (`claude-sonnet-4-6`, `claude-sonnet-5`) — both accept the param and return real text instead of consuming the budget on thinking.
+
+**Notes**
+- Found and fixed on `personal-sys-vps-private` (kro.uxprojects-jok.com) v1.0.46, where it was verified live against a real soul and directly against the Anthropic API. Ported here unchanged — generic infrastructure, not node-specific content. If your `error_log` directive already specifies `warn` or lower, the `ngx.WARN`→`ngx.ERR` part of this fix wasn't affecting you, but the `thinking:disabled` fix still applies.
+
 ## [1.0.31] — 2026-07-19
 
 **Fixed: `beme_chat` could return a blank/void response instead of a real answer — not a transport or auth error, but Anthropic occasionally returning HTTP 200 with no usable text content, which `beme.lua` silently forwarded as `{response:""}`.**

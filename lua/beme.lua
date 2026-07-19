@@ -224,11 +224,16 @@ if api_key == "" then
 end
 
 local model     = cfg.get_model(ngx.ctx.soul_id) or "claude-sonnet-4-6"
+-- thinking explizit deaktiviert: manche Modelle (bestätigt: claude-sonnet-4-6) nutzen
+-- extended thinking auch ohne Anfrage automatisch und können bei knappem max_tokens
+-- das gesamte Budget fürs (unsichtbare) Thinking verbrauchen, bevor überhaupt Text
+-- generiert wird → response_text bleibt leer, obwohl Anthropic mit 200 antwortet.
 local req_body  = cjson.encode({
   model      = model,
   max_tokens = max_tokens,
   system     = system_prompt,
   messages   = messages,
+  thinking   = { type = "disabled" },
 })
 
 local httpc = http.new()
@@ -285,8 +290,11 @@ if response_text == "" then
       table.insert(block_types, tostring(block.type))
     end
   end
-  ngx.log(ngx.WARN, "[beme] leere Completion – stop_reason=", tostring(data.stop_reason),
-    " content_blocks=[", table.concat(block_types, ","), "] soul_id=", tostring(soul_id))
+  -- ngx.ERR statt ngx.WARN: error_log ist ohne Level-Angabe konfiguriert (Default "error"),
+  -- ngx.WARN-Meldungen wurden dadurch lautlos verworfen und waren nie im Log zu finden.
+  ngx.log(ngx.ERR, "[beme] leere Completion – stop_reason=", tostring(data.stop_reason),
+    " content_blocks=[", table.concat(block_types, ","), "] soul_id=", tostring(soul_id),
+    " max_tokens=", tostring(max_tokens), " usage_output_tokens=", tostring(data.usage and data.usage.output_tokens))
   ngx.status = 502
   ngx.say(cjson.encode({
     error   = "empty_completion",
