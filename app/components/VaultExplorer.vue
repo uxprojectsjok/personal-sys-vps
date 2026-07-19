@@ -362,7 +362,7 @@
         ref="fileInputRef"
         type="file"
         multiple
-        accept="audio/*,video/*,image/*,.md,.txt,.pdf"
+        accept="audio/*,video/*,image/*,.md,.txt,.pdf,.json"
         class="sr-only"
         @change="addLocalFiles"
       />
@@ -631,7 +631,7 @@ const TYPE_LABELS = computed(() => ({
   context:  t("vault.type_context"),
   profiles: t("vault.type_profiles"),
 }));
-const MEDIA_EXTS  = /\.(mp3|wav|ogg|m4a|flac|aac|webm|mp4|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|md|txt|pdf)$/i;
+const MEDIA_EXTS  = /\.(mp3|wav|ogg|m4a|flac|aac|webm|mp4|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|md|txt|pdf|json)$/i;
 const SKIP_FILES  = /^(voice_profile\.json|motion_profile\.json)$/i;
 
 const {

@@ -112,7 +112,7 @@ local function file_type_of(name)
   if ext == "mp4" or ext == "webm" or ext == "mov" or ext == "avi" or ext == "mkv" then return "video" end
   if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "webp" or
      ext == "gif" or ext == "avif" then return "images" end
-  if ext == "md" or ext == "txt" or ext == "pdf" then return "context_files" end
+  if ext == "md" or ext == "txt" or ext == "pdf" or ext == "json" then return "context_files" end
   return "other"
 end
 
@@ -123,7 +123,7 @@ local MIME = {
   opus="audio/ogg", flac="audio/flac",
   mp4="video/mp4", mov="video/quicktime", avi="video/x-msvideo",
   md="text/markdown; charset=utf-8", txt="text/plain; charset=utf-8",
-  pdf="application/pdf",
+  pdf="application/pdf", json="application/json",
 }
 
 local function safe_filename(s)

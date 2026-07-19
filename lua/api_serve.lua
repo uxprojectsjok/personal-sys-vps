@@ -215,7 +215,8 @@ local MIME_MAP = {
   -- Text / Dokument
   md   = "text/plain; charset=utf-8",
   txt  = "text/plain; charset=utf-8",
-  pdf  = "application/pdf"
+  pdf  = "application/pdf",
+  json = "application/json"
 }
 
 -- ── DELETE /api/vault/{type}/{filename} ────────────────────────────────────

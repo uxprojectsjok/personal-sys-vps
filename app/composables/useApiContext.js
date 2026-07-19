@@ -247,12 +247,13 @@ export function useApiContext() {
   // Typ aus vollem Vault-Pfad ableiten
   // Extension hat Vorrang vor Ordner — verhindert z.B. profile.jpg in voice_samples → Audio
   function fileTypeFromPath(path) {
-    const lower = path.toLowerCase();
-    const folder = lower.split("/").slice(-2, -1)[0] || "";
-    const ext    = lower.split(".").pop();
+    const lower    = path.toLowerCase();
+    const folder   = lower.split("/").slice(-2, -1)[0] || "";
+    const ext      = lower.split(".").pop();
+    const basename = lower.split("/").pop();
 
-    // Metadaten/Config-Dateien niemals syncen
-    if (ext === "json") return null;
+    // Companion-JSON der Voice-/Motion-Aufnahme niemals syncen (kein Context-Dokument)
+    if (basename === "voice_profile.json" || basename === "motion_profile.json") return null;
 
     // WebM ist dual-use (Audio + Video) → Dateiname-Präfix entscheidet zuerst,
     // dann Ordner. Präfix zuerst, damit falsch abgelegte Dateien trotzdem
@@ -269,7 +270,7 @@ export function useApiContext() {
     if (/\.(mp3|wav|ogg|m4a|opus|flac|aac)$/.test(lower))  return "audio";
     if (/\.(mp4|mov|avi|mkv)$/.test(lower))                 return "video";
     if (/\.(jpe?g|png|webp|gif|avif)$/.test(lower))         return "image";
-    if (/\.(md|txt|pdf)$/.test(lower))                        return "context";
+    if (/\.(md|txt|pdf|json)$/.test(lower))                    return "context";
 
     // Ordner-Fallback
     if (folder === "motion_samples" || folder === "video_samples" || folder === "videos") return "video";

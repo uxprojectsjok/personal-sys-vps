@@ -62,7 +62,7 @@ local function file_type_of(name)
   if ext == "mp4" or ext == "webm" or ext == "mov" or ext == "avi" or ext == "mkv" then return "video" end
   if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "webp" or
      ext == "gif" or ext == "avif" then return "images" end
-  if ext == "md" or ext == "txt" or ext == "pdf" then return "context_files" end
+  if ext == "md" or ext == "txt" or ext == "pdf" or ext == "json" then return "context_files" end
   return "other"
 end
 
@@ -234,7 +234,7 @@ if req_file then
 
   -- Text inline; PDF als base64; andere Binärdateien nur Metadaten
   local cf_ext = (fname:match("%.([^%.]+)$") or ""):lower()
-  if ftype == "context_files" and (cf_ext == "md" or cf_ext == "txt") then
+  if ftype == "context_files" and (cf_ext == "md" or cf_ext == "txt" or cf_ext == "json") then
     ngx.say(cjson.encode({ ok = true, name = fname, soul_id = target_id, content = content }))
   elseif ftype == "context_files" and cf_ext == "pdf" then
     ngx.say(cjson.encode({ ok = true, name = fname, soul_id = target_id, encoding = "base64", content_b64 = ngx.encode_base64(content) }))

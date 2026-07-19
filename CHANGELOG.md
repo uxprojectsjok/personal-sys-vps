@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.30] — 2026-07-19
+
+**Added: `.json` is now a full context-document type (visible, uploadable/syncable, AI-readable) — previously excluded at every layer of the vault stack, both client and server.**
+
+`.json` was explicitly excluded at 8 independent spots across the client and server: `useVault.js`'s local folder scan (both memory-mode and File-System-Access-API mode) skipped `.json` when building the file list, `useApiContext.js`'s `fileTypeFromPath()` returned `null` for any `.json` extension ("Metadaten/Config-Dateien niemals syncen"), the Vault Explorer's file-picker `accept` attribute and its `MEDIA_EXTS` archive filter both omitted `.json`, and server-side `vault_sync.lua`'s upload whitelist, `context_write.mjs`'s filename regex, `api_context.lua`'s auto-registration scan, and two peer/public-sharing `file_type_of()` helpers (`vault_connections_peer.lua`, `vault_public.lua`) all only recognized `md`/`txt`/`pdf`.
+
+The exclusion made sense historically (guarding against internal config files like `api_context.json`/`config.json` accidentally being treated as vault content), but was too broad — it also blocked any legitimate structured-data document a node operator or the AI itself wanted to keep in `vault/context/`.
+
+**Added**
+- `.json` recognized as a `context`-type document everywhere `.md`/`.txt`/`.pdf` already were: local vault scan (`useVault.js`), sync-type mapping (`useApiContext.js`), file-picker `accept` + archive filter (`VaultExplorer.vue`), upload whitelist (`vault_sync.lua`), MCP `context_write`/`context_get`/`context_list` (regex + descriptions), auto-registration scan (`api_context.lua`), peer/public sharing type detection and inline-text serving (`vault_connections_peer.lua`, `vault_public.lua`), and the `application/json` MIME type (`api_serve.lua`, `vault_public.lua`).
+
+**Notes**
+- Two known companion files, `voice_profile.json` and `motion_profile.json` (written by `VoiceRecorder.vue`/`AudioCaptureCard.vue`/`MotionCaptureCard.vue`/`MotionRecorder.vue` under `voice_samples/`/`motion_samples/`), stay explicitly excluded by exact basename from context-document treatment — they're recorder-internal embedding data, not user documents.
+- Found and verified live on `personal-sys-vps-private` (kro.uxprojects-jok.com); ported here unchanged since this is generic vault-stack infrastructure, not node-specific content. `npx nuxt generate` confirmed clean on this repo after applying the patch; the private-repo live test (`context_write` → `context_get` → `context_list` against a real soul) is documented in that repo's own CHANGELOG (v1.0.43).
+
 ## [1.0.29] — 2026-07-18
 
 **Fixed: branding files (`logo.png`, `logo.ico`, `favicon.ico`, `manifest.json`, the PWA icons) were served with a 1-year `immutable` cache — the same rule correctly applied to Nuxt's content-hashed `/_nuxt/*` bundle assets, but these branding files keep the same URL forever even when their content changes. A returning visitor who'd loaded the site before a logo swap kept seeing the old logo for up to a year, even though the server was already serving the new one correctly.**

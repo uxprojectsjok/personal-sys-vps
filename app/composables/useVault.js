@@ -11,6 +11,9 @@ const STORE_NAME = "handles";
 // Bildformate die als Vault-Bilder erfasst werden
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp", "gif", "avif"];
 
+// Companion-JSON-Dateien der Voice-/Motion-Aufnahme (kein Context-Dokument, siehe VoiceRecorder/MotionCaptureCard)
+const COMPANION_JSON_FILES = new Set(["voice_profile.json", "motion_profile.json"]);
+
 // ── DOCX-Text-Extraktor (browsernativer ZIP + XML Parser) ─────────────────
 // Vision-Preprocessing: max. Kantenlänge und JPEG-Qualität
 // 512px = 1 Anthropic-Kachel = ~1.750 Tokens (Minimum)
@@ -140,7 +143,7 @@ export function useVault() {
           } catch { }
           continue;
         }
-        if (basename.endsWith(".md") || basename.endsWith(".txt")) {
+        if ((basename.endsWith(".md") || basename.endsWith(".txt") || basename.endsWith(".json")) && !COMPANION_JSON_FILES.has(basename)) {
           try {
             const text = new TextDecoder().decode(buffer);
             if (text.trim()) { texts.push({ name, text }); files.push({ name, kind: "text" }); }
@@ -148,7 +151,7 @@ export function useVault() {
           continue;
         }
         if (IMAGE_EXTS.includes(ext)) { files.push({ name, kind: "image" }); continue; }
-        if (ext && !["json", "html", "css", "js"].includes(ext)) {
+        if (ext && !["html", "css", "js"].includes(ext)) {
           files.push({ name, kind: ext });
         }
       }
@@ -209,9 +212,10 @@ export function useVault() {
             continue;
           }
 
-          // Kontext-Textdateien (.md, .txt) – root + context/
+          // Kontext-Textdateien (.md, .txt, .json) – root + context/
           // .md-Dateien im Root: per Inhalt prüfen ob Identity-Datei (SYS-Frontmatter)
-          if (lower.endsWith(".md") || lower.endsWith(".txt")) {
+          // Companion-JSON der Voice-/Motion-Aufnahme ausgenommen (kein Context-Dokument)
+          if ((lower.endsWith(".md") || lower.endsWith(".txt") || lower.endsWith(".json")) && !COMPANION_JSON_FILES.has(lower)) {
             try {
               const f    = await entry.getFile();
               const text = await f.text();
@@ -237,7 +241,7 @@ export function useVault() {
           }
 
           // Audio / Video / sonstige Binärdateien – nur in allFiles aufnehmen
-          if (ext && !["json", "html", "css", "js"].includes(ext)) {
+          if (ext && !["html", "css", "js"].includes(ext)) {
             files.push({ name: path, kind: ext });
           }
         }

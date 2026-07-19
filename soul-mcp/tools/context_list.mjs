@@ -3,7 +3,7 @@ import { getJson, verificationRequiredMsg } from '../lib/api.mjs';
 export function register(server, token) {
   server.tool(
     'context_list',
-    'Listet alle Text-Kontext-Dateien im Vault auf: Notizen, Dokumente, Wissensbasis (.md, .txt). Gibt Namen und URL zurück.',
+    'Listet alle Text-Kontext-Dateien im Vault auf: Notizen, Dokumente, Wissensbasis (.md, .txt, .json). Gibt Namen und URL zurück.',
     {},
     async () => {
       try {

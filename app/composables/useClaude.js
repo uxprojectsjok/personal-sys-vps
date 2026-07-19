@@ -94,7 +94,7 @@ const SOUL_TOOLS = [
   },
   {
     name: "context_list",
-    description: "Listet alle Text-Kontext-Dateien im Vault auf: Notizen, Dokumente, Wissensbasis (.md, .txt).",
+    description: "Listet alle Text-Kontext-Dateien im Vault auf: Notizen, Dokumente, Wissensbasis (.md, .txt, .json).",
     input_schema: { type: "object", properties: {}, required: [] }
   },
   {

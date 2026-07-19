@@ -76,7 +76,7 @@ local ALLOWED_EXT = {
   audio   = { mp3=true, wav=true, ogg=true, webm=true, m4a=true, opus=true, flac=true, aac=true },
   video   = { mp4=true, mov=true, avi=true, mkv=true, webm=true },
   image   = { jpg=true, jpeg=true, png=true, webp=true, gif=true, avif=true },
-  context = { md=true, txt=true, pdf=true }
+  context = { md=true, txt=true, pdf=true, json=true }
 }
 
 -- Magic-Bytes (erste Bytes) pro Typ – genügt ein Treffer

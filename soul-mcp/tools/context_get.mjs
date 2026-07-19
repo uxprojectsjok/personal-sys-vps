@@ -22,7 +22,7 @@ async function pdfToText(buf) {
 export function register(server, token) {
   server.tool(
     'context_get',
-    'Liest den Inhalt einer Text-Kontext-Datei (.md, .txt, .pdf) direkt als Text. Für Lebensläufe, Wissensdokumente, Notizen und strukturierte Informationen der Person. Word-Dokumente (.docx) bitte vorher in PDF umwandeln.',
+    'Liest den Inhalt einer Text-Kontext-Datei (.md, .txt, .pdf, .json) direkt als Text. Für Lebensläufe, Wissensdokumente, Notizen, strukturierte Daten und Informationen der Person. Word-Dokumente (.docx) bitte vorher in PDF umwandeln.',
     { filename: z.string().describe('Dateiname, z.B. "lebenslauf.pdf" oder "notizen.md" – aus context_list bekannt') },
     async ({ filename }) => {
       const path = `/api/vault/context/${encodeURIComponent(filename)}`;
