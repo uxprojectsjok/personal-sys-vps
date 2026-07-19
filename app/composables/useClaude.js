@@ -21,7 +21,8 @@ const SOUL_TOOL_NAMES = new Set([
   "soul_read", "soul_write", "vault_manifest", "context_get", "mind_read", "mind_write",
   "audio_list", "image_list", "video_list", "context_list", "profile_get",
   "health_check", "food_log", "health_sync",
-  "shop_log", "shop_check"
+  "shop_log", "shop_check",
+  "soul_draw", "soul_generate", "vault_shared_list"
 ]);
 
 const SOUL_TOOLS = [
@@ -47,6 +48,73 @@ const SOUL_TOOLS = [
     name: "vault_manifest",
     description: "Listet alle Dateien im persönlichen Vault (Dokumente, Bilder, Audio, Video, Kontext-Dateien).",
     input_schema: { type: "object", properties: {}, required: [] }
+  },
+  {
+    name: "soul_draw",
+    description: "Zeichnet oder erweitert ein Bild headless (ohne Maus/Mensch) aus einer Liste von Pinselstrichen. Für langfristige Werke — dieselbe canvas_id über Tage/Wochen/Monate/Jahre hinweg weiterverwenden, jeder Aufruf fügt neue Striche zum bestehenden Werk hinzu statt neu anzufangen. Wenige grobe Kontrollpunkte pro Strich reichen (3–6), keine hunderte Pixel-Koordinaten nötig. Speichert {canvas_id}.png (Vorschau, zum Teilen) in vault_shared; die eigentliche Vektor-Quelle {canvas_id}.svg liegt geschützt in vault/context (über context_get lesbar). Jeder Aufruf trägt einen Fortschritts-Eintrag in sys.md ein. Vor neuen Werken vault_shared_list prüfen, um ein bestehendes canvas_id nicht versehentlich zu duplizieren.",
+    input_schema: {
+      type: "object",
+      properties: {
+        canvas_id: { type: "string", description: "Eindeutiger Name des Werks — dieselbe canvas_id setzt es in künftigen Aufrufen fort." },
+        width: { type: "number", description: "Breite in px, nur bei Neuanlage (Standard 1600)" },
+        height: { type: "number", description: "Höhe in px, nur bei Neuanlage (Standard 1200)" },
+        background: { type: "string", description: "\"paper\" (Standard) oder Hex-Farbe, nur bei Neuanlage" },
+        strokes: {
+          type: "array",
+          description: "Neue Pinselstriche, die zum Werk hinzugefügt werden",
+          items: {
+            type: "object",
+            properties: {
+              points: {
+                type: "array",
+                description: "3–6 grobe Kontrollpunkte reichen — werden automatisch zu einer weichen Kurve interpoliert",
+                items: {
+                  type: "object",
+                  properties: {
+                    x: { type: "number" },
+                    y: { type: "number" },
+                    pressure: { type: "number", description: "0–1, optional" }
+                  },
+                  required: ["x", "y"]
+                }
+              },
+              color: { type: "string", description: "Hex-Farbe, z.B. \"#A8402F\"" },
+              width: { type: "number", description: "Grundstärke in px" },
+              opacity: { type: "number", description: "0–1" },
+              style: { type: "string", enum: ["ink", "solid", "eraser"] }
+            },
+            required: ["points"]
+          }
+        },
+        description: { type: "string", description: "Optionale Beschreibung für peer_send" }
+      },
+      required: ["canvas_id", "strokes"]
+    }
+  },
+  {
+    name: "soul_generate",
+    description: "Erzeugt oder veredelt ein Bild/Video per hochwertiger KI-Generierung (WaveSpeed AI) — für Werke über reines Vektor-Zeichnen (soul_draw) hinaus. PFLICHT: decision — kurze Begründung WARUM, nicht nur WAS (die Soul bleibt Urheberin, die KI ist Werkzeug, kein roher Prompt-Passthrough). mode \"text-to-image\": neu aus Prompt. mode \"edit-multi\": veredelt das bestehende {canvas_id}.png (z.B. eine soul_draw-Skizze) — Ergebnis wird die nächste Stufe desselben Werks, vorherige Stufe wird automatisch als {canvas_id}_stage{n}.png archiviert. mode \"image-to-video\": startet eine Videogenerierung aus dem bestehenden {canvas_id}.png (dauert 1–5 Minuten, kein Zeitdruck) — erster Aufruf startet und kehrt sofort zurück, jeder weitere Aufruf mit derselben canvas_id + mode prüft einmalig ob fertig; kein synchrones Warten nötig. Tageslimit: 10 Generierungen/Tag (echte, kostenpflichtige API-Aufrufe — bei image-to-video zählt schon die Einreichung).",
+    input_schema: {
+      type: "object",
+      properties: {
+        canvas_id: { type: "string", description: "Name des Werks — dieselbe canvas_id wie bei soul_draw verbindet Skizze und Veredelung." },
+        decision: { type: "string", description: "Pflicht: kurze Begründung WARUM diese Generierung entsteht." },
+        mode: { type: "string", enum: ["text-to-image", "edit-multi", "image-to-video"], description: "\"text-to-image\": neu aus Prompt. \"edit-multi\": veredelt bestehendes {canvas_id}.png. \"image-to-video\": startet/holt eine Videogenerierung ab." },
+        prompt: { type: "string", description: "Der eigentliche Generierungs-Prompt für WaveSpeed." }
+      },
+      required: ["canvas_id", "decision", "mode", "prompt"]
+    }
+  },
+  {
+    name: "vault_shared_list",
+    description: "Listet Dateien in vault_shared auf (neueste zuerst) — soul_draw-Werke erscheinen als \"Canvas (PNG)\"/\"Canvas (SVG)\" (kein Zeitstempel-Präfix, anders als normale Uploads). Vor einem neuen Werk aufrufen, um ein bestehendes canvas_id wiederzufinden statt versehentlich zu duplizieren.",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Maximale Anzahl Dateien (Standard 10, neueste zuerst)" }
+      },
+      required: []
+    }
   },
   {
     name: "context_get",

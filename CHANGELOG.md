@@ -8,6 +8,27 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.33] — 2026-07-19
+
+**Added: `soul_draw` and `soul_generate` — two creative tools giving a soul (e.g. a personal AI identity) autonomous headless drawing and high-quality AI image/video generation, ported from `personal-sys-vps-private` (kro.uxprojects-jok.com) where they were built and live-verified across several iterations.**
+
+These were built entirely in the private repo this development cycle and never ported until now — `soul_draw.mjs` didn't exist here at all. Porting `soul_generate` without it would have been incomplete: it shares `lib/artwork_log.mjs`'s progress-logging helper and is designed to sequentially refine a `soul_draw` sketch into a higher-quality piece using the same `canvas_id`.
+
+**Added**
+- `soul-mcp/tools/soul_draw.mjs`: headless vector/raster drawing from brush-stroke lists (Catmull-Rom interpolation + taper envelope from a handful of control points). Persistent across sessions via `canvas_id` — PNG preview in `vault_shared`, protected SVG vector source in `vault/context` (encrypted, not reachable via peer-sharing). Each call logs progress into `sys.md`'s "## Kunstwerke" section with a content hash, feeding into the existing blockchain-anchor mechanism.
+- `soul-mcp/tools/soul_generate.mjs`: WaveSpeed AI image/video generation as a second creative tool. `text-to-image` and `edit-multi` (refines an existing `{canvas_id}.png`, previous stage auto-archived) run synchronously. `image-to-video` runs asynchronously across multiple calls instead — video generation commonly takes 1–5 minutes, too long for a single synchronous call; the first call submits and returns immediately, later calls with the same `canvas_id` do a single non-looping status check until the result is ready. A required `decision` field on every call documents *why* the generation happened, not just *what* — keeps the soul as author, the AI model as tool. Daily rate limit against runaway cost (image modes count on success, video counts on submission, since that's when the cost is committed).
+- `soul-mcp/lib/artwork_log.mjs`: shared `sys.md` progress-logging helper used by both tools (`contentHash` is optional, for steps like "video generation started" that have nothing to hash yet).
+- `soul-mcp/package.json`: added `@napi-rs/canvas` dependency (raster + SVG canvas rendering, shared 2D API).
+- `soul-mcp/tools/vault_shared_list.mjs`: recognizes `{canvas_id}.svg`/`.png`/`.mp4` (no timestamp prefix) as distinct "Canvas" types, separate from one-off uploads — lets a soul rediscover and continue an existing work instead of accidentally duplicating it. Exports `formatVaultSharedList`/`listVaultSharedFs` for reuse by the in-app-chat path.
+- `soul-mcp/tools/vault_shared_get.mjs`: images and SVGs now return real content (image content blocks for raster, readable text for SVG source) instead of just a URL.
+- `lua/vault_shared_view.lua`/`lua/vault_shared_mcp_get.lua`: added `image/svg+xml` MIME support.
+- `server/openresty/vhost.conf.template`: `/api/soul-tool`'s `proxy_read_timeout` raised from 30s to 120s — needed for `soul_generate`'s WaveSpeed polling, which can legitimately take 45–90s depending on mode.
+- Wired into both tool registries (MCP `registerTools()` in `soul-mcp/tools/index.mjs`, in-app chat `/internal/run-tool` in `soul-mcp/server.mjs`, chat tool-schema mirror in `app/composables/useClaude.js`).
+
+**Notes**
+- Both tools are owner-only by design (not wired into `registerPaidTools()`/`registerPeerTools()`).
+- The underlying design/philosophy document (why these tools require a documented decision rather than raw prompt passthrough) lives in the originating node's own vault content, not in this repo — node-specific, not code.
+
 ## [1.0.32] — 2026-07-19
 
 **Fixed: found the actual root cause of the `beme_chat` empty-completion bug fixed in v1.0.31 — the model was consuming its entire `max_tokens` budget on invisible extended-thinking tokens before generating any visible text, for demanding prompts under a tight token budget.**

@@ -27,6 +27,9 @@ import { registerTools, registerPaidTools, registerPeerTools, registerTrustReque
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
+import { runSoulDraw, formatSoulDrawSummary } from './tools/soul_draw.mjs';
+import { runSoulGenerate, formatSoulGenerateSummary } from './tools/soul_generate.mjs';
+import { listVaultSharedFs, formatVaultSharedList } from './tools/vault_shared_list.mjs';
 import { buildTermsPreviewPdf, buildTermsPreviewTxt, buildConsentPdf, buildConsentTxt, legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt } from './lib/eu_withdrawal_terms.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
@@ -440,6 +443,53 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         if (wasEncrypted && vaultKeyHex) writeBuf = encryptBuf(writeBuf, vaultKeyHex);
         await writeFile(soulPath, writeBuf);
         return res.json({ content: [{ type: 'text', text: `${pfKey} aktualisiert.` }] });
+      }
+
+      // In-App-Chat-Gegenstück zum MCP-Tool soul_draw (siehe tools/soul_draw.mjs,
+      // register()) — teilt sich die eigentliche Render-/Persistenz-Logik über
+      // runSoulDraw(), nur die Response-Form unterscheidet sich: der In-App-Chat
+      // (useClaude.js's executeTool()) liest ausschließlich content[0].text, ein
+      // type:'image'-Block würde hier ungenutzt verworfen — deshalb reine
+      // Textzusammenfassung statt des MCP-Pfads Bild+Text. Kein bearer-Token für
+      // sharedFileUrl() verfügbar (dieser Endpunkt braucht laut obigem Kommentar
+      // bewusst keine eigene Auth, der Proxy hat schon geprüft) — runSoulDraw()
+      // behandelt token=null bereits als "keine externe View-URL bauen", die
+      // vault-shared://-URL bleibt trotzdem nutzbar.
+      case 'soul_draw': {
+        const { canvas_id, width, height, background, strokes, description } = input;
+        if (!canvas_id || !Array.isArray(strokes) || strokes.length === 0) {
+          return res.status(400).json({ error: 'canvas_id und strokes (min. 1 Strich) erforderlich' });
+        }
+        const result = await runSoulDraw(soulId, null, { canvas_id, width, height, background, strokes, description });
+        const text = formatSoulDrawSummary(canvas_id, strokes.length, result);
+        return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      // In-App-Chat-Gegenstück zum MCP-Tool soul_generate (siehe tools/soul_generate.mjs) —
+      // gleiches Muster wie soul_draw oben: teilt sich runSoulGenerate(), reine
+      // Textzusammenfassung statt Bild+Text (executeTool() liest nur content[0].text).
+      case 'soul_generate': {
+        const { canvas_id, decision, mode, prompt } = input;
+        if (!canvas_id || !decision || !mode || !prompt) {
+          return res.status(400).json({ error: 'canvas_id, decision, mode und prompt erforderlich' });
+        }
+        try {
+          const result = await runSoulGenerate(soulId, null, { canvas_id, decision, mode, prompt });
+          const text = formatSoulGenerateSummary(canvas_id, result);
+          return res.json({ content: [{ type: 'text', text }] });
+        } catch (err) {
+          return res.json({ content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true });
+        }
+      }
+
+      // In-App-Chat-Gegenstück zu vault_shared_list (siehe tools/vault_shared_list.mjs) —
+      // direkter Filesystem-Zugriff (listVaultSharedFs) statt des MCP-Pfads HTTP-
+      // Roundtrip über /api/vault/shared-list, aus demselben Grund wie bei
+      // soul_draw oben: kein Bearer-Token in diesem Endpunkt verfügbar/nötig.
+      case 'vault_shared_list': {
+        const { limit = 10 } = input;
+        const files = await listVaultSharedFs(soulId);
+        return res.json({ content: [{ type: 'text', text: formatVaultSharedList(files, limit) }] });
       }
 
       case 'vault_manifest': {

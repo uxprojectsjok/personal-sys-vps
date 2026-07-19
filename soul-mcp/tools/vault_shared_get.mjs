@@ -56,9 +56,20 @@ export function register(server, token) {
         const isImage  = ['jpg','jpeg','png','webp','gif','avif'].includes(ext);
         const isPdf    = ext === 'pdf';
         const isText   = ['md','txt','json','csv'].includes(ext);
+        // svg wird bewusst NICHT zu isImage gezählt — als type:'image' Content-
+        // Block müsste ein Vision-Modell rohe SVG-Vektordaten interpretieren
+        // (nicht dekodierte Pixel wie bei PNG/JPEG), das ist so nicht vorgesehen.
+        // Stattdessen als Text lesbar: SVG-Quelltext ist gültiges, lesbares XML
+        // (genau der Sinn hinter soul_draws SVG-Export — siehe dortiger Kommentar).
+        const isSvg    = ext === 'svg';
 
-        // Für Text + PDF: Inhalt direkt lesen
-        if (isPdf || isText) {
+        // Für Text + PDF + Bild: Inhalt direkt lesen/sehen statt nur eine URL
+        // zurückzugeben. Bilder waren hier bisher NICHT eingeschlossen — ein
+        // Aufrufer bekam nur einen klickbaren Link, konnte ein bereits
+        // gespeichertes Bild (z.B. ein früher gemaltes soul_draw-Werk) also nie
+        // wirklich SEHEN/analysieren, nur einen Menschen bitten, ihn zu öffnen.
+        // Gleiches Content-Block-Format wie image_get.mjs (type:'image').
+        if (isPdf || isText || isImage || isSvg) {
           try {
             const params = new URLSearchParams({ soul_id: resolved.soulId, filename: resolved.filename });
             const data   = await getJson(`/api/vault/shared-mcp?${params}`, token);
@@ -71,6 +82,20 @@ export function register(server, token) {
                     { type: 'resource', resource: { uri: viewUrl, mimeType: 'application/pdf', blob: data.data_b64 } },
                   ],
                 };
+              }
+              if (isImage) {
+                const imgMime = mime.startsWith('image/') ? mime
+                  : ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+                return {
+                  content: [
+                    { type: 'image', data: data.data_b64, mimeType: imgMime },
+                    { type: 'text', text: `${resolved.filename} (${data.size_kb} KB)\nURL: ${viewUrl}` },
+                  ],
+                };
+              }
+              if (isSvg) {
+                const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');
+                return { content: [{ type: 'text', text: `${resolved.filename} (${data.size_kb} KB, SVG-Quelltext)\nURL: ${viewUrl}\n\n${text}` }] };
               }
               if (TEXT_MIME.some(m => mime.startsWith(m)) || mime.startsWith('text/')) {
                 const text = Buffer.from(data.data_b64, 'base64').toString('utf-8');

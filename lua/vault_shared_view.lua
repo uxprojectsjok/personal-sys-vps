@@ -54,6 +54,7 @@ local MIME_MAP = {
   -- Bilder
   jpg="image/jpeg", jpeg="image/jpeg", png="image/png",
   webp="image/webp", gif="image/gif", avif="image/avif",
+  svg="image/svg+xml",
   -- Video
   mp4="video/mp4", webm="video/webm", mov="video/quicktime",
   avi="video/x-msvideo", mkv="video/x-matroska", m4v="video/mp4",
@@ -74,7 +75,7 @@ local mime = MIME_MAP[ext:lower()] or "application/octet-stream"
 -- Inline-Anzeige für Bilder + Videos + PDFs, Download für den Rest
 local INLINE_MIME = {
   ["image/jpeg"]=true, ["image/png"]=true, ["image/webp"]=true,
-  ["image/gif"]=true,  ["image/avif"]=true, ["application/pdf"]=true,
+  ["image/gif"]=true,  ["image/avif"]=true, ["image/svg+xml"]=true, ["application/pdf"]=true,
   ["video/mp4"]=true,  ["video/webm"]=true, ["video/quicktime"]=true,
   ["video/x-matroska"]=true,
   ["audio/mpeg"]=true, ["audio/wav"]=true,  ["audio/ogg"]=true,
