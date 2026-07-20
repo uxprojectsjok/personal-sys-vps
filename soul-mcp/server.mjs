@@ -243,34 +243,50 @@ async function handleMcp(req, res) {
     const peerSoulId   = token.split('.')[0];
     const peerCert     = token.split('.')[1];
     const targetSoulId = req.query.soul_id || null;
-    const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
-    if (trusted?.error === 'soul_id_required') {
-      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
-      return res.status(401).json({
-        jsonrpc: '2.0',
-        error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).' },
-        id: null,
-      });
-    }
-    if (trusted && !trusted.error) {
-      // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
-      registerPeerTools(server, token, [], trusted.soul_id);
+
+    // Owner-Check ZUERST: {uuid}.{32hex} ist auch das Format des Owner-Soul-Certs
+    // (dokumentierter MCP-Verbindungsweg, siehe dev-docs "3 · MCP-Client: Soul-Cert
+    // + Soul-ID" — Alternative zum service_token). Ohne diesen Check würde sich ein
+    // Owner mit dem eigenen soul_id.cert fälschlich als ungetrusteter Peer verbinden
+    // und nur request_trust/-status statt vollem Zugang (inkl. beme_chat) bekommen —
+    // peerSoulId === Ziel-soul_id UND kryptografisch gültiger Cert beweist
+    // Eigentümerschaft, nicht Peer-Vertrauen.
+    const ownerCandidateId = targetSoulId || await resolveSingleSoulId();
+    const isSelfCert = !!ownerCandidateId && peerSoulId === ownerCandidateId
+      && await verifyPeerCert(peerSoulId, peerCert, null);
+
+    if (isSelfCert) {
+      registerTools(server, token, peerSoulId);
     } else {
-      // Nicht (mehr) in der Whitelist — trotzdem prüfen ob der Cert kryptografisch
-      // zur eigenen soul_id passt. Falls ja: nur request_trust/-status freigeben,
-      // damit sich Fremde für die Aufnahme in trusted_souls bewerben können,
-      // statt komplett abgewiesen zu werden.
-      const resolvedTargetId = targetSoulId || await resolveSingleSoulId();
-      const certOk = resolvedTargetId && await verifyPeerCert(peerSoulId, peerCert, null);
-      if (resolvedTargetId && certOk) {
-        registerTrustRequestTools(server, peerSoulId, resolvedTargetId, PORT);
-      } else {
+      const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
+      if (trusted?.error === 'soul_id_required') {
         res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
         return res.status(401).json({
           jsonrpc: '2.0',
-          error: { code: -32001, message: 'Cert ungültig oder Soul unbekannt.' },
+          error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).' },
           id: null,
         });
+      }
+      if (trusted && !trusted.error) {
+        // Ziel-soul_id auflösen (wird für Filesystem-Reads in registerPeerTools benötigt)
+        registerPeerTools(server, token, [], trusted.soul_id);
+      } else {
+        // Nicht (mehr) in der Whitelist — trotzdem prüfen ob der Cert kryptografisch
+        // zur eigenen soul_id passt. Falls ja: nur request_trust/-status freigeben,
+        // damit sich Fremde für die Aufnahme in trusted_souls bewerben können,
+        // statt komplett abgewiesen zu werden.
+        const resolvedTargetId = targetSoulId || await resolveSingleSoulId();
+        const certOk = resolvedTargetId && await verifyPeerCert(peerSoulId, peerCert, null);
+        if (resolvedTargetId && certOk) {
+          registerTrustRequestTools(server, peerSoulId, resolvedTargetId, PORT);
+        } else {
+          res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+          return res.status(401).json({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: 'Cert ungültig oder Soul unbekannt.' },
+            id: null,
+          });
+        }
       }
     }
   } else {

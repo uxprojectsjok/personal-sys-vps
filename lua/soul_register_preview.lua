@@ -67,7 +67,7 @@ local ALLOWED_TOOLS = {
   audio_get=true, audio_list=true, image_get=true, image_list=true,
   video_get=true, video_list=true, context_get=true, context_list=true,
   profile_get=true, verify_human=true,
-  health_check_payed=true, shop_write_read=true,
+  health_check_payed=true, shop_write_read=true, beme_chat_paid=true,
 }
 local function filter_tools(tbl)
   if type(tbl) ~= "table" then return setmetatable({}, cjson.array_mt) end

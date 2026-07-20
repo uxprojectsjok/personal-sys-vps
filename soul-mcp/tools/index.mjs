@@ -3,6 +3,7 @@ import { register as soulRead }              from './soul_read.mjs';
 import { register as soulWrite }             from './soul_write.mjs';
 import { register as soulDelete }            from './soul_delete.mjs';
 import { register as bemeChat }              from './beme_chat.mjs';
+import { register as bemeChatPaid }          from './beme_chat_paid.mjs';
 import { register as vaultManifest }         from './vault_manifest.mjs';
 import { register as audioList }             from './audio_list.mjs';
 import { register as audioGet }              from './audio_get.mjs';
@@ -94,6 +95,7 @@ export function registerTools(server, token, soulId = null) {
   soulWrite(server, token);
   soulDelete(server, token);
   bemeChat(server, token);
+  bemeChatPaid(server, token); // Owner-Test-Zugang — immer verfügbar, unabhängig von amortization
   soulMaturity(server, token);
   verifyHuman(server, token);
   verifyIdentity(server, token);
@@ -197,6 +199,10 @@ export function registerPaidTools(server, polToken, agentTools = [], soulId) {
 
   // soul_paid_comment: Immer verfügbar für zahlende Agenten (Token bereits vorhanden)
   soulPaidComment(server, polToken);
+
+  // beme_chat_paid: Gespräch begrenzt auf Agent-Sandbox-Block — nur wenn vom
+  // Eigentümer per Chip freigegeben (wie audio_get/image_get etc.)
+  if (allowed.has('beme_chat_paid')) bemeChatPaid(server, polToken);
 
   // health_check_payed: Gesundheitsdaten für bezahlte externe Agenten
   if (allowed.has('health_check_payed') && soulId) healthCheckPayed(server, soulId);

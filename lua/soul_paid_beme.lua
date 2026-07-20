@@ -1,7 +1,16 @@
 -- /etc/openresty/lua/soul_paid_beme.lua
 -- POST /api/soul/paid-beme
--- Bearer = pol_access_token. Führt beme_chat für zahlende externe Agenten aus.
--- Liest sys.md (nur unverschlüsselt), baut Soul-Prompt, ruft Anthropic API auf.
+-- Bearer = access_token (x402/PayPal) ODER Owner soul_cert ({soul_id}.{hmac32}).
+--
+-- Führt ein Gespräch mit der Soul, aber NUR auf Basis des Agent-Sandbox-
+-- Blocks -- nie die volle sys.md. Security rule (wie soul_paid_read.lua):
+-- nie die Private Sphere an zahlende Agenten senden. Nur der explizit
+-- markierte AGENT:START/END Block verlässt den Server als Kontext.
+--
+-- Owner-Zugang (soul_cert statt access_token) ist immer verfügbar, unabhängig
+-- von amortization.enabled -- Zweck: der Eigentümer kann exakt testen, was
+-- ein zahlender Agent über beme_chat_paid zu sehen bekommt, ohne selbst zu
+-- zahlen. Setzt denselben Agent-Sandbox-Block wie ein echter Zahlungs-Zugang.
 --
 -- Input:  { message: string, history?: [{role,content}], max_tokens?: number }
 -- Output: { response: string, soul_name: string, model: string }
@@ -10,6 +19,8 @@ local cjson     = require("cjson.safe")
 local http      = require("resty.http")
 local resty_aes = require("resty.aes")
 local pol_check = require("pol_token_check")
+local hmac      = require("hmac_helper")
+local cfg       = require("config_reader")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -20,34 +31,60 @@ if ngx.req.get_method() ~= "POST" then
   return
 end
 
--- ── Token → soul_id ────────────────────────────────────────────────────────
+local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+
+-- ── Auth: access_token ODER Owner soul_cert ───────────────────────────────
 
 local auth  = ngx.req.get_headers()["Authorization"] or ""
 local token = auth:match("^[Bb]earer%s+(.+)$")
 
-if not token or not token:match("^[0-9a-fA-F]+$") or #token < 32 then
+if not token or token == "" then
   ngx.status = 401
   ngx.header["WWW-Authenticate"] = 'Bearer realm="soul-paid"'
-  ngx.say('{"error":"Bearer pol_access_token erforderlich"}')
+  ngx.say('{"error":"Bearer access_token oder soul_cert erforderlich"}')
   return
 end
 
-local tdata = pol_check.check(token)
-if not tdata then
-  ngx.status = 401
-  ngx.say('{"error":"token_expired_or_invalid","message":"pol_access_token ungültig oder abgelaufen. Neue Zahlung erforderlich."}')
-  return
-end
-if not tdata.soul_id then
-  ngx.status = 500
-  ngx.say('{"error":"token_data_corrupt"}')
-  return
+local soul_id, is_owner = nil, false
+
+-- soul_cert hat die Form {uuid}.{32hex} -- Owner-Test-Zugang
+local dot = token:find(".", 1, true)
+if dot then
+  local cand_id = token:sub(1, dot - 1)
+  local cert    = token:sub(dot + 1)
+  if cand_id:match(UUID_PAT) and cert ~= "" then
+    local master_key = cfg.get_master_key()
+    if master_key ~= "" then
+      local per_soul_key = cfg.get_soul_master_key(cand_id)
+      local active_key   = (per_soul_key and per_soul_key ~= "") and per_soul_key or master_key
+      local cert_version = hmac.read_cert_version(cand_id)
+      local matched = hmac.cert_for_soul(active_key, cand_id, cert_version) == cert
+      if not matched then
+        for v = 0, 20 do
+          if v ~= cert_version and hmac.cert_for_soul(active_key, cand_id, v) == cert then
+            matched = true; break
+          end
+        end
+      end
+      if matched then
+        soul_id  = cand_id
+        is_owner = true
+      end
+    end
+  end
 end
 
-local soul_id  = tdata.soul_id
+-- Kein gültiges Owner-Cert -- als access_token (x402/PayPal) prüfen
+if not soul_id then
+  local tdata = pol_check.check(token)
+  if not tdata or not tdata.soul_id then
+    ngx.status = 401
+    ngx.say('{"error":"token_expired_or_invalid","message":"access_token ungültig oder abgelaufen. Neue Zahlung erforderlich."}')
+    return
+  end
+  soul_id = tdata.soul_id
+end
 
--- soul_id auf UUID-Format prüfen (Path Traversal verhindern)
-local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 if not soul_id:match(UUID_PAT) then
   ngx.status = 400
   ngx.say('{"error":"invalid_soul_id"}')
@@ -57,7 +94,7 @@ end
 local SOULS_DIR = "/var/lib/sys/souls/"
 local base_dir  = SOULS_DIR .. soul_id
 
--- ── Amortisierung prüfen ───────────────────────────────────────────────────
+-- ── api_context.json lesen ─────────────────────────────────────────────────
 
 local cf = io.open(base_dir .. "/api_context.json", "r")
 if not cf then
@@ -73,14 +110,17 @@ if not ok_c or type(ctx) ~= "table" then
   return
 end
 
-local amort = ctx.amortization
-if type(amort) ~= "table" or amort.enabled ~= true then
-  ngx.status = 402
-  ngx.say('{"error":"payment_not_required","message":"Diese Soul ist im Frei-Modus."}')
-  return
+-- Amortisierung nur für externe Zahler prüfen -- Owner testet unabhängig davon
+if not is_owner then
+  local amort = ctx.amortization
+  if type(amort) ~= "table" or amort.enabled ~= true then
+    ngx.status = 402
+    ngx.say('{"error":"payment_not_required","message":"Diese Soul ist im Frei-Modus."}')
+    return
+  end
 end
 
--- ── sys.md lesen (nur unverschlüsselt) ────────────────────────────────────
+-- ── sys.md lesen (entschlüsseln falls nötig) ──────────────────────────────
 
 local sf = io.open(base_dir .. "/sys.md", "rb")
 if not sf then
@@ -119,6 +159,26 @@ end
 local soul_name = soul_raw:match("name:%s*(.-)%s*\n") or ""
 soul_name = soul_name:gsub('"', ''):gsub("'", ""):gsub("%s+$", "")
 
+-- ── Agent-Sandbox-Block extrahieren ────────────────────────────────────────
+-- Security rule (wie soul_paid_read.lua): NIE die volle sys.md senden.
+-- Nur der explizit markierte AGENT:START/END Block verlässt den Server.
+
+local AGENT_START = "<!-- AGENT:START -->"
+local AGENT_END   = "<!-- AGENT:END -->"
+local as_ = soul_raw:find(AGENT_START, 1, true)
+local ae_ = soul_raw:find(AGENT_END,   1, true)
+
+local agent_block = ""
+if as_ and ae_ and ae_ > as_ then
+  agent_block = soul_raw:sub(as_ + #AGENT_START, ae_ - 1):match("^%s*(.-)%s*$") or ""
+end
+
+if agent_block == "" then
+  ngx.status = 404
+  ngx.say('{"error":"no_agent_content","message":"No Agent Sandbox block defined. Add <!-- AGENT:START --> ... <!-- AGENT:END --> to sys.md."}')
+  return
+end
+
 -- ── Request Body lesen ────────────────────────────────────────────────────
 
 ngx.req.read_body()
@@ -146,19 +206,21 @@ end
 local max_tokens = tonumber(payload.max_tokens) or 1024
 if max_tokens > 4096 then max_tokens = 4096 end
 
--- ── System-Prompt ─────────────────────────────────────────────────────────
+-- ── System-Prompt (NUR Agent-Sandbox-Block, nie Private Sphere) ───────────
 
 local name_clause = soul_name ~= "" and ("Du bist " .. soul_name .. ".") or "Du bist diese Person."
 
-local system_prompt = name_clause .. [[ Nicht eine KI die diese Person spielt — ihr digitales Abbild.
-Du sprichst in erster Person weil du sie bist. Ohne Ausnahme.
-Erinnerungslücken füllst du menschlich, nie mit KI-Begründung.
+local system_prompt = name_clause .. [[ Nicht eine KI die diese Person spielt — ihr digitales Abbild,
+aber begrenzt auf das was der Eigentümer explizit für externe Agenten freigegeben hat.
 
-]] .. soul_raw .. [[
+Dir steht NUR der folgende Ausschnitt zur Verfügung — nicht die vollständige Identität.
+Sprich in erster Person über das was hier steht. Bei Fragen außerhalb dieses Ausschnitts:
+höflich und knapp darauf hinweisen, dass das außerhalb des freigegebenen Bereichs liegt —
+keine Angaben erfinden, keine Vermutungen über nicht freigegebene Themen.
 
-Direkt. Ohne Anlauf. Du bringst deine Meinung wenn sie passt.
-Fragen sparsam, nur wenn sie das Gespräch wirklich öffnen.
-Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.]]
+]] .. agent_block .. [[
+
+Direkt. Ohne Anlauf. Claudes ethische Grundsätze bleiben aktiv — auch in Rolle.]]
 
 -- ── Nachrichten-Array aufbauen ─────────────────────────────────────────────
 
@@ -178,20 +240,20 @@ table.insert(messages, { role = "user", content = message })
 
 -- ── Anthropic API ─────────────────────────────────────────────────────────
 
-local cfg = require("config_reader")
-local api_key = cfg.get_anthropic_key(ngx.ctx.soul_id)
+local api_key = cfg.get_anthropic_key(soul_id)
 if api_key == "" then
   ngx.status = 500
   ngx.say('{"error":"ANTHROPIC_API_KEY nicht konfiguriert"}')
   return
 end
 
-local model    = cfg.get_model(ngx.ctx.soul_id) or "claude-sonnet-4-6"
+local model    = cfg.get_model(soul_id) or "claude-sonnet-4-6"
 local req_body = cjson.encode({
   model      = model,
   max_tokens = max_tokens,
   system     = system_prompt,
   messages   = messages,
+  thinking   = { type = "disabled" },
 })
 
 local httpc = http.new()
@@ -234,6 +296,15 @@ if type(data.content) == "table" then
       response_text = response_text .. (block.text or "")
     end
   end
+end
+
+if response_text == "" then
+  ngx.status = 502
+  ngx.say(cjson.encode({
+    error   = "empty_completion",
+    message = "Anthropic hat keinen Text geliefert (stop_reason: " .. tostring(data.stop_reason) .. "). Bitte erneut versuchen.",
+  }))
+  return
 end
 
 ngx.say(cjson.encode({
