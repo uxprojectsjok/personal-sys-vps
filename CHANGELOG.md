@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.39] — 2026-07-20
+
+**Ported four rounds of post-x402-launch fixes from `personal-sys-vps-private`, including a real security fix and two "returns wrong/zero data" bugs that a full-tree grep during this exact port surfaced.**
+
+**Security fix**
+- `lua/soul_paid_beme.lua`: this endpoint (`POST /api/soul/paid-beme`) already existed on `main` but fed the *entire* unencrypted `sys.md` — including the private sphere — into the AI's system prompt for anyone holding a valid paid access token, violating the same rule `soul_paid_read.lua` already enforces. Rewritten to use only the `<!-- AGENT:START -->…<!-- AGENT:END -->` block, and to accept the owner's own `soul_cert` as an alternative to a real payment (so an operator can test the paid conversational experience without transacting).
+- `soul-mcp/server.mjs` (`handleMcp`): `soul_cert` and `peer_cert` share the identical wire format (`{uuid}.{32hex}`); connecting with the owner's own soul_cert (a documented MCP connection method) was silently misrouted as an unrecognized peer applying for trust — only `request_trust`/`request_trust_status` got registered, never the full owner toolset. Fixed with a self-check before any peer/trust-request logic runs: if the token's soul_id matches the connection target and the cert verifies cryptographically, register full owner tools instead.
+
+**Added**
+- `soul-mcp/tools/beme_chat_paid.mjs`: new MCP tool for conversational agent-paid access, scoped to the Agent Sandbox block only. Registered unconditionally for the owner (testing, no payment needed) and gated behind the same `agent_tools` chip-toggle mechanism as `audio_get`/`image_get`/etc. for paying marketplace clients. Added to `AgentMarketplacePanel.vue`'s tool picker and the `ALLOWED_TOOLS` allowlists in `soul_register.lua`/`soul_register_preview.lua`.
+
+**Fixed**
+- `soul-mcp/tools/soul_earnings.mjs`: only ever read `total_pol`/`entries` — completely ignoring `total_usdc`/`usdc_entries`, which the REST endpoint has returned since the original x402 port. An owner asking their AI "how much have I earned?" got an undefined/zero answer despite real x402 income and a correctly-showing web UI. Now reads USDC as primary, with historical POL kept as a footnote when non-empty.
+- `app/pages/agb.vue` / `public/agb.txt`: never actually received the x402 wording update during the original x402 port (`v1.0.38`) — still described a "POL/Kryptowährungs-Zahlungsweg". Fixed to match what `v1.0.38`'s changelog already claimed.
+- `i18n/locales/de.json`/`en.json`: `marketplace.hero_sub` and `datenschutz.s2PaymentContent` still described the removed POL flow — updated to x402/USDC + PayPal, old wording kept only as an explicit historical note where relevant.
+
 ## [1.0.38] — 2026-07-20
 
 **Added x402 (USDC on Polygon) as a second payment rail, then removed the original direct-POL-transfer rail entirely — ported from `personal-sys-vps-private` (kro.uxprojects-jok.com), where it was built, live-tested with real USDC payments on Polygon mainnet, and subsequently used to fully replace the POL rail this same development cycle.**
