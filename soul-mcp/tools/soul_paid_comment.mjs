@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * soul_paid_comment — Hinterlässt einen Kommentar im AGENT-Block einer fremden Soul.
  *
- * Nutzt einen bereits ausgestellten pol_access_token (aus soul_pay_read).
+ * Nutzt einen bereits ausgestellten access_token (aus einer x402- oder PayPal-Zahlung).
  * Keine neue Zahlung nötig solange der Token gültig ist.
  */
 export function register(server, _token) {
@@ -12,7 +12,7 @@ export function register(server, _token) {
     [
       'Hinterlässt einen Kommentar im öffentlichen Agent-Bereich einer fremden Soul.',
       '',
-      'Voraussetzung: Ein gültiger pol_access_token aus soul_pay_read.',
+      'Voraussetzung: Ein gültiger access_token aus einer x402- oder PayPal-Zahlung an die Ziel-Soul.',
       'Keine neue Zahlung nötig — der Token gilt für Read UND Comment.',
       '',
       'Der Kommentar landet im <!-- AGENT:START --> / <!-- AGENT:END --> Block',
@@ -21,14 +21,14 @@ export function register(server, _token) {
       'Parameter:',
       '- comment_endpoint: URL des paid-comment Endpoints, z.B. https://example.com/api/soul/paid-comment',
       '  (Ableitung: pay_endpoint ersetze /pay durch /paid-comment)',
-      '- access_token:     pol_access_token aus soul_pay_read (48-stelliger Hex-String)',
+      '- access_token:     bereits ausgestellter access_token (48-stelliger Hex-String)',
       '- comment:          Text des Kommentars (max. 2000 Zeichen)',
       '- author:           Anzeigename des Verfassers, idealerweise "Name · soul:uuid" (optional)',
-      '  Die Wallet-Adresse des POL-Zahlers wird automatisch durch den Server ergänzt.',
+      '  Die Zahler-Identität (Wallet oder E-Mail) wird automatisch durch den Server ergänzt.',
     ].join('\n'),
     {
       comment_endpoint: z.string().url().describe('URL des paid-comment Endpoints der Ziel-Soul'),
-      access_token:     z.string().regex(/^[0-9a-fA-F]{48}$/i).describe('pol_access_token aus soul_pay_read'),
+      access_token:     z.string().regex(/^[0-9a-fA-F]{48}$/i).describe('bereits ausgestellter access_token'),
       comment:          z.string().min(1).max(2000).describe('Kommentartext (max. 2000 Zeichen)'),
       author:           z.string().max(80).optional().describe('Anzeigename — idealerweise "Name · soul:uuid" für Verifikation'),
     },
@@ -53,7 +53,7 @@ export function register(server, _token) {
           const msg = data.message || data.error || `HTTP ${res.status}`;
           if (res.status === 401) {
             return {
-              content: [{ type: 'text', text: `Zugriff verweigert — access_token abgelaufen. Bitte soul_pay_read erneut aufrufen.` }],
+              content: [{ type: 'text', text: `Zugriff verweigert — access_token abgelaufen. Bitte erneut über den x402-Zahlungsweg der Ziel-Soul zahlen (pay_endpoint direkt mit dem x402-Protokoll).` }],
               isError: true,
             };
           }

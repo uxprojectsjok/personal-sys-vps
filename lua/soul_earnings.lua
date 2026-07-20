@@ -116,18 +116,35 @@ if not data then
 end
 
 if not data then
-  ngx.say(cjson.encode({
-    ok             = true,
+  data = {
     total_pol      = "0.000000",
     total_requests = 0,
     entries        = cjson.empty_array,
-  }))
-  return
+  }
 end
 
 data.ok             = true
 data.total_pol      = data.total_pol or "0.000000"
 data.total_requests = data.total_requests or 0
 if type(data.entries) ~= "table" then data.entries = cjson.empty_array end
+
+-- ── usdc_earnings.json dazumergen (separate Datei, siehe soul_pay_x402.lua
+-- Kopfkommentar — rührt earnings.json/entries oben nicht an, das bleibt der
+-- POL-Verlauf). USDC ist jetzt der primäre On-Chain-Zahlungsweg, POL-Historie
+-- bleibt für vergangene Verkäufe sichtbar, nimmt aber keine neuen mehr an.
+local usdc_file = SOULS_DIR .. soul_id .. "/usdc_earnings.json"
+local uf = io.open(usdc_file, "r")
+if uf then
+  local uraw = uf:read("*a"); uf:close()
+  local ok_u, uparsed = pcall(cjson.decode, uraw)
+  if ok_u and type(uparsed) == "table" then
+    data.total_usdc          = uparsed.total_usdc or "0.000000"
+    data.usdc_total_requests = uparsed.total_requests or 0
+    data.usdc_entries        = type(uparsed.entries) == "table" and uparsed.entries or cjson.empty_array
+  end
+end
+data.total_usdc          = data.total_usdc          or "0.000000"
+data.usdc_total_requests = data.usdc_total_requests or 0
+if type(data.usdc_entries) ~= "table" then data.usdc_entries = cjson.empty_array end
 
 ngx.say(cjson.encode(data))

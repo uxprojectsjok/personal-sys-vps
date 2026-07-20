@@ -220,7 +220,7 @@ async function enrichFromIpfs(entry, rawCid) {
       const aTools = Array.isArray(am.agent_tools) ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20) : undefined;
       entry.amortization = {
         enabled:            !!am.enabled,
-        pol_per_request:    Number(am.pol_per_request) || 0,
+        price_usdc:         am.price_usdc ? str(am.price_usdc, 20) : null,
         wallet:             str(am.wallet, 42) ?? null,
         ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
         token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
@@ -261,7 +261,7 @@ async function enrichFromLocal(entry, soulId) {
     const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
     entry.amortization = {
       enabled:             !!am.enabled,
-      pol_per_request:     Number(am.pol_per_request) || 0,
+      price_usdc:          am.price_usdc ? str(am.price_usdc, 20) : null,
       wallet:              str(am.wallet, 42) ?? null,
       ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
       ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
@@ -571,7 +571,7 @@ async function seedFromLocalAnchors() {
             const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
             localAmort = {
               enabled:             !!am.enabled,
-              pol_per_request:     Number(am.pol_per_request) || 0,
+              price_usdc:          am.price_usdc ? str(am.price_usdc, 20) : null,
               wallet:              str(am.wallet, 42) ?? null,
               ...(am.dynamic_pricing === true && { dynamic_pricing: true }),
               ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),

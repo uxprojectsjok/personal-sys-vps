@@ -27,7 +27,7 @@ For setup and operations: [ONBOARDING.md](ONBOARDING.md)
 │  /api/vault/*        → vault_auth.lua → vault_sync.lua  │
 │  /api/node-status       → node_status.lua               │
 │  /api/soul/social-read → soul_social_read.lua (peer)    │
-│  /api/soul/pay          → soul_pay.lua  (public, POL)   │
+│  /api/soul/pay/x402     → soul_pay_x402.lua (public)     │
 │  /api/soul/paid-read    → soul_paid_read.lua            │
 │  /mcp                   → soul-mcp (Node.js :3098)      │
 └───────────────────────────┬──────────────────────────────┘
@@ -38,7 +38,8 @@ For setup and operations: [ONBOARDING.md](ONBOARDING.md)
 │                                                          │
 │  sys.md                  Identity file (enc. or plain)  │
 │  api_context.json        Permissions + vault index      │
-│  earnings.json           POL payment records            │
+│  usdc_earnings.json      x402/USDC payment records       │
+│  earnings.json           POL payment records (legacy)   │
 │  pinata_jwt              Per-soul IPFS/Pinata JWT       │
 │  vault/audio/                                            │
 │  vault/images/                                           │
@@ -162,7 +163,7 @@ The server recalculates the expected cert and compares with constant-time equali
 | Soul cert | `{uuid}.{32 hex}` | Owner operations (upload, update, delete) |
 | Service token | `{64 hex}` | External services with granular permissions |
 | BIP39 mnemonic | 12 words in POST body | Cipher-mode auth without stored token |
-| POL access token | `{48 hex}` | Paid external agent access (amortization) |
+| Access token | `{48 hex}` | Paid external agent access (amortization, x402 or PayPal) |
 
 ---
 
@@ -226,7 +227,7 @@ Setup: enter the peer's `soul_id` in the **Agent Marketplace → Connected Peers
 | Token format | Type | Access |
 |---|---|---|
 | 64 hex chars | service_token (OAuth owner) | full tools + full sys.md |
-| 48 hex chars | pol_access_token (paying agent) | agent_tools only |
+| 48 hex chars | access_token (paying agent, x402 or PayPal) | agent_tools only |
 | uuid.32hex | peer soul_cert | agent_tools + Social Sphere only |
 
 Whitelist stored in `api_context.json` under `amortization.trusted_souls[]`.
@@ -237,22 +238,26 @@ For **cross-domain peers** (on a different server), add the peer as `{ "soul_id"
 
 ## Amortization (Agent Marketplace)
 
-Souls can expose MCP access for paid external agents using Polygon (POL) payments:
+Souls can expose MCP access for paid external agents. Two rails: x402 (USDC on Polygon, crypto-native agents) and PayPal (human buyers without a wallet, manually reviewed).
 
 ```
-External agent → POST /api/soul/pay { soul_id, tx_hash }
-              → Polygon TX verified on-chain
-              → pol_access_token issued (1h validity)
-              → POST /mcp with Bearer pol_access_token
+External agent → GET /api/soul/pay/x402  (no payment proof)
+              → 402 + PAYMENT-REQUIRED header (amount, asset, payTo)
+              → agent signs EIP-3009 transferWithAuthorization, retries
+                with PAYMENT-SIGNATURE header
+              → verified/settled via the Polygon x402 facilitator
+              → access_token issued (1d default validity, configurable)
+              → POST /mcp with Bearer access_token
               → access restricted to configured agent_tools
 ```
 
 Per-soul configuration stored in:
-- `api_context.json` → `amortization` object (pricing, wallet, agent_tools)
+- `api_context.json` → `amortization` object (`price_usdc`, wallet, agent_tools, PayPal target)
 - `{soul_id}/pinata_jwt` → Pinata JWT for IPFS soul registration
-- `{soul_id}/earnings.json` → payment ledger
+- `{soul_id}/usdc_earnings.json` → x402 payment ledger
+- `{soul_id}/earnings.json` → legacy POL payment ledger (historical, rail retired)
 
-Agent Marketplace endpoints: `/api/soul/register`, `/api/soul/amortization`, `/api/soul/pinata-config`, `/api/soul/pay`, `/api/soul/paid-read`, `/api/soul/paid-write`, `/api/soul/paid-beme`, `/api/soul/paid-context`, `/api/soul/paid-profile/{type}`
+Agent Marketplace endpoints: `/api/soul/register`, `/api/soul/amortization`, `/api/soul/pinata-config`, `/api/soul/pay/x402`, `/api/soul/paid-read`, `/api/soul/paid-write`, `/api/soul/paid-beme`, `/api/soul/paid-context`, `/api/soul/paid-profile/{type}`
 
 ---
 
@@ -289,7 +294,7 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 **Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `verify_human`, `beme_chat`
 
-**Available tools (paid agent / pol_access_token):** configured per soul via `amortization.agent_tools` (13 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `verify_human`)
+**Available tools (paid agent / access_token):** configured per soul via `amortization.agent_tools` (13 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `verify_human`)
 
 **Available tools (trusted peer soul):** same list as paid agents — `soul_read` returns the Social Sphere block only; `soul_write` and `soul_comment` write only to the Social Sphere block
 

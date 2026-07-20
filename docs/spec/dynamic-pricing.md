@@ -2,20 +2,20 @@
 
 ## Overview
 
-When dynamic pricing is enabled, the POL amount a buyer must pay to access a Soul grows automatically with the Soul's Genesis Chain maturity. The base price set by the owner is the floor — the multiplier can only increase it, never reduce it.
+When dynamic pricing is enabled, the USDC amount a buyer must pay to access a Soul grows automatically with the Soul's Genesis Chain maturity. The base price set by the owner is the floor — the multiplier can only increase it, never reduce it.
 
-A **Price Quote** system prevents timing problems: the buyer locks in the price for 5 minutes before the on-chain transaction, so a changing multiplier between browse and pay can't cause the transaction to fail.
+Payment settles via **x402** (USDC on Polygon). There is no price-quote/TTL system: `soul_pay_x402.lua` computes the price fresh, server-side, at the moment of each 402 challenge and again when verifying the signed retry — no stale quote can ever be paid, so there's nothing to lock in advance.
 
 ---
 
 ## Activation
 
-In **Marketplace → Paid · POL**, toggle **Dynamic pricing** on.  
-The base amount field becomes the price floor (minimum per access).  
-The panel shows the current live price with a refresh button (↻).
+In **Marketplace → Paid · x402**, toggle **Dynamic pricing** on.
+The base amount field (`price_usdc`) becomes the price floor (minimum per access).
+The panel shows the current live price with a refresh button (↻), fetched from `GET /api/soul/price`.
 
-Stored as `amortization.dynamic_pricing: true` in the soul context JSON  
-(`/var/lib/sys/souls/{soul_id}/context.json`).
+Stored as `amortization.dynamic_pricing: true` in the soul context JSON
+(`/var/lib/sys/souls/{soul_id}/api_context.json`).
 
 ---
 
@@ -23,19 +23,19 @@ Stored as `amortization.dynamic_pricing: true` in the soul context JSON
 
 ```
 multiplier = 1 + (anchor_count × 0.1) + (chain_age_days × 0.01) + (buyers_30d × 0.05)
-price      = max(base, round(base × multiplier, 4 decimals))
+price      = max(base, round(base × multiplier, 6 decimals))
 ```
 
 | Variable          | Source                                                          |
 |-------------------|-----------------------------------------------------------------|
-| `base`            | `amort.pol_per_request` (owner-set, in POL)                    |
+| `base`            | `amort.price_usdc` (owner-set, in USDC)                        |
 | `anchor_count`    | Number of entries in `anchor_history.json`                      |
 | `chain_age_days`  | Days since genesis anchor timestamp                             |
 | `buyers_30d`      | Unique paid token issuances in the last 30 days (`demand_log.json`) |
 
 ### Example
 
-Owner sets base = `0.001` POL.  
+Owner sets base = `0.05` USDC.
 Soul has 85 anchors. Genesis was 78 days ago. 4 buyers in the last 30 days.
 
 ```
@@ -43,110 +43,34 @@ multiplier = 1 + (85 × 0.1) + (78 × 0.01) + (4 × 0.05)
            = 1 + 8.5 + 0.78 + 0.20
            = 10.48
 
-price = 0.001 × 10.48 = 0.0105 POL
+price = 0.05 × 10.48 = 0.524000 USDC
 ```
-
-### Choosing a base price
-
-| Target price | Anchors | Chain age | Required base |
-|---|---|---|---|
-| ~0.001 POL | 0 | 0 days | 0.001 |
-| ~0.001 POL | 85 | 78 days | ~0.0001 |
-| ~0.01 POL  | 85 | 78 days | ~0.001  |
-| ~0.10 POL  | 85 | 78 days | ~0.0097 |
 
 The base price controls the unit — the chain determines the multiplier.
 
 ---
 
-## Price Quote System
+## Payment Flow (x402, no quote system)
 
-### Problem
+### Why no quote/TTL system
 
-Between the moment a buyer sees the price and the moment the on-chain transaction  
-is confirmed, the price can change (new anchor written, chain age ticks over a day).  
-The buyer sends the "wrong" amount → payment rejected.
+The formula only changes over the course of hours/days (a new anchor, a day ticking over, a new buyer in the 30-day window) — never mid-request. `soul_pay_x402.lua` recomputes the price at 402-challenge time and again when verifying the buyer's signed authorization; both happen within the same short request, so there is no timing window for the price to drift between "buyer sees the price" and "buyer's signed authorization is checked." This replaces the older POL-era 5-minute quote-lock system, which existed to bridge the (much longer) time an on-chain transaction takes to confirm — x402's off-chain-signature-then-facilitator-settle model doesn't have that gap.
 
-### Solution: Quote with 5-minute TTL
-
-Every `GET /api/soul/price` call generates a `quote_id` that locks the price for 300 seconds.  
-The buyer includes this `quote_id` in the `POST /api/soul/pay` body.  
-The server uses the quoted price instead of recalculating — the buyer always hits the right amount.
+### Flow
 
 ```
-Buyer:  GET /api/soul/price
-Server: → { pol_required: "0.0103", quote_id: "a3f1b2c4d5e6f708", valid_until: 1750123456, quote_ttl_sec: 300 }
+Buyer:  POST /api/soul/pay/x402  (no payment proof)
+Server: computes price fresh (see formula above)
+        → 402 + PAYMENT-REQUIRED header (scheme, network, asset, amount, payTo)
 
-Buyer:  sends 0.0103 POL on-chain → gets tx_hash
-Buyer:  POST /api/soul/pay { tx_hash, soul_id, quote_id: "a3f1b2c4d5e6f708" }
-Server: validates quote (exists, not expired, not used) → issues access token at quoted price
+Buyer:  signs an EIP-3009 transferWithAuthorization (EIP-712) for that amount
+        → retries with PAYMENT-SIGNATURE header
+
+Server: recomputes price fresh, checks it matches the signed amount
+        → verifies + settles via the Polygon x402 facilitator (x402.polygon.technology)
+        → appends to demand_log.json, usdc_earnings.json
+        → issues access_token
 ```
-
-**Quote is single-use** — consumed on successful payment. Expired quotes are cleaned up automatically on the next price call.
-
-### Error responses
-
-| Error | Meaning |
-|---|---|
-| `quote_not_found` | Quote ID unknown or already used — fetch a new quote |
-| `quote_expired` | 5-minute window passed — fetch a new quote |
-
-### Fallback
-
-If no `quote_id` is provided, `soul_pay.lua` falls back to live price calculation (backward compatible with older MCP clients).
-
----
-
-## Endpoints
-
-### `GET /api/soul/price`
-
-Public endpoint — no auth required.
-
-```json
-{
-  "enabled": true,
-  "pol_required": "0.0105",
-  "base_price": "0.0010",
-  "dynamic": true,
-  "multiplier": 10.48,
-  "anchor_count": 85,
-  "chain_age_days": 78.0,
-  "buyers_30d": 4,
-  "genesis_ts": "2026-04-04T12:00:00Z",
-  "wallet": "0xABC…",
-  "soul_id": "uuid…",
-  "quote_id": "a3f1b2c4d5e6f708",
-  "valid_until": 1750123456,
-  "quote_ttl_sec": 300
-}
-```
-
-### `POST /api/soul/pay`
-
-```json
-{
-  "soul_id": "uuid…",
-  "tx_hash": "0x…",
-  "quote_id": "a3f1b2c4d5e6f708"
-}
-```
-
-`quote_id` is optional but recommended for dynamic pricing.
-
----
-
-## Quote Storage
-
-Quotes are stored in `/var/lib/sys/souls/{soul_id}/price_quotes.json`:
-
-```json
-{
-  "a3f1b2c4d5e6f708": { "price": "0.0103", "valid_until": 1750123456 }
-}
-```
-
-Expired entries are purged on every new price call. The file is server-local and not exposed publicly.
 
 ---
 
@@ -158,7 +82,7 @@ A Soul that is actively used by many buyers is more valuable than one that has n
 
 ### Solution: buyers_30d
 
-Every time a buyer successfully receives a `pol_access_token` via `POST /api/soul/pay`, a timestamped entry is appended to `demand_log.json`:
+Every time a buyer successfully receives an access token via `POST /api/soul/pay/x402`, a timestamped entry is appended to `demand_log.json`:
 
 ```json
 [
@@ -167,7 +91,7 @@ Every time a buyer successfully receives a `pol_access_token` via `POST /api/sou
 ]
 ```
 
-`GET /api/soul/price` counts entries where `ts > now − 30 days` → `buyers_30d`.  
+`GET /api/soul/price` counts entries where `ts > now − 30 days` → `buyers_30d`.
 Each additional buyer in the window adds **5%** to the multiplier (`DEMAND_COEFF = 0.05`).
 
 Entries older than 30 days are purged automatically when the demand log is next written.
@@ -178,8 +102,8 @@ Entries older than 30 days are purged automatically when the demand log is next 
 /var/lib/sys/souls/{soul_id}/demand_log.json
 ```
 
-- Written by `soul_pay.lua` on every successful token issuance
-- Read by `soul_price.lua` on every price call
+- Written by `soul_pay_x402.lua` on every successful token issuance
+- Read by `soul_price.lua` (live-preview endpoint) and `soul_pay_x402.lua` (enforcement) on every price calculation
 - Entries older than 30 days are pruned on write (no separate cleanup job)
 - Not exposed publicly; included in `buyers_30d` field of `/api/soul/price` response
 
@@ -194,6 +118,33 @@ Entries older than 30 days are purged automatically when the demand log is next 
 | 20 | +1.00 |
 
 Combined with anchor and age factors, a high-demand Soul with a mature chain can command multiples of its base price automatically.
+
+---
+
+## Endpoints
+
+### `GET /api/soul/price`
+
+Public endpoint — no auth required. Currency-agnostic pricing *factors* for the Marketplace live-preview UI. This endpoint does not carry enforcement weight — `soul_pay_x402.lua` always recomputes the price itself server-side at payment time; nothing here is trusted blindly.
+
+```json
+{
+  "enabled": true,
+  "dynamic": true,
+  "multiplier": 10.48,
+  "wallet": "0xABC…",
+  "token_duration": "1d",
+  "anchor_count": 85,
+  "chain_age_days": 78.0,
+  "buyers_30d": 4,
+  "genesis_ts": "2026-04-04T12:00:00Z",
+  "soul_id": "uuid…"
+}
+```
+
+### `POST /api/soul/pay/x402`
+
+Standard x402 handshake — no SYS-specific request body. First call (no `PAYMENT-SIGNATURE` header) returns `402` with a `PAYMENT-REQUIRED` header describing `scheme`, `network` (`eip155:137`), `asset` (USDC contract), `amount`, and `payTo`. Retry with a `PAYMENT-SIGNATURE` header (signed EIP-3009 authorization) to receive an `access_token`.
 
 ---
 
@@ -214,17 +165,16 @@ Current coefficients:
 | `ANCHOR_COEFF` | 0.1 | +10% per Polygon anchor |
 | `AGE_COEFF` | 0.01 | +1% per day of chain age |
 | `DEMAND_COEFF` | 0.05 | +5% per buyer in last 30 days |
-| `QUOTE_TTL_SEC` | 300 | Price lock valid for 5 minutes |
 
 To update coefficients:
 1. Edit `shared/constants/pricing.js`
 2. Run `node utils/gen-pricing-params.mjs` → regenerates JSON
 3. Commit both files → all nodes update on next `git pull` / `init.sh`
 
-`init.sh` copies `pricing_params.json` to `/var/lib/sys/config/` on every install.  
+`init.sh` copies `pricing_params.json` to `/var/lib/sys/config/` on every install.
 Lua falls back to hardcoded v1 defaults if the file is missing.
 
-**Phase 2 (future):** When `SoulRegistry.sol` is next upgraded, bake these coefficients  
+**Phase 2 (future):** When `SoulRegistry.sol` is next upgraded, bake these coefficients
 into the contract so they are on-chain verifiable without a software update.
 
 ---
@@ -233,34 +183,33 @@ into the contract so they are on-chain verifiable without a software update.
 
 | File | Role |
 |------|------|
-| `shared/constants/pricing.js` | Source of truth — coefficients and TTL |
+| `shared/constants/pricing.js` | Source of truth — coefficients |
 | `shared/constants/pricing_params.json` | Generated JSON, committed to repo |
 | `utils/gen-pricing-params.mjs` | Regenerates JSON from JS constants |
-| `lua/soul_price.lua` | Reads pricing_params.json + demand_log.json, calculates price, generates quote |
-| `lua/soul_pay.lua` | Reads pricing_params.json, validates quote_id, writes demand_log.json |
-| `lua/soul_amortization.lua` | Persists `dynamic_pricing` flag on PUT |
+| `lua/soul_price.lua` | Reads pricing_params.json + demand_log.json, returns pricing factors for the live-preview UI |
+| `lua/soul_pay_x402.lua` | Reads pricing_params.json, computes price fresh at 402-challenge and retry time, writes demand_log.json + usdc_earnings.json |
+| `lua/soul_amortization.lua` | Persists `dynamic_pricing` flag + `price_usdc` on PUT |
 | `app/components/AgentMarketplacePanel.vue` | Toggle + live price display |
-| `soul-mcp/tools/soul_pay_read.mjs` | MCP tool: fetches `/price` (gets quote_id), passes it to `/pay` |
 
 ---
 
 ## Behavior without Genesis Chain data
 
-If `anchor_history.json` is empty or missing, the multiplier stays at `1.0`  
-and the buyer pays exactly the base price. Dynamic pricing silently degrades  
+If `anchor_history.json` is empty or missing, the multiplier stays at `1.0`
+and the buyer pays exactly the base price. Dynamic pricing silently degrades
 to static pricing until the first anchor is written.
 
 ---
 
 ## Rationale
 
-A Soul that has been actively anchored for months carries more verified knowledge  
-than a freshly created one. Dynamic pricing lets the market reflect that value  
+A Soul that has been actively anchored for months carries more verified knowledge
+than a freshly created one. Dynamic pricing lets the market reflect that value
 automatically — without the owner manually adjusting prices over time.
 
-The formula is intentionally linear and transparent so buyers can verify it  
+The formula is intentionally linear and transparent so buyers can verify it
 against the public chain data and `/api/soul/chain-metrics`.
 
-The quote system solves the practical problem that on-chain transactions take  
-time to confirm — the price a buyer commits to must stay stable long enough  
-for the transaction to land.
+## History
+
+Before x402 was added, the sole payment rail was a direct POL transfer on Polygon (`soul_pay.lua`, retired). That flow needed a 5-minute price-quote/TTL system (`quote_id`, `price_quotes.json`) to bridge the time an on-chain transaction takes to confirm — a buyer's on-chain amount had to match a price that was possibly minutes old. x402's signature-then-facilitator-settle model closes that gap (the server recomputes and checks the price within a single request), so the quote system was removed rather than ported.

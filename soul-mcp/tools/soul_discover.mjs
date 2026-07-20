@@ -31,30 +31,30 @@ export function register(server, token) {
       '',
       'Parameters:',
       '- q:         Free-text search — name, soul_id, tags, description — optional',
-      '- amortized: true = only souls accepting POL payments — optional',
+      '- amortized: true = only souls accepting payment (x402/PayPal) — optional',
       '- limit:     Max. results (1–100, default 20) — optional',
       '',
       'ZUGANGS-MODELLE — wichtig, nicht verwechseln:',
-      '- amortization.enabled = true  → Zugang per POL-Zahlung möglich.',
-      '  Workflow: POL an wallet → tx_hash → soul_pay_read(pay_endpoint, soul_id, tx_hash)',
+      '- amortization.enabled = true  → Zugang per x402/USDC-Zahlung möglich (Polygon).',
+      '  Workflow: pay_endpoint direkt mit dem x402-Protokoll bezahlen (402-Challenge',
+      '  -> signierte EIP-3009-Autorisierung als Retry) — kein SYS-eigenes Zahlungs-Tool',
+      '  nötig, x402 ist ein Standardprotokoll, jeder konforme Client kennt es bereits.',
       '- amortization.enabled = false / fehlt → KEIN öffentlicher Zugang.',
       '  Diese Soul hat keinen Bezahl-Endpunkt konfiguriert.',
       '  Zugang nur für den Eigentümer selbst oder vertrauenswürdige Peers (soul_cert).',
-      '  soul_pay_read funktioniert hier NICHT — keinen TX-Hash anfordern!',
       '',
       'Typischer Workflow für einen zahlenden Agenten (nur amortized=true Souls):',
       '1. soul_discover(amortized=true) → nur zahlungspflichtige Souls anzeigen',
       '2. soul_preview(pay_endpoint, soul_id) → kostenloser Teaser + Live-Preis (bei dynamic_pricing)',
-      '   Zeigt den ersten ~200 Zeichen des AGENT-Blocks + aktuellem POL-Preis mit Multiplikator.',
+      '   Zeigt den ersten ~200 Zeichen des AGENT-Blocks + aktuellem USDC-Preis mit Multiplikator.',
       '   IMMER aufrufen bevor bezahlt wird — besonders bei dynamic_pricing=true Souls.',
-      '   Wallet/PayPal-Ziel erscheinen NICHT hier, sondern erst in soul_preview bzw. nach',
+      '   Wallet-Adresse erscheint NICHT hier, sondern erst in soul_preview bzw. nach',
       '   erteilter Zustimmung (falls die Ziel-Soul EU-Widerrufsrecht durchsetzt) — dieses Tool',
       '   durchsucht Souls über mehrere fremde Nodes hinweg, ein lokales EU-Flag ist hier nicht',
       '   bekannt, daher wird das Zahlungsziel grundsätzlich nie an dieser Stelle genannt.',
-      '3. POL-Transaktion an das von soul_preview genannte Zahlungsziel senden',
-      '4. soul_pay_read(pay_endpoint, soul_id, tx_hash) → Soul-Inhalt',
+      '3. pay_endpoint mit x402 bezahlen (eigener x402-Client nötig — kein Wrapper-Tool hier)',
       '',
-      'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Polygon-Wallet:',
+      'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Krypto-Wallet:',
       'Souls mit amortization.paypal_enabled akzeptieren zusätzlich PayPal — Ziel/Preis auch',
       'hier erst über soul_preview auf der Ziel-Soul selbst abrufen.',
       '',
@@ -69,8 +69,8 @@ export function register(server, token) {
       ] : []),
       'Danach: Der Mensch zahlt außerhalb des Systems per PayPal, der Betreiber prüft',
       'manuell (i.d.R. binnen 48h) und schickt dann einen fertigen access_token zurück —',
-      'meist direkt in diesem Chat eingefügt, ohne vorherigen soul_pay_read-Aufruf.',
-      'Erkennbar an: 48 Hex-Zeichen, kein "0x"-Präfix (das wäre ein TX-Hash, kein Token).',
+      'meist direkt in diesem Chat eingefügt, ohne dass hier selbst eine Zahlung ausgelöst wurde.',
+      'Erkennbar an: 48 Hex-Zeichen, kein "0x"-Präfix.',
       'In diesem Fall NICHT nach einer Zahlung fragen — der Token ist bereits gültig.',
       'Direkt verwenden: soul_read_by_token(read_endpoint, access_token=<der Token>).',
       'read_endpoint = pay_endpoint der Soul mit /pay ersetzt durch /paid-read.',
@@ -128,9 +128,9 @@ export function register(server, token) {
 
           if (s.amortization?.enabled) {
             if (s.amortization.dynamic_pricing) {
-              lines.push(`- **Preis:** ab ${s.amortization.pol_per_request} POL (dynamisch — soul_preview für Live-Preis aufrufen!)`);
+              lines.push(`- **Preis:** ab ${s.amortization.price_usdc} USDC (dynamisch — soul_preview für Live-Preis aufrufen!)`);
             } else {
-              lines.push(`- **Preis:** ${s.amortization.pol_per_request} POL pro Anfrage`);
+              lines.push(`- **Preis:** ${s.amortization.price_usdc} USDC pro Anfrage`);
             }
             // Zahlungsziel (Wallet/PayPal) bewusst NICHT hier — siehe Tool-Beschreibung:
             // soul_discover sucht node-übergreifend, ein lokales EU-Widerrufsrecht-Flag der
@@ -168,7 +168,7 @@ export function register(server, token) {
         }
 
         lines.push('---');
-        lines.push('_Zahlungs-Workflow: POL an Wallet senden → tx_hash an pay_endpoint → access_token für MCP-Zugriff_');
+        lines.push('_Zahlungs-Workflow: pay_endpoint mit dem x402-Protokoll bezahlen → access_token für MCP-Zugriff_');
 
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (err) {

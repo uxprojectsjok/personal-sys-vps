@@ -29,7 +29,7 @@ export function register(server, soulId) {
   server.tool(
     'accept_digital_content_terms',
     [
-      'EU-Pflichtschritt vor jedem Nicht-Krypto-Kauf (PayPal etc.): Der Käufer',
+      'EU-Pflichtschritt vor jedem Kauf (PayPal, x402): Der Käufer',
       'muss ausdrücklich zustimmen, dass die digitale Leistung sofort beginnt',
       'UND dass er dadurch sein gesetzliches 14-tägiges Widerrufsrecht verliert.',
       '',
@@ -47,18 +47,18 @@ export function register(server, soulId) {
       'Nutzer weitergeben — als klickbaren Markdown-Link, nicht nur in eigenen',
       'Worten zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich darauf',
       'hinweisen: die Referenz-ID (= terms_token) MUSS bei der Zahlung angegeben',
-      'werden (PayPal: in der Notiz; POL: als reference_id beim Aufruf von',
-      'POST /api/soul/pay), sonst kann der Betreiber/das System die Zahlung nicht',
-      'zuordnen.',
+      'werden (PayPal: in der Notiz; x402: als reference_id beim Aufruf von',
+      'POST /api/soul/pay/x402), sonst kann der Betreiber/das System die Zahlung',
+      'nicht zuordnen.',
       '',
       'payment_method MUSS identisch zu dem in show_withdrawal_terms gewählten',
-      'Zahlungsweg sein — das Zahlungsziel (Wallet-Adresse oder PayPal-Ziel) wird',
-      'erst HIER, nach erteilter Zustimmung, zum ersten Mal genannt.',
+      'Zahlungsweg sein — das Zahlungsziel (Wallet-Adresse für x402 oder',
+      'PayPal-Ziel) wird erst HIER, nach erteilter Zustimmung, zum ersten Mal genannt.',
     ].join('\n'),
     {
       terms_token: z.string().uuid()
         .describe('Referenz-ID aus der Antwort von show_withdrawal_terms — dieses Tool muss vorher aufgerufen worden sein.'),
-      payment_method: z.enum(['paypal', 'pol']).describe('Gewählter Zahlungsweg — muss zu dem in show_withdrawal_terms gewählten passen.'),
+      payment_method: z.enum(['paypal', 'x402']).describe('Gewählter Zahlungsweg — muss zu dem in show_withdrawal_terms gewählten passen.'),
       consent_immediate_performance: z.boolean()
         .describe('Zustimmung: die digitale Leistung soll sofort beginnen, vor Ablauf der 14-tägigen Widerrufsfrist. Nur auf true setzen nach echter, im Chat erklärter Zustimmung des Nutzers.'),
       consent_withdrawal_waiver: z.boolean()
@@ -69,14 +69,15 @@ export function register(server, soulId) {
     async ({ terms_token, payment_method, consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
-      const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+      const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
       const paypalAvailable = amort.paypal_enabled === true;
+      const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
       if (payment_method === 'paypal' && !paypalAvailable) {
         return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
       }
-      if (payment_method === 'pol' && !polAvailable) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' }], isError: true };
+      if (payment_method === 'x402' && !x402Available) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' }], isError: true };
       }
 
       const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
@@ -112,7 +113,8 @@ export function register(server, soulId) {
       try {
         const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
         const wallet       = amort.wallet || '';
-        const priceEur     = amort.price_eur || '?';
+        const price        = payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?');
+        const currency     = payment_method === 'x402' ? 'USDC' : 'EUR';
         const now          = new Date();
         // Lokale Zeit statt UTC — für ein an Verbraucher gerichtetes Rechtsdokument
         // ist "Z" (UTC) irreführend, Käufer erwarten ihre eigene (Europe/Berlin) Uhrzeit.
@@ -132,7 +134,8 @@ export function register(server, soulId) {
         const consentFields = {
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
-          priceEur,
+          price,
+          currency,
           target,
           wallet,
           paymentMethod: payment_method,
@@ -161,17 +164,17 @@ export function register(server, soulId) {
         const downloadUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
         const downloadUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.txt`;
 
-        const paymentLines = payment_method === 'pol'
+        const paymentLines = payment_method === 'x402'
           ? [
-              `POL/Polygon: ${priceEur} EUR (in POL) an ${wallet}`,
-              `WICHTIG: Diese Referenz-ID MUSS als reference_id beim Aufruf von`,
-              `POST /api/soul/pay mitgeschickt werden — sonst kann das System die`,
+              `x402/Polygon: ${price} ${currency} an ${wallet}`,
+              `WICHTIG: Diese Referenz-ID MUSS als reference_id im x402_payment_header-Aufruf`,
+              `von POST /api/soul/pay/x402 mitgeschickt werden — sonst kann das System die`,
               `Zahlung nicht zuordnen und lehnt sie ab.`,
-              'Der Zugang wird nach Bestätigung der Transaktion auf der Blockchain',
+              'Der Zugang wird nach Bestätigung der Zahlung durch den x402-Facilitator',
               'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
             ]
           : [
-              `PayPal: ${priceEur} EUR an ${target}`,
+              `PayPal: ${price} ${currency} an ${target}`,
               `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
               `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
               'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',

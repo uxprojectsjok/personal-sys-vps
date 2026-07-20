@@ -2400,7 +2400,6 @@ async function handleContact(query) {
       headers: { Authorization: `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         enabled:             amort.enabled             ?? false,
-        pol_per_request:     amort.pol_per_request     ?? '0.001',
         wallet:              amort.wallet              ?? '',
         agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
         token_duration_days: amort.token_duration_days ?? 1,
@@ -2512,8 +2511,8 @@ async function handlePin(query) {
     '`@pin`                                Status anzeigen',
     '`@pin <jwt>`                          Pinata JWT hinterlegen',
     '`@pin free`                           Freier Zugang (alle KI-Agenten)',
-    '`@pin paid 0.001 0xWallet`            Bezahlter Zugang (POL-Rate + Wallet)',
-    '`@pin paid 0.001 0xWallet 7`          + Token-Gültigkeit in Tagen (1–30)',
+    '`@pin paid 0.05 0xWallet`             Bezahlter Zugang (USDC-Rate + Wallet)',
+    '`@pin paid 0.05 0xWallet 7`           + Token-Gültigkeit in Tagen (1–30)',
     '`@pin tools soul_read,verify_human`   Erlaubte Tools festlegen',
     '`@pin publish <name>`                 Auf IPFS veröffentlichen',
     '`@pin publish <name> | <desc>`        + Beschreibung',
@@ -2533,7 +2532,7 @@ async function handlePin(query) {
     const cur = await getAmort()
     const body = {
       enabled:             cur.enabled             ?? false,
-      pol_per_request:     cur.pol_per_request     ?? '0.001',
+      price_usdc:          cur.price_usdc          ?? '',
       wallet:              cur.wallet              ?? '',
       agent_tools:         Array.isArray(cur.agent_tools) ? cur.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
       token_duration_days: cur.token_duration_days ?? 1,
@@ -2579,7 +2578,7 @@ async function handlePin(query) {
 
       let accessLine
       if (amort.enabled === true) {
-        const rate   = amort.pol_per_request || '?'
+        const rate   = amort.price_usdc || '?'
         const wallet = amort.wallet ? `\`${amort.wallet.slice(0, 10)}…\`` : t('chat.pin_wallet_missing')
         const days   = amort.token_duration_days || 1
         const tools  = Array.isArray(amort.agent_tools) && amort.agent_tools.length
@@ -2588,7 +2587,7 @@ async function handlePin(query) {
               return meta ? `${ti} (${meta.name})` : ti
             }).join(', ')
           : t('chat.pin_tools_none')
-        accessLine = t('chat.pin_access_paid', { pol: rate, wallet, days, tools })
+        accessLine = t('chat.pin_access_paid', { amount: rate, wallet, days, tools })
       } else {
         accessLine = amort.hasOwnProperty?.('enabled')
           ? t('chat.pin_access_free')
@@ -2630,13 +2629,13 @@ async function handlePin(query) {
     return
   }
 
-  // ── @pin paid <pol> <wallet> [days] ────────────────────────────
+  // ── @pin paid <usdc> <wallet> [days] ────────────────────────────
   if (/^paid\s+0x/i.test(q)) {
     addMessage('user', `@pin ${q.trim().split(/\s+/).slice(0, 3).join(' ')}…`)
     addMessage('assistant', [
-      'POL-Rate fehlt.',
-      'Format: `@pin paid 0.001 0xWallet [7d]`',
-      '· `0.001` = POL-Betrag pro Zugriff',
+      'USDC-Rate fehlt.',
+      'Format: `@pin paid 0.05 0xWallet [7d]`',
+      '· `0.05` = USDC-Betrag pro Zugriff (x402, Polygon)',
       '· `0xWallet` = deine Empfänger-Wallet',
       '· `7d` = Token-Gültigkeit in Tagen (optional, Standard: 1)',
     ].join('\n'))
@@ -2644,18 +2643,18 @@ async function handlePin(query) {
   }
   const paidM = q.match(/^paid\s+(\S+)\s+(\S+)(?:\s+(\d+)\w*)?$/i)
   if (paidM) {
-    const pol    = paidM[1]
+    const usdc   = paidM[1]
     const wallet = paidM[2]
     const days   = Math.min(30, Math.max(1, parseInt(paidM[3] || '1', 10)))
     const walletShort = wallet.length > 12 ? wallet.slice(0, 10) + '…' : wallet
-    addMessage('user', `@pin paid ${pol} ${walletShort} ${days}d`)
+    addMessage('user', `@pin paid ${usdc} ${walletShort} ${days}d`)
     const msg = addMessage('assistant', t('chat.pin_paid_configuring'), { streaming: true })
     await scrollToBottom()
     try {
-      await putAmort({ enabled: true, pol_per_request: pol, wallet, token_duration_days: days })
+      await putAmort({ enabled: true, price_usdc: usdc, wallet, token_duration_days: days })
       setMessageMetaById(msg.id, 'text', [
         t('chat.pin_paid_ok'),
-        t('chat.pin_paid_rate', { pol, wallet, days, unit: days === 1 ? t('chat.pin_paid_day') : t('chat.pin_paid_days') }),
+        t('chat.pin_paid_rate', { amount: usdc, wallet, days, unit: days === 1 ? t('chat.pin_paid_day') : t('chat.pin_paid_days') }),
         '',
         t('chat.pin_tools_which'),
       ].join('\n'))

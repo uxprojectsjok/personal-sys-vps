@@ -2,7 +2,7 @@
 -- GET /api/soul/preview?soul_id=<uuid>  — public, no auth
 --
 -- Returns a free teaser of the AGENT block so external AI agents can assess
--- relevance before paying for full access via /api/soul/pay.
+-- relevance before paying for full access via /api/soul/pay/x402.
 
 local cjson     = require("cjson.safe")
 local resty_aes = require("resty.aes")
@@ -140,7 +140,7 @@ do
   end
 end
 
-local base_price = tonumber(amort.pol_per_request) or 0.001
+local base_price = tonumber(amort.price_usdc) or 0
 local dynamic    = amort.dynamic_pricing == true
 local anchor_count = 0; local chain_age_days = 0; local buyers_30d = 0
 local genesis_ts = nil
@@ -181,7 +181,7 @@ if dynamic and (anchor_count > 0 or buyers_30d > 0) then
   multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d * DEMAND_COEFF)
   price = base_price * multiplier
 end
-price = math.max(base_price, math.floor(price * 10000 + 0.5) / 10000)
+price = math.max(base_price, math.floor(price * 1000000 + 0.5) / 1000000)
 
 local scheme  = (ngx.var.https == "on") and "https" or "http"
 local base_url = scheme .. "://" .. (ngx.var.host or "")
@@ -194,14 +194,14 @@ local response = {
   preview_truncated = preview_trunc,
   preview_chars     = PREVIEW_CHARS,
   full_size_hint    = full_size_hint,
-  pol_required      = string.format("%.4f", price),
-  base_price        = string.format("%.4f", base_price),
+  usdc_required     = string.format("%.6f", price),
+  base_price        = string.format("%.6f", base_price),
   dynamic           = dynamic,
   multiplier        = math.floor(multiplier * 100 + 0.5) / 100,
   anchor_count      = anchor_count,
   chain_age_days    = math.floor(chain_age_days * 10 + 0.5) / 10,
   buyers_30d        = buyers_30d,
-  pay_endpoint      = base_url .. "/api/soul/pay",
+  pay_endpoint      = base_url .. "/api/soul/pay/x402",
   price_endpoint    = base_url .. "/api/soul/price",
 }
 

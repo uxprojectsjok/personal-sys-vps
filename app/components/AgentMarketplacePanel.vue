@@ -96,8 +96,12 @@
             <div v-if="amort.enabled" class="pay-form">
               <div class="pay-fields">
                 <div class="field">
-                  <label class="field-label">{{ $t('marketplace.field_amount') }} <span class="field-hint">{{ $t('marketplace.field_amount_hint') }}</span></label>
-                  <input v-model="amort.pol_per_request" type="text" class="input mono" placeholder="0.001" />
+                  <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
+                  <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.field_price_usdc') }} <span class="field-hint">{{ $t('marketplace.field_price_usdc_hint') }}</span></label>
+                  <input v-model="amort.price_usdc" type="text" class="input mono" placeholder="0.50" />
                 </div>
                 <div class="field">
                   <label class="field-label field-label--toggle">
@@ -108,20 +112,16 @@
                     <span class="field-hint">{{ $t('marketplace.field_dynamic_pricing_hint') }}</span>
                   </label>
                 </div>
-                <div v-if="amort.dynamic_pricing" class="live-price-box field span-2">
+                <div v-if="amort.dynamic_pricing && amort.price_usdc" class="live-price-box field span-2">
                   <template v-if="livePrice?.enabled">
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
-                    <span class="live-price-value">{{ livePriceDisplay }} POL</span>
-                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.pol_per_request, mult: livePriceMultiplier, anchors: livePrice.anchor_count ?? 0, age: livePrice.chain_age_days ?? 0, buyers: livePrice.buyers_30d ?? 0 }) }}</span>
+                    <span class="live-price-value">{{ livePriceUsdcDisplay }} USDC</span>
+                    <span v-if="livePriceMultiplier" class="live-price-detail">{{ $t('marketplace.live_price_detail', { base: amort.price_usdc, mult: livePriceMultiplier, anchors: livePrice.anchor_count ?? 0, age: livePrice.chain_age_days ?? 0, buyers: livePrice.buyers_30d ?? 0 }) }}</span>
                   </template>
                   <template v-else>
                     <span class="live-price-label">{{ $t('marketplace.live_price_label') }}</span>
                     <span class="live-price-pending">{{ livePrice === null ? '…' : $t('marketplace.live_price_save_first') }}</span>
                   </template>
-                </div>
-                <div class="field">
-                  <label class="field-label">{{ $t('marketplace.field_wallet') }}</label>
-                  <input v-model="amort.wallet" type="text" class="input mono" placeholder="0xABCD…" />
                 </div>
                 <div class="field span-2">
                   <label class="field-label field-label--toggle">
@@ -145,30 +145,33 @@
                     <label class="field-label">{{ $t('marketplace.field_price_eur') }} <span class="field-hint">{{ $t('marketplace.field_price_eur_hint') }}</span></label>
                     <input v-model="amort.price_eur" type="text" class="input mono" placeholder="12.00" />
                   </div>
-                  <div class="field span-2">
-                    <label class="field-label">{{ $t('marketplace.field_trader_section') }} <span class="field-hint">{{ $t('marketplace.field_trader_section_hint') }}</span></label>
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_trader_name') }}</label>
-                    <input v-model="amort.trader_name" type="text" class="input" placeholder="Vorname Nachname / Firma" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_trader_email') }}</label>
-                    <input v-model="amort.trader_email" type="text" class="input mono" placeholder="kontakt@example.com" />
-                  </div>
-                  <div class="field span-2">
-                    <label class="field-label">{{ $t('marketplace.field_trader_address') }}</label>
-                    <input v-model="amort.trader_address" type="text" class="input" placeholder="Straße Hausnr., PLZ Ort, Land" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_trader_legal_form') }}</label>
-                    <input v-model="amort.trader_legal_form" type="text" class="input" placeholder="Einzelunternehmen" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_trader_vat_note') }}</label>
-                    <input v-model="amort.trader_vat_note" type="text" class="input" placeholder="§19 UStG — keine USt." />
-                  </div>
                 </template>
+                <!-- Anbieterkennzeichnung: nicht mehr an PayPal gekoppelt — wird auch
+                     für x402 gebraucht (EU-Widerrufsbelehrung + Verkaufs-Mail-Absender,
+                     siehe accept_digital_content_terms.mjs / soul_pay_x402.lua). -->
+                <div class="field span-2">
+                  <label class="field-label">{{ $t('marketplace.field_trader_section') }} <span class="field-hint">{{ $t('marketplace.field_trader_section_hint') }}</span></label>
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.field_trader_name') }}</label>
+                  <input v-model="amort.trader_name" type="text" class="input" placeholder="Vorname Nachname / Firma" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.field_trader_email') }}</label>
+                  <input v-model="amort.trader_email" type="text" class="input mono" placeholder="kontakt@example.com" />
+                </div>
+                <div class="field span-2">
+                  <label class="field-label">{{ $t('marketplace.field_trader_address') }}</label>
+                  <input v-model="amort.trader_address" type="text" class="input" placeholder="Straße Hausnr., PLZ Ort, Land" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.field_trader_legal_form') }}</label>
+                  <input v-model="amort.trader_legal_form" type="text" class="input" placeholder="Einzelunternehmen" />
+                </div>
+                <div class="field">
+                  <label class="field-label">{{ $t('marketplace.field_trader_vat_note') }}</label>
+                  <input v-model="amort.trader_vat_note" type="text" class="input" placeholder="§19 UStG — keine USt." />
+                </div>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_token_validity') }} <span class="field-hint">{{ $t('marketplace.field_token_validity_hint') }}</span></label>
                   <input
@@ -316,7 +319,7 @@
               <div v-for="tk in tokenList" :key="tk.token" class="token-row">
                 <div class="token-info">
                   <code class="token-frag">{{ tokenFragment(tk.token) }}</code>
-                  <span class="token-method" :class="{ manual: tk.payment_method === 'manual' }">{{ tk.payment_method === 'manual' ? $t('marketplace.token_method_manual') : $t('marketplace.token_method_pol') }}</span>
+                  <span class="token-method" :class="{ manual: tk.payment_method === 'manual' }">{{ tk.payment_method === 'manual' ? $t('marketplace.token_method_manual') : tk.payment_method === 'x402' ? $t('marketplace.token_method_x402') : $t('marketplace.token_method_pol') }}</span>
                   <span class="token-from">{{ tk.from }}</span>
                   <span v-if="tk.reference_id" class="token-ref" :title="$t('marketplace.token_reference_label')">{{ tk.reference_id.slice(0, 8) }}…</span>
                   <span class="token-exp">{{ $t('marketplace.token_expires', { date: formatTokenDate(tk.expires_at) }) }}</span>
@@ -402,7 +405,7 @@ function goTo(id) {
 }
 
 const canAdvance = computed(() => {
-  if (step.value === 'mode') return !amort.enabled || (amort.wallet.trim() && amort.pol_per_request.trim())
+  if (step.value === 'mode') return !amort.enabled || (amort.wallet.trim() && amort.price_usdc.trim())
   return true
 })
 
@@ -427,11 +430,11 @@ const discoverable  = ref(true)
 
 const amort = reactive({
   enabled:              false,
-  pol_per_request:      '0.001',
   wallet:               '',
   agent_tools:          ['soul_read', 'verify_human', 'soul_maturity'],
   token_duration_days:  1,
   dynamic_pricing:      false,
+  price_usdc:           '',
   paypal_enabled:       false,
   paypal_link:          '',
   paypal_email:         '',
@@ -481,15 +484,18 @@ const amortSuccess  = ref(false)
 const livePrice     = ref(null)
 let livePriceTimer  = null
 
-// Preis live aus aktuellem Formular-Basiswert × gecachtem Multiplikator berechnen
-// → aktualisiert sich sofort beim Tippen, kein Speichern nötig
-const livePriceDisplay = computed(() => {
+// Preis live aus aktuellem Formular-Basiswert (price_usdc) × gecachtem
+// Multiplikator berechnen → aktualisiert sich sofort beim Tippen, kein
+// Speichern nötig. /api/soul/price liefert nur noch die Faktoren (Anker/
+// Alter/Nachfrage), nicht mehr selbst einen Preis — die direkte POL-
+// Überweisung, für die dieser Endpunkt ursprünglich war, wurde entfernt.
+const livePriceUsdcDisplay = computed(() => {
   const p = livePrice.value
-  if (!p?.dynamic || !p.multiplier) return p?.pol_required ?? null
-  const base = parseFloat(amort.pol_per_request)
-  if (!base || isNaN(base)) return p.pol_required
-  const price = Math.max(base, Math.round(base * p.multiplier * 10000) / 10000)
-  return price.toFixed(4)
+  if (!p?.dynamic || !p.multiplier) return amort.price_usdc || null
+  const base = parseFloat(amort.price_usdc)
+  if (!base || isNaN(base)) return amort.price_usdc
+  const price = Math.max(base, Math.round(base * p.multiplier * 1000000) / 1000000)
+  return price.toFixed(6)
 })
 
 const livePriceMultiplier = computed(() => {
@@ -555,12 +561,12 @@ async function persistMetaFields() {
       headers: authHeader(),
       body: JSON.stringify({
         enabled:             amort.enabled,
-        pol_per_request:     amort.pol_per_request,
         wallet:              amort.wallet,
         agent_tools:         amort.agent_tools,
         ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:     amort.dynamic_pricing,
+        price_usdc:          amort.price_usdc,
         paypal_enabled:      amort.paypal_enabled,
         paypal_link:         amort.paypal_link,
         paypal_email:        amort.paypal_email,
@@ -759,11 +765,11 @@ async function loadAmort() {
     const d = await r.json()
     const a = d.amortization || {}
     amort.enabled         = a.enabled         ?? false
-    amort.pol_per_request = a.pol_per_request ?? '0.001'
     amort.wallet          = a.wallet          ?? ''
     amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.dynamic_pricing      = a.dynamic_pricing ?? false
+    amort.price_usdc           = a.price_usdc ?? ''
     amort.paypal_enabled       = a.paypal_enabled ?? false
     amort.paypal_link          = a.paypal_link ?? ''
     amort.paypal_email         = a.paypal_email ?? ''
@@ -834,12 +840,12 @@ async function setMode(mode) {
         headers: authHeader(),
         body: JSON.stringify({
           enabled:              false,
-          pol_per_request:      amort.pol_per_request,
           wallet:               amort.wallet,
           agent_tools:          amort.agent_tools,
           ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
           dynamic_pricing:      amort.dynamic_pricing,
+          price_usdc:           amort.price_usdc,
           paypal_enabled:       amort.paypal_enabled,
           paypal_link:          amort.paypal_link,
           paypal_email:         amort.paypal_email,
@@ -877,12 +883,12 @@ async function saveAmort() {
       headers: authHeader(),
       body: JSON.stringify({
         enabled:              amort.enabled,
-        pol_per_request:      amort.pol_per_request,
         wallet:               amort.wallet,
         agent_tools:          amort.agent_tools,
         ...(trustedSoulsLoaded.value ? { trusted_souls: peersToTrustedSouls(peers.value) } : {}),
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:      amort.dynamic_pricing,
+        price_usdc:           amort.price_usdc,
         paypal_enabled:       amort.paypal_enabled,
         paypal_link:          amort.paypal_link,
         paypal_email:         amort.paypal_email,

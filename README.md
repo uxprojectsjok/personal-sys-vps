@@ -163,7 +163,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 
 **Agent Marketplace**
 - Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
-- Paid agent access: Polygon (POL) micropayment → time-limited access token → Agent Sandbox read
+- Paid agent access: x402 (USDC on Polygon) or PayPal → time-limited access token → Agent Sandbox read
 - Earnings ledger: track incoming agent payments on-chain
 - Trusted soul whitelist: grant read/write access to specific peer souls
 
@@ -236,7 +236,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   ├── web_search.lua       Web search proxy for KI mid-conversation
 │   ├── beme.lua             Community broadcast channel
 │   ├── soul_amortization.lua Agent Marketplace + trusted souls whitelist
-│   ├── soul_paid_*.lua      Agent payment flow — POL token, access control, earnings
+│   ├── soul_paid_*.lua      Agent payment flow — access token, access control, earnings
 │   ├── vault_shared_*.lua   Peer-accessible file store — upload, serve, delete
 │   ├── vault_peer_*.lua     Peer media proxy + stream
 │   └── …                   (see lua/ directory for full list)
@@ -254,7 +254,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   │                        health_sync, food_log, mind_read/write, soul_discover,
 │   │                        soul_skills, beme_chat, verify_human,
 │   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
-│   │                        soul_paid_comment, soul_pay_read, shop_write_read,
+│   │                        soul_paid_comment, shop_write_read,
 │   │                        twilio_call_config,
 │   │                        audio/image/video list+get, context_get/list, profile_get/save,
 │   │                        soul_read_by_token, *_peer variants, …

@@ -797,7 +797,10 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_chain_list.lua;
   }
 
-  # ── Soul Price: dynamischer POL-Preis (öffentlich, kein Auth) ────────────────
+  # ── Soul Price: dynamische Preisfaktoren (öffentlich, kein Auth) — nur für
+  # die Marketplace-Live-Vorschau, currency-agnostisch (siehe soul_price.lua
+  # Kopfkommentar für die Geschichte: war früher POL-spezifisch inkl. eines
+  # Quote-Systems, das mit der entfernten direkten POL-Zahlung mit wegfiel).
   location = /api/soul/price {
     limit_except GET { deny all; }
     limit_req zone=api burst=30 nodelay;
@@ -851,13 +854,16 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_tokens.lua;
   }
 
-  # ── Amortisierung: Zahlung (öffentlich, pol_access_token) ────────────────────
-  location = /api/soul/pay {
+  # x402/USDC-Zahlungsweg — die direkte POL-Überweisung (/api/soul/pay,
+  # soul_pay.lua) wurde entfernt, siehe CHANGELOG; nur noch x402/USDC +
+  # PayPal als Zahlungswege. Öffentlich (kein soul-cert nötig — zahlender
+  # Agent/x402-Client kennt ihn nicht), siehe soul_pay_x402.lua Kopfkommentar.
+  location = /api/soul/pay/x402 {
     limit_except POST { deny all; }
     limit_req zone=chat burst=5 nodelay;
     default_type application/json;
     add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_pay.lua;
+    content_by_lua_file /etc/openresty/lua/soul_pay_x402.lua;
   }
 
   # ── Paid-Access für externe Agenten (pol_access_token) ───────────────────────
@@ -1655,6 +1661,40 @@ server {
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/agent_log.lua;
+  }
+
+  # ── x402 operator test tooling (Settings → x402, Personal node only —
+  # enforced inside each Lua file, not just hidden in the UI) ─────────────────
+  location = /api/x402/agent/status {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/x402_agent_status.lua;
+  }
+
+  location = /api/x402/agent/key {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/x402_agent_key.lua;
+  }
+
+  location = /api/x402/agent/balances {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/x402_agent_balances.lua;
+  }
+
+  location = /api/x402/agent/pay {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/x402_agent_pay.lua;
   }
 
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────

@@ -83,7 +83,7 @@ const nav = computed(() => [
     { id: 'peers',    icon: 'peers',  label: t('nav.peers') },
     { id: 'connect',  icon: 'qr',     label: t('nav.connect') },
     // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
-    // Zugriff (soul_amortization.lua/soul_pay.lua lehnen ab) — hier zusätzlich
+    // Zugriff (soul_amortization.lua/soul_pay_x402.lua lehnen ab) — hier zusätzlich
     // aus der Navigation genommen, damit der Nutzer nicht ins Leere klickt.
     ...(props.publicNode ? [
       { id: 'market',   icon: 'market', label: t('nav.marketplace') },

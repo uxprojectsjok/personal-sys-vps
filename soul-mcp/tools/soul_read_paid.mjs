@@ -32,7 +32,7 @@ export function register(server, polToken) {
           const err = await res.json().catch(() => ({ error: res.statusText }));
           if (res.status === 401) {
             return {
-              content: [{ type: 'text', text: 'Zahlung abgelaufen (1h TTL). Neue POL-Zahlung erforderlich: POST /api/soul/pay' }],
+              content: [{ type: 'text', text: 'Zahlung abgelaufen (1h TTL). Neue Zahlung erforderlich: POST /api/soul/pay/x402' }],
               isError: true,
             };
           }

@@ -7,20 +7,26 @@ const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
 /**
  * soul_preview — Free teaser of a paid Soul before committing to payment.
  *
- * Call this BEFORE soul_pay_read to assess whether the Soul's content is
- * relevant enough to be worth the price. The preview shows the first ~200
- * characters of the AGENT block plus pricing and maturity signals.
+ * Call this to assess whether the Soul's content is relevant enough to be
+ * worth the price before paying. The preview shows the first ~200 characters
+ * of the AGENT block plus pricing and maturity signals.
  *
  * Typical flow:
  *   1. soul_discover        → find available Souls + pay_endpoint
  *   2. soul_preview         → read teaser, evaluate relevance and price
- *   3. soul_pay_read        → pay and get full content  (if worth it)
+ *   3. pay pay_endpoint directly, following the x402 protocol (401/402
+ *      challenge → signed payment retry) — this MCP server does not itself
+ *      execute payments, the calling agent needs its own x402-capable
+ *      HTTP client. There is no SYS-specific payment tool for this anymore
+ *      (the previous soul_pay_read tool wrapped a direct-POL-transfer flow
+ *      that has been removed — x402 is a standard protocol, any compliant
+ *      client already knows how to use it without a wrapper tool).
  */
 export function register(server, _token) {
   server.tool(
     'soul_preview',
     [
-      'Free preview of a paid Soul — call before soul_pay_read to evaluate relevance.',
+      'Free preview of a paid Soul — call before paying to evaluate relevance.',
       '',
       'Returns the first ~200 characters of the Soul\'s AGENT block (the content',
       'external agents receive after paying) plus price, dynamic pricing factors,',
@@ -31,8 +37,10 @@ export function register(server, _token) {
       '  • Is the price acceptable?',
       '  • How much content is behind the paywall (< 1 KB / 1–5 KB / > 5 KB)?',
       '',
-      'If the preview looks promising: call soul_pay_read with the same',
-      'pay_endpoint and soul_id to get full access.',
+      'If the preview looks promising: pay pay_endpoint directly using the x402',
+      'protocol (it responds with a 402 + payment requirements; retry with a',
+      'signed EIP-3009 authorization). This server has no dedicated payment tool —',
+      'x402 is a standard, any compliant client already knows how to speak it.',
       '',
       ...(EU_CONSUMER_RIGHTS ? [
         'Some Souls also accept PayPal for human buyers without crypto — if the',
@@ -46,12 +54,12 @@ export function register(server, _token) {
         'Do not skip straight from preview to "send PayPal to X" for EU buyers.',
         'Only after that (or immediately, for confirmed non-EU buyers): the human',
         'pays externally, then contacts the Soul owner directly — access is granted',
-        'manually, typically within 48h, not instantly like POL.',
+        'manually, typically within 48h, not instantly like x402.',
       ] : [
         'Some Souls also accept PayPal for human buyers without crypto — if the',
         'preview shows paypal_accepted, mention that option to the human. The',
         'human pays externally, then contacts the Soul owner directly — access is',
-        'granted manually, typically within 48h, not instantly like POL.',
+        'granted manually, typically within 48h, not instantly like x402.',
       ]),
       '',
       'Parameters:',
@@ -59,7 +67,7 @@ export function register(server, _token) {
       '  soul_id       UUID of the target Soul',
     ].join('\n'),
     {
-      pay_endpoint: z.string().url().describe('Full URL of the pay endpoint (e.g. https://example.com/api/soul/pay)'),
+      pay_endpoint: z.string().url().describe('Full URL of the pay endpoint (e.g. https://example.com/api/soul/pay/x402)'),
       soul_id:      z.string().uuid().describe('UUID of the target Soul'),
     },
     async ({ pay_endpoint, soul_id }) => {
@@ -93,8 +101,8 @@ export function register(server, _token) {
         }
 
         const priceLine = d.dynamic
-          ? `${d.pol_required} POL (dynamic: ${d.anchor_count} anchors · ${d.chain_age_days}d · ${d.buyers_30d} buyers/30d · ×${d.multiplier})`
-          : `${d.pol_required} POL (fixed)`;
+          ? `${d.usdc_required} USDC (dynamic: ${d.anchor_count} anchors · ${d.chain_age_days}d · ${d.buyers_30d} buyers/30d · ×${d.multiplier})`
+          : `${d.usdc_required} USDC (fixed)`;
 
         const truncNote = d.preview_truncated
           ? `\n[Preview truncated at ${d.preview_chars} chars — full content: ${d.full_size_hint}]`
@@ -129,7 +137,7 @@ export function register(server, _token) {
           ...(d.preview_note ? [] : [truncNote]),
           `---`,
           ``,
-          `To get full access: call soul_pay_read(pay_endpoint="${pay_endpoint}", soul_id="${soul_id}", tx_hash=<your_tx>)`,
+          `To get full access: pay ${pay_endpoint} directly using the x402 protocol (402 challenge -> signed retry).`,
         ].join('\n');
 
         return { content: [{ type: 'text', text: lines }] };

@@ -217,7 +217,7 @@ end
 
 -- sys.md muss immer als Klartext vorliegen (wird über den eigenen Pfad unten
 -- behandelt). mind.md/income.md/earnings.md/health.md werden serverseitig
--- verschlüsselt geschrieben/gelesen (mind.lua, soul_pay.lua, health_config.lua/writer.py).
+-- verschlüsselt geschrieben/gelesen (mind.lua, soul_pay_x402.lua, health_config.lua/writer.py).
 if data.type == "context" and safe_name == "sys.md" then
   if decoded:sub(1, 4) == "SYS\x01" then
     ngx.status = 400

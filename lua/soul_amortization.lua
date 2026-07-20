@@ -37,7 +37,6 @@ end
 local DEFAULTS = {
   enabled         = false,
   private         = false,
-  pol_per_request = "0.001",
   wallet          = "",
   agent_tools     = setmetatable({}, cjson.array_mt),
   trusted_souls   = setmetatable({}, cjson.array_mt),
@@ -49,6 +48,7 @@ local DEFAULTS = {
   paypal_link     = "",
   paypal_email    = "",
   price_eur       = "",
+  price_usdc      = "",
   -- Anbieterkennzeichnung (Impressum) — für EU-Widerrufsbelehrung, s. accept_digital_content_terms
   trader_name      = "",
   trader_address   = "",
@@ -150,14 +150,6 @@ if type(incoming.private) == "boolean" then
   amort.private = incoming.private
 end
 
--- pol_per_request: positive Zahl als String
-if type(incoming.pol_per_request) == "string" then
-  local n = tonumber(incoming.pol_per_request)
-  if n and n >= 0 then
-    amort.pol_per_request = incoming.pol_per_request
-  end
-end
-
 -- wallet: Ethereum-Adresse
 if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$") then
   amort.wallet = incoming.wallet
@@ -185,11 +177,20 @@ if type(incoming.paypal_email) == "string" then
   end
 end
 
--- price_eur: positive Zahl als String, wie pol_per_request
+-- price_eur: positive Zahl als String, wie price_usdc
 if type(incoming.price_eur) == "string" then
   local n = tonumber(incoming.price_eur)
   if n and n >= 0 then
     amort.price_eur = incoming.price_eur
+  end
+end
+
+-- price_usdc: positive Zahl als String, wie price_eur — manuell gepflegt,
+-- kein Live-Kurs, genutzt vom x402-Zahlungsweg (lua/soul_pay_x402.lua)
+if type(incoming.price_usdc) == "string" then
+  local n = tonumber(incoming.price_usdc)
+  if n and n >= 0 then
+    amort.price_usdc = incoming.price_usdc
   end
 end
 

@@ -29,8 +29,16 @@ import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
 import { runSoulDraw, formatSoulDrawSummary } from './tools/soul_draw.mjs';
 import { runSoulGenerate, formatSoulGenerateSummary } from './tools/soul_generate.mjs';
+import { HTTPFacilitatorClient } from '@x402/core/server';
+import { VerifyError, SettleError } from '@x402/core/types';
 import { listVaultSharedFs, formatVaultSharedList } from './tools/vault_shared_list.mjs';
 import { buildTermsPreviewPdf, buildTermsPreviewTxt, buildConsentPdf, buildConsentTxt, legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt } from './lib/eu_withdrawal_terms.mjs';
+import {
+  getStatus as getX402AgentStatus,
+  savePrivateKey as saveX402AgentKey,
+  loadAccount as loadX402AgentAccount,
+} from './lib/x402_agent_wallet.mjs';
+import { getBalances as getX402AgentBalances, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
 // WebSocketProvider in soul_indexer.mjs internally rejecting on an RPC error —
@@ -95,9 +103,9 @@ async function loadPaymentHint(soulId) {
     const ctx = JSON.parse(raw);
     const a = ctx.amortization;
     if (!a?.enabled) return null;
-    const base    = parseFloat(a.pol_per_request) || 0.001;
+    const base    = parseFloat(a.price_usdc) || 0;
     const dynamic = a.dynamic_pricing === true;
-    let polCurrent = base;
+    let usdcCurrent = base;
     if (dynamic) {
       // Gleiche Formel wie soul_price.lua
       const ANCHOR_COEFF = 0.1, AGE_COEFF = 0.01, DEMAND_COEFF = 0.05;
@@ -121,19 +129,19 @@ async function loadPaymentHint(soulId) {
       } catch { /* kein demand_log → 0 */ }
       if (anchorCount > 0 || buyers30d > 0) {
         const mult = 1 + anchorCount * ANCHOR_COEFF + chainAgeDays * AGE_COEFF + buyers30d * DEMAND_COEFF;
-        polCurrent = Math.max(base, Math.round(base * mult * 10000) / 10000);
+        usdcCurrent = Math.max(base, Math.round(base * mult * 1000000) / 1000000);
       }
     }
     return {
-      pol_per_request: a.pol_per_request ?? '0.001',
-      pol_current:     polCurrent.toFixed(4),
+      price_usdc:      a.price_usdc ?? '0',
+      usdc_current:    usdcCurrent.toFixed(6),
       dynamic_pricing: dynamic,
       // Bei aktivem EU_CONSUMER_RIGHTS erst nach Zustimmung nennen (siehe soul_preview.lua) —
       // dieser Hint erscheint sonst schon in der 401-Antwort auf einen nicht-authentifizierten
       // /mcp-Zugriff, also VOR jeder Consent-Interaktion.
       wallet:          EU_CONSUMER_RIGHTS ? '' : (a.wallet ?? ''),
       consent_required: EU_CONSUMER_RIGHTS,
-      pay_endpoint:    `${BASE_URL}/api/soul/pay`,
+      pay_endpoint:    `${BASE_URL}/api/soul/pay/x402`,
       price_endpoint:  `${BASE_URL}/api/soul/price`,
     };
   } catch { return null; }
@@ -173,13 +181,13 @@ async function unauthorized(res, soulId) {
   );
   const hint = await loadPaymentHint(soulId ?? null);
   const priceNote = hint
-    ? (hint.dynamic_pricing ? hint.pol_current + ' POL (dynamic, call ' + hint.price_endpoint + ' for live quote)' : hint.pol_per_request + ' POL')
+    ? (hint.dynamic_pricing ? hint.usdc_current + ' USDC (dynamic, call ' + hint.price_endpoint + ' for live quote)' : hint.price_usdc + ' USDC')
     : null;
   const message = !hint
     ? 'Authorization required.'
     : hint.consent_required
     ? `Payment required (${priceNote}). This soul enforces EU withdrawal-rights consent before revealing a payment target — call POST /api/soul/terms/show first (or show_withdrawal_terms if you already hold an MCP session for this node).`
-    : `Payment required. Send ${priceNote} to wallet ${hint.wallet}, then POST tx_hash to ${hint.pay_endpoint} to receive an access token.`;
+    : `Payment required. Pay ${priceNote} to wallet ${hint.wallet} via the x402 protocol at ${hint.pay_endpoint} (402 challenge -> signed EIP-3009 retry) to receive an access token.`;
   return res.status(401).json({
     jsonrpc: '2.0',
     error: { code: -32001, message, ...(hint ? { payment: hint } : {}) },
@@ -967,6 +975,188 @@ app.post('/internal/verify-tx', async (req, res) => {
   }
 });
 
+// ── x402-Zahlungsverifikation (USDC auf Polygon) ──────────────────────────────
+// Zweite, zusätzliche Zahlungsschiene neben der direkten POL-Überweisung oben —
+// siehe lua/soul_pay.lua für Pricing/EU-Consent/Token-Ausstellung, die für beide
+// Schienen identisch bleiben. Facilitator: Polygons eigener, produktionsreifer
+// x402-Facilitator (kein Account/API-Key nötig — bewusst statt Coinbases
+// CDP-Facilitator gewählt, siehe Plan). SYS verifiziert/settelt NIE selbst
+// (kein Private Key mit Guthaben auf dem Server) — der Facilitator hält die
+// Relayer-Wallets, SYS bleibt beim etablierten "nur lesen/verifizieren"-Modell.
+const X402_NETWORKS = {
+  amoy: {
+    chain:       'eip155:80002',
+    facilitator: 'https://x402-amoy.polygon.technology',
+    usdc:        '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582',
+  },
+  main: {
+    chain:       'eip155:137',
+    facilitator: 'https://x402.polygon.technology',
+    usdc:        '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
+  },
+};
+
+function getX402Config() {
+  return X402_NETWORKS[process.env.POLYGON_NETWORK] ?? X402_NETWORKS.main;
+}
+
+// USDC hat 6 Dezimalstellen (nicht 18 wie POL) — atomare Einheit für "amount".
+function usdcToAtomic(usdc) {
+  return String(Math.round(Number(usdc) * 1e6));
+}
+
+// POST /internal/verify-x402  { payment_header, expected_to, expected_amount_usdc }
+// payment_header: base64-kodierter Inhalt des PAYMENT-SIGNATURE-Headers (PaymentPayload).
+// expected_to / expected_amount_usdc: von soul_pay.lua bereits aufgelöst (Wallet,
+// aktuelle Preis-Quote) — dieser Endpunkt verifiziert nur, entscheidet keine Preise.
+app.post('/internal/verify-x402', async (req, res) => {
+  const { payment_header, expected_to, expected_amount_usdc } = req.body;
+
+  if (!payment_header || typeof payment_header !== 'string') {
+    return res.status(400).json({ ok: false, reason: 'missing_payment_header' });
+  }
+  if (!expected_to || !/^0x[0-9a-fA-F]{40}$/.test(expected_to)) {
+    return res.status(400).json({ ok: false, reason: 'invalid_expected_to' });
+  }
+  const expectedAmountAtomic = usdcToAtomic(expected_amount_usdc || '0');
+  if (!(Number(expected_amount_usdc) > 0)) {
+    return res.status(400).json({ ok: false, reason: 'invalid_expected_amount' });
+  }
+
+  let paymentPayload;
+  try {
+    paymentPayload = JSON.parse(Buffer.from(payment_header, 'base64').toString('utf8'));
+  } catch {
+    return res.status(400).json({ ok: false, reason: 'malformed_payment_header' });
+  }
+
+  const net = getX402Config();
+  const accepted = paymentPayload?.accepted;
+
+  // ── Defense in depth: Kernfelder selbst prüfen, bevor dem Facilitator vertraut
+  // wird (gleiches Prinzip wie expected_to/min_pol bei /internal/verify-tx oben).
+  if (!accepted || typeof accepted !== 'object') {
+    return res.status(400).json({ ok: false, reason: 'missing_accepted_requirements' });
+  }
+  if (accepted.network !== net.chain) {
+    return res.status(422).json({ ok: false, reason: 'wrong_network', got: accepted.network, expected: net.chain });
+  }
+  if (String(accepted.asset || '').toLowerCase() !== net.usdc.toLowerCase()) {
+    return res.status(422).json({ ok: false, reason: 'wrong_asset', got: accepted.asset, expected: net.usdc });
+  }
+  if (String(accepted.payTo || '').toLowerCase() !== expected_to.toLowerCase()) {
+    return res.status(422).json({ ok: false, reason: 'wrong_recipient', got: accepted.payTo, expected: expected_to });
+  }
+  if (BigInt(accepted.amount || '0') < BigInt(expectedAmountAtomic)) {
+    return res.status(422).json({
+      ok: false, reason: 'insufficient_amount',
+      got_usdc_atomic: accepted.amount, required_usdc_atomic: expectedAmountAtomic,
+    });
+  }
+
+  const facilitator = new HTTPFacilitatorClient({ url: net.facilitator });
+
+  // verify()/settle() können statt eines {isValid:false}/{success:false}-Ergebnisses
+  // auch eine VerifyError/SettleError WERFEN (live getestet: ein Payload mit
+  // syntaktisch falscher Signatur/Nonce löst eine geworfene VerifyError aus, kein
+  // normales Resultat-Objekt) — beide Formen separat abfangen, sonst würde ein
+  // reiner Validierungsfehler fälschlich als "facilitator_unreachable" gemeldet.
+  let verifyResult;
+  try {
+    verifyResult = await facilitator.verify(paymentPayload, accepted);
+  } catch (err) {
+    if (err instanceof VerifyError) {
+      return res.status(422).json({ ok: false, reason: err.invalidReason || 'verify_failed', message: err.invalidMessage, payer: err.payer });
+    }
+    return res.status(502).json({ ok: false, reason: 'facilitator_unreachable', error: err.message });
+  }
+  if (!verifyResult.isValid) {
+    return res.status(422).json({
+      ok: false, reason: verifyResult.invalidReason || 'verify_failed',
+      message: verifyResult.invalidMessage, payer: verifyResult.payer,
+    });
+  }
+
+  try {
+    const settleResult = await facilitator.settle(paymentPayload, accepted);
+    if (!settleResult.success) {
+      return res.status(422).json({
+        ok: false, reason: settleResult.errorReason || 'settle_failed',
+        message: settleResult.errorMessage, payer: settleResult.payer,
+      });
+    }
+
+    res.json({
+      ok:           true,
+      tx_hash:      settleResult.transaction,
+      from:         settleResult.payer,
+      usdc_amount:  (Number(settleResult.amount ?? accepted.amount) / 1e6).toFixed(6),
+      network:      settleResult.network,
+      confirmed_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    if (err instanceof SettleError) {
+      return res.status(422).json({ ok: false, reason: err.errorReason || 'settle_failed', message: err.errorMessage, payer: err.payer });
+    }
+    res.status(502).json({ ok: false, reason: 'facilitator_unreachable', error: err.message });
+  }
+});
+
+// ── x402 Operator-Testwallet (Settings → x402) ────────────────────────────────
+// Node-global, nicht soul-gebunden — siehe lib/x402_agent_wallet.mjs.
+// Nur über 127.0.0.1 erreichbar (kein öffentliches /api/*-Präfix), genau wie
+// /internal/verify-x402 oben — Lua ist die öffentlich erreichbare, auth-
+// geprüfte Schicht davor (vault_auth.lua + Multi-Hoster-Sperre je Datei).
+app.get('/internal/x402-agent/status', async (_req, res) => {
+  try {
+    res.json(await getX402AgentStatus());
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/x402-agent/key', async (req, res) => {
+  const { private_key } = req.body || {};
+  if (typeof private_key !== 'string' || !private_key.trim()) {
+    return res.status(400).json({ ok: false, error: 'private_key_required' });
+  }
+  try {
+    const address = await saveX402AgentKey(private_key);
+    res.json({ ok: true, address });
+  } catch (err) {
+    if (err.message === 'invalid_private_key') {
+      return res.status(400).json({ ok: false, error: 'invalid_private_key', message: 'Erwartet: 0x + 64 Hex-Zeichen.' });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/internal/x402-agent/balance', async (_req, res) => {
+  try {
+    const account = await loadX402AgentAccount();
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const balances = await getX402AgentBalances(account.address);
+    res.json({ ok: true, address: account.address, ...balances });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/x402-agent/pay', async (req, res) => {
+  const { url, method, body, headers } = req.body || {};
+  if (typeof url !== 'string' || !url.trim()) {
+    return res.status(400).json({ ok: false, error: 'url_required' });
+  }
+  try {
+    const account = await loadX402AgentAccount();
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const result = await payX402AsAgent(account, { url, method, body, headers });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 // ── Pinata JWT: .env → soul-spezifisch → global → erster Soul im System ──────
 async function getPinataJwt(soulId) {
   const envJwt = (process.env.PINATA_JWT || '').trim();
@@ -1217,7 +1407,7 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push(`# SYS Node — ${BASE_URL}`);
   lines.push('');
   lines.push('> Personal AI identity node running the SYS open protocol.');
-  lines.push('> Self-hosted, cryptographically secured. Access requires POL payment on Polygon.');
+  lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
   lines.push('');
   lines.push('This node is operated independently. The operator is solely responsible for');
   lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
@@ -1230,7 +1420,7 @@ app.get('/llms.txt', async (_req, res) => {
     lines.push('');
     for (const s of souls) {
       const a = s.amortization ?? {};
-      const base = parseFloat(a.pol_per_request) || 0.001;
+      const base = parseFloat(a.price_usdc) || 0;
       const dynamic = a.dynamic_pricing === true;
       // quick effective price (no file I/O for llms.txt)
       lines.push(`### ${s.name || s.soul_id}`);
@@ -1238,12 +1428,12 @@ app.get('/llms.txt', async (_req, res) => {
       if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
       lines.push('');
       lines.push(`- **soul_id:** \`${s.soul_id}\``);
-      lines.push(`- **Price:** ${base} POL per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
+      lines.push(`- **Price:** ${base} USDC per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
       lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
       if (a.wallet) {
         lines.push(EU_CONSUMER_RIGHTS
-          ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="pol") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
-          : `- **Wallet (Polygon):** \`${a.wallet}\``);
+          ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
+          : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
       }
       if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
         lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
@@ -1280,30 +1470,34 @@ app.get('/llms.txt', async (_req, res) => {
     lines.push('You do NOT have an /mcp session yet at this point (it always requires a token, and none');
     lines.push('exists before payment) — use the plain HTTP twins, not the MCP tool names, unless you');
     lines.push('already hold an owner/peer/paid token for this node:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "payment_method": "pol" }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "payment_method": "x402" }\n\`\`\``);
     lines.push('Returns `{ terms_token, preview_url, preview_url_txt, terms_url, terms_url_txt, legal_text }`.');
     lines.push('Show preview_url (or preview_url_txt if you cannot render a PDF) to the buyer. Once they');
     lines.push('explicitly agree to both (a) immediate performance and (b) losing their 14-day withdrawal right:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "terms_token": "{from above}", "payment_method": "pol", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "terms_token": "{from above}", "payment_method": "x402", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
     lines.push('Returns `{ download_url, download_url_txt, reference_id, payment: { value: wallet }, invoice_number }`');
     lines.push('— the wallet address AND a reference_id (UUID) are only revealed here, both required for step 4.');
     lines.push('(If you already have an MCP session on this node, the equivalent tools are show_withdrawal_terms');
     lines.push('and accept_digital_content_terms — same fields, same rules.)');
     lines.push('');
-    lines.push('**3. Pay on Polygon**');
-    lines.push('Send the exact POL amount to the wallet address from step 2 (chainId 137).');
-    lines.push('');
-    lines.push('**4. Get access token**');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}", "reference_id": "{uuid from step 2}" }\n\`\`\``);
+    lines.push('**3. Pay via x402 (USDC on Polygon, chainId 137)**');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay/x402\n\`\`\``);
+    lines.push('Standard x402 handshake: call without a payment proof first → 402 response with a');
+    lines.push('PAYMENT-REQUIRED header (amount, asset, payTo). Sign an EIP-3009 transferWithAuthorization');
+    lines.push('and retry with a PAYMENT-SIGNATURE header — any x402-compliant client already knows this,');
+    lines.push('no SYS-specific tool needed. Include `reference_id` from step 2 in the request body.');
     lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`. Without a valid reference_id');
     lines.push('from step 2 this call is rejected — the consent step cannot be skipped.');
     lines.push('');
   } else {
-    lines.push('**2. Pay on Polygon**');
-    lines.push('Send the exact POL amount to the soul\'s wallet on Polygon (chainId 137).');
+    lines.push('**2. Pay via x402 (USDC on Polygon, chainId 137)**');
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay/x402\n\`\`\``);
+    lines.push('Standard x402 handshake: call without a payment proof first → 402 response with a');
+    lines.push('PAYMENT-REQUIRED header (amount, asset, payTo). Sign an EIP-3009 transferWithAuthorization');
+    lines.push('and retry with a PAYMENT-SIGNATURE header — any x402-compliant client already knows this,');
+    lines.push('no SYS-specific tool needed.');
     lines.push('');
     lines.push('**3. Get access token**');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay\nContent-Type: application/json\n\n{ "tx_hash": "0x...", "soul_id": "{soul_id}" }\n\`\`\``);
     lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`');
     lines.push('');
   }
@@ -1313,8 +1507,8 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('');
   lines.push('**Non-crypto alternative**');
   lines.push(EU_CONSUMER_RIGHTS
-    ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
-    : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the POL flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
+    ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
+    : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
   lines.push('');
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
@@ -1406,9 +1600,9 @@ app.get('/api/soul/scan', async (req, res) => {
 
     // Effective live price (same formula as loadPaymentHint)
     const amort = s.amortization ?? {};
-    const basePol = parseFloat(amort.pol_per_request) || 0.001;
+    const baseUsdc = parseFloat(amort.price_usdc) || 0;
     const dynamic = amort.dynamic_pricing === true;
-    let polCurrent = basePol;
+    let usdcCurrent = baseUsdc;
     if (dynamic) {
       let chainAgeDays = 0, buyers30d = 0;
       if (anchorHistory[0]?.ts) {
@@ -1425,7 +1619,7 @@ app.get('/api/soul/scan', async (req, res) => {
       }
       if (anchorCount > 0 || buyers30d > 0) {
         const mult = 1 + anchorCount * SCAN_ANCHOR_COEFF + chainAgeDays * SCAN_AGE_COEFF + buyers30d * SCAN_DEMAND_COEFF;
-        polCurrent = Math.max(basePol, Math.round(basePol * mult * 10000) / 10000);
+        usdcCurrent = Math.max(baseUsdc, Math.round(baseUsdc * mult * 1000000) / 1000000);
       }
     }
 
@@ -1443,8 +1637,8 @@ app.get('/api/soul/scan', async (req, res) => {
       name:                s.name || s.soul_id?.slice(0, 8),
       description:         s.description ? s.description.slice(0, 120) : '',
       tags:                Array.isArray(s.tags) ? s.tags : [],
-      pol_per_request:     basePol,
-      pol_current:         polCurrent,
+      price_usdc:          baseUsdc,
+      usdc_current:        usdcCurrent,
       dynamic_pricing:     dynamic,
       token_duration_days: amort.token_duration_days ?? null,
       sessions:            s.sessions ?? 0,
@@ -1487,26 +1681,27 @@ app.get('/api/soul/scan', async (req, res) => {
 // Plain-HTTP-Zwilling der show_withdrawal_terms-MCP-Tool-Logik — für externe
 // Agenten, die noch KEINE /mcp-Session haben (die verlangt immer einen Token,
 // den es vor der ersten Zahlung noch nicht gibt). soul_preview.lua verweist
-// genau hierher. Gleiches Muster wie POST /api/soul/pay neben soul_pay_read.
+// genau hierher.
 app.post('/api/soul/terms/show', async (req, res) => {
   if (!EU_CONSUMER_RIGHTS) {
     return res.status(404).json({ error: 'not_enabled', message: 'Dieser Node hat EU_CONSUMER_RIGHTS nicht aktiviert.' });
   }
   const { soul_id, payment_method } = req.body || {};
-  if (!soul_id || !['paypal', 'pol'].includes(payment_method)) {
-    return res.status(400).json({ error: 'soul_id und payment_method ("paypal"|"pol") erforderlich' });
+  if (!soul_id || !['paypal', 'x402'].includes(payment_method)) {
+    return res.status(400).json({ error: 'soul_id und payment_method ("paypal"|"x402") erforderlich' });
   }
   try {
     const ctx   = await loadCtx(soul_id);
     const amort = ctx.amortization || {};
-    const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+    const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
     const paypalAvailable = amort.paypal_enabled === true;
+    const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
     if (payment_method === 'paypal' && !paypalAvailable) {
       return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
     }
-    if (payment_method === 'pol' && !polAvailable) {
-      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' });
+    if (payment_method === 'x402' && !x402Available) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' });
     }
 
     const termsToken = randomUUID();
@@ -1515,7 +1710,8 @@ app.post('/api/soul/terms/show', async (req, res) => {
       termsToken,
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
-      priceEur: amort.price_eur || '?',
+      price:    payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?'),
+      currency: payment_method === 'x402' ? 'USDC' : 'EUR',
       target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
       wallet:   amort.wallet || '',
       paymentMethod: payment_method,
@@ -1558,8 +1754,8 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     consent_immediate_performance, consent_withdrawal_waiver, contact_note,
   } = req.body || {};
 
-  if (!soul_id || !terms_token || !['paypal', 'pol'].includes(payment_method)) {
-    return res.status(400).json({ error: 'soul_id, terms_token und payment_method ("paypal"|"pol") erforderlich' });
+  if (!soul_id || !terms_token || !['paypal', 'x402'].includes(payment_method)) {
+    return res.status(400).json({ error: 'soul_id, terms_token und payment_method ("paypal"|"x402") erforderlich' });
   }
   if (!consent_immediate_performance || !consent_withdrawal_waiver) {
     return res.status(400).json({
@@ -1571,14 +1767,15 @@ app.post('/api/soul/terms/accept', async (req, res) => {
   try {
     const ctx   = await loadCtx(soul_id);
     const amort = ctx.amortization || {};
-    const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+    const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
     const paypalAvailable = amort.paypal_enabled === true;
+    const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
     if (payment_method === 'paypal' && !paypalAvailable) {
       return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
     }
-    if (payment_method === 'pol' && !polAvailable) {
-      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' });
+    if (payment_method === 'x402' && !x402Available) {
+      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' });
     }
 
     const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
@@ -1594,7 +1791,8 @@ app.post('/api/soul/terms/accept', async (req, res) => {
 
     const target = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
     const wallet  = amort.wallet || '';
-    const priceEur = amort.price_eur || '?';
+    const price    = payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?');
+    const currency = payment_method === 'x402' ? 'USDC' : 'EUR';
     const now = new Date();
     const timestampDisplay = now.toLocaleString('de-DE', {
       timeZone: 'Europe/Berlin',
@@ -1611,7 +1809,8 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     const consentFields = {
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
-      priceEur,
+      price,
+      currency,
       target,
       wallet,
       paymentMethod: payment_method,
@@ -1637,10 +1836,11 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.pdf`,
       download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.txt`,
       reference_id: terms_token,
-      payment: payment_method === 'pol'
-        ? { method: 'pol', label: 'Wallet-Adresse (Polygon)', value: wallet }
+      payment: payment_method === 'x402'
+        ? { method: 'x402', label: 'Wallet-Adresse (Polygon, USDC via x402)', value: wallet }
         : { method: 'paypal', label: 'PayPal-Zahlungsziel', value: target },
-      price_eur: priceEur,
+      price,
+      currency,
       invoice_number: invoiceNumber,
     });
   } catch (err) {

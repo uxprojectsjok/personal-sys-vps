@@ -27,15 +27,15 @@ export function register(server, soulId) {
   server.tool(
     'show_withdrawal_terms',
     [
-      'PFLICHT-ERSTAUFRUF vor jedem Kauf bei dieser Soul — sowohl PayPal als auch',
-      'POL/Polygon. Muss aufgerufen werden BEVOR accept_digital_content_terms',
+      'PFLICHT-ERSTAUFRUF vor jedem Kauf bei dieser Soul — PayPal UND x402/USDC',
+      'gleichermaßen. Muss aufgerufen werden BEVOR accept_digital_content_terms',
       'aufgerufen wird — ohne den hier erzeugten terms_token schlägt',
       'accept_digital_content_terms fehl.',
       '',
       'WICHTIG: Die Wallet-Adresse bzw. das PayPal-Ziel werden NICHT vorab genannt',
       '(auch nicht von soul_preview/soul_discover) — sie erscheinen erst in der',
       'PDF-Antwort von accept_digital_content_terms, nach erteilter Zustimmung.',
-      'Das gilt für BEIDE Zahlungswege gleichermaßen (Vorsichtsprinzip beim',
+      'Das gilt für ALLE Zahlungswege gleichermaßen (Vorsichtsprinzip beim',
       'ungeklärten Anwendungsbereich des Widerrufsrechts bei Krypto-Zahlungen).',
       '',
       'Gibt eine gesetzlich vorgeschriebene EU-Widerrufsbelehrung zurück (Link zu',
@@ -48,21 +48,25 @@ export function register(server, soulId) {
       'Zeige dem Nutzer den zurückgegebenen Link, bevor du fortfährst.',
     ].join('\n'),
     {
-      payment_method: z.enum(['paypal', 'pol']).describe('Gewählter Zahlungsweg — bestimmt, welches Zahlungsziel später in accept_digital_content_terms genannt wird.'),
+      payment_method: z.enum(['paypal', 'x402']).describe('Gewählter Zahlungsweg — bestimmt, welches Zahlungsziel später in accept_digital_content_terms genannt wird.'),
     },
     async ({ payment_method }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
-      const polAvailable    = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
+      // walletAvailable: Kern-Voraussetzung für x402 (die frühere direkte
+      // POL-Überweisung nutzte dasselbe Wallet-Feld — Name hier absichtlich
+      // generisch statt "polAvailable", der Zahlungsweg selbst ist entfernt).
+      const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
       const paypalAvailable = amort.paypal_enabled === true;
+      const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
       if (payment_method === 'paypal' && !paypalAvailable) {
         return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
       }
-      if (payment_method === 'pol' && !polAvailable) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen POL-Zahlungsweg.' }], isError: true };
+      if (payment_method === 'x402' && !x402Available) {
+        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' }], isError: true };
       }
-      if (!paypalAvailable && !polAvailable) {
+      if (!paypalAvailable && !x402Available) {
         return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Zahlungsweg.' }], isError: true };
       }
 
@@ -73,7 +77,8 @@ export function register(server, soulId) {
           termsToken,
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
-          priceEur: amort.price_eur || '?',
+          price:    payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?'),
+          currency: payment_method === 'x402' ? 'USDC' : 'EUR',
           target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
           wallet:   amort.wallet || '',
           paymentMethod: payment_method,

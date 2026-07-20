@@ -11,11 +11,15 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@napi-rs/canvas": "^1.0.2",
+    "@x402/core": "^2.19.0",
+    "@x402/evm": "^2.19.0",
+    "@x402/fetch": "^2.19.0",
     "dotenv": "^17.4.0",
     "ethers": "^6.13.4",
     "express": "^4.21.2",
     "pdfkit": "^0.15.2",
     "qrcode": "^1.5.4",
+    "viem": "^2.55.4",
     "web-push": "^3.6.7",
     "zod": "^3.24.2"
   }

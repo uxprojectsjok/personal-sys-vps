@@ -1,7 +1,16 @@
 -- /etc/openresty/lua/soul_price.lua
 -- GET /api/soul/price?soul_id=<uuid>  — öffentlich, kein Auth
--- Gibt den aktuellen POL-Preis zurück (statisch oder dynamisch).
--- Dynamisch: base × (1 + anchor_count × 0.1 + chain_age_days × 0.01)
+-- Gibt die dynamischen Preisfaktoren einer Soul zurück (Anker-Anzahl,
+-- Chain-Alter, Käufer/30d, daraus abgeleiteter Multiplikator) — currency-
+-- agnostisch, für die Live-Vorschau im Marketplace (Base-Betrag × Multiplikator).
+--
+-- War früher POL-spezifisch (pol_required/base_price/quote_id) — die direkte
+-- POL-Überweisung wurde entfernt (siehe CHANGELOG), das Quote-System war
+-- ausschließlich dafür da (Preis-Timing-Schutz für /api/soul/pay, das es
+-- nicht mehr gibt) und ist mit entfernt. x402 (soul_pay_x402.lua) berechnet
+-- seinen eigenen dynamischen Preis serverseitig frisch bei jeder Zahlung
+-- (dieselbe Formel, dupliziert statt hier importiert) — dieser Endpunkt
+-- dient nur der Anzeige, nicht der Durchsetzung.
 
 local cjson     = require("cjson.safe")
 local SOULS_DIR = "/var/lib/sys/souls/"
@@ -11,7 +20,6 @@ local SOULS_DIR = "/var/lib/sys/souls/"
 local ANCHOR_COEFF = 0.1
 local AGE_COEFF    = 0.01
 local DEMAND_COEFF = 0.05
-local QUOTE_TTL    = 300
 do
   local pf = io.open("/var/lib/sys/config/pricing_params.json", "r")
   if pf then
@@ -20,7 +28,6 @@ do
       ANCHOR_COEFF = tonumber(p.anchor_coeff)  or ANCHOR_COEFF
       AGE_COEFF    = tonumber(p.age_coeff)     or AGE_COEFF
       DEMAND_COEFF = tonumber(p.demand_coeff)  or DEMAND_COEFF
-      QUOTE_TTL    = tonumber(p.quote_ttl_sec) or QUOTE_TTL
     end
   end
 end
@@ -71,10 +78,9 @@ end
 local amort = ctx.amortization
 if type(amort) ~= "table" or amort.enabled ~= true then
   ngx.say(cjson.encode({
-    enabled       = false,
-    message       = "Diese Soul hat keine Bezahlschranke aktiviert.",
-    pol_required  = "0",
-    dynamic       = false,
+    enabled = false,
+    message = "Diese Soul hat keine Bezahlschranke aktiviert.",
+    dynamic = false,
   }))
   return
 end
@@ -85,12 +91,11 @@ if amort.private == true then
   return
 end
 
-local base_price    = tonumber(amort.pol_per_request) or 0.001
-local dynamic       = amort.dynamic_pricing == true
-local anchor_count  = 0
+local dynamic        = amort.dynamic_pricing == true
+local anchor_count   = 0
 local chain_age_days = 0
-local buyers_30d    = 0
-local genesis_ts    = nil
+local buyers_30d     = 0
+local genesis_ts     = nil
 
 if dynamic then
   local ah_file  = SOULS_DIR .. soul_id .. "/anchor_history.json"
@@ -147,56 +152,21 @@ if dynamic then
   end
 end
 
--- Dynamischer Preis: base × (1 + anchor_count × ANCHOR_COEFF + chain_age_days × AGE_COEFF + buyers_30d × DEMAND_COEFF)
+-- Multiplikator: 1 + anchor_count × ANCHOR_COEFF + chain_age_days × AGE_COEFF + buyers_30d × DEMAND_COEFF
 local multiplier = 1.0
-local price = base_price
 if dynamic and (anchor_count > 0 or buyers_30d > 0) then
   multiplier = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d * DEMAND_COEFF)
-  price = base_price * multiplier
 end
--- Auf 4 Dezimalstellen runden, Minimum: base_price
-price = math.max(base_price, math.floor(price * 10000 + 0.5) / 10000)
-
--- ── Price Quote (5 Min TTL) ───────────────────────────────────────────────────
-local QUOTES_FILE = SOULS_DIR .. soul_id .. "/price_quotes.json"
-
--- Bestehende Quotes laden, abgelaufene bereinigen
-local quotes = {}
-local qf = io.open(QUOTES_FILE, "r")
-if qf then
-  local ok_q, stored = pcall(cjson.decode, qf:read("*a")); qf:close()
-  if ok_q and type(stored) == "table" then
-    local now = ngx.time()
-    for qid, q in pairs(stored) do
-      if type(q) == "table" and (q.valid_until or 0) > now then
-        quotes[qid] = q
-      end
-    end
-  end
-end
-
--- Quote ID: 16-Hex aus Zeit + Zufall
-local quote_id    = ngx.md5(tostring(ngx.now()) .. tostring(math.random(100000, 999999)) .. soul_id):sub(1, 16)
-local valid_until = ngx.time() + QUOTE_TTL
-quotes[quote_id]  = { price = string.format("%.4f", price), valid_until = valid_until }
-
-local qf2 = io.open(QUOTES_FILE, "w")
-if qf2 then qf2:write(cjson.encode(quotes)); qf2:close() end
 
 ngx.say(cjson.encode({
-  enabled          = true,
-  pol_required     = string.format("%.4f", price),
-  dynamic          = dynamic,
-  base_price       = string.format("%.4f", base_price),
-  multiplier       = math.floor(multiplier * 100 + 0.5) / 100,
-  wallet           = amort.wallet or "",
-  token_duration   = amort.token_duration or "1d",
-  anchor_count     = anchor_count,
-  chain_age_days   = math.floor(chain_age_days * 10 + 0.5) / 10,
-  buyers_30d       = buyers_30d,
-  genesis_ts       = genesis_ts,
-  soul_id          = soul_id,
-  quote_id         = quote_id,
-  valid_until      = valid_until,
-  quote_ttl_sec    = QUOTE_TTL,
+  enabled        = true,
+  dynamic        = dynamic,
+  multiplier     = math.floor(multiplier * 100 + 0.5) / 100,
+  wallet         = amort.wallet or "",
+  token_duration = amort.token_duration or "1d",
+  anchor_count   = anchor_count,
+  chain_age_days = math.floor(chain_age_days * 10 + 0.5) / 10,
+  buyers_30d     = buyers_30d,
+  genesis_ts     = genesis_ts,
+  soul_id        = soul_id,
 }))

@@ -25,7 +25,7 @@
                 </div>
                 <div class="earn-step-lbl">
                   <span class="earn-step-t">{{ $t('earnings.step_access') }}</span>
-                  <span class="earn-step-s">{{ amort.enabled ? $t('earnings.step_access_paid', { pol: displayPrice }) : $t('earnings.step_access_free') }}</span>
+                  <span class="earn-step-s">{{ amort.enabled ? $t('earnings.step_access_paid', { amount: displayPrice }) : $t('earnings.step_access_free') }}</span>
                 </div>
                 <button class="btn btn-sm btn-ghost" @click="onNav('market')">{{ $t('earnings.btn_configure') }}</button>
               </div>
@@ -46,18 +46,24 @@
               <div class="earn-stat">
                 <div class="earn-stat-label">{{ $t('earnings.stat_price') }}</div>
                 <div class="earn-stat-value">
-                  {{ amort.enabled ? displayPrice + ' POL' : '—' }}
+                  {{ amort.enabled ? displayPrice + ' USDC' : '—' }}
                   <span v-if="amort.dynamic_pricing" class="earn-stat-dynamic">dynamic</span>
                 </div>
               </div>
               <div class="earn-stat">
                 <div class="earn-stat-label">{{ $t('earnings.stat_total_requests') }}</div>
-                <div class="earn-stat-value">{{ earnings.total_requests }}</div>
+                <div class="earn-stat-value">{{ earnings.usdc_total_requests || 0 }}</div>
               </div>
               <div class="earn-stat">
                 <div class="earn-stat-label">{{ $t('earnings.stat_total_earnings') }}</div>
-                <div class="earn-stat-value earn-stat--pol">{{ parseFloat(earnings.total_pol || 0).toFixed(6) }} POL</div>
+                <div class="earn-stat-value earn-stat--pol">{{ parseFloat(earnings.total_usdc || 0).toFixed(6) }} USDC</div>
               </div>
+            </div>
+
+            <!-- ── Historische POL-Verkäufe: eigener Hinweis, direkte Überweisung
+                 gibt's nicht mehr (siehe CHANGELOG), alte Einträge bleiben sichtbar. ── -->
+            <div v-if="hasLegacyPol" class="earn-restored-banner">
+              {{ $t('earnings.legacy_pol_note', { total: parseFloat(earnings.total_pol || 0).toFixed(6), count: earnings.total_requests || 0 }) }}
             </div>
 
             <!-- ── Restore-Banner ── -->
@@ -82,7 +88,7 @@
                     </a>
                   </span>
                   <span class="earn-tx-from">{{ e.from ? e.from.slice(0,6) + '…' + e.from.slice(-4) : '—' }}</span>
-                  <span class="earn-tx-pol">{{ e.pol_amount }} POL</span>
+                  <span class="earn-tx-pol">{{ e.usdc_amount ?? e.pol_amount }} {{ e.currency }}</span>
                   <span class="earn-tx-date">{{ formatPeriod(e.redeemed_at) }}</span>
                   <span class="earn-tx-status" :class="isActive(e) ? 'earn-status--on' : 'earn-status--off'">
                     {{ isActive(e) ? $t('earnings.status_active') : $t('earnings.status_expired') }}
@@ -134,19 +140,30 @@ const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
 
-const amort    = ref({ enabled: false, pol_per_request: '0.001', wallet: '', token_duration_days: 1 })
-const earnings = ref({ total_pol: '0', total_requests: 0, entries: [] })
-const livePrice = ref(null) // pol_required from /api/soul/price wenn dynamic_pricing
+const amort    = ref({ enabled: false, price_usdc: '', wallet: '', token_duration_days: 1 })
+const earnings = ref({ total_usdc: '0', usdc_total_requests: 0, usdc_entries: [], total_pol: '0', total_requests: 0, entries: [] })
+// /api/soul/price nur noch Faktoren (kein eigener Preis mehr, siehe soul_price.lua) —
+// Multiplikator selbst auf price_usdc anwenden, gleiches Prinzip wie im Marketplace-Panel.
+const priceMultiplier = ref(null)
 
-const displayPrice = computed(() =>
-  amort.value.dynamic_pricing && livePrice.value
-    ? livePrice.value
-    : amort.value.pol_per_request
-)
+const displayPrice = computed(() => {
+  const base = parseFloat(amort.value.price_usdc)
+  if (!base || isNaN(base)) return amort.value.price_usdc || '0'
+  if (!amort.value.dynamic_pricing || !priceMultiplier.value) return amort.value.price_usdc
+  return Math.max(base, Math.round(base * priceMultiplier.value * 1000000) / 1000000).toFixed(6)
+})
 
-const sortedEntries = computed(() =>
-  [...(earnings.value.entries || [])].reverse()
-)
+// Alte POL-Direktüberweisungen (entries) + aktuelle USDC/x402-Verkäufe
+// (usdc_entries) zu einer Tabelle zusammenführen, jeweils mit eigener
+// Währung markiert — die direkte POL-Zahlung selbst gibt's nicht mehr
+// (siehe CHANGELOG), aber vergangene Verkäufe bleiben sichtbar.
+const hasLegacyPol = computed(() => (earnings.value.total_requests || 0) > 0)
+
+const sortedEntries = computed(() => {
+  const usdc = (earnings.value.usdc_entries || []).map(e => ({ ...e, currency: 'USDC' }))
+  const pol  = (earnings.value.entries || []).map(e => ({ ...e, currency: 'POL' }))
+  return [...usdc, ...pol].sort((a, b) => new Date(b.redeemed_at || 0) - new Date(a.redeemed_at || 0))
+})
 
 onMounted(async () => {
   if (!soulToken.value) return
@@ -159,7 +176,7 @@ onMounted(async () => {
   if (erRes?.ok) { const d = await erRes.json(); earnings.value = d }
   if (amort.value.dynamic_pricing && soulMeta.value?.id) {
     const pr = await fetch(`/api/soul/price?soul_id=${soulMeta.value.id}`).catch(() => null)
-    if (pr?.ok) { const pd = await pr.json(); if (pd.pol_required) livePrice.value = pd.pol_required }
+    if (pr?.ok) { const pd = await pr.json(); if (pd.multiplier) priceMultiplier.value = pd.multiplier }
   }
 })
 
@@ -185,15 +202,16 @@ function isActive(entry) {
 }
 
 function exportCSV() {
-  const rows = [[t('earnings.col_tx'), t('earnings.col_from'), t('earnings.csv_pol'), t('earnings.csv_valid_from'), t('earnings.csv_valid_to'), t('earnings.col_status')]]
-  for (const e of earnings.value.entries || []) {
+  const rows = [[t('earnings.col_tx'), t('earnings.col_from'), t('earnings.csv_amount'), t('earnings.csv_currency'), t('earnings.csv_valid_from'), t('earnings.csv_valid_to'), t('earnings.col_status')]]
+  for (const e of sortedEntries.value) {
     const days   = amort.value.token_duration_days || 1
     const from   = e.redeemed_at || ''
     const to     = from ? new Date(new Date(from).getTime() + days * 86400 * 1000).toISOString() : ''
     rows.push([
       e.tx_hash,
       e.from || '',
-      e.pol_amount || '',
+      e.usdc_amount ?? e.pol_amount ?? '',
+      e.currency,
       from,
       to,
       isActive(e) ? t('earnings.csv_status_active') : t('earnings.csv_status_expired'),

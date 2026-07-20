@@ -126,7 +126,7 @@ local meta = {
   mcp_endpoint   = base_url .. "/mcp?soul_id=" .. soul_id,
   soul_endpoint  = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
   verify_endpoint = base_url .. "/api/soul/verify?soul_id=" .. soul_id,
-  pay_endpoint   = base_url .. "/api/soul/pay",
+  pay_endpoint   = base_url .. "/api/soul/pay/x402",
   price_endpoint = base_url .. "/api/soul/price",
   earnings_endpoint = base_url .. "/api/soul/earnings",
 }
@@ -220,9 +220,9 @@ if translate_tags then meta.tags        = translate_tags end
 if type(amort) == "table" then
   local no_tools  = setmetatable({}, cjson.array_mt)
   local days      = math.max(1, math.min(30, math.floor(tonumber(amort.token_duration_days) or 1)))
-  local base_price = tonumber(amort.pol_per_request) or 0.001
+  local base_price = tonumber(amort.price_usdc) or 0
   local dynamic    = amort.dynamic_pricing == true
-  local pol_current = string.format("%.4f", base_price)
+  local usdc_current = string.format("%.6f", base_price)
 
   if dynamic then
     local ANCHOR_COEFF = 0.1; local AGE_COEFF = 0.01; local DEMAND_COEFF = 0.05
@@ -265,8 +265,8 @@ if type(amort) == "table" then
     end
     if anchor_count > 0 or buyers_30d > 0 then
       local mult  = 1 + (anchor_count * ANCHOR_COEFF) + (chain_age_days * AGE_COEFF) + (buyers_30d * DEMAND_COEFF)
-      local price = math.max(base_price, math.floor(base_price * mult * 10000 + 0.5) / 10000)
-      pol_current = string.format("%.4f", price)
+      local price = math.max(base_price, math.floor(base_price * mult * 1000000 + 0.5) / 1000000)
+      usdc_current = string.format("%.6f", price)
     end
   end
 
@@ -276,8 +276,8 @@ if type(amort) == "table" then
   meta.amortization = {
     enabled              = amort.enabled == true,
     private              = amort.private == true,
-    pol_per_request      = amort.pol_per_request,
-    pol_current          = pol_current,
+    price_usdc           = amort.price_usdc,
+    usdc_current         = usdc_current,
     dynamic_pricing      = dynamic,
     wallet               = amort.wallet,
     agent_tools          = (amort.enabled == true)

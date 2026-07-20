@@ -88,7 +88,7 @@ local preview = {
   mcp_endpoint      = base_url .. "/mcp?soul_id=" .. soul_id,
   soul_endpoint     = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
   verify_endpoint   = base_url .. "/api/soul/verify?soul_id=" .. soul_id,
-  pay_endpoint      = base_url .. "/api/soul/pay",
+  pay_endpoint      = base_url .. "/api/soul/pay/x402",
   earnings_endpoint = base_url .. "/api/soul/earnings",
 }
 if created_at then preview.created_at = created_at end
@@ -99,7 +99,7 @@ if type(amort) == "table" then
                       or (amort.paypal_email or "")
   preview.amortization = {
     enabled         = amort.enabled == true,
-    pol_per_request = amort.pol_per_request,
+    price_usdc      = amort.price_usdc,
     wallet          = amort.wallet,
     agent_tools     = filter_tools(amort.agent_tools or amort.free_tools),
     paypal_enabled  = amort.paypal_enabled == true,
