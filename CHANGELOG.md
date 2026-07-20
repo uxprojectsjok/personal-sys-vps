@@ -8,7 +8,7 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.0.34] — 2026-07-20
+## [1.0.37] — 2026-07-20
 
 **Added x402 (USDC on Polygon) as a second payment rail, then removed the original direct-POL-transfer rail entirely — ported from `personal-sys-vps-private` (kro.uxprojects-jok.com), where it was built, live-tested with real USDC payments on Polygon mainnet, and subsequently used to fully replace the POL rail this same development cycle.**
 
