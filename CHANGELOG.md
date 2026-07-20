@@ -8,6 +8,10 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.41] — 2026-07-20
+
+**Ported: `beme_chat_paid` was silently stripped from `agent_tools` on every save attempt — `v1.0.39` added it to the read/pin-side `ALLOWED_TOOLS` (`soul_register.lua`/`soul_register_preview.lua`) but missed a third, separate copy of the same allowlist in `soul_amortization.lua`'s write path (`PUT /api/soul/amortization`). Fixed by adding `beme_chat_paid=true` there too, matching the other two.**
+
 ## [1.0.40] — 2026-07-20
 
 **Ported: simplified the earnings transaction table on mobile — 5 columns (TX, from, amount, period, status) don't fit a narrow viewport. Below 720px, shows only TX hash and amount (3 decimals); full 5-column table with full precision unchanged on desktop. Underlying data and CSV export unaffected.**
