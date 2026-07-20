@@ -1513,7 +1513,7 @@
     "col_period": "Zeitraum",
     "status_active": "● Aktiv",
     "status_expired": "○ Abgelaufen",
-    "empty_enabled": "Noch keine Zugriffe. Agenten finden deine Soul über soul_discover und greifen per soul_pay_read zu.",
+    "empty_enabled": "Noch keine Zugriffe. Agenten finden deine Soul über soul_discover und zahlen über das x402-Protokoll (USDC auf Polygon).",
     "empty_disabled": "Agent-Zugriff ist noch nicht aktiviert. Konfiguriere deinen Zugang im Marketplace.",
     "btn_to_marketplace": "Zum Marketplace",
     "export_title": "Steuer-Export",

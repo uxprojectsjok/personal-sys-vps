@@ -1513,7 +1513,7 @@
     "col_period": "Period",
     "status_active": "● Active",
     "status_expired": "○ Expired",
-    "empty_enabled": "No accesses yet. Agents find your Soul via soul_discover and access via soul_pay_read.",
+    "empty_enabled": "No accesses yet. Agents find your Soul via soul_discover and pay via the x402 protocol (USDC on Polygon).",
     "empty_disabled": "Agent access is not activated yet. Configure your access in the Marketplace.",
     "btn_to_marketplace": "To Marketplace",
     "export_title": "Tax Export",

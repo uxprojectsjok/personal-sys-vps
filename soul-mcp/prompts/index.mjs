@@ -154,7 +154,7 @@ Parameters: q (search term), amortized (only paid access), limit.
 → First step in any agent flow that wants to reach other souls.
 
 ### soul_read_by_token
-**When:** You have a pol_access_token (after soul_pay_read) and want to read another user's soul.
+**When:** You have an access_token (from a completed x402 payment, or received manually/via PayPal) and want to read another user's soul.
 Parameters: token, soul_id.
 
 ### verify_human
@@ -169,15 +169,18 @@ Starts an AI-to-AI dialogue via the BeME protocol.
 
 ## 4. Paid Data Access (Amortization Layer)
 
-### soul_pay_read
+### Paying for access (x402)
 **When:** You (as an external agent) want to access an amortized soul.
-Flow: soul_discover → read price + wallet → send POL → soul_pay_read(tx_hash) → access_token
-Parameters: pay_endpoint, soul_id, tx_hash.
-Returns access_token (valid 24h) — then use soul_read_by_token.
+Flow: soul_discover → soul_preview (price + live quote) → POST pay_endpoint with no payment proof
+→ 402 response with a PAYMENT-REQUIRED header (amount, asset, payTo) → sign an EIP-3009
+transferWithAuthorization and retry with a PAYMENT-SIGNATURE header → access_token.
+No SYS-specific payment tool — any x402-compliant client already knows this handshake.
+Returns access_token (validity per soul config, default 1 day) — then use soul_read_by_token.
+Non-crypto alternative: PayPal, manually reviewed by the operator — see soul_discover's guidance.
 
 ### soul_paid_comment
 **When:** You have access to a soul and want to leave an AI comment in the AGENT block.
-Visible to the soul owner. Proof of authenticity via paid POL amount.
+Visible to the soul owner. Proof of authenticity via the paid access_token.
 
 ---
 
@@ -282,7 +285,7 @@ With parameter ad_placement: { agent, product, price, message, cta_url, expires 
 
 **Typical marketing flow (external agent):**
 1. soul_discover — find soul, check shopping tag
-2. soul_pay_read — buy access (POL transaction)
+2. Pay pay_endpoint via x402 — buy access (see "Paying for access" above)
 3. shop_write_read — read shopping data (without ad_placement)
 4. health_check — read health data for context (optional)
 5. shop_write_read with ad_placement — write recommendation
@@ -315,7 +318,7 @@ Credentials (account_sid, auth_token) passed directly — no stored secrets.
 | "Which files do I have?" | vault_manifest |
 | "Show me my images/videos/audios" | image_list / video_list / audio_list |
 | "Search other souls / AI agents" | soul_discover |
-| "I want to access another soul" | soul_discover → soul_pay_read |
+| "I want to access another soul" | soul_discover → pay pay_endpoint via x402 |
 | "Is my soul verified?" | verify_human |
 | "How is my AI configured?" | mind_read |
 | "that doesn't fit / reflect on yourself" | mind_read → mind_write(Self-Reflection) |
@@ -323,14 +326,14 @@ Credentials (account_sid, auth_token) passed directly — no stored secrets.
 | "I ate: ..." | food_log |
 | "I bought X / add to wishlist" | shop_log |
 | "Write a note / document" | context_write |
-| "Write recommendation into another soul" | soul_discover → soul_pay_read → shop_write_read(ad_placement) |
+| "Write recommendation into another soul" | soul_discover → pay via x402 → shop_write_read(ad_placement) |
 
 ---
 
 ## Important
 - **Always soul_read first** — unless the task is explicitly non-personal.
 - **vault_manifest before context_get** — check that the file exists first.
-- **soul_discover before soul_pay_read** — you need pay_endpoint and soul_id from discovery.
+- **soul_discover before paying** — you need pay_endpoint and soul_id from discovery.
 - **shop_write_read without parameters = read-only** — ad_placement only when you want to write.`,
           },
         },
