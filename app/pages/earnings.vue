@@ -88,7 +88,8 @@
                     </a>
                   </span>
                   <span class="earn-tx-from">{{ e.from ? e.from.slice(0,6) + '…' + e.from.slice(-4) : '—' }}</span>
-                  <span class="earn-tx-pol">{{ e.usdc_amount ?? e.pol_amount }} {{ e.currency }}</span>
+                  <span class="earn-tx-pol earn-tx-amount-full">{{ e.usdc_amount ?? e.pol_amount }} {{ e.currency }}</span>
+                  <span class="earn-tx-pol earn-tx-amount-short">{{ formatAmountShort(e) }}</span>
                   <span class="earn-tx-date">{{ formatPeriod(e.redeemed_at) }}</span>
                   <span class="earn-tx-status" :class="isActive(e) ? 'earn-status--on' : 'earn-status--off'">
                     {{ isActive(e) ? $t('earnings.status_active') : $t('earnings.status_expired') }}
@@ -199,6 +200,13 @@ function isActive(entry) {
   const days = amort.value.token_duration_days || 1
   const expiry = new Date(entry.redeemed_at).getTime() + days * 86400 * 1000
   return expiry > Date.now()
+}
+
+// Kompakte Anzeige für Mobile — volle Präzision bleibt in der Desktop-Spalte,
+// im CSV-Export und in den zugrunde liegenden Daten unverändert erhalten.
+function formatAmountShort(entry) {
+  const amount = parseFloat(entry.usdc_amount ?? entry.pol_amount ?? 0)
+  return amount.toFixed(3) + ' ' + entry.currency
 }
 
 function exportCSV() {
@@ -340,6 +348,7 @@ function onNav(id) {
 .earn-tx-link:hover { color: var(--accent-bright); text-decoration: underline; }
 .earn-tx-from { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-pol  { font-family: var(--mono); color: var(--accent-bright); font-weight: 600; }
+.earn-tx-amount-short { display: none; }
 .earn-tx-date { font-family: var(--mono); color: var(--fg-2); }
 .earn-tx-status { font-family: var(--mono); font-size: 14px; }
 .earn-status--on  { color: var(--accent); }
@@ -365,14 +374,16 @@ function onNav(id) {
 .earn-export-title { font-size: 17px; font-weight: 500; color: var(--fg); margin-bottom: 4px; }
 .earn-export-sub { font-size: 15px; color: var(--fg); line-height: 1.5; max-width: 500px; }
 
+/* Mobile: nur TX-Hash + Betrag (kurz) — ausführliche Tabelle bleibt Desktop
+   vorbehalten. Volle Präzision + alle Spalten weiterhin im CSV-Export. */
 @media (max-width: 720px) {
   .earn-stats { grid-template-columns: 1fr 1fr; }
-  .earn-table-head, .earn-table-row { grid-template-columns: 2fr 1.2fr 1.4fr 1.4fr; }
-  .earn-tx-from { display: none; }
-}
-@media (max-width: 480px) {
-  .earn-stats { grid-template-columns: 1fr 1fr; }
-  .earn-table-head, .earn-table-row { grid-template-columns: 2fr 1fr 1.2fr; }
-  .earn-tx-from, .earn-tx-date { display: none; }
+  .earn-table-head, .earn-table-row { grid-template-columns: 2fr 1fr; }
+  .earn-table-head span:nth-child(2),
+  .earn-table-head span:nth-child(4),
+  .earn-table-head span:nth-child(5) { display: none; }
+  .earn-tx-from, .earn-tx-date, .earn-tx-status { display: none; }
+  .earn-tx-amount-full  { display: none; }
+  .earn-tx-amount-short { display: inline; text-align: right; justify-self: end; }
 }
 </style>

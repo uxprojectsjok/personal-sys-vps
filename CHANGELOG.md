@@ -8,6 +8,10 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.40] — 2026-07-20
+
+**Ported: simplified the earnings transaction table on mobile — 5 columns (TX, from, amount, period, status) don't fit a narrow viewport. Below 720px, shows only TX hash and amount (3 decimals); full 5-column table with full precision unchanged on desktop. Underlying data and CSV export unaffected.**
+
 ## [1.0.39] — 2026-07-20
 
 **Ported four rounds of post-x402-launch fixes from `personal-sys-vps-private`, including a real security fix and two "returns wrong/zero data" bugs that a full-tree grep during this exact port surfaced.**
