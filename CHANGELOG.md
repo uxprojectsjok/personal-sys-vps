@@ -8,6 +8,34 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.34] — 2026-07-20
+
+**Added x402 (USDC on Polygon) as a second payment rail, then removed the original direct-POL-transfer rail entirely — ported from `personal-sys-vps-private` (kro.uxprojects-jok.com), where it was built, live-tested with real USDC payments on Polygon mainnet, and subsequently used to fully replace the POL rail this same development cycle.**
+
+x402 (Linux Foundation, standards-based) lets an autonomous AI agent pay for Soul access without any SYS-specific tooling: a 402 challenge with a `PAYMENT-REQUIRED` header, answered by a signed EIP-3009 `transferWithAuthorization` retry. Settlement runs through Polygon's own production x402 facilitator (`x402.polygon.technology`) — no account or API key needed, and SYS never holds a spendable private key server-side (same "verify, never send" model as the original POL flow's on-chain-tx verification). This was chosen over Coinbase's CDP facilitator after a broken AgentConnect-based wallet-pairing flow (see below) made the case for the simplest possible integration.
+
+The direct POL-transfer rail (`soul_pay.lua`, `soul_pay_read.mjs`) is removed rather than kept alongside x402 — historical POL earnings/access-token records are retained (`earnings.json`, token type labels), only the *payment path* is gone. Node operators on an older POL-only soul: existing PayPal access and historical earnings are unaffected; `amortization.pol_per_request` is superseded by `amortization.price_usdc` — re-configure pricing in the Marketplace after updating.
+
+**Breaking:** `POST /api/soul/pay` (direct POL transfer) no longer exists. `soul_pay_read` (MCP tool) is removed — a generic x402 client needs no SYS-specific payment tool.
+
+**Added**
+- `lua/soul_pay_x402.lua`: the x402 payment endpoint (`POST /api/soul/pay/x402`) — computes price fresh at both the 402-challenge and the signed-retry step (no price-quote/TTL system needed, unlike the old POL flow — x402's signature-then-facilitator-settle model closes the on-chain-confirmation timing gap that quotes existed to bridge), verifies the signed authorization server-side against the same core fields (amount, recipient, chain, asset, expiry) before trusting the facilitator's result, then delegates verify+settle to the Polygon facilitator.
+- `lua/soul_price.lua`: rewritten from a POL-specific price+quote-lock endpoint into a currency-agnostic pricing-*factors* endpoint (anchor/age/demand multiplier only), used solely for the Marketplace live-preview UI.
+- `lua/x402_agent_status.lua`, `x402_agent_key.lua`, `x402_agent_balances.lua`, `x402_agent_pay.lua` + `soul-mcp/lib/x402_agent_wallet.mjs`, `x402_client.mjs`: an *operator's own* x402 test wallet (Settings → x402 tab) — lets the node operator hold a small USDC/POL balance and send real x402 payments for testing, independent of the soul's own payment-receiving path. Uses `@x402/evm` + `viem` for direct private-key signing.
+- `soul-mcp/server.mjs`: `POST /internal/verify-x402` (defense-in-depth checks before trusting the facilitator) and the `/internal/x402-agent/*` endpoints backing the Settings tab above.
+- `amortization.price_usdc` field (Marketplace UI, `soul_amortization.lua`, `soul_register.lua`/`soul_register_preview.lua`, `soul_preview.lua`, discovery index) replacing `pol_per_request` throughout — same dynamic-pricing formula, now denominated in USDC at 6-decimal precision (was 4, matching POL's precision needs; USDC's atomic unit is 1e-6).
+- EU withdrawal-rights consent flow (`show_withdrawal_terms`/`accept_digital_content_terms`, plus their REST twins): `payment_method` now `"paypal" | "x402"` (was `"paypal" | "pol" | "x402"`).
+
+**Removed**
+- `lua/soul_pay.lua`, `soul-mcp/tools/soul_pay_read.mjs`.
+- POL-specific UI (Marketplace "Base amount per access (in POL)" field and live-price box), i18n strings, and legal-text (`agb.vue`/`agb.txt`) sections — all now describe x402/USDC or PayPal only. Old POL access tokens still display with a "(legacy)" label rather than being hidden.
+
+**Fixed**
+- `soul-mcp/tools/soul_paid_comment.mjs`, `soul_read_by_token.mjs`, `soul-mcp/prompts/index.mjs` (MCP system-prompt tool reference): description text, Zod field docs, 401 error messages, and the tool-reference table all pointed at the removed `soul_pay_read` tool — updated to describe paying `pay_endpoint` via x402 directly.
+- `llms.txt` generator (`soul-mcp/server.mjs`) and the RFC 8707 Protected Resource Metadata endpoints (`/.well-known/oauth-protected-resource[/mcp]`, `unauthorized()` 401 body): payment hints now describe the x402 flow instead of a POL wallet transfer.
+
+**Not ported**: the `sys-agent-x402.sh` wrapper (lets the SYS Agent Runner spend from the operator's test wallet through a narrow allowlist) and its `init.sh` installation step — both depend on `init.sh`, which doesn't exist in this repo yet. The core payment rail and the operator's manual Settings-tab test wallet work independently of this.
+
 ## [1.0.33] — 2026-07-19
 
 **Added: `soul_draw` and `soul_generate` — two creative tools giving a soul (e.g. a personal AI identity) autonomous headless drawing and high-quality AI image/video generation, ported from `personal-sys-vps-private` (kro.uxprojects-jok.com) where they were built and live-verified across several iterations.**
