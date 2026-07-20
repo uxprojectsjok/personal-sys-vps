@@ -13,7 +13,7 @@
       <p class="lead">
         Diese Seite fasst die gesetzlichen Informationspflichten vor Vertragsschluss
         zusammen (Art. 246a EGBGB), die für den Kauf von Zugang zu dieser Soul gelten —
-        sowohl über PayPal als auch über den POL/Kryptowährungs-Zahlungsweg. Sie ergänzt
+        sowohl über PayPal als auch über den x402/USDC-Zahlungsweg (Polygon). Sie ergänzt
         die Widerrufsbelehrung, die du vor der Zustimmung separat als PDF erhältst.
       </p>
 
@@ -35,23 +35,23 @@
 
       <h2>3. Gesamtpreis</h2>
       <p>
-        Der Preis in EUR (bzw. der entsprechende POL-Betrag) wird bei der jeweiligen Soul
+        Der Preis in EUR (bzw. der entsprechende USDC-Betrag) wird bei der jeweiligen Soul
         in der Vorschau (<code>soul_preview</code>) angezeigt und ist als Endpreis zu
         verstehen (siehe Preishinweis dort).
       </p>
 
       <h2>4. Zahlungsbedingungen</h2>
       <p>
-        Zahlung per PayPal oder POL/Kryptowährung über den technischen Zahlungsweg der
-        Soul. Beim POL-Weg wird der Zugang nach Bestätigung der Transaktion auf der
-        Blockchain automatisch freigeschaltet. Beim PayPal-Weg wird der Zugang nach
+        Zahlung per PayPal oder x402/USDC (Polygon) über den technischen Zahlungsweg der
+        Soul. Beim x402-Weg wird der Zugang nach Bestätigung der Zahlung durch den
+        x402-Facilitator automatisch freigeschaltet. Beim PayPal-Weg wird der Zugang nach
         Zahlungseingang manuell durch den Betreiber freigeschaltet, in der Regel
         innerhalb von 48 Stunden.
       </p>
 
       <h2>5. Leistungsbeginn</h2>
       <p>
-        Die digitale Leistung beginnt beim POL-Weg mit Bestätigung der Transaktion, beim
+        Die digitale Leistung beginnt beim x402-Weg mit Bestätigung der Zahlung, beim
         PayPal-Weg nach Freischaltung durch den Anbieter — in beiden Fällen nicht bereits
         mit bloßem Zahlungseingang. Mit deiner ausdrücklichen Zustimmung (siehe
         Widerrufsbelehrung) beginnt sie vor Ablauf der 14-tägigen Widerrufsfrist — dadurch
@@ -60,10 +60,10 @@
 
       <h2>6. Funktionsweise digitaler Inhalte</h2>
       <p>
-        Zugang erfolgt über ein Zugriffs-Token (<code>pol_access_token</code>), das beim
-        POL-Weg automatisch, beim PayPal-Weg nach Prüfung des Zahlungseingangs per E-Mail
-        oder direkt im Chat übermittelt wird. Gültigkeitsdauer je nach Soul-Konfiguration,
-        siehe Widerrufsbelehrungs-PDF.
+        Zugang erfolgt über ein Zugriffs-Token, das beim x402-Weg automatisch, beim
+        PayPal-Weg nach Prüfung des Zahlungseingangs per E-Mail oder direkt im Chat
+        übermittelt wird. Gültigkeitsdauer je nach Soul-Konfiguration, siehe
+        Widerrufsbelehrungs-PDF.
       </p>
 
       <h2>7. Mängelhaftung</h2>
@@ -79,7 +79,7 @@
       </p>
 
       <p class="fine">
-        Stand: 15.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
+        Stand: 20.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
       </p>
     </main>
   </div>
