@@ -8,6 +8,10 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.42] — 2026-07-20
+
+**Ported: `beme_chat_paid`'s owner-bypass (`v1.0.39`) only recognized the `soul_id.cert` credential format, not the 64-hex `service_token` that OAuth-connected clients (Claude.ai, ChatGPT via the Setup Assistant) actually use — that request shape fell through to the paid-`access_token` check and failed. Added a third auth path checking `authorized_services.json`, gated on `permissions.soul == true` (the same threshold that token already has elsewhere).**
+
 ## [1.0.41] — 2026-07-20
 
 **Ported: `beme_chat_paid` was silently stripped from `agent_tools` on every save attempt — `v1.0.39` added it to the read/pin-side `ALLOWED_TOOLS` (`soul_register.lua`/`soul_register_preview.lua`) but missed a third, separate copy of the same allowlist in `soul_amortization.lua`'s write path (`PUT /api/soul/amortization`). Fixed by adding `beme_chat_paid=true` there too, matching the other two.**

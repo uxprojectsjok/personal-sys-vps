@@ -1,16 +1,23 @@
 -- /etc/openresty/lua/soul_paid_beme.lua
 -- POST /api/soul/paid-beme
--- Bearer = access_token (x402/PayPal) ODER Owner soul_cert ({soul_id}.{hmac32}).
+-- Bearer = access_token (x402/PayPal) ODER Owner-Credential — soul_cert
+-- ({soul_id}.{hmac32}) ODER service_token (64hex, z.B. der von Claude.ai/
+-- ChatGPT über OAuth ausgestellte Owner-Token aus authorized_services.json).
 --
 -- Führt ein Gespräch mit der Soul, aber NUR auf Basis des Agent-Sandbox-
 -- Blocks -- nie die volle sys.md. Security rule (wie soul_paid_read.lua):
 -- nie die Private Sphere an zahlende Agenten senden. Nur der explizit
 -- markierte AGENT:START/END Block verlässt den Server als Kontext.
 --
--- Owner-Zugang (soul_cert statt access_token) ist immer verfügbar, unabhängig
--- von amortization.enabled -- Zweck: der Eigentümer kann exakt testen, was
--- ein zahlender Agent über beme_chat_paid zu sehen bekommt, ohne selbst zu
--- zahlen. Setzt denselben Agent-Sandbox-Block wie ein echter Zahlungs-Zugang.
+-- Owner-Zugang (soul_cert ODER service_token statt access_token) ist immer
+-- verfügbar, unabhängig von amortization.enabled -- Zweck: der Eigentümer
+-- kann exakt testen, was ein zahlender Agent über beme_chat_paid zu sehen
+-- bekommt, ohne selbst zu zahlen. Setzt denselben Agent-Sandbox-Block wie
+-- ein echter Zahlungs-Zugang. Beide Owner-Credential-Formen müssen erkannt
+-- werden, da die MCP-Session je nach Verbindungsweg (manuelles soul_cert vs.
+-- OAuth-Verbindung von Claude.ai/ChatGPT über die Setup-Assistant) mit
+-- unterschiedlichem Token-Typ bei diesem Endpunkt ankommt (registerTools()
+-- reicht schlicht den Session-Token durch, egal welcher Typ es war).
 --
 -- Input:  { message: string, history?: [{role,content}], max_tokens?: number }
 -- Output: { response: string, soul_name: string, model: string }
@@ -21,6 +28,42 @@ local resty_aes = require("resty.aes")
 local pol_check = require("pol_token_check")
 local hmac      = require("hmac_helper")
 local cfg       = require("config_reader")
+
+-- Owner-Service-Token prüfen (64hex, kein Punkt) — gleiche Lookup-Logik wie
+-- vault_auth.lua's check_service_token, aber ohne den Vault-Session-Teil
+-- (diese Datei liest vault_key_hex ohnehin direkt aus api_context.json).
+-- Nur Tokens mit permissions.soul == true zählen als Owner-Zugang — das ist
+-- exakt derselbe Rechte-Schwellenwert, der einem solchen Token ohnehin schon
+-- vollen sys.md-Lesezugriff über /api/soul bzw. /api/webhook gewährt.
+local function check_service_token(tok)
+  if tok:find(".", 1, true) then return nil end
+  if not tok:match("^%x+$") or #tok ~= 64 then return nil end
+
+  local souls_dir = "/var/lib/sys/souls"
+  local handle = io.popen("ls " .. souls_dir .. " 2>/dev/null")
+  if not handle then return nil end
+
+  local found_id = nil
+  for dir in handle:lines() do
+    if dir:match("^[a-zA-Z0-9%-]+$") and #dir <= 64 then
+      local f = io.open(souls_dir .. "/" .. dir .. "/authorized_services.json", "r")
+      if f then
+        local raw = f:read("*a"); f:close()
+        local ok, data = pcall(cjson.decode, raw)
+        if ok and type(data) == "table" and data[tok] then
+          local svc = data[tok]
+          local not_expired = type(svc.expires_at) ~= "number" or svc.expires_at == 0 or ngx.now() < svc.expires_at
+          if not_expired and type(svc.permissions) == "table" and svc.permissions.soul == true then
+            found_id = dir
+          end
+          break
+        end
+      end
+    end
+  end
+  handle:close()
+  return found_id
+end
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -74,7 +117,17 @@ if dot then
   end
 end
 
--- Kein gültiges Owner-Cert -- als access_token (x402/PayPal) prüfen
+-- Kein gültiges Owner-Cert -- als Owner-Service-Token prüfen (Claude.ai/ChatGPT
+-- über OAuth, oder jeder andere über die Setup-Assistant registrierte Client)
+if not soul_id then
+  local svc_soul_id = check_service_token(token)
+  if svc_soul_id then
+    soul_id  = svc_soul_id
+    is_owner = true
+  end
+end
+
+-- Kein gültiges Owner-Credential -- als access_token (x402/PayPal) prüfen
 if not soul_id then
   local tdata = pol_check.check(token)
   if not tdata or not tdata.soul_id then
