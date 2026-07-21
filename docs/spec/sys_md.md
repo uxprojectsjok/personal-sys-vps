@@ -1,11 +1,9 @@
 # sys.md — Full Specification (v3)
 
-Stand: 2026-07-04
-
 `sys.md` is the single portable soul file: one Markdown document holding
 identity, values, session history, and (once crystallized) a structured
 long-term memory index. It is the file a user can download, back up, and
-re-import on a new host — see `README.md` → "Integrity" for the fingerprint
+re-import on a new host — see [README: Integrity](../../README.md#integrity) for the fingerprint
 mechanism used to verify a clone against the official release.
 
 ---
@@ -59,9 +57,16 @@ elevenlabs_voice_id: ""
 | `storage_tx` | string | IPFS/Arweave reference of last cloud push. |
 | `elevenlabs_agent_id` / `elevenlabs_voice_id` | string | ElevenLabs conversational agent + voice clone, if created. |
 
-`version` is bumped opportunistically, not enforced — a `version: 2` soul is
-functionally identical to a fresh `version: 3` soul until its first
-crystallization; nothing needs migrating.
+Three more fields exist but are **not** part of a freshly created soul — `buildDefaultSoul()` (`app/composables/useSoul.js`) never writes them; they're added the first time the relevant feature is used:
+
+| Field | Type | Added when |
+|-------|------|-------------|
+| `cert_version` | integer | First soul_cert rotation (`soul_rotate_cert`) |
+| `soul_growth_chain` | array | First session-signing growth entry |
+| `soul_chain_anchor` | object | First on-chain anchor transaction |
+
+> [!NOTE]
+> `version` is bumped opportunistically, not enforced — a `version: 2` soul is functionally identical to a fresh `version: 3` soul until its first crystallization; nothing needs migrating.
 
 ---
 
@@ -113,11 +118,8 @@ version: 3
 *Not yet described.*
 ```
 
-Nothing forces this transition — it happens the first time crystallization
-finds something worth distilling. No batch migration, no version gate: a
-reader that doesn't find a `MINDIDX` block simply treats the index as absent
-and falls back to scanning, exactly as it would for a soul that predates this
-mechanism entirely.
+> [!NOTE]
+> Nothing forces this transition — it happens the first time crystallization finds something worth distilling. No batch migration, no version gate: a reader that doesn't find a `MINDIDX` block simply treats the index as absent and falls back to scanning, exactly as it would for a soul that predates this mechanism entirely.
 
 ## LONGMEM — the long-term store
 

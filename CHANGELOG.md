@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.70] — 2026-07-21
+
+**Docs: verified `docs/spec/sys_md.md` against the code (`useSoul.js`, `herz.mjs`, `soul_parser.mjs`, `lua/beme.lua`) — found and fixed a real cross-doc inconsistency with README.md's frontmatter example, plus applied current GitHub-alert styling.**
+
+**Fixed**
+- `docs/spec/sys_md.md`'s frontmatter example already matched `buildDefaultSoul()` exactly, but its field table omitted three real fields (`cert_version`, `soul_growth_chain`, `soul_chain_anchor`) that get added dynamically once their feature is first used, rather than being part of a freshly created soul. Added a table documenting when each appears.
+- `README.md`'s frontmatter example had the opposite problem: it showed `cert_version: 0`, `soul_growth_chain: []`, and `soul_chain_anchor: null` as if present on every fresh soul (they're not — confirmed against the same `buildDefaultSoul()`), and was missing `elevenlabs_agent_id`/`elevenlabs_voice_id`, which are. Aligned to match `sys_md.md` and the actual template, with the same "added later" clarification.
+- Everything else checked (Archivist trigger names `onAnchor`/`onSilence`/`onCircadian`/`onAgent`, `queryLongmem()`, `soul_context_query` tool, `beme_chat`'s LONGMEM-prepending via `lua/beme.lua`, the MIND-repo case-study link) confirmed accurate — no changes needed.
+
+**Changed**
+- `docs/spec/sys_md.md`: two prose paragraphs (the opportunistic-versioning note, the lazy-MINDIDX-migration note) converted to `[!NOTE]` GitHub alerts. The bare `README.md` → "Integrity" text reference turned into an actual link (`../../README.md#integrity`). Dropped a stray German "Stand: 2026-07-04" dateline — inconsistent with every sibling `docs/spec/*.md` file, none of which carry one.
+
+---
+
 ## [1.0.69] — 2026-07-21
 
 **Docs: labeled the cross-device QR-scan flow as Proof-of-Concept in verification-hub.md — implemented and functional per code, but not yet tested at scale, unlike the other Status-section items presented at full confidence.**

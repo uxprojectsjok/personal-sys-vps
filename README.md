@@ -255,12 +255,11 @@ soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
 version: 3
-cert_version: 0
 soul_cert: [generated automatically]
 vault_hash: ""
-soul_growth_chain: []
-soul_chain_anchor: null
 storage_tx: ""
+elevenlabs_agent_id: ""
+elevenlabs_voice_id: ""
 ---
 
 <!-- LONGMEM appears automatically once the Archivar first crystallizes this soul —
@@ -314,6 +313,8 @@ For external agents: what kind of contact is welcome.
 ```
 
 `version: 3` is the current default for newly created souls. Existing `version: 2` souls remain fully compatible — no migration is required; they gain LONGMEM and the MINDIDX index the same way any soul does, at their next crystallization. Full lifecycle details: [docs/spec/sys_md.md](docs/spec/sys_md.md).
+
+Three more fields aren't in a freshly created soul's frontmatter — `cert_version` (added on first cert rotation), `soul_growth_chain` (added on the first growth entry), and `soul_chain_anchor` (added on the first on-chain anchor) all get written the first time their feature is actually used, not baked into every soul from creation.
 
 **Three-sphere protection model:**
 
@@ -449,7 +450,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.69): a33ecc670cb9402f
+Current release fingerprint (v1.0.70): 1eed692991fdb65f
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
