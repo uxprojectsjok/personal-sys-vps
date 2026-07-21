@@ -396,7 +396,7 @@ git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 
 | Mode | Description |
 |------|-------------|
-| **Personal Node** | Single soul. First registrant is the permanent owner. Includes the **Autonomous Agent Runner** — processes tasks from `agent.md`, maintains the node, runs hourly + on-demand with optional Zapier MCP support. |
+| **Personal Node** | Single soul. First registrant is the permanent owner. |
 | **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. Agent Runner not available — it runs as root and would have access to all souls on the node. |
 
 These modes are independent of the server's infrastructure. A Personal Node can run on a VPS that already hosts other websites — SYS detects existing sites automatically and integrates safely alongside them.
@@ -449,7 +449,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.58): 611925b965194fc6
+Current release fingerprint (v1.0.59): 9c94b83db3e98a8d
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -484,9 +484,9 @@ Soul identity hash  →  anchor()  →  Polygon blockchain
                                  →  soul_chain_anchor in sys.md
 ```
 
-Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
+Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`) — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
 
-Operators who want blockchain features need their own Reown Project ID (free: cloud.reown.com).
+Operators who want blockchain features need a WalletConnect-compatible project ID — this codebase defaults to [Reown](https://cloud.reown.com) (free). I have no affiliation with Reown; it's simply what was integrated. Any compatible alternative an operator finds and wires in works just as well.
 
 > [!IMPORTANT]
 > **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.

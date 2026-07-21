@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.59] — 2026-07-21
+
+**Docs: removed a duplicated Agent Runner description from the Node modes table, made the anchoring contract address visible inline (not just as a link target), and added a no-affiliation disclaimer for Reown.**
+
+**Changed**
+- `README.md`, "Node modes": dropped the Autonomous Agent Runner description from the **Personal Node** table cell — already fully covered by its own teaser section under "What the node does" (added in v1.0.49), this was a leftover duplicate.
+- `README.md`, "On-Chain Anchoring": the anchoring paragraph linked to the contract address on Polygonscan but never printed the address itself. Added it inline.
+- `README.md`, "On-Chain Anchoring": the Reown Project ID sentence didn't disclose the same no-affiliation relationship already stated for every other third-party service in this README. Reworded to say so explicitly and to make clear any WalletConnect-compatible alternative an operator wires in themselves works just as well — Reown isn't a hard dependency of the protocol, just what this codebase happens to use.
+
+---
+
 ## [1.0.58] — 2026-07-21
 
 **Docs: converted every remaining plain blockquote in README.md to a GitHub alert (`[!NOTE]`/`[!IMPORTANT]`). Plain `>` blockquotes render as low-contrast, muted-gray text on GitHub — easy to skim past, especially in dark mode. Alerts render with a colored icon + background instead.**
