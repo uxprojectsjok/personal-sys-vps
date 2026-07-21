@@ -4,6 +4,7 @@
 [![Latest release](https://img.shields.io/github/v/tag/uxprojectsjok/personal-sys-vps?label=release&sort=semver)](https://github.com/uxprojectsjok/personal-sys-vps/tags)
 [![Protocol: Self-Hosted](https://img.shields.io/badge/protocol-self--hosted-informational.svg)](https://sys.uxprojects-jok.com)
 
+> [!IMPORTANT]
 > **Status: active development, pre-release.**
 > Core features run in production on the maintainer's own node, and multi-hoster mode has passed initial testing. Security, UX, and edge-case review are ongoing before a public release — the installer scripts (`init.sh` and related) are not yet public and are currently limited to the testing group. This repository is the protocol reference and source, not yet a turnkey install.
 >
@@ -11,6 +12,7 @@
 >
 > Protocol overview and vision: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
+> [!NOTE]
 > **Third-party services:** This codebase integrates independent third-party services (Anthropic, ElevenLabs, Reown, Pinata, Polygon). I am not affiliated with, endorsed by, or a partner of any of them — their use reflects my own technical choices, not a recommendation. Full disclaimer: [Legal](#legal).
 
 ---
@@ -157,6 +159,7 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 
 ## Repository Structure
 
+> [!NOTE]
 > Installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are distributed via a private repository — see [Installation](#installation).
 
 ```
@@ -370,7 +373,8 @@ Key tools: `soul_read`, `soul_write`, `context_get`, `verify_identity`, `beme_ch
 
 The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Node.js in production.
 
-> **Note:** You need a domain with an A record pointing to your server's IP — SSL issuance fails without a valid DNS entry.
+> [!IMPORTANT]
+> You need a domain with an A record pointing to your server's IP — SSL issuance fails without a valid DNS entry.
 
 **Requirements:** Ubuntu 24.04 VPS (min. 2 GB RAM), a domain
 
@@ -378,7 +382,8 @@ The production stack uses OpenResty (nginx + LuaJIT) as the API layer — no Nod
 git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 ```
 
-> **Note:** The installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are not included in this public repository.
+> [!NOTE]
+> The installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are not included in this public repository.
 > If you are part of the testing group, you have received access separately.
 
 ### Node modes
@@ -405,6 +410,7 @@ If `init.sh` detects other active sites on the server (via `sites-enabled`), it 
 - **Packages** (OpenResty, Node.js, Certbot) are not reinstalled or upgraded
 - **`deinstall.sh`** removes only SYS-owned files: vhost, Lua scripts, soul data, soul-mcp — OpenResty and all other sites remain intact
 
+> [!NOTE]
 > **Node mode ≠ Shared server**
 > *Personal Node* / *Multi-Hoster* controls how many souls the SYS node accepts.
 > *Shared server* describes whether other websites exist alongside SYS on the same VPS.
@@ -418,10 +424,12 @@ If `init.sh` detects other active sites on the server (via `sites-enabled`), it 
 | `bash /opt/sys/reset.sh` | **Remove soul** — Personal Node: deletes the single soul. Multi-Hoster: lists all souls, delete one or all. OpenResty, SSL, and all configuration are preserved. |
 | `bash /opt/sys/deinstall.sh` | **Full uninstall** — removes everything init.sh installed. Ubuntu is untouched. Delete the DNS record manually at your provider afterward. |
 
+> [!NOTE]
 > `recover-password.sh` ≠ `reset.sh` ≠ `deinstall.sh`
 > Forgot password: soul stays. Reset: tenant moves out. Uninstall: house is torn down.
 
-> **Note:** These scripts are not included in the public repository. They are distributed via the private installer repository alongside `init.sh`.
+> [!NOTE]
+> These scripts are not included in the public repository. They are distributed via the private installer repository alongside `init.sh`.
 
 ---
 
@@ -441,7 +449,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.57): 5ebae9ce099a07ed
+Current release fingerprint (v1.0.58): 611925b965194fc6
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -480,6 +488,7 @@ Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anch
 
 Operators who want blockchain features need their own Reown Project ID (free: cloud.reown.com).
 
+> [!IMPORTANT]
 > **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
 >
 > This is what makes SYS a shared ecosystem rather than a collection of isolated nodes. Every soul that anchors writes into the same immutable ledger — and as the contract grows older, the full history of all participating souls becomes traceable across the network. A node using a different contract is no longer SYS-compatible and its anchored identities will not be recognized by the community.

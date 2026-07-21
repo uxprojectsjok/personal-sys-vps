@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.58] — 2026-07-21
+
+**Docs: converted every remaining plain blockquote in README.md to a GitHub alert (`[!NOTE]`/`[!IMPORTANT]`). Plain `>` blockquotes render as low-contrast, muted-gray text on GitHub — easy to skim past, especially in dark mode. Alerts render with a colored icon + background instead.**
+
+**Changed**
+- `README.md`: 8 blockquote blocks converted — the top status banner and third-party disclaimer, the domain/SSL prerequisite, both "installer scripts not included" notes, the "Node mode ≠ Shared server" and "recover-password.sh ≠ reset.sh ≠ deinstall.sh" disambiguations, the Repository Structure installer-scripts pointer, and the on-chain anchoring contract requirement. Hard requirements and the pre-release status got `[!IMPORTANT]`; everything else got `[!NOTE]`. `UPDATING.md`'s two alerts (`[!TIP]`, `[!WARNING]`, added in v1.0.56) and the Archivar heading warning (`[!WARNING]`, v1.0.55) were already converted — this closes out the rest.
+
+---
+
 ## [1.0.57] — 2026-07-21
 
 **Docs: trimmed two stale/hedging sentences from Installation, and surfaced the Public/Private Node choice in "Node modes" — it's set at the same `init.sh` startup step as Personal/Multi-Hoster but wasn't mentioned there at all.**
