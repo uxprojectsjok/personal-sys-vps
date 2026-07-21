@@ -92,20 +92,6 @@ const SOUL_TOOLS = [
     }
   },
   {
-    name: "soul_generate",
-    description: "Erzeugt oder veredelt ein Bild/Video per hochwertiger KI-Generierung (WaveSpeed AI) — für Werke über reines Vektor-Zeichnen (soul_draw) hinaus. PFLICHT: decision — kurze Begründung WARUM, nicht nur WAS (die Soul bleibt Urheberin, die KI ist Werkzeug, kein roher Prompt-Passthrough). mode \"text-to-image\": neu aus Prompt. mode \"edit-multi\": veredelt das bestehende {canvas_id}.png (z.B. eine soul_draw-Skizze) — Ergebnis wird die nächste Stufe desselben Werks, vorherige Stufe wird automatisch als {canvas_id}_stage{n}.png archiviert. mode \"image-to-video\": startet eine Videogenerierung aus dem bestehenden {canvas_id}.png (dauert 1–5 Minuten, kein Zeitdruck) — erster Aufruf startet und kehrt sofort zurück, jeder weitere Aufruf mit derselben canvas_id + mode prüft einmalig ob fertig; kein synchrones Warten nötig. Tageslimit: 10 Generierungen/Tag (echte, kostenpflichtige API-Aufrufe — bei image-to-video zählt schon die Einreichung).",
-    input_schema: {
-      type: "object",
-      properties: {
-        canvas_id: { type: "string", description: "Name des Werks — dieselbe canvas_id wie bei soul_draw verbindet Skizze und Veredelung." },
-        decision: { type: "string", description: "Pflicht: kurze Begründung WARUM diese Generierung entsteht." },
-        mode: { type: "string", enum: ["text-to-image", "edit-multi", "image-to-video"], description: "\"text-to-image\": neu aus Prompt. \"edit-multi\": veredelt bestehendes {canvas_id}.png. \"image-to-video\": startet/holt eine Videogenerierung ab." },
-        prompt: { type: "string", description: "Der eigentliche Generierungs-Prompt für WaveSpeed." }
-      },
-      required: ["canvas_id", "decision", "mode", "prompt"]
-    }
-  },
-  {
     name: "vault_shared_list",
     description: "Listet Dateien in vault_shared auf (neueste zuerst) — soul_draw-Werke erscheinen als \"Canvas (PNG)\"/\"Canvas (SVG)\" (kein Zeitstempel-Präfix, anders als normale Uploads). Vor einem neuen Werk aufrufen, um ein bestehendes canvas_id wiederzufinden statt versehentlich zu duplizieren.",
     input_schema: {
@@ -433,7 +419,6 @@ ${externalTools.map(t => `- ${t.name}${t.description ? ' — ' + t.description.s
 ` : ''}
 ## Weitere Fähigkeiten
 Kreation:
-- Bild generieren: Beschreibe was du dir vorstellst — ich erstelle es (WaveSpeed AI). Trigger: Kamera-Button → "Bild generieren" wählen.
 - Bild analysieren: Foto über Kamera-Button schicken → ich erkenne und beschreibe es.
 - Stimme: Text-to-Speech via ElevenLabs — Lautsprecher-Button in meinen Nachrichten.
 

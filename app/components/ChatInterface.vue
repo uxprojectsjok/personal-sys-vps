@@ -2790,8 +2790,6 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
   await scrollToBottom()
 
   let soulReaction = ''
-  let genPrompt    = ''
-  let outputMode   = 'skip'
   try {
     const vRes = await fetch('/api/vision-analyze', {
       method: 'POST',
@@ -2884,8 +2882,6 @@ async function runVisionAnalysis(base64, caption, previewUrl) {
       }
 
       soulReaction = vData.soulReaction ?? vData.analysis ?? ''
-      genPrompt    = vData.genPrompt   ?? ''
-      outputMode   = vData.outputMode  ?? 'skip'
     }
   } catch { /* weiter ohne Vision */ }
 
@@ -2948,7 +2944,7 @@ async function handleCameraCapture(capture) {
   visionLoading.value = false
 }
 
-// ── WaveSpeed image generation ─────────────────────────────────────
+// ── Message action dispatch ─────────────────────────────────────────
 async function handleMsgAction(msg, action) {
   if (action.url) {
     window.open(action.url, '_blank', 'noopener,noreferrer')

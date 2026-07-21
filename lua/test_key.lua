@@ -1,5 +1,5 @@
 -- /etc/openresty/lua/test_key.lua
--- POST /api/test-key — testet Anthropic / WaveSpeed / ElevenLabs API-Keys
+-- POST /api/test-key — testet Anthropic / ElevenLabs API-Keys
 -- Auth: soul_cert (via soul_auth.lua access phase)
 
 local cjson = require("cjson.safe")

@@ -27,6 +27,6 @@ In scope:
 - The SoulRegistry smart contract's public interface
 
 Out of scope:
-- Third-party services this codebase integrates with (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon infrastructure itself) — report those directly to the respective provider
+- Third-party services this codebase integrates with (Anthropic, ElevenLabs, Reown, Pinata, Polygon infrastructure itself) — report those directly to the respective provider
 - Vulnerabilities requiring physical or root access to an operator's own VPS
 - Issues in a fork or derivative that diverges from this repository

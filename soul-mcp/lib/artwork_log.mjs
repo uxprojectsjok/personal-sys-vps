@@ -1,8 +1,6 @@
 /**
- * artwork_log — gemeinsame Fortschritts-Protokollierung für Werke in sys.md
- * ("## Kunstwerke"-Sektion). Genutzt von soul_draw.mjs (Striche) und
- * soul_generate.mjs (WaveSpeed-Generierungen) — ein Werk kann über beide
- * Werkzeuge hinweg an derselben canvas_id weiterentwickelt werden.
+ * artwork_log — Fortschritts-Protokollierung für Werke in sys.md
+ * ("## Kunstwerke"-Sektion), genutzt von soul_draw.mjs.
  *
  * soul_growth_chain hasht bei jedem Anker-Vorgang den GESAMTEN sys.md-Inhalt
  * (siehe useChainAnchor.js's appendGrowthEntry()) — eine reine Änderung an
@@ -51,23 +49,4 @@ export async function recordArtworkProgress(soulId, canvasId, { stageLabel, cont
   let writeBuf = Buffer.from(md, 'utf8');
   if (wasEncrypted && vaultKeyHex) writeBuf = encryptBuf(writeBuf, vaultKeyHex);
   await writeFile(soulPath, writeBuf);
-}
-
-// Zählt bisherige Log-Einträge für eine canvas_id in sys.md ("## Kunstwerke") —
-// genutzt von soul_generate.mjs, um Archiv-Dateinamen ({canvas_id}_stage{n}.png)
-// eindeutig und fortlaufend zu vergeben.
-export async function countArtworkStages(soulId, canvasId) {
-  const soulPath = `${SOULS_DIR}${soulId}/sys.md`;
-  const rawBuf = await readFile(soulPath).catch(() => null);
-  if (!rawBuf) return 0;
-
-  const { vaultKeyHex } = await loadVaultMeta(soulId);
-  const md = decryptIfNeeded(rawBuf, vaultKeyHex).toString('utf8');
-  const section = 'Kunstwerke';
-  const re = new RegExp(`## ${escapeRegex(section)}[ \\t]*\\n([\\s\\S]*?)(?=\\n## |$)`);
-  const match = md.match(re);
-  if (!match) return 0;
-
-  const needle = `"${canvasId}"`;
-  return match[1].split('\n').filter(line => line.includes(needle)).length;
 }

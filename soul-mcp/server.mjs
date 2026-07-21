@@ -28,7 +28,6 @@ import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
 import { runSoulDraw, formatSoulDrawSummary } from './tools/soul_draw.mjs';
-import { runSoulGenerate, formatSoulGenerateSummary } from './tools/soul_generate.mjs';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { VerifyError, SettleError } from '@x402/core/types';
 import { listVaultSharedFs, formatVaultSharedList } from './tools/vault_shared_list.mjs';
@@ -487,23 +486,6 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const result = await runSoulDraw(soulId, null, { canvas_id, width, height, background, strokes, description });
         const text = formatSoulDrawSummary(canvas_id, strokes.length, result);
         return res.json({ content: [{ type: 'text', text }] });
-      }
-
-      // In-App-Chat-Gegenstück zum MCP-Tool soul_generate (siehe tools/soul_generate.mjs) —
-      // gleiches Muster wie soul_draw oben: teilt sich runSoulGenerate(), reine
-      // Textzusammenfassung statt Bild+Text (executeTool() liest nur content[0].text).
-      case 'soul_generate': {
-        const { canvas_id, decision, mode, prompt } = input;
-        if (!canvas_id || !decision || !mode || !prompt) {
-          return res.status(400).json({ error: 'canvas_id, decision, mode und prompt erforderlich' });
-        }
-        try {
-          const result = await runSoulGenerate(soulId, null, { canvas_id, decision, mode, prompt });
-          const text = formatSoulGenerateSummary(canvas_id, result);
-          return res.json({ content: [{ type: 'text', text }] });
-        } catch (err) {
-          return res.json({ content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true });
-        }
       }
 
       // In-App-Chat-Gegenstück zu vault_shared_list (siehe tools/vault_shared_list.mjs) —

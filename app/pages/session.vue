@@ -107,7 +107,6 @@
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" @master-rotated="handleMasterRotated" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" @download-soul="onSetupDownload" @import-soul="onSetupImport" />
     <ConfirmModal />
-    <EmergencyModal v-if="emergencyOpen" :soul-cert="soulToken" @close="emergencyOpen = false" @status-change="handleEmergencyChange" />
   </ClientOnly>
 </template>
 
@@ -128,7 +127,6 @@ import { useChainAnchor } from '~/composables/useChainAnchor.js'
 import { useCamera } from '~/composables/useCamera.js'
 import { validateSoul } from '#shared/utils/soulParser.js'
 import ChatInterface from '~/components/ChatInterface.vue'
-import EmergencyModal from '~/components/EmergencyModal.vue'
 import Modal from '~/components/ui/Modal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
 import ConfirmModal from '~/components/ConfirmModal.vue'
@@ -146,13 +144,6 @@ const { vaultKey } = useVaultSession()
 
 const certValidating = ref(true)
 const vaultScanning = ref(false)
-const emergencyOpen   = ref(false)
-const emergencyLevel  = ref(0)
-const emergencyActive = computed(() => emergencyLevel.value > 0)
-
-function handleEmergencyChange({ active, level }) {
-  emergencyLevel.value = active ? level : 0
-}
 const vaultStatus = ref(null)
 const mobileView = ref('chat')
 const anchorModalOpen = ref(false)
@@ -280,8 +271,6 @@ onMounted(async () => {
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
   fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
-  fetch('/api/emergency/status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    .then(r => r.json()).then(d => { if (d.active) emergencyLevel.value = d.level || 1 }).catch(() => {})
 
   // Initial AI greeting — nur beim ersten Laden, nicht bei Rückkehr
   if (!isReturn) addMessage('assistant', 'Hallo, was wollen wir heute tun?')

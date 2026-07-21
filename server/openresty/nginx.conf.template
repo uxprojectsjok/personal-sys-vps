@@ -11,7 +11,6 @@ error_log /usr/local/openresty/nginx/logs/error.log;
 env ANTHROPIC_API_KEY;
 env SOUL_MASTER_KEY;
 env API_SIGNING_KEY;
-env WAVESPEED_KEY;
 env ELEVENLABS_API_KEY;
 
 events {

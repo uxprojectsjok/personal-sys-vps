@@ -11,6 +11,8 @@
 >
 > Protocol overview and vision: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
+> **Third-party services:** This codebase integrates independent third-party services (Anthropic, ElevenLabs, Reown, Pinata, Polygon). I am not affiliated with, endorsed by, or a partner of any of them — their use reflects my own technical choices, not a recommendation. Full disclaimer: [Legal](#legal).
+
 ---
 
 **Your node on the internet. As a human.**
@@ -47,8 +49,8 @@ A SYS node is your personal endpoint on the internet — like an email address, 
 ```
 You  →  sys.md + Vault (your identity + context files)
      →  SYS node (your VPS, your domain)
-     →  AI systems (Claude, MCP tools, Zapier automations, …)
-     →  other SYS nodes (peer-to-peer, encrypted)
+     →  AI systems (Claude, ChatGPT, any MCP-compatible client, …)
+     →  other SYS nodes (peer-to-peer)
 ```
 
 **sys.md** is the compact core — who you are, distilled and versioned by every session. The **Vault** is everything around it: audio, images, video, and structured `vault/context/` files (`health.md`, `mind.md`, `shopping.md`, and anything else you add) that AI systems fetch on demand via dedicated MCP tools (`context_list`, `context_get`) and inject into the conversation alongside sys.md — rather than everything being crammed into sys.md itself. In practice, your identity on a SYS node is sys.md and the Vault working together.
@@ -66,15 +68,11 @@ This is separate from — and does not affect — the Peer Network: trusted peer
 
 ### Core use case
 
-> **Set up your soul. Interact in chat. The Soul-Archivar records.**
-
-Three phases — nothing more:
-
 | Phase | What happens | Who acts |
 |-------|-------------|----------|
-| **Set up** | Create soul, configure peers, connect MCP | You (once) |
-| **Interact** | Chat — with AI, peers, community | You (ongoing) |
-| **Record** | Soul grows silently, growth chain updated, server synced | Soul-Archivar KI (automatic) |
+| **Set up** | Create soul, configure peers, connect MCP | You |
+| **Interact** | Chat — with AI, peers, community | You |
+| **Record** | Soul grows silently, growth chain updated, server synced | Soul-Archivar KI |
 
 ---
 
@@ -86,29 +84,14 @@ Three phases — nothing more:
 - Gate password protects the entire interface
 - WebAuthn/Passkey biometric unlock (PRF extension — no stored password)
 - Per-soul master keys in Multi-Hoster mode — souls are cryptographically isolated
+- **Verify Identity**: fingerprint (WebAuthn), face (Claude Vision), and voice (local FFT) challenges, optionally combined with an on-chain wallet signature for 2FA — triggered by the owner or by an MCP tool call. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md)
+- **Connect**: lightweight device pairing — a new client presents a short-lived token, the owner approves, the device receives a personalized greeting. No password shared.
 
 **AI & Soul**
-- Chat with Claude — the KI embodies your soul in first person
-- **Soul-Archivar KI**: automatically observes every conversation and grows your sys.md — no button required. Runs after 3 min, then every 8 min and every 4th message.
-- **mind.md**: KI identity file — 7-section config the AI reads every session and can update itself (Selbstreflexion, Kommunikation, Intellekt). Write-protected sections: Identität, Grenzen.
-- Manual soul update available for on-demand deep analysis (Claude Sonnet)
-- Vision analysis: camera photo → Claude → soul reaction or AI image generation
-- Food photo → automatic food_log entry (AI identifies food, assigns A–E nutrition rating, no prompt needed)
-- Web search: KI can search the web mid-conversation and incorporate results
-- Text-to-speech via ElevenLabs (voice cloning supported)
-- Speech-to-text via ElevenLabs STT — voice input in chat
-- AI image generation via WaveSpeed AI
-- Background synthesis KI: reads the social sphere, contributes facts and impulses into the conversation
-- Full tool manifest injected into system prompt from first message — no multi-session onboarding
-
-> **Third-party services disclaimer:** The AI and voice services listed above (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or a partner of any of them. Their inclusion in this codebase reflects my own personal technical choices at the time of writing — nothing more. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, and take full responsibility for their integration. You are free to swap in any compatible alternative.
+Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Health & Body**
-- **health.md**: structured health context file — weekly/monthly Garmin metrics (resting HR, sleep, steps, active days) with WHO/ESC/NSF reference classifications
-- **Food Log**: every food photo logged as dated entry (A–E nutrition rating, name, notes) — aggregated weekly and monthly, annual journal with KW breakdown
-- **Health Sync**: Garmin Connect adapter (FR235 and others) — weekly cron or on-demand via chat command. Adapters for Apple Health and Oura ring included.
-- Profile capture via chat: `@audio` / `@face` / `@body` — inline capture cards for voice, photo, and motion directly in the chat stream
-- Health setup via init.sh script — the Settings UI shows connection status and the Garmin MFA login flow only (no credentials stored in the UI)
+Structured health context (Garmin/Apple Health/Oura sync, food log with nutrition ratings, voice/photo/motion capture) feeds `health.md` for the AI to reason over. Details: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Agent Runner (Autonomous Tasks)**
 - **SYS Agent** runs tasks from `agent.md` autonomously — Claude Code executes them on a schedule without any manual prompt
@@ -121,19 +104,11 @@ Three phases — nothing more:
 - Per-soul enable/disable — disabled souls are skipped silently at cron time
 - Agent writes directly to the soul's vault context files (full read/write access to `vault/context/`)
 
-**Emergency Protocol**
-- 3-level AI lock activatable from the header: KI-Sperre → AI-Blackout → Isolierung
-- Lua-based guard blocks API endpoints per level
-- Level 3 stops the MCP server via systemctl
-- SSH-only Level 4 (full shutdown)
-
 **Peer Network (Social Sphere)**
 - Add trusted peers by soul_id + endpoint
 - @mention peers by name in chat to send messages into the Social Sphere
 - Attach images and files — uploaded to `vault/shared`, served cross-domain with peer auth
-- Peer media proxy: browser fetches peer media through own node (no direct cross-domain exposure)
 - KI synthesis: reads the live social stream, periodically contributes a brief — forwarded to peers with `[KI]` attribution
-- Peer reachability shown inline; detailed error shown on auth failure
 - Beme: community broadcast channel — short messages visible across the network
 
 **AI-native Peer Messenger (Milestone — 2026-06-12)**
@@ -155,7 +130,6 @@ No third-party messaging service involved. No WhatsApp, no Telegram. The AI is t
 - Server vault: images, audio, video, context files — encrypted upload
 - Vault Shared: peer-accessible file store (`/var/lib/sys/souls/{soul_id}/vault_shared/`)
 - Optional vault encryption (AES-256-CBC, magic header `SYSCRYPT01`)
-- File viewer, audio player, video player built in
 
 **Local Vault Folder Structure**
 ```
@@ -168,7 +142,7 @@ vault/
 ├── context/            ← All context files for AI (.md, .txt, .pdf)
 │   ├── health.md       managed by health_sync / food_log
 │   ├── mind.md         managed by mind_write (AI personality config)
-│   ├── prompts.md      Single-host: auto-generated by generate-prompts.mjs after cert issuance. Multi-host: not present per soul — node-level file, kept in doc/ and distributed via init.sh
+│   ├── prompts.md      Single-host: auto-generated by generate-prompts.mjs after cert issuance. Multi-host: not present per soul — node-level file, kept in docs/ and distributed via init.sh
 │   ├── shopping.md     managed by shop_write_read
 │   └── *.md / *.pdf    any additional context (milestones, notes, CV…)
 │
@@ -181,26 +155,20 @@ vault/
 Root `.md` files without SYS frontmatter are also picked up as context — but keeping them in `context/` is cleaner. The sync strips the folder path; the server always receives only the filename.
 
 **Networking**
-- MCP server (OAuth 2.0 + PKCE) — Claude and other AI clients connect
+- MCP server (OAuth 2.0 + PKCE)
 - Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
 - Soul Skills: declarable capabilities exposed via MCP for agent discovery
-- Zapier integration — automate workflows and notifications via webhooks
-- Browser extension (Chrome MV3) for automatic soul_cert injection
-- Twilio call config — voice call integration
-- **Web Push Notifications**: browser subscribes at login via VAPID — node can push alerts without a background app
+- **Web Push Notifications**: browser subscribes via VAPID on app load — node can push alerts without a background app
 
 **Agent Marketplace**
 - Requires a **Public Node** (set at install time, see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject Marketplace and paid-agent requests server-side
 - Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
 - Paid agent access: x402 (USDC on Polygon) or PayPal → time-limited access token → Agent Sandbox read
-- Earnings ledger: track incoming agent payments on-chain
-- Trusted soul whitelist: grant read/write access to specific peer souls
 
 **Growth & Anchoring**
 - Soul Growth Chain: every session is cryptographically signed
 - Blockchain anchoring on Polygon (optional, user-initiated)
 - Maturity score 0–100 based on sys.md content depth
-- Cloud push: encrypted soul bundle exportable to external storage
 
 ### What the node does NOT do
 
@@ -221,7 +189,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 
 **Encryption:** AES-256-CBC, magic header `SYS\x01` + 16-byte IV. `sys.md` is encrypted client-side (WebCrypto API) before upload. The resulting key is also persisted server-side (`vault_key_hex` in `api_context.json`) — this is what lets background automation (Garmin health sync, mind consolidation, payment logging) read and write the vault without an active browser session. It means the key is not strictly browser-only; a compromised server can decrypt the vault. This is a deliberate trade-off in favor of working automation over a stricter zero-knowledge guarantee.
 
-**Encrypted at rest, server-managed:** `health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md` and `agent.md` are AES-256-CBC encrypted using the same persisted key whenever `cipher_mode` is `"ciphered"` (the default) — the server encrypts/decrypts them itself on every read and write, since they're written by server-side automation (Garmin sync, `mind_write`, payment logging, the write-activity log, the agent task queue) rather than the browser. `shopping.md` is deliberately never encrypted, since ad placements written by external paid agents need to work without vault access. `prompts.md` is a technical file and also plaintext by design. On Single-host nodes it lives in the owner's soul vault and is auto-generated from source code markers. On Multi-host nodes it is a node-level file (not per-soul) — kept in `doc/` in this repository and distributed by `init.sh`. Tenant souls do not receive `prompts.md`; each tenant configures their AI behaviour via `mind.md` instead.
+**Encrypted at rest, server-managed:** `health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md` and `agent.md` are AES-256-CBC encrypted using the same persisted key whenever `cipher_mode` is `"ciphered"` (the default) — the server encrypts/decrypts them itself on every read and write, since they're written by server-side automation (Garmin sync, `mind_write`, payment logging, the write-activity log, the agent task queue) rather than the browser. `shopping.md` is deliberately never encrypted, since ad placements written by external paid agents need to work without vault access. `prompts.md` is a technical file and also plaintext by design. On Single-host nodes it lives in the owner's soul vault and is auto-generated from source code markers. On Multi-host nodes it is a node-level file (not per-soul) — kept in `docs/` in this repository and distributed by `init.sh`. Tenant souls do not receive `prompts.md`; each tenant configures their AI behaviour via `mind.md` instead.
 
 ---
 
@@ -236,7 +204,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   │                        einrichten, einstellungen, exportieren
 │   ├── components/          ChatInterface, VaultExplorer, SoulViewer, AgentMarketplacePanel,
 │   │                        AgentSandboxCard, ApiContextPanel, AudioCaptureCard, CameraRecorder,
-│   │                        ConfirmModal, EmergencyModal, FirstSetupModal, LiveProfile,
+│   │                        ConfirmModal, FirstSetupModal, LiveProfile,
 │   │                        MediaPlayer, ModalCreateSoul, MotionCaptureCard, MotionRecorder,
 │   │                        SettingsModal, SoulAnchorModal, SoulDecryptModal,
 │   │                        SoulDownload, SoulEncryptModal, SoulMaturityMeter, SoulSetupWizard,
@@ -257,7 +225,6 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 │   ├── soul_auth.lua        Request authentication (per-soul key + X-Soul-Id aware)
 │   ├── vault_auth.lua       Vault endpoint auth
 │   ├── gate_auth.lua        Gate password protection
-│   ├── emergency_guard.lua  Emergency protocol — blocks endpoints per lock level
 │   ├── food_log.lua         Food entry writer — health.md + monthly rollover + KW archive
 │   ├── health_sync_trigger.lua  Trigger Garmin sync from chat
 │   ├── mind.lua             mind.md read/write endpoint
@@ -571,7 +538,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.45): 5659fe2c8feda7e4
+Current release fingerprint (v1.0.46): d8a4127ff4f29db9
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
@@ -646,7 +613,7 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 
 The only technical touchpoint between a running SYS node and UX-Projects infrastructure is the Polygon anchoring contract — which stores SHA-256 hashes only, contains no personal data, and operates autonomously on a public blockchain.
 
-**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, WaveSpeed AI, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
+**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 

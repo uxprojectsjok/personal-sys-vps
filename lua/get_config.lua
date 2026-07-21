@@ -47,13 +47,6 @@ if has_elevenlabs then
   elevenlabs_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
 end
 
-local has_wavespeed = type(soul_cfg.wavespeed_key) == "string" and soul_cfg.wavespeed_key ~= ""
-local wavespeed_preview = ""
-if has_wavespeed then
-  local k = soul_cfg.wavespeed_key
-  wavespeed_preview = k:sub(1, 6) .. "..." .. k:sub(-4)
-end
-
 local has_mcp = type(soul_cfg.mcp_url) == "string" and soul_cfg.mcp_url ~= ""
 local mcp_preview = ""
 if has_mcp then
@@ -117,8 +110,6 @@ ngx.say(cjson.encode({
   key_source           = key_source,
   elevenlabs_key_set   = has_elevenlabs,
   elevenlabs_preview   = elevenlabs_preview,
-  wavespeed_key_set    = has_wavespeed,
-  wavespeed_preview    = wavespeed_preview,
   elevenlabs_agent_url   = soul_cfg.elevenlabs_agent_url or cjson.null,
   model                  = soul_cfg.model or cjson.null,
   mcp_url_set            = has_mcp,

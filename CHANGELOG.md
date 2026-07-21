@@ -8,6 +8,38 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.46] — 2026-07-21
+
+**Security/Cleanup: removed two features that were never meant to be in this public repo — WaveSpeed AI image/video generation (accidentally ported from the private `personal-sys-vps-private` build, where the equivalent feature works against the maintainer's own key) and the Emergency Protocol AI-lock (no UI trigger anywhere in the frontend — `emergencyOpen`/`emergencyLevel` were set but never flipped to open the modal, confirmed by a full-tree grep for any click handler wiring it up). Both were fully functional at the API layer despite being unreachable or unintended here, which is its own risk. Same category of issue as the operator-data leaks fixed in v1.0.43/v1.0.44, this time a feature-level leak rather than a data leak.**
+
+**Removed — WaveSpeed AI**
+- `lua/wavespeed_submit.lua`, `lua/wavespeed_result.lua`: deleted — dedicated submit/poll endpoints for the WaveSpeed generation API.
+- `soul-mcp/tools/soul_generate.mjs`: deleted — the MCP tool and its in-app-chat counterpart (`case 'soul_generate'` in `soul-mcp/server.mjs`), unregistered from `soul-mcp/tools/index.mjs`.
+- `server/api/vision-analyze.post.js`: deleted — this dev-mode mirror of `/api/vision-analyze` only ever implemented the WaveSpeed-generation-prompt path, not the production `lua/vision_analyze.lua`'s food/product/soul-reaction detection (a pre-existing, unrelated dev/prod drift — noted but not fixed here, out of scope).
+- `lua/get_config.lua`, `lua/set_config.lua`, `lua/test_key.lua`: `wavespeed_key` config field and status reporting removed; other keys (Anthropic, ElevenLabs, MCP URL, Reown) unaffected.
+- `app/components/SettingsModal.vue`: WaveSpeed API key entry UI removed.
+- `app/components/ChatInterface.vue`, `app/composables/useClaude.js`: removed the `soul_generate` tool definition and its dead `genPrompt`/`outputMode` local variables (already unused before this fix — no button ever consumed them); corrected a stale `// WaveSpeed image generation` comment on what is actually the generic message-action dispatcher.
+- `server/openresty/vhost.conf.template`, `server/openresty/me.uxprojects-jok.com`, `server/openresty/nginx.conf.template`: removed the two WaveSpeed routes, the `WAVESPEED_KEY` env passthrough, and `api.wavespeed.ai`/`*.wavespeed.ai` from the CSP allowlist.
+- `server/api/mind.get.js`: removed the now-orphaned `## Wavespeed` section from the default `mind.md` template.
+- `i18n/locales/{de,en}.json`, `NOTICE`, `SECURITY.md`, `server/openresty/INDEX.md`: WaveSpeed strings and mentions removed.
+
+**Removed — Emergency Protocol**
+- `lua/soul_emergency.lua`, `lua/emergency_guard.lua`: deleted — the isolate/restore/status endpoint and the rewrite-phase guard three other endpoints (`soul-update`, `chat`, `beme`) called into.
+- `server/api/emergency/{isolate,restore,status}.post|get.js`: deleted — dev mirrors.
+- `app/components/EmergencyModal.vue`: deleted.
+- `app/pages/session.vue`: removed the modal mount, its import, `emergencyOpen`/`emergencyLevel`/`emergencyActive` state, the `handleEmergencyChange` handler, and the `/api/emergency/status` poll on load.
+- `server/openresty/vhost.conf.template`, `server/openresty/me.uxprojects-jok.com`: removed the `/api/emergency/*` location block and the three `rewrite_by_lua_file emergency_guard.lua` gates on `soul-update`, `chat`, and `beme`.
+- `i18n/locales/{de,en}.json`: removed the `emergency` key block.
+
+**Docs**
+- `README.md`: removed the **Emergency Protocol** feature section and its `EmergencyModal`/`emergency_guard.lua` mentions in Repository Structure. (WaveSpeed was already absent from the current README text before this release — see v1.0.45.)
+
+**Notes**
+- `server/openresty/me.uxprojects-jok.com` is a real, generated vhost config for the maintainer's own domain, tracked in this repo despite `project-hash.mjs` explicitly excluding it as "generated instance file, not template" — flagged for the maintainer to decide whether it belongs in a public template repo at all; not resolved as part of this release.
+- `NOTICE` still lists Twilio as an integrated third-party service; per this same investigation it has no working implementation anywhere in `lua/` or `soul-mcp/tools/` (only a prompt-template mention) — flagged, not removed here since it wasn't part of this cleanup's confirmed scope.
+
+---
+
 ## [1.0.45] — 2026-07-21
 
 **Docs: professionalization pass across the public-facing documentation — dead links removed, README given visual structure (badges, table of contents, tightened status banner), the three German-language `docs/spec/` files translated to English and restructured out of dev-diary form, plus new repo-level polish (SECURITY.md, GitHub topics, homepage URL).**

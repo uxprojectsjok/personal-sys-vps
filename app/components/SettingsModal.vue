@@ -81,31 +81,6 @@
                 </div>
               </div>
 
-              <!-- WaveSpeed Key (Bild-/Video-Generierung, intern — siehe kro-airtist-konzept.md) -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.wavespeed_key') }}
-                  <span v-if="wavespeedKeySet" class="sm-key-ok">{{ wavespeedPreview }}</span>
-                </label>
-                <div style="display:flex;gap:0">
-                  <input
-                    v-model="wavespeedKey"
-                    type="password"
-                    class="sys-input sys-input--mono"
-                    style="flex:1;border-radius:var(--r-xs)"
-                    :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
-                    :placeholder="wavespeedKeySet ? $t('common.overwrite_placeholder') : $t('settings.wavespeed_key') + '…'"
-                    autocomplete="off"
-                    spellcheck="false"
-                    @input="wavespeedDirty = true"
-                    @keyup.enter="saveConfig"
-                  />
-                </div>
-                <div v-if="wavespeedKeySet" style="display:flex;gap:8px">
-                  <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
-                </div>
-              </div>
-
               <!-- ElevenLabs Agent-URL (Klartext-URL, kein eye) -->
               <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label">
@@ -1185,10 +1160,6 @@ const elevenlabsKey     = ref('')
 const elevenlabsKeySet  = ref(false)
 const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
-const wavespeedKey      = ref('')
-const wavespeedKeySet   = ref(false)
-const wavespeedPreview  = ref('')
-const wavespeedDirty    = ref(false)
 
 const reownProjectId = ref('')
 const reownSet       = ref(false)
@@ -1232,8 +1203,6 @@ async function loadStatus() {
     keyPreview.value      = d.key_preview || ''
     elevenlabsKeySet.value  = !!d.elevenlabs_key_set
     elevenlabsPreview.value = d.elevenlabs_preview || ''
-    wavespeedKeySet.value  = !!d.wavespeed_key_set
-    wavespeedPreview.value = d.wavespeed_preview || ''
     agentUrlSet.value = !!d.elevenlabs_agent_url
     agentUrl.value    = d.elevenlabs_agent_url || ''
     mcpUrlSet.value  = !!d.mcp_url_set
@@ -1409,7 +1378,6 @@ async function deleteKey(field) {
     })
     if (field === 'anthropic_key')    { keySource.value = 'none'; keyPreview.value = '' }
     if (field === 'elevenlabs_key')   { elevenlabsKeySet.value = false; elevenlabsPreview.value = '' }
-    if (field === 'wavespeed_key')    { wavespeedKeySet.value = false; wavespeedPreview.value = '' }
     if (field === 'reown_project_id') { reownSet.value = false; reownPreview.value = '' }
     if (field === 'mcp_url')          { mcpUrlSet.value = false; mcpPreview.value = ''; clearMcpCache() }
     await loadStatus()
@@ -1484,7 +1452,6 @@ async function saveConfig() {
     if (apiKey.value) body.anthropic_key = sanitizeKey(apiKey.value)
     if (model.value) body.model = model.value
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
-    if (wavespeedDirty.value) body.wavespeed_key = sanitizeKey(wavespeedKey.value)
     if (mcpDirty.value) body.mcp_url = sanitizeKey(mcpUrl.value)
     if (reownDirty.value) body.reown_project_id = reownProjectId.value.trim()
     const res = await fetch('/api/set-config', {
@@ -1502,8 +1469,6 @@ async function saveConfig() {
       apiKey.value        = ''
       elevenlabsKey.value  = ''
       elevenlabsDirty.value = false
-      wavespeedKey.value  = ''
-      wavespeedDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
       reownProjectId.value = ''
@@ -2333,8 +2298,6 @@ async function initSettings() {
   tab.value            = 'api'
   elevenlabsKey.value  = ''
   elevenlabsDirty.value = false
-  wavespeedKey.value  = ''
-  wavespeedDirty.value = false
 }
 
 watch(() => props.open, (val) => { if (val) initSettings() })
