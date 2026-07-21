@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.43] — 2026-07-21
+
+**Fixed: a security/privacy issue and a build-breaking bug, both from the same incomplete "WIP: port v1.0.65-1.0.67 fixes from private repo" commit (`b318d17`) — four whole i18n sections (`impressum`, `datenschutz`, `lizenz`, `consentBanner`) were pasted into `i18n/locales/{de,en}.json` from `personal-sys-vps-private` without genericizing operator-specific fields or ever running a build against this repo.**
+
+Found live-updating karo-familie.de: `npm run generate` failed immediately with `[unplugin-vue-i18n] Detected HTML in ... message`, because these sections embed raw HTML (`<p>`, `<a>`, `<strong>`) directly in translation strings — something every other HTML-bearing message in this file avoids. Tracing the failing key (`impressum.s1Content`) surfaced the real problem: unlike the neighboring `s5Content` field (which correctly uses a `__NODE_URL__` placeholder), the operator's real name, home address, and phone number had been pasted in as literal content — live on the public GitHub repo since 2026-07-15/2026-07-20. None of the four sections are wired to any `.vue` page in this repo (confirmed via full-tree grep) — they're dead, unreferenced, and were evidently never exercised.
+
+**Security**
+- Personal contact data (name, street address, phone number) that leaked into `i18n/locales/{de,en}.json`'s `impressum`/`datenschutz` sections has been removed from current `main`. It remains in git history on older commits/tags — a separate history rewrite (`git filter-repo`/BFG) is needed to fully purge it; not done as part of this fix.
+
+**Removed**
+- `i18n/locales/de.json`, `i18n/locales/en.json`: deleted the entire `impressum`, `datenschutz`, `lizenz`, and `consentBanner` top-level keys — confirmed zero references anywhere in `app/`. (This repo's actual legal-notice page, `app/pages/agb.vue`/`public/agb.txt`, is unaffected and unrelated to this bug — it predates this port and is intentionally real content for this reference deployment.)
+
+**Notes**
+- `package-lock.json`/`soul-mcp/package-lock.json`: regenerated via a real `npm install` on both the root app and `soul-mcp` — the committed lockfiles from the v1.0.38 x402 port were incomplete (missing entries for the new `@x402/*`/`viem`/`@napi-rs/canvas` dependency tree), another sign that build was never actually run against this repo before committing.
+- If a future port from the private repo reintroduces operator-identity content, genericize it the same way `s5Content`'s `__NODE_URL__` placeholder already does, and run `npm run generate` before committing.
+
 ## [1.0.42] — 2026-07-20
 
 **Ported: `beme_chat_paid`'s owner-bypass (`v1.0.39`) only recognized the `soul_id.cert` credential format, not the 64-hex `service_token` that OAuth-connected clients (Claude.ai, ChatGPT via the Setup Assistant) actually use — that request shape fell through to the paid-`access_token` check and failed. Added a third auth path checking `authorized_services.json`, gated on `permissions.soul == true` (the same threshold that token already has elsewhere).**
