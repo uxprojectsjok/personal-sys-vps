@@ -107,13 +107,7 @@ This is separate from — and does not affect — the Peer Network: trusted peer
 ### What the node does
 
 **Identity & Authentication**
-- sys.md stored encrypted (AES-256-CBC, key stays in the browser)
-- HMAC-SHA256 soul_cert — stateless, no cookies, no OAuth
-- Gate password protects the entire interface
-- WebAuthn/Passkey biometric unlock (PRF extension — no stored password)
-- Per-soul master keys in Multi-Hoster mode — souls are cryptographically isolated
-- **Verify Identity**: fingerprint (WebAuthn), face (Claude Vision), and voice (local FFT) challenges, optionally combined with an on-chain wallet signature for 2FA — triggered by the owner or by an MCP tool call. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md)
-- **Connect**: lightweight device pairing — a new client presents a short-lived token, the owner approves, the device receives a personalized greeting. No password shared.
+A password gate and a stateless HMAC soul_cert (no cookies, no OAuth) protect the node; sys.md stays encrypted client-side. WebAuthn/Passkey unlock, per-soul master keys in Multi-Hoster mode, biometric identity verification (fingerprint, face, voice, optional wallet 2FA), and short-lived-token device pairing round out the model. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md) · Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **AI & Soul**
 Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
@@ -503,7 +497,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.49): 5753862f63ef8dcf
+Current release fingerprint (v1.0.50): 8fe58eb612aed2fa
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

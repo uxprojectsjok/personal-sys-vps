@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.50] — 2026-07-21
+
+**Docs: condensed the last detailed bullet list — Identity & Authentication now matches the teaser style used across the rest of "What the node does".**
+
+**Changed**
+- `README.md`: **Identity & Authentication** collapsed from a 7-bullet list into a one-paragraph teaser, keeping the internal spec link ([docs/spec/verification-hub.md](docs/spec/verification-hub.md)) alongside the external feature-list pointer. All of "What the node does" now follows the same short-teaser-plus-link pattern.
+
+---
+
 ## [1.0.49] — 2026-07-21
 
 **Fixed a real bug in `utils/project-hash.mjs`: it walked the filesystem directly instead of using git's tracked-file list, so local, untracked files sitting in a maintainer's working copy (a private-repo `init.sh`, `public/soul_test.md`, `server/openresty/INDEX.md` — all correctly gitignored, none of them shipped in this repo) silently became part of the fingerprint. Every fingerprint value published in this README before this release was computed with that extra, non-reproducible input — an operator running the command against their own clean `git clone` would never have matched it.**
