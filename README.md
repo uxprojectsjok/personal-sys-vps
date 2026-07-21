@@ -106,29 +106,31 @@ This is separate from — and does not affect — the Peer Network: trusted peer
 
 ### What the node does
 
+Full feature list, screenshots, and walkthroughs: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+
 **Identity & Authentication**
-A password gate and a stateless HMAC soul_cert (no cookies, no OAuth) protect the node; sys.md stays encrypted client-side. WebAuthn/Passkey unlock, per-soul master keys in Multi-Hoster mode, biometric identity verification (fingerprint, face, voice, optional wallet 2FA), and short-lived-token device pairing round out the model. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md) · Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+A password gate and a stateless HMAC soul_cert (no cookies, no OAuth) protect the node; sys.md stays encrypted client-side. WebAuthn/Passkey unlock, per-soul master keys in Multi-Hoster mode, biometric identity verification (fingerprint, face, voice, optional wallet 2FA), and short-lived-token device pairing round out the model. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md)
 
 **AI & Soul**
-Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation.
 
 **Health & Body**
-Structured health context (Garmin/Apple Health/Oura sync, food log with nutrition ratings, voice/photo/motion capture) feeds `health.md` for the AI to reason over. Details: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Structured health context (Garmin/Apple Health/Oura sync, food log with nutrition ratings, voice/photo/motion capture) feeds `health.md` for the AI to reason over.
 
 **Agent Runner (Autonomous Tasks)**
-Standing and one-off tasks defined in `agent.md` run on a schedule with no manual prompt required, with full read/write access to the soul's Vault and optional Zapier MCP actions. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Standing and one-off tasks defined in `agent.md` run on a schedule with no manual prompt required, with full read/write access to the soul's Vault and optional Zapier MCP actions.
 
 **Peer Network (Social Sphere)**
-Trusted peers connect by soul_id, @mention routing sends messages into the Social Sphere, files attach via `vault/shared`, and Beme broadcasts short messages network-wide. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Trusted peers connect by soul_id, @mention routing sends messages into the Social Sphere, files attach via `vault/shared`, and Beme broadcasts short messages network-wide.
 
 **Networking**
-MCP server (OAuth 2.0 + PKCE), soul-cert peer whitelisting, declarable Soul Skills for agent discovery, and Web Push for background alerts. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+MCP server (OAuth 2.0 + PKCE), soul-cert peer whitelisting, declarable Soul Skills for agent discovery, and Web Push for background alerts.
 
 **Agent Marketplace**
-Public nodes can register on-chain and expose paid, sandboxed soul access to external AI agents via x402 (USDC) or PayPal. Requires a **Public Node** (see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject this server-side. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Public nodes can register on-chain and expose paid, sandboxed soul access to external AI agents via x402 (USDC) or PayPal. Requires a **Public Node** (see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject this server-side.
 
 **Growth & Anchoring**
-Every session is cryptographically signed into a growth chain; souls can optionally anchor on Polygon and track a maturity score based on sys.md depth. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
+Every session is cryptographically signed into a growth chain; souls can optionally anchor on Polygon and track a maturity score based on sys.md depth.
 
 ### What the node does NOT do
 
@@ -497,7 +499,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.50): 8fe58eb612aed2fa
+Current release fingerprint (v1.0.51): c9db5f59bf57f851
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

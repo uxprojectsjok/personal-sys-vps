@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.51] — 2026-07-21
+
+**Docs: de-duplicated the sys.uxprojects-jok.com link that had accumulated once per teaser section in "What the node does" (8 repeats) into a single pointer at the top of the section.**
+
+**Changed**
+- `README.md`: added one "Full feature list, screenshots, and walkthroughs" link right under the `### What the node does` heading; removed the repeated per-section link from Identity & Authentication, AI & Soul, Health & Body, Agent Runner, Peer Network, Networking, Agent Marketplace, and Growth & Anchoring. Internal links that point somewhere more specific than the marketing site (`docs/spec/verification-hub.md`, the `#what-is-a-sys-node` anchor for the Public Node requirement) were kept.
+
+---
+
 ## [1.0.50] — 2026-07-21
 
 **Docs: condensed the last detailed bullet list — Identity & Authentication now matches the teaser style used across the rest of "What the node does".**
