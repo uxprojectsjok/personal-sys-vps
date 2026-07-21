@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.55] — 2026-07-21
+
+**Docs: made the Archivar heading warning visually stand out as a GitHub alert instead of a plain blockquote, and replaced the "Key tools" sample in MCP Integration with a set that actually reflects real usage instead of an arbitrary pick.**
+
+**Changed**
+- `README.md`, "sys.md Format": the `## ` heading warning inside AGENT/SOCIAL blocks is data-loss-relevant (the Archivar can silently remove misused headings) and was easy to skim past as a regular note. Converted to a GitHub `[!WARNING]` alert, which renders with a distinct colored box on GitHub instead of blending in with the surrounding blockquotes.
+- `README.md`, "MCP Integration": dropped "Claude and other" from "Claude and other MCP-compatible AI clients" — same over-specific-then-generic wording already trimmed from the intro diagram in an earlier pass, just missed here.
+- `README.md`, "MCP Integration" Key tools: replaced `vault_manifest`, `audio_list`, `verify_human` with `context_get`, `verify_identity`, `beme_chat`, based on real per-session tool-call frequency (`verify_identity` and `soul_write` were the two most-used tools by a wide margin; `beme_chat` and `context_get` next; `audio_list` wasn't called at all). `soul_read` and `soul_discover` kept — `soul_read` is mandated first-call by the tool-selection guide regardless of raw frequency, `soul_discover` is the network/marketplace discovery entry point referenced elsewhere in this README.
+
+---
+
 ## [1.0.54] — 2026-07-21
 
 **Fixed: `soul_write` with `mode="replace"` on the Agent Sandbox or Social Sphere section silently stripped the `<!-- AGENT:START/END -->` / `<!-- SOCIAL:START/END -->` delimiters, collapsing a protected sphere back to plain text. `append`/`prepend` had a related bug — new content landed outside the markers instead of inside them. Found live: an AI session wrote a message into "Agent Sandbox" via `soul_write`, the markers vanished, and the chat UI stopped rendering the section because it depends on them to recognize it.**

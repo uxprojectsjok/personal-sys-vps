@@ -340,7 +340,8 @@ The Soul Archivar automatically distills conversations into a structured JSON bl
 
 The Archivar compresses `## section` content into LONGMEM facts after each crystallization, then clears the section. Both representations are maintained in parallel: LONGMEM for AI context, `## sections` for tool access.
 
-> **Note:** Do not use `## ` headings inside `<!-- AGENT:START/END -->` or `<!-- SOCIAL:START/END -->` blocks. Use plain text or `###` subheadings. Top-level `## ` headings are parsed as independent sections and will be processed (and potentially removed) by the Archivar.
+> [!WARNING]
+> Do not use `## ` headings inside `<!-- AGENT:START/END -->` or `<!-- SOCIAL:START/END -->` blocks. Use plain text or `###` subheadings. Top-level `## ` headings are parsed as independent sections and will be processed (and potentially removed) by the Archivar.
 
 Full specification: [docs/spec/sys_md.md](docs/spec/sys_md.md)
 
@@ -359,9 +360,9 @@ bearer = soul_id + "." + soul_cert
 
 ## MCP Integration
 
-`soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. Claude and other MCP-compatible AI clients can connect and access sys.md and vault files with granular permissions.
+`soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. MCP-compatible AI clients can connect and access sys.md and vault files with granular permissions.
 
-Key tools: `soul_read`, `soul_write`, `vault_manifest`, `audio_list`, `soul_discover`, `verify_human`
+Key tools: `soul_read`, `soul_write`, `context_get`, `verify_identity`, `beme_chat`, `soul_discover`
 
 ---
 
@@ -504,7 +505,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.54): 522b88228aaae9a2
+Current release fingerprint (v1.0.55): 30ab5da76541bb51
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
