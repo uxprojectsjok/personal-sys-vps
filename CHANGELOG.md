@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.62] — 2026-07-21
+
+**Docs: Status section's "Smart contract" bullet claimed verifiability but didn't print the address, same gap already fixed in On-Chain Anchoring (v1.0.59).**
+
+**Changed**
+- `README.md`, "Status": added the contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` inline and linked "Polygonscan" to the address-specific page instead of the bare site.
+
+---
+
 ## [1.0.61] — 2026-07-21
 
 **Fixed: "UX-Projects" appeared standalone (without the natural person's name attached) in three sentences — in Germany, a trade name used alone without the operating individual's name attached can read as implying an incorporated entity ("Unternehmen") rather than a sole proprietor. Every other mention in this repo already correctly pairs it with "Jan-Oliver Karo" (copyright lines, NOTICE) or uses first person; these three were the exceptions.**
