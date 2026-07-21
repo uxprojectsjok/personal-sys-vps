@@ -449,7 +449,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.62): 76a8156ec762c981
+Current release fingerprint (v1.0.63): 18ec935407e4d1a1
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -548,7 +548,7 @@ Apache License 2.0 — see [LICENSE](LICENSE)
 
 Copyright © 2026 Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com), Marburg, Germany
 
-"SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo. See [NOTICE](NOTICE) for trademark and attribution requirements.
+"SaveYourSoul" and "SYS" are trademarks of Jan-Oliver Karo — [UX-Projects](https://uxprojects-jok.com). See [NOTICE](NOTICE) for trademark and attribution requirements.
 
 ---
 

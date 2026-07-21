@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.63] — 2026-07-21
+
+**Fixed: the trademark ownership line in License said "trademarks of Jan-Oliver Karo" — the name alone, without "UX-Projects" attached. Same naming-consistency category as v1.0.61 (which fixed "UX-Projects" appearing without the name), just the reverse direction: this repo's convention pairs both wherever ownership is stated, and NOTICE and the Copyright line right above this one already do.**
+
+**Fixed**
+- `README.md`, "License": "trademarks of Jan-Oliver Karo" → "trademarks of Jan-Oliver Karo — UX-Projects", matching NOTICE's trademark clause and the Copyright line two lines above it.
+
+---
+
 ## [1.0.62] — 2026-07-21
 
 **Docs: Status section's "Smart contract" bullet claimed verifiability but didn't print the address, same gap already fixed in On-Chain Anchoring (v1.0.59).**
