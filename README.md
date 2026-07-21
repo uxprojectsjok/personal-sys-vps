@@ -15,12 +15,9 @@
 
 **Your node on the internet. As a human.**
 
-A SYS node is not a service someone runs for you — it runs on your server, under your domain, with your data. You are the owner, the operator, and the sole user.
+A SYS node is not a service someone runs for you — it runs on your server, under your domain, with your data. You are always the operator. In Personal mode you are also the sole soul on the node; in Multi-Hoster mode, you host multiple souls — each cryptographically isolated behind its own key, unable to read one another.
 
-The node is where your **sys.md** lives: a personal identity file you can feed into AI systems. It grows with every session, belongs exclusively to you, and leaves your server only when you actively decide to share it.
-
-> **Decentralized, self-hosted, password-protected.**
-> No provider has access. No cloud dependency. No terms of service that can change.
+The node is where your identity lives: **sys.md**, grown by every session, together with the **Vault** — structured context files (health, mind, shopping, and more, under `vault/context/`) that AI systems read alongside sys.md to act on your behalf. Together they belong exclusively to you and leave your server only when you actively decide to share them.
 
 ---
 
@@ -48,13 +45,24 @@ The node is where your **sys.md** lives: a personal identity file you can feed i
 A SYS node is your personal endpoint on the internet — like an email address, but for your identity as a human in a world with AI.
 
 ```
-You  →  sys.md (your identity file)
+You  →  sys.md + Vault (your identity + context files)
      →  SYS node (your VPS, your domain)
      →  AI systems (Claude, MCP tools, Zapier automations, …)
      →  other SYS nodes (peer-to-peer, encrypted)
 ```
 
-The node accepts souls per its configured mode. In **Personal** mode, the first person to register becomes the permanent owner. In **Multi-Hoster** mode, multiple souls share one VPS (families, teams, hosting services).
+**sys.md** is the compact core — who you are, distilled and versioned by every session. The **Vault** is everything around it: audio, images, video, and structured `vault/context/` files (`health.md`, `mind.md`, `shopping.md`, and anything else you add) that AI systems fetch on demand via dedicated MCP tools (`context_list`, `context_get`) and inject into the conversation alongside sys.md — rather than everything being crammed into sys.md itself. In practice, your identity on a SYS node is sys.md and the Vault working together.
+
+The node accepts souls per its configured mode. In **Personal** mode, the first person to register becomes the permanent owner. In **Multi-Hoster** mode, multiple souls share one VPS (families, teams, hosting services) — cryptographically isolated from each other, each behind its own key.
+
+Independently of soul mode, a node is also set up as **Public** or **Private** — a one-time choice made in `init.sh`:
+
+| Node type | What it controls |
+|---|---|
+| **Public** (default) | Full feature set — the node can accept the Agent Marketplace: external agents pay (x402 or PayPal) for time-limited, sandboxed access to your soul. |
+| **Private** | Marketplace and paid-agent access are rejected server-side — not just hidden in the UI. Changing it requires re-running `init.sh`. |
+
+This is separate from — and does not affect — the Peer Network: trusted peer souls you explicitly whitelist (`amortization.trusted_souls`) always work, on both Public and Private nodes. Public/Private only gates unsolicited, paying external agents.
 
 ### Core use case
 
@@ -182,6 +190,7 @@ Root `.md` files without SYS frontmatter are also picked up as context — but k
 - **Web Push Notifications**: browser subscribes at login via VAPID — node can push alerts without a background app
 
 **Agent Marketplace**
+- Requires a **Public Node** (set at install time, see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject Marketplace and paid-agent requests server-side
 - Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
 - Paid agent access: x402 (USDC on Polygon) or PayPal → time-limited access token → Agent Sandbox read
 - Earnings ledger: track incoming agent payments on-chain
@@ -562,7 +571,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.45): bf65c00e46daf138
+Current release fingerprint (v1.0.45): 5659fe2c8feda7e4
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
