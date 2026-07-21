@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.67] — 2026-07-21
+
+**Docs: `docs/spec/verification-hub.md` was badly out of date — verified against the current codebase and substantially rewritten. The system evolved well past what the spec described: a page split, a real cross-device flow, and a security fix closing a hole where biometric methods could be marked verified without any real scan happening.**
+
+**Fixed**
+- The spec described a single page `/verbindung`, which no longer exists. The verification UI is now split: `/connection` is the owner dashboard that only *launches* verification, and `/verify` is a standalone page that does the actual work — including a `vt:`-token-authenticated cross-device flow (scan a QR code with your phone, verify there, the desktop tab auto-closes via a claim mechanism).
+- Documented 6 `lua/verify_*.lua` endpoints that exist in the codebase but weren't in the spec at all: `verify_claim` (multi-device coordination), `verify_fingerprint_check` and `verify_passkey_register` (the WebAuthn security fix), `verify_human_check` (a new, independent on-chain "real human" scoring dimension), `verify_reown` (WalletConnect init for the scanning device), and `verify_voice_hq_check` (anti-replay).
+- **Security-relevant correction**: the old spec's `/api/verify/complete` description implied the browser's `verified: true` claim was trusted. It no longer is, for any biometric method — the server re-derives `verified` from proof flags it sets itself (a real WebAuthn signature check, an anti-spoofing/liveness face check, or an anti-replay spoken-code check via ElevenLabs Scribe). Plain FFT-only `voice` (no anti-replay proof) has been retired as a challenge method; `voice_hq` is the only voice option now.
+- Updated the MCP tool section: `verify_identity`'s `method` parameter is now a plural `methods` array with no `voice` option, the tool short-polls internally instead of requiring the caller to always re-call, and its result message now surfaces every scoring dimension (per-method timestamps, wallet, blockchain-anchor line) instead of a single pass/fail.
+- Updated the challenge-file-format example with ~12 fields that didn't exist in the old spec (`claimed_by`, `voice_code`, `webauthn_challenge`, the `*_verified` proof flags, `human_verified` and related fields, `method_results`).
+- Design Decisions and Overview tables reworked to reflect four independent, stacking proof dimensions (fingerprint, face, voice, human check) plus wallet 2FA, instead of four mutually-exclusive "levels."
+
+---
+
 ## [1.0.66] — 2026-07-21
 
 **Docs: the uxprojects-jok.com link in the two Markdown-rendered "UX-Projects Jan-Oliver Karo" mentions only wrapped "UX-Projects" — expanded to cover the full name.**

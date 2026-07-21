@@ -1,20 +1,52 @@
 # Verification Hub
 
-Page: `/verbindung`
+Pages: `/connection` (dashboard/launcher) and `/verify` (the actual verification flow)
 
 ---
 
 ## Status
 
-The Verbindung page doubles as a **verification hub**: alongside its original QR-Connect flow, it offers three biometric verification tiles (fingerprint, face, voice) and a 2FA wallet card. A soul owner can prove their identity either on their own initiative or in response to a challenge raised by an MCP tool (Claude AI).
+Identity verification is a standalone, minimal-UI flow (`/verify`) launched from the owner's dashboard (`/connection`), from a raw `verify_url` an MCP tool hands the AI, or by scanning a QR code `/verify` displays itself. It supports four independent, stackable proof dimensions — fingerprint, face, voice, and an on-chain "real human" check — plus wallet 2FA, and every biometric method now carries real server-side cryptographic or anti-replay proof instead of a client-asserted boolean.
 
-- **Fingerprint** — WebAuthn via `useSoulPasskey.js`. Fully functional.
-- **Voice** — local spectral analysis, no external service. Chosen over ElevenLabs Speaker Verification in favor of a fully self-hosted solution (Web Audio FFT). Vault audio (`vault/audio/*.mp3`) serves as the reference sample, loaded via an auth token and decoded in the browser.
-- **Face** — runs server-side via Claude Haiku Vision rather than a client-side `face-api.js` model (which would need ~25 MB of models and a CDN dependency). More accurate, no model download, and the Anthropic key is already available in `config.json`. The profile PNG from `vault/images/` is decrypted server-side and passed directly to Claude.
-- **Motion verification** (`motion_face_*.mp4`, `motion_body_*.mp4`) — considered, currently deferred. The pending blink-detection liveness check (see Known Limitations) covers the use case sufficiently for now.
-- **2FA wallet → soul identity proof** — replaces a plain `signMessage` with `proveIdentity()` from `useChainAnchor`. The proof checks on-chain via `contract.soulOwner(soulIdBytes32)` that the connected wallet actually owns this soul on Polygon. The MCP tool verifies cryptographically: `verifyMessage(nonce, signature) === wallet`, plus the on-chain check.
-- **MCP tool `verify_identity`** — creates challenges and returns status, including `verified_level: "2fa"`. Two-step flow: create the challenge first, then check status after the user acts.
-- **Pending-challenge banner** — the app polls `/api/verify/pending` every 8 seconds. When Claude creates a challenge, a banner appears with a direct "Verify now" button for the right method.
+> [!IMPORTANT]
+> **Security fix, all three biometric methods:** it used to be possible for a client to POST `verified: true` for `fingerprint`/`face`/`voice` straight to `/api/verify/complete` without any real scan ever happening — the server just trusted the claim. This has been closed for all three methods; see "Server-side proof" below. Plain FFT-only `voice` (no anti-replay proof) has been retired as a challenge method entirely — `voice_hq` is now the only voice option.
+
+- **Fingerprint** — WebAuthn via `useSoulPasskey.js`. The server now verifies a real WebAuthn assertion (signature + challenge + origin) against a public key registered ahead of time, rather than trusting the browser's word for it.
+- **Face** — server-side via Claude Vision against `vault/images/profile.png`. An `hq` mode adds explicit anti-spoofing checks (screen reflection, paper edge/curl, flat lighting, moiré) and requires high confidence *and* a liveness pass.
+- **Voice (`voice_hq`)** — the client-side FFT speaker-similarity check (unchanged) *plus* a server-side anti-replay proof: the user reads a server-generated 6-digit code aloud, and ElevenLabs Scribe (STT) confirms the code was actually spoken in that exact recording.
+- **Human check** — a fourth, independent dimension: verifies the soul is anchored on the Polygon SoulRegistry contract (real owner + at least one anchor) and adds +1 to the score. Stacks with any/all biometric methods; not gated behind them.
+- **2FA wallet** — `proveIdentity()` from `useChainAnchor` checks on-chain via `contract.soulOwner(soulIdBytes32)` that the connected wallet owns this soul, cryptographically re-verified by the MCP tool.
+- **Cross-device (QR-scan)** — `/verify` can render a QR code of its own URL; a second device (typically a phone) scans it and authenticates via a short-lived `vt:` token instead of a soul session. A claim mechanism (`verify_claim.lua`) ensures only one device "wins" a challenge once it starts doing the actual work — the other device's tab self-closes.
+- **MCP tool `verify_identity`** — creates challenges (now for one or more methods at once) and polls status, including a `score` that reflects everything completed so far.
+
+---
+
+## Pages: `/connection` vs `/verify`
+
+These are two separate pages with different roles — there is no single "Verbindung" page anymore.
+
+| Page | Role | Auth |
+|---|---|---|
+| **`/connection`** | Owner dashboard: QR-Connect (MCP endpoint pairing, unrelated to biometrics), the pending-MCP-challenge banner, a pending trust-request banner, trusted-connector list. Does **not** perform any biometric check itself — it only launches `/verify`. | Normal `soul_cert` session (`useSoul()`) |
+| **`/verify`** | Standalone card UI (`layout: false`) that does all the actual work: method chooser, fingerprint/face/voice/voice_hq flows, wallet 2FA, human check, QR hand-off to a second device. | `soul_cert` **or** a `vt:` verify-token |
+
+**The `vt:` token** is a 48-hex-char value minted alongside every challenge (`verify_challenge.lua`), stored in a shared-dict cache plus a flat-file fallback, and embedded in the challenge's `verify_url` (`.../verify?id=<challenge_id>&m=<methods>&vt=<verify_token>`). `vault_auth.lua` accepts it as a full stand-in for a soul_cert on every `/api/verify/*` endpoint — this is what lets a phone that scanned a QR code complete verification without ever being logged into the Soul app. `GET /api/verify/reown` is the one exception: it has no `access_by_lua_file` gate at all and parses the `vt:` prefix itself, since it's only ever called from the scanning device before that device has any other session.
+
+When both a QR-showing device and a scanning device are open on the same challenge, each generates its own random `client_id` and calls `verify_claim.lua` before starting a method attempt; whichever device's `client_id` gets stored in `claimed_by` "wins," and the other device's status poll sees the mismatch and closes its own tab.
+
+---
+
+## Overview
+
+Four independent proof dimensions, plus wallet 2FA — all stack into one cumulative score:
+
+| Method | Mechanism | Weight | Data transferred |
+|---|---|---|---|
+| Fingerprint | WebAuthn assertion, verified server-side against a registered public key | 1 | Signature + client data to your own server (PRF output stays local) |
+| Face | Camera frame → Claude Vision | 1 (2 in `hq` mode) | JPEG to your own server |
+| Voice (`voice_hq`) | Client-side FFT similarity + server-side spoken-code anti-replay (ElevenLabs Scribe) | 2 | Recording to your own server, forwarded to ElevenLabs |
+| Human check | On-chain SoulRegistry ownership + anchor history | +1 (stacks with anything) | None beyond the existing Polygon RPC read |
+| 2FA wallet | Wallet signature + on-chain `soulOwner` check | +1 | Signature to your own server |
 
 ---
 
@@ -22,122 +54,134 @@ The Verbindung page doubles as a **verification hub**: alongside its original QR
 
 | Decision | Chosen | Rejected | Reason |
 |---|---|---|---|
-| Voice verification | Web Audio FFT (local) | ElevenLabs Speaker Verification | No external service, no API call |
-| Face verification | Claude Haiku Vision (server) | face-api.js + models | More accurate, no 25 MB download, key already available |
-| Motion | Deferred | MediaPipe Pose | Liveness check is sufficient for MVP |
+| Voice verification | Client FFT + server anti-replay code (`voice_hq`) | Plain FFT-only `voice` | Plain voice had no server-side proof — a client could claim success without ever recording |
+| Face verification | Claude Vision (server), optional `hq` liveness mode | face-api.js + models | More accurate, no 25 MB download, key already available |
+| Fingerprint verification | Server-side WebAuthn assertion check against a registered public key | Trusting the client's `verified: true` | Same reasoning as voice — closes a real gap where no scan needed to happen at all |
+| Human check | Separate, stacking +1 dimension via on-chain anchor lookup | Folding it into another method's score | It's orthogonal to biometrics — a real proof of "anchored soul," not identity liveness |
 | 2FA wallet | `proveIdentity()` via useChainAnchor | Raw `window.ethereum` | On-chain soulOwner check instead of trusting an arbitrary wallet |
-| Liveness | Still open | Blink EAR (face-api.js) | Avoided the face-api.js dependency |
-
----
-
-## Overview
-
-Four levels, ascending in assurance:
-
-| Level | Method | Mechanism | Data transferred |
-|---|---|---|---|
-| 1 | Fingerprint | WebAuthn (Face ID / Touch ID / Windows Hello) | None — secure enclave |
-| 2 | Face | Camera frame → Claude Haiku Vision | JPEG to your own server |
-| 3 | Voice | Web Audio FFT spectrum vs. vault audio | None — local in the browser |
-| 4 | 2FA | Biometrics + wallet signature (ethers.js) | Signature to your own server |
-
----
-
-## File Structure
-
-```
-app/pages/verbindung.vue          UI — QR-Connect + 3 tiles + 2FA card
-lua/verify_challenge.lua          POST /api/verify/challenge
-lua/verify_pending.lua            GET  /api/verify/pending
-lua/verify_complete.lua           POST /api/verify/complete
-lua/verify_face_check.lua         POST /api/verify/face-check
-lua/verify_2fa.lua                POST /api/verify/2fa
-lua/verify_status.lua             GET  /api/verify/status?id=
-soul-mcp/tools/verify_identity.mjs  MCP tool
-```
-
-Challenge files: `/var/lib/sys/verify/<soul_id>_<challenge_id>.json` · TTL 300s
+| Cross-device flow | `vt:` token + claim mechanism | Requiring a soul session on the scanning device | Lets a phone complete verification without being logged into the app |
+| Motion verification | Still deferred | MediaPipe Pose | Face/voice liveness now cover the anti-spoofing case sufficiently |
 
 ---
 
 ## API Endpoints
 
-### `POST /api/verify/challenge`
-Auth: soul_cert
-Body: `{ method: "fingerprint" | "face" | "voice" }`
-Response: `{ challenge_id, method, status: "pending", expires_at, verify_url }`
+All 12 endpoints live under `/api/verify/*` and are registered in `server/openresty/vhost.conf.template`. Every one is gated by `vault_auth.lua` (accepts a `soul_cert` **or** a `vt:` token) except `verify_reown`, which parses `vt:` itself with no `access_by_lua_file` gate.
 
-Creates a challenge. Called both by the MCP tool and directly by the browser (when the user taps "Verify" without an MCP context).
+| Endpoint | Method | Handles |
+|---|---|---|
+| `/api/verify/challenge` | POST | Creates a challenge; mints `challenge_id` + `vt` token; pre-generates the voice anti-replay code and WebAuthn challenge regardless of requested method |
+| `/api/verify/pending` | GET | Lists open challenges for the calling soul (used by `/connection`'s banner) |
+| `/api/verify/complete` | POST | Central score/state machine — re-derives `verified` from server-side proof flags, applies method weights, appends to the on-chain continuity chain |
+| `/api/verify/face-check` | POST | Claude Vision comparison; `hq` mode adds liveness + confidence requirements |
+| `/api/verify/voice-hq-check` | POST | Anti-replay check via ElevenLabs Scribe against the server-generated code |
+| `/api/verify/passkey-register` | POST | Stores a WebAuthn public key server-side, prerequisite for `fingerprint-check` |
+| `/api/verify/fingerprint-check` | POST | Verifies a real WebAuthn assertion against the registered public key and server-issued challenge |
+| `/api/verify/2fa` | POST | Stores wallet-2FA proof; can create a standalone challenge if none exists yet |
+| `/api/verify/status` | GET | Full challenge JSON + `registered_wallet`; polled by `/verify` and the MCP tool |
+| `/api/verify/reown` | GET | Returns the Reown/WalletConnect project ID so `/verify` can init AppKit — `vt:`-only auth |
+| `/api/verify/claim` | POST | Multi-device coordination — marks a challenge as claimed by a specific `client_id` |
+| `/api/verify/human-check` | POST | On-chain SoulRegistry check; standalone +1 to score, independent of any biometric method |
 
 ---
 
-### `GET /api/verify/pending`
-Auth: soul_cert
-Response: `{ pending: [{ challenge_id, method, created_at, expires_at }] }`
+### `POST /api/verify/challenge`
+Body: `{ methods: ["fingerprint" | "face" | "face_hq" | "voice_hq", ...] }` (plural; empty array = user picks in the UI)
+Response: `{ challenge_id, methods, required_methods, status, expires_at, verify_token, verify_url }`
 
-The app polls every 8 seconds and shows a banner when Claude has created an open challenge.
+Plain `"voice"` is no longer an accepted method — see the security-fix note above.
 
 ---
 
 ### `POST /api/verify/complete`
-Auth: soul_cert
-Body: `{ challenge_id, method, verified: bool }`
-Response: `{ ok, challenge_id, verified, method, verified_at }`
+Body: `{ challenge_id, method, verified, is_2fa, selected_methods?, finalize? }`
+Response: `{ ok, challenge_id, verified, method, verified_at, score, is_2fa, status, completed_methods, all_done }`
 
-The browser sends the biometric result. `verified_level` stays `"biometric"` until `verify_2fa` is called.
+`verified` is **not** trusted from the request body for biometric methods — it's re-derived from server-set proof flags (`fingerprint_verified`, `face_check_verified`/`face_hq_check_verified`, `voice_hq_digits_verified`). Method weights: fingerprint = 1, face = 1, face_hq = 2, voice_hq = 2, plus +1 if `human_verified` and +1 if a wallet is attached. On success, fire-and-forgets an append to the genesis chain's "continuity" record (see [docs/spec/genesis-chain.md](genesis-chain.md)).
 
 ---
 
 ### `POST /api/verify/face-check`
-Auth: soul_cert
-Body: `{ image_base64: "<JPEG base64>", mime: "image/jpeg" }`
-Response: `{ match: bool, confidence: "high"|"low", message }`
+Body: `{ image_base64, mime, hq?, challenge_id }`
+Response: `{ match, confidence, liveness?, message }`
 
-Reads `vault/images/profile.png` (decrypted if a vault key is present in context). Sends both images to `claude-haiku-4-5-20251001` with the prompt: `"Do these two photos show the same person? Reply with exactly one word: MATCH or NO_MATCH."` The model can be raised to Opus/Sonnet at any time in `verify_face_check.lua`.
+Standard mode: Claude Vision MATCH/NO_MATCH against `vault/images/profile.png`. `hq` mode requires `confidence: "high"` **and** `liveness: "pass"` from an explicit anti-spoofing prompt (screen reflection, paper edge/curl, flat lighting, moiré). On a match, persists `face_check_verified` (and `face_hq_check_verified` if `hq`) to the challenge file.
+
+---
+
+### `POST /api/verify/voice-hq-check?challenge_id=<id>`
+Body: raw audio bytes (`audio/webm`, `audio/mp4`, …)
+Response: `{ digits_match, transcript }`
+
+Anti-replay only — the identity signal itself is the unchanged client-side FFT comparison. This endpoint forwards the recording to ElevenLabs Scribe (`scribe_v1`) via a dedicated multipart implementation (not the shared `elevenlabs_stt.lua` route, which doesn't understand `vt:` tokens), extracts spoken/written digits (handles both digit characters and German/English number words), and compares against the server-generated `voice_code` stored on the challenge at creation time. On a match, persists `voice_hq_digits_verified`.
+
+---
+
+### `POST /api/verify/passkey-register`
+Body: `{ credential_id, public_key (base64url SPKI-DER), alg }`
+Response: `{ ok: true }`
+
+Called right after a new WebAuthn credential is created — from normal first-time passkey setup, from `/verify`'s QR-scanned-device flow, and as a self-healing step whenever `fingerprint-check` reports `unknown_credential` (a passkey created before this endpoint existed). Stores keys per `credential_id` in `/var/lib/sys/souls/<soul_id>/passkeys.json`; multiple entries accumulate for multiple devices.
+
+---
+
+### `POST /api/verify/fingerprint-check`
+Body: `{ challenge_id, credential_id, client_data_json, authenticator_data, signature }`
+Response: `{ match, reason? }`
+
+Full server-side WebAuthn assertion verification: looks up the public key by `credential_id`, checks `type == "webauthn.get"`, checks the client-supplied challenge matches the server-issued one stored on the challenge file (anti-replay), checks `origin`, then recomputes the signed message (`authenticatorData || SHA256(clientDataJSON)`) and verifies the signature against the stored public key. On success, persists `fingerprint_verified` and updates the passkey's `last_verified_at`.
 
 ---
 
 ### `POST /api/verify/2fa`
-Auth: soul_cert
-Body: `{ challenge_id, signature: "0x...", address: "0x..." }`
-Response: `{ ok, challenge_id, verified_level: "2fa" }`
+Body: `{ challenge_id, identity_proof }` (or legacy `{ challenge_id, signature, address }`)
+Response: `{ ok, challenge_id, verified_level: "2fa", score, cached? }`
 
-Stores the wallet signature in the challenge file. No cryptographic verification happens in Lua — that is handled by the MCP tool via ethers.js. If `challenge_id` does not exist (standalone 2FA without a prior biometric challenge), a new challenge file is created.
+Stores the wallet proof; sets `verified_level: "2fa"` and +1 score. Cryptographic/on-chain verification is double-checked later by the MCP tool, not in Lua.
 
 ---
 
 ### `GET /api/verify/status?id=<challenge_id>`
-Auth: soul_cert
 Response: full challenge JSON + `registered_wallet` from `api_context.json`
 
-For the MCP tool: returns all data including `wallet_2fa.signature` for ethers.js `verifyMessage`.
+Polled by both `/verify` (every 6s) and the MCP tool.
 
 ---
 
-## Browser Logic (`verbindung.vue`)
+### `GET /api/verify/reown`
+Auth: `vt:` token only, no `soul_cert` accepted
+Response: `{ project_id }`
 
-### Voice — Web Audio FFT
+Called only from the scanning-device side of the flow, inside the wallet-connect step, so that device can initialize WalletConnect AppKit without needing its own soul session.
 
-```
-Load vault audio (/api/vault/audio → active_url)
-  ↓ ArrayBuffer → AudioContext.decodeAudioData()
-Record microphone (3 seconds, MediaRecorder)
-  ↓ Blob → ArrayBuffer → decodeAudioData()
-Spectral envelope of both audio sources
-  ↓ FFT (Cooley-Tukey, frameSize=2048, hop=512)
-  ↓ log(1 + magnitude) averaged across all frames
-Cosine similarity of the envelopes
-  ↓ score > 0.78 → verified
-```
+---
 
-The 0.78 threshold can be adjusted in `doVoice()`. Score is shown as a percentage.
+### `POST /api/verify/claim`
+Body: `{ challenge_id, client_id }`
+Response: `{ ok: bool }`
 
-**Known limitations:**
-- Encrypted vault audio (SYS\x01 magic) fails if the vault is locked
-- Very different microphone quality can lower the score
-- Background noise affects high frequencies (less critical for formants)
+Sets `claimed_by` unless already claimed by a *different* `client_id` (idempotent for the same device, rejected for another). Called fire-and-forget before every method attempt.
 
-**Improvement path:** a mel filterbank (40 bands, 100–8000 Hz) before the cosine calculation → MFCC-like features → better speaker identification independent of content.
+---
+
+### `POST /api/verify/human-check`
+Body: `{ challenge_id }`
+Response: `{ ok, verified, anchor_count, first_anchor, latest_anchor, total_sessions, wallet, score }`
+
+Shells out to `check_human.mjs`, a thin CLI wrapper around `verifyHuman(soulId)` in `blockchain.mjs`, which checks the Polygon SoulRegistry for a real owner and at least one anchor. Independent of every biometric method — a standalone +1 that stacks with anything else completed on the same challenge.
+
+---
+
+## Browser Logic (`verify.vue`)
+
+### Fingerprint — WebAuthn
+
+Calls `authenticatePasskey()` from `useSoulPasskey.js`, passing the server-issued `webauthn_challenge`. Two distinct outputs come out of the same WebAuthn ceremony:
+
+1. **PRF output** — still stays entirely local, used only to derive the AES-256-GCM vault encryption key. Never transmitted.
+2. **The assertion itself** (`credentialId`, `clientDataJson`, `authenticatorData`, `signature`) — now POSTed to `/api/verify/fingerprint-check` so the server can cryptographically verify a real scan happened. The public key it's checked against was registered ahead of time via `/api/verify/passkey-register`.
+
+If the browser hands back an unexpected credential (can happen with multiple accumulated passkeys and `residentKey: 'preferred'`), the server correctly rejects it as `unknown_credential` and `verify.vue` triggers a self-healing re-registration.
 
 ---
 
@@ -149,78 +193,83 @@ Open camera (getUserMedia, facingMode: user)
 User clicks "Capture"
   ↓ Canvas.drawImage(video) → toDataURL('image/jpeg', 0.85)
   ↓ Base64 without the data-URI prefix
-POST /api/verify/face-check
+POST /api/verify/face-check { image_base64, hq? }
   ↓ Server: reads vault/images/profile.png (decrypt if needed)
-  ↓ Claude Haiku: MATCH / NO_MATCH
+  ↓ Claude Vision: MATCH/NO_MATCH, or (hq) confidence + liveness
 Result → verified / failed
 ```
 
-**Improvement path (liveness check):**
-No anti-spoofing against photo attacks currently. Options:
-1. **ML-free blink detection**: track brightness in the eye region (top quarter, middle 40% of width) → 2 brightness dips below 0.7 × EMA within 5s = 2 blinks → capture
-2. **face-api.js** `SsdMobilenetv1` + 68 landmarks → Eye Aspect Ratio (EAR) < 0.25 = blink (requires ~12 MB of models in `/public/models/`)
-3. **MediaPipe Face Mesh** (WASM, ~400 KB model) → more precise landmarks, lighter weight
+Standard mode has no anti-spoofing beyond the model's own judgment. `hq` mode explicitly prompts for liveness (screen reflection, paper edge/curl, flat lighting, moiré) and only counts as a match on `confidence: "high"` **and** `liveness: "pass"`.
 
 ---
 
-### Fingerprint — WebAuthn
+### Voice — `voice_hq`
 
-Calls `authenticatePasskey()` from `useSoulPasskey.js`. Returns the PRF output (ArrayBuffer) — used as a truthy check for `verified: true`. The PRF output is never stored or transmitted.
+```
+Client-side (unchanged): FFT speaker-similarity vs. vault reference audio
+Server-side (new): read the on-screen code aloud
+  ↓ Record 5 seconds
+  ↓ POST /api/verify/voice-hq-check?challenge_id=<id> (raw audio)
+  ↓ ElevenLabs Scribe (STT) → extract digits from transcript
+  ↓ Compare against server-generated voice_code
+digits_match → voice_hq_digits_verified
+```
+
+The code is generated server-side at challenge creation and shown in the UI — never supplied by the client — specifically so an old recording can't be replayed. Plain FFT-only `voice` (no code) can no longer be requested as a challenge method.
+
+**Known limitation:** encrypted vault audio (`SYS\x01` magic) fails if the vault is locked; very different microphone quality can still lower the FFT similarity score.
+
+---
+
+### Human Check — On-Chain Anchor
+
+```
+User clicks "No-Robot · Blockchain anchor +1"
+  ↓ POST /api/verify/human-check { challenge_id }
+  ↓ Server: check_human.mjs → verifyHuman(soul_id) → SoulRegistry.soulOwner() + getHistory()
+Real owner + ≥1 anchor → human_verified, score +1
+```
+
+Independent of every biometric method — offered as an extra both during an active challenge and retroactively from the "done" summary screen if skipped earlier.
 
 ---
 
 ### 2FA Wallet
 
 ```
-anyBiometricVerified === true → 2FA card visible
+Any biometric verified → wallet step visible
 User clicks "Connect & sign wallet"
-  ↓ import('ethers') → BrowserProvider(window.ethereum)
-  ↓ eth_requestAccounts
-  ↓ signer.signMessage(activeChallengeId)
-  ↓ signer.getAddress()
-POST /api/verify/2fa { challenge_id, signature, address }
-verifiedLevel = '2fa', show walletShort
+  ↓ (scanning device only) GET /api/verify/reown → project_id → init AppKit
+  ↓ connectWallet() → proveIdentity() from useChainAnchor
+  ↓ on-chain check: does this wallet own the soul? (contract.soulOwner)
+POST /api/verify/2fa { challenge_id, identity_proof }
+verified_level = '2fa'
 ```
 
-`activeChallengeId` = either an MCP challenge ID or a freshly created one (from `POST /api/verify/challenge`).
-
-**Cryptographic verification** runs in the MCP tool (`verify_identity.mjs`):
-
-```js
-// 1. Signature check
-const recovered = ethers.verifyMessage(ethers.getBytes(proof.nonce), proof.signature)
-const signatureValid = recovered.toLowerCase() === proof.wallet.toLowerCase()
-
-// 2. On-chain: does this wallet own the soul on Polygon?
-const contract = new ethers.Contract(SOUL_REGISTRY, OWNER_ABI, provider)
-const owner = await contract.soulOwner(proof.soulId)
-const onChainMatch = owner.toLowerCase() === proof.wallet.toLowerCase()
-```
-
-Ethers is a direct dependency in `soul-mcp/package.json` (`^6.13.4`).
-Lua trusts the submitted proof — cryptographic verification deliberately happens in the MCP tool (Node.js).
+Cryptographic verification (`ethers.verifyMessage` + on-chain `soulOwner` check) is double-checked in the MCP tool (`verify_identity.mjs`), not just trusted from the Lua write.
 
 ---
 
 ## MCP Tool `verify_identity`
 
 ```
-verify_identity({ method: "fingerprint" })
+verify_identity({ methods: ["fingerprint", "voice_hq"] })
 → { challenge_id, verify_url, expires_at, ... }
 
 verify_identity({ challenge_id: "abc123..." })
-→ { status: "pending" | "verified" | "failed", verified_level, ... }
+→ { status: "pending" | "verified" | "failed", verified_level, score, ... }
 ```
 
-`verified_level`:
-- `"biometric"` — one method succeeded
-- `"2fa"` — biometrics + wallet signature
+- `methods` is now a plural array (`fingerprint`, `face`, `face_hq`, `voice_hq` — no plain `voice`).
+- The tool short-polls internally (5× over 15s) to fit inside a single tool-call timeout, instead of requiring the caller to always issue a second call.
+- `verified_level`: `"biometric"` (one or more methods succeeded) or `"2fa"` (biometrics + wallet signature).
+- The result message now surfaces every scoring dimension: per-method completions with timestamps, a wallet line if 2FA was done, and a blockchain-anchor line if `human_verified` — not just a single pass/fail.
 
 Typical Claude flow:
-1. `verify_identity({ method: "fingerprint" })` → create challenge, output the URL
-2. User opens the app, verifies
-3. `verify_identity({ challenge_id: "..." })` → check status
-4. Optional: `verify_identity({ challenge_id: "..." })` again after 2FA → `verified_level: "2fa"`
+1. `verify_identity({ methods: ["fingerprint"] })` → create challenge, output the URL
+2. User opens the app (or scans the QR on their phone), verifies
+3. `verify_identity({ challenge_id: "..." })` → check status (auto-retries internally while pending)
+4. Optional: call again after 2FA or the human check → updated `score`
 
 ---
 
@@ -229,31 +278,54 @@ Typical Claude flow:
 ```json
 {
   "soul_id": "2c81aa74-...",
-  "challenge_id": "a3f8b2c1...",
+  "challenge_id": "a3f8b2c1... (32 hex)",
   "method": "fingerprint",
-  "status": "verified",
+  "required_methods": ["fingerprint", "voice_hq"],
+  "completed_methods": ["fingerprint"],
+  "method_results": [
+    { "method": "fingerprint", "verified": true, "timestamp": "2026-...Z" }
+  ],
+  "status": "pending",
+  "score": 3,
+  "created_at": "2026-...Z",
+  "expires_at": "2026-...Z",
+  "verified_at": null,
+  "verify_token": "... (48 hex)",
+  "triggering_token": null,
+  "voice_code": "482913",
+  "webauthn_challenge": "base64url...",
+  "fingerprint_verified": true,
+  "face_check_verified": true,
+  "face_hq_check_verified": true,
+  "voice_hq_digits_verified": true,
+  "claimed_by": "a1b2c3... (client_id)",
+  "claimed_at": "2026-...Z",
+  "is_2fa": true,
   "verified_level": "2fa",
-  "created_at": "2026-06-13T12:00:00Z",
-  "expires_at": "2026-06-13T12:05:00Z",
-  "verified_at": "2026-06-13T12:01:23Z",
-  "wallet_2fa": {
-    "address": "0xAbCd...1234",
-    "signature": "0x...",
-    "signed_at": "2026-06-13T12:02:10Z"
-  }
+  "identity_proof": { "nonce": "...", "signature": "0x...", "wallet": "0x...", "soulId": "...", "anchorCount": 2 },
+  "wallet_2fa": { "address": "0x...", "signature": "0x...", "signed_at": "2026-...Z", "anchor_count": 2 },
+  "human_verified": true,
+  "human_verified_at": "2026-...Z",
+  "human_anchor_count": 2,
+  "human_wallet": "0x..."
 }
 ```
+
+Most fields beyond `soul_id`/`challenge_id`/`status`/`created_at`/`expires_at` are populated incrementally as methods complete, not present from creation. `verify_status.lua`'s response additionally injects `registered_wallet` (from `api_context.json`) — that field is never persisted to the file itself.
 
 ---
 
 ## Known Limitations & Roadmap
 
-- [ ] **Face liveness check** — blink detection (see above)
-- [ ] **Voice MFCC** — mel filterbank for better speaker identification
-- [x] **ethers.js verifyMessage** enabled + on-chain `soulOwner` check implemented
+- [x] **Fingerprint server-side verification** — real WebAuthn assertion check against a registered public key, closing the client-trust gap
+- [x] **Face liveness (`hq` mode)** — explicit anti-spoofing prompt with confidence + liveness requirements
+- [x] **Voice anti-replay (`voice_hq`)** — server-generated spoken code verified via ElevenLabs Scribe; plain FFT-only `voice` retired as a challenge method
+- [x] **On-chain human check** — independent +1 scoring dimension via SoulRegistry anchor lookup
+- [x] **Cross-device QR flow** — `vt:` token + claim mechanism for scan-with-phone verification
+- [ ] **Voice MFCC** — mel filterbank for better speaker identification (the FFT comparison itself is unchanged since the original spec)
 - [ ] **Vault audio fallback** — if the vault is locked, show an error with unlock instructions
 - [ ] **Challenge cleanup** — delete expired JSON files in `/var/lib/sys/verify/` (cron or on `verify_pending`)
-- [ ] **Motion verification** (motion_face / motion_body from vault) — deferred, since blink-based liveness is sufficient for now
+- [ ] **Motion verification** (motion_face / motion_body from vault) — deferred, face/voice liveness cover the anti-spoofing case for now
 - [ ] **registered_wallet cross-check** — verify `verified_wallet` from `api_context.json` against the 2FA address
 
 ---
