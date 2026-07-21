@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.54] — 2026-07-21
+
+**Fixed: `soul_write` with `mode="replace"` on the Agent Sandbox or Social Sphere section silently stripped the `<!-- AGENT:START/END -->` / `<!-- SOCIAL:START/END -->` delimiters, collapsing a protected sphere back to plain text. `append`/`prepend` had a related bug — new content landed outside the markers instead of inside them. Found live: an AI session wrote a message into "Agent Sandbox" via `soul_write`, the markers vanished, and the chat UI stopped rendering the section because it depends on them to recognize it.**
+
+Not a security issue — `lua/soul_paid_read.lua` already fails closed (404 `no_agent_content`) when the markers are missing, it never falls back to leaking the full `sys.md`. But relying on every AI session remembering to hand-preserve markers on every write is fragile, and it broke in practice on the first real trigger.
+
+**Fixed**
+- `soul-mcp/tools/soul_write.mjs`: `updateSection()` now detects sphere markers in the section's *existing* content and operates on the content between them, not on the raw section text — for all three modes. `replace` re-wraps the new content in the same markers; `append`/`prepend` insert inside them instead of outside. If the caller's new content already includes its own marker pair (a marker-aware caller), it's trusted verbatim and not double-wrapped. Sections without markers are unaffected — verified with a standalone test covering replace, append, a plain unmarked section, and the caller-supplied-markers case.
+- Scoped to `soul_write.mjs` only: `soul_write_peer.mjs` already has its own marker-safe Social Sphere-only write path, `session_end.mjs`'s `updateSection` only ever targets "Session-Log", and `mind.put.js` has no sphere markers to begin with — none of the three needed this fix.
+
+---
+
 ## [1.0.53] — 2026-07-21
 
 **Docs: Repository Structure had drifted significantly from the actual tree — verified every listed path/file against disk and fixed what didn't match. `sys.md Format` was checked too and is fully accurate (stage-based read filtering, >18-entry LONGMEM dedup threshold, and the bilingual EN/DE section-name mapping in `herz.mjs`/`soul_maturity_peer.mjs` all confirmed in code) — no changes needed there.**

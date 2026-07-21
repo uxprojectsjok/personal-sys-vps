@@ -17,12 +17,44 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Three-sphere protection model (see README "sys.md Format" / docs/spec/sys_md.md):
+// Social Sphere and Agent Sandbox content lives between these delimiter comments.
+// A naive section replace/append/prepend on raw section text silently drops or
+// misplaces them (append/prepend land content outside the markers; replace
+// without them collapses the sphere to plain, unprotected text) — that broke
+// the Agent Sandbox in practice: soul_write mode="replace" on "Agent Sandbox"
+// stripped <!-- AGENT:START/END -->, and the chat UI stopped rendering the
+// section because it relies on the markers to recognize it.
+const SPHERE_MARKERS = [
+  { start: '<!-- SOCIAL:START -->', end: '<!-- SOCIAL:END -->' },
+  { start: '<!-- AGENT:START -->',  end: '<!-- AGENT:END -->' },
+];
+
+// If the section's existing content is wrapped in a recognized sphere marker
+// pair, returns the inner content plus a `wrap()` to re-apply the same
+// markers around whatever body the caller computes next. Sections without
+// markers pass through unchanged.
+function unwrapSphere(existing) {
+  for (const { start, end } of SPHERE_MARKERS) {
+    const s = existing.indexOf(start);
+    const e = existing.indexOf(end);
+    if (s !== -1 && e !== -1 && e > s) {
+      const inner = existing.slice(s + start.length, e).trim();
+      return { inner, wrap: (body) => `${start}\n${body}\n${end}` };
+    }
+  }
+  return { inner: existing, wrap: (body) => body };
+}
+
 /**
  * Aktualisiert eine ## Sektion in einem Markdown-Dokument.
  * - mode "replace"  → Sektionsinhalt wird vollständig ersetzt
  * - mode "append"   → neuer Inhalt wird ans Ende der Sektion gehängt
  * - mode "prepend"  → neuer Inhalt wird an den Anfang der Sektion gestellt
  * Existiert die Sektion nicht, wird sie am Ende des Dokuments angelegt.
+ * Social-Sphere-/Agent-Sandbox-Marker in der bestehenden Sektion bleiben dabei
+ * erhalten — die Operation wirkt auf den Inhalt zwischen den Markern, nicht
+ * auf den rohen Sektionstext (siehe unwrapSphere).
  */
 function updateSection(md, heading, newContent, mode) {
   // CRLF normalisieren (Windows-Zeilenenden) + trailing whitespace entfernen
@@ -36,15 +68,18 @@ function updateSection(md, heading, newContent, mode) {
   const block = (h, body) => `## ${h}\n${body.trim()}\n`;
 
   if (match) {
-    const existing = match[2].trim();
+    const rawExisting = match[2].trim();
+    const { inner: existing, wrap } = unwrapSphere(rawExisting);
+    // Caller already supplied their own markers (marker-aware tool/agent) — trust it verbatim.
+    const newHasOwnMarkers = SPHERE_MARKERS.some(({ start }) => newContent.includes(start));
     let body;
     if (mode === 'replace') {
-      body = newContent;
+      body = newHasOwnMarkers ? newContent : wrap(newContent);
     } else if (mode === 'prepend') {
-      body = newContent + (existing ? '\n\n' + existing : '');
+      body = newHasOwnMarkers ? newContent : wrap(newContent + (existing ? '\n\n' + existing : ''));
     } else {
       // append (default)
-      body = (existing ? existing + '\n\n' : '') + newContent;
+      body = newHasOwnMarkers ? newContent : wrap((existing ? existing + '\n\n' : '') + newContent);
     }
     // Replacement-Funktion statt String verhindert $1/$&/$' Sonderzeichen-Interpretation
     const replacement = block(heading, body) + '\n';
