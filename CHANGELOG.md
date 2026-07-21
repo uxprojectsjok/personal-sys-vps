@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.65] — 2026-07-21
+
+**Docs: dropped the separator between "UX-Projects" and "Jan-Oliver Karo" per the maintainer's clarification — the correct form is "UX-Projects Jan-Oliver Karo" with no dash or comma, not "UX-Projects — Jan-Oliver Karo" as fixed in v1.0.64.**
+
+**Changed**
+- `README.md`, `NOTICE`, `LICENSE`, `ARCHITECTURE.md`: removed the em-dash/comma between the two in every co-occurrence (copyright lines, trademark clause, required attribution string). Order from v1.0.64 (UX-Projects first) unchanged.
+
+---
+
 ## [1.0.64] — 2026-07-21
 
 **Fixed: v1.0.63 paired "UX-Projects" with "Jan-Oliver Karo" but in the wrong order — corrected per the maintainer's explicit ordering to "UX-Projects — Jan-Oliver Karo" (trade name first) everywhere the two appear together, not just the one line touched in v1.0.63.**

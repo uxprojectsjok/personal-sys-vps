@@ -1,5 +1,5 @@
 SaveYourSoul (SYS) — Personal SYS VPS
-Copyright 2026 UX-Projects — Jan-Oliver Karo, Marburg, Germany
+Copyright 2026 UX-Projects Jan-Oliver Karo, Marburg, Germany
 https://uxprojects-jok.com
 
 Licensed under the Apache License, Version 2.0.
@@ -10,7 +10,7 @@ You may obtain a copy of the License at:
 TRADEMARK & BRAND
 ────────────────────────────────────────────────────────────────
 "SaveYourSoul", "SYS", and the SYS logo are trademarks of
-UX-Projects — Jan-Oliver Karo. Apache License Section 6 does
+UX-Projects Jan-Oliver Karo. Apache License Section 6 does
 NOT grant permission to use these trade names or marks.
 
 If you operate a derivative or compatible implementation, you
@@ -24,7 +24,7 @@ Public deployments or distributions of this software, or works
 derived from it, must include the following attribution in a
 location clearly visible to end users:
 
-    "Built on SaveYourSoul — © 2026 UX-Projects, Jan-Oliver Karo"
+    "Built on SaveYourSoul — © 2026 UX-Projects Jan-Oliver Karo"
 
 Private, password-protected, non-commercial self-hosted nodes
 are exempt from this attribution requirement.
