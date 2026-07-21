@@ -3,19 +3,19 @@
  * Generates a reproducible SHA-256 fingerprint of all source files.
  * Run from the project root: node utils/project-hash.mjs
  * Used to verify a clone matches the official release.
+ *
+ * File list comes from `git ls-files` — not a raw filesystem walk — so local,
+ * untracked files (a private-repo init.sh copy, gitignored notes, stray
+ * instance configs, …) never silently end up in the hash. Only what a fresh
+ * `git clone` actually receives is fingerprinted.
  */
 import { createHash } from "crypto";
-import { readdirSync, readFileSync, statSync } from "fs";
-import { join, relative } from "path";
+import { readFileSync } from "fs";
+import { execFileSync } from "child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
 const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template", ".css"]);
-const EXCLUDE_DIRS = new Set([
-  "node_modules", ".output", ".nuxt", ".git", ".claude",
-  "soul-whatsapp", "soul-voice-clone",
-  "browser-extension", "test", "dist",
-]);
 const EXCLUDE_FILES = new Set([
   ".env", ".env.example", "package-lock.json",
   "project-hash.mjs",
@@ -23,29 +23,22 @@ const EXCLUDE_FILES = new Set([
   "me.uxprojects-jok.com",  // generierte Instanz-Datei, nicht Template
 ]);
 
-function collectFiles(dir, files = []) {
-  for (const entry of readdirSync(dir).sort()) {
-    if (EXCLUDE_DIRS.has(entry)) continue;
-    const full = join(dir, entry);
-    const stat = statSync(full);
-    if (stat.isDirectory()) {
-      collectFiles(full, files);
-    } else {
-      const ext = entry.slice(entry.lastIndexOf("."));
-      if (INCLUDE_EXTS.has(ext) && !EXCLUDE_FILES.has(entry)) {
-        files.push(full);
-      }
-    }
-  }
-  return files;
-}
+const tracked = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
+  .split("\n")
+  .filter(Boolean);
 
-const files = collectFiles(ROOT);
+const files = tracked
+  .filter((rel) => {
+    const base = rel.slice(rel.lastIndexOf("/") + 1);
+    const ext = base.slice(base.lastIndexOf("."));
+    return INCLUDE_EXTS.has(ext) && !EXCLUDE_FILES.has(base);
+  })
+  .sort();
+
 const master = createHash("sha256");
 
-for (const f of files) {
-  const rel = relative(ROOT, f);
-  const content = readFileSync(f);
+for (const rel of files) {
+  const content = readFileSync(ROOT + rel);
   const fileHash = createHash("sha256").update(content).digest("hex");
   master.update(rel + ":" + fileHash + "\n");
 }

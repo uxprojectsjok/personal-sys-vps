@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.49] — 2026-07-21
+
+**Fixed a real bug in `utils/project-hash.mjs`: it walked the filesystem directly instead of using git's tracked-file list, so local, untracked files sitting in a maintainer's working copy (a private-repo `init.sh`, `public/soul_test.md`, `server/openresty/INDEX.md` — all correctly gitignored, none of them shipped in this repo) silently became part of the fingerprint. Every fingerprint value published in this README before this release was computed with that extra, non-reproducible input — an operator running the command against their own clean `git clone` would never have matched it.**
+
+**Fixed**
+- `utils/project-hash.mjs`: file list now comes from `git ls-files` instead of a recursive `readdirSync` walk. Only what a fresh clone actually receives gets hashed — untracked/gitignored files can no longer leak into the fingerprint, regardless of what happens to be sitting in whoever's local working directory when they run it. Verified reproducible: identical hash from this working copy and a fresh `git clone` of it.
+- As a side effect, file traversal order changed too (`git ls-files` sorts by full path; the old code sorted per-directory during a recursive walk, which orders differently whenever a filename and a directory name share a prefix, e.g. `app.md` vs. `app/`). Combined with the file-set fix, this means **no fingerprint published before this release is comparable to fingerprints from this release onward** — this is a one-time algorithm change, not evidence of tampering. Pin to this tag or later before relying on the fingerprint check.
+
+**Docs**
+- `README.md`: moved the Vault bullets and the "Local Vault Folder Structure" diagram up into the "What is a SYS node?" intro, right after the paragraph that first introduces the sys.md + Vault relationship, instead of leaving readers to encounter the concept in the intro and its detail eight sections later.
+- `README.md`: condensed **Peer Network (Social Sphere)** into the same short-teaser-plus-link style as the other feature sections (see v1.0.48).
+
+---
+
 ## [1.0.48] — 2026-07-21
 
 **Docs: further README trim following v1.0.45's professionalization pass — dropped a dated milestone writeup and condensed three more feature sections (Agent Runner, Networking, Agent Marketplace, Growth & Anchoring) into the same short-teaser-plus-link style already used for AI & Soul and Health & Body.**
