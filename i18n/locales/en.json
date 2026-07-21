@@ -1286,7 +1286,7 @@
     "lede": "Write a cryptographic fingerprint of your soul on-chain — an irrevocable timestamp that proves your identity.",
     "title_prefix": "Soul",
     "title_em": "anchor",
-    "tags_placeholder": "Marburg, AI, Design, Decentralization…",
+    "tags_placeholder": "Berlin, AI, Design, Decentralization…",
     "tags_synced_hint": "Pre-filled from the Marketplace (Network panel) — edit tags there so anchoring and Marketplace don't drift apart. Manual editing here only if really necessary.",
     "wallet_disconnect": "Disconnect wallet",
     "connect_wallet_note": "Connect a wallet first to anchor. At least one real session is required.",
@@ -1635,7 +1635,7 @@
   },
   "agent_sandbox": {
     "desc": "What external AI agents see about you — the rest of sys.md stays private.",
-    "placeholder": "Write freely here — as Markdown or plain text. e.g.: »Hello, I'm Jan from Marburg. I appreciate messages.«",
+    "placeholder": "Write freely here — as Markdown or plain text. e.g.: »Hello, I'm Alex from Berlin. I appreciate messages.«",
     "unsaved": "Unsaved changes",
     "chars": "ch."
   },

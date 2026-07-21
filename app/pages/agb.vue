@@ -9,77 +9,78 @@
     </nav>
 
     <main class="content">
-      <h1>Kaufbedingungen &amp; Vorabinformationen</h1>
-      <p class="lead">
-        Diese Seite fasst die gesetzlichen Informationspflichten vor Vertragsschluss
-        zusammen (Art. 246a EGBGB), die für den Kauf von Zugang zu dieser Soul gelten —
-        sowohl über PayPal als auch über den x402/USDC-Zahlungsweg (Polygon). Sie ergänzt
-        die Widerrufsbelehrung, die du vor der Zustimmung separat als PDF erhältst.
+      <p class="template-notice">
+        ⚠️ Platzhaltertext (Lorem Ipsum). Diese Seite ist eine Vorlage für die gesetzlichen
+        Informationspflichten vor Vertragsschluss (Art. 246a EGBGB). Bevor diese Soul
+        echte Zahlungen (PayPal oder x402/USDC) entgegennimmt, muss der Node-Betreiber
+        diesen Text durch seine eigenen, rechtlich geprüften Angaben ersetzen — das
+        SYS-Projekt liefert hier keine Rechtsberatung.
       </p>
 
-      <h2>1. Wesentliche Eigenschaften der Leistung</h2>
+      <h1>Lorem Ipsum Dolor Sit Amet</h1>
+      <p class="lead">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+        incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis
+        nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </p>
+
+      <h2>1. Lorem ipsum dolor sit amet</h2>
       <p>
-        Zeitlich begrenzter, interaktiver Lesezugriff auf den Agent-Sandbox-Bereich dieser
-        Soul über ein Zugriffs-Token — Gültigkeitsdauer je nach Konfiguration der Soul,
-        siehe Angabe im Kaufhinweis der Vorschau bzw. der Widerrufsbelehrung.
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+        fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+        culpa qui officia deserunt mollit anim id est laborum.
       </p>
 
       <h2>2. Anbieter</h2>
       <p>
-        UX-Projects – Jan-Oliver Karo<br>
-        [REDACTED-ADDRESS], [REDACTED-ADDRESS], Deutschland<br>
-        E-Mail: info@uxprojects-jok.com<br>
-        Einzelunternehmen · Gemäß § 19 UStG (Kleinunternehmerregelung) wird keine
-        Umsatzsteuer erhoben.
+        __OPERATOR_NAME__<br>
+        __OPERATOR_ADDRESS__<br>
+        E-Mail: __OPERATOR_EMAIL__<br>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
       </p>
 
-      <h2>3. Gesamtpreis</h2>
+      <h2>3. Lorem ipsum dolor sit amet</h2>
       <p>
-        Der Preis in EUR (bzw. der entsprechende USDC-Betrag) wird bei der jeweiligen Soul
-        in der Vorschau (<code>soul_preview</code>) angezeigt und ist als Endpreis zu
-        verstehen (siehe Preishinweis dort).
+        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium
+        doloremque laudantium, totam rem aperiam eaque ipsa quae ab illo inventore
+        veritatis et quasi architecto beatae vitae dicta sunt explicabo.
       </p>
 
-      <h2>4. Zahlungsbedingungen</h2>
+      <h2>4. Lorem ipsum dolor sit amet</h2>
       <p>
-        Zahlung per PayPal oder x402/USDC (Polygon) über den technischen Zahlungsweg der
-        Soul. Beim x402-Weg wird der Zugang nach Bestätigung der Zahlung durch den
-        x402-Facilitator automatisch freigeschaltet. Beim PayPal-Weg wird der Zugang nach
-        Zahlungseingang manuell durch den Betreiber freigeschaltet, in der Regel
-        innerhalb von 48 Stunden.
+        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed
+        quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+        Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.
       </p>
 
-      <h2>5. Leistungsbeginn</h2>
+      <h2>5. Lorem ipsum dolor sit amet</h2>
       <p>
-        Die digitale Leistung beginnt beim x402-Weg mit Bestätigung der Zahlung, beim
-        PayPal-Weg nach Freischaltung durch den Anbieter — in beiden Fällen nicht bereits
-        mit bloßem Zahlungseingang. Mit deiner ausdrücklichen Zustimmung (siehe
-        Widerrufsbelehrung) beginnt sie vor Ablauf der 14-tägigen Widerrufsfrist — dadurch
-        erlischt dein Widerrufsrecht vorzeitig.
+        Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit
+        laboriosam, nisi ut aliquid ex ea commodi consequatur. Quis autem vel eum iure
+        reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.
       </p>
 
-      <h2>6. Funktionsweise digitaler Inhalte</h2>
+      <h2>6. Lorem ipsum dolor sit amet</h2>
       <p>
-        Zugang erfolgt über ein Zugriffs-Token, das beim x402-Weg automatisch, beim
-        PayPal-Weg nach Prüfung des Zahlungseingangs per E-Mail oder direkt im Chat
-        übermittelt wird. Gültigkeitsdauer je nach Soul-Konfiguration, siehe
-        Widerrufsbelehrungs-PDF.
+        At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis
+        praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias
+        excepturi sint occaecati cupiditate non provident.
       </p>
 
-      <h2>7. Mängelhaftung</h2>
+      <h2>7. Lorem ipsum dolor sit amet</h2>
       <p>
-        Es gilt das gesetzliche Mängelhaftungsrecht. Bei technischen Problemen wende dich
-        an: info@uxprojects-jok.com
+        Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et
+        dolorum fuga. Bei technischen Problemen wende dich an: __OPERATOR_EMAIL__
       </p>
 
-      <h2>8. Streitbeilegung</h2>
+      <h2>8. Lorem ipsum dolor sit amet</h2>
       <p>
-        Ich bin nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor
-        einer Verbraucherschlichtungsstelle teilzunehmen (§ 36 VSBG).
+        Et harum quidem rerum facilis est et expedita distinctio nam libero tempore
+        cum soluta nobis est eligendi optio cumque nihil impedit quo minus.
       </p>
 
       <p class="fine">
-        Stand: 20.07.2026. Diese Instanz befindet sich im Beta-/Testbetrieb.
+        Lorem ipsum — Platzhalter, kein echtes Datum.
       </p>
     </main>
   </div>
@@ -117,6 +118,7 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
 .content .lead { font-size: 17px; color: var(--fg); }
 .content code { font-family: var(--mono); font-size: 14px; background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
 .content .fine { font-size: 13px; color: var(--fg-3); margin-top: 40px; }
+.template-notice { font-size: 14px; line-height: 1.6; color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 0 0 32px; }
 
 @media (max-width: 640px) {
   .l-nav { grid-template-columns: 1fr auto; }

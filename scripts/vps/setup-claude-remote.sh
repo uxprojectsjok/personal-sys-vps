@@ -1,12 +1,12 @@
 #!/bin/bash
 # =============================================================================
 # SaveYourSoul – Claude Code Remote Control Setup
-# Einmalig auf dem VPS als User "redacted-user" ausführen
+# Einmalig auf dem VPS als dein normaler (nicht-root) VPS-User ausführen
 # =============================================================================
 
 set -e
 
-PROJECT_DIR="/var/www/SaveYourSoul"
+PROJECT_DIR="/var/www/YOUR_PROJECT_DIR"  # An deinen tatsächlichen Deploy-Pfad anpassen
 SERVICE_NAME="claude-remote"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 
@@ -59,7 +59,7 @@ cat > "$HOME/bin/sys-remote-start.sh" <<'STARTSCRIPT'
 source "$HOME/.bashrc" 2>/dev/null || true
 source "$HOME/.profile" 2>/dev/null || true
 
-PROJECT_DIR="/var/www/SaveYourSoul"
+PROJECT_DIR="/var/www/YOUR_PROJECT_DIR"  # An deinen tatsächlichen Deploy-Pfad anpassen
 
 echo "🚀 Starte Claude Code Remote Control..."
 echo "   Projekt: $PROJECT_DIR"

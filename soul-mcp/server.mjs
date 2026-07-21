@@ -846,7 +846,7 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         return res.json({ content: [{ type: 'text', text: JSON.stringify({
           available:true, last_updated:lastUpdated, data_age_days:ageDays,
           location, location_from:locationFrom,
-          location_hint: location?null:'Wohnort in sys.md eintragen (z.B. "Wohnort: Marburg") für lokale Händler.',
+          location_hint: location?null:'Wohnort in sys.md eintragen (z.B. "Wohnort: Berlin") für lokale Händler.',
           wishlist, recent_purchases:purchases,
           monthly_summary: (rawText.match(/## Monthly Summary[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').trim(),
           annual_categories: (rawText.match(/## Annual Categories[^\n]*\n([\s\S]*?)(?=\n##|$)/)?.[1]||'').trim(),

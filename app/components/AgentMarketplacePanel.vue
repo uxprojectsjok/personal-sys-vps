@@ -248,7 +248,7 @@
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_tags') }} <span class="field-hint">{{ $t('marketplace.field_tags_hint') }}</span></label>
                   <div class="translate-wrap">
-                    <input v-model="preview.tags" type="text" class="input" placeholder="Marburg, AI, Design, Musik…" @blur="translateField('tags')" />
+                    <input v-model="preview.tags" type="text" class="input" placeholder="Berlin, AI, Design, Musik…" @blur="translateField('tags')" />
                     <span v-if="translating.tags" class="translate-spin">⟳</span>
                   </div>
                 </div>

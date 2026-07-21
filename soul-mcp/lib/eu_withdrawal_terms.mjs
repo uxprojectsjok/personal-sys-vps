@@ -44,7 +44,7 @@ const BRAND_DARK = '#1a1a1a';
 const BRAND_DIM  = '#666666';
 
 // Initialen aus dem Anbieternamen — Firmen-Präfix vor " – "/" - " wird ignoriert,
-// falls vorhanden (z.B. "UX-Projects – Jan-Oliver Karo" → nur "Jan-Oliver Karo"
+// falls vorhanden (z.B. "Acme GmbH – Max Mustermann" → nur "Max Mustermann"
 // initialisieren). Space UND Bindestrich trennen einzelne Namensteile.
 function initialsFromTraderName(traderName) {
   if (!traderName) return 'XX';

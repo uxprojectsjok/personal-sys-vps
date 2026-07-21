@@ -167,7 +167,7 @@ export function useSoulPasskey() {
 
       // Domain im Anzeigenamen — rp.name ("SaveYourSoul") und der Standard-Username
       // ("Soul") sind sonst auf JEDEM SYS-Node identisch, macht mehrere Nodes am
-      // selben Desktop (z.B. kro.uxprojects-jok.com + karo-familie.de) in Windows
+      // selben Desktop (z.B. node-a.example.com + node-b.example.com) in Windows
       // Hello/dem Passwortmanager ununterscheidbar, obwohl es intern via rp.id
       // (= Hostname) längst getrennte Credentials sind — nur die OS-Anzeige war
       // nicht aussagekräftig. Betrifft nur NEU registrierte Passkeys, bestehende

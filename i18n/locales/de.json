@@ -1286,7 +1286,7 @@
     "lede": "Schreibe einen kryptographischen Fingerabdruck deiner Soul on-chain — ein unwiderruflicher Zeitstempel, der deine Identität beweist.",
     "title_prefix": "Soul",
     "title_em": "verankern",
-    "tags_placeholder": "Marburg, AI, Design, Dezentralität…",
+    "tags_placeholder": "Berlin, AI, Design, Dezentralität…",
     "tags_synced_hint": "Vorausgefüllt aus dem Marketplace (Network-Panel) — bearbeite die Tags dort, damit Anchoring und Marketplace nicht auseinanderlaufen. Manuelle Änderung hier nur wenn wirklich nötig.",
     "wallet_disconnect": "Wallet trennen",
     "connect_wallet_note": "Verbinde zuerst eine Wallet, um zu verankern. Mindestens eine echte Session ist erforderlich.",
@@ -1635,7 +1635,7 @@
   },
   "agent_sandbox": {
     "desc": "Was externe KI-Agenten über dich sehen — der Rest von sys.md bleibt privat.",
-    "placeholder": "Schreibe hier frei — als Markdown oder Fließtext. z.B.: »Hallo, ich bin Jan aus Marburg. Ich freue mich über Nachrichten.«",
+    "placeholder": "Schreibe hier frei — als Markdown oder Fließtext. z.B.: »Hallo, ich bin Alex aus Berlin. Ich freue mich über Nachrichten.«",
     "unsaved": "Ungespeicherte Änderungen",
     "chars": "Z."
   },

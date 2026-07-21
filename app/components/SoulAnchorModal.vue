@@ -58,7 +58,7 @@
               v-model="tagsRaw"
               type="text"
               class="anc-tags-input"
-              placeholder="Marburg, AI, Design, Musik…"
+              placeholder="Berlin, AI, Design, Musik…"
               :disabled="isAnchoring"
             />
             <div v-if="tagsArray.length" class="anc-chips">

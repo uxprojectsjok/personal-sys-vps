@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.44] — 2026-07-21
+
+**Security/Cleanup: systematic sweep of the entire current tree for operator-specific data that had leaked into this generic template repo beyond the i18n sections fixed in v1.0.43 — real address/phone/name/username in an actively-wired legal-notice page, plus a personal Linux username and hardcoded paths in devops scripts.**
+
+`personal-sys-vps` is meant to be a neutral protocol foundation — every operator sets up their own instance on top of it via the separate `sys-installer` repo. Content specific to the maintainer's own private node (`personal-sys-vps-private`, kro.uxprojects-jok.com) has repeatedly bled into this public repo across several sessions; this pass searched systematically for phone numbers, names, addresses, and usernames rather than reacting to individual reports.
+
+**Changed**
+- `app/pages/agb.vue`, `public/agb.txt`: this page is not decorative — `soul-mcp/server.mjs` and `soul-mcp/tools/show_withdrawal_terms.mjs` serve it as `terms_url`/`terms_url_txt` in the EU pre-contract/withdrawal-rights consent flow shown before x402/PayPal marketplace payments (wired in during the v1.0.38 x402 port). Real operator name/address/email replaced with Lorem-ipsum placeholder text plus a visible notice that the node operator must supply their own legally-reviewed terms before accepting real payments — the route and the withdrawal-terms wiring stay functional, only the content is now a template.
+- `scripts/vps/setup-claude-remote.sh`: removed a hardcoded reference to the maintainer's actual Linux username; the hardcoded `PROJECT_DIR="/var/www/SaveYourSoul"` (present in two places, including inside a generated systemd unit) replaced with an explicit `YOUR_PROJECT_DIR` placeholder an operator must edit.
+- `soul-mcp/soul-mcp.service`: `WorkingDirectory=`/`EnvironmentFile=` hardcoded the same real-sounding path — unified with the `YOUR_DOMAIN`-style placeholder convention already used elsewhere in the same file.
+- Cosmetic: a handful of code comments and UI placeholder examples (`soul-mcp/lib/eu_withdrawal_terms.mjs`, `app/composables/useSoulPasskey.js`, `soul-mcp/server.mjs`, `app/components/AgentMarketplacePanel.vue`, `app/components/SoulAnchorModal.vue`, both i18n locale files) referenced the maintainer's real name/city as illustrative examples — swapped for generic placeholders (`Max Mustermann`, `Berlin`, `node-a.example.com`).
+
+**Notes**
+- Confirmed clean via full-tree grep for the maintainer's real name, address, phone number, and Linux username — 0 hits outside the intentional copyright/trademark lines in `README.md`/`ARCHITECTURE.md` and the standard OSS contact address in `CONTRIBUTING.md`.
+- This data is still present in this repo's git history (predates this fix, going back to the initial commit) — a separate history rewrite is planned to remove it there too; not part of this tag.
+
 ## [1.0.43] — 2026-07-21
 
 **Fixed: a security/privacy issue and a build-breaking bug, both from the same incomplete "WIP: port v1.0.65-1.0.67 fixes from private repo" commit (`b318d17`) — four whole i18n sections (`impressum`, `datenschutz`, `lizenz`, `consentBanner`) were pasted into `i18n/locales/{de,en}.json` from `personal-sys-vps-private` without genericizing operator-specific fields or ever running a build against this repo.**

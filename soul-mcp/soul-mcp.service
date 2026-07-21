@@ -7,7 +7,7 @@ After=network.target openresty.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/SaveYourSoul/soul-mcp
+WorkingDirectory=/var/www/YOUR_PROJECT_DIR/soul-mcp
 ExecStart=/usr/bin/node server.mjs
 Restart=always
 RestartSec=5
@@ -17,7 +17,7 @@ StandardError=journal
 SyslogIdentifier=soul-mcp
 
 # Umgebungsvariablen aus .env Datei
-EnvironmentFile=/var/www/SaveYourSoul/soul-mcp/.env
+EnvironmentFile=/var/www/YOUR_PROJECT_DIR/soul-mcp/.env
 
 [Install]
 WantedBy=multi-user.target
