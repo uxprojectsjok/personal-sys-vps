@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.66] — 2026-07-21
+
+**Docs: the uxprojects-jok.com link in the two Markdown-rendered "UX-Projects Jan-Oliver Karo" mentions only wrapped "UX-Projects" — expanded to cover the full name.**
+
+**Changed**
+- `README.md`, Copyright and trademark lines: `[UX-Projects](...) Jan-Oliver Karo` → `[UX-Projects Jan-Oliver Karo](...)`, link now spans the whole name.
+
+---
+
 ## [1.0.65] — 2026-07-21
 
 **Docs: dropped the separator between "UX-Projects" and "Jan-Oliver Karo" per the maintainer's clarification — the correct form is "UX-Projects Jan-Oliver Karo" with no dash or comma, not "UX-Projects — Jan-Oliver Karo" as fixed in v1.0.64.**
