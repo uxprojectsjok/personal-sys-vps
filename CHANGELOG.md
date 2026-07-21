@@ -19,7 +19,7 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 - `lua/get_config.lua`, `lua/set_config.lua`, `lua/test_key.lua`: `wavespeed_key` config field and status reporting removed; other keys (Anthropic, ElevenLabs, MCP URL, Reown) unaffected.
 - `app/components/SettingsModal.vue`: WaveSpeed API key entry UI removed.
 - `app/components/ChatInterface.vue`, `app/composables/useClaude.js`: removed the `soul_generate` tool definition and its dead `genPrompt`/`outputMode` local variables (already unused before this fix — no button ever consumed them); corrected a stale `// WaveSpeed image generation` comment on what is actually the generic message-action dispatcher.
-- `server/openresty/vhost.conf.template`, `server/openresty/me.uxprojects-jok.com`, `server/openresty/nginx.conf.template`: removed the two WaveSpeed routes, the `WAVESPEED_KEY` env passthrough, and `api.wavespeed.ai`/`*.wavespeed.ai` from the CSP allowlist.
+- `server/openresty/vhost.conf.template`, `server/openresty/nginx.conf.template`: removed the two WaveSpeed routes, the `WAVESPEED_KEY` env passthrough, and `api.wavespeed.ai`/`*.wavespeed.ai` from the CSP allowlist.
 - `server/api/mind.get.js`: removed the now-orphaned `## Wavespeed` section from the default `mind.md` template.
 - `i18n/locales/{de,en}.json`, `NOTICE`, `SECURITY.md`, `server/openresty/INDEX.md`: WaveSpeed strings and mentions removed.
 
@@ -28,14 +28,14 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 - `server/api/emergency/{isolate,restore,status}.post|get.js`: deleted — dev mirrors.
 - `app/components/EmergencyModal.vue`: deleted.
 - `app/pages/session.vue`: removed the modal mount, its import, `emergencyOpen`/`emergencyLevel`/`emergencyActive` state, the `handleEmergencyChange` handler, and the `/api/emergency/status` poll on load.
-- `server/openresty/vhost.conf.template`, `server/openresty/me.uxprojects-jok.com`: removed the `/api/emergency/*` location block and the three `rewrite_by_lua_file emergency_guard.lua` gates on `soul-update`, `chat`, and `beme`.
+- `server/openresty/vhost.conf.template`: removed the `/api/emergency/*` location block and the three `rewrite_by_lua_file emergency_guard.lua` gates on `soul-update`, `chat`, and `beme`.
 - `i18n/locales/{de,en}.json`: removed the `emergency` key block.
 
 **Docs**
 - `README.md`: removed the **Emergency Protocol** feature section and its `EmergencyModal`/`emergency_guard.lua` mentions in Repository Structure. (WaveSpeed was already absent from the current README text before this release — see v1.0.45.)
 
 **Notes**
-- `server/openresty/me.uxprojects-jok.com` is a real, generated vhost config for the maintainer's own domain, tracked in this repo despite `project-hash.mjs` explicitly excluding it as "generated instance file, not template" — flagged for the maintainer to decide whether it belongs in a public template repo at all; not resolved as part of this release.
+- `server/openresty/me.uxprojects-jok.com`: removed from the repo — a real, generated vhost config for the maintainer's own domain that should never have been tracked here (`project-hash.mjs` already excluded it from the fingerprint as "generated instance file, not template", but it stayed in git). Same category as the operator-data leaks in v1.0.42–44. Added to `.gitignore` to prevent recurrence. Its edits earlier in this same entry are retained in git history but the file itself is gone from `main`.
 - `NOTICE` still lists Twilio as an integrated third-party service; per this same investigation it has no working implementation anywhere in `lua/` or `soul-mcp/tools/` (only a prompt-template mention) — flagged, not removed here since it wasn't part of this cleanup's confirmed scope.
 
 ---

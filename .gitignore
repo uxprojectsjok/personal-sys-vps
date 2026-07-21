@@ -20,6 +20,7 @@ public/soul_test.md
 server/openresty/old_vps_*
 server/openresty/*.nginx
 server/openresty/INDEX.md
+server/openresty/me.uxprojects-jok.com
 *.local.json
 soul-voice-clone/
 soul-whatsapp/
