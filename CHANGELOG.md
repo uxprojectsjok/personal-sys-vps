@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.56] — 2026-07-21
+
+**Docs: extracted the "Updating Your Node" section into a dedicated `UPDATING.md` — it had grown to 73 lines across 5 subsections (release process, update commands, a low-memory-VPS OOM workaround, protocol-compatibility guarantees, customization safety, verification), which was the main source of clutter in an otherwise project-overview README. Also fixed a stale file-extension list in the Integrity section.**
+
+**Changed**
+- New `UPDATING.md`: full content moved here verbatim (two of its callouts upgraded to GitHub `[!TIP]`/`[!WARNING]` alerts along the way, consistent with the Archivar warning fixed in v1.0.55).
+- `README.md`, "Updating Your Node": condensed to a two-sentence summary plus a link to `UPDATING.md`. Heading and anchor (`#updating-your-node`) unchanged, so existing cross-references from `SECURITY.md`, `ARCHITECTURE.md`, `CHANGELOG.md`'s own header, and README's own table of contents all still resolve.
+
+**Fixed**
+- `README.md`, "Integrity": the fingerprint file-extension list said `.vue, .js, .lua, .sh, .json, .md` — missing `.mjs`, `.template`, and `.css`, all of which `project-hash.mjs`'s `INCLUDE_EXTS` actually covers. Also reworded the exclusion description to match the git-ls-files-based mechanism from v1.0.49, rather than the pre-fix filesystem-walk framing.
+
+---
+
 ## [1.0.55] — 2026-07-21
 
 **Docs: made the Archivar heading warning visually stand out as a GitHub alert instead of a plain blockquote, and replaced the "Key tools" sample in MCP Integration with a set that actually reflects real usage instead of an arbitrary pick.**
