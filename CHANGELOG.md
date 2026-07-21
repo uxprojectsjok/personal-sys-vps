@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.47] — 2026-07-21
+
+**Fixed two loose ends left over from the v1.0.46 cleanup: a phantom MCP tool (`twilio_call_config` — documented and prompted for, but never actually implemented anywhere) and a dev/prod parity gap in `/api/vision-analyze` that the WaveSpeed removal made worse rather than better.**
+
+**Removed — `twilio_call_config` phantom tool**
+- `soul-mcp/prompts/index.mjs`: removed the `### twilio_call_config` entry (and the now-empty `## 9. Infrastructure & Integrations` section it was the only member of) from the tool-selection guide injected into the AI's context. The guide told the AI this tool exists and how to call it; no such tool was ever registered in `soul-mcp/tools/index.mjs` or implemented in `lua/` — calling it would have failed.
+- `README.md`: removed `twilio_call_config` from the Repository Structure tool list.
+- `NOTICE`: removed "Twilio (WhatsApp)" from the third-party services list — no working integration exists to disclaim.
+
+**Restored — `/api/vision-analyze` dev mirror**
+- `server/api/vision-analyze.post.js`: recreated. The version deleted in v1.0.46 was WaveSpeed-only and never matched production `lua/vision_analyze.lua`'s actual behavior (food detection, product detection, soul-reaction, ambiguity check) — deleting it turned a silent mismatch into a 404 for the whole camera-vision feature in `npm run dev`. The new version ports `lua/vision_analyze.lua`'s prompt and response-parsing logic line-for-line (same German prompt text, same field set) so `app/components/ChatInterface.vue`'s existing handling code — untouched by this fix — works correctly in dev, not just in production.
+
+**Notes**
+- No production Lua or MCP server code changed — `lua/vision_analyze.lua` was already correct and is the source of truth the new dev mirror was ported from.
+
+---
+
 ## [1.0.46] — 2026-07-21
 
 **Security/Cleanup: removed two features that were never meant to be in this public repo — WaveSpeed AI image/video generation (accidentally ported from the private `personal-sys-vps-private` build, where the equivalent feature works against the maintainer's own key) and the Emergency Protocol AI-lock (no UI trigger anywhere in the frontend — `emergencyOpen`/`emergencyLevel` were set but never flipped to open the modal, confirmed by a full-tree grep for any click handler wiring it up). Both were fully functional at the API layer despite being unreachable or unintended here, which is its own risk. Same category of issue as the operator-data leaks fixed in v1.0.43/v1.0.44, this time a feature-level leak rather than a data leak.**

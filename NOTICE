@@ -56,7 +56,7 @@ This software includes example integrations with independent
 third-party services, including but not limited to:
 
     Anthropic (Claude API) · ElevenLabs (text-to-speech)
-    Twilio (WhatsApp) · WalletConnect · Pinata (IPFS) · Polygon (blockchain)
+    WalletConnect · Pinata (IPFS) · Polygon (blockchain)
 
 The author is NOT affiliated with, endorsed by, sponsored by,
 or in any partnership with any of these providers. Their use

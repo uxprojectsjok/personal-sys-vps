@@ -300,14 +300,6 @@ Publishes metadata (name, tags, MCP endpoint) — no private data.
 
 ---
 
-## 9. Infrastructure & Integrations
-
-### twilio_call_config
-**When:** User wants to configure a Twilio number (voice/SMS webhooks).
-Credentials (account_sid, auth_token) passed directly — no stored secrets.
-
----
-
 ## Decision Quick Reference
 
 | User question | First tool |
