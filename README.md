@@ -94,15 +94,7 @@ Use your context — sys.md plus the Vault — with any preferred MCP-capable AI
 Structured health context (Garmin/Apple Health/Oura sync, food log with nutrition ratings, voice/photo/motion capture) feeds `health.md` for the AI to reason over. Details: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Agent Runner (Autonomous Tasks)**
-- **SYS Agent** runs tasks from `agent.md` autonomously — Claude Code executes them on a schedule without any manual prompt
-- Hourly cron scan across all souls; runs only when pending tasks exist
-- On-demand execution via **"Jetzt ausführen"** button in Settings → Agent tab
-- **agent.md** three-section format: **`## Dauertasks`** (standing rules always applied after each task), **`## Offene Tasks`** (pending), **`## Erledigte Tasks`** (completed archive)
-- **Dauertasks** persist permanently and never get marked done — example: "After every completed task, send email via Zapier"
-- **Zapier MCP** integration: agent can call Zapier actions (send email, Slack, webhooks, Google Docs) during task execution
-- Live log viewer in Settings → Agent tab: auto-polls while running, shows full output of the last run
-- Per-soul enable/disable — disabled souls are skipped silently at cron time
-- Agent writes directly to the soul's vault context files (full read/write access to `vault/context/`)
+Standing and one-off tasks defined in `agent.md` run on a schedule with no manual prompt required, with full read/write access to the soul's Vault and optional Zapier MCP actions. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Peer Network (Social Sphere)**
 - Add trusted peers by soul_id + endpoint
@@ -110,20 +102,6 @@ Structured health context (Garmin/Apple Health/Oura sync, food log with nutritio
 - Attach images and files — uploaded to `vault/shared`, served cross-domain with peer auth
 - KI synthesis: reads the live social stream, periodically contributes a brief — forwarded to peers with `[KI]` attribution
 - Beme: community broadcast channel — short messages visible across the network
-
-**AI-native Peer Messenger (Milestone — 2026-06-12)**
-
-> The first complete AI-based peer-to-peer message exchange between two independent SYS nodes was confirmed on 2026-06-12.
-
-The exchange worked as follows:
-1. Peer A wrote a greeting in their SYS chat — stored in their Social Sphere.
-2. The node owner asked Claude AI (via MCP): *"Do I have new messages from peers?"*
-3. Claude AI called `peer_inbox` — fetched the message cross-domain from Peer A's node.
-4. The owner said: *"Reply — you can read my soul."*
-5. Claude AI called `soul_read`, extracted context from the owner's sys.md, formulated a personal reply, and sent it via `peer_send`.
-6. Peer A saw the reply live in their chat on an independent VPS.
-
-No third-party messaging service involved. No WhatsApp, no Telegram. The AI is the messenger interface — soul context is the signal. This is what SYS-protocol messaging looks like.
 
 **Vault**
 - Local vault (File System Access API, no upload needed)
@@ -155,20 +133,13 @@ vault/
 Root `.md` files without SYS frontmatter are also picked up as context — but keeping them in `context/` is cleaner. The sync strips the folder path; the server always receives only the filename.
 
 **Networking**
-- MCP server (OAuth 2.0 + PKCE)
-- Soul whitelist: trusted souls connect via MCP using their own soul_cert — no handshake, no setup
-- Soul Skills: declarable capabilities exposed via MCP for agent discovery
-- **Web Push Notifications**: browser subscribes via VAPID on app load — node can push alerts without a background app
+MCP server (OAuth 2.0 + PKCE), soul-cert peer whitelisting, declarable Soul Skills for agent discovery, and Web Push for background alerts. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Agent Marketplace**
-- Requires a **Public Node** (set at install time, see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject Marketplace and paid-agent requests server-side
-- Register soul on-chain (Polygon + IPFS/Pinata) — discoverable by AI agents
-- Paid agent access: x402 (USDC on Polygon) or PayPal → time-limited access token → Agent Sandbox read
+Public nodes can register on-chain and expose paid, sandboxed soul access to external AI agents via x402 (USDC) or PayPal. Requires a **Public Node** (see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject this server-side. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 **Growth & Anchoring**
-- Soul Growth Chain: every session is cryptographically signed
-- Blockchain anchoring on Polygon (optional, user-initiated)
-- Maturity score 0–100 based on sys.md content depth
+Every session is cryptographically signed into a growth chain; souls can optionally anchor on Polygon and track a maturity score based on sys.md depth. Full feature list: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 ### What the node does NOT do
 
@@ -537,7 +508,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.47): b0956c1a2720a9f5
+Current release fingerprint (v1.0.48): b0956c1a2720a9f5
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

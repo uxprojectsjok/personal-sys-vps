@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.48] — 2026-07-21
+
+**Docs: further README trim following v1.0.45's professionalization pass — dropped a dated milestone writeup and condensed three more feature sections (Agent Runner, Networking, Agent Marketplace, Growth & Anchoring) into the same short-teaser-plus-link style already used for AI & Soul and Health & Body.**
+
+**Changed**
+- `README.md`: removed the "AI-native Peer Messenger (Milestone — 2026-06-12)" writeup — a dated, narrative walkthrough of a one-off test, not evergreen reference material.
+- `README.md`: **Agent Runner**, **Networking**, **Agent Marketplace**, **Growth & Anchoring** condensed from bullet lists to one-paragraph teasers pointing to [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com) for the full feature list — same pattern as **AI & Soul** and **Health & Body** in v1.0.45. **Identity & Authentication**, **Peer Network**, and **Vault** stay as detailed bullet lists — security/protocol fundamentals, not consumer feature marketing.
+
+**Notes**
+- No fingerprint change — README.md is excluded from `project-hash.mjs` by design (self-referential).
+
+---
+
 ## [1.0.47] — 2026-07-21
 
 **Fixed two loose ends left over from the v1.0.46 cleanup: a phantom MCP tool (`twilio_call_config` — documented and prompted for, but never actually implemented anywhere) and a dev/prod parity gap in `/api/vision-analyze` that the WaveSpeed removal made worse rather than better.**
