@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.52] — 2026-07-21
+
+**Docs: fixed an inaccurate encryption-scope claim in the Technical Stack section — verified against `lua/migrate_encrypt_generic_context.lua` and `soul-mcp/tools/context_write.mjs`.**
+
+**Fixed**
+- `README.md`: "Encrypted at rest, server-managed" listed exactly six named files (`health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md`, `agent.md`) as if that were the complete set. The actual rule is broader and generic: every file under `vault/context/` — including arbitrary files created via `context_write` — is encrypted whenever `cipher_mode` is `"ciphered"`, with exactly two deliberate exceptions (`shopping.md`, `prompts.md`). The six named files were the original, narrower rule before `migrate_encrypt_generic_context.lua` generalized it; the README hadn't caught up. Reworded to state the general rule with the six as examples, not the exhaustive list.
+- Rest of the Technical Stack section (Nuxt 4 / `ssr: false`, OpenResty API layer, flat-file data layout, `SYS\x01` + 16-byte-IV encryption format, `vault_key_hex` field name) checked against the current code and confirmed accurate — no other changes.
+
+---
+
 ## [1.0.51] — 2026-07-21
 
 **Docs: de-duplicated the sys.uxprojects-jok.com link that had accumulated once per teaser section in "What the node does" (8 repeats) into a single pointer at the top of the section.**

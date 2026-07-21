@@ -151,7 +151,7 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 
 **Encryption:** AES-256-CBC, magic header `SYS\x01` + 16-byte IV. `sys.md` is encrypted client-side (WebCrypto API) before upload. The resulting key is also persisted server-side (`vault_key_hex` in `api_context.json`) — this is what lets background automation (Garmin health sync, mind consolidation, payment logging) read and write the vault without an active browser session. It means the key is not strictly browser-only; a compromised server can decrypt the vault. This is a deliberate trade-off in favor of working automation over a stricter zero-knowledge guarantee.
 
-**Encrypted at rest, server-managed:** `health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md` and `agent.md` are AES-256-CBC encrypted using the same persisted key whenever `cipher_mode` is `"ciphered"` (the default) — the server encrypts/decrypts them itself on every read and write, since they're written by server-side automation (Garmin sync, `mind_write`, payment logging, the write-activity log, the agent task queue) rather than the browser. `shopping.md` is deliberately never encrypted, since ad placements written by external paid agents need to work without vault access. `prompts.md` is a technical file and also plaintext by design. On Single-host nodes it lives in the owner's soul vault and is auto-generated from source code markers. On Multi-host nodes it is a node-level file (not per-soul) — kept in `docs/` in this repository and distributed by `init.sh`. Tenant souls do not receive `prompts.md`; each tenant configures their AI behaviour via `mind.md` instead.
+**Encrypted at rest, server-managed:** every file under `vault/context/` — `health.md`, `mind.md`, `income.md`, `earnings.md`, `activity.md`, `agent.md`, and any arbitrary file created via `context_write` — is AES-256-CBC encrypted using the same persisted key whenever `cipher_mode` is `"ciphered"` (the default). The server encrypts/decrypts on every read and write, since these are written by server-side automation (Garmin sync, `mind_write`, payment logging, the write-activity log, the agent task queue) rather than the browser. Two deliberate exceptions: `shopping.md`, since ad placements written by external paid agents need to work without vault access, and `prompts.md`, a technical file that's plaintext by design. On Single-host nodes `prompts.md` lives in the owner's soul vault and is auto-generated from source code markers. On Multi-host nodes it is a node-level file (not per-soul) — kept in `docs/` in this repository and distributed by `init.sh`. Tenant souls do not receive `prompts.md`; each tenant configures their AI behaviour via `mind.md` instead.
 
 ---
 
@@ -499,7 +499,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.51): c9db5f59bf57f851
+Current release fingerprint (v1.0.52): 96da555360c85a30
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 
