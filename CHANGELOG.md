@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.61] — 2026-07-21
+
+**Fixed: "UX-Projects" appeared standalone (without the natural person's name attached) in three sentences — in Germany, a trade name used alone without the operating individual's name attached can read as implying an incorporated entity ("Unternehmen") rather than a sole proprietor. Every other mention in this repo already correctly pairs it with "Jan-Oliver Karo" (copyright lines, NOTICE) or uses first person; these three were the exceptions.**
+
+**Fixed**
+- `README.md`, Legal section: "UX-Projects does not process personal data..." and "...stored by UX-Projects" → first person ("I"/"me"), matching the surrounding paragraphs, which already use "I have no access...", "I do not provide hosting...".
+- `README.md`, Legal section: "...touchpoint between a running SYS node and UX-Projects infrastructure..." → "my infrastructure", same reason.
+- `SECURITY.md`, Scope: "...shared surface between nodes and UX-Projects infrastructure..." → "UX-Projects (Jan-Oliver Karo) infrastructure" — this document doesn't use first person elsewhere, so paired the name instead of switching voice.
+- Verified via full-tree grep: no other standalone occurrences remain anywhere in the tracked `.md`/`NOTICE`/`LICENSE` files.
+
+---
+
 ## [1.0.60] — 2026-07-21
 
 **Docs: added a link to the live soul-scan tool right under the `soul_discover`/Agent Marketplace explanation in On-Chain Anchoring.**

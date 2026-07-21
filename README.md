@@ -449,7 +449,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.60): e17bfeb580e31fbc
+Current release fingerprint (v1.0.61): f7cdbf03643ca575
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -523,9 +523,9 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 - User data resides exclusively on users' own servers.
 - The anchoring contract runs autonomously on the Polygon blockchain. On-chain transactions are entirely the responsibility of the initiating person.
 
-**Data processing:** UX-Projects does not process personal data on behalf of users. All soul data, biometric references, and vault content reside exclusively on the operator's own VPS. The `verify_identity` tools run on the user's own infrastructure — biometric verification (WebAuthn, voice, face) is performed by the user's browser or by the external APIs the operator has independently configured. No biometric data is transmitted to or stored by UX-Projects.
+**Data processing:** I do not process personal data on behalf of users. All soul data, biometric references, and vault content reside exclusively on the operator's own VPS. The `verify_identity` tools run on the user's own infrastructure — biometric verification (WebAuthn, voice, face) is performed by the user's browser or by the external APIs the operator has independently configured. No biometric data is transmitted to or stored by me.
 
-The only technical touchpoint between a running SYS node and UX-Projects infrastructure is the Polygon anchoring contract — which stores SHA-256 hashes only, contains no personal data, and operates autonomously on a public blockchain.
+The only technical touchpoint between a running SYS node and my infrastructure is the Polygon anchoring contract — which stores SHA-256 hashes only, contains no personal data, and operates autonomously on a public blockchain.
 
 **Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
