@@ -381,4 +381,4 @@ Without this line, `require()` calls fail with 500.
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
-Copyright © 2026 Jan-Oliver Karo — UX-Projects, Marburg, Germany
+Copyright © 2026 UX-Projects — Jan-Oliver Karo, Marburg, Germany

@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.64] — 2026-07-21
+
+**Fixed: v1.0.63 paired "UX-Projects" with "Jan-Oliver Karo" but in the wrong order — corrected per the maintainer's explicit ordering to "UX-Projects — Jan-Oliver Karo" (trade name first) everywhere the two appear together, not just the one line touched in v1.0.63.**
+
+**Fixed**
+- `README.md` (Copyright line, trademark line), `NOTICE` (Copyright line, trademark clause, required attribution string), `LICENSE` (Copyright line), `ARCHITECTURE.md` (Copyright line): reordered every "Jan-Oliver Karo — UX-Projects" / "Jan-Oliver Karo, UX-Projects" to "UX-Projects — Jan-Oliver Karo" / "UX-Projects, Jan-Oliver Karo". Verified via full-tree grep that no wrong-order instance remains and every co-occurrence now matches.
+
+---
+
 ## [1.0.63] — 2026-07-21
 
 **Fixed: the trademark ownership line in License said "trademarks of Jan-Oliver Karo" — the name alone, without "UX-Projects" attached. Same naming-consistency category as v1.0.61 (which fixed "UX-Projects" appearing without the name), just the reverse direction: this repo's convention pairs both wherever ownership is stated, and NOTICE and the Copyright line right above this one already do.**
