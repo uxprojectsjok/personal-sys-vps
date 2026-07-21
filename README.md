@@ -161,17 +161,19 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 
 ```
 ├── app/                     Nuxt 4 frontend (SSG, runs entirely in the browser)
-│   ├── pages/               session, soul, gate, dateien, chronik, einnahmen,
-│   │                        marketplace, peers, reife, verankern, verbindung, connect,
-│   │                        einrichten, einstellungen, exportieren
-│   ├── components/          ChatInterface, VaultExplorer, SoulViewer, AgentMarketplacePanel,
+│   ├── pages/               session, soul, gate, vault, chronicle, earnings,
+│   │                        marketplace, peers, maturity, anchor, connection, connect,
+│   │                        setup, settings, export, agb, call, health, index, join,
+│   │                        link, verify
+│   ├── components/          ChatInterface, VaultExplorer, AgentMarketplacePanel,
 │   │                        AgentSandboxCard, ApiContextPanel, AudioCaptureCard, CameraRecorder,
 │   │                        ConfirmModal, FirstSetupModal, LiveProfile,
 │   │                        MediaPlayer, ModalCreateSoul, MotionCaptureCard, MotionRecorder,
 │   │                        SettingsModal, SoulAnchorModal, SoulDecryptModal,
 │   │                        SoulDownload, SoulEncryptModal, SoulMaturityMeter, SoulSetupWizard,
-│   │                        SoulSyncModal, SoulUpload, SysCommandPalette, SysIcon, SysMobileNav,
-│   │                        SysSidebar, SysTopbar, VaultServicesPanel, VaultSessionPanel,
+│   │                        SoulSyncModal, SoulUpload, SysCommandPalette, SysIcon, SysMark,
+│   │                        SysMobileNav, SysPageLoading, SysSidebar, SysTopbar,
+│   │                        VaultServicesPanel, VaultSessionPanel,
 │   │                        VaultUpload, VideoBackground, VoiceRecorder
 │   │   └── ui/              Alert, Button, GlowText, Modal
 │   └── composables/         useSoul, useVault, useClaude, useSession, useMind, useProfile,
@@ -182,7 +184,7 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 │                            useConfirm, usePwaInstall, useSpotify, useTrezorKey,
 │                            useVerifySpecial, useYouTube
 │
-├── lua/                     OpenResty Lua scripts (production API layer, 80+ endpoints)
+├── lua/                     OpenResty Lua scripts (production API layer, 150+ endpoints)
 │   ├── soul_cert.lua        Soul cert issuance — per-soul key on multi-hoster
 │   ├── soul_auth.lua        Request authentication (per-soul key + X-Soul-Id aware)
 │   ├── vault_auth.lua       Vault endpoint auth
@@ -203,37 +205,40 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 │   ├── health_sync.py       Main sync runner
 │   ├── writer.py            Writes health.md — preserves Food Log + Annual Journal
 │   ├── install.sh           Interactive setup (credentials, soul selection, cron)
-│   └── adapters/            garmin.py, apple_health.py, oura.py
+│   ├── adapters/            garmin.py, apple_health.py, oura.py
+│   └── …                    (see health-sync/ directory for full list)
 │
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
 │   ├── server.mjs           Main server — OAuth flow, /internal/run-tool, X-Soul-Id routing
 │   ├── oauth.mjs            OAuth 2.0 + PKCE token management
-│   ├── tools/               50+ tools — soul_read/write, vault_manifest, health_check,
+│   ├── tools/               65+ tools — soul_read/write, vault_manifest, health_check,
 │   │                        health_sync, food_log, mind_read/write, soul_discover,
 │   │                        soul_skills, beme_chat, verify_human,
 │   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
 │   │                        soul_paid_comment, shop_write_read,
 │   │                        audio/image/video list+get, context_get/list, profile_get/save,
 │   │                        soul_read_by_token, *_peer variants, …
-│   ├── lib/                 api.mjs, blockchain.mjs, herz.mjs, soul_indexer.mjs,
-│   │                        soul_parser.mjs, vault_fs.mjs
+│   ├── lib/                 api.mjs, artwork_log.mjs, blockchain.mjs, eu_withdrawal_terms.mjs,
+│   │                        herz.mjs, soul_indexer.mjs, soul_parser.mjs, vault_fs.mjs,
+│   │                        x402_agent_wallet.mjs, x402_client.mjs
 │   └── prompts/             index.mjs — soul_guide + tool_guide (Selbstreflexion-Workflow)
 │
 ├── server/
 │   ├── api/                 Nitro API routes (development server only)
 │   ├── plugins/             env.js — server-side env injection
 │   ├── utils/               validateSoulToken.js
-│   └── openresty/           nginx.conf.template, vhost.conf.template
+│   └── openresty/           nginx.conf.template, vhost.conf.template, vhost-http.conf.template
 │
 ├── shared/
 │   └── utils/               soulParser.js, soulMaturity.js — shared browser/server logic
 │
 ├── utils/
 │   ├── killMetas.mjs        Strip CSP meta tags from the build
-│   ├── project-hash.mjs     SHA-256 fingerprint $HASH$HASH$HASH$HASH$HASHof all source files
+│   ├── project-hash.mjs     SHA-256 fingerprint of all source files
 │   ├── generate-prompts.mjs Sync prompts.md into vault on build
-│   └── sync-server.sh       Sync /opt/sys changes back to repo (on demand)
-└── docs/                    Protocol documentation, API reference, specs
+│   ├── generate-icons.mjs   Generate app icons at build time
+│   └── gen-pricing-params.mjs  Generate pricing_params.json from pricing.js
+└── docs/                    Protocol specs (docs/spec/)
 ```
 
 ---
@@ -499,7 +504,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.52): 96da555360c85a30
+Current release fingerprint (v1.0.53): 0f138383ebf89ff4
 
 The hash covers all source files (`.vue`, `.js`, `.lua`, `.sh`, `.json`, `.md`) — excluding `node_modules`, build output, secrets, and lock files.
 

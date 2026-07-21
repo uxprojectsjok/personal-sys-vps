@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.53] — 2026-07-21
+
+**Docs: Repository Structure had drifted significantly from the actual tree — verified every listed path/file against disk and fixed what didn't match. `sys.md Format` was checked too and is fully accurate (stage-based read filtering, >18-entry LONGMEM dedup threshold, and the bilingual EN/DE section-name mapping in `herz.mjs`/`soul_maturity_peer.mjs` all confirmed in code) — no changes needed there.**
+
+**Fixed**
+- `README.md` Repository Structure, `app/pages/`: listed German page-file names (`dateien`, `chronik`, `einnahmen`, `reife`, `verankern`, `verbindung`, `einrichten`, `einstellungen`, `exportieren`) that no longer exist — the files were renamed to English at some point and the README never caught up. Replaced with the current actual names (`vault`, `chronicle`, `earnings`, `maturity`, `anchor`, `connection`, `setup`, `settings`, `export`) and added eight pages that existed but were never listed at all (`agb`, `call`, `health`, `index`, `join`, `link`, `soul`, `verify`).
+- `app/components/`: added `SysMark` and `SysPageLoading` (exist, weren't listed); removed `SoulViewer` (doesn't exist — stale).
+- `lua/`: "80+ endpoints" understated the current count by nearly half — corrected to "150+" (actual: 152).
+- `soul-mcp/tools/`: "50+ tools" corrected to "65+" (actual: 69).
+- `soul-mcp/lib/`: added four files that exist but weren't listed — `artwork_log.mjs`, `eu_withdrawal_terms.mjs`, `x402_agent_wallet.mjs`, `x402_client.mjs`.
+- `server/openresty/`: added `vhost-http.conf.template`, which exists alongside the two already listed.
+- `utils/`: removed `sync-server.sh` — it does not exist anywhere in the repo or on disk; this project stopped using that pattern (Lua/nginx changes are now discussed and deployed manually, per this same README's own release-process guidance) and the listing was never updated. Added `generate-icons.mjs` (used in the `build`/`generate` npm scripts) and `gen-pricing-params.mjs` (generates `pricing_params.json` from `pricing.js`), both present but unlisted.
+- `docs/`: "Protocol documentation, API reference, specs" overstated what's there — only `docs/spec/` exists, no separate API reference. Tightened to "Protocol specs (docs/spec/)".
+- `utils/project-hash.mjs` line: fixed a literal `$HASH$HASH$HASH$HASH$HASH` artifact left in the description text.
+
+---
+
 ## [1.0.52] — 2026-07-21
 
 **Docs: fixed an inaccurate encryption-scope claim in the Technical Stack section — verified against `lua/migrate_encrypt_generic_context.lua` and `soul-mcp/tools/context_write.mjs`.**
