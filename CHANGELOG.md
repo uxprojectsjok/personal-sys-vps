@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.69] — 2026-07-21
+
+**Docs: labeled the cross-device QR-scan flow as Proof-of-Concept in verification-hub.md — implemented and functional per code, but not yet tested at scale, unlike the other Status-section items presented at full confidence.**
+
+**Changed**
+- `docs/spec/verification-hub.md`: "Cross-device (QR-scan)" bullet in Status now reads "— Proof-of-Concept, test". Matching annotation added to the Known Limitations & Roadmap checklist so the `[x]` there doesn't read as more battle-tested than it is.
+
+---
+
 ## [1.0.68] — 2026-07-21
 
 **Docs: removed the `[!IMPORTANT]` security-fix alert from verification-hub.md's Status section — the fix is complete and already reflected in the `[x]` checkmarks under Known Limitations & Roadmap; the callout also referenced a "Server-side proof" heading that doesn't exist in this doc's structure.**

@@ -13,7 +13,7 @@ Identity verification is a standalone, minimal-UI flow (`/verify`) launched from
 - **Voice (`voice_hq`)** — the client-side FFT speaker-similarity check (unchanged) *plus* a server-side anti-replay proof: the user reads a server-generated 6-digit code aloud, and ElevenLabs Scribe (STT) confirms the code was actually spoken in that exact recording.
 - **Human check** — a fourth, independent dimension: verifies the soul is anchored on the Polygon SoulRegistry contract (real owner + at least one anchor) and adds +1 to the score. Stacks with any/all biometric methods; not gated behind them.
 - **2FA wallet** — `proveIdentity()` from `useChainAnchor` checks on-chain via `contract.soulOwner(soulIdBytes32)` that the connected wallet owns this soul, cryptographically re-verified by the MCP tool.
-- **Cross-device (QR-scan)** — `/verify` can render a QR code of its own URL; a second device (typically a phone) scans it and authenticates via a short-lived `vt:` token instead of a soul session. A claim mechanism (`verify_claim.lua`) ensures only one device "wins" a challenge once it starts doing the actual work — the other device's tab self-closes.
+- **Cross-device (QR-scan) — Proof-of-Concept, test:** `/verify` can render a QR code of its own URL; a second device (typically a phone) scans it and authenticates via a short-lived `vt:` token instead of a soul session. A claim mechanism (`verify_claim.lua`) ensures only one device "wins" a challenge once it starts doing the actual work — the other device's tab self-closes.
 - **MCP tool `verify_identity`** — creates challenges (now for one or more methods at once) and polls status, including a `score` that reflects everything completed so far.
 
 ---
@@ -318,7 +318,7 @@ Most fields beyond `soul_id`/`challenge_id`/`status`/`created_at`/`expires_at` a
 - [x] **Face liveness (`hq` mode)** — explicit anti-spoofing prompt with confidence + liveness requirements
 - [x] **Voice anti-replay (`voice_hq`)** — server-generated spoken code verified via ElevenLabs Scribe; plain FFT-only `voice` retired as a challenge method
 - [x] **On-chain human check** — independent +1 scoring dimension via SoulRegistry anchor lookup
-- [x] **Cross-device QR flow** — `vt:` token + claim mechanism for scan-with-phone verification
+- [x] **Cross-device QR flow** — `vt:` token + claim mechanism for scan-with-phone verification, implemented but still Proof-of-Concept — not yet tested at scale
 - [ ] **Voice MFCC** — mel filterbank for better speaker identification (the FFT comparison itself is unchanged since the original spec)
 - [ ] **Vault audio fallback** — if the vault is locked, show an error with unlock instructions
 - [ ] **Challenge cleanup** — delete expired JSON files in `/var/lib/sys/verify/` (cron or on `verify_pending`)
