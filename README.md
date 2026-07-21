@@ -379,14 +379,15 @@ git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 ```
 
 > **Note:** The installer scripts (`init.sh`, `reset.sh`, `recover-password.sh`, `deinstall.sh`) are not included in this public repository.
-> They are distributed via a private installer repository and will be released together with full documentation at official launch.
 > If you are part of the testing group, you have received access separately.
-
-The setup script prompts for domain, email, and optionally an Anthropic API key and Reown Project ID — everything else runs automatically. Change the root password with `passwd` when done.
 
 ### Node modes
 
-`init.sh` offers two modes at startup:
+`init.sh` asks two independent questions at startup: how many souls the node accepts, and whether it accepts paying external agents.
+
+**Public or Private** — set once, gates Agent Marketplace access. Full breakdown: [What is a SYS node?](#what-is-a-sys-node)
+
+**Personal Node or Multi-Hoster** — controls soul count:
 
 | Mode | Description |
 |------|-------------|
@@ -440,7 +441,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.56): 9d6b3590b42c3e0a
+Current release fingerprint (v1.0.57): 5ebae9ce099a07ed
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 

@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.57] — 2026-07-21
+
+**Docs: trimmed two stale/hedging sentences from Installation, and surfaced the Public/Private Node choice in "Node modes" — it's set at the same `init.sh` startup step as Personal/Multi-Hoster but wasn't mentioned there at all.**
+
+**Changed**
+- `README.md`, Installation: removed "will be released together with full documentation at official launch" (an open-ended future promise, not evergreen reference content) and the "setup script prompts for domain, email..." sentence (operational detail duplicated by the `init.sh` walkthrough operators actually get when they run it).
+- `README.md`, "Node modes": added a short lead-in noting `init.sh` asks two *independent* questions at startup — soul count (Personal/Multi-Hoster, already documented here) and Marketplace access (Public/Private, previously only documented under "What is a SYS node?"). Linked rather than duplicated the full Public/Private table.
+
+---
+
 ## [1.0.56] — 2026-07-21
 
 **Docs: extracted the "Updating Your Node" section into a dedicated `UPDATING.md` — it had grown to 73 lines across 5 subsections (release process, update commands, a low-memory-VPS OOM workaround, protocol-compatibility guarantees, customization safety, verification), which was the main source of clutter in an otherwise project-overview README. Also fixed a stale file-extension list in the Integrity section.**
