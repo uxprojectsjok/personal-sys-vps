@@ -449,7 +449,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.59): 9c94b83db3e98a8d
+Current release fingerprint (v1.0.60): e17bfeb580e31fbc
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -494,6 +494,8 @@ Operators who want blockchain features need a WalletConnect-compatible project I
 > This is what makes SYS a shared ecosystem rather than a collection of isolated nodes. Every soul that anchors writes into the same immutable ledger — and as the contract grows older, the full history of all participating souls becomes traceable across the network. A node using a different contract is no longer SYS-compatible and its anchored identities will not be recognized by the community.
 >
 > **Agent Marketplace:** The `soul_discover` tool — used by the Agent Marketplace to list souls — reads exclusively from this contract (Polygon blockchain as the single source of truth). A soul that anchors on a different contract will not appear in `soul_discover` and is invisible to all agents on the network.
+>
+> Browse anchored souls: [sys.uxprojects-jok.com/scan](https://sys.uxprojects-jok.com/scan)
 
 ---
 

@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.60] — 2026-07-21
+
+**Docs: added a link to the live soul-scan tool right under the `soul_discover`/Agent Marketplace explanation in On-Chain Anchoring.**
+
+**Changed**
+- `README.md`, "On-Chain Anchoring": added `Browse anchored souls: sys.uxprojects-jok.com/scan` under the `soul_discover` paragraph, so the abstract "reads exclusively from this contract" claim has an immediately clickable way to see it in practice.
+
+---
+
 ## [1.0.59] — 2026-07-21
 
 **Docs: removed a duplicated Agent Runner description from the Node modes table, made the anchoring contract address visible inline (not just as a link target), and added a no-affiliation disclaimer for Reown.**
