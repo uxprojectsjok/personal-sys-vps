@@ -1,220 +1,204 @@
-# Verification Hub — Spec & Weiterentwicklung
+# Verification Hub
 
-Stand: 2026-06-13 · Seite: `/verbindung`
+Page: `/verbindung`
 
 ---
 
-## Aktuelle Entwicklung (2026-06-13)
+## Status
 
-### Was gebaut wurde (diese Session)
+The Verbindung page doubles as a **verification hub**: alongside its original QR-Connect flow, it offers three biometric verification tiles (fingerprint, face, voice) and a 2FA wallet card. A soul owner can prove their identity either on their own initiative or in response to a challenge raised by an MCP tool (Claude AI).
 
-**Verbindung-Seite als Verifikations-Hub** — die bestehende QR-Connect-Seite wurde zum Hub erweitert. QR-Connect bleibt unverändert. Neu darunter: drei Verifikations-Tiles (Fingerabdruck, Gesicht, Stimme) + 2FA-Wallet-Karte.
+- **Fingerprint** — WebAuthn via `useSoulPasskey.js`. Fully functional.
+- **Voice** — local spectral analysis, no external service. Chosen over ElevenLabs Speaker Verification in favor of a fully self-hosted solution (Web Audio FFT). Vault audio (`vault/audio/*.mp3`) serves as the reference sample, loaded via an auth token and decoded in the browser.
+- **Face** — runs server-side via Claude Haiku Vision rather than a client-side `face-api.js` model (which would need ~25 MB of models and a CDN dependency). More accurate, no model download, and the Anthropic key is already available in `config.json`. The profile PNG from `vault/images/` is decrypted server-side and passed directly to Claude.
+- **Motion verification** (`motion_face_*.mp4`, `motion_body_*.mp4`) — considered, currently deferred. The pending blink-detection liveness check (see Known Limitations) covers the use case sufficiently for now.
+- **2FA wallet → soul identity proof** — replaces a plain `signMessage` with `proveIdentity()` from `useChainAnchor`. The proof checks on-chain via `contract.soulOwner(soulIdBytes32)` that the connected wallet actually owns this soul on Polygon. The MCP tool verifies cryptographically: `verifyMessage(nonce, signature) === wallet`, plus the on-chain check.
+- **MCP tool `verify_identity`** — creates challenges and returns status, including `verified_level: "2fa"`. Two-step flow: create the challenge first, then check status after the user acts.
+- **Pending-challenge banner** — the app polls `/api/verify/pending` every 8 seconds. When Claude creates a challenge, a banner appears with a direct "Verify now" button for the right method.
 
-**Fingerabdruck** war bereits als Tile angelegt (WebAuthn via `useSoulPasskey.js`). Vollständig funktionsfähig.
+---
 
-**Stimme** — lokale Spektralanalyse ohne externe Dienste. Entscheidung gegen ElevenLabs Speaker Verification zugunsten einer vollständig selbst gehosteten Lösung (Web Audio FFT). Vault-Audio (`vault/audio/*.mp3`) dient als Referenz, wird via Auth-Token geladen und im Browser dekodiert. Score wird in % angezeigt.
+## Design Decisions
 
-**Gesicht** — ursprünglich als `face-api.js`-Lösung geplant (~25 MB Modelle, CDN-Abhängigkeit). Umgeschwenkt auf **Claude Haiku Vision** server-seitig, weil: präziser, kein Modell-Download, Anthropic-Key bereits in `config.json`. Profil-PNG aus `vault/images/` wird server-seitig entschlüsselt und direkt an Claude übergeben.
-
-**Bewegungs-Verifikation** (`motion_face_*.mp4`, `motion_body_*.mp4`) — diskutiert, aber vorerst zurückgestellt. Begründung: Liveness-Check via Blinzel-Detection (noch offen) deckt den Anwendungsfall ausreichend ab.
-
-**2FA Wallet → Soul Identity Proof** — ersetzt einfaches `signMessage` durch `proveIdentity()` aus `useChainAnchor`. Der Proof prüft on-chain via `contract.soulOwner(soulIdBytes32)`, dass die verbundene Wallet tatsächlich diese Soul auf Polygon besitzt. Das MCP-Tool verifiziert kryptografisch: `verifyMessage(nonce, signature) === wallet` + on-chain Abgleich via Polygon RPC.
-
-**MCP-Tool `verify_identity`** — erstellt Challenges und gibt Status zurück inkl. `verified_level: "2fa"`. Zwei-Schritt-Flow: zuerst Challenge erstellen, dann nach Nutzer-Aktion Status prüfen.
-
-**Pending-Challenge-Banner** — App pollt `/api/verify/pending` alle 8 Sekunden. Wenn Claude eine Challenge erstellt, erscheint ein Banner mit direktem "Jetzt verifizieren"-Button für die richtige Methode.
-
-### Architektur-Entscheidungen
-
-| Entscheidung | Gewählt | Verworfen | Grund |
+| Decision | Chosen | Rejected | Reason |
 |---|---|---|---|
-| Stimme-Verifikation | Web Audio FFT (lokal) | ElevenLabs Speaker Verification | kein externer Dienst, kein API-Call |
-| Gesicht-Verifikation | Claude Haiku Vision (server) | face-api.js + Modelle | präziser, kein 25 MB Download, Key vorhanden |
-| Bewegung | zurückgestellt | MediaPipe Pose | Liveness-Check reicht für MVP |
-| 2FA Wallet | `proveIdentity()` via useChainAnchor | window.ethereum direkt | on-chain soulOwner-Check statt beliebiger Wallet |
-| Liveness | noch offen | Blinzel-EAR (face-api.js) | face-api.js-Dependency vermieden |
-
-### Commits dieser Session
-
-```
-8695f45  feat: complete verification stack — voice FFT, face Claude Vision, 2FA wallet
-d8aff0d  style: brighten all text on verbindung page to var(--fg)
-e582ef1  feat: verification hub — biometric identity via fingerprint, face, voice
-```
+| Voice verification | Web Audio FFT (local) | ElevenLabs Speaker Verification | No external service, no API call |
+| Face verification | Claude Haiku Vision (server) | face-api.js + models | More accurate, no 25 MB download, key already available |
+| Motion | Deferred | MediaPipe Pose | Liveness check is sufficient for MVP |
+| 2FA wallet | `proveIdentity()` via useChainAnchor | Raw `window.ethereum` | On-chain soulOwner check instead of trusting an arbitrary wallet |
+| Liveness | Still open | Blink EAR (face-api.js) | Avoided the face-api.js dependency |
 
 ---
 
-## Überblick
+## Overview
 
-Die Verbindung-Seite ist ein **Verifikations-Hub**: Der Soul-Inhaber kann seine Identität biometrisch nachweisen — entweder auf eigene Initiative oder ausgelöst durch ein MCP-Tool (Claude AI).
+Four levels, ascending in assurance:
 
-Vier Stufen, aufsteigend nach Sicherheit:
-
-| Stufe | Methode | Mechanismus | Datentransfer |
+| Level | Method | Mechanism | Data transferred |
 |---|---|---|---|
-| 1 | Fingerabdruck | WebAuthn (Face ID / Touch ID / Windows Hello) | keiner — Secure Enclave |
-| 2 | Gesicht | Kamera-Frame → Claude Haiku Vision | JPEG an eigenen Server |
-| 3 | Stimme | Web Audio FFT-Spektrum vs. Vault-Audio | keiner — lokal im Browser |
-| 4 | 2FA | Biometrik + Wallet-Signatur (ethers.js) | Signatur an eigenen Server |
+| 1 | Fingerprint | WebAuthn (Face ID / Touch ID / Windows Hello) | None — secure enclave |
+| 2 | Face | Camera frame → Claude Haiku Vision | JPEG to your own server |
+| 3 | Voice | Web Audio FFT spectrum vs. vault audio | None — local in the browser |
+| 4 | 2FA | Biometrics + wallet signature (ethers.js) | Signature to your own server |
 
 ---
 
-## Dateistruktur
+## File Structure
 
 ```
-app/pages/verbindung.vue          UI — QR-Connect + 3 Tiles + 2FA-Karte
+app/pages/verbindung.vue          UI — QR-Connect + 3 tiles + 2FA card
 lua/verify_challenge.lua          POST /api/verify/challenge
 lua/verify_pending.lua            GET  /api/verify/pending
 lua/verify_complete.lua           POST /api/verify/complete
 lua/verify_face_check.lua         POST /api/verify/face-check
 lua/verify_2fa.lua                POST /api/verify/2fa
 lua/verify_status.lua             GET  /api/verify/status?id=
-soul-mcp/tools/verify_identity.mjs  MCP Tool
+soul-mcp/tools/verify_identity.mjs  MCP tool
 ```
 
-Challenge-Dateien: `/var/lib/sys/verify/<soul_id>_<challenge_id>.json` · TTL 300s
+Challenge files: `/var/lib/sys/verify/<soul_id>_<challenge_id>.json` · TTL 300s
 
 ---
 
-## API-Endpunkte
+## API Endpoints
 
 ### `POST /api/verify/challenge`
-Auth: soul_cert  
-Body: `{ method: "fingerprint" | "face" | "voice" }`  
+Auth: soul_cert
+Body: `{ method: "fingerprint" | "face" | "voice" }`
 Response: `{ challenge_id, method, status: "pending", expires_at, verify_url }`
 
-Erstellt eine Challenge. Wird sowohl vom MCP-Tool als auch vom Browser direkt aufgerufen (wenn der Nutzer ohne MCP-Kontext auf "Verifizieren" tippt).
+Creates a challenge. Called both by the MCP tool and directly by the browser (when the user taps "Verify" without an MCP context).
 
 ---
 
 ### `GET /api/verify/pending`
-Auth: soul_cert  
+Auth: soul_cert
 Response: `{ pending: [{ challenge_id, method, created_at, expires_at }] }`
 
-App pollt alle 8 Sekunden. Zeigt einen Banner wenn Claude eine offene Challenge erstellt hat.
+The app polls every 8 seconds and shows a banner when Claude has created an open challenge.
 
 ---
 
 ### `POST /api/verify/complete`
-Auth: soul_cert  
-Body: `{ challenge_id, method, verified: bool }`  
+Auth: soul_cert
+Body: `{ challenge_id, method, verified: bool }`
 Response: `{ ok, challenge_id, verified, method, verified_at }`
 
-Browser sendet das biometrische Ergebnis. `verified_level` bleibt `"biometric"` bis `verify_2fa` aufgerufen wird.
+The browser sends the biometric result. `verified_level` stays `"biometric"` until `verify_2fa` is called.
 
 ---
 
 ### `POST /api/verify/face-check`
-Auth: soul_cert  
-Body: `{ image_base64: "<JPEG base64>", mime: "image/jpeg" }`  
+Auth: soul_cert
+Body: `{ image_base64: "<JPEG base64>", mime: "image/jpeg" }`
 Response: `{ match: bool, confidence: "high"|"low", message }`
 
-Liest `vault/images/profile.png` (entschlüsselt falls vault_key im Kontext). Sendet beide Bilder an `claude-haiku-4-5-20251001` mit Prompt: `"Do these two photos show the same person? Reply with exactly one word: MATCH or NO_MATCH."` Modell kann jederzeit in `verify_face_check.lua` auf Opus/Sonnet hochgestuft werden.
+Reads `vault/images/profile.png` (decrypted if a vault key is present in context). Sends both images to `claude-haiku-4-5-20251001` with the prompt: `"Do these two photos show the same person? Reply with exactly one word: MATCH or NO_MATCH."` The model can be raised to Opus/Sonnet at any time in `verify_face_check.lua`.
 
 ---
 
 ### `POST /api/verify/2fa`
-Auth: soul_cert  
-Body: `{ challenge_id, signature: "0x...", address: "0x..." }`  
+Auth: soul_cert
+Body: `{ challenge_id, signature: "0x...", address: "0x..." }`
 Response: `{ ok, challenge_id, verified_level: "2fa" }`
 
-Speichert Wallet-Signatur in der Challenge-Datei. Keine kryptografische Verifikation in Lua — das erledigt das MCP-Tool via ethers.js. Wenn `challenge_id` nicht existiert (standalone-2FA ohne biometrische Challenge), wird ein neues Challenge-File angelegt.
+Stores the wallet signature in the challenge file. No cryptographic verification happens in Lua — that is handled by the MCP tool via ethers.js. If `challenge_id` does not exist (standalone 2FA without a prior biometric challenge), a new challenge file is created.
 
 ---
 
 ### `GET /api/verify/status?id=<challenge_id>`
-Auth: soul_cert  
-Response: vollständiges Challenge-JSON + `registered_wallet` aus `api_context.json`
+Auth: soul_cert
+Response: full challenge JSON + `registered_wallet` from `api_context.json`
 
-Für das MCP-Tool: liefert alle Daten inkl. `wallet_2fa.signature` für ethers.js `verifyMessage`.
+For the MCP tool: returns all data including `wallet_2fa.signature` for ethers.js `verifyMessage`.
 
 ---
 
-## Browser-Logik (`verbindung.vue`)
+## Browser Logic (`verbindung.vue`)
 
-### Stimme — Web Audio FFT
+### Voice — Web Audio FFT
 
 ```
-Vault-Audio laden (/api/vault/audio → active_url)
+Load vault audio (/api/vault/audio → active_url)
   ↓ ArrayBuffer → AudioContext.decodeAudioData()
-Mikrofon aufnehmen (3 Sekunden, MediaRecorder)
+Record microphone (3 seconds, MediaRecorder)
   ↓ Blob → ArrayBuffer → decodeAudioData()
-Spektral-Envelope beider Audios
+Spectral envelope of both audio sources
   ↓ FFT (Cooley-Tukey, frameSize=2048, hop=512)
-  ↓ log(1 + magnitude) gemittelt über alle Frames
-Kosinus-Ähnlichkeit der Envelopes
+  ↓ log(1 + magnitude) averaged across all frames
+Cosine similarity of the envelopes
   ↓ score > 0.78 → verified
 ```
 
-Schwellenwert 0.78 kann in `doVoice()` justiert werden. Score wird in % angezeigt.
+The 0.78 threshold can be adjusted in `doVoice()`. Score is shown as a percentage.
 
-**Bekannte Grenzen:**
-- Encrypted Vault-Audio (SYS\x01 magic) schlägt fehl wenn Vault gesperrt ist
-- Sehr unterschiedliche Mikrofonqualitäten können Score senken
-- Hintergrundlärm beeinflusst hohe Frequenzen (< kritisch für Formanten)
+**Known limitations:**
+- Encrypted vault audio (SYS\x01 magic) fails if the vault is locked
+- Very different microphone quality can lower the score
+- Background noise affects high frequencies (less critical for formants)
 
-**Verbesserungspfad:** Mel-Filterbank (40 Bänder, 100–8000 Hz) vor der Kosinusberechnung → MFCC-ähnliche Features → bessere Sprecheridentifikation unabhängig vom Inhalt.
+**Improvement path:** a mel filterbank (40 bands, 100–8000 Hz) before the cosine calculation → MFCC-like features → better speaker identification independent of content.
 
 ---
 
-### Gesicht — Claude Vision
+### Face — Claude Vision
 
 ```
-Kamera öffnen (getUserMedia, facingMode: user)
-  ↓ Live-Vorschau (gespiegelt für natürlichen Eindruck)
-Nutzer klickt "Aufnehmen"
+Open camera (getUserMedia, facingMode: user)
+  ↓ Live preview (mirrored for a natural look)
+User clicks "Capture"
   ↓ Canvas.drawImage(video) → toDataURL('image/jpeg', 0.85)
-  ↓ Base64 ohne data-URI-Prefix
+  ↓ Base64 without the data-URI prefix
 POST /api/verify/face-check
-  ↓ Server: liest vault/images/profile.png (decrypt if needed)
+  ↓ Server: reads vault/images/profile.png (decrypt if needed)
   ↓ Claude Haiku: MATCH / NO_MATCH
-Ergebnis → verified / failed
+Result → verified / failed
 ```
 
-**Verbesserungspfad (Liveness-Check):**  
-Aktuell kein Anti-Spoofing gegen Foto-Angriffe. Optionen:
-1. **Blink-Detection ohne ML**: Helligkeit im Augenbereich (oberes 1/4, mittlere 40% der Breite) tracken → 2 Helligkeitseinbrüche < 0.7 × EMA innerhalb 5s = 2 Blinzeln → capture
-2. **face-api.js** `SsdMobilenetv1` + 68 Landmarks → Eye Aspect Ratio (EAR) < 0.25 = Blinzeln (erfordert ~12 MB Modelle in `/public/models/`)
-3. **MediaPipe Face Mesh** (WASM, ~400 KB Modell) → präzisere Landmarks, leichtgewichtiger
+**Improvement path (liveness check):**
+No anti-spoofing against photo attacks currently. Options:
+1. **ML-free blink detection**: track brightness in the eye region (top quarter, middle 40% of width) → 2 brightness dips below 0.7 × EMA within 5s = 2 blinks → capture
+2. **face-api.js** `SsdMobilenetv1` + 68 landmarks → Eye Aspect Ratio (EAR) < 0.25 = blink (requires ~12 MB of models in `/public/models/`)
+3. **MediaPipe Face Mesh** (WASM, ~400 KB model) → more precise landmarks, lighter weight
 
 ---
 
-### Fingerabdruck — WebAuthn
+### Fingerprint — WebAuthn
 
-Ruft `authenticatePasskey()` aus `useSoulPasskey.js` auf. Gibt PRF-Output zurück (ArrayBuffer) — wird als Truthy-Check für `verified: true` verwendet. Der PRF-Output wird nicht gespeichert oder übertragen.
+Calls `authenticatePasskey()` from `useSoulPasskey.js`. Returns the PRF output (ArrayBuffer) — used as a truthy check for `verified: true`. The PRF output is never stored or transmitted.
 
 ---
 
 ### 2FA Wallet
 
 ```
-anyBiometricVerified === true → 2FA-Karte sichtbar
-Nutzer klickt "Wallet verbinden & signieren"
+anyBiometricVerified === true → 2FA card visible
+User clicks "Connect & sign wallet"
   ↓ import('ethers') → BrowserProvider(window.ethereum)
   ↓ eth_requestAccounts
   ↓ signer.signMessage(activeChallengeId)
   ↓ signer.getAddress()
 POST /api/verify/2fa { challenge_id, signature, address }
-verifiedLevel = '2fa', walletShort anzeigen
+verifiedLevel = '2fa', show walletShort
 ```
 
-`activeChallengeId` = entweder MCP-Challenge-ID oder frisch erstellte Challenge (aus `POST /api/verify/challenge`).
+`activeChallengeId` = either an MCP challenge ID or a freshly created one (from `POST /api/verify/challenge`).
 
-**Kryptografische Verifikation** läuft im MCP-Tool (`verify_identity.mjs`):
+**Cryptographic verification** runs in the MCP tool (`verify_identity.mjs`):
 
 ```js
-// 1. Signatur-Check
+// 1. Signature check
 const recovered = ethers.verifyMessage(ethers.getBytes(proof.nonce), proof.signature)
 const signatureValid = recovered.toLowerCase() === proof.wallet.toLowerCase()
 
-// 2. On-chain: Besitzt diese Wallet die Soul auf Polygon?
+// 2. On-chain: does this wallet own the soul on Polygon?
 const contract = new ethers.Contract(SOUL_REGISTRY, OWNER_ABI, provider)
 const owner = await contract.soulOwner(proof.soulId)
 const onChainMatch = owner.toLowerCase() === proof.wallet.toLowerCase()
 ```
 
-Ethers ist direkte Dependency in `soul-mcp/package.json` (`^6.13.4`).  
-Lua vertraut dem übermittelten Proof — die kryptografische Verifikation findet bewusst im MCP-Tool (Node.js) statt.
+Ethers is a direct dependency in `soul-mcp/package.json` (`^6.13.4`).
+Lua trusts the submitted proof — cryptographic verification deliberately happens in the MCP tool (Node.js).
 
 ---
 
@@ -229,18 +213,18 @@ verify_identity({ challenge_id: "abc123..." })
 ```
 
 `verified_level`:
-- `"biometric"` — eine Methode erfolgreich
-- `"2fa"` — Biometrik + Wallet-Signatur
+- `"biometric"` — one method succeeded
+- `"2fa"` — biometrics + wallet signature
 
-Typischer Claude-Flow:
-1. `verify_identity({ method: "fingerprint" })` → Challenge erstellen, URL ausgeben
-2. Nutzer öffnet App, verifiziert
-3. `verify_identity({ challenge_id: "..." })` → Status prüfen
-4. Optional: `verify_identity({ challenge_id: "..." })` nach 2FA erneut → `verified_level: "2fa"`
+Typical Claude flow:
+1. `verify_identity({ method: "fingerprint" })` → create challenge, output the URL
+2. User opens the app, verifies
+3. `verify_identity({ challenge_id: "..." })` → check status
+4. Optional: `verify_identity({ challenge_id: "..." })` again after 2FA → `verified_level: "2fa"`
 
 ---
 
-## Challenge-Datei Format
+## Challenge File Format
 
 ```json
 {
@@ -262,23 +246,23 @@ Typischer Claude-Flow:
 
 ---
 
-## Offene TODOs / Weiterentwicklung
+## Known Limitations & Roadmap
 
-- [ ] **Liveness-Check Gesicht** — Blinzel-Detection (s. o.)
-- [ ] **MFCC-Stimme** — Mel-Filterbank für bessere Sprecheridentifikation
-- [x] **ethers.js verifyMessage** aktiviert + on-chain `soulOwner` Check implementiert
-- [ ] **Vault-Audio Fallback** — wenn vault gesperrt: Fehler mit Anleitung zum Entsperren
-- [ ] **Challenge-Cleanup** — abgelaufene JSON-Dateien in `/var/lib/sys/verify/` löschen (Cron oder bei `verify_pending`)
-- [ ] **Bewegungs-Verifikation** (motion_face / motion_body aus Vault) — verschoben, da Liveness via Blinzeln ausreichend
-- [ ] **registered_wallet-Abgleich** — `verified_wallet` aus `api_context.json` gegen 2FA-Adresse prüfen
+- [ ] **Face liveness check** — blink detection (see above)
+- [ ] **Voice MFCC** — mel filterbank for better speaker identification
+- [x] **ethers.js verifyMessage** enabled + on-chain `soulOwner` check implemented
+- [ ] **Vault audio fallback** — if the vault is locked, show an error with unlock instructions
+- [ ] **Challenge cleanup** — delete expired JSON files in `/var/lib/sys/verify/` (cron or on `verify_pending`)
+- [ ] **Motion verification** (motion_face / motion_body from vault) — deferred, since blink-based liveness is sufficient for now
+- [ ] **registered_wallet cross-check** — verify `verified_wallet` from `api_context.json` against the 2FA address
 
 ---
 
-## Vault-Referenzdaten
+## Vault Reference Data
 
-| Typ | Pfad | Verwendet für |
+| Type | Path | Used for |
 |---|---|---|
-| Gesicht | `vault/images/profile.png` | Claude Vision Vergleich |
-| Stimme | `vault/audio/voice_<soul_id>_<datum>.mp3` | FFT Spektralvergleich |
-| Bewegung | `vault/video/motion_face_*.mp4` | (noch nicht implementiert) |
-| Profil-JSON | `vault/profile/face.json` etc. | strukturierte Metadaten |
+| Face | `vault/images/profile.png` | Claude Vision comparison |
+| Voice | `vault/audio/voice_<soul_id>_<date>.mp3` | FFT spectral comparison |
+| Motion | `vault/video/motion_face_*.mp4` | (not yet implemented) |
+| Profile JSON | `vault/profile/face.json` etc. | Structured metadata |

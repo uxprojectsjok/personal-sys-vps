@@ -8,6 +8,31 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.45] — 2026-07-21
+
+**Docs: professionalization pass across the public-facing documentation — dead links removed, README given visual structure (badges, table of contents, tightened status banner), the three German-language `docs/spec/` files translated to English and restructured out of dev-diary form, plus new repo-level polish (SECURITY.md, GitHub topics, homepage URL).**
+
+No application code changed in this release — documentation and repository metadata only.
+
+**Fixed**
+- `README.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`: removed links to `ONBOARDING.md` and `docs/overview.md` — neither file exists in this repo. Replaced with pointers to the content that actually covers the same ground (`README.md#installation`, `README.md#updating-your-node`, `docs/spec/`).
+- `README.md`: the `sys.md Format` example showed a `version: 2` frontmatter without `cert_version`, while `ARCHITECTURE.md` documents `version: 3` with `cert_version` as current — read together, this looked like the two docs disagreed on the schema. Updated the example to `version: 3` + `cert_version: 0`, and added a line clarifying that existing `version: 2` souls remain fully compatible (no migration needed), linking to `docs/spec/sys_md.md` for the full lifecycle.
+
+**Changed**
+- `README.md`: added License/release/protocol badges under the title, a table of contents before the first section, and rewrote the "Work in progress" banner into a single, more confident status callout — same substance (active development, pre-release, production use on the maintainer's own node), less repetition, no more warning emoji.
+- `docs/spec/genesis-chain.md`, `docs/spec/soul-registry-contract.md`: translated from German to English for consistency with the rest of the documentation. `soul-registry-contract.md`'s dated "Tested 2026-06-05" section reframed as a standing `## Verification` section.
+- `docs/spec/verification-hub.md`: translated to English and restructured — removed the dev-session narrative ("Aktuelle Entwicklung", commit hashes) in favor of a `## Status` section stating current state as fact, and promoted the architecture-decisions table out of the session log into a standing `## Design Decisions` section. The open-items list is now `## Known Limitations & Roadmap` instead of a dated TODO checklist.
+
+**Added**
+- `SECURITY.md`: responsible-disclosure contact and scope, addressing the gap highlighted by the PII-leak incidents fixed in v1.0.43/v1.0.44.
+- GitHub repository topics (`self-hosted`, `ai-agent`, `mcp`, `model-context-protocol`, `decentralized-identity`, `openresty`, `nuxt`, `protocol`) and homepage URL (`sys.uxprojects-jok.com`) — previously unset.
+
+**Notes**
+- `karo-familie.de` referenced in the v1.0.26 entry below was flagged during this pass and intentionally left untouched — out of scope for this release, tracked separately.
+- Fingerprint recalculated after all `.md` changes (the hash covers `.md` files) — see `## Integrity` below.
+
+---
+
 ## [1.0.44] — 2026-07-21
 
 **Security/Cleanup: systematic sweep of the entire current tree for operator-specific data that had leaked into this generic template repo beyond the i18n sections fixed in v1.0.43 — real address/phone/name/username in an actively-wired legal-notice page, plus a personal Linux username and hardcoded paths in devops scripts.**

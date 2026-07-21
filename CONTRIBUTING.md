@@ -13,7 +13,7 @@ Before contributing, read the [NOTICE](./NOTICE) file for trademark and attribut
 - Fork and modify the codebase (attribution required, see NOTICE)
 - Add new Lua endpoints, composables, or integrations
 - Deploy the `soul-mcp` MCP server for your own souls
-- Build compatible SYS implementations (see [docs/overview.md](./docs/overview.md))
+- Build compatible SYS implementations (see the protocol specs in [docs/spec/](./docs/spec/))
 
 ## What requires written permission
 
@@ -33,7 +33,7 @@ cd /opt/sys && bash init.sh
 
 The script handles everything: OpenResty, SSL, Node.js, frontend build, Lua scripts, config.
 
-Full guide: [ONBOARDING.md](./ONBOARDING.md) · Technical details: [ARCHITECTURE.md](./ARCHITECTURE.md)
+Full guide: [README: Installation](./README.md#installation) · Technical details: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ---
 

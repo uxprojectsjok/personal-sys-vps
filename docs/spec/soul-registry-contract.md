@@ -1,124 +1,126 @@
 # SoulRegistry Contract
 
-**Network:** Polygon Mainnet (chainId: 137)  
-**Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`  
-**Deployer:** `uxprojects-jok.eth`  
-**Deployed:** 2026-04-04  
-**Verified:** 2026-06-05 (Polygonscan, exact match, v0.8.34)  
-**Version:** 1.0.0  
-**License:** MIT  
+**Network:** Polygon Mainnet (chainId: 137)
+**Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`
+**Deployer:** `uxprojects-jok.eth`
+**Deployed:** 2026-04-04
+**Source verified:** 2026-06-05 (Polygonscan, exact match, v0.8.34)
+**Version:** 1.0.0
+**License:** MIT
 
 ---
 
-## Tested 2026-06-05
+## Verification
 
-| Funktion | Status | Anmerkung |
-|----------|--------|-----------|
-| `withdraw()` | ✓ | 30.5 POL erfolgreich ausgezahlt |
-| `pause()` | ✓ | Contract pausiert |
-| `unpause()` | ✓ | Contract wieder aktiv |
-| `setFee()` | ✓ | 0.3 POL gesetzt, zurück auf 0.5 POL |
-| `anchor()` | ✓ | 62 Transaktionen on-chain, Rate-Limit aktiv |
-| `acceptOwnership()` | — | Nur nach proposeOwnership relevant |
-| `transferSoul()` | — | Erst bei Soul-Transfer-Feature nötig |
+Function-level verification performed on 2026-06-05:
 
----
-
-## Prinzip
-
-Speichert ausschließlich Hashes — kein Klartext, kein Name, kein Inhalt.  
-Jede Soul die verankert wird erhält einen kryptografischen Echtheitsbeweis auf der Blockchain.  
-App-agnostisch — jede Anwendung kann ankern.
+| Function | Status | Note |
+|----------|--------|------|
+| `withdraw()` | ✓ | 30.5 POL successfully paid out |
+| `pause()` | ✓ | Contract paused |
+| `unpause()` | ✓ | Contract reactivated |
+| `setFee()` | ✓ | Set to 0.3 POL, reverted to 0.5 POL |
+| `anchor()` | ✓ | 62 transactions on-chain, rate limit active |
+| `acceptOwnership()` | — | Only relevant after proposeOwnership |
+| `transferSoul()` | — | Only needed once the soul-transfer feature ships |
 
 ---
 
-## Konstanten
+## Principle
 
-| Name | Wert | Bedeutung |
-|------|------|-----------|
-| `anchorFee` | 0.5 POL | Gebühr pro Anker (änderbar via `setFee`) |
-| `MAX_ANCHORS_PER_SOUL` | 365 | Max. Anker pro Soul gesamt |
-| `COOLDOWN_SECONDS` | 1 day | Rate-Limit: 1 Anker pro Soul pro Tag |
+Stores only hashes — no plaintext, no name, no content.
+Every soul that anchors receives a cryptographic proof of authenticity on the blockchain.
+App-agnostic — any application can anchor.
 
 ---
 
-## Öffentliche Funktionen
+## Constants
+
+| Name | Value | Meaning |
+|------|-------|---------|
+| `anchorFee` | 0.5 POL | Fee per anchor (changeable via `setFee`) |
+| `MAX_ANCHORS_PER_SOUL` | 365 | Max. total anchors per soul |
+| `COOLDOWN_SECONDS` | 1 day | Rate limit: 1 anchor per soul per day |
+
+---
+
+## Public Functions
 
 ### `anchor(soulId, contentHash, sessionCount)` — payable
-Verankert eine Soul on-chain.
+Anchors a soul on-chain.
 
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
+| Parameter | Type | Description |
+|-----------|------|-------------|
 | `soulId` | `bytes32` | `keccak256(soul_id UUID)` |
-| `contentHash` | `bytes32` | `sha256(sys.md Vollinhalt)` |
-| `sessionCount` | `uint32` | Anzahl echter Sessions (informativ) |
+| `contentHash` | `bytes32` | `sha256(full sys.md content)` |
+| `sessionCount` | `uint32` | Number of real sessions (informational) |
 
-- Erster Anker: registriert `msg.sender` als Eigentümer der Soul
-- Weitere Anker: nur der registrierte Eigentümer darf ankern
-- Zahlung: mind. `anchorFee` in POL mitsenden
+- First anchor: registers `msg.sender` as the soul's owner
+- Subsequent anchors: only the registered owner may anchor
+- Payment: at least `anchorFee` in POL must be sent
 
 ---
 
 ### `verify(soulId, contentHash)` — view
-Prüft ob ein Content-Hash jemals für diese Soul verankert wurde.  
-Kein Wallet nötig, kostenlos.
+Checks whether a content hash was ever anchored for this soul.
+No wallet needed, free.
 
 **Returns:** `(bool found, uint256 timestamp, uint32 sessions)`
 
 ---
 
 ### `getHistory(soulId)` — view
-Gibt die komplette Anker-Historie einer Soul zurück.  
-Kein Wallet nötig, kostenlos.
+Returns the complete anchor history of a soul.
+No wallet needed, free.
 
-**Returns:** `Anchor[]` — Array aus `{contentHash, timestamp, sessionCount}`
+**Returns:** `Anchor[]` — array of `{contentHash, timestamp, sessionCount}`
 
 ---
 
 ### `getAnchorCount(soulId)` — view
-Anzahl der Anker-Einträge für eine Soul.
+Number of anchor entries for a soul.
 
 ---
 
 ### `nextAnchorAllowed(soulId)` — view
-Wann darf diese Soul das nächste Mal verankert werden?  
-`0` = sofort möglich, sonst Unix-Timestamp.
+When can this soul next be anchored?
+`0` = immediately, otherwise a Unix timestamp.
 
 ---
 
 ### `soulOwner(soulId)` — view
-Wallet-Adresse des registrierten Eigentümers dieser Soul.
+Wallet address of the soul's registered owner.
 
 ---
 
 ### `transferSoul(soulId, newOwner)`
-Transferiert das Eigentum an einer Soul.  
-Nur der aktuelle Eigentümer darf transferieren.  
-Basis für zukünftiges Seelen-Transfer-Feature.
+Transfers ownership of a soul.
+Only the current owner may transfer.
+Foundation for a future soul-transfer feature.
 
 ---
 
-## Admin-Funktionen (nur Contract-Owner)
+## Admin Functions (contract owner only)
 
-| Funktion | Beschreibung |
-|----------|--------------|
-| `setFee(fee)` | Anker-Gebühr ändern (in POL wei) |
-| `withdraw()` | Gesammelte Fees auszahlen |
-| `pause()` | Contract stoppen |
-| `unpause()` | Contract wieder aktivieren |
-| `proposeOwnership(newOwner)` | 2-Schritt Ownership-Transfer starten |
-| `acceptOwnership()` | Ownership-Transfer bestätigen |
+| Function | Description |
+|----------|-------------|
+| `setFee(fee)` | Change the anchor fee (in POL wei) |
+| `withdraw()` | Withdraw collected fees |
+| `pause()` | Stop the contract |
+| `unpause()` | Reactivate the contract |
+| `proposeOwnership(newOwner)` | Start a 2-step ownership transfer |
+| `acceptOwnership()` | Confirm an ownership transfer |
 
 ---
 
-## Verifikation ohne SYS (in 30 Jahren)
+## Verification Without SYS (in 30 Years)
 
 ```
-1. sys.md lokal öffnen
-2. sha256(sys.md) lokal berechnen → contentHash
-3. keccak256(soul_id UUID) berechnen → soulId
-4. getHistory(soulId) aufrufen
-5. Übereinstimmung mit contentHash = Soul existierte authentisch zu diesem Zeitpunkt
+1. Open sys.md locally
+2. Compute sha256(sys.md) locally → contentHash
+3. Compute keccak256(soul_id UUID) → soulId
+4. Call getHistory(soulId)
+5. A match against contentHash proves the soul authentically existed at that point in time
 ```
 
 ---
@@ -147,4 +149,4 @@ Basis für zukünftiges Seelen-Transfer-Feature.
 
 ## Explorer
 
-[0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B auf Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B)
+[0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B on Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B)

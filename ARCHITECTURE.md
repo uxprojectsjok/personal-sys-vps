@@ -1,6 +1,6 @@
 # Personal SYS VPS — Architecture
 
-For setup and operations: [ONBOARDING.md](ONBOARDING.md)
+For setup and operations, see [README: Installation](README.md#installation) and [Updating Your Node](README.md#updating-your-node).
 
 ---
 

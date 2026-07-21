@@ -1,38 +1,38 @@
 # Genesis Chain
 
-Jeder Blockchain-Anchor auf Polygon ist ein Wissenssnapshot der Soul.  
-Der erste Anchor heißt **Genesis** — wie in der Blockchain-Tradition.  
-Mit zunehmenden Anchors und wachsender Soul-Größe steigt der **Knowledge-Blocks-Wert** — ein wirtschaftlich relevantes Reifegewicht.
+Every blockchain anchor on Polygon is a knowledge snapshot of a soul.
+The first anchor is called **Genesis** — as in blockchain tradition.
+As anchors accumulate and the soul grows, the **Knowledge Blocks** value rises — an economically relevant maturity weight.
 
 ---
 
-## Konzept
+## Concept
 
-| Begriff | Bedeutung |
-|---------|-----------|
-| **Genesis** | Erster Anchor einer Soul auf Polygon — unveränderlicher Startpunkt |
-| **Chain Age** | Anzahl Polygon-Blöcke seit Genesis (≈ 2 Blöcke/Sek) |
-| **Knowledge Blocks** | Gewichteter Wissenswert: Größe × Alter jedes Anchors |
-| **Anchor** | Ein `anchor()`-Call auf `SoulRegistry.sol` mit sha256(sys.md) |
+| Term | Meaning |
+|------|---------|
+| **Genesis** | First anchor of a soul on Polygon — immutable starting point |
+| **Chain Age** | Number of Polygon blocks since Genesis (≈ 2 blocks/sec) |
+| **Knowledge Blocks** | Weighted knowledge value: size × age of each anchor |
+| **Anchor** | An `anchor()` call on `SoulRegistry.sol` with sha256(sys.md) |
 
-Nur Hashes werden on-chain gespeichert — kein Klartext, kein Inhalt.  
-Die Blockchain verhindert Fälschungen: jeder Anchor ist zeitgestempelt und unveränderlich.
+Only hashes are stored on-chain — no plaintext, no content.
+The blockchain prevents forgery: every anchor is timestamped and immutable.
 
 ---
 
-## Datenfelder in sys.md
+## Data Fields in sys.md
 
 ```yaml
 soul_chain_anchor: '{"tx":"0x...","block":83500000,"ts":"2026-04-04T12:00:00Z","sessions":12}'
 soul_anchor_history: '[{"tx":"0x...","ts":"2026-04-04T12:00:00Z","size":42000,"genesis":true},...]'
 ```
 
-| Feld | Beschreibung |
-|------|--------------|
-| `soul_chain_anchor` | Letzter Anchor (JSON, inline) |
-| `soul_anchor_history` | Alle Anchors (JSON-Array, inline) |
+| Field | Description |
+|-------|-------------|
+| `soul_chain_anchor` | Latest anchor (JSON, inline) |
+| `soul_anchor_history` | All anchors (JSON array, inline) |
 
-Jeder Eintrag in `soul_anchor_history`:
+Each entry in `soul_anchor_history`:
 
 ```json
 {
@@ -44,46 +44,46 @@ Jeder Eintrag in `soul_anchor_history`:
 }
 ```
 
-`genesis: true` wird automatisch gesetzt wenn `soul_anchor_history` beim Schreiben leer ist.  
-`block` ist optional — wird client-seitig per Receipt befüllt, serverseitig geschätzt falls fehlend.
+`genesis: true` is set automatically when `soul_anchor_history` is empty at write time.
+`block` is optional — populated client-side from the transaction receipt, estimated server-side if missing.
 
 ---
 
-## Server-Datei
+## Server File
 
 ```
 /var/lib/sys/souls/{soul_id}/anchor_history.json
 ```
 
-Plaintext-Kopie von `soul_anchor_history` — wird bei jedem `POST /api/soul/register-anchor` aktualisiert.  
-Wird von `soul_chain_metrics_cli.mjs` gelesen (via Lua `io.popen()`).
+Plaintext copy of `soul_anchor_history` — updated on every `POST /api/soul/register-anchor`.
+Read by `soul_chain_metrics_cli.mjs` (via Lua `io.popen()`).
 
 ---
 
-## Knowledge-Blocks-Formel
+## Knowledge Blocks Formula
 
 ```
 KB = Σ ( size_kb × ( 1 + log₁₀( 1 + age_blocks / 43200 ) ) )
 ```
 
-- `size_kb` — Soul-Größe in KB zum Zeitpunkt des Anchors
+- `size_kb` — soul size in KB at the time of anchoring
 - `age_blocks` — `current_block − anchor_block`
-- `43200` — Polygon-Blöcke pro halben Tag (≈ 6h)
-- Ältere Anchors wiegen mehr, größere Anchors wiegen mehr
-- Ergebnis: ganzzahlig gerundet
+- `43200` — Polygon blocks per half day (≈ 6h)
+- Older anchors weigh more, larger anchors weigh more
+- Result is rounded to an integer
 
-**Beispiel:** Soul 42 KB, Genesis vor 112.000 Blöcken (~0,65 Tage)
+**Example:** 42 KB soul, Genesis 112,000 blocks ago (~0.65 days)
 
 ```
-age_weight = 1 + log₁₀(1 + 112000 / 43200) = 1 + log₁₀(3,59) ≈ 1,555
-KB = 42 × 1,555 ≈ 65
+age_weight = 1 + log₁₀(1 + 112000 / 43200) = 1 + log₁₀(3.59) ≈ 1.555
+KB = 42 × 1.555 ≈ 65
 ```
 
 ---
 
-## Block-Schätzung
+## Block Estimation
 
-Falls `block` in einem Anchor-Eintrag fehlt, wird geschätzt:
+If `block` is missing from an anchor entry, it is estimated:
 
 ```js
 DEPLOY_BLOCK = 83_500_000        // 2026-04-04T00:00:00Z
@@ -92,11 +92,11 @@ DEPLOY_TS    = 1_775_260_800     // Unix
 estimatedBlock = DEPLOY_BLOCK + (anchor_unix_ts - DEPLOY_TS) * 2
 ```
 
-Polygon produziert ≈ 2 Blöcke/Sek → Schätzung ist auf Sekunden genau.
+Polygon produces ≈ 2 blocks/sec → the estimate is accurate to the second.
 
 ---
 
-## API-Endpunkt
+## API Endpoint
 
 ### `GET /api/soul/chain-metrics`
 
@@ -110,22 +110,22 @@ Auth: `soul_auth.lua` (service_token).
   "current_block":    83612000,
   "chain_age_blocks": 112000,
   "chain_age_days":   0.65,
-  "chain_age_human":  "16 Stunden",
+  "chain_age_human":  "16 hours",
   "anchor_count":     3,
   "knowledge_blocks": 261
 }
 ```
 
-**Lua:** `lua/soul_chain_metrics.lua` — ruft `soul_chain_metrics_cli.mjs` per `io.popen()` auf.  
-**Dev:** `server/api/soul/chain-metrics.get.js` — ruft `getChainMetrics()` aus `blockchain.mjs` direkt.
+**Lua:** `lua/soul_chain_metrics.lua` — calls `soul_chain_metrics_cli.mjs` via `io.popen()`.
+**Dev:** `server/api/soul/chain-metrics.get.js` — calls `getChainMetrics()` from `blockchain.mjs` directly.
 
 ---
 
-## Register-Anchor
+## Register Anchor
 
 ### `POST /api/soul/register-anchor`
 
-Bestehender Endpunkt, erweitert um:
+Existing endpoint, extended with:
 
 ```json
 {
@@ -137,7 +137,7 @@ Bestehender Endpunkt, erweitert um:
 }
 ```
 
-Schreibt `anchor_history.json` auf dem Server und setzt `genesis: true` beim ersten Eintrag.
+Writes `anchor_history.json` on the server and sets `genesis: true` on the first entry.
 
 ---
 
@@ -145,7 +145,7 @@ Schreibt `anchor_history.json` auf dem Server und setzt `genesis: true` beim ers
 
 ### `soul_chain_metrics`
 
-Dediziertes leichtgewichtiges Tool — kein voller Maturity-Report nötig.
+A dedicated, lightweight tool — no full maturity report needed.
 
 ```
 soul_chain_metrics()
@@ -154,44 +154,44 @@ soul_chain_metrics()
 
 ### `soul_maturity`
 
-Enthält `breakdown.detail.chain_metrics` — alle Chain-Metriken als Teil des Maturity-Reports.
+Includes `breakdown.detail.chain_metrics` — all chain metrics as part of the maturity report.
 
 ---
 
 ## UI
 
-| Seite | Was wird gezeigt |
-|-------|-----------------|
-| `anchor.vue` | Goldene Genesis-Card mit Chain Age, Knowledge Blocks, Anchor-Count |
-| `maturity.vue` | Genesis-Chain-Panel unterhalb der 6 Stat-Cards |
+| Page | What is shown |
+|------|---------------|
+| `anchor.vue` | Golden Genesis card with chain age, knowledge blocks, anchor count |
+| `maturity.vue` | Genesis Chain panel below the 6 stat cards |
 
-Beide Komponenten nutzen `useChainAnchor.js` → `fetchChainMetrics()` und zeigen den Abschnitt nur wenn `anchor_count > 0`.
+Both components use `useChainAnchor.js` → `fetchChainMetrics()` and only render the section when `anchor_count > 0`.
 
 ---
 
-## Implementierte Dateien
+## Implementation Files
 
-| Datei | Beschreibung |
-|-------|-------------|
+| File | Description |
+|------|-------------|
 | `soul-mcp/lib/blockchain.mjs` | `getCurrentBlock()`, `calcKnowledgeBlocks()`, `getChainMetrics()` |
-| `soul-mcp/soul_chain_metrics_cli.mjs` | Node.js CLI für Lua-Aufruf |
-| `soul-mcp/tools/soul_chain_metrics.mjs` | MCP Tool |
-| `lua/soul_chain_metrics.lua` | Lua-Endpunkt |
-| `lua/soul_register_anchor.lua` | Erweitert: `block_number`, `soul_size`, `anchor_history.json` |
-| `server/api/soul/chain-metrics.get.js` | Dev-Mirror |
-| `server/api/soul/register-anchor.post.js` | Dev-Mirror erweitert |
+| `soul-mcp/soul_chain_metrics_cli.mjs` | Node.js CLI for the Lua call |
+| `soul-mcp/tools/soul_chain_metrics.mjs` | MCP tool |
+| `lua/soul_chain_metrics.lua` | Lua endpoint |
+| `lua/soul_register_anchor.lua` | Extended: `block_number`, `soul_size`, `anchor_history.json` |
+| `server/api/soul/chain-metrics.get.js` | Dev mirror |
+| `server/api/soul/register-anchor.post.js` | Dev mirror, extended |
 | `app/composables/useChainAnchor.js` | `chainMetrics`, `isGenesisSoul`, `fetchChainMetrics()` |
-| `app/pages/anchor.vue` | Genesis-Card UI |
-| `app/pages/maturity.vue` | Genesis-Chain-Panel |
+| `app/pages/anchor.vue` | Genesis card UI |
+| `app/pages/maturity.vue` | Genesis Chain panel |
 
 ---
 
-## Verifikation
+## Verification
 
 ```
-1. anchor_history.json lesen: /var/lib/sys/souls/{id}/anchor_history.json
-2. genesis-Eintrag identifizieren (genesis: true)
-3. GET /api/soul/chain-metrics aufrufen
-4. knowledge_blocks + chain_age_blocks prüfen
-5. Polygon: SoulRegistry.getHistory(keccak256(soul_id)) → on-chain Anchors vergleichen
+1. Read anchor_history.json: /var/lib/sys/souls/{id}/anchor_history.json
+2. Identify the genesis entry (genesis: true)
+3. Call GET /api/soul/chain-metrics
+4. Check knowledge_blocks + chain_age_blocks
+5. Polygon: SoulRegistry.getHistory(keccak256(soul_id)) → compare against on-chain anchors
 ```
