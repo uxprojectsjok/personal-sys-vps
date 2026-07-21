@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.68] — 2026-07-21
+
+**Docs: removed the `[!IMPORTANT]` security-fix alert from verification-hub.md's Status section — the fix is complete and already reflected in the `[x]` checkmarks under Known Limitations & Roadmap; the callout also referenced a "Server-side proof" heading that doesn't exist in this doc's structure.**
+
+**Changed**
+- `docs/spec/verification-hub.md`: dropped the alert, folded its one still-relevant fact (biometric methods carry real server-side proof) into the existing intro sentence.
+
+---
+
 ## [1.0.67] — 2026-07-21
 
 **Docs: `docs/spec/verification-hub.md` was badly out of date — verified against the current codebase and substantially rewritten. The system evolved well past what the spec described: a page split, a real cross-device flow, and a security fix closing a hole where biometric methods could be marked verified without any real scan happening.**

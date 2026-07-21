@@ -6,10 +6,7 @@ Pages: `/connection` (dashboard/launcher) and `/verify` (the actual verification
 
 ## Status
 
-Identity verification is a standalone, minimal-UI flow (`/verify`) launched from the owner's dashboard (`/connection`), from a raw `verify_url` an MCP tool hands the AI, or by scanning a QR code `/verify` displays itself. It supports four independent, stackable proof dimensions — fingerprint, face, voice, and an on-chain "real human" check — plus wallet 2FA, and every biometric method now carries real server-side cryptographic or anti-replay proof instead of a client-asserted boolean.
-
-> [!IMPORTANT]
-> **Security fix, all three biometric methods:** it used to be possible for a client to POST `verified: true` for `fingerprint`/`face`/`voice` straight to `/api/verify/complete` without any real scan ever happening — the server just trusted the claim. This has been closed for all three methods; see "Server-side proof" below. Plain FFT-only `voice` (no anti-replay proof) has been retired as a challenge method entirely — `voice_hq` is now the only voice option.
+Identity verification is a standalone, minimal-UI flow (`/verify`) launched from the owner's dashboard (`/connection`), from a raw `verify_url` an MCP tool hands the AI, or by scanning a QR code `/verify` displays itself. It supports four independent, stackable proof dimensions — fingerprint, face, voice, and an on-chain "real human" check — plus wallet 2FA, and every biometric method carries real server-side cryptographic or anti-replay proof instead of a client-asserted boolean.
 
 - **Fingerprint** — WebAuthn via `useSoulPasskey.js`. The server now verifies a real WebAuthn assertion (signature + challenge + origin) against a public key registered ahead of time, rather than trusting the browser's word for it.
 - **Face** — server-side via Claude Vision against `vault/images/profile.png`. An `hq` mode adds explicit anti-spoofing checks (screen reflection, paper edge/curl, flat lighting, moiré) and requires high confidence *and* a liveness pass.
