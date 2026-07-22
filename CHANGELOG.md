@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.73] — 2026-07-22
+
+**Docs: added an `api_context.json` example to ARCHITECTURE.md's Cert-version fallback note, matching the style already used for `master.json` further down.**
+
+**Changed**
+- `ARCHITECTURE.md`: added a minimal `api_context.json` example right after the fallback explanation, verified against `lua/api_context.lua` and `lua/hmac_helper.lua`. Uses `soul_cert_version` as the field name — confirmed canonical (`hmac_helper.lua`'s `read_cert_version()` reads `soul_cert_version` first, falling back to a legacy `cert_version` key for backward compatibility).
+
+---
+
 ## [1.0.72] — 2026-07-22
 
 **Docs: added a concrete example under the `@msg` format explanation — a Social Sphere exchange plus an Agent Sandbox with a paid agent's appended comment, so readers get a visual of the area instead of just the abstract format string.**

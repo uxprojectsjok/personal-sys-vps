@@ -154,6 +154,17 @@ The server recalculates the expected cert and compares with constant-time equali
 
 **Cert-version fallback:** If `api_context.json` is missing (e.g. after vault deletion), `soul_auth.lua` falls back to trying cert versions 0–20 before rejecting. This prevents lockout after vault operations.
 
+`/var/lib/sys/souls/{soul_id}/api_context.json` — per-soul permissions and vault key, the file this fallback protects against:
+
+```json
+{
+  "soul_cert_version": 0,
+  "vault_key_hex": "<64hex>",
+  "cipher_mode": "ciphered",
+  "permissions": { "soul": true, "audio": true, "video": true, "images": true, "context_files": true }
+}
+```
+
 **Gate protection:** A gate (`gate_auth.lua`) sits in front of the soul cert. The gate password is stored as `HMAC-SHA256(raw_master_key, "gate_pw:" + password)` in `master.json`. Sessions live in an OpenResty shared dict.
 
 **Three auth paths:**
