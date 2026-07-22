@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.89] — 2026-07-22
+
+**Changed: docs/spec/genesis-chain.md's `soul_anchor_history` entry example showed a single bare object, even though the field is an array that grows with every anchor — expanded to a realistic three-entry array, and verified the `genesis` field's actual behavior against `lua/soul_register_anchor.lua`.**
+
+**Changed**
+- `docs/spec/genesis-chain.md`: single-object example → three-entry array (genesis + two later anchors), matching the "All anchors (JSON array, inline)" description right above it.
+- Corrected the `genesis` field claim: it's set on the first entry only and **omitted entirely** on every later entry (not `"genesis": false`) — verified against `#history == 0` check in `soul_register_anchor.lua:86`.
+
+---
+
 ## [1.0.88] — 2026-07-22
 
 **Added: README.md's Agent Marketplace teaser never mentioned dynamic pricing at all — added a sentence covering the mechanism, plus the price-decay behavior verified against `lua/soul_price.lua`: `anchor_count`/`chain_age_days` only ever grow, so the demand term (`buyers_30d`) is the only thing that can push the price back down, decaying automatically as buyers age out of the rolling 30-day window.**

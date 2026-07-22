@@ -32,19 +32,33 @@ soul_anchor_history: '[{"tx":"0x...","ts":"2026-04-04T12:00:00Z","size":42000,"g
 | `soul_chain_anchor` | Latest anchor (JSON, inline) |
 | `soul_anchor_history` | All anchors (JSON array, inline) |
 
-Each entry in `soul_anchor_history`:
+`soul_anchor_history` holds every anchor as an array, oldest first:
 
 ```json
-{
-  "tx":      "0xabc...",
-  "ts":      "2026-04-04T12:00:00Z",
-  "size":    42000,
-  "block":   83500000,
-  "genesis": true
-}
+[
+  {
+    "tx":      "0xabc123...",
+    "ts":      "2026-04-04T12:00:00Z",
+    "size":    42000,
+    "block":   83500000,
+    "genesis": true
+  },
+  {
+    "tx":    "0xdef456...",
+    "ts":    "2026-04-18T09:15:00Z",
+    "size":  44500,
+    "block": 83521200
+  },
+  {
+    "tx":    "0x789abc...",
+    "ts":    "2026-06-21T17:42:00Z",
+    "size":  51200,
+    "block": 83612800
+  }
+]
 ```
 
-`genesis: true` is set automatically when `soul_anchor_history` is empty at write time.
+`genesis: true` is set automatically on the first entry only — when `soul_anchor_history` is empty at write time. Every later entry omits the field entirely (not `false`, simply absent).
 `block` is optional — populated client-side from the transaction receipt, estimated server-side if missing.
 
 ---
