@@ -28,7 +28,10 @@
                     <div class="cn-mcp-sub">{{ $t('connection.verify_sub', { method: methodLabel(pendingChallenge.method) }) }}</div>
                   </div>
                 </div>
-                <button class="cn-mcp-btn" @click="openVerify(pendingChallenge)">{{ $t('connection.btn_verify_now') }}</button>
+                <div class="cn-mcp-actions">
+                  <button class="cn-btn cn-btn--reject" :disabled="cancellingVerify" @click="cancelVerify(pendingChallenge)">{{ $t('connection.btn_verify_cancel') }}</button>
+                  <button class="cn-mcp-btn" @click="openVerify(pendingChallenge)">{{ $t('connection.btn_verify_now') }}</button>
+                </div>
               </div>
             </Transition>
 
@@ -214,6 +217,16 @@ async function pollPendingChallenge() {
 function methodLabel(m) { return { fingerprint: t('connection.method_fingerprint'), face: t('connection.method_face'), voice: t('connection.method_voice') }[m] ?? m }
 function openVerify(challenge) {
   router.push(`/verify?id=${challenge.challenge_id}&m=${challenge.method}`)
+}
+const cancellingVerify = ref(false)
+async function cancelVerify(challenge) {
+  if (cancellingVerify.value) return
+  cancellingVerify.value = true
+  try {
+    await fetch('/api/verify/cancel', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ challenge_id: challenge.challenge_id }) })
+  } catch (_) {}
+  pendingChallenge.value = null
+  cancellingVerify.value = false
 }
 
 // ── Pending trust requests (request_trust MCP-Tool) ──────────────────────────

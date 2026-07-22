@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.8] — 2026-07-22
+
+**Added: a way to cancel a pending verification challenge from `/connection` — previously the "verify now" badge had no cancel option, so an unwanted challenge (e.g. one a voice agent started at the wrong moment) could only be left to expire.**
+
+**Added**
+- `lua/verify_cancel.lua` (new): `POST /api/verify/cancel` — sets a `pending` challenge's status to `cancelled`. Idempotent (already-verified/expired/cancelled challenges just return their current status, not an error). A poller reading `status="cancelled"` on `/api/verify/status` stops immediately instead of waiting for natural TTL expiry.
+- `app/pages/connection.vue`: "Abbrechen"/"Cancel" button next to "Jetzt verifizieren"/"Verify now" on the pending-challenge banner, reusing the existing `.cn-btn--reject` styling from the trust-request banner.
+- `soul-mcp/tools/verify_identity.mjs`: distinct message for `status="cancelled"` ("Verifikation vom Nutzer abgebrochen.") instead of falling into the generic "Challenge abgelaufen." branch.
+- `i18n/locales/{de,en}.json`: `connection.btn_verify_cancel`.
+- `server/openresty/vhost.conf.template`: `/api/verify/cancel` location block (same auth/rate-limit pattern as `/api/verify/complete`).
+
+---
+
 ## [1.2.7] — 2026-07-22
 
 **Extended the ElevenLabs voice-agent verification window: live testing showed `fingerprint` verification failing with `completed_methods` still empty because the challenge had already expired by the time the user reached the confirmation screen.**

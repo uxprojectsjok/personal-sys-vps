@@ -1761,6 +1761,7 @@
     "verify_title": "Verifikationsanfrage offen",
     "verify_sub": "Claude AI bittet um {method}",
     "btn_verify_now": "Jetzt verifizieren",
+    "btn_verify_cancel": "Abbrechen",
     "trust_title": "Vertrauensanfrage",
     "trust_sub": "\"{label}\" möchte Zugriff auf deine Identitätsdaten",
     "trust_unknown": "Ein externer Connector",

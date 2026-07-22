@@ -170,7 +170,9 @@ export function register(server, token) {
 
           return { content: [{ type: 'text', text: JSON.stringify({
             status: status.status, challenge_id,
-            message: status.status === 'failed' ? 'Verifikation fehlgeschlagen.' : 'Challenge abgelaufen.',
+            message: status.status === 'failed' ? 'Verifikation fehlgeschlagen.'
+              : status.status === 'cancelled' ? 'Verifikation vom Nutzer abgebrochen.'
+              : 'Challenge abgelaufen.',
           }, null, 2) }] }
         }
 

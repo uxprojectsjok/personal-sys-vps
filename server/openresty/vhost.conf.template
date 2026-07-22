@@ -1244,6 +1244,15 @@ server {
     content_by_lua_file /etc/openresty/lua/verify_complete.lua;
   }
 
+  location = /api/verify/cancel {
+    limit_except POST { deny all; }
+    limit_req zone=auth burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/verify_cancel.lua;
+  }
+
   location = /api/verify/face-check {
     limit_except POST { deny all; }
     limit_req zone=auth burst=3 nodelay;
