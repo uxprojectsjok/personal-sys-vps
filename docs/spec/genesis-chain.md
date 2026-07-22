@@ -17,6 +17,7 @@ As anchors accumulate and the soul grows, the **Knowledge Blocks** value rises �
 
 Only hashes are stored on-chain — no plaintext, no content.
 The blockchain prevents forgery: every anchor is timestamped and immutable.
+Full contract spec — functions, constants, custom errors, ABI: [soul-registry-contract.md](soul-registry-contract.md).
 
 ---
 

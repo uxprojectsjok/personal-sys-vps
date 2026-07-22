@@ -1,5 +1,7 @@
 # SoulRegistry Contract
 
+`SoulRegistry.sol` is the on-chain anchoring contract every SYS node writes to — see [genesis-chain.md](genesis-chain.md) for the concept (Genesis, Chain Age, Knowledge Blocks) and [README: On-Chain Anchoring](../../README.md#on-chain-anchoring) for why every node must use the same contract address.
+
 **Network:** Polygon Mainnet (chainId: 137)
 **Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`
 **Deployer:** `uxprojects-jok.eth`
@@ -115,6 +117,9 @@ Foundation for a future soul-transfer feature.
 | `unpause()` | Reactivate the contract |
 | `proposeOwnership(newOwner)` | Start a 2-step ownership transfer |
 | `acceptOwnership()` | Confirm an ownership transfer |
+
+> [!NOTE]
+> These functions are a centralization point by design, not an oversight: a single owner wallet can change the fee, pause new anchors, or withdraw fees the contract has collected — `withdraw()` only reaches those collected fees, never a soul's own funds. Trusting this contract means trusting the current owner key; the contract's Solidity source isn't part of this repo (verify it directly on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B#code) rather than taking this doc's word for exact pause/withdraw semantics). `proposeOwnership`/`acceptOwnership` exist so the owner key can be rotated or handed off without a contract redeploy.
 
 ---
 

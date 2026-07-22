@@ -470,7 +470,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.94): 3961c55f9b2dc44d
+Current release fingerprint (v1.0.95): a199771bbd609b23
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -505,7 +505,7 @@ Soul identity hash  →  anchor()  →  Polygon blockchain
                                  →  soul_chain_anchor in sys.md
 ```
 
-Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`) — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B).
+Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`) — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B). Full contract spec — functions, constants, custom errors, ABI: [docs/spec/soul-registry-contract.md](docs/spec/soul-registry-contract.md).
 
 Operators who want blockchain features need a WalletConnect-compatible project ID — this codebase defaults to [Reown](https://cloud.reown.com) (free). I have no affiliation with Reown; it's simply what was integrated. Any compatible alternative an operator finds and wires in works just as well.
 

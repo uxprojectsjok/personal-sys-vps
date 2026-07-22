@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.95] — 2026-07-22
+
+**Styled and cross-linked docs/spec/soul-registry-contract.md — the doc was a complete orphan (nothing in README.md, ARCHITECTURE.md, or genesis-chain.md linked to it) and skipped this repo's established intro-paragraph convention.**
+
+**Added**
+- Intro paragraph linking to `genesis-chain.md` (concept) and `README.md#on-chain-anchoring` (why every node must share the same contract), matching the pattern already used in `sys_md.md`/`genesis-chain.md`.
+- Cross-links added *to* this doc from README's On-Chain Anchoring section, ARCHITECTURE.md's On-Chain Anchoring section, and `genesis-chain.md` — previously unreachable from anywhere else in the docs.
+- A `[!NOTE]` on the Admin Functions table being a deliberate centralization point (single owner wallet can set the fee, pause new anchors, withdraw collected fees) — with an explicit caveat that this repo doesn't hold the Solidity source, so exact `pause()`/`withdraw()` semantics should be verified on Polygonscan directly rather than taken on this doc's word.
+
+---
+
 ## [1.0.94] — 2026-07-22
 
 **Added: the health-sync `[!WARNING]` notice now says integrating real-life gadgets (wearables, health trackers) into SYS is an active area of work — signals this is being actively developed, not a dead/abandoned experiment.**

@@ -308,6 +308,7 @@ Soul hash → anchor() → Polygon Mainnet
 
 Smart contract: `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
 Requires own `REOWN_PROJECT_ID` (free: cloud.reown.com).
+Full contract spec: [docs/spec/soul-registry-contract.md](docs/spec/soul-registry-contract.md).
 
 ---
 
