@@ -1,7 +1,7 @@
 # Health Sync — Garmin Implementation
 
 > [!WARNING]
-> Experiment — not a core SYS feature. Use at your own risk.
+> Experiment — not a core SYS feature. Use at your own risk. Integrating real-life gadgets (wearables, health trackers) into SYS is an active area of work.
 
 ## Overview
 

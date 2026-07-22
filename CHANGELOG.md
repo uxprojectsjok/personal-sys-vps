@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.94] — 2026-07-22
+
+**Added: the health-sync `[!WARNING]` notice now says integrating real-life gadgets (wearables, health trackers) into SYS is an active area of work — signals this is being actively developed, not a dead/abandoned experiment.**
+
+**Added**
+- `docs/spec/health-sync.md`, `health-sync/README.md`: one sentence added to the Experiment warning.
+
+---
+
 ## [1.0.93] — 2026-07-22
 
 **Fixed: v1.0.92 restyled the health-sync "Experiment" notice as plain italic text, misreading the maintainer's feedback backwards — the point was that a hand-bolded blockquote still renders pale/muted-gray on GitHub regardless of manual bold/emoji, not that pale was the goal. Converted to a real `[!WARNING]` GFM alert instead, matching this repo's established convention that alerts (not DIY blockquote styling) are how anything meant to stand out gets flagged.**
