@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.82] — 2026-07-22
+
+**Fixed: soul_master_key Rotation's "Effect on connected services" table in KEYMANAGEMENT.md claimed the ElevenLabs Agent and MCP/Claude Desktop connections both break on master-key rotation — traced `set_master.lua` end to end and found neither claim holds.**
+
+**Fixed**
+- Verified `/api/set-master` (`lua/set_master.lua`) only ever writes `soul_master_key`/`soul_master_key_prev`/`admin_token`/`anthropic_key` to `master.json`/`soul_admin.json` — it never touches `authorized_services.json` or `webhook_token` in `api_context.json`.
+- ElevenLabs Agent auth is 100% `webhook_token`-based (`lua/create_agent.lua` bakes `?token=` query params into every webhook URL, no `soul_cert`/`master_key` reference anywhere in the file) — so "Stops working after grace period, run `@create-agent` again" was false. Corrected to "None — uses webhook_token, independent of soul_master_key", matching the already-correct wording in the soul_cert rotation table above it.
+- MCP/Claude Desktop auth is a random CSPRNG service token validated purely by string lookup + `expires_at` in `check_service_token()` (`lua/vault_auth.lua`) — same story, corrected to "None — uses OAuth service token, independent of soul_master_key".
+- Removed the now-inaccurate "Run `@create-agent` in chat to re-register..." step from "What you must do" and the "old master_key_prev expires — ElevenLabs agent stops working" line from the timing diagram.
+- Fixed a stale "API tab" reference in the same "What you must do" section (should say Config tab, per the v1.0.81 fix).
+
+---
+
 ## [1.0.81] — 2026-07-22
 
 **Fixed: KEYMANAGEMENT.md had five German UI-navigation-path fragments left over in an otherwise-English doc — verified the correct English labels/tab names against `app/components/SettingsModal.vue` and `i18n/locales/en.json` before translating, and caught a real path error in the process.**

@@ -70,13 +70,12 @@ The rotation flow via Settings → Config → Soul-Cert → Rotate Soul-Cert is 
 | Service | Effect | Action required |
 |---------|--------|----------------|
 | In-App Chat | None — cert rotation runs automatically | — |
-| ElevenLabs Agent | Stops working after grace period | **Run `@create-agent` again** |
-| MCP (Claude Desktop) | Works until OAuth token expires, then re-auth | Re-authenticate in Claude Desktop |
+| ElevenLabs Agent | None — uses webhook_token, independent of soul_master_key | — |
+| MCP (Claude Desktop) | None — uses OAuth service token, independent of soul_master_key | — |
 
 ### What you must do
 
-- Stay in the browser after rotation — the cert rotation runs automatically inside the 15-minute window. If you close the tab first, trigger cert rotation manually in the API tab.
-- Run `@create-agent` in chat to re-register the ElevenLabs agent under the new key.
+- Stay in the browser after rotation — the cert rotation runs automatically inside the 15-minute window. If you close the tab first, trigger cert rotation manually in the Config tab.
 - Save the downloaded sys.md.
 
 ### Timing
@@ -84,7 +83,7 @@ The rotation flow via Settings → Config → Soul-Cert → Rotate Soul-Cert is 
 ```
 t=0       Master key rotated — grace period starts
 t=0+auto  Cert rotation triggered automatically
-t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
+t=+15min  Old master_key_prev expires
 ```
 
 ---
