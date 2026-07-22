@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SYS Health Sync — Experiment Installer
-# Docs: /opt/sys/docs/experiments/health-sync.md
+# Docs: /opt/sys/docs/spec/health-sync.md
 set -euo pipefail
 
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,7 +12,7 @@ echo ""
 echo "=== SYS Health Sync — Experiment Setup ==="
 echo ""
 echo "⚠  This is an experiment, not a core SYS feature."
-echo "   Use at your own risk. See docs/experiments/health-sync.md."
+echo "   Use at your own risk. See docs/spec/health-sync.md."
 echo ""
 read -p "Continue? [y/N] " confirm
 [[ "$confirm" =~ ^[yY]$ ]] || { echo "Aborted."; exit 0; }
@@ -99,13 +99,10 @@ chown www-data:www-data "$CONFIG_FILE"
 chmod 600 "$CONFIG_FILE"
 echo "Config written to $CONFIG_FILE (permissions: 600, owner: www-data)"
 
-# ── Cron job ──────────────────────────────────────────────────────────────────
+# ── Log directory ─────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "$LOG_FILE")"
 chown www-data:www-data "$(dirname "$LOG_FILE")"
 chmod 750 "$(dirname "$LOG_FILE")"
-CRON_CMD="0 6 * * 1 $VENV/bin/python $INSTALL_DIR/health_sync.py >> $LOG_FILE 2>&1"
-(crontab -l 2>/dev/null | grep -v "health_sync.py"; echo "$CRON_CMD") | crontab -
-echo "Cron added: every Monday 06:00 → $LOG_FILE"
 
 # ── First sync ────────────────────────────────────────────────────────────────
 echo ""
@@ -126,7 +123,7 @@ if [ "$SYNC_OK" -eq 0 ] && [ -f "$STATUS_FILE" ]; then
     echo "│                                                             │"
     echo "│    python3 $INSTALL_DIR/garmin_login.py  │"
     echo "│                                                             │"
-    echo "│  After that, automatic sync runs without MFA.               │"
+    echo "│  After that, manual syncs run without MFA.                  │"
     echo "└─────────────────────────────────────────────────────────────┘"
     echo ""
     read -p "Run Garmin MFA login now? [Y/n] " do_mfa
@@ -144,5 +141,6 @@ echo ""
 echo "health.md → $SOULS_DIR/$SOUL_ID/vault/context/health.md"
 echo "Logs      → $LOG_FILE"
 echo "Config    → $CONFIG_FILE"
-echo "Remove    → crontab -e  (delete the health_sync.py line) + rm $CONFIG_FILE"
+echo "Sync      → python3 $INSTALL_DIR/health_sync.py (run manually — no cron)"
+echo "Remove    → rm $CONFIG_FILE"
 echo ""

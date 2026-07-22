@@ -1,8 +1,8 @@
 # Health Sync
 
-> ⚠️ **Experiment** — not a core SYS feature. See [`docs/experiments/health-sync.md`](../docs/experiments/health-sync.md) for the full concept and risk list.
+> ⚠️ **Experiment** — not a core SYS feature. See [`docs/spec/health-sync.md`](../docs/spec/health-sync.md) for the full concept, setup, and troubleshooting.
 
-Fetches health data from your wearable's cloud weekly and writes it to `vault/context/health.md`. The SoulKI reads it automatically as context — no special handling required.
+Fetches health data from your wearable's cloud and writes it to `vault/context/health.md`. The SoulKI reads it automatically as context — no special handling required. Sync is always triggered manually — there is no cron job.
 
 ## Setup
 
@@ -10,15 +10,14 @@ Fetches health data from your wearable's cloud weekly and writes it to `vault/co
 bash /opt/sys/health-sync/install.sh
 ```
 
-The script asks for your adapter (default: `garmin`), your Garmin credentials, and runs a first sync immediately. A cron job runs every Monday at 06:00.
+The script asks for your adapter (default: `garmin`), your Garmin credentials, and runs a first sync immediately.
 
-On **Multi-Hoster** nodes run the script once per soul — each soul gets their own config file (`health_sync_{soul_id}.json`) and independent credentials. The single cron job syncs all souls automatically.
+On **Multi-Hoster** nodes run the script once per soul — each soul gets their own config file (`health_sync_{soul_id}.json`) and independent credentials. A single manual `health_sync.py` run syncs all configured souls sequentially.
 
 ## Uninstall
 
-1. Remove the cron entry: `crontab -e` → delete the `health_sync.py` line
-2. Delete the config(s): `rm /var/lib/sys/config/health_sync_*.json`
-3. Optionally delete the output: `rm /var/lib/sys/souls/*/vault/context/health.md`
+1. Delete the config(s): `rm /var/lib/sys/config/health_sync_*.json`
+2. Optionally delete the output: `rm /var/lib/sys/souls/*/vault/context/health.md`
 
 ## Adapters
 

@@ -1,5 +1,5 @@
 -- POST /api/health/setup
--- Richtet die Health-Sync-Infrastruktur ein (Venv, Cron) via sudo.
+-- Richtet die Health-Sync-Infrastruktur ein (Venv) via sudo.
 -- Credentials müssen vorher über /api/health/config gespeichert worden sein.
 
 local cjson   = require("cjson.safe")

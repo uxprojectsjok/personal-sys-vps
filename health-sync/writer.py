@@ -32,10 +32,10 @@ def write_health_md(data: dict, soul_id: str) -> None:
     def fmt_sleep(minutes):
         if minutes is None:
             return "–"
-        return f"{minutes // 60}h {minutes % 60:02d}min/Nacht (Ø)"
+        return f"{minutes // 60}h {minutes % 60:02d}min/night (avg)"
 
     def fmt_steps(v):
-        return f"{v:,} (avg)".replace(",", ".") if v is not None else "–"
+        return f"{v:,} (avg)" if v is not None else "–"
 
     monthly    = data.get("monthly", {})
     activities = data.get("recent_activities", [])
@@ -91,7 +91,7 @@ def write_health_md(data: dict, soul_id: str) -> None:
         f"## Monthly Summary ({month_label})\n"
         f"- Resting HR: {fmt_hr(monthly.get('resting_hr'))}\n"
         f"- Sleep: {fmt_sleep(monthly.get('sleep_minutes'))}\n"
-        f"- Active days: {monthly.get('active_days', '–')} / {today.day}"
+        f"- Active days: {monthly.get('active_days', '–')} / 30"
         f"{food_log_block}"
         f"{annual_journal_block}\n"
     )

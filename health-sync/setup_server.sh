@@ -5,7 +5,6 @@ set -euo pipefail
 
 INSTALL_DIR="/opt/sys/health-sync"
 VENV="$INSTALL_DIR/.venv"
-CRON_FILE="/etc/cron.d/sys-health-sync"
 
 # python3-venv installieren falls nötig
 apt-get install -y -qq python3-venv 2>/dev/null || true
@@ -22,13 +21,5 @@ chown -R www-data:www-data "$VENV"
 mkdir -p /var/log/sys
 chown www-data:www-data /var/log/sys
 chmod 750 /var/log/sys
-
-# System-Cron anlegen (läuft als www-data, jeden Montag 06:00)
-cat > "$CRON_FILE" <<'EOF'
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 6 * * 1 www-data /opt/sys/health-sync/.venv/bin/python3 /opt/sys/health-sync/health_sync.py >> /var/log/sys/health_sync.log 2>&1
-EOF
-chmod 644 "$CRON_FILE"
 
 echo '{"ok":true,"message":"Setup abgeschlossen. Garmin-Login als nächsten Schritt ausführen."}'

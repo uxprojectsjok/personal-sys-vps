@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.91] — 2026-07-22
+
+**Merged `docs/spec/health-sync-garmin.md` and `docs/spec/health-sync-troubleshooting.md` into one `docs/spec/health-sync.md`, and found a real product-decision violation along the way: `install.sh`/`setup_server.sh` were silently installing a weekly cron job, contradicting the maintainer's standing "Health Sync is always manual, never cron" decision — removed the cron from the code rather than just documenting around it.**
+
+**Fixed**
+- **Cron removed from the codebase** (not just the docs): `health-sync/install.sh` no longer writes a crontab entry; `health-sync/setup_server.sh` no longer writes `/etc/cron.d/sys-health-sync`. Both scripts' help/output text updated to describe manual sync instead ("run manually — no cron").
+- `health-sync/writer.py` had a mixed-language output bug: `fmt_sleep()` hardcoded German `"/Nacht (Ø)"` instead of the English `"/night (avg)"` every other line already used; `fmt_steps()` explicitly converted the English `11,131` thousands separator to German `11.131` via `.replace(",", ".")`. Both fixed to plain English, matching the rest of `health.md`'s output and the doc's own example.
+- `writer.py`'s Monthly Summary "Active days: X / Y" used `today.day` (day of the current calendar month, 1–31) as the denominator, even though the data is fetched over a fixed rolling 30-day window (`fetch_days(30, ...)`) — produced nonsensical values like "18 / 3" on the 3rd of a month. Fixed the denominator to the actual window size, `30`.
+- The doc's `last_sync` frontmatter example showed `YYYY-MM-DD` only; the actual code writes a full timestamp (`datetime.now().strftime('%Y-%m-%d %H:%M:%S')`). Corrected to `YYYY-MM-DD HH:MM:SS`.
+- Discovered and documented a previously-undocumented in-app Garmin login/MFA flow (`POST /api/health/login`, `POST /api/health/mfa`, the Settings → Gesundheit "Garmin Login" button) — it handles Garmin's MFA challenge from the browser, but explicitly does **not** fix IP rate-limiting (it logs in from the same server IP as `health_sync.py`), which the troubleshooting doc's old text didn't distinguish and a reader could easily have tried as a rate-limit "fix" that silently can't work.
+- Three broken links to a nonexistent `docs/experiments/health-sync.md` fixed across `health-sync/README.md` (badge line) and `health-sync/install.sh` (two echo lines) — now point at the new merged `docs/spec/health-sync.md`.
+- `lua/health_setup.lua`'s docstring comment updated to drop the now-removed "(Venv, Cron)" mention.
+
+---
+
 ## [1.0.90] — 2026-07-22
 
 **Fixed: docs/spec/soul-registry-contract.md's "ABI (minimal)" block was missing `anchorFee()` and all seven custom errors — verified the complete real ABI against `app/composables/useChainAnchor.js`, which the frontend actually uses to call the contract.**
