@@ -90,7 +90,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
-import { parseSoul, updateSection } from '#shared/utils/soulParser.js'
+import { parseSoul, updateSection, resolveHeading } from '#shared/utils/soulParser.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 definePageMeta({ layout: false })
@@ -118,23 +118,31 @@ const cmdkOpen         = ref(false)
 const syncing          = ref(false)
 
 // ── Soul sections ────────────────────────────────────────────────────────────
-const SOUL_SECTIONS = computed(() => [
-  { key: 'Kern-Identität',                      label: t('soul_viewer.section_identity') },
-  { key: 'Werte & Überzeugungen',               label: t('soul_viewer.section_values') },
-  { key: 'Ästhetik & Resonanz',                 label: t('soul_viewer.section_aesthetics') },
-  { key: 'Sprachmuster & Ausdruck',             label: t('soul_viewer.section_language') },
-  { key: 'Wiederkehrende Themen & Obsessionen', label: t('soul_viewer.section_themes') },
-  { key: 'Emotionale Signatur',                 label: t('soul_viewer.section_emotional') },
-  { key: 'Weltbild',                            label: t('soul_viewer.section_worldview') },
-  { key: 'Offene Fragen dieser Person',         label: t('soul_viewer.section_questions') },
-])
-
 const parsed = computed(() => parseSoul(soulContent.value))
+
+function resolveKey(section) {
+  return resolveHeading(parsed.value.sections, section.en, section.de)
+}
+
+// Jede Sektion kennt Englisch (aktuelles Default-Template) und Deutsch (Alt-Souls
+// von vor der Umstellung) — section.key löst sich zur Laufzeit auf den Header
+// auf, der in dieser konkreten Soul tatsächlich existiert (siehe resolveKey oben),
+// damit Lesen und Schreiben immer denselben Header treffen.
+const SOUL_SECTIONS = computed(() => [
+  { en: 'Core Identity',                 de: 'Kern-Identität',                      label: t('soul_viewer.section_identity') },
+  { en: 'Values & Beliefs',              de: 'Werte & Überzeugungen',               label: t('soul_viewer.section_values') },
+  { en: 'Aesthetics & Resonance',        de: 'Ästhetik & Resonanz',                 label: t('soul_viewer.section_aesthetics') },
+  { en: 'Language Patterns & Expression', de: 'Sprachmuster & Ausdruck',             label: t('soul_viewer.section_language') },
+  { en: 'Recurring Themes & Obsessions', de: 'Wiederkehrende Themen & Obsessionen', label: t('soul_viewer.section_themes') },
+  { en: 'Emotional Signature',           de: 'Emotionale Signatur',                 label: t('soul_viewer.section_emotional') },
+  { en: 'Worldview',                     de: 'Weltbild',                            label: t('soul_viewer.section_worldview') },
+  { en: 'Open Questions',                de: 'Offene Fragen dieser Person',         label: t('soul_viewer.section_questions') },
+].map(s => ({ ...s, key: resolveKey(s) })))
 
 function getContent(key) {
   const c = parsed.value.sections[key] ?? ''
   if (!c) return ''
-  if (c.includes('Noch nicht beschrieben') || c.includes('Noch nicht eingetragen') || c.includes('Musik, Atmosphären')) return ''
+  if (c.includes('Noch nicht beschrieben') || c.includes('Noch nicht eingetragen') || c.includes('Musik, Atmosphären') || c.includes('Not yet described')) return ''
   return c
 }
 

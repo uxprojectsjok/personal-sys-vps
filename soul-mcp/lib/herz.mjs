@@ -470,8 +470,9 @@ Format: [{"id":"mem_YYYYMMDD_slug","date":"YYYY-MM-DD","text":"Compact memory"}]
   }
 
   // ── 4. ideas — Feature-Ideen destillieren und Sektion leeren ─────────────────
-  const ideasContent = extractSectionFull(current, 'Zukünftige Feature-Ideen für SYS');
-  const ideasHasContent = ideasContent && !ideasContent.includes('Destilliert') && ideasContent.trim().length > 50;
+  const ideasHeading = resolveHeading(current, 'Future Feature Ideas for SYS', 'Zukünftige Feature-Ideen für SYS');
+  const ideasContent = extractSectionFull(current, ideasHeading);
+  const ideasHasContent = ideasContent && !ideasContent.includes('Destilliert') && !ideasContent.includes('Distilled') && ideasContent.trim().length > 50;
   if (ideasHasContent) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',
@@ -484,14 +485,15 @@ Format: [{"id":"idea_slug","title":"Kurztitel","text":"Kernidee in 1-2 Sätzen",
     const parsed = parseJson(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       existing.ideas = deduplicateById(existingIdeas, parsed, today);
-      current = replaceSection(current, 'Zukünftige Feature-Ideen für SYS', EMPTY_SECTION);
+      current = replaceSection(current, ideasHeading, EMPTY_SECTION);
       changed = true;
     }
   }
 
   // ── 5. learnings — Offene Fragen / Erkenntnisse destillieren ─────────────────
-  const learningsContent = extractSectionFull(current, 'Offene Fragen dieser Person');
-  const learningsHasContent = learningsContent && !learningsContent.includes('Destilliert') && learningsContent.trim().length > 50;
+  const learningsHeading = resolveHeading(current, 'Open Questions', 'Offene Fragen dieser Person');
+  const learningsContent = extractSectionFull(current, learningsHeading);
+  const learningsHasContent = learningsContent && !learningsContent.includes('Destilliert') && !learningsContent.includes('Distilled') && learningsContent.trim().length > 50;
   if (learningsHasContent) {
     const raw = await callClaude(apiKey,
       'Antworte NUR mit reinem JSON-Array, kein Markdown.',
@@ -504,7 +506,7 @@ Format: [{"id":"learn_slug","date":"YYYY-MM-DD","cat":"tech|arch|personal","text
     const parsed = parseJson(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       existing.learnings = deduplicateById(existingLearnings, parsed, today);
-      current = replaceSection(current, 'Offene Fragen dieser Person', EMPTY_SECTION);
+      current = replaceSection(current, learningsHeading, EMPTY_SECTION);
       changed = true;
     }
   }

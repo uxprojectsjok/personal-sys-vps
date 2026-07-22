@@ -15,34 +15,39 @@
 
 import { parseSoul, extractLongmem } from "./soulParser.js";
 
+// Beide Sprachvarianten pro Sektion — Englisch (aktuelles Default-Template)
+// und Deutsch (Alt-Souls von vor der Umstellung). Spiegelt soul-mcp/tools/
+// soul_maturity.mjs's SCORED_SECTIONS — bewusst dupliziert, siehe Kommentar
+// bei extractLongmem in soulParser.js.
 const SCORED_SECTIONS = [
-  "Kern-Identität",
-  "Werte & Überzeugungen",
-  "Ästhetik & Resonanz",
-  "Sprachmuster & Ausdruck",
-  "Wiederkehrende Themen & Obsessionen",
-  "Emotionale Signatur",
-  "Weltbild",
-  "Offene Fragen dieser Person",
+  { en: "Core Identity",                 de: "Kern-Identität" },
+  { en: "Values & Beliefs",              de: "Werte & Überzeugungen" },
+  { en: "Aesthetics & Resonance",        de: "Ästhetik & Resonanz" },
+  { en: "Language Patterns & Expression", de: "Sprachmuster & Ausdruck" },
+  { en: "Recurring Themes & Obsessions", de: "Wiederkehrende Themen & Obsessionen" },
+  { en: "Emotional Signature",           de: "Emotionale Signatur" },
+  { en: "Worldview",                     de: "Weltbild" },
+  { en: "Open Questions",                de: "Offene Fragen dieser Person" },
 ];
 
 // Schlüsselwörter für Signatur — herausragende Persönlichkeit, besondere Fähigkeiten
+// Deutsch + Englisch gemischt (additiv) — Nutzer können in beiden Sprachen schreiben.
 const SIGNATURE_KEYWORDS = [
-  "startup", "gründer", "gründerin",
+  "startup", "gründer", "gründerin", "founder",
   "künstler", "künstlerin", "artist",
-  "musiker", "musikerin", "produzent", "produzentin",
-  "autor", "autorin", "schriftsteller", "bestseller",
-  "fotograf", "filmemacher", "regisseur",
-  "weltmeister", "champion", "olymp",
-  "preis", "award", "auszeichnung", "nominiert",
-  "patent", "erfinder", "erfindung",
-  "professor", "doktor", "phd",
-  "ceo", "cto", "cfo", "geschäftsführer", "vorstand",
-  "millionen", "international", "global",
-  "bundesliga", "profi", "nationalspieler",
+  "musiker", "musikerin", "produzent", "produzentin", "musician", "producer",
+  "autor", "autorin", "schriftsteller", "bestseller", "author", "writer",
+  "fotograf", "filmemacher", "regisseur", "photographer", "filmmaker", "director",
+  "weltmeister", "champion", "olymp", "world champion", "olympic",
+  "preis", "award", "auszeichnung", "nominiert", "prize", "nominated",
+  "patent", "erfinder", "erfindung", "inventor", "invention",
+  "professor", "doktor", "phd", "doctor",
+  "ceo", "cto", "cfo", "geschäftsführer", "vorstand", "founder", "executive",
+  "millionen", "international", "global", "million",
+  "bundesliga", "profi", "nationalspieler", "pro athlete", "national team",
   "viral", "influencer",
-  "polizei", "beamter", "offizier",
-  "architekt", "ingenieur", "chirurg", "pilot",
+  "polizei", "beamter", "offizier", "police", "officer",
+  "architekt", "ingenieur", "chirurg", "pilot", "architect", "engineer", "surgeon",
 ];
 
 export const MATURITY_THRESHOLD = 75;
@@ -73,18 +78,19 @@ export function computeMaturity(soulMarkdown, syncedFiles = {}, verifiedSignatur
   // ── Säule 2: Tiefe ── max 20 ─────────────────────────────────────────────
   let sectionTotal = 0;
   const sectionScores = {};
-  for (const name of SCORED_SECTIONS) {
-    const pts = scoreSection(sections[name] ?? "");
-    sectionScores[name] = pts;
+  for (const { en, de } of SCORED_SECTIONS) {
+    const pts = scoreSection(sections[en] ?? sections[de] ?? "");
+    sectionScores[en] = pts;
     sectionTotal += pts;
   }
   // LONGMEM-Aggregat-Bonus: Herz-Archivar leert Kern-Sektionen nach der
-  // Kristallisation ("*Noch nicht beschrieben.*") — ohne diesen Bonus würde
-  // die Tiefe-Säule sinken, je mehr die Soul tatsächlich reift.
+  // Kristallisation ("*Not yet described.*" / Alt-Souls: "*Noch nicht beschrieben.*")
+  // — ohne diesen Bonus würde die Tiefe-Säule sinken, je mehr die Soul tatsächlich reift.
   const { sectionPts: lmSectionPts, sessionBonus } = scoreLongmemDepth(extractLongmem(soulMarkdown));
   const sectionPts  = Math.max(Math.min(Math.round(sectionTotal / SCORED_SECTIONS.length * 4), 12), lmSectionPts); // 0–12
   const logEntries  = countSessionEntries(
-    sections["Session-Log (komprimiert)"] ?? sections["Session-Log"] ?? ""
+    sections["Session Log (compressed)"] ?? sections["Session-Log (komprimiert)"] ??
+    sections["Session Log"] ?? sections["Session-Log"] ?? ""
   );
   // 1 Pt pro 2 Sessions — braucht 16+ Sessions für Maximum
   const sessionPts  = Math.min(Math.floor((logEntries + sessionBonus) / 2), 8); // 0–8
@@ -257,7 +263,7 @@ function scoreToLevel(score) {
 
 function zeroBreakdown() {
   const sectionScores = {};
-  for (const name of SCORED_SECTIONS) sectionScores[name] = 0;
+  for (const { en } of SCORED_SECTIONS) sectionScores[en] = 0;
   return {
     herkunft: 0, tiefe: 0, biometrie: 0, archiv: 0, signatur: 0, netzwerk: 0,
     age: 0, growthChain: 0, sectionScores, sessionLog: 0,

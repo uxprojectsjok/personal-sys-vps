@@ -133,7 +133,7 @@ export function useSpotify() {
     return { artists: topArtists.value, tracks: topTracks.value };
   }
 
-  // Formatiert die Daten als sys.md-Text (für ## Ästhetik & Resonanz)
+  // Formatiert die Daten als sys.md-Text (für ## Aesthetics & Resonance)
   function formatForSoul() {
     const artists = topArtists.value
       .map(a => {

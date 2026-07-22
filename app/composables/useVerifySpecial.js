@@ -99,9 +99,13 @@ hints sind kurze Belege (max 60 Zeichen je). Wenn nichts gefunden: leeres Array.
     }
   }
 
-  /** Nur Kern-Identität + Werte aus sys.md extrahieren */
+  /** Nur Kern-Identität + Werte aus sys.md extrahieren (Englisch + Deutsch/Alt-Souls) */
   function extractIdentitySections(md) {
-    const sections = ["Kern-Identität", "Werte & Überzeugungen", "Wiederkehrende Themen & Obsessionen"];
+    const sections = [
+      "Kern-Identität", "Core Identity",
+      "Werte & Überzeugungen", "Values & Beliefs",
+      "Wiederkehrende Themen & Obsessionen", "Recurring Themes & Obsessions",
+    ];
     const lines = md.split("\n");
     const result = [];
     let inSection = false;

@@ -87,8 +87,10 @@ export function useSoul() {
 
   function buildDefaultSoul(id, cert, name, idea) {
     const now = new Date().toISOString().split("T")[0];
-    // v3 2026-07-04 — MIND-fähig: LONGMEM + MINDIDX (3D-Index) entstehen bei der
-    // ersten Kristallisation. v2 2026-05-09 — three-sphere: Intimsphäre + Sozialsphäre + Agent-Sandbox
+    // v3 2026-07-04 — MIND-capable: LONGMEM + MINDIDX (3D index) appear on first
+    // crystallization. v2 2026-05-09 — three-sphere: Private Sphere + Social Sphere + Agent Sandbox.
+    // Section headers switched to English 2026-07-22 — existing German-header souls
+    // keep working unchanged, see resolveHeading() in shared/utils/soulParser.js.
     return `---
 soul_id: ${id}
 soul_name: ${name || ""}
@@ -102,51 +104,51 @@ elevenlabs_agent_id: ""
 elevenlabs_voice_id: ""
 ---
 
-<!-- LONGMEM + MINDIDX (kristallisiertes Langzeitgedächtnis + 3D-Index)
-     erscheinen hier automatisch, sobald der Archivar zum ersten Mal
-     kristallisiert. Bis dahin: nur die rohen Sektionen unten. -->
+<!-- LONGMEM + MINDIDX (crystallized long-term memory + 3D index) appear
+     here automatically once the Archivist crystallizes for the first
+     time. Until then: just the raw sections below. -->
 
-## Kern-Identität
-<!-- Core Identity — who this person is: age, profession, origin, life situation -->
-${idea ? idea : "*Noch nicht beschrieben.*"}
+## Core Identity
+<!-- who this person is: age, profession, origin, life situation -->
+${idea ? idea : "*Not yet described.*"}
 
-## Werte & Überzeugungen
-<!-- Values & Beliefs — what this person stands for, convictions, meaning -->
-*Noch nicht beschrieben.*
+## Values & Beliefs
+<!-- what this person stands for, convictions, meaning -->
+*Not yet described.*
 
-## Ästhetik & Resonanz
-<!-- Aesthetics & Resonance — style, taste, what moves this person -->
-*Noch nicht beschrieben.*
+## Aesthetics & Resonance
+<!-- style, taste, what moves this person -->
+*Not yet described.*
 
-## Sprachmuster & Ausdruck
-<!-- Communication Patterns — how this person speaks, writes, formulates -->
-*Noch nicht beschrieben.*
+## Language Patterns & Expression
+<!-- how this person speaks, writes, formulates -->
+*Not yet described.*
 
-## Wiederkehrende Themen & Obsessionen
-<!-- Recurring Themes & Obsessions — subjects that keep coming up -->
-*Noch nicht beschrieben.*
+## Recurring Themes & Obsessions
+<!-- subjects that keep coming up -->
+*Not yet described.*
 
-## Emotionale Signatur
-<!-- Emotional Signature — feelings, drives, energy, mood patterns -->
-*Noch nicht beschrieben.*
+## Emotional Signature
+<!-- feelings, drives, energy, mood patterns -->
+*Not yet described.*
 
-## Weltbild
-<!-- Worldview — how this person sees the world, philosophy, outlook -->
-*Noch nicht beschrieben.*
+## Worldview
+<!-- how this person sees the world, philosophy, outlook -->
+*Not yet described.*
 
-## Offene Fragen dieser Person
-<!-- Open Questions — unresolved topics, goals, hopes, plans -->
-*Noch nicht beschrieben.*
+## Open Questions
+<!-- unresolved topics, goals, hopes, plans -->
+*Not yet described.*
 
-## Session-Log (komprimiert)
-<!-- Session Log — automatic record of all AI conversations -->
-*Noch keine Sessions.*
+## Session Log (compressed)
+<!-- automatic record of all AI conversations -->
+*No sessions yet.*
 
-## Sozialsphäre
+## Social Sphere
 <!-- SOCIAL:START -->
 <!-- SOCIAL:END -->
 
-## Agent-Sandbox
+## Agent Sandbox
 <!-- AGENT:START -->
 <!-- AGENT:END -->
 `;
@@ -545,7 +547,7 @@ Mögliche section-Werte (exakt so schreiben):
       const sectionsUpdated = [];
 
       // Sektionen aktualisieren — Session-Log nie per updateSection anfassen (nur per appendSessionLog)
-      const PROTECTED = new Set(['Session-Log', 'Session-Log (komprimiert)']);
+      const PROTECTED = new Set(['Session-Log', 'Session-Log (komprimiert)', 'Session Log', 'Session Log (compressed)']);
       if (Array.isArray(changes)) {
         for (const { section, content } of changes) {
           const s = typeof section === 'string' ? section.trim() : '';
@@ -557,12 +559,17 @@ Mögliche section-Werte (exakt so schreiben):
       }
 
       // Platzhalterwerte entfernen sobald echter Inhalt angekommen ist
+      // (Deutsch: Alt-Souls von vor der Umstellung auf englische Platzhalter)
       if (sectionsUpdated.length > 0 || sessionLog) {
         updated = updated
           .replace(/^\*Noch nicht beschrieben\.\*\s*$/gm, '')
           .replace(/^\*Noch nicht konfiguriert\.\*\s*$/gm, '')
           .replace(/^\*Noch keine Sessions\.\*\s*$/gm, '')
           .replace(/^_Destilliert ins LONGMEM\._\s*$/gm, '')
+          .replace(/^\*Not yet described\.\*\s*$/gm, '')
+          .replace(/^\*Not yet configured\.\*\s*$/gm, '')
+          .replace(/^\*No sessions yet\.\*\s*$/gm, '')
+          .replace(/^_Distilled into LONGMEM\._\s*$/gm, '')
           .replace(/\n{3,}/g, '\n\n');
       }
 

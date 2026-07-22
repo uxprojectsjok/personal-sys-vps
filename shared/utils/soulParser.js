@@ -41,6 +41,23 @@ export function parseSoul(markdown) {
 }
 
 /**
+ * Findet den tatsächlich in der Soul vorhandenen Sektions-Header — Englisch
+ * (neue Souls) oder Deutsch (Alt-Souls vor der Umstellung auf englische
+ * Default-Templates). Existiert keine der beiden, wird die englische Variante
+ * zurückgegeben (Default für neue Inhalte). Spiegelt resolveHeading() in
+ * soul-mcp/lib/herz.mjs — bewusst dupliziert, siehe Kommentar bei extractLongmem.
+ * @param {Object} sections - aus parseSoul() zurückgegebenes sections-Objekt
+ * @param {string} enHeading
+ * @param {string} deHeading
+ * @returns {string}
+ */
+export function resolveHeading(sections, enHeading, deHeading) {
+  if (sections && Object.prototype.hasOwnProperty.call(sections, enHeading)) return enHeading;
+  if (deHeading && sections && Object.prototype.hasOwnProperty.call(sections, deHeading)) return deHeading;
+  return enHeading;
+}
+
+/**
  * Extrahiert den LONGMEM-JSON-Block (kristallisierte Facts/Memories/Ideas/Learnings).
  * Spiegelt soul-mcp/lib/soul_parser.mjs::extractLongmem — bewusst dupliziert,
  * da shared/ und soul-mcp keine gemeinsamen Module teilen (soul-mcp ist standalone).
@@ -167,41 +184,59 @@ export function addOrUpdateVaultSection(markdown, { profile, textFiles, imageFil
 }
 
 // Keyword → Soul-Sektion Mapping für selektiven Kontext
+// Jede "sections"-Liste enthält beide Sprachvarianten (Englisch = aktuelles
+// Default-Template, Deutsch = Alt-Souls von vor der Umstellung) — nur die
+// tatsächlich vorhandene liefert Content, die andere ist bei sections[key]
+// einfach undefined und wird stillschweigend übersprungen.
+// Keywords selbst: Englisch + Deutsch gemischt, da Nutzer in beiden Sprachen
+// chatten können — rein additiv, keine bestehende Zeile entfernt.
 const SOUL_TOPIC_MAP = [
   {
     keywords: ["musik", "song", "track", "künstler", "album", "genre", "hören", "konzert",
                "spotify", "youtube", "video", "film", "serie", "buch", "lesen",
-               "kunst", "design", "foto", "bild", "ästhetik", "style", "mode"],
-    sections:  ["Ästhetik & Resonanz"]
+               "kunst", "design", "foto", "bild", "ästhetik", "style", "mode",
+               "music", "artist", "genre", "listen", "concert", "movie", "show",
+               "book", "reading", "art", "photo", "picture", "aesthetic", "fashion"],
+    sections:  ["Ästhetik & Resonanz", "Aesthetics & Resonance"]
   },
   {
     keywords: ["familie", "sohn", "kind", "vater", "mutter", "papa", "mama", "eltern",
-               "beziehung", "freunde", "partner", "liebe", "zuhause"],
-    sections:  ["Kern-Identität", "Werte & Überzeugungen"]
+               "beziehung", "freunde", "partner", "liebe", "zuhause",
+               "family", "son", "daughter", "child", "father", "mother", "dad", "mom", "parents",
+               "relationship", "friends", "partner", "love", "home"],
+    sections:  ["Kern-Identität", "Core Identity", "Werte & Überzeugungen", "Values & Beliefs"]
   },
   {
     keywords: ["wert", "prinzip", "glaub", "ethik", "moral", "richtig", "falsch",
-               "überzeugung", "sinn", "warum", "bedeutung"],
-    sections:  ["Werte & Überzeugungen", "Weltbild"]
+               "überzeugung", "sinn", "warum", "bedeutung",
+               "value", "principle", "belief", "ethics", "moral", "right", "wrong",
+               "conviction", "meaning", "why", "purpose"],
+    sections:  ["Werte & Überzeugungen", "Values & Beliefs", "Weltbild", "Worldview"]
   },
   {
     keywords: ["arbeit", "projekt", "studio", "business", "geld", "karriere",
-               "content", "produzier", "erstell", "kreativ", "entwickl", "beruf"],
-    sections:  ["Kern-Identität", "Wiederkehrende Themen & Obsessionen"]
+               "content", "produzier", "erstell", "kreativ", "entwickl", "beruf",
+               "work", "project", "studio", "business", "money", "career",
+               "content", "produce", "create", "creative", "develop", "job"],
+    sections:  ["Kern-Identität", "Core Identity", "Wiederkehrende Themen & Obsessionen", "Recurring Themes & Obsessions"]
   },
   {
     keywords: ["angst", "druck", "stress", "gefühl", "emotion", "trauer", "freude",
-               "wut", "erschöpf", "energie", "müde", "motivat", "stimmung"],
-    sections:  ["Emotionale Signatur", "Wiederkehrende Themen & Obsessionen"]
+               "wut", "erschöpf", "energie", "müde", "motivat", "stimmung",
+               "fear", "pressure", "stress", "feeling", "emotion", "grief", "joy",
+               "anger", "exhaust", "energy", "tired", "motivat", "mood"],
+    sections:  ["Emotionale Signatur", "Emotional Signature", "Wiederkehrende Themen & Obsessionen", "Recurring Themes & Obsessions"]
   },
   {
     keywords: ["zukunft", "ziel", "plan", "träum", "vision", "hoffnung", "wunsch",
-               "vorhaben", "absicht"],
-    sections:  ["Offene Fragen dieser Person", "Wiederkehrende Themen & Obsessionen"]
+               "vorhaben", "absicht",
+               "future", "goal", "plan", "dream", "vision", "hope", "wish", "intention"],
+    sections:  ["Offene Fragen dieser Person", "Open Questions", "Wiederkehrende Themen & Obsessionen", "Recurring Themes & Obsessions"]
   },
   {
-    keywords: ["sprach", "ausdrück", "schreib", "formulier", "kommunizier", "wort", "text"],
-    sections:  ["Sprachmuster & Ausdruck"]
+    keywords: ["sprach", "ausdrück", "schreib", "formulier", "kommunizier", "wort", "text",
+               "language", "express", "write", "phrase", "communicat", "word", "text"],
+    sections:  ["Sprachmuster & Ausdruck", "Language Patterns & Expression"]
   }
 ];
 
@@ -222,8 +257,11 @@ export function buildSoulContext(soulMarkdown, messages = []) {
 
   const { sections } = parseSoul(soulMarkdown);
 
-  // Immer-dabei-Sektionen
-  const selected = new Set(["Kern-Identität", "Session-Log (komprimiert)"]);
+  // Immer-dabei-Sektionen — Sprache auflösen (Englisch = aktuell, Deutsch = Alt-Souls)
+  const selected = new Set([
+    resolveHeading(sections, "Core Identity", "Kern-Identität"),
+    resolveHeading(sections, "Session Log (compressed)", "Session-Log (komprimiert)"),
+  ]);
 
   // Letzten 5 Nachrichten für Keyword-Matching
   const recentText = messages
@@ -243,15 +281,15 @@ export function buildSoulContext(soulMarkdown, messages = []) {
 
   // Wenn kein spezifisches Thema erkannt → Emotionale Signatur als Standard dazu
   if (selected.size <= 3) {
-    selected.add("Emotionale Signatur");
-    selected.add("Wiederkehrende Themen & Obsessionen");
+    selected.add(resolveHeading(sections, "Emotional Signature", "Emotionale Signatur"));
+    selected.add(resolveHeading(sections, "Recurring Themes & Obsessions", "Wiederkehrende Themen & Obsessionen"));
   }
 
   // Soul zusammenbauen: Frontmatter + gewählte Sektionen (nur gefüllte)
   let result = frontmatter;
   for (const key of selected) {
     const content = sections[key];
-    if (content && !content.includes("Noch nicht beschrieben") && content.trim()) {
+    if (content && !content.includes("Noch nicht beschrieben") && !content.includes("Not yet described") && content.trim()) {
       result += `\n\n## ${key}\n${content}`;
     }
   }

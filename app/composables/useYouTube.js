@@ -107,7 +107,7 @@ export function useYouTube() {
     return { subscriptions: subscriptions.value, likedVideos: likedVideos.value };
   }
 
-  // Formatiert die Daten als sys.md-Text (für ## Ästhetik & Resonanz)
+  // Formatiert die Daten als sys.md-Text (für ## Aesthetics & Resonance)
   function formatForSoul() {
     const channels = subscriptions.value
       .map(s => s.snippet?.title)

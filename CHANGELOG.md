@@ -8,6 +8,27 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.0] — 2026-07-22
+
+**New souls now default to English section headers (`## Core Identity`, `## Values & Beliefs`, etc.) instead of German — the first phase of an English-only push into the actual template content, not just the docs. Existing German-header souls (including the maintainer's own) keep working completely unchanged.**
+
+**Why:** `buildDefaultSoul()` generated a fully German template for every new soul — 8 section headers plus placeholder text. That's inconsistent with this repo's public-facing, English-first direction, and it was already a live bug independent of language: `mind.lua` expects the English `"Self-Reflection"` while `init.sh` writes the German `"Selbstreflexion"` — a mismatch discovered while investigating this. This entry only fixes the `sys.md` section-header side; `mind.md` and `agent.md` are separate, larger fixes (each has its own divergent-template problem) and are tracked for a follow-up pass.
+
+**Approach:** additive, not a rename. A `resolveHeading()` helper (new in `shared/utils/soulParser.js`, matching the pattern already used in `soul-mcp/lib/herz.mjs`) tries the English heading first, falls back to the German one, and defaults to English for brand-new content. Every place that reads or writes a named section now goes through this resolution instead of a hardcoded literal — so a German-header soul and an English-header soul produce identical behavior everywhere.
+
+**Changed**
+- `app/composables/useSoul.js`: `buildDefaultSoul()` template translated to English (headers + `*Not yet described.*` / `*No sessions yet.*` placeholders + `## Social Sphere` / `## Agent Sandbox` — verified safe, the actual privacy/access boundary is the language-neutral `<!-- SOCIAL:START/END -->` / `<!-- AGENT:START/END -->` markers, never the heading text, across all 10 files that reference these blocks). The manual-soul-update placeholder-stripping logic now matches both languages; the Session Log protected-section guard now recognizes both variants too.
+- `shared/utils/soulParser.js`: added `resolveHeading()`; `SOUL_TOPIC_MAP` (keyword → section relevance matching for system-prompt context selection) now lists both language variants per section, and gained English keyword equivalents alongside the existing German ones (additive — fixes what was likely a silent relevance-matching gap for English-speaking users, who'd never trigger any German keyword); `buildSoulContext()`'s hardcoded always-included sections now resolve via `resolveHeading()`.
+- `shared/utils/soulMaturity.js`: `SCORED_SECTIONS` converted to the same `{en, de}` fallback pattern already used server-side in `soul-mcp/tools/soul_maturity.mjs` — previously a flat German-only list, meaning any English-header soul would have scored 0 on the entire "Depth" pillar. `SIGNATURE_KEYWORDS` gained English equivalents alongside the German ones (additive).
+- `app/pages/soul.vue`: the soul-viewer/editor's `SOUL_SECTIONS` now resolves each section's actual heading (English or German) via `resolveHeading()` before both reading (`getContent`) and writing (`saveEdit`) — previously hardcoded to German literals only, which would have silently shown every section as empty (and any edit would have written a *new*, duplicate German heading instead of updating the real English one) for an English-header soul.
+- `app/composables/useVerifySpecial.js`: `extractIdentitySections()`'s section list extended to include the English variants (additive).
+- `soul-mcp/lib/herz.mjs`: two remaining crystallization steps (ideas/learnings distillation) were still matching the German heading only, inconsistent with the rest of the file, which already had a local `resolveHeading()` helper used everywhere else — now resolve consistently like the rest of the Archivist.
+- `app/composables/useSpotify.js`, `useYouTube.js`: updated a stale comment referencing the German heading name (no functional matching in either file — verified).
+
+**Verified:** ran a synthetic parse/score/context-select test against an equivalent German-header soul and an English-header soul side by side — identical maturity score, identical `resolveHeading()` resolution, identical `buildSoulContext()` section selection for both.
+
+---
+
 ## [1.1.2] — 2026-07-22
 
 **Fixed: `useChainAnchor.js` had the same bug class as v1.1.1, but in sys.md's own `soul_anchor_history` frontmatter field — every anchor just pushed onto whatever local history already existed, with no check against the current contract. After a contract migration this meant `soul_anchor_history` would keep growing forever with entries from a retired contract mixed into every future anchor's history.**
