@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.10] — 2026-07-22
+
+**Fixed: on mobile, tapping the "Gate" tab in the bottom nav bar navigated to `/gate` but left the nav bar itself visible on top of the login screen.**
+
+**Root cause:** `SysMobileNav.vue`'s gate tab did a plain `router.push('/gate')` — a client-side SPA navigation that leaves `useSoul()`'s shared `hasSoul` state untouched (it isn't tied to the current route). `app.vue` renders the nav bar via `<SysMobileNav v-if="hasSoul" />`, so it stayed mounted on the gate page. Every page's own sidebar already handles this correctly via a local `lockGate()` (clear soul state, clear the `sys_gate` cookie, full-page navigation) — the mobile bottom nav's gate tab never got the equivalent treatment.
+
+**Fixed**
+- `app/components/SysMobileNav.vue`: gate tab now calls `useSoul().clear()`, clears the `sys_gate` cookie, and does a full `window.location.href` navigation instead of `router.push()` — same pattern as every page's own `lockGate()`.
+
+---
+
 ## [1.2.9] — 2026-07-22
 
 **Fixed: verification challenges created by the ElevenLabs voice agent (`POST /api/agent/verify`) had no `voice_code` and no `webauthn_challenge` — every fingerprint or voice_hq attempt against one of these challenges was unconditionally doomed, regardless of device or user action.**

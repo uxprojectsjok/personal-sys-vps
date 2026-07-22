@@ -17,10 +17,12 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useSoul } from '~/composables/useSoul.js'
 
 const { t } = useI18n()
 const route  = useRoute()
 const router = useRouter()
+const { clear } = useSoul()
 
 const tabs = computed(() => [
   { id: 'start',        label: t('mobile_nav.start'),    icon: 'home',     path: '/'               },
@@ -38,6 +40,18 @@ const current = computed(() => {
 })
 
 function go(tab) {
-  if (current.value !== tab.id) router.push(tab.path)
+  if (current.value === tab.id) return
+  if (tab.id === 'gate') {
+    // A plain router.push('/gate') leaves useSoul()'s shared hasSoul state
+    // untouched (it's not tied to the route), so app.vue's
+    // <SysMobileNav v-if="hasSoul" /> stayed visible on top of the gate
+    // page -- the bar never disappeared after tapping it. Full lock +
+    // reload instead, same pattern every page's own lockGate() uses.
+    clear()
+    document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
+    window.location.href = '/gate'
+    return
+  }
+  router.push(tab.path)
 }
 </script>
