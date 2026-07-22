@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.4] — 2026-07-22
+
+**Docs cleanup: the sys.md spec doc still showed the old German template example from before the English-migration pass (v1.2.0).**
+
+**Fixed**
+- `docs/spec/sys_md.md`: the "fresh soul → crystallized soul" lifecycle example still had `## Kern-Identität` / `## Werte & Überzeugungen` and a German LONGMEM/MINDIDX comment — updated to the current English template (`## Core Identity` / `## Values & Beliefs`, English comment), matching what `buildDefaultSoul()` actually generates and what `README.md`/`ARCHITECTURE.md`'s own examples already show.
+- `README.md`: one leftover German label (`Selbstreflexion-Workflow`) in the repo-tree comment for `soul-mcp/prompts/index.mjs` → `Self-Reflection workflow`.
+- Checked all other docs (`ARCHITECTURE.md`, `CONTRIBUTING.md`, `KEYMANAGEMENT.md`, `docs/spec/*.md`) for other stale template examples — none found; their sys.md/mind.md examples were already English from earlier passes.
+
+---
+
 ## [1.2.3] — 2026-07-22
 
 **Finished the ElevenLabs voice-agent creation flow (`lua/create_agent.lua`, and its dev-server stub `server/api/create-agent.post.js`): translated its German fallback system prompt, tool descriptions, and greeting default to English, made the response language configurable instead of hardcoded, and fixed a live bug in the greeting-parsing logic.**

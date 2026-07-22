@@ -76,15 +76,15 @@ A newly created soul (`buildDefaultSoul()` in `app/composables/useSoul.js`)
 has only the raw sections, empty:
 
 ```markdown
-<!-- LONGMEM + MINDIDX (kristallisiertes Langzeitgedächtnis + 3D-Index)
-     erscheinen hier automatisch, sobald der Archivar zum ersten Mal
-     kristallisiert. Bis dahin: nur die rohen Sektionen unten. -->
+<!-- LONGMEM + MINDIDX (crystallized long-term memory + 3D index) appear
+     here automatically once the Archivist crystallizes for the first
+     time. Until then: only the raw sections below. -->
 
-## Kern-Identität
-<!-- Core Identity — who this person is: age, profession, origin, life situation -->
-*Noch nicht beschrieben.*
+## Core Identity
+<!-- who this person is: age, profession, origin, life situation -->
+*Not yet described.*
 
-## Werte & Überzeugungen
+## Values & Beliefs
 ...
 ```
 
@@ -114,7 +114,7 @@ version: 3
   "learnings": { "y_cat": { "arch": [...], "tech": [...] } } }
 <!-- SYS:MINDIDX:END -->
 
-## Kern-Identität
+## Core Identity
 *Not yet described.*
 ```
 

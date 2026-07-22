@@ -228,7 +228,7 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 │   ├── lib/                 api.mjs, artwork_log.mjs, blockchain.mjs, eu_withdrawal_terms.mjs,
 │   │                        herz.mjs, soul_indexer.mjs, soul_parser.mjs, vault_fs.mjs,
 │   │                        x402_agent_wallet.mjs, x402_client.mjs
-│   └── prompts/             index.mjs — soul_guide + tool_guide (Selbstreflexion-Workflow)
+│   └── prompts/             index.mjs — soul_guide + tool_guide (Self-Reflection workflow)
 │
 ├── server/
 │   ├── api/                 Nitro API routes (development server only)
@@ -474,7 +474,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.2.3): c4db255eb4deca22
+Current release fingerprint (v1.2.4): c15c0326bca76219
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
