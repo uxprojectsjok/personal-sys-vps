@@ -38,11 +38,22 @@ App-agnostic — any application can anchor.
 
 ## Constants
 
+True Solidity `constant`s — fixed forever, cannot change without a contract redeploy:
+
 | Name | Value | Meaning |
 |------|-------|---------|
-| `anchorFee` | 0.5 POL | Fee per anchor (changeable via `setFee`) |
 | `MAX_ANCHORS_PER_SOUL` | 365 | Max. total anchors per soul |
 | `COOLDOWN_SECONDS` | 1 day | Rate limit: 1 anchor per soul per day |
+
+---
+
+## Fee (mutable)
+
+| Name | Current value | Meaning |
+|------|-------|---------|
+| `anchorFee` | 0.5 POL | Fee per anchor |
+
+Unlike the two constants above, `anchorFee` is a regular `public` state variable (`uint256 public anchorFee = 0.5 ether;`) — 0.5 POL is just its deployment-time initial value, not a fixed protocol constant. The owner can raise or lower it at any time via `setFee()` (see [Admin Functions](#admin-functions-contract-owner-only)); read `anchorFee()` fresh before relying on it.
 
 ---
 

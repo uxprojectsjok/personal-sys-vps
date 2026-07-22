@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.97] — 2026-07-22
+
+**Fixed: the Constants table put `anchorFee` alongside `MAX_ANCHORS_PER_SOUL`/`COOLDOWN_SECONDS` as if all three were equally fixed — but `anchorFee` is a regular mutable `public` state variable (`uint256 public anchorFee = 0.5 ether;`), not a Solidity `constant` like the other two. 0.5 POL is just its deployment-time initial value; the owner can change it at any time via `setFee()`.**
+
+**Fixed**
+- Split the table: `## Constants` now holds only the two true, unchangeable `constant`s. New `## Fee (mutable)` section holds `anchorFee`, explicit that it's the current value, not a fixed protocol parameter.
+
+---
+
 ## [1.0.96] — 2026-07-22
 
 **Fixed: v1.0.95's soul-registry-contract.md note hedged on the contract's pause/withdraw semantics, claiming "this repo doesn't hold the Solidity source." That was avoidable — the contract is verified on Polygonscan and its full source is fetchable there. Fetched and read the actual verified `SoulRegistry.sol`, which also surfaced a bigger gap: the doc's "minimal ABI" (built from the frontend's `useChainAnchor.js`, itself a browser-side subset) was missing 8 of 16 custom errors, 5 of 7 events, and 3 public view getters entirely.**
