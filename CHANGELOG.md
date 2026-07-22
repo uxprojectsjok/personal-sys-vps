@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.72] — 2026-07-22
+
+**Docs: added a concrete example under the `@msg` format explanation — a Social Sphere exchange plus an Agent Sandbox with a paid agent's appended comment, so readers get a visual of the area instead of just the abstract format string.**
+
+**Changed**
+- `README.md`, "sys.md Format": added a lorem-ipsum-content example showing both spheres populated, including the `[tx:...]` payment-reference suffix `soul_paid_comment` attaches automatically — ties directly into the write-permissions fix from v1.0.71.
+
+---
+
 ## [1.0.71] — 2026-07-22
 
 **Fixed: the three-sphere table's "Who writes" column for Agent Sandbox said "Owner only" in all three places it appears (README.md, ARCHITECTURE.md, docs/spec/sys_md.md) — wrong. Paid agents can append a comment there via `soul_paid_comment`.**

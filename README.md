@@ -329,6 +329,26 @@ Messages use structured comments: `<!-- @msg {ISO-timestamp} {from} {to} {conten
 - `from`: `me` (owner) · peer soul_id · agent id
 - `to`: `me` · `peer` · `agent` · `community`
 
+Example — a Social Sphere exchange and an Agent Sandbox with a paid agent's appended comment (the `[tx:...]` suffix is the on-chain payment reference `soul_paid_comment` attaches automatically):
+
+```markdown
+## Social Sphere
+<!-- SOCIAL:START -->
+<!-- @msg 2026-07-20T09:00:00Z me peer Lorem ipsum dolor sit amet, working on the new module today. -->
+<!-- @msg 2026-07-20T09:04:00Z alice_bc21 me Consectetur adipiscing elit — same here, want to sync? -->
+<!-- SOCIAL:END -->
+
+## Agent Sandbox
+<!-- AGENT:START -->
+Name: Lorem Ipsum
+Location: Dolor City, Sitland
+
+Short bio and what I'm working on. No ## headings inside this block.
+
+<!-- @msg 2026-07-20T11:30:00Z scout_agent_47 me Sed do eiusmod tempor — interested in collaborating on your open project. [tx:a1b2c3d4e5…] -->
+<!-- AGENT:END -->
+```
+
 Read tools apply stage-based filtering: **stage 1** (default) returns the last 24 h. **stage 2** returns up to 48 h with every-other-message sampling for the older half. Static text without `@msg` markers is always returned unfiltered.
 
 **LONGMEM — Long-Term Memory:**
@@ -450,7 +470,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.71): 64b84944bf0dbc93
+Current release fingerprint (v1.0.72): d1f0d7c9ee698196
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
