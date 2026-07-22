@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.98] — 2026-07-22
+
+**Added: `contracts/SoulRegistry.sol` — a v1.1.0 SoulRegistry with `MAX_ANCHORS_PER_SOUL` (365, immutable) removed. Not yet deployed; the deployed v1.0.0 contract is unaffected and this changelog entry does not change any live behavior.**
+
+**Why:** Anchoring has become an ongoing liveness signal — a soul that stops anchoring reads as inactive/dead. `MAX_ANCHORS_PER_SOUL = 365` is a genuine Solidity `constant` in the deployed contract (baked into bytecode, no admin setter); combined with the existing `COOLDOWN_SECONDS = 1 day` rate limit, any soul anchoring daily hits this cap permanently after ~1 year — `anchor()` then reverts with `MaxAnchorsReached` forever, with no recovery short of a full contract redeploy. That directly contradicts continuous liveness anchoring as a design goal.
+
+**Added**
+- `contracts/SoulRegistry.sol`: new file, based on the verified deployed v1.0.0 source (fetched from Polygonscan, compiled clean with `solc 0.8.36`, ABI-diffed against v1.0.0 to confirm only the intended surface changed). `MAX_ANCHORS_PER_SOUL` and the `MaxAnchorsReached` error are removed entirely; `COOLDOWN_SECONDS` is unchanged (still a legitimate anti-spam rate limit, not a lifetime cap — no conflict with daily liveness anchoring). `VERSION` bumped to `"1.1.0"`.
+- `docs/spec/soul-registry-contract.md`: new `[!WARNING]` documenting the not-yet-deployed status and the real cost of ever deploying it — every soul's on-chain history restarts at zero (`getHistory()` is scoped to a single contract instance, no migration path), and the contract address is hardcoded independently in 4 code files plus 3 docs.
+- `.gitignore`: added `*.abi`/`*.bin`/`contracts/artifacts/`/`contracts/cache/` for local Solidity build output.
+- `utils/project-hash.mjs`, `README.md`: `.sol` added to the fingerprint's tracked source extensions and the Integrity section's extension list — `contracts/SoulRegistry.sol` is now covered by the release fingerprint like any other source file.
+- `README.md`, Repository Structure: added the new `contracts/` entry; also fixed a stale "cron" mention in the `health-sync/install.sh` description left over from v1.0.91's cron removal.
+
+---
+
 ## [1.0.97] — 2026-07-22
 
 **Fixed: the Constants table put `anchorFee` alongside `MAX_ANCHORS_PER_SOUL`/`COOLDOWN_SECONDS` as if all three were equally fixed — but `anchorFee` is a regular mutable `public` state variable (`uint256 public anchorFee = 0.5 ether;`), not a Solidity `constant` like the other two. 0.5 POL is just its deployment-time initial value; the owner can change it at any time via `setFee()`.**

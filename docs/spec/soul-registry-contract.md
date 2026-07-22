@@ -12,6 +12,11 @@
 
 ---
 
+> [!WARNING]
+> **v1.1.0 prepared, not yet deployed.** The deployed contract above has `MAX_ANCHORS_PER_SOUL = 365` as an immutable Solidity `constant` — with `COOLDOWN_SECONDS = 1 day`, any soul anchoring daily hits this cap permanently after ~1 year (`MaxAnchorsReached`, no recovery without a new contract). This conflicts with anchoring's role as an ongoing liveness signal: a continuously active soul should never be able to "run out" of anchors. [`contracts/SoulRegistry.sol`](../../contracts/SoulRegistry.sol) in this repo removes the lifetime cap entirely (`COOLDOWN_SECONDS` unchanged — still a legitimate anti-spam limit, not a lifetime one) and bumps `VERSION` to `"1.1.0"`. It is not deployed yet. Deploying it means a **new contract address**: every soul's on-chain history starts over at zero (no automatic migration — `getHistory()` only reads from the contract instance it's called on), and the address is hardcoded independently in 4 code files (`soul-mcp/lib/blockchain.mjs`, `soul-mcp/tools/verify_identity.mjs`, `soul-mcp/lib/soul_indexer.mjs`, `app/composables/useChainAnchor.js`) plus this doc, README.md, and ARCHITECTURE.md — all of which need updating together once deployed.
+
+---
+
 ## Verification
 
 Function-level verification performed on 2026-06-05:
@@ -42,7 +47,7 @@ True Solidity `constant`s — fixed forever, cannot change without a contract re
 
 | Name | Value | Meaning |
 |------|-------|---------|
-| `MAX_ANCHORS_PER_SOUL` | 365 | Max. total anchors per soul |
+| `MAX_ANCHORS_PER_SOUL` | 365 | Max. total anchors per soul — a hard lifetime cap. See the v1.1.0 warning above: this is being removed in the next deployment. |
 | `COOLDOWN_SECONDS` | 1 day | Rate limit: 1 anchor per soul per day |
 
 ---

@@ -207,9 +207,12 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 ├── health-sync/             Garmin / Apple Health / Oura adapter (Python, optional experiment)
 │   ├── health_sync.py       Main sync runner
 │   ├── writer.py            Writes health.md — preserves Food Log + Annual Journal
-│   ├── install.sh           Interactive setup (credentials, soul selection, cron)
+│   ├── install.sh           Interactive setup (credentials, soul selection) — manual sync only, no cron
 │   ├── adapters/            garmin.py, apple_health.py, oura.py
 │   └── …                    (see health-sync/ directory for full list)
+│
+├── contracts/               SoulRegistry.sol — on-chain anchoring contract source
+│   └── SoulRegistry.sol     See docs/spec/soul-registry-contract.md for deployed address + full spec
 │
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
 │   ├── server.mjs           Main server — OAuth flow, /internal/run-tool, X-Soul-Id routing
@@ -470,9 +473,9 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.97): 5c8d866e729ad1f7
+Current release fingerprint (v1.0.98): 1ec059b77b91bb26
 
-The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
+The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
 ---
 

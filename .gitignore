@@ -32,3 +32,9 @@ public/dock_out.png
 health-sync/.venv/
 health-sync/__pycache__/
 health-sync/adapters/__pycache__/
+
+# Solidity build artifacts
+*.abi
+*.bin
+contracts/artifacts/
+contracts/cache/

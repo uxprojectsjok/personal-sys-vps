@@ -15,7 +15,7 @@ import { execFileSync } from "child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template", ".css"]);
+const INCLUDE_EXTS = new Set([".vue", ".js", ".mjs", ".lua", ".sh", ".json", ".md", ".template", ".css", ".sol"]);
 const EXCLUDE_FILES = new Set([
   ".env", ".env.example", "package-lock.json",
   "project-hash.mjs",
