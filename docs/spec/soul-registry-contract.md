@@ -46,6 +46,19 @@ App-agnostic — any application can anchor.
 
 ---
 
+## Contract Identity
+
+On-chain, permanently readable public constants — not user-configurable:
+
+| Name | Value |
+|------|-------|
+| `NAME` | `"SaveYourSoul"` |
+| `AUTHOR` | `"Jan-Oliver Karo"` |
+| `DESCRIPTION` | `"Soul identity registry for SaveYourSoul"` |
+| `VERSION` | `"1.0.0"` |
+
+---
+
 ## Public Functions
 
 ### `anchor(soulId, contentHash, sessionCount)` — payable
@@ -100,6 +113,21 @@ Wallet address of the soul's registered owner.
 
 ---
 
+### `paused()` — view
+Whether the contract is currently paused. Blocks `anchor()` only — `verify()`, `getHistory()`, `getAnchorCount()`, `nextAnchorAllowed()`, `soulOwner()`, `owner()`, and `pendingOwner()` all remain callable while paused.
+
+---
+
+### `owner()` — view
+Current contract owner (admin) wallet address.
+
+---
+
+### `pendingOwner()` — view
+Address proposed via `proposeOwnership()`, awaiting `acceptOwnership()`. Zero address if no transfer is pending.
+
+---
+
 ### `transferSoul(soulId, newOwner)`
 Transfers ownership of a soul.
 Only the current owner may transfer.
@@ -119,22 +147,51 @@ Foundation for a future soul-transfer feature.
 | `acceptOwnership()` | Confirm an ownership transfer |
 
 > [!NOTE]
-> These functions are a centralization point by design, not an oversight: a single owner wallet can change the fee, pause new anchors, or withdraw fees the contract has collected — `withdraw()` only reaches those collected fees, never a soul's own funds. Trusting this contract means trusting the current owner key; the contract's Solidity source isn't part of this repo (verify it directly on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B#code) rather than taking this doc's word for exact pause/withdraw semantics). `proposeOwnership`/`acceptOwnership` exist so the owner key can be rotated or handed off without a contract redeploy.
+> These functions are a centralization point by design, not an oversight: a single owner wallet can change the fee, pause new anchors, or withdraw collected fees. Verified directly against the contract's [source on Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B#code) (`SoulRegistry.sol`, exact-match verified 2026-06-05): `pause()` only sets a `paused` flag checked by the `whenNotPaused` modifier on `anchor()` — every view function, including `owner()` and `pendingOwner()`, has no such check and keeps working while paused. `withdraw()` sends the contract's entire POL balance to the owner, but `receive()` explicitly rejects any direct transfer (`revert("Use anchor()")`) — so that balance can only ever be `anchorFee` payments the contract itself collected, never a soul's own funds. `proposeOwnership`/`acceptOwnership` exist so the owner key can be rotated or handed off without a contract redeploy.
 
 ---
 
 ## Custom Errors
+
+Raised by `anchor()`, `transferSoul()`, or the view functions:
 
 | Error | Meaning |
 |-------|---------|
 | `RateLimitExceeded(nextAllowedAt)` | `anchor()` called before `COOLDOWN_SECONDS` since the last anchor has elapsed |
 | `MaxAnchorsReached(max)` | Soul already has `MAX_ANCHORS_PER_SOUL` (365) anchors |
 | `NotSoulOwner()` | Caller's wallet is not the soul's registered owner |
-| `SoulNotRegistered()` | No genesis anchor exists yet for this `soulId` |
+| `SoulNotRegistered()` | No genesis anchor exists yet for this `soulId` — raised by `transferSoul()` |
 | `InsufficientFee(required, provided)` | `msg.value` sent with `anchor()` is below the current `anchorFee()` |
-| `InvalidSoulId()` | `soulId` is zero or malformed |
-| `InvalidContentHash()` | `contentHash` is zero or malformed |
-| `ContractPaused()` | Contract is currently paused via `pause()` |
+| `InvalidSoulId()` | `soulId` passed to `anchor()` is zero |
+| `InvalidContentHash()` | `contentHash` passed to `anchor()` is zero |
+| `InvalidAddress()` | `newOwner` passed to `transferSoul()` or `proposeOwnership()` is the zero address |
+| `CannotTransferToSelf()` | `transferSoul()` called with `newOwner == msg.sender` |
+| `ContractPaused()` | `anchor()` called while the contract is paused |
+
+Raised only by admin/ownership functions:
+
+| Error | Meaning |
+|-------|---------|
+| `NotOwner()` | Caller of an `onlyOwner` function is not the current owner |
+| `NotPendingOwner()` | `acceptOwnership()` called by an address other than the one proposed |
+| `AlreadyPaused()` | `pause()` called while already paused |
+| `ContractNotPaused()` | `unpause()` called while not paused |
+| `NothingToWithdraw()` | `withdraw()` called with a zero contract balance |
+| `WithdrawFailed()` | The low-level `call{value: balance}("")` inside `withdraw()` failed |
+
+---
+
+## Events
+
+| Event | Emitted by | Fields |
+|-------|-----------|--------|
+| `Anchored` | `anchor()` | `soulId` (indexed), `contentHash` (indexed), `sessionCount`, `timestamp` |
+| `SoulTransferred` | `transferSoul()` | `soulId` (indexed), `from` (indexed), `to` (indexed) |
+| `FeeUpdated` | `setFee()` | `newFee` |
+| `Paused` | `pause()` | `by` (indexed) |
+| `Unpaused` | `unpause()` | `by` (indexed) |
+| `OwnershipTransferProposed` | `proposeOwnership()` | `proposed` (indexed) |
+| `OwnershipTransferred` | `acceptOwnership()` | `previous` (indexed), `newOwner` (indexed) |
 
 ---
 
@@ -150,7 +207,7 @@ Foundation for a future soul-transfer feature.
 
 ---
 
-## ABI (minimal)
+## ABI (complete)
 
 ```json
 [
@@ -161,13 +218,23 @@ Foundation for a future soul-transfer feature.
   "function anchorFee() view returns (uint256)",
   "function nextAnchorAllowed(bytes32 soulId) view returns (uint256)",
   "function soulOwner(bytes32 soulId) view returns (address)",
+  "function paused() view returns (bool)",
+  "function owner() view returns (address)",
+  "function pendingOwner() view returns (address)",
   "function transferSoul(bytes32 soulId, address newOwner)",
   "function setFee(uint256 fee)",
   "function withdraw()",
   "function pause()",
   "function unpause()",
+  "function proposeOwnership(address newOwner)",
+  "function acceptOwnership()",
   "event Anchored(bytes32 indexed soulId, bytes32 indexed contentHash, uint32 sessionCount, uint256 timestamp)",
   "event SoulTransferred(bytes32 indexed soulId, address indexed from, address indexed to)",
+  "event FeeUpdated(uint256 newFee)",
+  "event Paused(address indexed by)",
+  "event Unpaused(address indexed by)",
+  "event OwnershipTransferProposed(address indexed proposed)",
+  "event OwnershipTransferred(address indexed previous, address indexed newOwner)",
   "error RateLimitExceeded(uint256 nextAllowedAt)",
   "error MaxAnchorsReached(uint256 max)",
   "error NotSoulOwner()",
@@ -175,7 +242,15 @@ Foundation for a future soul-transfer feature.
   "error InsufficientFee(uint256 required, uint256 provided)",
   "error InvalidSoulId()",
   "error InvalidContentHash()",
-  "error ContractPaused()"
+  "error InvalidAddress()",
+  "error CannotTransferToSelf()",
+  "error ContractPaused()",
+  "error NotOwner()",
+  "error NotPendingOwner()",
+  "error AlreadyPaused()",
+  "error ContractNotPaused()",
+  "error NothingToWithdraw()",
+  "error WithdrawFailed()"
 ]
 ```
 

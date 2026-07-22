@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.96] — 2026-07-22
+
+**Fixed: v1.0.95's soul-registry-contract.md note hedged on the contract's pause/withdraw semantics, claiming "this repo doesn't hold the Solidity source." That was avoidable — the contract is verified on Polygonscan and its full source is fetchable there. Fetched and read the actual verified `SoulRegistry.sol`, which also surfaced a bigger gap: the doc's "minimal ABI" (built from the frontend's `useChainAnchor.js`, itself a browser-side subset) was missing 8 of 16 custom errors, 5 of 7 events, and 3 public view getters entirely.**
+
+**Fixed**
+- Replaced the hedged `[!NOTE]` with confirmed facts, citing the actual source: `pause()` only gates `anchor()` via the `whenNotPaused` modifier — every view function keeps working while paused; `withdraw()` can only ever reach `anchorFee` payments since `receive()` rejects any direct POL transfer (`revert("Use anchor()")`).
+- Added the 8 missing custom errors (`NotOwner`, `NotPendingOwner`, `AlreadyPaused`, `ContractNotPaused`, `InvalidAddress`, `NothingToWithdraw`, `WithdrawFailed`, `CannotTransferToSelf`) — split into a new two-table layout (user-facing vs. admin-only) for readability.
+- Added a new **Events** section (previously events only appeared buried in the ABI block, undocumented elsewhere) covering all 7: `Anchored`, `SoulTransferred`, `FeeUpdated`, `Paused`, `Unpaused`, `OwnershipTransferProposed`, `OwnershipTransferred`.
+- Added the 3 missing public view getters: `paused()`, `owner()`, `pendingOwner()`.
+- Added a new **Contract Identity** section for the on-chain `NAME`/`AUTHOR`/`DESCRIPTION`/`VERSION` public constants.
+- Renamed "ABI (minimal)" → "ABI (complete)" — it now actually is.
+
+---
+
 ## [1.0.95] — 2026-07-22
 
 **Styled and cross-linked docs/spec/soul-registry-contract.md — the doc was a complete orphan (nothing in README.md, ARCHITECTURE.md, or genesis-chain.md linked to it) and skipped this repo's established intro-paragraph convention.**
