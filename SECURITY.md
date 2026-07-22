@@ -19,7 +19,7 @@ You should get an initial response within a few days. Confirmed vulnerabilities 
 
 ## Scope
 
-Each self-hosted node is fully isolated — its own `SOUL_MASTER_KEY`, its own data, no shared infrastructure between nodes. The only shared surface between nodes and UX-Projects (Jan-Oliver Karo) infrastructure is the [SoulRegistry smart contract](docs/spec/soul-registry-contract.md) on Polygon, which stores SHA-256 hashes only. See [NOTICE](NOTICE) and the README's [Legal](README.md#legal) section for the full operator-responsibility model.
+Each self-hosted node is fully isolated — its own `SOUL_MASTER_KEY`, its own data, no shared infrastructure between nodes. The only shared surface between nodes and UX-Projects Jan-Oliver Karo infrastructure is the [SoulRegistry smart contract](docs/spec/soul-registry-contract.md) on Polygon, which stores SHA-256 hashes only. See [NOTICE](NOTICE) and the README's [Legal](README.md#legal) section for the full operator-responsibility model.
 
 In scope:
 - This repository's application code (`app/`, `lua/`, `soul-mcp/`, `server/`)

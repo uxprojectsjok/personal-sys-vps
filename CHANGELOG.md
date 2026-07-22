@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.86] — 2026-07-22
+
+**Fixed: SECURITY.md's Scope paragraph still had the old "UX-Projects (Jan-Oliver Karo)" parenthetical form from v1.0.66 — the repo's naming convention settled since then on no separator at all ("UX-Projects Jan-Oliver Karo"), and this one line was never revisited.**
+
+**Fixed**
+- `SECURITY.md`, Scope: "UX-Projects (Jan-Oliver Karo) infrastructure" → "UX-Projects Jan-Oliver Karo infrastructure". Full-tree grep confirms no other live doc still has a wrong-order/wrong-separator instance — remaining matches are CHANGELOG history describing past fixes, left untouched per this repo's rule of never editing changelog history.
+
+---
+
 ## [1.0.85] — 2026-07-22
 
 **Fixed: the third-party-services disclaimer lists (NOTICE, README.md ×2) were missing Zapier — verified it's a genuine integration (`app/composables/useMcpTools.js`, `lua/mcp_call.lua`, `lua/mcp_tools.lua`, `server/api/mcp-*.js`, i18n locales), not an oversight to leave out.**
