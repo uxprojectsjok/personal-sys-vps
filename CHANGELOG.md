@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.6] — 2026-07-22
+
+**Fixed a regression from [1.2.3]: `@create-agent` failed live with `ElevenLabs 400: English Agents must use turbo or flash v2` as soon as the new English-by-default `language` actually got exercised for the first time.**
+
+**Root cause:** ElevenLabs' TTS model families are language-gated in both directions — the fast English-only models (`eleven_flash_v2`/`eleven_turbo_v2`) are rejected for any non-English `language`, and the multilingual model (`eleven_flash_v2_5`) is rejected for `language="en"` specifically ("English Agents must use turbo or flash v2"). `lua/create_agent.lua` hardcoded `eleven_flash_v2_5` unconditionally — correct for the German default this file always had before [1.2.3], but wrong the moment `language` could actually be `"en"`. Since `language` was hardcoded to `"de"` before that change, this specific validation path had never been exercised until now.
+
+**Fixed**
+- `lua/create_agent.lua`: `tts_cfg.model_id` now picks `eleven_flash_v2` for `language == "en"` and `eleven_flash_v2_5` for everything else, matching ElevenLabs' actual per-language model requirement instead of a single hardcoded value.
+
+---
+
 ## [1.2.5] — 2026-07-22
 
 **Fixed a live bug: `session_end` (and several other write paths) wrote Session Log entries into the wrong section, because none of them recognized the actual current canonical heading `## Session Log (compressed)` — only older variants that predate it. Confirmed live: the maintainer's own soul had two parallel Session Log sections, one legacy (`## Session-Log (komprimiert)`) and one orphan duplicate (`## Session-Log`) that `session_end` had been silently writing into instead of the real, currently-displayed section.**

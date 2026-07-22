@@ -521,11 +521,15 @@ do
 end
 
 -- ── Create agent ─────────────────────────────────────────────────────────────
--- Always set tts.model_id: non-English agents need flash/turbo v2_5.
--- Without an explicit model, ElevenLabs falls back to an English default model
--- and rejects language="de" with a 400.
+-- Always set tts.model_id explicitly, and pick the right model family for the
+-- language: ElevenLabs rejects language="en" with the English-only v2 models
+-- ("English Agents must use turbo or flash v2") but ALSO rejects non-English
+-- languages on those same models (they're English-only) -- v2_5 is the
+-- multilingual family needed for anything other than English. Without an
+-- explicit model_id at all, ElevenLabs falls back to an English default and
+-- rejects non-English language codes with a 400.
 local tts_cfg = {
-  model_id                   = "eleven_flash_v2_5",
+  model_id                   = language == "en" and "eleven_flash_v2" or "eleven_flash_v2_5",
   optimize_streaming_latency = 3,
   voice_settings = {
     stability         = 0.5,
