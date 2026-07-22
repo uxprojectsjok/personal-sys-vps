@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.90] — 2026-07-22
+
+**Fixed: docs/spec/soul-registry-contract.md's "ABI (minimal)" block was missing `anchorFee()` and all seven custom errors — verified the complete real ABI against `app/composables/useChainAnchor.js`, which the frontend actually uses to call the contract.**
+
+**Fixed**
+- Added `function anchorFee() view returns (uint256)` to the ABI and as a documented Public Function — it's the fee you must read before calling `anchor()` (sending less reverts with `InsufficientFee`), used at `useChainAnchor.js:76,656`.
+- Added all seven custom errors to the ABI (`RateLimitExceeded`, `MaxAnchorsReached`, `NotSoulOwner`, `SoulNotRegistered`, `InsufficientFee`, `InvalidSoulId`, `InvalidContentHash`, `ContractPaused`) plus a new "Custom Errors" reference table — without these, ethers can't decode revert reasons into anything more than raw hex; `parseContractError()` in `useChainAnchor.js` relies on exactly this error set.
+- Verified the rest of the doc (constants, function signatures, `keccak256(soul_id)`/`sha256(sys.md)` verification steps) against the same file and `soul-mcp/lib/blockchain.mjs` — no further discrepancies found.
+
+---
+
 ## [1.0.89] — 2026-07-22
 
 **Changed: docs/spec/genesis-chain.md's `soul_anchor_history` entry example showed a single bare object, even though the field is an array that grows with every anchor — expanded to a realistic three-entry array, and verified the `genesis` field's actual behavior against `lua/soul_register_anchor.lua`.**

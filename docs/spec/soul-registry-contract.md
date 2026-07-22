@@ -82,6 +82,11 @@ Number of anchor entries for a soul.
 
 ---
 
+### `anchorFee()` — view
+Current fee (in POL wei) required to call `anchor()`. Read fresh before every anchor call — `setFee()` can change it between transactions, and sending less than the current fee reverts with `InsufficientFee`.
+
+---
+
 ### `nextAnchorAllowed(soulId)` — view
 When can this soul next be anchored?
 `0` = immediately, otherwise a Unix timestamp.
@@ -113,6 +118,21 @@ Foundation for a future soul-transfer feature.
 
 ---
 
+## Custom Errors
+
+| Error | Meaning |
+|-------|---------|
+| `RateLimitExceeded(nextAllowedAt)` | `anchor()` called before `COOLDOWN_SECONDS` since the last anchor has elapsed |
+| `MaxAnchorsReached(max)` | Soul already has `MAX_ANCHORS_PER_SOUL` (365) anchors |
+| `NotSoulOwner()` | Caller's wallet is not the soul's registered owner |
+| `SoulNotRegistered()` | No genesis anchor exists yet for this `soulId` |
+| `InsufficientFee(required, provided)` | `msg.value` sent with `anchor()` is below the current `anchorFee()` |
+| `InvalidSoulId()` | `soulId` is zero or malformed |
+| `InvalidContentHash()` | `contentHash` is zero or malformed |
+| `ContractPaused()` | Contract is currently paused via `pause()` |
+
+---
+
 ## Verification Without SYS (in 30 Years)
 
 ```
@@ -133,6 +153,7 @@ Foundation for a future soul-transfer feature.
   "function verify(bytes32 soulId, bytes32 contentHash) view returns (bool found, uint256 timestamp, uint32 sessions)",
   "function getHistory(bytes32 soulId) view returns (tuple(bytes32 contentHash, uint256 timestamp, uint32 sessionCount)[])",
   "function getAnchorCount(bytes32 soulId) view returns (uint256)",
+  "function anchorFee() view returns (uint256)",
   "function nextAnchorAllowed(bytes32 soulId) view returns (uint256)",
   "function soulOwner(bytes32 soulId) view returns (address)",
   "function transferSoul(bytes32 soulId, address newOwner)",
@@ -141,7 +162,15 @@ Foundation for a future soul-transfer feature.
   "function pause()",
   "function unpause()",
   "event Anchored(bytes32 indexed soulId, bytes32 indexed contentHash, uint32 sessionCount, uint256 timestamp)",
-  "event SoulTransferred(bytes32 indexed soulId, address indexed from, address indexed to)"
+  "event SoulTransferred(bytes32 indexed soulId, address indexed from, address indexed to)",
+  "error RateLimitExceeded(uint256 nextAllowedAt)",
+  "error MaxAnchorsReached(uint256 max)",
+  "error NotSoulOwner()",
+  "error SoulNotRegistered()",
+  "error InsufficientFee(uint256 required, uint256 provided)",
+  "error InvalidSoulId()",
+  "error InvalidContentHash()",
+  "error ContractPaused()"
 ]
 ```
 
