@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.84] — 2026-07-22
+
+**Clarified: KEYMANAGEMENT.md's `@create-agent` re-registration steps didn't say what actually happens — verified against `lua/create_agent.lua` that it deletes the old ElevenLabs agent (`DELETE .../convai/agents/{old_agent_id}?force=true`) and provisions a brand-new one, not an in-place update.**
+
+**Changed**
+- webhook_token rotation's "Effect on connected services" table and "What you must do": both now say `@create-agent` creates a new agent (old one deleted), instead of the vaguer "re-register".
+
+---
+
 ## [1.0.83] — 2026-07-22
 
 **Changed: "MCP (Claude Desktop)" was too narrow — MCP OAuth is a protocol, not a single client. Generalized to "MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …)" in KEYMANAGEMENT.md's three "Effect on connected services" tables, and added Claude Code to the same list already present in ARCHITECTURE.md's MCP tools section.**

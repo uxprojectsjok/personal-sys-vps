@@ -101,13 +101,13 @@ t=+15min  Old master_key_prev expires
 
 | Service | Effect | Action required |
 |---------|--------|----------------|
-| ElevenLabs Agent | Stops accessing vault files | Run `@create-agent` in chat |
+| ElevenLabs Agent | Stops accessing vault files | Run `@create-agent` in chat and create a new agent |
 | In-App Chat | None — uses soul_cert, not webhook_token | — |
 | MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …) | None — uses OAuth token | — |
 
 ### What you must do
 
-- Run `@create-agent` to re-register the ElevenLabs agent under the new token
+- Run `@create-agent` to create a new ElevenLabs agent under the new token — the old agent is deleted, not updated in place
 
 ### When to rotate
 
