@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.1.2] — 2026-07-22
+
+**Fixed: `useChainAnchor.js` had the same bug class as v1.1.1, but in sys.md's own `soul_anchor_history` frontmatter field — every anchor just pushed onto whatever local history already existed, with no check against the current contract. After a contract migration this meant `soul_anchor_history` would keep growing forever with entries from a retired contract mixed into every future anchor's history.**
+
+**Fixed**
+- `app/composables/useChainAnchor.js`: before appending, now compares the local history length against `chainMetrics.anchor_count` (the validated, contract-scoped server truth already fetched for the page). A mismatch means local history is stale, so it's discarded and rebuilt fresh instead of extended indefinitely.
+- Directly repaired the affected soul's already-corrupted `sys.md` on the live node (3 blended entries → the 1 real v1.1.0-contract entry) using the existing `vault_fs.mjs` decrypt/encrypt helpers — verified the file decrypts correctly afterward.
+
+---
+
 ## [1.1.1] — 2026-07-22
 
 **Fixed: `soul_chain_metrics_cli.mjs`'s RPC-lag protection re-injected local `anchor_history.json` entries with a real tx hash missing from the fresh on-chain result, with no age limit — after the v1.1.0 contract migration, this permanently resurrected years-old entries from the retired v1.0.0 contract on every `/anchor` page load, blending pre- and post-migration history into one wrong-looking continuous chain (stale genesis date, chain age, anchor count).**

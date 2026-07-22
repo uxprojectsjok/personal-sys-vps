@@ -764,9 +764,16 @@ export function useChainAnchor() {
       let anchorHistory = [];
       try { anchorHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { anchorHistory = []; }
       if (!Array.isArray(anchorHistory)) anchorHistory = [];
+      // Server (chainMetrics.anchor_count) ist die validierte On-Chain-Wahrheit für den
+      // AKTUELLEN Contract. Weicht die lokale History-Länge davon ab — etwa nach einer
+      // Contract-Migration, wo alte lokale Einträge zu einem jetzt irrelevanten, retired
+      // Contract gehören — lokale History verwerfen statt blind weiter draufzuschreiben.
+      // Ohne diesen Check wächst soul_anchor_history für immer mit Einträgen, die nie
+      // wieder zum tatsächlichen On-Chain-Zustand passen.
+      const serverAnchorCount = chainMetrics.value?.anchor_count ?? 0;
+      if (anchorHistory.length !== serverAnchorCount) anchorHistory = [];
       const histEntry = { tx: tx.hash, ts: new Date().toISOString(), size: soulSize };
       // Genesis nur setzen wenn weder lokale History noch Server-Metriken ältere Anchors kennen
-      const serverAnchorCount = chainMetrics.value?.anchor_count ?? 0;
       if (anchorHistory.length === 0 && serverAnchorCount === 0) histEntry.genesis = true;
       anchorHistory.push(histEntry);
       const histJson = JSON.stringify(anchorHistory);
