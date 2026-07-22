@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.9] — 2026-07-22
+
+**Fixed: verification challenges created by the ElevenLabs voice agent (`POST /api/agent/verify`) had no `voice_code` and no `webauthn_challenge` — every fingerprint or voice_hq attempt against one of these challenges was unconditionally doomed, regardless of device or user action.**
+
+**Root cause:** `agent_verify.lua` (the ElevenLabs `verify_identity` webhook tool's own challenge-creation endpoint — a separate code path from the Claude.ai MCP server's `verify_identity.mjs`, which correctly uses `POST /api/verify/challenge` / `verify_challenge.lua`) never generated either field. Without a server-issued `webauthn_challenge`, `authenticatePasskey()` has nothing to embed in the WebAuthn assertion, so `lastAssertion.value` never gets set in `verify.vue` even after a real, successful biometric confirmation — the client-side code then unconditionally shows "Biometrische Verifikation abgelehnt." Without `voice_code`, the voice_hq recording screen has no digits to display, which is what live testing (2026-07-22) surfaced as "the recording isn't the current one with reading out numbers."
+
+`verify_challenge.lua` already had this exact fix, documented in its own comments as resolving a prior instance of the same bug class ("Immer erzeugen, unabhängig von den gewählten Methoden") — `agent_verify.lua` was simply never brought in line with it.
+
+**Fixed**
+- `lua/agent_verify.lua`: now generates both `voice_code` (6-digit anti-replay code) and `webauthn_challenge`, unconditionally, matching `verify_challenge.lua`'s existing approach exactly.
+
+---
+
 ## [1.2.8] — 2026-07-22
 
 **Added: a way to cancel a pending verification challenge from `/connection` — previously the "verify now" badge had no cancel option, so an unwanted challenge (e.g. one a voice agent started at the wrong moment) could only be left to expire.**

@@ -44,6 +44,24 @@ if vc then vc:set("vt:" .. verify_token, soul_id, TTL) end
 local vt_file = io.open(VERIFY_DIR .. "vt_" .. verify_token, "w")
 if vt_file then vt_file:write(soul_id); vt_file:close() end
 
+-- voice_code + webauthn_challenge: this endpoint never generated either --
+-- verify_challenge.lua (the browser-initiated path) always has, for exactly
+-- the same reason documented there. Without a server-issued webauthn_challenge,
+-- authenticatePasskey() has nothing to embed in the assertion, so
+-- lastAssertion.value never gets set even after a real, successful biometric
+-- confirmation -- every fingerprint attempt against an agent-created challenge
+-- failed unconditionally with "Biometrische Verifikation abgelehnt.", regardless
+-- of device or user action. Without voice_code, the voice_hq recording screen
+-- has no digits to display. Confirmed live (2026-07-22): a soul-mcp-triggered
+-- verify_identity challenge had neither field.
+local digit_bytes = random.bytes(6, true)
+local digits = {}
+for i = 1, 6 do digits[i] = tostring(digit_bytes:byte(i) % 10) end
+local voice_code = table.concat(digits)
+
+local webauthn_bytes     = random.bytes(32, true)
+local webauthn_challenge = ngx.encode_base64(webauthn_bytes):gsub("+", "-"):gsub("/", "_"):gsub("=+$", "")
+
 local data = cjson.encode({
   soul_id           = soul_id,
   challenge_id      = challenge_id,
@@ -57,6 +75,8 @@ local data = cjson.encode({
   expires_unix      = now + TTL,
   verified_at       = cjson.null,
   verify_token      = verify_token,
+  voice_code        = voice_code,
+  webauthn_challenge = webauthn_challenge,
 })
 
 local f = io.open(VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json", "w")
