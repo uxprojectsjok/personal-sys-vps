@@ -17,7 +17,7 @@ This document covers the four keys that protect a SYS node, what each one does, 
 
 ## soul_cert Rotation
 
-**Trigger:** Einstellungen → API → Cert rotieren
+**Trigger:** Settings → Config → Soul-Cert → Rotate Soul-Cert
 
 ### What happens
 
@@ -37,7 +37,7 @@ This document covers the four keys that protect a SYS node, what each one does, 
 
 ### What you must do
 
-The rotation flow via Einstellungen → API → Cert rotieren is fully automated:
+The rotation flow via Settings → Config → Soul-Cert → Rotate Soul-Cert is fully automated:
 
 | Step | Automatic |
 |------|-----------|
@@ -55,7 +55,7 @@ The rotation flow via Einstellungen → API → Cert rotieren is fully automated
 
 ## soul_master_key Rotation
 
-**Trigger:** Einstellungen → Admin → Neuer Master-Key
+**Trigger:** Settings → Config → Server Admin → New Soul Master Key
 
 ### What happens
 
@@ -82,7 +82,7 @@ The rotation flow via Einstellungen → API → Cert rotieren is fully automated
 ### Timing
 
 ```
-t=0       Master-Key rotiert — grace period starts
+t=0       Master key rotated — grace period starts
 t=0+auto  Cert rotation triggered automatically
 t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
 ```
@@ -91,7 +91,7 @@ t=+15min  Old master_key_prev expires — ElevenLabs agent stops working
 
 ## webhook_token Rotation
 
-**Trigger:** Vault-Einstellungen → API-Kontext → Webhook-Token Feld → neuen Wert eintragen und speichern
+**Trigger:** Settings → Services → ElevenLabs Agent URL → Renew token
 
 ### What happens
 
@@ -121,7 +121,7 @@ Rotate the webhook_token when:
 
 ## admin_token
 
-**soul_cert = Tür zum Node. admin_token = Schlüssel zum Schlüsselbund.**
+**soul_cert = the door to the node. admin_token = the key to the keyring.**
 
 The admin_token has exactly one purpose: authenticating calls to `/api/set-master`. It is intentionally independent of the soul_cert — if the soul_master_key is lost or compromised, you still need a way in to replace it. That way is the admin_token.
 
@@ -135,7 +135,7 @@ In practice you almost never type it yourself:
 | **Multi-Hoster** | admin_token is returned during first registration and stored automatically in browser localStorage — the panel unlocks on its own |
 | **New browser / cleared storage** | Token is gone from localStorage → enter it manually once to restore access |
 
-The input field in Einstellungen → Admin only appears when the token is missing from localStorage. On your regular device it is invisible because the token is already there.
+The input field in Settings → Config → Connect Admin only appears when the token is missing from localStorage. On your regular device it is invisible because the token is already there.
 
 You receive it once during `init.sh` setup, or after running `recover-password.sh`. Keep a copy somewhere safe for the new-device case. It is never sent to any external service.
 

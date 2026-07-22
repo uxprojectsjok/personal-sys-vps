@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.81] — 2026-07-22
+
+**Fixed: KEYMANAGEMENT.md had five German UI-navigation-path fragments left over in an otherwise-English doc — verified the correct English labels/tab names against `app/components/SettingsModal.vue` and `i18n/locales/en.json` before translating, and caught a real path error in the process.**
+
+**Fixed**
+- **soul_cert rotation trigger was wrong, not just untranslated**: doc said "Einstellungen → API → Cert rotieren" — there is no such path. The `cert_rotate` button actually lives under the **Config** tab's **Soul-Cert** section (`settings.tab_config` / `settings.soul_cert`), not the API tab. Corrected to "Settings → Config → Soul-Cert → Rotate Soul-Cert" in both occurrences.
+- `Einstellungen → Admin → Neuer Master-Key` → `Settings → Config → Server Admin → New Soul Master Key` — verified against the `isAdmin` block's `settings.server_admin` / `settings.new_master_key` keys, also nested under the Config tab, not a separate "Admin" tab (no such tab exists).
+- `Vault-Einstellungen → API-Kontext → Webhook-Token Feld → neuen Wert eintragen und speichern` → `Settings → Services → ElevenLabs Agent URL → Renew token` — the webhook_token rotate button (`settings.token_renew`) sits next to the ElevenLabs Agent URL field under the **Services** tab (`tab = 'dienste'`), not under any vault-specific settings screen.
+- `Einstellungen → Admin` (localStorage-fallback field description) → `Settings → Config → Connect Admin` — matches the `settings.admin_connect` section shown to non-admin multi-hoster users.
+- Two remaining German sentences (`t=0 Master-Key rotiert...` timing line, and the `soul_cert = Tür zum Node...` admin_token intro line) translated to English.
+
+---
+
 ## [1.0.80] — 2026-07-22
 
 **Fixed a broad pass through the rest of ARCHITECTURE.md — verified every remaining technical claim against the actual config/code, checked for stray German text (none found beyond what was already fixed this session).**
