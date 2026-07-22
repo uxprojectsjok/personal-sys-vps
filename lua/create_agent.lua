@@ -401,7 +401,7 @@ else
     "\"I've sent a verification request to your SYS app. Please confirm briefly.\"\n\n" ..
     "Call verify_status -- parameter: id = the challenge_id from verify_identity. Wait 20 seconds, then call again until verified=true.\n" ..
     "While waiting: no questions, no small talk, only brief replies if the user speaks.\n" ..
-    "If after 3 minutes verified=false: \"No confirmation received. Talk later.\" -- end the conversation.\n\n" ..
+    "If after 5 minutes verified=false: \"No confirmation received. Talk later.\" -- end the conversation.\n\n" ..
     "Do not call any other tool before verified=true.\n\n" ..
     "## STEP 2 -- LOAD CONTEXT\n\n" ..
     "After successful verification: call soul_read.\n" ..

@@ -20,7 +20,14 @@ end
 
 local soul_id    = ngx.ctx.soul_id
 local VERIFY_DIR = "/var/lib/sys/verify/"
-local TTL        = 300
+-- 600s (was 300s): a voice-agent verification round trip (agent explains,
+-- user opens the SYS app, confirms biometric) routinely eats into the old
+-- 5-minute window when the agent's first LLM turn is delayed by a few
+-- seconds of user silence at call start -- observed live (2026-07-22):
+-- fingerprint verification failing with completed_methods still empty
+-- because the challenge had already expired by the time the user got to
+-- the confirmation screen.
+local TTL        = 600
 
 os.execute("mkdir -p " .. VERIFY_DIR)
 

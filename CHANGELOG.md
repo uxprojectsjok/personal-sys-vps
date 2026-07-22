@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.7] — 2026-07-22
+
+**Extended the ElevenLabs voice-agent verification window: live testing showed `fingerprint` verification failing with `completed_methods` still empty because the challenge had already expired by the time the user reached the confirmation screen.**
+
+**Fixed**
+- `lua/agent_verify.lua`: challenge TTL `300` → `600` seconds. A full voice round trip (agent explains verification, user switches to the SYS app, confirms biometric) routinely ate into the old 5-minute window, especially with a few seconds of user silence at call start before the agent's first LLM turn.
+- `lua/create_agent.lua` fallback prompt, `shared/constants/default_mind.md`: the agent's own give-up threshold ("If after 3 minutes verified=false...") bumped to 5 minutes to match, with a safety margin under the new 10-minute server-side TTL.
+
+---
+
 ## [1.2.6] — 2026-07-22
 
 **Fixed a regression from [1.2.3]: `@create-agent` failed live with `ElevenLabs 400: English Agents must use turbo or flash v2` as soon as the new English-by-default `language` actually got exercised for the first time.**
