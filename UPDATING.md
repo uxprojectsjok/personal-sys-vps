@@ -1,6 +1,6 @@
 # Updating Your Node
 
-This repository is the **protocol foundation** — the reference implementation every SYS node is built from. It is not a service that pushes updates to your server. **You pull. You decide when. You are responsible for applying the update on your own node.** This is the same model used by Mastodon, Matrix/Synapse, Nextcloud, and most self-hosted federated software: a canonical upstream publishes releases, operators upgrade on their own schedule.
+This repository is the **protocol foundation** — the reference implementation every SYS node is built from. It is not a service that pushes updates to your server. **You pull. You decide when. You are responsible for applying the update on your own node.** This is the same model used by Mastodon, Matrix/Synapse, and most self-hosted federated software: a canonical upstream publishes releases, operators upgrade on their own schedule.
 
 ## Release process
 

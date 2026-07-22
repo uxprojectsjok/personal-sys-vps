@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.87] — 2026-07-22
+
+**Changed: removed the "Nextcloud" comparison from UPDATING.md's pull-based update model paragraph — unlike Mastodon and Matrix.org (non-profit projects), Nextcloud GmbH is a commercial company, and the maintainer preferred not to name a company for a comparison unrelated to any actual integration.**
+
+**Changed**
+- `UPDATING.md`: "the same model used by Mastodon, Matrix/Synapse, Nextcloud, and most self-hosted federated software" → "...Mastodon, Matrix/Synapse, and most self-hosted federated software".
+
+---
+
 ## [1.0.86] — 2026-07-22
 
 **Fixed: SECURITY.md's Scope paragraph still had the old "UX-Projects (Jan-Oliver Karo)" parenthetical form from v1.0.66 — the repo's naming convention settled since then on no separator at all ("UX-Projects Jan-Oliver Karo"), and this one line was never revisited.**
