@@ -1,6 +1,6 @@
 /**
  * session_end — Identischer Workflow wie @session-end.
- * Schreibt einen komprimierten Eintrag in sys.md ## Session-Log.
+ * Schreibt einen komprimierten Eintrag in sys.md ## Session Log (compressed).
  * Keine separaten Dateien — alles landet im zentralen Log.
  */
 
@@ -35,7 +35,7 @@ export function register(server, _soulId, token) {
   server.tool(
     'session_end',
     'Schließt die Session ab. Aufrufen wenn der Nutzer "session end" sagt oder schreibt. ' +
-    'Schreibt NUR neue Erkenntnisse dieser Session in sys.md ## Session-Log — kein bekannter Kontext.',
+    'Schreibt NUR neue Erkenntnisse dieser Session in sys.md ## Session Log (compressed) — kein bekannter Kontext.',
     {
       summary: z.string().describe('Kompakter Session-Inhalt. Nur was in dieser Session neu war.'),
       channel: z.enum(['claude_ai', 'elevenlabs', 'other']).optional().describe('Kanal (Standard: claude_ai)'),
