@@ -51,12 +51,21 @@ try {
     // überschreibt genau dieser Merge dann den gerade erst korrekt geschriebenen lokalen
     // Eintrag mit einer unvollständigen Rekonstruktion (tx geht verloren).
     // Lokale Einträge mit echtem TX, die im On-Chain-Ergebnis nicht auftauchen, bleiben
-    // erhalten statt verworfen zu werden.
+    // erhalten statt verworfen zu werden — ABER nur innerhalb eines kurzen Zeitfensters.
+    // Ohne dieses Fenster holt der Merge auch beliebig alte lokale Einträge zurück, die nie
+    // auf dem aktuellen Contract landen werden (z.B. Anchors eines abgelösten/retired
+    // Contracts nach einer Adress-Migration) — die würden sonst für immer resurrected,
+    // statt einmalig als "nicht mehr gültig" zu gelten.
+    const RPC_LAG_WINDOW_MS = 5 * 60 * 1000; // 5 Minuten — genug für echten RPC-Lag, zu kurz für alte/retired Einträge
+    const now = Date.now();
     const knownTx = new Set(history.map(h => h.tx).filter(Boolean));
     for (const local of localHistory) {
       if (local.tx && !knownTx.has(local.tx)) {
-        history.push({ tx: local.tx, ts: local.ts, size: local.size ?? 0, ...(local.block && { block: local.block }) });
-        knownTx.add(local.tx);
+        const localMs = new Date(local.ts || 0).getTime();
+        if (localMs && (now - localMs) < RPC_LAG_WINDOW_MS) {
+          history.push({ tx: local.tx, ts: local.ts, size: local.size ?? 0, ...(local.block && { block: local.block }) });
+          knownTx.add(local.tx);
+        }
       }
     }
     history.sort((a, b) => new Date(a.ts || 0) - new Date(b.ts || 0));

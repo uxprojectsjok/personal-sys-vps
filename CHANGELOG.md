@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.1.1] — 2026-07-22
+
+**Fixed: `soul_chain_metrics_cli.mjs`'s RPC-lag protection re-injected local `anchor_history.json` entries with a real tx hash missing from the fresh on-chain result, with no age limit — after the v1.1.0 contract migration, this permanently resurrected years-old entries from the retired v1.0.0 contract on every `/anchor` page load, blending pre- and post-migration history into one wrong-looking continuous chain (stale genesis date, chain age, anchor count).**
+
+**Fixed**
+- `soul-mcp/soul_chain_metrics_cli.mjs`: the merge-back loop that re-adds "missing" local entries now only applies within a 5-minute window of `now` — long enough to cover genuine RPC lag right after a fresh anchor broadcast, too short to resurrect anything from a retired contract. Verified live on kro.uxprojects-jok.com: `anchor_history.json` self-healed from 4 blended entries (stale genesis `2026-07-17`) down to the 1 real v1.1.0-contract entry (correct genesis `2026-07-22`) on the next run.
+
+---
+
 ## [1.1.0] — 2026-07-22
 
 **SoulRegistry v1.1.0 deployed and verified on Polygon Mainnet — `0xE80B92edFE2286a5a941D10123AbF5E11F76342B`, block 90,674,283. Replaces v1.0.0 (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`, retired), which had a permanent 365-anchor lifetime cap incompatible with anchoring's role as an ongoing liveness signal. Deployed via `contracts/deploy.mjs`; verified on Polygonscan (solc v0.8.36+commit.8a079791, optimizer 200 runs, exact match).**
