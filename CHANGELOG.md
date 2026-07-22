@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.80] — 2026-07-22
+
+**Fixed a broad pass through the rest of ARCHITECTURE.md — verified every remaining technical claim against the actual config/code, checked for stray German text (none found beyond what was already fixed this session).**
+
+**Fixed**
+- **Rate Limiting table was almost entirely wrong**: only `gate`'s rate happened to be correct. `chat` said 2 r/s (actual 1 r/s), `api` said 5 r/s (actual 30 r/s), `mcp` said 10 r/s (actual 5 r/s), `oauth` said 5 r/s (actual 3 r/s). The table also only listed 5 of 11 declared zones — `auth`, `chat_api`, `vault_upload` weren't mentioned at all, despite gating 25, 1, and 2 locations respectively, and `main`/`system`/`health` (declared but currently unapplied to any location) weren't acknowledged either. Rebuilt the whole table against `nginx.conf.template`'s `limit_req_zone` declarations and every `limit_req zone=` usage in `vhost.conf.template`.
+- **sys.md YAML example and frontmatter table**: same `cert_version`/`soul_growth_chain`/`soul_chain_anchor`-shown-as-always-present bug already fixed in `README.md`/`sys_md.md` (v1.0.70) was still present here, untouched. Aligned to match, including the missing `elevenlabs_agent_id`/`elevenlabs_voice_id` fields and a table of when the three dynamic fields actually get added.
+- `useConnectedVault` composable description said "via MCP" — it's a plain `fetch()` against `/api/vault/public/{soul_id}`, no MCP protocol involved. Corrected.
+- `ELEVENLABS_API_KEY` is declared in `nginx.conf.template` (`env ELEVENLABS_API_KEY;`) but was missing from both the Environment Variables table and the "Environment variables in nginx workers" example block. Added to both.
+
+---
+
 ## [1.0.79] — 2026-07-22
 
 **Fixed: KEYMANAGEMENT.md's intro and heading said "the three keys" — the table right below has always listed four (`soul_master_key`, `soul_cert`, `admin_token`, `webhook_token`).**

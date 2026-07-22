@@ -79,12 +79,11 @@ soul_name: ""
 created: YYYY-MM-DD
 last_session: YYYY-MM-DD
 version: 3
-cert_version: 0
 soul_cert: [generated automatically]
 vault_hash: ""
-soul_growth_chain: []
-soul_chain_anchor: null
 storage_tx: ""
+elevenlabs_agent_id: ""
+elevenlabs_voice_id: ""
 ---
 
 <!-- LONGMEM + MINDIDX appear here automatically once the Archivist first
@@ -130,12 +129,18 @@ storage_tx: ""
 | `created` | ISO 8601 | Creation date. |
 | `last_session` | ISO 8601 | Last session date. |
 | `version` | integer | sys.md schema version. `1` = legacy, `2` = three-sphere, `3` = MIND-aware (LONGMEM/MINDIDX lifecycle). |
-| `cert_version` | integer | Cert rotation counter. Incremented by `soul_rotate_cert`. |
 | `soul_cert` | hex(32) | HMAC-SHA256 cert. Issued by the server, stored in the browser. |
 | `vault_hash` | string | SHA-256 of the last vault snapshot. |
-| `soul_growth_chain` | array | Growth milestones (maturity-based). |
-| `soul_chain_anchor` | object | Blockchain anchor (Polygon tx + IPFS CID). |
 | `storage_tx` | string | IPFS/Arweave reference of last cloud push. |
+| `elevenlabs_agent_id` / `elevenlabs_voice_id` | string | ElevenLabs conversational agent + voice clone, if created. |
+
+Three more fields exist but aren't part of a freshly created soul — `buildDefaultSoul()` (`app/composables/useSoul.js`) never writes them; each is added the first time its feature is used:
+
+| Field | Type | Added when |
+|-------|------|-------------|
+| `cert_version` | integer | First soul_cert rotation (`soul_rotate_cert`) |
+| `soul_growth_chain` | array | First session-signing growth entry |
+| `soul_chain_anchor` | object | First on-chain anchor transaction (Polygon tx + IPFS CID) |
 
 ---
 
@@ -308,15 +313,20 @@ Requires own `REOWN_PROJECT_ID` (free: cloud.reown.com).
 
 ## Rate Limiting
 
-Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
+Rate limit zones are globally defined in `nginx.conf`'s `http` block (`limit_req_zone`), applied per-location via `limit_req zone=...`:
 
-| Zone | Rate | Applied to |
+| Zone | Rate | Applied to (examples) |
 |------|------|-----------|
-| `chat` | 2 r/s | `/api/chat`, vision endpoints |
-| `api` | 5 r/s | `/api/vault/*` |
-| `gate` | 5 r/min | `/gate`, gate auth endpoints |
-| `mcp` | 10 r/s burst | `/mcp` |
-| `oauth` | 5 r/s burst | `/oauth/*` |
+| `api` | 30 r/s | General API catch-all — 56 locations, e.g. `/api/create-agent`, `/api/elevenlabs-token`, `/api/diagnose` |
+| `chat` | 1 r/s | 49 locations, e.g. `/api/tts`, `/api/x402/agent/pay`, `/api/agent/post-call` |
+| `auth` | 5 r/s | 25 locations, e.g. `/api/soul/peer-inbox`, `/api/soul/verify-peer-cert`, `/api/peer/verify` |
+| `chat_api` | 2 r/s | `/api/chat` |
+| `vault_upload` | 5 r/s | `/api/vault/sync`, `/api/vault/shared` |
+| `gate` | 5 r/min | `/api/gate-auth` |
+| `mcp` | 5 r/s burst 10 | `/mcp` |
+| `oauth` | 3 r/s burst 5 | `/oauth/` |
+
+Three more zones (`main` 10 r/s, `system` 2 r/s, `health` 30 r/s) are declared in `nginx.conf` but not currently applied to any location — reserved, not dead config to remove.
 
 ---
 
@@ -349,7 +359,7 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 | `useApiContext` | API permissions, AES-256-CBC vault encryption |
 | `useChainAnchor` | Polygon + IPFS blockchain anchoring |
 | `useClaude` | Claude API SSE streaming |
-| `useConnectedVault` | Public vault context from peer souls via MCP |
+| `useConnectedVault` | Public vault context from peer souls via `/api/vault/public/{soul_id}` (plain REST, not MCP) |
 
 ---
 
@@ -362,6 +372,7 @@ Server secrets (via systemd override, never in the build):
 | `ANTHROPIC_API_KEY` | Anthropic Claude API (chat + vision). Optional — can also be set via Admin UI. |
 | `SOUL_MASTER_KEY` | HMAC root key for soul_cert. Never expose. |
 | `API_SIGNING_KEY` | Secondary signing key for service tokens. |
+| `ELEVENLABS_API_KEY` | ElevenLabs voice features (TTS/STT, conversational agent). Optional. |
 
 Baked into the build (read from `.env` at build time):
 
@@ -394,6 +405,7 @@ nginx strips all environment variables from worker processes except those explic
 env ANTHROPIC_API_KEY;
 env SOUL_MASTER_KEY;
 env API_SIGNING_KEY;
+env ELEVENLABS_API_KEY;
 ```
 
 After changing the systemd override or `nginx.conf`, use `systemctl restart openresty` (not just `reload`) so the master process picks up new environment variables.
