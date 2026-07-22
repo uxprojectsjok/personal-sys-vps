@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.79] — 2026-07-22
+
+**Fixed: KEYMANAGEMENT.md's intro and heading said "the three keys" — the table right below has always listed four (`soul_master_key`, `soul_cert`, `admin_token`, `webhook_token`).**
+
+**Fixed**
+- `KEYMANAGEMENT.md`: "the three keys" → "the four keys", "## The Three Keys" → "## The Four Keys". Simple count mismatch against the doc's own table.
+
+---
+
 ## [1.0.78] — 2026-07-22
 
 **Fixed: all three "Available tools" lines in ARCHITECTURE.md's MCP Server section were stale — verified against `soul-mcp/tools/index.mjs`'s three registration functions (`registerTools`/`registerPaidTools`/`registerPeerTools`) and `lua/create_agent.lua`'s ElevenLabs webhook config.**

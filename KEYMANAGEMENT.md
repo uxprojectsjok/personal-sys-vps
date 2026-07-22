@@ -1,10 +1,10 @@
 # Key Management
 
-This document covers the three keys that protect a SYS node, what each one does, and what happens when you rotate it.
+This document covers the four keys that protect a SYS node, what each one does, and what happens when you rotate it.
 
 ---
 
-## The Three Keys
+## The Four Keys
 
 | Key | Format | Where stored | Purpose |
 |-----|--------|--------------|---------|
