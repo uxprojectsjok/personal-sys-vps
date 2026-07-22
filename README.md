@@ -129,7 +129,7 @@ Trusted peers connect by soul_id, @mention routing sends messages into the Socia
 MCP server (OAuth 2.0 + PKCE), soul-cert peer whitelisting, declarable Soul Skills for agent discovery, and Web Push for background alerts.
 
 **Agent Marketplace**
-Public nodes can register on-chain and expose paid, sandboxed soul access to external AI agents via x402 (USDC) or PayPal. Requires a **Public Node** (see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject this server-side.
+Public nodes can register on-chain and expose paid, sandboxed soul access to external AI agents via x402 (USDC) or PayPal. Requires a **Public Node** (see [What is a SYS node?](#what-is-a-sys-node)) — Private nodes reject this server-side. Optional dynamic pricing scales the price with chain maturity and recent demand — the price floor never drops, but the demand component decays automatically as older buyers fall out of a rolling 30-day window, so a quiet Soul's price settles back toward its anchor/age-based baseline over time. Full spec: [docs/spec/dynamic-pricing.md](docs/spec/dynamic-pricing.md)
 
 **Growth & Anchoring**
 Every session is cryptographically signed into a growth chain; souls can optionally anchor on Polygon and track a maturity score based on sys.md depth.
@@ -470,7 +470,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.87): 23ff950cec90b561
+Current release fingerprint (v1.0.88): 0a6d2b951b96a6cb
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 

@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.88] — 2026-07-22
+
+**Added: README.md's Agent Marketplace teaser never mentioned dynamic pricing at all — added a sentence covering the mechanism, plus the price-decay behavior verified against `lua/soul_price.lua`: `anchor_count`/`chain_age_days` only ever grow, so the demand term (`buyers_30d`) is the only thing that can push the price back down, decaying automatically as buyers age out of the rolling 30-day window.**
+
+**Added**
+- `README.md`, Agent Marketplace teaser: one sentence on dynamic pricing (price floor never drops, demand term decays over a 30-day window) with a link to `docs/spec/dynamic-pricing.md`.
+
+---
+
 ## [1.0.87] — 2026-07-22
 
 **Changed: removed the "Nextcloud" comparison from UPDATING.md's pull-based update model paragraph — unlike Mastodon and Matrix.org (non-profit projects), Nextcloud GmbH is a commercial company, and the maintainer preferred not to name a company for a comparison unrelated to any actual integration.**
