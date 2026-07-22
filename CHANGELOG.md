@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.71] — 2026-07-22
+
+**Fixed: the three-sphere table's "Who writes" column for Agent Sandbox said "Owner only" in all three places it appears (README.md, ARCHITECTURE.md, docs/spec/sys_md.md) — wrong. Paid agents can append a comment there via `soul_paid_comment`.**
+
+**Fixed**
+- `README.md`, `ARCHITECTURE.md`, `docs/spec/sys_md.md`: verified against `soul-mcp/tools/soul_paid_comment.mjs` and `lua/soul_paid_comment.lua` — a paid agent holding a valid x402/PayPal `access_token` can call `soul_paid_comment` to insert a structured `<!-- @msg ... -->` entry immediately before `<!-- AGENT:END -->`. It's append-only (the agent can't replace or clear the block), but it's real write access, not "Owner only." Corrected all three tables to "Owner + paid agents (append-only comment via `soul_paid_comment`)".
+
+---
+
 ## [1.0.70] — 2026-07-21
 
 **Docs: verified `docs/spec/sys_md.md` against the code (`useSoul.js`, `herz.mjs`, `soul_parser.mjs`, `lua/beme.lua`) — found and fixed a real cross-doc inconsistency with README.md's frontmatter example, plus applied current GitHub-alert styling.**

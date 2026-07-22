@@ -26,7 +26,7 @@ intentionally left as-is:
 |---|---|---|---|
 | **Private Sphere** | All `## sections`, LONGMEM, MINDIDX | Owner only | Owner + the Archivist (crystallization) |
 | **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
-| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner + paid agents (append-only comment via `soul_paid_comment`) |
 
 ## Frontmatter
 

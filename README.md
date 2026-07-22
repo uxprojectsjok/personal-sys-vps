@@ -322,7 +322,7 @@ Three more fields aren't in a freshly created soul's frontmatter — `cert_versi
 |---|---|---|---|
 | **Private Sphere** | All `## sections` | Owner only | Owner only |
 | **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
-| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner + paid agents (append-only comment via `soul_paid_comment`) |
 
 Messages use structured comments: `<!-- @msg {ISO-timestamp} {from} {to} {content} -->`
 
@@ -450,7 +450,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.70): 1eed692991fdb65f
+Current release fingerprint (v1.0.71): 64b84944bf0dbc93
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 

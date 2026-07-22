@@ -115,7 +115,7 @@ storage_tx: ""
 |---|---|---|---|
 | **Private Sphere** | All `## sections`, LONGMEM, MINDIDX | Owner only | Owner + the Archivist |
 | **Social Sphere** | `<!-- SOCIAL:START/END -->` | Owner + trusted peers | Owner + trusted peers |
-| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner only |
+| **Agent Sandbox** | `<!-- AGENT:START/END -->` | Owner + paid agents | Owner + paid agents (append-only comment via `soul_paid_comment`) |
 
 **LONGMEM + MINDIDX:** once the background Archivist (`soul-mcp/lib/herz.mjs`) first crystallizes a soul, two blocks are inserted right after the frontmatter — `LONGMEM` (crystallized facts/memories/ideas/learnings) and `MINDIDX` (a 3-axis index over it: category, relevance score, status/recency — applying the [MIND](https://github.com/uxprojectsjok/mind) discovery-format technique to personal long-term memory instead of a network of nodes). Lazy, no forced migration — see `docs/spec/sys_md.md` for the full lifecycle and consumer list.
 
