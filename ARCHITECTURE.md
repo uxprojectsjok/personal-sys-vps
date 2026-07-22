@@ -246,7 +246,14 @@ Setup: add the peer's `soul_id` on the dedicated **Peers** page (`app/pages/peer
 | 48 hex chars | access_token (paying agent, x402 or PayPal) | agent_tools only |
 | uuid.32hex | peer soul_cert | agent_tools + Social Sphere only |
 
-Whitelist stored in `api_context.json` under `amortization.trusted_souls[]`.
+Whitelist stored in `api_context.json` under `amortization.trusted_souls[]` — a mixed array, plain UUID for same-server peers, `{soul_id, endpoint}` for cross-domain:
+
+```json
+"trusted_souls": [
+  "2c81aa74-1234-4a3b-9c21-abcdef123456",
+  { "soul_id": "9f3d21a0-5678-4c9e-bb12-fedcba654321", "endpoint": "https://peer.example.com" }
+]
+```
 
 For **cross-domain peers** (on a different server), add the peer as `{ "soul_id": "uuid", "endpoint": "https://peer.domain" }`. The peer can then access the Social Sphere via `GET /api/soul/social-read` with their cert — the endpoint verifies the cert against the peer's home server via `/api/soul/verify-peer-cert`.
 

@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.76] — 2026-07-22
+
+**Docs: turned the plain-text `amortization.trusted_souls[]` mention in ARCHITECTURE.md into a concrete JSON example, matching the style used for `api_context.json`/`master.json` elsewhere in this doc.**
+
+**Changed**
+- `ARCHITECTURE.md`, "Soul-to-Soul Connections": added an example showing the mixed-array structure (plain UUID for same-server peers, `{soul_id, endpoint}` for cross-domain) — verified against `lua/soul_amortization.lua`'s `trusted_souls` validation logic.
+
+---
+
 ## [1.0.75] — 2026-07-22
 
 **Fixed: ARCHITECTURE.md's peer-setup instructions pointed at a UI location that doesn't exist — "Agent Marketplace → Connected Peers." Trusted peers are added on their own dedicated Peers page.**
