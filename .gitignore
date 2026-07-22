@@ -38,3 +38,4 @@ health-sync/adapters/__pycache__/
 *.bin
 contracts/artifacts/
 contracts/cache/
+contracts/.solc-input.json

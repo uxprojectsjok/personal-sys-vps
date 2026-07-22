@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.99] — 2026-07-22
+
+**Added: `contracts/deploy.mjs` — a self-run deployment script for `contracts/SoulRegistry.sol`, since Remix wasn't a viable path this time. Compiles via `solc` and deploys via `ethers.js`, both already used elsewhere in this repo.**
+
+**Added**
+- `contracts/deploy.mjs`: reads `PRIVATE_KEY` from an env var (never a CLI arg, never logged), compiles the contract fresh via `npx solc --standard-json` (stdin-piped — the CLI does not accept a file-path argument for standard-json input, an easy trap), estimates gas, prints an explicit confirmation prompt before sending the real transaction, then prints the deployed address, explorer link, and the exact compiler version + optimizer settings needed for the Polygonscan verification step. Supports `NETWORK=amoy` for a free testnet dry run first. The private key never leaves the machine it's run on — this script is meant to be run by the operator locally, not through an assistant or any third party.
+- Verified end-to-end against Polygon Mainnet with a throwaway key: compiles cleanly, connects, reads real balance, and correctly aborts before sending a transaction when the wallet is unfunded.
+- `docs/spec/soul-registry-contract.md`, `README.md`: documented the script as the deployment path in the v1.1.0 `[!WARNING]` and Repository Structure.
+- `.gitignore`: added `contracts/.solc-input.json` (a stray intermediate file from script development, already removed from the working tree).
+
+---
+
 ## [1.0.98] — 2026-07-22
 
 **Added: `contracts/SoulRegistry.sol` — a v1.1.0 SoulRegistry with `MAX_ANCHORS_PER_SOUL` (365, immutable) removed. Not yet deployed; the deployed v1.0.0 contract is unaffected and this changelog entry does not change any live behavior.**

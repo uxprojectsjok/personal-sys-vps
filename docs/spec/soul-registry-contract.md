@@ -14,6 +14,8 @@
 
 > [!WARNING]
 > **v1.1.0 prepared, not yet deployed.** The deployed contract above has `MAX_ANCHORS_PER_SOUL = 365` as an immutable Solidity `constant` — with `COOLDOWN_SECONDS = 1 day`, any soul anchoring daily hits this cap permanently after ~1 year (`MaxAnchorsReached`, no recovery without a new contract). This conflicts with anchoring's role as an ongoing liveness signal: a continuously active soul should never be able to "run out" of anchors. [`contracts/SoulRegistry.sol`](../../contracts/SoulRegistry.sol) in this repo removes the lifetime cap entirely (`COOLDOWN_SECONDS` unchanged — still a legitimate anti-spam limit, not a lifetime one) and bumps `VERSION` to `"1.1.0"`. It is not deployed yet. Deploying it means a **new contract address**: every soul's on-chain history starts over at zero (no automatic migration — `getHistory()` only reads from the contract instance it's called on), and the address is hardcoded independently in 4 code files (`soul-mcp/lib/blockchain.mjs`, `soul-mcp/tools/verify_identity.mjs`, `soul-mcp/lib/soul_indexer.mjs`, `app/composables/useChainAnchor.js`) plus this doc, README.md, and ARCHITECTURE.md — all of which need updating together once deployed.
+>
+> **Deploying it:** [`contracts/deploy.mjs`](../../contracts/deploy.mjs) compiles and deploys via `ethers.js` from your own terminal — `PRIVATE_KEY=0x... node contracts/deploy.mjs` (add `NETWORK=amoy` to try it on the free testnet first). It prints the exact compiler version + optimizer settings you need for the Polygonscan "Verify and Publish" step afterward. Your private key stays local; the script never transmits it anywhere.
 
 ---
 
