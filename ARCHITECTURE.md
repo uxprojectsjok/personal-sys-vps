@@ -282,6 +282,15 @@ Per-soul configuration stored in:
 
 Agent Marketplace endpoints: `/api/soul/register`, `/api/soul/amortization`, `/api/soul/pinata-config`, `/api/soul/pay/x402`, `/api/soul/paid-read`, `/api/soul/paid-write`, `/api/soul/paid-beme`, `/api/soul/paid-context`, `/api/soul/paid-profile/{type}`
 
+### AI/Agent Payments — Operator's Own x402 Wallet (Experimental)
+
+Everything above is the soul's *receiving* side. To test the other direction — an agent actually *paying* via x402 — the operator can equip their own node with a dedicated wallet: export a private key from a MetaMask account and paste it into Settings → x402. It's stored AES-256-GCM encrypted with its own dedicated encryption key (`soul-mcp/lib/x402_agent_wallet.mjs`), and signs real payments on **Polygon mainnet** via `@x402/evm` + viem (`x402_client.mjs`) — not a testnet, not simulated.
+
+> [!WARNING]
+> A private key means full, irreversible control over whatever funds that wallet holds. This is explicitly designed for a small, dedicated MetaMask account created only for this purpose — the Settings UI itself says it: **never paste in the private key of a wallet you use for anything else.** There is no recovery path if the key or the server is compromised.
+
+Autonomous AI-driven payments are an early, experimental capability industry-wide, not something unique to this codebase. SYS's implementation is deliberately scoped as operator test tooling — a manual "Send test payment" button in Settings, node-global rather than soul-scoped — not a production "give your AI a spending budget" feature. Treat it as a future-facing capability being tried out, not a hardened one.
+
 ---
 
 ## On-Chain Anchoring

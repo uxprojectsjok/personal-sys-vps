@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.77] — 2026-07-22
+
+**Docs: documented the AI/agent-paying side of x402 in ARCHITECTURE.md — previously only the soul's receiving side was covered. The operator's own test wallet (private key, mainnet, real money) was entirely undocumented outside the Settings UI itself.**
+
+**Added**
+- `ARCHITECTURE.md`, new subsection after Amortization: describes the operator's dedicated x402 test wallet (Settings → x402) — private key export from a MetaMask account created specifically for this, AES-256-GCM encrypted storage, real signed payments on Polygon mainnet via `@x402/evm`/viem, verified against `soul-mcp/lib/x402_agent_wallet.mjs` and `x402_client.mjs`.
+- A `[!WARNING]` alert on private-key custody risk, matching the same "never your main wallet" language already shown in the Settings UI itself (`i18n` `settings.x402_key_desc`).
+- A closing note framing autonomous AI-driven payments as an early, experimental, industry-wide capability — this implementation is explicit operator test tooling, not a production spending-budget feature.
+
+---
+
 ## [1.0.76] — 2026-07-22
 
 **Docs: turned the plain-text `amortization.trusted_souls[]` mention in ARCHITECTURE.md into a concrete JSON example, matching the style used for `api_context.json`/`master.json` elsewhere in this doc.**
