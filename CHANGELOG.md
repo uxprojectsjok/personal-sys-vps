@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.83] — 2026-07-22
+
+**Changed: "MCP (Claude Desktop)" was too narrow — MCP OAuth is a protocol, not a single client. Generalized to "MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …)" in KEYMANAGEMENT.md's three "Effect on connected services" tables, and added Claude Code to the same list already present in ARCHITECTURE.md's MCP tools section.**
+
+**Changed**
+- `KEYMANAGEMENT.md`: all three `MCP (Claude Desktop)` table rows → `MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …)`.
+- `ARCHITECTURE.md`: MCP OAuth client list now includes Claude Code alongside Claude Desktop and ChatGPT connectors.
+
+---
+
 ## [1.0.82] — 2026-07-22
 
 **Fixed: soul_master_key Rotation's "Effect on connected services" table in KEYMANAGEMENT.md claimed the ElevenLabs Agent and MCP/Claude Desktop connections both break on master-key rotation — traced `set_master.lua` end to end and found neither claim holds.**

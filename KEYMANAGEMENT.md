@@ -33,7 +33,7 @@ This document covers the four keys that protect a SYS node, what each one does, 
 |---------|--------|----------------|
 | In-App Chat | None — new cert active immediately | — |
 | ElevenLabs Agent | None — uses webhook_token, independent of soul_cert | — |
-| MCP (Claude Desktop) | None — uses OAuth token, independent of soul_cert | — |
+| MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …) | None — uses OAuth token, independent of soul_cert | — |
 
 ### What you must do
 
@@ -71,7 +71,7 @@ The rotation flow via Settings → Config → Soul-Cert → Rotate Soul-Cert is 
 |---------|--------|----------------|
 | In-App Chat | None — cert rotation runs automatically | — |
 | ElevenLabs Agent | None — uses webhook_token, independent of soul_master_key | — |
-| MCP (Claude Desktop) | None — uses OAuth service token, independent of soul_master_key | — |
+| MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …) | None — uses OAuth service token, independent of soul_master_key | — |
 
 ### What you must do
 
@@ -103,7 +103,7 @@ t=+15min  Old master_key_prev expires
 |---------|--------|----------------|
 | ElevenLabs Agent | Stops accessing vault files | Run `@create-agent` in chat |
 | In-App Chat | None — uses soul_cert, not webhook_token | — |
-| MCP (Claude Desktop) | None — uses OAuth token | — |
+| MCP clients (Claude Desktop, Claude Code, ChatGPT connectors, …) | None — uses OAuth token | — |
 
 ### What you must do
 
