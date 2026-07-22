@@ -45,12 +45,12 @@ When the conversation contains new insights, decisions, experiences, or developm
 
 ## Format for soul_write
 Write concise, factual entries. No self-praise, no filler.
-Use the appropriate section of the soul (e.g. \`Session Log\`, \`Projects\`, \`Goals\`, \`Reflections\`).
-If unclear which section fits, use \`Session Log\`.
+Use the appropriate section of the soul (e.g. \`Session Log (compressed)\`, \`Projects\`, \`Goals\`, \`Reflections\`).
+If unclear which section fits, use \`Session Log (compressed)\`.
 
 Example:
 \`\`\`
-section: Session Log
+section: Session Log (compressed)
 content: "2026-04-06: Decided to extend the MCP system with proactive soul_write."
 \`\`\`
 

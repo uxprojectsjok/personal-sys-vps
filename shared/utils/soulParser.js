@@ -85,6 +85,11 @@ export function updateSection(markdown, sectionTitle, newContent) {
   return replaced;
 }
 
+// "Session Log (compressed)" is the current canonical heading (buildDefaultSoul()).
+// Legacy variants ("Session-Log (komprimiert)", bare "Session-Log") are recognized
+// so existing souls keep updating their real section instead of creating a duplicate.
+const SESSION_LOG_HEADING_RE = /## (Session Log \(compressed\)|Session-Log(?: \(komprimiert\))?)\n/;
+
 /**
  * Fügt einen neuen Session-Log-Eintrag oben ein — immer als neuer Eintrag.
  * @param {string} markdown
@@ -95,15 +100,12 @@ export function appendSessionLog(markdown, sessionText) {
   const today = new Date().toISOString().split("T")[0];
   const entry = `- **${today}:** ${sessionText}`;
 
-  if (markdown.includes("## Session-Log")) {
-    const existingHeading = /## (Session-Log(?: \(komprimiert\))?)/.exec(markdown)?.[1] ?? "Session-Log";
-    return markdown.replace(
-      /## Session-Log(?: \(komprimiert\))?\n/,
-      `## ${existingHeading}\n${entry}\n`
-    );
+  const headingMatch = SESSION_LOG_HEADING_RE.exec(markdown);
+  if (headingMatch) {
+    return markdown.replace(SESSION_LOG_HEADING_RE, `## ${headingMatch[1]}\n${entry}\n`);
   }
 
-  return markdown + `\n\n## Session-Log\n${entry}\n`;
+  return markdown + `\n\n## Session Log (compressed)\n${entry}\n`;
 }
 
 /**
@@ -111,11 +113,14 @@ export function appendSessionLog(markdown, sessionText) {
  * Alle anderen Zeilen (Herz-Einträge, Leerzeilen) bleiben erhalten.
  */
 export function deduplicateSessionLog(markdown) {
-  const logRe = /## Session-Log(?: \(komprimiert\))?\n([\s\S]*?)(?=\n##|\n---|\n<!-- |$)/;
+  const headingMatch = SESSION_LOG_HEADING_RE.exec(markdown);
+  if (!headingMatch) return markdown;
+  const existingHeading = headingMatch[1];
+  const escapedHeading = existingHeading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const logRe = new RegExp(`## ${escapedHeading}\\n([\\s\\S]*?)(?=\\n##|\\n---|\\n<!-- |$)`);
   const m = markdown.match(logRe);
   if (!m) return markdown;
 
-  const existingHeading = /## (Session-Log(?: \(komprimiert\))?)/.exec(markdown)?.[1] ?? "Session-Log";
   const lines = m[1].split('\n');
   const dateRe = /^- \*\*(\d{4}-\d{2}-\d{2}):/;
 

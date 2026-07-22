@@ -96,7 +96,7 @@ export function register(server, token) {
     [
       'Writes content permanently to a sys.md section.',
       'Use cases:',
-      '- Session log → section "Session Log", mode "prepend" (newest at top)',
+      '- Session log → section "Session Log (compressed)", mode "prepend" (newest at top)',
       '- Personality profile → section "Values & Beliefs", mode "replace"',
       '- Add new topic → mode "replace" (creates section if not present)',
       '- Extend entry → mode "append"',
@@ -106,7 +106,7 @@ export function register(server, token) {
     ].join('\n'),
     {
       section: z.string().min(1).max(200).regex(/^[^\n\r]+$/, 'Section name must not contain line breaks').describe(
-        'Name of the ## section without "##", e.g. "Session Log" or "Values & Beliefs"'
+        'Name of the ## section without "##", e.g. "Session Log (compressed)" or "Values & Beliefs"'
       ),
       content: z.string().min(1).max(50000).describe(
         'Markdown content. For session logs: start with a date header, e.g. "- **2026-04-05:** …"'

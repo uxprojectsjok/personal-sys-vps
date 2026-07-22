@@ -10,17 +10,25 @@ import { getText, putJson } from '../lib/api.mjs';
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-function updateSection(md, heading, newContent) {
+
+// "Session Log (compressed)" is the current canonical heading (buildDefaultSoul()).
+// Legacy variants are tried too, so an existing soul's real section gets updated
+// instead of a duplicate being created next to it.
+const SESSION_LOG_HEADINGS = ['Session Log (compressed)', 'Session-Log (komprimiert)', 'Session-Log'];
+
+function updateSessionLog(md, newContent) {
   md = md.replace(/\r\n/g, '\n').trimEnd();
-  const re = new RegExp(`(## ${escapeRe(heading)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`);
-  const match = md.match(re);
   const block = (h, body) => `## ${h}\n${body.trim()}\n`;
-  if (match) {
-    const existing = match[2].trim();
-    const body = newContent + (existing ? '\n\n' + existing : '');
-    return md.replace(re, () => block(heading, body) + '\n');
+  for (const heading of SESSION_LOG_HEADINGS) {
+    const re = new RegExp(`(## ${escapeRe(heading)}[ \\t]*\\n)([\\s\\S]*?)(?=\\n## |$)`);
+    const match = md.match(re);
+    if (match) {
+      const existing = match[2].trim();
+      const body = newContent + (existing ? '\n\n' + existing : '');
+      return md.replace(re, () => block(heading, body) + '\n');
+    }
   }
-  return md + '\n\n' + block(heading, newContent) + '\n';
+  return md + '\n\n' + block(SESSION_LOG_HEADINGS[0], newContent) + '\n';
 }
 
 export function register(server, _soulId, token) {
@@ -42,7 +50,7 @@ export function register(server, _soulId, token) {
         const entry  = `- **${date}${suffix}:** ${first}`;
 
         const current = await getText('/api/soul', token);
-        const updated = updateSection(current, 'Session-Log', entry);
+        const updated = updateSessionLog(current, entry);
         await putJson('/api/context', token, { soul_content: updated });
 
         return { content: [{ type: 'text', text: 'Session gespeichert.' }] };

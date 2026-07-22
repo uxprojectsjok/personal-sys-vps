@@ -8,6 +8,24 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.5] — 2026-07-22
+
+**Fixed a live bug: `session_end` (and several other write paths) wrote Session Log entries into the wrong section, because none of them recognized the actual current canonical heading `## Session Log (compressed)` — only older variants that predate it. Confirmed live: the maintainer's own soul had two parallel Session Log sections, one legacy (`## Session-Log (komprimiert)`) and one orphan duplicate (`## Session-Log`) that `session_end` had been silently writing into instead of the real, currently-displayed section.**
+
+**Root cause:** `buildDefaultSoul()` has created new souls with `## Session Log (compressed)` since the English-migration pass ([1.2.0]), but several independent write/read paths still only knew about pre-migration heading spellings and never learned the current one — a gap in that migration's own coverage, not something touched since. Every one of these paths does its own local heading match with no shared resolution logic, so the gap had to be closed in each of them individually.
+
+**Fixed**
+- `soul-mcp/tools/session_end.mjs`: now tries `Session Log (compressed)` first, then legacy variants, before creating a new section — was hardcoded to a heading (`Session-Log`) that only ever matched an already-broken duplicate, never the real section.
+- `shared/utils/soulParser.js`: `appendSessionLog()`/`deduplicateSessionLog()` (the browser-side `@session-end` path, same bug independently) — same fix.
+- `soul-mcp/lib/herz.mjs`: `appendToSoulLog()` (the Archivist's own `[herz]` auto-notes) only checked for `Session Log`/`Session-Log`, silently no-oping on any soul using the current template — added the missing `(compressed)`/`(komprimiert)` variants.
+- `lua/agent_post_call.lua`: the ElevenLabs post-call webhook logged voice sessions into `section="Session-Log"` — same wrong-heading bug in the voice-call path, unrelated to but structurally identical to the `session_end` one.
+- `soul-mcp/tools/soul_write.mjs`, `soul_delete.mjs`, `soul_read.mjs`, `soul-mcp/prompts/index.mjs`, `app/composables/useClaude.js`: tool descriptions/examples that told the AI to use a stale heading name (`Session Log`, `Session-Log`) corrected to the real one — these are generic any-section tools, so the fix is the example text, not new matching logic; using the wrong example would have kept creating new duplicates going forward.
+- `app/pages/index.vue`, `app/pages/chronicle.vue`: the Chronicle/homepage recent-entries display was missing the canonical heading from its lookup entirely (only checked the two legacy variants) — would have shown nothing for any soul on the current template.
+
+**Live cleanup:** merged the maintainer's own soul's two parallel Session Log sections into one `## Session Log (compressed)` section, newest-first, no entries lost (verified via decrypt/parse round-trip before and after).
+
+---
+
 ## [1.2.4] — 2026-07-22
 
 **Docs cleanup: the sys.md spec doc still showed the old German template example from before the English-migration pass (v1.2.0).**

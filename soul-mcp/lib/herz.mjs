@@ -172,7 +172,10 @@ async function appendToSoulLog(soulId, text) {
   try {
     let soul = await readSoul(soulId);
     if (!soul) return false;
-    const logHeader = soul.includes('\n## Session Log\n') ? '## Session Log' : '## Session-Log';
+    const logHeader = ['Session Log (compressed)', 'Session Log', 'Session-Log (komprimiert)', 'Session-Log']
+      .map(h => `## ${h}`)
+      .find(h => soul.includes(`\n${h}\n`));
+    if (!logHeader) return false;
     const idx = soul.indexOf(logHeader);
     if (idx === -1) return false;
     const insertAt = idx + logHeader.length;

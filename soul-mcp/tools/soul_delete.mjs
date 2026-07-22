@@ -96,13 +96,13 @@ export function register(server, token) {
       'Löscht einen Eintrag aus einer ## Sektion der sys.md.',
       'Findet den Bullet-Block, Absatz oder die Zeile die den match-Text enthält und entfernt ihn vollständig.',
       'Anwendungsfälle:',
-      '- Alten Session-Log-Eintrag löschen → section="Session-Log", match="2026-05-01"',
+      '- Alten Session-Log-Eintrag löschen → section="Session Log (compressed)", match="2026-05-01"',
       '- Falschen Eintrag entfernen → match=erkennbarer Textschnipsel aus dem Eintrag',
       'Liest zuerst die aktuelle sys.md, löscht den Eintrag, schreibt zurück.',
     ].join('\n'),
     {
       section: z.string().min(1).max(200).regex(/^[^\n\r]+$/).describe(
-        'Name der ## Sektion ohne "##", z.B. "Session-Log"'
+        'Name der ## Sektion ohne "##", z.B. "Session Log (compressed)"'
       ),
       match: z.string().min(2).max(200).describe(
         'Eindeutiger Textschnipsel aus dem zu löschenden Eintrag, z.B. ein Datum "2026-05-01" oder ein Schlüsselwort'

@@ -123,7 +123,7 @@ end
 local log_entry = "- **" .. date_str .. " (ElevenLabs):** Sprachsession " .. time_str .. " UTC — Transkript: " .. filename
 local pl2_ok, payload2 = pcall(cjson.encode, {
   tool  = "soul_write",
-  input = { section = "Session-Log", content = log_entry, mode = "prepend" }
+  input = { section = "Session Log (compressed)", content = log_entry, mode = "prepend" }
 })
 if pl2_ok then
   httpc:request_uri("http://127.0.0.1:3098/internal/run-tool", {

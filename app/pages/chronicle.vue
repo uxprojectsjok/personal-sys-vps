@@ -196,7 +196,7 @@ const allEntries = computed(() => {
   // 1. Einträge aus sys.md → ## Session-Log
   if (soulContent.value) {
     const { sections } = parseSoul(soulContent.value)
-    const raw = (sections['Session-Log (komprimiert)'] || sections['Session-Log'] || '').replace(/\r/g, '')
+    const raw = (sections['Session Log (compressed)'] || sections['Session-Log (komprimiert)'] || sections['Session-Log'] || '').replace(/\r/g, '')
     if (raw.trim()) {
       const lines = raw.split('\n')
       let current = null

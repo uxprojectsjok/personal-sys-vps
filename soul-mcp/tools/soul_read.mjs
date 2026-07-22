@@ -16,7 +16,7 @@ export function register(server, token) {
       '   - The user shared something about themselves that is missing from the soul',
       '   - Progress on known projects was mentioned',
       '   - An experience or insight is relevant long-term',
-      '   For session logs: section="Session Log", mode="prepend", start with a date.',
+      '   For session logs: section="Session Log (compressed)", mode="prepend", start with a date.',
       '4. Do NOT call soul_write for: factual questions, short answers, when user objects.',
     ].join('\n'),
     {},

@@ -37,7 +37,7 @@ const SOUL_TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Session-Log\" oder \"Interessen\"" },
+        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Session Log (compressed)\" oder \"Interessen\"" },
         content: { type: "string", description: "Neuer Inhalt der Sektion (Markdown)" },
         mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang (für Logs)" }
       },
