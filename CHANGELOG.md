@@ -8,6 +8,26 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.3] — 2026-07-22
+
+**Finished the ElevenLabs voice-agent creation flow (`lua/create_agent.lua`, and its dev-server stub `server/api/create-agent.post.js`): translated its German fallback system prompt, tool descriptions, and greeting default to English, made the response language configurable instead of hardcoded, and fixed a live bug in the greeting-parsing logic.**
+
+**Found while translating:** the greeting line-picker always looked for a `"de:"`-tagged line first, and its fallback grabbed the raw first line of the ElevenLabs Greeting section without stripping any tag. Since `shared/constants/default_mind.md`'s canonical template only has an `"en:"` line (no `"de:"` line), any soul using the untouched default template got a spoken/displayed first message literally starting with `"en: "` — confirmed against the maintainer's own live `mind.md`, which has exactly this untouched canonical content.
+
+**Also found:** the `soul_write` tool description handed to every ElevenLabs agent (and the equivalent line in the German fallback prompt) told the AI to write self-reflection entries via `soul_write` with `section='Selbstreflexion'` — the same wrong-tool-plus-wrong-language bug already fixed for `mind_write` in [1.2.1], just duplicated here in a separate code path that reaches every agent regardless of whether the soul has a custom template.
+
+**Fixed**
+- `lua/create_agent.lua`: `language` now defaults to `"en"` (was hardcoded `"de"`); overridable per soul via a new optional `config.json` field `elevenlabs_language`. `{lang}` template substitution and the `agent.language`/`stt.language` ElevenLabs config now follow this value instead of always resolving to `"Deutsch"`.
+- Greeting parsing now prefers the line tagged for the active `language`, falls back to any tagged line with the tag stripped, then a raw untagged line — no more leaking `"en: "`/`"de: "` into the spoken greeting.
+- Fallback system prompt (used only when a soul's `mind.md` has no custom `## ElevenLabs Agent` section) translated to English, mirroring `shared/constants/default_mind.md`'s canonical wording; its `soul_write`/`"Selbstreflexion"` line corrected to reference `mind_write`/`section='Self-Reflection'` for self-reflection, with `soul_write`'s own example pointed at an actual `sys.md` section instead.
+- All ElevenLabs tool descriptions (`verify_identity`, `soul_read`, `soul_write`, `mind_read`, `mind_write`, `peer_inbox`, `peer_send`, `context_*`, `health_check`, `food_log`, `vault_*`, `audio/image/video_list`, `profile_get`, `shop_log`, `soul_earnings`, `soul_maturity`, `soul_skills`, `soul_discover`, `web_search`, `verify_human`, `session_end`) translated to English — these are sent to every agent regardless of custom-template usage, so they were previously German even for souls with an all-English custom system prompt.
+- `server/api/create-agent.post.js` (Nuxt dev-server stub, not used in production): same `language` default + override, same fallback-prompt translation, `buildFirstMessage`'s tag-matching hardened the same way as the Lua version.
+- `lua/agent_queue.lua`: translated remaining German code comments (no functional change, continuation of [1.2.2]).
+
+**Not changed:** kept the maintainer's own soul untouched — their live `mind.md` already holds the canonical English `## ElevenLabs Agent`/`## ElevenLabs Greeting` content with no `elevenlabs_language` override needed, so the new `"en"` default already matches their actual data.
+
+---
+
 ## [1.2.2] — 2026-07-22
 
 **Fixed: `agent.md` had three mutually-inconsistent formats across the codebase, and the agent runner's task-detection regex didn't even match the format `soul-mcp/prompts/index.mjs` (the AI's own documented instructions) actually tells it to write — meaning a task added exactly as documented could go completely unprocessed, forever.**

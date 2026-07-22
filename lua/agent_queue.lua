@@ -14,8 +14,8 @@ local QUEUE_PATH = "/var/lib/sys/souls/" .. soul_id .. "/vault/context/agent.md"
 
 ngx.header["Content-Type"] = "application/json"
 
--- ── Verschlüsselung (vault_auth.lua setzt ngx.ctx.vault_key; cipher_mode wird
--- eigenständig aus api_context.json gelesen, wie an anderen Stellen auch) ──
+-- ── Encryption (vault_auth.lua sets ngx.ctx.vault_key; cipher_mode is read
+-- independently from api_context.json, same as elsewhere) ──
 local MAGIC = "SYS\x01"
 local function hex_to_bin(hex)
   return (hex:gsub("..", function(h) return string.char(tonumber(h, 16)) end))
@@ -94,7 +94,7 @@ end
 if ngx.req.get_method() == "GET" then
   local f = io.open(QUEUE_PATH, "rb")
   if not f then
-    -- Datei nicht vorhanden → mit Template anlegen
+    -- File doesn't exist → create with template
     write_queue(DEFAULT_TEMPLATE)
     os.execute("chmod 660 " .. QUEUE_PATH .. " && chown www-data:www-data " .. QUEUE_PATH)
     ngx.say(cjson.encode({ content = DEFAULT_TEMPLATE }))
@@ -107,7 +107,7 @@ if ngx.req.get_method() == "GET" then
     ngx.say(cjson.encode({ error = "agent.md ist verschlüsselt – Vault entsperren." }))
     return
   end
-  -- Leerdatei nachträglich mit Template befüllen
+  -- Backfill an empty file with the template
   if content:match("^%s*$") then
     write_queue(DEFAULT_TEMPLATE)
     content = DEFAULT_TEMPLATE

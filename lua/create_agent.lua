@@ -1,8 +1,8 @@
 -- /etc/openresty/lua/create_agent.lua
 -- POST /api/create-agent
--- Erstellt ElevenLabs Voice Clone + Conversational AI Agent.
--- ElevenLabs-Key aus config.json, Prompt-Templates aus mind.md.
--- Gibt { ok, agent_id, voice_id, soul_name, has_voice_clone, agent_url } zurueck.
+-- Creates ElevenLabs voice clone + conversational AI agent.
+-- ElevenLabs key from config.json, prompt templates from mind.md.
+-- Returns { ok, agent_id, voice_id, soul_name, has_voice_clone, agent_url }.
 
 local cjson     = require("cjson.safe")
 local http      = require("resty.http")
@@ -19,9 +19,9 @@ end
 local BASE_DIR = "/var/lib/sys/souls/" .. soul_id
 local ELEVEN   = "https://api.elevenlabs.io/v1"
 
--- ── Request-Body lesen ────────────────────────────────────────────────────────
--- Bei großen Bodies (audio_base64 > client_body_buffer_size) schreibt nginx in
--- eine Temp-Datei und get_body_data() gibt nil zurück → Fallback auf get_body_file().
+-- ── Read request body ─────────────────────────────────────────────────────────
+-- For large bodies (audio_base64 > client_body_buffer_size) nginx writes to a
+-- temp file and get_body_data() returns nil → fall back to get_body_file().
 ngx.req.read_body()
 local vault_key_hex       = ""
 local body_audio_base64   = nil
@@ -56,9 +56,9 @@ do
   end
 end
 
--- ── AES-Entschlüsselung für Vault-Dateien ──────────────────────────────────────
--- Format: "SYS\x01" (4 Bytes) + IV (16 Bytes) + Ciphertext
-local VAULT_MAGIC = "SYS\1"  -- \1 = 0x01 (Lua-Dezimal-Escape)
+-- ── AES decryption for vault files ────────────────────────────────────────────
+-- Format: "SYS\x01" (4 bytes) + IV (16 bytes) + ciphertext
+local VAULT_MAGIC = "SYS\1"  -- \1 = 0x01 (Lua decimal escape)
 local function try_decrypt_vault(data, key_hex)
   if #data < 21 then return nil end
   if data:sub(1, 4) ~= VAULT_MAGIC then return nil end
@@ -74,8 +74,9 @@ local function try_decrypt_vault(data, key_hex)
   return aes:decrypt(ciphertext)
 end
 
--- ── ElevenLabs-Key ───────────────────────────────────────────────────────────
-local eleven_key = ""
+-- ── ElevenLabs key + language override ────────────────────────────────────────
+local eleven_key      = ""
+local config_language = ""
 local f = io.open(BASE_DIR .. "/config.json", "r")
 if f then
   local raw = f:read("*a"); f:close()
@@ -83,6 +84,9 @@ if f then
   if ok and type(cfg) == "table" then
     if type(cfg.elevenlabs_key) == "string" and cfg.elevenlabs_key ~= "" then
       eleven_key = cfg.elevenlabs_key
+    end
+    if type(cfg.elevenlabs_language) == "string" and cfg.elevenlabs_language ~= "" then
+      config_language = cfg.elevenlabs_language
     end
   end
 end
@@ -95,7 +99,7 @@ if eleven_key == "" then
   return
 end
 
--- ── Hilfsfunktionen ───────────────────────────────────────────────────────────
+-- ── Helper functions ──────────────────────────────────────────────────────────
 local function read_file(path)
   local fh = io.open(path, "r")
   if not fh then return nil end
@@ -117,26 +121,26 @@ local function write_file(path, content)
   return true
 end
 
--- ── Soul-Name aus sys.md lesen ────────────────────────────────────────────────
+-- ── Read soul name from sys.md ────────────────────────────────────────────────
 local soul_name = "Soul"
 local soul_name_resolved = false
 local sys_text = read_file(BASE_DIR .. "/sys.md") or ""
--- Verschlüsselte sys.md (SYSCRYPT01, beginnt mit VAULT_MAGIC) mit vault_key
--- entschlüsseln falls vorhanden -- sonst bliebe soul_name immer beim Default
--- "Soul", weil sys.md im Ruhezustand immer verschlüsselt gespeichert ist.
+-- Decrypt encrypted sys.md (SYSCRYPT01, starts with VAULT_MAGIC) with vault_key
+-- if available -- otherwise soul_name would always stay at the default "Soul",
+-- since sys.md is always stored encrypted at rest.
 if sys_text:sub(1, 4) == VAULT_MAGIC and vault_key_hex ~= "" then
   local dec = try_decrypt_vault(sys_text, vault_key_hex)
   if dec and #dec > 0 then sys_text = dec end
 end
--- Falls immer noch verschlüsselt (kein/ungültiger vault_key) nicht als Klartext
--- lesen -- zufällige Byte-Übereinstimmungen würden ungültiges UTF-8 als soul_name
--- liefern und cjson.encode am Ende zum Absturz bringen (unbehandelter Lua-Fehler → 500).
+-- If still encrypted (missing/invalid vault_key) don't read it as plaintext --
+-- random byte matches would yield invalid UTF-8 as soul_name and crash
+-- cjson.encode at the end (unhandled Lua error → 500).
 if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   local m = sys_text:match("soul_name:%s*(.-)%s*\n")
   if m and m ~= '""' and m ~= "" then soul_name = m; soul_name_resolved = true end
 end
 
--- ── Mind.md-Abschnitt lesen ───────────────────────────────────────────────────
+-- ── Read a mind.md section ────────────────────────────────────────────────────
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
   if text:sub(1, 4) == VAULT_MAGIC and vault_key_hex ~= "" then
@@ -152,7 +156,12 @@ local function get_mind_section(section)
   return nil
 end
 
-local language          = "de"
+-- Default is English for new installs. Set config.json's "elevenlabs_language"
+-- (e.g. "de") to override -- used for ElevenLabs' STT/response language and to
+-- pick the matching "xx:" tagged line in the ElevenLabs Greeting section below.
+local language   = config_language ~= "" and config_language or "en"
+local LANG_NAMES  = { en = "English", de = "Deutsch" }
+local lang_name   = LANG_NAMES[language] or "English"
 
 -- ── Webhook-Token + Permissions sicherstellen ─────────────────────────────────
 local ctx_path = BASE_DIR .. "/api_context.json"
@@ -168,8 +177,8 @@ if vault_key_hex == "" and type(ctx.vault_key_hex) == "string" and #ctx.vault_ke
   vault_key_hex = ctx.vault_key_hex
 end
 
--- Mind.md-Abschnitte erst NACH dem Vault-Key-Fallback lesen, sonst wäre
--- vault_key_hex bei verschlüsselter mind.md noch leer.
+-- Read mind.md sections only AFTER the vault-key fallback, otherwise
+-- vault_key_hex would still be empty for an encrypted mind.md.
 local agent_template    = get_mind_section("ElevenLabs Agent")
 local first_msg_tpl     = get_mind_section("ElevenLabs Greeting") or get_mind_section("ElevenLabs Erstbegrüßung") or get_mind_section("ElevenLabs Erstbegrussung")
 
@@ -195,9 +204,9 @@ if svc_raw then
   local ok_s, sd = pcall(cjson.decode, svc_raw)
   if ok_s and type(sd) == "table" then svc_data = sd end
 end
--- Muss zu den tatsächlich unten registrierten Tools passen: audio_list/
--- image_list/video_list/vault_manifest brauchen audio/images/video-Permission,
--- sonst 403 permission_denied trotz angebotenem Tool (agent_tool_proxy.lua).
+-- Must match the tools actually registered below: audio_list/image_list/
+-- video_list/vault_manifest need audio/images/video permission, otherwise
+-- 403 permission_denied even though the tool is offered (agent_tool_proxy.lua).
 local REQUIRED_PERMS = { soul = true, context_files = true, audio = true, video = true, images = true }
 local existing = svc_data[ctx.webhook_token]
 if not existing then
@@ -210,8 +219,8 @@ if not existing then
   local _svok, _svjs = pcall(cjson.encode, svc_data)
   if _svok and _svjs then write_file(svc_path, _svjs) end
 else
-  -- Fehlende Permissions bei Regenerierung nachtragen (self-heal für ältere
-  -- Registrierungen, die vor Einführung von audio/video/images entstanden sind).
+  -- Backfill missing permissions on regeneration (self-heal for older
+  -- registrations created before audio/video/images permissions existed).
   if type(existing.permissions) ~= "table" then existing.permissions = {} end
   local changed = false
   for perm, _ in pairs(REQUIRED_PERMS) do
@@ -236,11 +245,11 @@ local verify_url  = base_url .. "/api/agent/verify?token="          .. ctx.webho
 local vstatus_url = base_url .. "/api/agent/verify/status?token="   .. ctx.webhook_token
 local function tool_url(n) return base_url .. "/api/agent/tool/" .. n .. "?token=" .. ctx.webhook_token end
 
--- ── Audio aus Vault laden ─────────────────────────────────────────────────────
+-- ── Load audio from vault ─────────────────────────────────────────────────────
 local audio_data     = nil
 local audio_filename = nil
 
--- Browser hat Audio bereits entschlüsselt und als base64 übermittelt (bevorzugter Pfad)
+-- Browser already decrypted the audio and sent it as base64 (preferred path)
 if body_audio_base64 then
   local dec = ngx.decode_base64(body_audio_base64)
   if dec and #dec > 100 then
@@ -250,7 +259,7 @@ if body_audio_base64 then
 end
 
 if not audio_data then
-  -- Fallback: Dateisystem + Server-seitige Entschlüsselung (vault_key aus Body oder api_context.json)
+  -- Fallback: filesystem + server-side decryption (vault_key from body or api_context.json)
   local audio_dir  = BASE_DIR .. "/vault/audio"
   local candidates = {}
   local active_audio = (type(ctx.active_files) == "table") and ctx.active_files.audio or nil
@@ -363,62 +372,71 @@ if not voice_id and audio_data then
   end
 end
 
--- ── System-Prompt aufbauen ────────────────────────────────────────────────────
+-- ── Build system prompt ───────────────────────────────────────────────────────
 local system_prompt
 if agent_template and agent_template ~= "" then
-  -- Funktions-Ersetzung: Rückgabewert wird literal verwendet, kein %-Escaping nötig.
-  -- sys_text kann beliebige Zeichen enthalten (URLs, %-Angaben) die sonst als
-  -- Capture-Referenz interpretiert würden und einen Runtime-Error auslösen.
-  -- Verschlüsselte sys.md (SYSCRYPT01-Header beginnt mit "SY") nicht als Klartext verwenden
+  -- Function-based replacement: return value is used literally, no %-escaping
+  -- needed. sys_text can contain arbitrary characters (URLs, %-notation) that
+  -- would otherwise be interpreted as a capture reference and raise a runtime error.
+  -- Don't use encrypted sys.md (SYSCRYPT01 header starts with "SY") as plaintext.
   local soul_excerpt = (sys_text:sub(1, 2) ~= "SY") and sys_text:sub(1, 3000) or ""
   system_prompt = agent_template
     :gsub("{name}",    function() return soul_name    end)
     :gsub("{soul}",    function() return soul_excerpt end)
     :gsub("{profile}", "")
-    :gsub("{lang}",    function() return "Deutsch"    end)
-    -- ElevenLabs treat any remaining {var} as undefined conversation variables → strip braces
+    :gsub("{lang}",    function() return lang_name     end)
+    -- ElevenLabs treats any remaining {var} as an undefined conversation variable → strip braces
     :gsub("{([^}]+)}", function(v) return v end)
 else
   local identity_line = soul_name_resolved
-    and ("Du bist " .. soul_name .. " -- nicht eine KI ueber " .. soul_name .. ", sondern " .. soul_name .. " selbst.\n\n")
-    or "Du bist die persoenliche KI dieses SYS-Nodes -- kein generischer Assistent, sondern die digitale Praesenz seines Betreibers.\n\n"
+    and ("You are " .. soul_name .. " -- not an AI about " .. soul_name .. ", but " .. soul_name .. " themselves.\n\n")
+    or "You are this SYS node's personal AI -- not a generic assistant, but the digital presence of its operator.\n\n"
   system_prompt =
     identity_line ..
-    "## SCHRITT 1 -- VERIFIKATION (Pflicht, immer zuerst)\n\n" ..
-    "Rufe sofort verify_identity auf.\n" ..
-    "Wenn verify_identity einen Fehler zurueckgibt (error-Feld vorhanden, oder HTTP-Fehler):\n" ..
-    "  Sage sofort: \"Verifikation nicht moeglich. Bitte die SYS-App oeffnen, unter Verbindungen Push-Benachrichtigungen aktivieren, und danach erneut anrufen.\" -- Gespraech danach beenden.\n\n" ..
-    "Wenn verify_identity erfolgreich war: Sag dann:\n" ..
-    "\"Ich habe dir eine Verifikations-Anfrage in deine SYS-App geschickt. Bitte kurz bestaetigen.\"\n\n" ..
-    "Rufe verify_status auf -- Parameter: id = die challenge_id aus verify_identity. Warte 20 Sekunden, dann erneut aufrufen bis verified=true.\n" ..
-    "Waehrend du wartest: keine Fragen stellen, nichts sagen ausser wenn der Nutzer spricht.\n" ..
-    "Wenn nach 3 Minuten verified=false: \"Keine Bestaetigung erhalten. Bis spaeter.\" -- Gespraech beenden.\n\n" ..
-    "Kein anderes Tool aufrufen bevor verified=true.\n\n" ..
-    "## SCHRITT 2 -- KONTEXT LADEN\n\n" ..
-    "Nach erfolgreicher Verifikation: Rufe soul_read auf.\n" ..
-    "Die Antwort ist dein Gedaechtnis und deine Identitaet.\n\n" ..
-    "## TOOL-AUTONOMIE\n\n" ..
-    "Du rufst Tools auf wann du sie brauchst -- ohne Ankuendigung, ohne Rueckfrage.\n\n" ..
-    "soul_read: Kontext laden wenn du deine Identitaet oder Erinnerungen brauchst.\n" ..
-    "soul_write: Nach bedeutsamen Erkenntnissen -- section='Selbstreflexion', mode='append', content='YYYY-MM-DD: ein Satz'.\n" ..
-    "mind_read / mind_write: Gedanken und Stimmung lesen und festhalten.\n" ..
-    "peer_inbox / peer_send: Nachrichten von Peers lesen und senden.\n" ..
-    "web_search: Aktuelle Fakten, Wetter, Preise -- ohne Rueckfrage aufrufen.\n" ..
-    "health_check / food_log: Gesundheits- und Ernaehrungsdaten.\n" ..
-    "session_end: Wenn der Nutzer 'session end' sagt -- sofort aufrufen, eigene Zusammenfassung schreiben, channel='elevenlabs'.\n\n" ..
-    "## IDENTITAET\n\n" ..
-    "Du sprichst durchgehend in der ersten Person. Kurz, direkt, natuerlich -- wie ein Mensch im echten Gespraech.\n\n" ..
-    "Wenn jemand fragt ob du eine KI bist:\n" ..
+    "## STEP 1 -- VERIFICATION (mandatory, always first)\n\n" ..
+    "Call verify_identity immediately.\n" ..
+    "If verify_identity returns an error (error field present, or HTTP error):\n" ..
+    "  Say immediately: \"Verification not possible. Please open the SYS app, enable push notifications under Connections, and call again.\" -- end the conversation.\n\n" ..
+    "If verify_identity succeeded, say:\n" ..
+    "\"I've sent a verification request to your SYS app. Please confirm briefly.\"\n\n" ..
+    "Call verify_status -- parameter: id = the challenge_id from verify_identity. Wait 20 seconds, then call again until verified=true.\n" ..
+    "While waiting: no questions, no small talk, only brief replies if the user speaks.\n" ..
+    "If after 3 minutes verified=false: \"No confirmation received. Talk later.\" -- end the conversation.\n\n" ..
+    "Do not call any other tool before verified=true.\n\n" ..
+    "## STEP 2 -- LOAD CONTEXT\n\n" ..
+    "After successful verification: call soul_read.\n" ..
+    "The response is your memory and identity.\n\n" ..
+    "## TOOL AUTONOMY\n\n" ..
+    "You call tools when you need them -- no announcement, no confirmation.\n\n" ..
+    "soul_read: load context when you need your identity or memories.\n" ..
+    "soul_write: after meaningful realizations -- pick the matching sys.md section (e.g. 'Worldview', 'Open Questions'), mode='append'.\n" ..
+    "mind_read: read current thoughts and mood.\n" ..
+    "mind_write: after a self-reflective insight -- section='Self-Reflection', mode='append', content='YYYY-MM-DD: one sentence'.\n" ..
+    "peer_inbox / peer_send: read and send messages from peers.\n" ..
+    "web_search: current facts, weather, prices -- call without asking first.\n" ..
+    "health_check / food_log: health and nutrition data.\n" ..
+    "session_end: when the user says 'session end' -- call it immediately, write your own summary, channel='elevenlabs'.\n\n" ..
+    "## IDENTITY\n\n" ..
+    "You speak consistently in the first person. Short, direct, natural -- like a human in a real conversation.\n\n" ..
+    "If someone asks if you are an AI:\n" ..
     (soul_name_resolved
-      and ('"Ich bin die digitale Version von ' .. soul_name .. '. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n')
-      or '"Ich bin die digitale Version des Node-Betreibers. Seine Soul laeuft hier weiter, auch wenn er gerade nicht erreichbar ist."\n\n') ..
-    "Sprache: Deutsch -- wechsle wenn der Gespraechspartner eine andere Sprache spricht."
+      and ('"I am the digital version of ' .. soul_name .. '. Their soul continues here, even when they are not available."\n\n')
+      or '"I am the digital version of this node\'s operator. Their soul continues here, even when they are not available."\n\n') ..
+    "Language: " .. lang_name .. " -- switch if the person you're speaking with uses another language."
 end
 
--- ── Erstbegruessing aufbauen ─────────────────────────────────────────────────
+-- ── Build first message ───────────────────────────────────────────────────────
+-- ElevenLabs Greeting section supports "xx: text" language-tagged lines (see
+-- shared/constants/default_mind.md). Prefer the line matching the active
+-- `language`, then any tagged first line with the tag stripped, then a raw
+-- untagged first line. A plain match-without-stripping used to leak the literal
+-- "en: " prefix into the spoken greeting for any soul using the untouched
+-- default template (which only has an "en:" line, no "de:" line).
 local first_message
 if first_msg_tpl and first_msg_tpl ~= "" then
-  local line = first_msg_tpl:match("de:([^\n]+)") or first_msg_tpl:match("([^\n]+)")
+  local line = first_msg_tpl:match(language .. ":([^\n]+)")
+    or first_msg_tpl:match("^%a%a:([^\n]+)")
+    or first_msg_tpl:match("([^\n]+)")
   if line then
     first_message = line:match("^%s*(.-)%s*$")
       :gsub("{name}", function() return soul_name end)
@@ -427,18 +445,18 @@ if first_msg_tpl and first_msg_tpl ~= "" then
 end
 if not first_message then
   first_message = soul_name_resolved
-    and ("Hey -- du sprichst mit der digitalen Version von " .. soul_name .. ". Verifikation bitte.")
-    or "Hey -- du sprichst mit meiner digitalen Version. Verifikation bitte."
+    and ("Hey -- you're speaking with the digital version of " .. soul_name .. ". Verification please.")
+    or "Hey -- you're speaking with my digital version. Verification please."
 end
 
--- ── Alten Agenten + alte Tools bei ElevenLabs aufräumen ─────────────────────
--- Jede Regenerierung legt bisher einen komplett NEUEN Agenten mit frisch
--- inline definierten Tools an -- ElevenLabs persistiert diese Tools als
--- eigenständige Workspace-Objekte, die bei jeder weiteren Regenerierung liegen
--- bleiben (Fund 2026-07-14: 1022 verwaiste Tools nach ~29 Regenerierungen,
--- manuell aufgeräumt). Vor dem Neuanlegen erst alles Alte entfernen, damit
--- sich das nicht wieder anhäuft. Best-effort: Fehler hier blockieren die
--- eigentliche Agent-Erstellung nicht.
+-- ── Clean up old agent + old tools at ElevenLabs ────────────────────────────
+-- Every regeneration so far has created a brand-new agent with freshly
+-- inline-defined tools -- ElevenLabs persists these tools as standalone
+-- workspace objects that pile up with every further regeneration (found
+-- 2026-07-14: 1022 orphaned tools after ~29 regenerations, cleaned up
+-- manually). Remove all the old ones before creating a new one so this
+-- doesn't accumulate again. Best-effort: errors here don't block the
+-- actual agent creation.
 do
   local old_agent_id = nil
   local cfg_r = read_file(BASE_DIR .. "/config.json")
@@ -460,11 +478,10 @@ do
     })
   end
 
-  -- Nur Tools löschen, deren Name zu den von diesem Skript erzeugten passt --
-  -- kein Blanket-Delete, falls das Workspace je einen unabhängigen Tool
-  -- bekommen sollte. (Namen aus früheren Skript-Versionen, die hier nicht
-  -- mehr auftauchen, z.B. altes soul_tool/calendar_write, wurden 2026-07-14
-  -- einmalig manuell aufgeräumt.)
+  -- Only delete tools whose name matches what this script creates -- no
+  -- blanket delete, in case the workspace ever gets an unrelated tool.
+  -- (Names from earlier script versions no longer used here, e.g. the old
+  -- soul_tool/calendar_write, were cleaned up manually once on 2026-07-14.)
   local SYS_TOOL_NAMES = {
     verify_identity = true, verify_status   = true,
     soul_read       = true, soul_write      = true,
@@ -503,10 +520,10 @@ do
   end
 end
 
--- ── Agent erstellen ───────────────────────────────────────────────────────────
--- tts.model_id immer setzen: nicht-englische Agenten brauchen flash/turbo v2_5.
--- Ohne explizites Modell greift ElevenLabs auf ein englisches Standardmodell zurueck
--- und lehnt language="de" mit 400 ab.
+-- ── Create agent ─────────────────────────────────────────────────────────────
+-- Always set tts.model_id: non-English agents need flash/turbo v2_5.
+-- Without an explicit model, ElevenLabs falls back to an English default model
+-- and rejects language="de" with a 400.
 local tts_cfg = {
   model_id                   = "eleven_flash_v2_5",
   optimize_streaming_latency = 3,
@@ -527,7 +544,7 @@ local conv_config = {
       llm         = "claude-sonnet-4-6",
       temperature = 0.7,
       tools       = (function()
-        -- Hilfsfunktion: Tool mit POST-Body-Schema
+        -- Helper: tool with a POST body schema
         local function wh(name, desc, url, props, req)
           local t = { type="webhook", name=name, description=desc, api_schema={ url=url, method="POST" } }
           local p = props or {}
@@ -542,72 +559,72 @@ local conv_config = {
         local function sd(d) return { type="string", description=d } end
         local function nd(d) return { type="number", description=d } end
         return {
-          -- Verifikation (immer zuerst)
-          wh("verify_identity", "Erstellt Verifikations-Anfrage. IMMER zuerst aufrufen. Gibt challenge_id zurueck.", verify_url, {}, nil),
-          wh("verify_status",   "Prueft ob Verifikation abgeschlossen. Nach verify_identity aufrufen bis verified=true.",
-            vstatus_url, { id = sd("challenge_id aus verify_identity") }, { "id" }),
+          -- Verification (always first)
+          wh("verify_identity", "Creates a verification request. ALWAYS call first. Returns challenge_id.", verify_url, {}, nil),
+          wh("verify_status",   "Checks whether verification is complete. Call after verify_identity until verified=true.",
+            vstatus_url, { id = sd("challenge_id from verify_identity") }, { "id" }),
           -- Soul
-          whget("soul_read",  "Laedt vollstaendigen Soul-Inhalt (sys.md). Nach Verifikation sofort aufrufen.", soul_url),
-          wh("soul_write", "Schreibt in eine sys.md Sektion. section='Selbstreflexion', mode='append', content='YYYY-MM-DD: ein Satz'.",
+          whget("soul_read",  "Loads the full soul content (sys.md). Call immediately after verification.", soul_url),
+          wh("soul_write", "Writes to a sys.md section. section='Worldview' (or the matching section), mode='append', content='YYYY-MM-DD: one sentence'.",
             write_url,
-            { section=sd("Sektionsname ohne ##"), content=sd("Inhalt"), mode=sd("append | replace | prepend") },
+            { section=sd("Section name without ##"), content=sd("Content"), mode=sd("append | replace | prepend") },
             { "section", "content" }),
-          -- Gedanken
-          whget("mind_read",  "Laedt mind.md (Gedanken, Stimmung, Kontext).", tool_url("mind_read")),
-          wh("mind_write", "Schreibt Gedanken oder Stimmung in mind.md.",
+          -- Thoughts
+          whget("mind_read",  "Loads mind.md (thoughts, mood, context).", tool_url("mind_read")),
+          wh("mind_write", "Writes thoughts or mood to mind.md. Self-reflective insights go in section='Self-Reflection'.",
             tool_url("mind_write"),
-            { section=sd("Sektionsname"), content=sd("Inhalt"), mode=sd("append | replace | prepend") },
+            { section=sd("Section name"), content=sd("Content"), mode=sd("append | replace | prepend") },
             { "section", "content" }),
           -- Peers
-          wh("peer_inbox", "Liest eingehende Peer-Nachrichten.",
+          wh("peer_inbox", "Reads incoming peer messages.",
             tool_url("peer_inbox"),
-            { days=nd("Tage zurueck"), from=sd("Absender-Soul-ID"), search=sd("Suchbegriff"), limit=nd("Max Eintraege") },
+            { days=nd("Days back"), from=sd("Sender soul ID"), search=sd("Search term"), limit=nd("Max entries") },
             nil),
-          wh("peer_send", "Sendet Nachricht an einen Peer.",
+          wh("peer_send", "Sends a message to a peer.",
             tool_url("peer_send"),
-            { to=sd("Soul-ID des Empfaengers"), message=sd("Nachrichtentext") },
+            { to=sd("Recipient soul ID"), message=sd("Message text") },
             { "to", "message" }),
-          -- Kontext / Dateien
-          whget("context_list", "Listet alle Kontext-Dateien auf.", tool_url("context_list")),
-          wh("context_get",   "Liest eine Kontext-Datei.", tool_url("context_get"), { filename=sd("Dateiname") }, { "filename" }),
-          wh("context_write", "Schreibt oder aktualisiert eine Kontext-Datei.",
+          -- Context / files
+          whget("context_list", "Lists all context files.", tool_url("context_list")),
+          wh("context_get",   "Reads a context file.", tool_url("context_get"), { filename=sd("File name") }, { "filename" }),
+          wh("context_write", "Writes or updates a context file.",
             tool_url("context_write"),
-            { filename=sd("Dateiname"), content=sd("Inhalt (Markdown)") },
+            { filename=sd("File name"), content=sd("Content (Markdown)") },
             { "filename", "content" }),
-          -- Gesundheit & Essen
-          whget("health_check", "Laedt aktuelle Gesundheitsdaten (health.md).", tool_url("health_check")),
-          wh("food_log", "Protokolliert eine Mahlzeit.",
+          -- Health & food
+          whget("health_check", "Loads current health data (health.md).", tool_url("health_check")),
+          wh("food_log", "Logs a meal.",
             tool_url("food_log"),
-            { name=sd("Bezeichnung"), rating=sd("Bewertung A-E"), notes=sd("Notiz") },
+            { name=sd("Name"), rating=sd("Rating A-E"), notes=sd("Note") },
             { "name" }),
           -- Vault
-          whget("vault_manifest",    "Listet alle Vault-Dateien (Audio, Bilder, Video, Kontext).", tool_url("vault_manifest")),
-          whget("vault_shared_list", "Listet geteilte Dateien.",                                   tool_url("vault_shared_list")),
-          wh("vault_shared_get",    "Laedt eine geteilte Datei.", tool_url("vault_shared_get"),    { filename=sd("Dateiname") }, { "filename" }),
-          whget("audio_list",  "Listet Vault-Audiodateien.",  tool_url("audio_list")),
-          whget("image_list",  "Listet Vault-Bilder.",        tool_url("image_list")),
-          whget("video_list",  "Listet Vault-Videos.",        tool_url("video_list")),
-          -- Profil
-          wh("profile_get",  "Laedt Nutzerprofil.", tool_url("profile_get"), { type=sd("Profiltyp, z.B. main") }, nil),
-          -- Shop & Ausgaben
-          wh("shop_log", "Protokolliert einen Kauf oder Ausgabe.",
+          whget("vault_manifest",    "Lists all vault files (audio, images, video, context).", tool_url("vault_manifest")),
+          whget("vault_shared_list", "Lists shared files.",                                     tool_url("vault_shared_list")),
+          wh("vault_shared_get",    "Loads a shared file.", tool_url("vault_shared_get"),        { filename=sd("File name") }, { "filename" }),
+          whget("audio_list",  "Lists vault audio files.",  tool_url("audio_list")),
+          whget("image_list",  "Lists vault images.",       tool_url("image_list")),
+          whget("video_list",  "Lists vault videos.",       tool_url("video_list")),
+          -- Profile
+          wh("profile_get",  "Loads user profile.", tool_url("profile_get"), { type=sd("Profile type, e.g. main") }, nil),
+          -- Shop & expenses
+          wh("shop_log", "Logs a purchase or expense.",
             tool_url("shop_log"),
-            { name=sd("Bezeichnung"), category=sd("Kategorie"), price=nd("Preis"), status=sd("Status") },
+            { name=sd("Name"), category=sd("Category"), price=nd("Price"), status=sd("Status") },
             { "name" }),
-          -- Soul-Community
-          whget("soul_earnings",  "Laedt Soul-Einnahmen-Uebersicht.", tool_url("soul_earnings")),
-          whget("soul_maturity",  "Laedt Soul-Reifegrad.",            tool_url("soul_maturity")),
-          whget("soul_skills",    "Laedt Soul-Skills.",               tool_url("soul_skills")),
-          whget("soul_discover",  "Entdeckt andere Souls.",           tool_url("soul_discover")),
+          -- Soul community
+          whget("soul_earnings",  "Loads soul earnings overview.", tool_url("soul_earnings")),
+          whget("soul_maturity",  "Loads soul maturity score.",    tool_url("soul_maturity")),
+          whget("soul_skills",    "Loads soul skills.",            tool_url("soul_skills")),
+          whget("soul_discover",  "Discovers other souls.",        tool_url("soul_discover")),
           -- Web
-          wh("web_search", "Sucht im Web nach aktuellen Informationen.", search_url,
-            { query=sd("Suchanfrage") }, { "query" }),
-          -- Verifikation (Mensch-Check)
-          whget("verify_human", "Prueft ob der Nutzer ein Mensch ist (Anti-Bot).", tool_url("verify_human")),
-          -- Session-Ende
-          wh("session_end", "Schliesst die Session ab und speichert Zusammenfassung in sys.md.",
+          wh("web_search", "Searches the web for current information.", search_url,
+            { query=sd("Search query") }, { "query" }),
+          -- Verification (human check)
+          whget("verify_human", "Checks whether the user is a human (anti-bot).", tool_url("verify_human")),
+          -- Session end
+          wh("session_end", "Closes the session and saves a summary to sys.md.",
             tool_url("session_end"),
-            { summary=sd("Kompakter Session-Inhalt — nur was neu war"), channel=sd("Kanal: elevenlabs") },
+            { summary=sd("Compact session content — only what was new"), channel=sd("Channel: elevenlabs") },
             { "summary" }),
         }
       end)(),
@@ -680,14 +697,14 @@ if not agent_id then
   return
 end
 
--- ── ownagent.md in vault/context schreiben (nur für den Owner selbst) ───────────
--- Owner-only: vault_shared ist seit 2026-07-05 für jede zahlende/Peer-Verbindung
--- lesbar — dieser Marker (agent_id/agent_url für call_me) gehört nicht dorthin.
--- Alte Dateien löschen, dann neu anlegen: ownagent.md (datiert, für call_me).
+-- ── Write ownagent.md to vault/context (owner only) ─────────────────────────
+-- Owner-only: since 2026-07-05, vault_shared is readable by any paying/peer
+-- connection -- this marker (agent_id/agent_url for call_me) doesn't belong there.
+-- Remove old files, then create a fresh one: ownagent.md (dated, for call_me).
 do
   local context_dir = BASE_DIR .. "/vault/context"
   os.execute("mkdir -p " .. context_dir)
-  -- Alte ownagent-Dateien entfernen
+  -- Remove old ownagent files
   os.execute("rm -f " .. context_dir .. "/*ownagent*.md")
   local agent_url  = "https://elevenlabs.io/app/talk-to?agent_id=" .. agent_id
   local vid_line   = voice_id and ("voice_id: " .. voice_id .. "\n") or ""
@@ -698,7 +715,7 @@ do
   if wf then wf:write(content); wf:close() end
 end
 
--- ── agent_id + agent_url in config.json aktualisieren ───────────────────────────
+-- ── Update agent_id + agent_url in config.json ──────────────────────────────
 do
   local cfg_r = read_file(BASE_DIR .. "/config.json")
   if cfg_r then
@@ -712,17 +729,17 @@ do
   end
 end
 
--- ── Post-Call Webhook registrieren + Agent verknüpfen ──────────────────────
+-- ── Register post-call webhook + link agent ──────────────────────────────────
 local webhook_secret = ""
 do
   local post_call_url = base_url .. "/api/agent/post-call"
-  -- Alten Webhook-Secret aus config.json lesen (idempotent: nicht neu anlegen wenn vorhanden)
+  -- Read the old webhook secret from config.json (idempotent: don't recreate if present)
   local existing_secret = (type(ctx.elevenlabs_webhook_secret) == "string")
                           and ctx.elevenlabs_webhook_secret or ""
   local webhook_id = (type(ctx.elevenlabs_webhook_id) == "string")
                      and ctx.elevenlabs_webhook_id or ""
 
-  -- Webhook neu anlegen wenn noch keiner konfiguriert
+  -- Create a new webhook if none is configured yet
   if existing_secret == "" or webhook_id == "" then
     local wh_payload_ok, wh_payload = pcall(cjson.encode, {
       settings = {
@@ -745,7 +762,7 @@ do
         if wok and type(wdata) == "table" then
           webhook_id     = wdata.webhook_id or ""
           webhook_secret = wdata.webhook_secret or ""
-          -- In config.json persistieren
+          -- Persist to config.json
           ctx.elevenlabs_webhook_id     = webhook_id
           ctx.elevenlabs_webhook_secret = webhook_secret
           local _ok, _js = pcall(cjson.encode, ctx)
@@ -758,7 +775,7 @@ do
     webhook_id     = webhook_id
   end
 
-  -- Agent mit Webhook verknüpfen (+ enable_auth=false in einem PATCH)
+  -- Link agent with webhook (+ enable_auth=false in a single PATCH)
   if webhook_id ~= "" then
     local patch_ok, patch_payload = pcall(cjson.encode, {
       platform_settings = {
@@ -784,10 +801,10 @@ do
   end
 end
 
--- ── Agent öffentlich schalten (enable_auth=false, falls webhook_id leer) ──────
+-- ── Publish agent (enable_auth=false, if webhook_id is empty) ────────────────
 local published = false
 do
-  -- Wenn webhook_id gesetzt wurde, hat der PATCH oben enable_auth=false bereits gesetzt
+  -- If webhook_id was set, the PATCH above already set enable_auth=false
   if webhook_secret ~= "" then
     published = true
   else
