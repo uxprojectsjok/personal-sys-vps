@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { postJson, getJson } from '../lib/api.mjs';
 import { ethers } from 'ethers';
 
-const SOUL_REGISTRY = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B'
+const SOUL_REGISTRY = '0xE80B92edFE2286a5a941D10123AbF5E11F76342B'
 const POLYGON_RPC   = 'https://polygon-bor-rpc.publicnode.com'
 const OWNER_ABI     = ['function soulOwner(bytes32 soulId) view returns (address)']
 

@@ -18,8 +18,8 @@ import { extractSysMeta, soulIdToBytes32 } from './blockchain.mjs';
 
 // ── Konstanten ────────────────────────────────────────────────────────────────
 
-const CONTRACT_ADDRESS   = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B';
-const DEPLOY_BLOCK       = 83_500_000;
+const CONTRACT_ADDRESS   = '0xE80B92edFE2286a5a941D10123AbF5E11F76342B';
+const DEPLOY_BLOCK       = 90_674_283;
 const INDEX_PATH         = '/var/lib/sys/soul_index.json';
 const SCAN_CHUNK         = 90;    // publicnode eth_getLogs limit: max ~100 Blöcke (Fallback)
 const SCAN_DELAY_MS      = 200;   // Pause zwischen Chunks — schont den RPC

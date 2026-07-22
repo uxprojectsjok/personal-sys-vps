@@ -474,7 +474,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.99): 1701f244d66bde6d
+Current release fingerprint (v1.1.0): 738a170a9fdc7952
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -501,7 +501,7 @@ The SYS protocol is Apache 2.0 licensed. Compatible implementations, nodes, and 
 
 Souls can anchor their identity hash on the Polygon blockchain.
 
-**Smart contract:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
+**Smart contract:** `0xE80B92edFE2286a5a941D10123AbF5E11F76342B` (Polygon Mainnet)
 
 ```
 Soul identity hash  →  anchor()  →  Polygon blockchain
@@ -509,12 +509,12 @@ Soul identity hash  →  anchor()  →  Polygon blockchain
                                  →  soul_chain_anchor in sys.md
 ```
 
-Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`) — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B). Full contract spec — functions, constants, custom errors, ABI: [docs/spec/soul-registry-contract.md](docs/spec/soul-registry-contract.md).
+Anchoring is voluntary and user-initiated. Each anchor transaction pays an `anchorFee` directly to the smart contract (`0xE80B92edFE2286a5a941D10123AbF5E11F76342B`) — on-chain, transparent, verifiable on [Polygonscan](https://polygonscan.com/address/0xE80B92edFE2286a5a941D10123AbF5E11F76342B). Full contract spec — functions, constants, custom errors, ABI: [docs/spec/soul-registry-contract.md](docs/spec/soul-registry-contract.md).
 
 Operators who want blockchain features need a WalletConnect-compatible project ID — this codebase defaults to [Reown](https://cloud.reown.com) (free). I have no affiliation with Reown; it's simply what was integrated. Any compatible alternative an operator finds and wires in works just as well.
 
 > [!IMPORTANT]
-> **Protocol requirement:** The contract address `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
+> **Protocol requirement:** The contract address `0xE80B92edFE2286a5a941D10123AbF5E11F76342B` is the designated anchoring contract of the SYS protocol. All nodes must use this contract.
 >
 > This is what makes SYS a shared ecosystem rather than a collection of isolated nodes. Every soul that anchors writes into the same immutable ledger — and as the contract grows older, the full history of all participating souls becomes traceable across the network. A node using a different contract is no longer SYS-compatible and its anchored identities will not be recognized by the community.
 >
@@ -563,7 +563,7 @@ Use of this software is at your own risk. The Apache 2.0 license excludes warran
 ## Status
 
 - **Open protocol** — Apache 2.0, compatible implementations welcome
-- **Smart contract** — `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`, live on Polygon Mainnet, verifiable on [Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B)
+- **Smart contract** — `0xE80B92edFE2286a5a941D10123AbF5E11F76342B`, live on Polygon Mainnet, verifiable on [Polygonscan](https://polygonscan.com/address/0xE80B92edFE2286a5a941D10123AbF5E11F76342B)
 
 ---
 

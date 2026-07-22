@@ -49,8 +49,8 @@ const NETWORKS = {
 // ▼ HIER wechseln: "amoy" (Test) ↔ "main" (Production)
 const ACTIVE_NETWORK = NETWORKS.main;
 
-// SoulRegistry v1.0.0 – Polygon Mainnet – deployed 2026-04-04
-const CONTRACT_ADDRESS = "0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B";
+// SoulRegistry v1.1.0 – Polygon Mainnet – deployed 2026-07-22 (removes the 365-anchor lifetime cap)
+const CONTRACT_ADDRESS = "0xE80B92edFE2286a5a941D10123AbF5E11F76342B";
 
 const POLYGON_RPC = ACTIVE_NETWORK.rpc;
 
@@ -1122,8 +1122,8 @@ export function useChainAnchor() {
       }
 
       // TX-Hash aus Event-Logs holen
-      // SoulRegistry deployed ~2026-04-04 → Polygon Mainnet Block ~83 500 000
-      const DEPLOY_BLOCK = 83_500_000;
+      // SoulRegistry v1.1.0 deployed 2026-07-22 → Polygon Mainnet Block 90 674 283
+      const DEPLOY_BLOCK = 90_674_283;
       let txHash = null;
       try {
         const filter = contract.filters.Anchored(idBytes32);

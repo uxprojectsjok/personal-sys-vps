@@ -3,35 +3,22 @@
 `SoulRegistry.sol` is the on-chain anchoring contract every SYS node writes to — see [genesis-chain.md](genesis-chain.md) for the concept (Genesis, Chain Age, Knowledge Blocks) and [README: On-Chain Anchoring](../../README.md#on-chain-anchoring) for why every node must use the same contract address.
 
 **Network:** Polygon Mainnet (chainId: 137)
-**Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`
+**Address:** `0xE80B92edFE2286a5a941D10123AbF5E11F76342B`
 **Deployer:** `uxprojects-jok.eth`
-**Deployed:** 2026-04-04
-**Source verified:** 2026-06-05 (Polygonscan, exact match, v0.8.34)
-**Version:** 1.0.0
+**Deployed:** 2026-07-22 (block 90,674,283)
+**Source verified:** 2026-07-22 (Polygonscan, exact match, v0.8.36+commit.8a079791)
+**Version:** 1.1.0
 **License:** MIT
 
 ---
 
-> [!WARNING]
-> **v1.1.0 prepared, not yet deployed.** The deployed contract above has `MAX_ANCHORS_PER_SOUL = 365` as an immutable Solidity `constant` — with `COOLDOWN_SECONDS = 1 day`, any soul anchoring daily hits this cap permanently after ~1 year (`MaxAnchorsReached`, no recovery without a new contract). This conflicts with anchoring's role as an ongoing liveness signal: a continuously active soul should never be able to "run out" of anchors. [`contracts/SoulRegistry.sol`](../../contracts/SoulRegistry.sol) in this repo removes the lifetime cap entirely (`COOLDOWN_SECONDS` unchanged — still a legitimate anti-spam limit, not a lifetime one) and bumps `VERSION` to `"1.1.0"`. It is not deployed yet. Deploying it means a **new contract address**: every soul's on-chain history starts over at zero (no automatic migration — `getHistory()` only reads from the contract instance it's called on), and the address is hardcoded independently in 4 code files (`soul-mcp/lib/blockchain.mjs`, `soul-mcp/tools/verify_identity.mjs`, `soul-mcp/lib/soul_indexer.mjs`, `app/composables/useChainAnchor.js`) plus this doc, README.md, and ARCHITECTURE.md — all of which need updating together once deployed.
->
-> **Deploying it:** [`contracts/deploy.mjs`](../../contracts/deploy.mjs) compiles and deploys via `ethers.js` from your own terminal — `PRIVATE_KEY=0x... node contracts/deploy.mjs` (add `NETWORK=amoy` to try it on the free testnet first). It prints the exact compiler version + optimizer settings you need for the Polygonscan "Verify and Publish" step afterward. Your private key stays local; the script never transmits it anywhere.
+## What Changed in v1.1.0
 
----
+Anchoring has become an ongoing liveness signal, not a bounded resource — a soul that stops anchoring reads as inactive/dead. The previous contract (`v1.0.0`, retired — see [History](#history)) had `MAX_ANCHORS_PER_SOUL = 365` as an immutable Solidity `constant`: combined with `COOLDOWN_SECONDS = 1 day`, any soul anchoring daily would have hit that cap permanently after ~1 year (`MaxAnchorsReached`, no recovery short of a redeploy) — directly contradicting continuous liveness anchoring.
 
-## Verification
+`v1.1.0` removes `MAX_ANCHORS_PER_SOUL` and the `MaxAnchorsReached` error entirely. `COOLDOWN_SECONDS` is unchanged — it's a legitimate anti-spam/gas-griefing limit, not a lifetime one, and doesn't conflict with daily liveness anchoring. No other behavior changed.
 
-Function-level verification performed on 2026-06-05:
-
-| Function | Status | Note |
-|----------|--------|------|
-| `withdraw()` | ✓ | 30.5 POL successfully paid out |
-| `pause()` | ✓ | Contract paused |
-| `unpause()` | ✓ | Contract reactivated |
-| `setFee()` | ✓ | Set to 0.3 POL, reverted to 0.5 POL |
-| `anchor()` | ✓ | 62 transactions on-chain, rate limit active |
-| `acceptOwnership()` | — | Only relevant after proposeOwnership |
-| `transferSoul()` | — | Only needed once the soul-transfer feature ships |
+Source: [`contracts/SoulRegistry.sol`](../../contracts/SoulRegistry.sol). Deployed via [`contracts/deploy.mjs`](../../contracts/deploy.mjs) (self-run `ethers.js` script — see the script's header comment for usage).
 
 ---
 
@@ -45,12 +32,13 @@ App-agnostic — any application can anchor.
 
 ## Constants
 
-True Solidity `constant`s — fixed forever, cannot change without a contract redeploy:
+The one true Solidity `constant` — fixed forever, cannot change without a contract redeploy:
 
 | Name | Value | Meaning |
 |------|-------|---------|
-| `MAX_ANCHORS_PER_SOUL` | 365 | Max. total anchors per soul — a hard lifetime cap. See the v1.1.0 warning above: this is being removed in the next deployment. |
 | `COOLDOWN_SECONDS` | 1 day | Rate limit: 1 anchor per soul per day |
+
+`v1.0.0` also had `MAX_ANCHORS_PER_SOUL = 365`, a hard lifetime cap — removed in `v1.1.0`. See [What Changed in v1.1.0](#what-changed-in-v110).
 
 ---
 
@@ -60,7 +48,7 @@ True Solidity `constant`s — fixed forever, cannot change without a contract re
 |------|-------|---------|
 | `anchorFee` | 0.5 POL | Fee per anchor |
 
-Unlike the two constants above, `anchorFee` is a regular `public` state variable (`uint256 public anchorFee = 0.5 ether;`) — 0.5 POL is just its deployment-time initial value, not a fixed protocol constant. The owner can raise or lower it at any time via `setFee()` (see [Admin Functions](#admin-functions-contract-owner-only)); read `anchorFee()` fresh before relying on it.
+Unlike `COOLDOWN_SECONDS`, `anchorFee` is a regular `public` state variable (`uint256 public anchorFee = 0.5 ether;`) — 0.5 POL is just its deployment-time initial value, not a fixed protocol constant. The owner can raise or lower it at any time via `setFee()` (see [Admin Functions](#admin-functions-contract-owner-only)); read `anchorFee()` fresh before relying on it.
 
 ---
 
@@ -73,7 +61,7 @@ On-chain, permanently readable public constants — not user-configurable:
 | `NAME` | `"SaveYourSoul"` |
 | `AUTHOR` | `"Jan-Oliver Karo"` |
 | `DESCRIPTION` | `"Soul identity registry for SaveYourSoul"` |
-| `VERSION` | `"1.0.0"` |
+| `VERSION` | `"1.1.0"` |
 
 ---
 
@@ -91,6 +79,7 @@ Anchors a soul on-chain.
 - First anchor: registers `msg.sender` as the soul's owner
 - Subsequent anchors: only the registered owner may anchor
 - Payment: at least `anchorFee` in POL must be sent
+- No lifetime limit — anchor as often as `COOLDOWN_SECONDS` allows, indefinitely
 
 ---
 
@@ -165,7 +154,7 @@ Foundation for a future soul-transfer feature.
 | `acceptOwnership()` | Confirm an ownership transfer |
 
 > [!NOTE]
-> These functions are a centralization point by design, not an oversight: a single owner wallet can change the fee, pause new anchors, or withdraw collected fees. Verified directly against the contract's [source on Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B#code) (`SoulRegistry.sol`, exact-match verified 2026-06-05): `pause()` only sets a `paused` flag checked by the `whenNotPaused` modifier on `anchor()` — every view function, including `owner()` and `pendingOwner()`, has no such check and keeps working while paused. `withdraw()` sends the contract's entire POL balance to the owner, but `receive()` explicitly rejects any direct transfer (`revert("Use anchor()")`) — so that balance can only ever be `anchorFee` payments the contract itself collected, never a soul's own funds. `proposeOwnership`/`acceptOwnership` exist so the owner key can be rotated or handed off without a contract redeploy.
+> These functions are a centralization point by design, not an oversight: a single owner wallet can change the fee, pause new anchors, or withdraw collected fees. Verified directly against the contract's [source on Polygonscan](https://polygonscan.com/address/0xE80B92edFE2286a5a941D10123AbF5E11F76342B#code) (`SoulRegistry.sol`, exact-match verified 2026-07-22): `pause()` only sets a `paused` flag checked by the `whenNotPaused` modifier on `anchor()` — every view function, including `owner()` and `pendingOwner()`, has no such check and keeps working while paused. `withdraw()` sends the contract's entire POL balance to the owner, but `receive()` explicitly rejects any direct transfer (`revert("Use anchor()")`) — so that balance can only ever be `anchorFee` payments the contract itself collected, never a soul's own funds. `proposeOwnership`/`acceptOwnership` exist so the owner key can be rotated or handed off without a contract redeploy.
 
 ---
 
@@ -176,7 +165,6 @@ Raised by `anchor()`, `transferSoul()`, or the view functions:
 | Error | Meaning |
 |-------|---------|
 | `RateLimitExceeded(nextAllowedAt)` | `anchor()` called before `COOLDOWN_SECONDS` since the last anchor has elapsed |
-| `MaxAnchorsReached(max)` | Soul already has `MAX_ANCHORS_PER_SOUL` (365) anchors |
 | `NotSoulOwner()` | Caller's wallet is not the soul's registered owner |
 | `SoulNotRegistered()` | No genesis anchor exists yet for this `soulId` — raised by `transferSoul()` |
 | `InsufficientFee(required, provided)` | `msg.value` sent with `anchor()` is below the current `anchorFee()` |
@@ -196,6 +184,8 @@ Raised only by admin/ownership functions:
 | `ContractNotPaused()` | `unpause()` called while not paused |
 | `NothingToWithdraw()` | `withdraw()` called with a zero contract balance |
 | `WithdrawFailed()` | The low-level `call{value: balance}("")` inside `withdraw()` failed |
+
+`v1.0.0` also had `MaxAnchorsReached(max)` — removed along with `MAX_ANCHORS_PER_SOUL` in `v1.1.0`.
 
 ---
 
@@ -222,6 +212,8 @@ Raised only by admin/ownership functions:
 4. Call getHistory(soulId)
 5. A match against contentHash proves the soul authentically existed at that point in time
 ```
+
+Note: `getHistory()` only returns anchors made on **this** contract address. A soul anchored under `v1.0.0` (before 2026-07-22) must check the [retired v1.0.0 address](#history) for that history instead.
 
 ---
 
@@ -254,7 +246,6 @@ Raised only by admin/ownership functions:
   "event OwnershipTransferProposed(address indexed proposed)",
   "event OwnershipTransferred(address indexed previous, address indexed newOwner)",
   "error RateLimitExceeded(uint256 nextAllowedAt)",
-  "error MaxAnchorsReached(uint256 max)",
   "error NotSoulOwner()",
   "error SoulNotRegistered()",
   "error InsufficientFee(uint256 required, uint256 provided)",
@@ -276,4 +267,28 @@ Raised only by admin/ownership functions:
 
 ## Explorer
 
-[0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B on Polygonscan](https://polygonscan.com/address/0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B)
+[0xE80B92edFE2286a5a941D10123AbF5E11F76342B on Polygonscan](https://polygonscan.com/address/0xE80B92edFE2286a5a941D10123AbF5E11F76342B)
+
+---
+
+## History
+
+### v1.0.0 — retired 2026-07-22
+
+**Address:** `0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B` (Polygon Mainnet)
+**Deployed:** 2026-04-04
+**Retired:** 2026-07-22 — replaced by `v1.1.0` above, see [What Changed in v1.1.0](#what-changed-in-v110)
+
+Any soul that anchored before 2026-07-22 has its history on this address, not the current one — `getHistory()` is scoped per contract instance, so there is no automatic migration. To verify a pre-2026-07-22 anchor, query this address specifically.
+
+Function-level verification performed on 2026-06-05 (before retirement):
+
+| Function | Status | Note |
+|----------|--------|------|
+| `withdraw()` | ✓ | 30.5 POL successfully paid out |
+| `pause()` | ✓ | Contract paused |
+| `unpause()` | ✓ | Contract reactivated |
+| `setFee()` | ✓ | Set to 0.3 POL, reverted to 0.5 POL |
+| `anchor()` | ✓ | 62 transactions on-chain, rate limit active |
+| `acceptOwnership()` | — | Only relevant after proposeOwnership |
+| `transferSoul()` | — | Only needed once the soul-transfer feature ships |

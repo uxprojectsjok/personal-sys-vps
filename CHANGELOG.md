@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.1.0] — 2026-07-22
+
+**SoulRegistry v1.1.0 deployed and verified on Polygon Mainnet — `0xE80B92edFE2286a5a941D10123AbF5E11F76342B`, block 90,674,283. Replaces v1.0.0 (`0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B`, retired), which had a permanent 365-anchor lifetime cap incompatible with anchoring's role as an ongoing liveness signal. Deployed via `contracts/deploy.mjs`; verified on Polygonscan (solc v0.8.36+commit.8a079791, optimizer 200 runs, exact match).**
+
+**Breaking:** every soul must re-anchor on the new address — `getHistory()` is scoped per contract instance, there is no automatic migration of pre-2026-07-22 anchor history.
+
+**Changed**
+- 4 hardcoded contract-address locations updated: `soul-mcp/lib/blockchain.mjs`, `soul-mcp/lib/soul_indexer.mjs`, `soul-mcp/tools/verify_identity.mjs`, `app/composables/useChainAnchor.js` — plus each file's `DEPLOY_BLOCK` (83,500,000 → 90,674,283) and `blockchain.mjs`'s five `DEPLOY_TS` occurrences (1775260800 → 1784716422), used for block-rate calibration.
+- `README.md`, `ARCHITECTURE.md`: contract address updated (4 occurrences in README, 1 in ARCHITECTURE.md).
+- `docs/spec/soul-registry-contract.md`: full rewrite for the new contract — address/deployer/block/verification metadata updated to v1.1.0; `MAX_ANCHORS_PER_SOUL` and `MaxAnchorsReached` removed from the Constants table, Custom Errors tables, and ABI (they no longer exist in the deployed contract); new "What Changed in v1.1.0" section; new "History" section preserving the retired v1.0.0 address, retirement date, and its 2026-06-05 function-level verification table for provenance.
+
+---
+
 ## [1.0.99] — 2026-07-22
 
 **Added: `contracts/deploy.mjs` — a self-run deployment script for `contracts/SoulRegistry.sol`, since Remix wasn't a viable path this time. Compiles via `solc` and deploys via `ethers.js`, both already used elsewhere in this repo.**

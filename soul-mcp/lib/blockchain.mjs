@@ -36,10 +36,10 @@ const NETWORKS = {
   },
 };
 
-const CONTRACT_ADDRESS = '0xB68Ca7cFFbe1113F62B3d0397d293693A8e0106B';
+const CONTRACT_ADDRESS = '0xE80B92edFE2286a5a941D10123AbF5E11F76342B';
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-// SoulRegistry v1.0.0 – Polygon Mainnet – deployed 2026-04-04
-const DEPLOY_BLOCK = 83_500_000;
+// SoulRegistry v1.1.0 – Polygon Mainnet – deployed 2026-07-22 (removes the 365-anchor lifetime cap)
+const DEPLOY_BLOCK = 90_674_283;
 // Marker appended to anchor() calldata to embed discovery metadata
 const SYS_MARKER = '\x00SYS1\x00';
 
@@ -348,7 +348,7 @@ export async function getOnChainHistory(soulId) {
     if (!raw || !raw.length) return null;
 
     const current    = await provider.getBlockNumber();
-    const DEPLOY_TS  = 1775260800;
+    const DEPLOY_TS  = 1784716422;
     const nowUnix    = Math.floor(Date.now() / 1000);
     const bps        = Math.max(0.1, (current - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS));
 
@@ -385,7 +385,7 @@ export async function getOnChainGenesis(soulId) {
     const ts      = new Date(tsUnix * 1000).toISOString();
     // Block schätzen: aus on-chain ts interpolieren
     const current = await provider.getBlockNumber();
-    const DEPLOY_TS_UNIX = 1775260800; // 2026-04-04T00:00:00Z
+    const DEPLOY_TS_UNIX = 1784716422; // 2026-07-22T10:33:42Z
     const nowUnix = Math.floor(Date.now() / 1000);
     const bps = Math.max(0.1, (current - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS_UNIX));
     const block = Math.round(DEPLOY_BLOCK + (tsUnix - DEPLOY_TS_UNIX) * bps);
@@ -404,7 +404,7 @@ export async function getOnChainGenesis(soulId) {
 export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
   if (!Array.isArray(anchorHistory) || !anchorHistory.length) return 0;
   // Kalibriere Blockrate dynamisch aus Ist-Zustand
-  const DEPLOY_TS = 1775260800;
+  const DEPLOY_TS = 1784716422;
   const nowUnix   = Math.floor(Date.now() / 1000);
   const blocksPerSec = currentBlock
     ? Math.max(0.1, (currentBlock - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS))
@@ -426,7 +426,7 @@ export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
  * @param {number} currentBlock  aktueller Block (für Live-Kalibrierung)
  */
 function estimateBlock(ts, currentBlock) {
-  const DEPLOY_TS = 1775260800; // 2026-04-04T00:00:00Z
+  const DEPLOY_TS = 1784716422; // 2026-07-22T10:33:42Z
   if (!ts) return DEPLOY_BLOCK;
   const nowUnix   = Math.floor(Date.now() / 1000);
   // Tatsächliche Blockrate aus Ist-Zustand berechnen (statt feste 2/s-Annahme)
@@ -466,7 +466,7 @@ export async function getChainMetrics(anchorHistory) {
   const genesisBlock = genesis?.block ?? estimateBlock(genesis?.ts, currentBlock);
   const chainAgeBlocks = Math.max(0, currentBlock - genesisBlock);
   // Dynamische Blockrate für chain_age_days
-  const DEPLOY_TS = 1775260800;
+  const DEPLOY_TS = 1784716422;
   const nowUnix = Math.floor(Date.now() / 1000);
   const blocksPerDay = Math.max(0.1, (currentBlock - DEPLOY_BLOCK) / Math.max(1, nowUnix - DEPLOY_TS)) * 86400;
   const chainAgeDays = chainAgeBlocks / blocksPerDay;
