@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.74] — 2026-07-22
+
+**Docs: `master.json`'s example in ARCHITECTURE.md showed only 4 of the ~14 fields the file actually accumulates — including missing `multi_hoster`, the exact field the very next paragraph describes being added to this same file.**
+
+**Fixed**
+- `ARCHITECTURE.md`, "Gate & Multi-Domain": added `admin_token`, `multi_hoster`, and `node_soul_id` to the `master.json` example — verified against every `master_data`/`existing`/`mdata` field assignment across `lua/*.lua`. Added a one-line note that operator service config (API keys, `mcp_url`, `reown_project_id`) also accumulates here, omitted from the example for brevity rather than pretending it doesn't exist.
+- Clarified that `node_soul_id` is specifically what the Multi-Hoster paragraph's "node soul lock" checks — tying the new field directly to the explanation already there instead of leaving it unexplained.
+
+---
+
 ## [1.0.73] — 2026-07-22
 
 **Docs: added an `api_context.json` example to ARCHITECTURE.md's Cert-version fallback note, matching the style already used for `master.json` further down.**

@@ -208,13 +208,18 @@ Key never leaves the browser.
   "soul_master_key": "sys_<64hex>",
   "soul_master_key_prev": "",
   "prev_valid_until_ts": 0,
-  "access_password_hash": "<hmac-sha256>"
+  "access_password_hash": "<hmac-sha256>",
+  "admin_token": "adm_<64hex>",
+  "multi_hoster": false,
+  "node_soul_id": ""
 }
 ```
 
+Also accumulates operator-configured service settings once set via Settings (Anthropic/ElevenLabs keys, `mcp_url`, `reown_project_id`, …) — omitted above for brevity.
+
 `config_reader.lua` reads via `M.get_master_path()` using the domain-specific path — multiple isolated domains on one OpenResty instance without conflicts.
 
-**Multi-Hoster flag:** When `init.sh` is run in Multi-Hoster mode, `master.json` receives `"multi_hoster": true`. This causes `soul_cert.lua` to skip the node soul lock and `node_status.lua` to always return `locked: false`.
+**Multi-Hoster flag:** When `init.sh` is run in Multi-Hoster mode, `master.json` receives `"multi_hoster": true`. This causes `soul_cert.lua` to skip the node soul lock and `node_status.lua` to always return `locked: false`. `node_soul_id` is what that lock checks in Personal mode — the single owner soul's ID, set once at first registration.
 
 ---
 
