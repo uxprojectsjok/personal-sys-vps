@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.78] — 2026-07-22
+
+**Fixed: all three "Available tools" lines in ARCHITECTURE.md's MCP Server section were stale — verified against `soul-mcp/tools/index.mjs`'s three registration functions (`registerTools`/`registerPaidTools`/`registerPeerTools`) and `lua/create_agent.lua`'s ElevenLabs webhook config.**
+
+**Fixed**
+- **Owner**: listed 19 tools; the owner's `registerTools()` actually registers ~45 — missing entries included `soul_delete`, `soul_cloud_push`, `create_agent`, `mind_read`/`mind_write`, `peer_inbox`/`peer_send`, `health_check`/`food_log`/`health_sync`, `soul_chain_status`/`soul_chain_metrics`, `soul_anchor_paypal_*`, `soul_paid_comment`, `soul_context_query`, `soul_preview`, `soul_read_by_token`, `call_me`, `session_end`, `soul_draw`, `shop_write_read`/`shop_log`, `context_write`, `verify_identity`, `beme_chat_paid`. Reworded to a categorical description instead of an exhaustive list, since that's exactly what went stale.
+- **Paid agent**: said 13 configurable options via `amortization.agent_tools`; the actual `allowed.has(...)` checks in `registerPaidTools()` show 16 — `beme_chat_paid`, `health_check_payed`, and `shop_write_read` were missing (all three were the subject of past bugfixes in this same CHANGELOG — v1.0.40–42 — that evidently never made it back into this doc). Also documented the always-on tools (`soul_discover`, `soul_preview`, `soul_paid_comment`, read-only `vault_shared_get`/`vault_shared_list`) that exist outside the configurable set entirely.
+- **Trusted peer soul**: said "same list as paid agents" — false. `registerPeerTools()` is a structurally different function with its own tool set (`soul_write_peer`, `soul_context_query_peer`, `profile_get_peer`, per-media-type list/get pairs) and no per-tool allowlist, unlike the paid-agent path.
+- Added a note on the ElevenLabs voice agent's tool access, previously undocumented in this section entirely: it uses a separately curated ~27-tool webhook list configured in `lua/create_agent.lua`, not the raw MCP protocol — broad, but not literally the owner's full MCP tool set.
+
+---
+
 ## [1.0.77] — 2026-07-22
 
 **Docs: documented the AI/agent-paying side of x402 in ARCHITECTURE.md — previously only the soul's receiving side was covered. The operator's own test wallet (private key, mainnet, real money) was entirely undocumented outside the Settings UI itself.**

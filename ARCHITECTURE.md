@@ -324,11 +324,11 @@ Rate limit zones are globally defined in `/etc/openresty/nginx.conf`:
 
 `soul-mcp/` — Node.js MCP server with OAuth 2.0 + PKCE, port 3098, accessible via OpenResty at `/mcp`.
 
-**Available tools (owner):** `soul_read`, `soul_write`, `soul_maturity`, `soul_skills`, `soul_earnings`, `soul_discover`, `soul_cloud_push`, `profile_get`, `profile_save`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_get`, `context_list`, `vault_manifest`, `verify_human`, `beme_chat`
+**Available tools (owner):** effectively every registered tool (~45) — `registerTools()` in `soul-mcp/tools/index.mjs`, reachable via MCP OAuth (Claude Desktop, ChatGPT connectors, …) or the ElevenLabs voice agent. Includes full sys.md/mind.md read-write, all vault media, health, shopping, peer messaging, and account-level tools (`soul_delete`, `soul_cloud_push`, `create_agent`) no other tier gets. The ElevenLabs voice agent (`lua/create_agent.lua`) uses a separately curated ~27-tool webhook list rather than the raw MCP protocol — generous, but not literally identical to the owner's MCP set.
 
-**Available tools (paid agent / access_token):** configured per soul via `amortization.agent_tools` (13 options: `soul_read`, `soul_maturity`, `soul_skills`, `audio_get`, `audio_list`, `image_get`, `image_list`, `video_get`, `video_list`, `context_get`, `context_list`, `profile_get`, `verify_human`)
+**Available tools (paid agent / access_token):** configured per soul via `amortization.agent_tools` (16 configurable options: `soul_read`, `verify_human`, `soul_maturity`, `soul_skills`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_list`, `context_get`, `profile_get`, `beme_chat_paid`, `health_check_payed`, `shop_write_read`), plus `soul_discover`, `soul_preview`, `soul_paid_comment`, and read-only `vault_shared_get`/`vault_shared_list` always available regardless of configuration. Never gets `soul_write` or `soul_earnings`.
 
-**Available tools (trusted peer soul):** same list as paid agents — `soul_read` returns the Social Sphere block only; `soul_write` and `soul_comment` write only to the Social Sphere block
+**Available tools (trusted peer soul):** a distinct, fixed tool set (`registerPeerTools()`) — not the same list as paid agents, and no per-tool allowlist (every trusted peer gets the same set). Peer-specific implementations that read directly from the filesystem, since a peer's own soul_cert isn't valid on the target server: `soul_read`/`soul_write` (Social Sphere only), `verify_human`, `soul_maturity`, `soul_skills`, `soul_context_query`, `profile_get`, per-media-type vault list/get (audio, images, video, context), plus `soul_discover`/`soul_preview`.
 
 ---
 
