@@ -13,7 +13,7 @@
 > Protocol overview and vision: [sys.uxprojects-jok.com](https://sys.uxprojects-jok.com)
 
 > [!NOTE]
-> **Third-party services:** This codebase integrates independent third-party services (Anthropic, ElevenLabs, Reown, Pinata, Polygon). I am not affiliated with, endorsed by, or a partner of any of them — their use reflects my own technical choices, not a recommendation. Full disclaimer: [Legal](#legal).
+> **Third-party services:** This codebase integrates independent third-party services (Anthropic, ElevenLabs, Reown, Pinata, Polygon, Zapier). I am not affiliated with, endorsed by, or a partner of any of them — their use reflects my own technical choices, not a recommendation. Full disclaimer: [Legal](#legal).
 
 ---
 
@@ -470,7 +470,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.0.84): e4e915ef2afc03b7
+Current release fingerprint (v1.0.85): b29c03a77905d7e2
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
@@ -548,7 +548,7 @@ Anyone who clones this repository and runs `init.sh` operates their own fully in
 
 The only technical touchpoint between a running SYS node and my infrastructure is the Polygon anchoring contract — which stores SHA-256 hashes only, contains no personal data, and operates autonomously on a public blockchain.
 
-**Third-party services:** The AI and voice integrations in this codebase (Anthropic, ElevenLabs, Reown, Pinata, Polygon) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
+**Third-party services:** The AI, voice, and automation integrations in this codebase (Anthropic, ElevenLabs, Reown, Pinata, Polygon, Zapier) are independent third-party providers. I am not affiliated with, endorsed by, or in any partnership with any of them. Their inclusion reflects my own personal technical choices — not a recommendation. Each operator who runs this software must independently evaluate these services, agree to their respective terms of use, obtain their own API keys, and bear full responsibility for their integration and any associated costs.
 
 Use of this software is at your own risk. The Apache 2.0 license excludes warranty and liability.
 

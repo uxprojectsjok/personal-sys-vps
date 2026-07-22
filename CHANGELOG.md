@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.85] — 2026-07-22
+
+**Fixed: the third-party-services disclaimer lists (NOTICE, README.md ×2) were missing Zapier — verified it's a genuine integration (`app/composables/useMcpTools.js`, `lua/mcp_call.lua`, `lua/mcp_tools.lua`, `server/api/mcp-*.js`, i18n locales), not an oversight to leave out.**
+
+**Fixed**
+- `NOTICE`: added `Zapier (workflow automation)` to the THIRD-PARTY SERVICES list.
+- `README.md`: added Zapier to both third-party-services disclaimers (the top `[!NOTE]` teaser and the full Legal section paragraph).
+
+---
+
 ## [1.0.84] — 2026-07-22
 
 **Clarified: KEYMANAGEMENT.md's `@create-agent` re-registration steps didn't say what actually happens — verified against `lua/create_agent.lua` that it deletes the old ElevenLabs agent (`DELETE .../convai/agents/{old_agent_id}?force=true`) and provisions a brand-new one, not an in-place update.**
