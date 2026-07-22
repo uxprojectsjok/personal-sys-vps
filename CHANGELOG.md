@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.92] — 2026-07-22
+
+**Changed: the "Experiment — not a core SYS feature" notices in health-sync docs used a bold `⚠️` blockquote, which reads as an urgent alert. Per the established convention, alerts are reserved for things that actually matter (security, breaking changes) — a low-stakes "heads up, this is experimental" label should visually recede, not shout. Restyled as plain italic blockquote text.**
+
+**Changed**
+- `docs/spec/health-sync.md`, `health-sync/README.md`: `> ⚠️ **Experiment** — ...` → `> *Experiment — ...*`.
+
+---
+
 ## [1.0.91] — 2026-07-22
 
 **Merged `docs/spec/health-sync-garmin.md` and `docs/spec/health-sync-troubleshooting.md` into one `docs/spec/health-sync.md`, and found a real product-decision violation along the way: `install.sh`/`setup_server.sh` were silently installing a weekly cron job, contradicting the maintainer's standing "Health Sync is always manual, never cron" decision — removed the cron from the code rather than just documenting around it.**
