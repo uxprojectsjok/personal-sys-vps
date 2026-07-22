@@ -1,6 +1,7 @@
 # Health Sync
 
-> *Experiment — not a core SYS feature. See [`docs/spec/health-sync.md`](../docs/spec/health-sync.md) for the full concept, setup, and troubleshooting.*
+> [!WARNING]
+> Experiment — not a core SYS feature. See [`docs/spec/health-sync.md`](../docs/spec/health-sync.md) for the full concept, setup, and troubleshooting.
 
 Fetches health data from your wearable's cloud and writes it to `vault/context/health.md`. The SoulKI reads it automatically as context — no special handling required. Sync is always triggered manually — there is no cron job.
 

@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.93] — 2026-07-22
+
+**Fixed: v1.0.92 restyled the health-sync "Experiment" notice as plain italic text, misreading the maintainer's feedback backwards — the point was that a hand-bolded blockquote still renders pale/muted-gray on GitHub regardless of manual bold/emoji, not that pale was the goal. Converted to a real `[!WARNING]` GFM alert instead, matching this repo's established convention that alerts (not DIY blockquote styling) are how anything meant to stand out gets flagged.**
+
+**Fixed**
+- `docs/spec/health-sync.md`, `health-sync/README.md`: plain italic blockquote → `[!WARNING]` alert.
+
+---
+
 ## [1.0.92] — 2026-07-22
 
 **Changed: the "Experiment — not a core SYS feature" notices in health-sync docs used a bold `⚠️` blockquote, which reads as an urgent alert. Per the established convention, alerts are reserved for things that actually matter (security, breaking changes) — a low-stakes "heads up, this is experimental" label should visually recede, not shout. Restyled as plain italic blockquote text.**

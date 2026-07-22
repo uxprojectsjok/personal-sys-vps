@@ -1,6 +1,7 @@
 # Health Sync — Garmin Implementation
 
-> *Experiment — not a core SYS feature. Use at your own risk.*
+> [!WARNING]
+> Experiment — not a core SYS feature. Use at your own risk.
 
 ## Overview
 
