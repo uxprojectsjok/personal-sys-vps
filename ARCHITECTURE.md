@@ -236,7 +236,7 @@ Soul B → POST /mcp  Authorization: Bearer soul_id_B.soul_cert_B
        → no  → 401
 ```
 
-Setup: enter the peer's `soul_id` in the **Agent Marketplace → Connected Peers** field and save. The connecting soul uses their own `soul_id.soul_cert` as Bearer token — their credentials never leave their system, yours never leave yours.
+Setup: add the peer's `soul_id` on the dedicated **Peers** page (`app/pages/peers.vue`). Stored server-side under `amortization.trusted_souls` regardless of UI entry point — same backend the Agent Marketplace uses for paid-agent access, different frontend. The connecting soul uses their own `soul_id.soul_cert` as Bearer token — their credentials never leave their system, yours never leave yours.
 
 **Token type detection in `soul-mcp/server.mjs`:**
 

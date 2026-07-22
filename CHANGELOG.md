@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.0.75] — 2026-07-22
+
+**Fixed: ARCHITECTURE.md's peer-setup instructions pointed at a UI location that doesn't exist — "Agent Marketplace → Connected Peers." Trusted peers are added on their own dedicated Peers page.**
+
+**Fixed**
+- `ARCHITECTURE.md`, "Soul-to-Soul Connections": corrected the setup instruction to the actual UI (`app/pages/peers.vue`, nav label "Peers" — a top-level page, not nested under Agent Marketplace). Noted that both features share the same `amortization.trusted_souls` backend field regardless of which frontend writes to it, since that part of the original claim was accurate.
+
+---
+
 ## [1.0.74] — 2026-07-22
 
 **Docs: `master.json`'s example in ARCHITECTURE.md showed only 4 of the ~14 fields the file actually accumulates — including missing `multi_hoster`, the exact field the very next paragraph describes being added to this same file.**
