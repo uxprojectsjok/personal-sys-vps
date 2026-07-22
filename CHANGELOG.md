@@ -8,6 +8,25 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.1] — 2026-07-22
+
+**Fixed a real, already-live bug in `mind.md`'s Self-Reflection section: the AI's own tool description told it to use the German section name `"Selbstreflexion"`, which no longer matches the English canonical template (`## Self-Reflection`) — every self-reflection write created a duplicate section instead of updating the real one. Confirmed live: the maintainer's own soul had exactly this duplicate, including a note where the AI had already caught its own mistake but couldn't fix it (`mind_write` can only replace/append, never delete a section).**
+
+**Root cause, in order:** `app/composables/useClaude.js`'s `mind_write` tool description and an example line in the system prompt both used the German section names (`"Selbstreflexion"`, and one line even called `soul_write` — the wrong tool entirely, writing to sys.md instead of mind.md). `lua/mind.lua`'s section lookup is an exact string match with no language fallback, so a mismatch between what the AI requests and what the file's heading actually says silently creates a new section instead of erroring.
+
+**Separately found:** `init.sh`'s "create mind.md for existing souls" backfill step (and the Nuxt dev-server's `/api/mind` stub) each carried their own hardcoded German copy of the mind.md template, both stale — missing two whole sections (`Signature`, `Session End`) present in the canonical `shared/constants/default_mind.md`. This only affected that one backfill path; new souls already got the correct template via `default_mind.lua`.
+
+**Fixed**
+- `app/composables/useClaude.js`: `mind_read`/`mind_write` tool descriptions and the one `soul_write`/`"Selbstreflexion"` example line in the system prompt now use the correct English section names and the correct tool (`mind_write`).
+- `lua/mind.lua`: added a `resolve_section()` + `SECTION_ALIASES` bilingual fallback (mirrors the pattern already used for `sys.md` in `herz.mjs`/`soulParser.js`) — a request for `"Self-Reflection"` now resolves to whichever variant (English or German) actually exists in that specific soul's `mind.md`, so language mismatches can't create duplicate sections anymore, in either direction.
+- `init.sh`, and the same fix ported to `sys-installer`'s `init.sh`: the backfill step's separate hardcoded German template replaced with a copy of `/var/lib/sys/config/default_mind.md` (already placed there earlier in the script) — eliminates the duplicate-copy drift risk going forward instead of just re-syncing content once more.
+- `server/api/mind.get.js` (Nuxt dev-server stub): same duplicate-template problem, same fix — now reads `shared/constants/default_mind.md` directly instead of a separately hardcoded, stale copy.
+- `server/api/create-agent.post.js` (dev-server): `getMindSection` lookup for the greeting text only tried the German `"ElevenLabs Erstbegrüßung"` — didn't match the (now dev-server-correct) English canonical template's `"ElevenLabs Greeting"` heading. Added as a first-try fallback.
+
+**Live cleanup:** removed the orphaned duplicate `## Selbstreflexion` section from the maintainer's own soul's `mind.md` (content was just the AI's own note that the section didn't belong there) using the same decrypt/verify/re-encrypt approach as the `sys.md` fix in v1.1.1.
+
+---
+
 ## [1.2.0] — 2026-07-22
 
 **New souls now default to English section headers (`## Core Identity`, `## Values & Beliefs`, etc.) instead of German — the first phase of an English-only push into the actual template content, not just the docs. Existing German-header souls (including the maintainer's own) keep working completely unchanged.**

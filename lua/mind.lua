@@ -133,6 +133,41 @@ local function split_lines(text)
   return lines
 end
 
+-- Sektionsnamen: Englisch (aktuelles Default-Template, siehe default_mind.lua)
+-- und Deutsch (Alt-Souls von vor der Umstellung) je Sektion. Bidirektional,
+-- damit egal ob der Aufrufer Englisch oder Deutsch schickt, immer die Sektion
+-- getroffen wird die in DIESER konkreten mind.md tatsächlich existiert —
+-- sonst entsteht eine neue, doppelte Sektion statt die bestehende zu treffen.
+local SECTION_ALIASES = {
+  ["Identity"]      = "Identität",       ["Identität"]       = "Identity",
+  ["Communication"] = "Kommunikation",   ["Kommunikation"]   = "Communication",
+  ["Intellect"]     = "Intellekt",       ["Intellekt"]       = "Intellect",
+  ["Tools"]         = "Werkzeuge",       ["Werkzeuge"]       = "Tools",
+  ["Network"]       = "Netzwerk",        ["Netzwerk"]        = "Network",
+  ["Signature"]     = "Signatur",        ["Signatur"]        = "Signature",
+  ["Self-Reflection"] = "Selbstreflexion", ["Selbstreflexion"] = "Self-Reflection",
+  ["Session End"]   = "Session-Ende",    ["Session-Ende"]    = "Session End",
+  ["Boundaries"]    = "Grenzen",         ["Grenzen"]         = "Boundaries",
+}
+
+-- Löst eine angefragte Sektion auf die tatsächlich in md vorhandene Variante auf.
+-- Existiert die angefragte Variante selbst → unverändert zurückgeben (deckt auch
+-- alle Nicht-Kern-Sektionen wie "ElevenLabs Agent" ab, die nur eine Sprache haben).
+local function resolve_section(md, requested)
+  local target = "## " .. requested
+  for _, line in ipairs(split_lines(md)) do
+    if line == target then return requested end
+  end
+  local alias = SECTION_ALIASES[requested]
+  if alias then
+    local alias_target = "## " .. alias
+    for _, line in ipairs(split_lines(md)) do
+      if line == alias_target then return alias end
+    end
+  end
+  return requested
+end
+
 local function join_lines(lines)
   return table.concat(lines, "\n")
 end
@@ -241,6 +276,10 @@ if mode ~= "replace" and mode ~= "append" and mode ~= "prepend" then
 end
 
 local current = read_mind()
+-- Angefragte Sektion auf die tatsächlich in dieser mind.md vorhandene Sprachvariante
+-- auflösen — verhindert doppelte Sektionen bei Sprach-Mismatch zwischen Aufrufer
+-- (z.B. KI mit "Self-Reflection") und Alt-Soul-Datei (z.B. "## Selbstreflexion").
+section = resolve_section(current, section)
 local protected = get_write_protected(current)
 
 if protected[section] then
@@ -256,9 +295,10 @@ end
 local updated = update_section(current, section, content, mode)
 
 -- Selbstreflexion: Rolling Window — max. 20 DATUM:-Einträge behalten
-if section == "Self-Reflection" and (mode == "prepend" or mode == "append") then
+-- (section wurde oben bereits auf die tatsächlich vorhandene Sprachvariante aufgelöst)
+if (section == "Self-Reflection" or section == "Selbstreflexion") and (mode == "prepend" or mode == "append") then
   local sec_lines = split_lines(updated)
-  local sr_start, sr_end = find_section(sec_lines, "Self-Reflection")
+  local sr_start, sr_end = find_section(sec_lines, section)
   if sr_start and sr_end then
     local blocks, current_block = {}, nil
     for i = sr_start + 1, sr_end do
@@ -281,7 +321,7 @@ if section == "Self-Reflection" and (mode == "prepend" or mode == "append") then
         for _, l in ipairs(blocks[i]) do new_body[#new_body + 1] = l end
         new_body[#new_body + 1] = ""
       end
-      updated = update_section(updated, "Self-Reflection",
+      updated = update_section(updated, section,
         table.concat(new_body, "\n"):gsub("%s+$", ""), "replace")
     end
   end

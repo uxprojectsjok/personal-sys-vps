@@ -115,16 +115,16 @@ const SOUL_TOOLS = [
   },
   {
     name: "mind_read",
-    description: "Liest deine eigene Konfigurationsdatei (mind.md) — Identität, Kommunikation, Intellekt, Werkzeuge, Netzwerk, Selbstreflexion, Grenzen.",
+    description: "Liest deine eigene Konfigurationsdatei (mind.md) — Identity, Communication, Intellect, Tools, Network, Self-Reflection, Boundaries.",
     input_schema: { type: "object", properties: {}, required: [] }
   },
   {
     name: "mind_write",
-    description: "Aktualisiert eine Sektion deiner mind.md. Schreibbar: Kommunikation, Intellekt, Werkzeuge, Netzwerk, Selbstreflexion. Schreibgeschützt: Identität, Grenzen. Nur bei echten Erkenntnissen nutzen.",
+    description: "Aktualisiert eine Sektion deiner mind.md. Schreibbar: Communication, Intellect, Tools, Network, Self-Reflection. Schreibgeschützt: Identity, Boundaries. Nur bei echten Erkenntnissen nutzen. Sektionsname muss exakt zur Überschrift in der mind.md passen (englisch, z.B. \"Self-Reflection\" — nicht \"Selbstreflexion\") sonst entsteht eine neue, doppelte Sektion statt die bestehende zu aktualisieren.",
     input_schema: {
       type: "object",
       properties: {
-        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Selbstreflexion\"" },
+        section: { type: "string", description: "Sektionsname ohne ##, z.B. \"Self-Reflection\"" },
         content: { type: "string", description: "Neuer Inhalt (Markdown)" },
         mode:    { type: "string", enum: ["replace", "append", "prepend"], description: "replace = ersetzen | append = ans Ende | prepend = an den Anfang" }
       },
@@ -398,7 +398,7 @@ Du rufst Tools auf wenn du sie brauchst — ohne Ankündigung, ohne Kommentar. D
 
 Wann welches Tool:
 - soul_read → deine Geschichte, Werte, Fakten aus der sys.md
-- soul_write (section: "Selbstreflexion", mode: "append") → nach bedeutsamen Momenten: ein Satz, Datum, fertig. Format: "YYYY-MM-DD: [ein Satz]"
+- mind_write (section: "Self-Reflection", mode: "append") → nach bedeutsamen Momenten: ein Satz, Datum, fertig. Format: "YYYY-MM-DD: [ein Satz]"
 - vault_manifest → wenn Dateien relevant sind
 - context_get → für eine spezifische Kontext-Datei
 - mind_read → deine eigene Konfiguration
@@ -438,7 +438,7 @@ Profil-Aufnahmen (einmalig, im Vault gespeichert):
 - "@body" oder "@bewegung" → Bewegung aufnehmen`;
 
       if (mindContent) {
-        systemPrompt += `\n\n## Deine Konfiguration (mind.md)\nDie Selbstreflexion-Einträge sind deine gelernten Verhaltensregeln für diese Person. Prüfe sie vor jeder Antwort und handle entsprechend — ohne es zu erwähnen.\n${mindContent}`;
+        systemPrompt += `\n\n## Deine Konfiguration (mind.md)\nDie Self-Reflection-Einträge sind deine gelernten Verhaltensregeln für diese Person. Prüfe sie vor jeder Antwort und handle entsprechend — ohne es zu erwähnen.\n${mindContent}`;
       }
 
       if (voiceMode) {

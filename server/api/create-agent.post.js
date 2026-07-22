@@ -132,7 +132,7 @@ export default defineEventHandler(async (event) => {
 
   // ── Mind.md Prompt-Templates ──────────────────────────────────────────────
   const agentTemplate    = getMindSection(soulId, 'ElevenLabs Agent')
-  const firstMsgTemplate = getMindSection(soulId, 'ElevenLabs Erstbegrüßung')
+  const firstMsgTemplate = getMindSection(soulId, 'ElevenLabs Greeting') || getMindSection(soulId, 'ElevenLabs Erstbegrüßung')
   const language         = 'de'
 
   // ── Webhook-Token sicherstellen ───────────────────────────────────────────
