@@ -75,9 +75,10 @@ run_soul() {
 
   # Detect pending tasks — supports both formats:
   #   checkbox:  - [ ] task
-  #   section:   **Status:** offen  |  Status: offen  |  status: open
+  #   section:   **Status:** open  (current, documented in soul-mcp/prompts/index.mjs)
+  #              **Status:** offen | Status: offen | status: open | **Status:** aktiv  (legacy/German)
   local task_count=0
-  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* offen|Status: offen|status: open|\*\*Status:\*\* aktiv" "$AGENT_MD" 2>/dev/null || true)
+  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* open|\*\*Status:\*\* offen|Status: offen|status: open|\*\*Status:\*\* aktiv" "$AGENT_MD" 2>/dev/null || true)
 
   if [[ "$task_count" -eq 0 ]]; then
     log_s "no pending tasks — idle"
@@ -187,19 +188,23 @@ except: print('claude-sonnet-4-6')
   local PROMPT="${CLAUDE_MD_HINT}Read $AGENT_MD and work through every pending task.
 
 ## Sections in agent.md
-- **## Dauertasks** — standing rules, always apply after completing each task. Never mark them done.
-- **## Offene Tasks** — tasks to complete. Identified by '**Status:** offen' or '- [ ]'.
-- **## Erledigte Tasks** — completed tasks archive.
+- **## Standing Tasks (always active)** — standing rules, always apply after completing each task. Never mark them done.
+- **## Open Tasks** — tasks to complete. Identified by '**Status:** open' or '- [ ]'.
+- **## Completed Tasks** — completed tasks archive.
+
+(Older souls may still have the legacy German section names '## Dauertasks' / '## Offene Tasks' /
+'## Erledigte Tasks' with '**Status:** offen' — treat them the same way, just don't rename the
+existing headers as part of a task run.)
 
 ## Steps for each pending task
 1. Complete it fully using your available tools.
-2. Apply all rules from '## Dauertasks' (e.g. send a summary email).
+2. Apply all rules from the standing-tasks section (e.g. send a summary email).
 3. Rewrite agent.md:
-   - Move the completed task block from '## Offene Tasks' to '## Erledigte Tasks'
-   - Change '**Status:** offen' to '**Status:** erledigt $TODAY'
+   - Move the completed task block from the open-tasks section to the completed-tasks section
+   - Change '**Status:** open' (or legacy '**Status:** offen') to '**Status:** completed $TODAY'
    - checkbox format: change '- [ ]' to '- [x] $TODAY —'
-   - If '## Erledigte Tasks' only has '*(leer)*', replace that line with the task block
-   - Leave '## Dauertasks' section completely unchanged
+   - If the completed-tasks section only has '*(empty)*' or '*(leer)*', replace that line with the task block
+   - Leave the standing-tasks section completely unchanged
 
 Work sequentially. Be careful and conservative."
 

@@ -57,15 +57,22 @@ local function load_cipher_mode()
   return ctx.cipher_mode or "ciphered"
 end
 
-local DEFAULT_TEMPLATE = [[# SYS Agent Queue
-<!-- Tasks werden von Claude AI via MCP hier eingetragen. -->
-<!-- Format: - [ ] task  →  Agent holt sie beim nächsten Cron-Lauf ab -->
+-- Format matches soul-mcp/prompts/index.mjs's documented agent.md structure exactly —
+-- previously this template used a different "## Pending" / "## Done" shape the agent
+-- runner (shared/sys-agent-run.sh) never actually looked for, so every freshly created
+-- soul got an agent.md the runner's own prompt described as having different sections.
+local DEFAULT_TEMPLATE = [[# SYS Agent Tasks
+<!-- Tasks are added here by Claude AI via MCP (context_write). -->
+<!-- Format: see soul-mcp/prompts/index.mjs "Agent Tasks (agent.md)" -->
 
-## Pending
+## Standing Tasks (always active)
+*(empty)*
 
+## Open Tasks
+*(empty)*
 
-
-## Done
+## Completed Tasks
+*(empty)*
 ]]
 
 local vault_key   = ngx.ctx.vault_key

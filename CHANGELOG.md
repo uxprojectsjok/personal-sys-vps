@@ -8,6 +8,25 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.2] — 2026-07-22
+
+**Fixed: `agent.md` had three mutually-inconsistent formats across the codebase, and the agent runner's task-detection regex didn't even match the format `soul-mcp/prompts/index.mjs` (the AI's own documented instructions) actually tells it to write — meaning a task added exactly as documented could go completely unprocessed, forever.**
+
+**The three divergent formats found:**
+- `lua/soul_cert.lua` / `lua/agent_queue.lua` (soul creation): `## Pending` / `## Done`
+- `shared/sys-agent-run.sh`'s prompt to Claude: German `## Dauertasks` / `## Offene Tasks` / `## Erledigte Tasks`
+- `soul-mcp/prompts/index.mjs` (what the AI is actually told when adding a task via `context_write`): English `## Standing Tasks (always active)` / `## Open Tasks` / `## Completed Tasks`, with a structured `**Status:** open` field — this one is the most complete and already correctly English, so it's the canonical target the other two are reconciled to.
+
+**Confirmed live:** grep-testing the runner's exact regex against `**Status:** open` (the literal format `index.mjs` documents) returned zero matches — a real, currently-active bug, not just a language inconsistency.
+
+**Fixed**
+- `shared/sys-agent-run.sh`: task-detection regex now also matches `**Status:** open` (kept all existing legacy patterns for backward compatibility). The prompt sent to Claude now describes the correct English section names and structured status format, with a note to also recognize the legacy German section names on older souls without renaming them mid-run.
+- `lua/soul_cert.lua`, `lua/agent_queue.lua`: `agent.md` creation template changed from `## Pending`/`## Done` to the canonical `## Standing Tasks (always active)` / `## Open Tasks` / `## Completed Tasks` — matching what `soul-mcp/prompts/index.mjs` already told the AI to expect, and what the (now-fixed) runner prompt describes.
+
+**Live cleanup:** replaced the maintainer's own soul's `agent.md` (still empty, on the old template) with the corrected one.
+
+---
+
 ## [1.2.1] — 2026-07-22
 
 **Fixed a real, already-live bug in `mind.md`'s Self-Reflection section: the AI's own tool description told it to use the German section name `"Selbstreflexion"`, which no longer matches the English canonical template (`## Self-Reflection`) — every self-reflection write created a duplicate section instead of updating the real one. Confirmed live: the maintainer's own soul had exactly this duplicate, including a note where the AI had already caught its own mistake but couldn't fix it (`mind_write` can only replace/append, never delete a section).**

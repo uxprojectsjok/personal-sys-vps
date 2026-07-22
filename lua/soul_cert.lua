@@ -220,7 +220,10 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
   if _agent_needs_write then
     local _af = io.open(_agent_path, "w")
     if _af then
-      _af:write("# SYS Agent Queue\n<!-- Tasks werden von Claude AI via MCP hier eingetragen. -->\n<!-- Format: - [ ] task  →  Agent holt sie beim nächsten Cron-Lauf ab -->\n\n## Pending\n\n\n\n## Done\n")
+      -- Format matches soul-mcp/prompts/index.mjs's documented agent.md structure
+      -- (and lua/agent_queue.lua's DEFAULT_TEMPLATE) — not the old "## Pending"/"## Done"
+      -- shape the agent runner's own prompt never actually referenced.
+      _af:write("# SYS Agent Tasks\n<!-- Tasks are added here by Claude AI via MCP (context_write). -->\n<!-- Format: see soul-mcp/prompts/index.mjs \"Agent Tasks (agent.md)\" -->\n\n## Standing Tasks (always active)\n*(empty)*\n\n## Open Tasks\n*(empty)*\n\n## Completed Tasks\n*(empty)*\n")
       _af:close()
       os.execute("chown www-data:www-data " .. _agent_path .. " 2>/dev/null || true")
     end
