@@ -1129,7 +1129,7 @@ async function submitMfa() {
       healthNeedsMfa.value = false; healthMfaCode.value = ''
       if (d.pending) {
         healthMsg.value = 'Code übermittelt — Login läuft…'
-        setTimeout(() => { healthMsg.value = '' }, 5000)
+        await pollGarminLoginResult()
       } else {
         healthGarminConnected.value = true
         healthMsg.value = 'Login erfolgreich ✓'
@@ -1140,6 +1140,33 @@ async function submitMfa() {
     }
   } catch { healthMsgError.value = true; healthMsg.value = 'Netzwerkfehler.' }
   healthLoginBusy.value = false
+}
+
+// health_mfa.lua wartet serverseitig nur 3s auf den Login-Hintergrundprozess (garmin_login.py)
+// — Garmins eigener MFA-Verify-Roundtrip dauert in der Praxis fast immer länger, die
+// Antwort kommt daher fast immer als "pending" zurück. Ohne dieses Polling verschwand
+// die "Login läuft…"-Meldung nach 5s spurlos, ohne je zu bestätigen ob der im
+// Hintergrund weiterlaufende Login am Ende erfolgreich war oder fehlschlug — has_tokens
+// in /api/health/config ist die serverseitige Quelle der Wahrheit dafür.
+async function pollGarminLoginResult() {
+  const deadline = Date.now() + 90_000
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 3000))
+    try {
+      const r = await fetch('/api/health/config', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+      if (r.ok) {
+        const d = await r.json()
+        if (d.has_tokens) {
+          healthGarminConnected.value = true
+          healthMsg.value = 'Login erfolgreich ✓'
+          setTimeout(() => { healthMsg.value = '' }, 4000)
+          return
+        }
+      }
+    } catch {}
+  }
+  healthMsgError.value = true
+  healthMsg.value = 'Login dauert ungewöhnlich lange — bitte Einstellungen neu öffnen, um den Status zu prüfen.'
 }
 
 // ── API-Key Tab State ─────────────────────────────────────────────────────────

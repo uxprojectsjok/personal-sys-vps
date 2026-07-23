@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.17] — 2026-07-23
+
+**Fixed: Garmin Health Sync login silently went nowhere after entering the MFA code — reported after a fresh install where the MFA code was accepted but no connection ever showed up in Settings.**
+
+**Root cause:** `lua/health_mfa.lua` writes the submitted code to a file for the background `garmin_login.py` process to pick up, then waits only 3 seconds before responding — Garmin's own MFA-verify round trip almost always takes longer than that, so the response comes back as `{ok:true, pending:true}` rather than a final result. `SettingsModal.vue`'s `submitMfa()` handled `pending` by showing "Code übermittelt — Login läuft…" for 5 seconds and then clearing it — nothing ever checked back to see whether the still-running background login eventually succeeded or failed. The login itself likely completed fine seconds later; the UI just never looked again.
+
+**Fixed**
+- `app/components/SettingsModal.vue`: added `pollGarminLoginResult()`, called whenever the MFA response comes back `pending`. Polls `/api/health/config`'s `has_tokens` field (the actual server-side source of truth for a completed login) every 3s for up to 90s, and shows success as soon as it flips true. Times out with a message telling the user to reopen Settings and check status, instead of silently going blank.
+
+---
+
 ## [1.2.16] — 2026-07-23
 
 **Added: an explanatory alert when importing an existing sys.md onto a node that hasn't seen that soul_id before — clarifies that the node just issued its own independent cert, following up on the previous release's sidebar fix from the same investigation.**
