@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.11] — 2026-07-23
+
+**Added: `reset.sh`, `recover-password.sh`, `deinstall.sh` — these were only ever distributed via the separate `sys-installer` repo, `.gitignore`d out of this one (grouped with `init.sh`). They belong here: unlike `init.sh` (a live-generated, per-run script with node-specific substitutions), these are static operator tools with no generation step, and a node operator working from this repo had no way to find them.**
+
+**Added**
+- `reset.sh`: removes the current soul (single-hoster) or a selected/all souls (multi-hoster), leaves the rest of the installation running. Detects shared-server mode and reloads instead of restarting OpenResty when other sites are active.
+- `recover-password.sh`: sets a new gate password without touching soul data, for when the gate password is forgotten. Domain-aware `master.json` resolution, shared-server-safe OpenResty reload.
+- `deinstall.sh`: full uninstall, detects shared-server mode and leaves OpenResty/Node.js/`/etc/openresty` untouched if other sites are active on the same box.
+- `.gitignore`: removed the three matching entries (`init.sh` itself stays ignored — it's generated per-run with node-specific substitutions, genuinely different from these three static scripts).
+
+---
+
 ## [1.2.10] — 2026-07-22
 
 **Fixed: on mobile, tapping the "Gate" tab in the bottom nav bar navigated to `/gate` but left the nav bar itself visible on top of the login screen.**

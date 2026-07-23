@@ -1,7 +1,4 @@
 init.sh
-reset.sh
-recover-password.sh
-deinstall.sh
 sys-legal-boundaries.md
 .env
 *.key
