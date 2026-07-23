@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="anchor" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="anchor" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -288,6 +288,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
 
 definePageMeta({ layout: false })
@@ -296,6 +297,7 @@ const { t } = useI18n()
 
 const router = useRouter()
 const { hasSoul, soulMeta, soulContent, soulToken, pushToServer, isLoaded } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const {
   walletAddress, currentNetwork, isConnected, isAnchoring, isProvingIdentity,
@@ -344,6 +346,7 @@ function visUnit(days) {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  fetchNodeStatus()
   walletRestoring.value = true
   const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent ?? '')
   await new Promise(r => setTimeout(r, isMobile ? 1_200 : 400))

@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="export" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="export" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -202,13 +202,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
 import { BIP39, generateMnemonicWords, useSoulEncrypt } from '~/composables/useSoulEncrypt.js'
 import { useApiContext } from '~/composables/useApiContext.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 definePageMeta({ layout: false })
 
@@ -217,6 +218,8 @@ const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, isLoaded } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles, loadContext } = useApiContext()
 const { readAllVaultFiles, isConnected: vaultConnected } = useVault()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
+onMounted(() => fetchNodeStatus())
 const { mnemonic, isEncrypting, encryptError, encrypt } = useSoulEncrypt()
 
 // ── Shell state ───────────────────────────────────────────────────────────────

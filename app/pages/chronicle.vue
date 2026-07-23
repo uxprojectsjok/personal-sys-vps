@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="chronik" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="chronik" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -102,6 +102,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { parseSoul } from '#shared/utils/soulParser.js'
 
 definePageMeta({ layout: false })
@@ -110,6 +111,7 @@ const { t } = useI18n()
 
 const router = useRouter()
 const { soulContent, soulMeta, hasSoul, isLoaded, fetchFromServer, acceptServerVersion, syncStatus, serverContent, soulToken } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
@@ -156,6 +158,7 @@ async function loadSessionFiles() {
 
 // Beim Öffnen immer aktuellen Stand vom Server holen — Soul-KI-Einträge sind nur dort
 onMounted(async () => {
+  fetchNodeStatus()
   if (!hasSoul.value) return
   await fetchFromServer(true)
   if (syncStatus.value === 'differs' && serverContent.value) {

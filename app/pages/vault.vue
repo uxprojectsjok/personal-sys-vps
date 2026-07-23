@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="files" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="files" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -299,6 +299,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useVault } from '~/composables/useVault.js'
 import { useApiContext } from '~/composables/useApiContext.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
@@ -310,6 +311,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
 const { vaultKey } = useVaultSession()
@@ -813,6 +815,7 @@ function onNav(id) {
 
 const euConsumerRights = ref(false)
 onMounted(() => {
+  fetchNodeStatus()
   if (soulToken.value && !serverLoaded.value) loadContext(soulToken.value).catch(() => {})
   if (soulToken.value) {
     fetch('/api/get-config', { headers: { Authorization: `Bearer ${soulToken.value}` } })

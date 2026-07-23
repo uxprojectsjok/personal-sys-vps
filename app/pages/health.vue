@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="health" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="health" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -311,10 +311,12 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 const loading    = ref(true)
@@ -522,6 +524,7 @@ async function triggerSync() {
 }
 
 onMounted(loadAll)
+onMounted(() => fetchNodeStatus())
 
 // ── Charts ────────────────────────────────────────────────────────────────────
 const hFilter = ref('week')

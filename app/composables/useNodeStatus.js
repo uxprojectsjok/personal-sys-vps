@@ -1,6 +1,7 @@
-import { ref, readonly } from 'vue'
+import { ref, computed, readonly } from 'vue'
 
 const nodeLocked = ref(null) // null = unbekannt, true = gesperrt, false = frei
+const publicNode = ref(true) // Default passend zu node_status.lua (Altinstallationen ohne Datei = public)
 
 export function useNodeStatus() {
   async function fetchNodeStatus() {
@@ -9,6 +10,7 @@ export function useNodeStatus() {
       if (!res.ok) return
       const data = await res.json()
       nodeLocked.value = !!data.locked
+      publicNode.value = data.public_node !== false
     } catch {
       nodeLocked.value = false
     }
@@ -19,6 +21,7 @@ export function useNodeStatus() {
 
   return {
     nodeLocked: readonly(nodeLocked),
+    publicNode: readonly(publicNode),
     allowCreateSoul: readonly(allowCreateSoul),
     fetchNodeStatus,
   }

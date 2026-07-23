@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="maturity" :soul-meta="soulMeta ? { ...soulMeta, maturity: data.score } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
+      <SysSidebar route="maturity" :soul-meta="soulMeta ? { ...soulMeta, maturity: data.score } : null" :collapsed="sidebarCollapsed" :public-node="publicNode" @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('chronicle.crumb_soul'), $t('maturity.crumb')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
@@ -132,6 +132,7 @@ import { ref, computed, h, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
@@ -139,6 +140,7 @@ import { useChainAnchor } from '~/composables/useChainAnchor.js'
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, clear: _clear, isLoaded } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 const { allFiles } = useVault()
 const { chainMetrics, fetchChainMetrics, chainLinks, fetchChainList } = useChainAnchor()
 
@@ -167,6 +169,7 @@ async function loadPeerCount() {
 }
 let chainMetricsTimer = null
 onMounted(() => {
+  fetchNodeStatus()
   loadPeerCount(); fetchChainMetrics(); fetchChainList()
   // Gleicher Heartbeat wie auf /anchor: alle ~2.5s neu holen, pausiert wenn
   // der Tab nicht sichtbar ist.

@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.15] — 2026-07-23
+
+**Fixed: the sidebar showed "Public Node" on a Private Node, on 13 of the 15 pages that render it — reported after a fresh Personal-Node install correctly configured as Private during setup.**
+
+**Root cause:** `SysSidebar.vue`'s `publicNode` prop defaults to `true`. Only `index.vue` and `marketplace.vue` ever fetched the real value (via `/api/get-config`'s `public_node` field, which requires an authenticated soul-cert call) and passed it down — every other page using the sidebar (`settings`, `soul`, `session`, `vault`, `setup`, `export`, `connection`, `health`, `maturity`, `peers`, `anchor`, `chronicle`, `earnings`) never wired the prop at all, so the default silently stood in for the node's actual configuration. `/api/node-status` — the cheap, unauthenticated endpoint already polled by most of these pages for `multi_hoster`/lock status — never exposed `public_node` in the first place, so there was no simple value to reach for.
+
+**Fixed**
+- `lua/node_status.lua`: now also returns `public_node`, read from `/var/lib/sys/config/public_node` the same way `soul_amortization.lua`/`soul_pay_x402.lua` already do (defaults to `true` for old installs predating that file, matching the existing convention).
+- `app/composables/useNodeStatus.js`: exposes a new `publicNode` ref alongside the existing `nodeLocked`, populated by the same `fetchNodeStatus()` call these pages already had reason to make.
+- All 13 affected pages: added `useNodeStatus()`, call `fetchNodeStatus()` on mount, and pass `:public-node="publicNode"` to `<SysSidebar>`.
+
+Note: this was reported alongside a soul-cert mismatch after importing an existing soul (from a different node) into a fresh install — that turned out to be a separate, architectural fact rather than a bug: `soul_cert` is an HMAC of `(node's own master key, soul_id, cert_version)`, so it is inherently node-scoped. Uploading an existing sys.md to a new node creates an independently-keyed registration under the same `soul_id`, not a continuation of the original node's cert — the two nodes end up with two different, both-valid certs for the same `soul_id`, and mixing up which cert belongs to which node produces exactly this kind of chaos. No code change from this alone; flagged here since it surfaced in the same investigation.
+
+---
+
 ## [1.2.14] — 2026-07-23
 
 **Fixed: `/gate`, `/join`, and `/` rendered a legal-links footer (`impressum.pageTitle` / `datenschutz.pageTitle` / `lizenz.pageTitle`) as raw, untranslated i18n keys instead of text — reported after cloning this repo fresh for a Personal Node install.**

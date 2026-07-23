@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
+      <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('nav.group_soul'), $t('nav.session')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
@@ -120,6 +120,7 @@ definePageMeta({ layout: false })
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
@@ -136,6 +137,7 @@ import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
 const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer, pushSessionLogEntry, isLoaded } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 const { messages, clearSession, addMessage, toApiMessages } = useSession()
 const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()
@@ -270,6 +272,7 @@ onMounted(async () => {
   if (!isReturn) clearSession()
   load()
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
+  fetchNodeStatus()
   fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
 
   // Initial AI greeting — nur beim ersten Laden, nicht bei Rückkehr

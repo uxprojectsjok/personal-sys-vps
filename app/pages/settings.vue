@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div class="app" :class="{ 'drawer-open': drawerOpen }">
-      <SysSidebar route="settings" :soul-meta="soulMeta" @go="onNav" @lock="lockGate" @collapse="() => {}" />
+      <SysSidebar route="settings" :soul-meta="soulMeta" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="() => {}" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[t('settings.title')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
@@ -28,14 +28,18 @@ import SettingsModal from '~/components/SettingsModal.vue'
 import ConfirmModal  from '~/components/ConfirmModal.vue'
 const { t } = useI18n()
 import { useSoul }   from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 definePageMeta({ layout: false })
 
 const router = useRouter()
 const { hasSoul, soulMeta, refreshCert, clear } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false)
 const cmdkOpen   = ref(false)
+
+onMounted(() => fetchNodeStatus())
 
 async function handleMasterRotated() {
   await refreshCert()

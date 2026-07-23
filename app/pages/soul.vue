@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="soul" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="soul" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -85,11 +85,12 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVault } from '~/composables/useVault.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { parseSoul, updateSection, resolveHeading } from '#shared/utils/soulParser.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
@@ -99,6 +100,8 @@ const { t } = useI18n()
 const router = useRouter()
 const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer, isLoaded } = useSoul()
 const { allFiles } = useVault()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
+onMounted(() => fetchNodeStatus())
 
 const syncedFiles = computed(() => {
   if (!allFiles.value?.length) return {}

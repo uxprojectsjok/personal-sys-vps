@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="peers" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed"
+      <SysSidebar route="peers" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -212,6 +212,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
@@ -220,6 +221,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, soulContent, isLoaded } = useSoul() // soulToken needed for authHeaders
+const { publicNode, fetchNodeStatus } = useNodeStatus()
 const maturity = computed(() => computeMaturity(soulContent.value).score)
 const { ask } = useConfirm()
 
@@ -423,6 +425,7 @@ function onVisibilityChange() {
 }
 
 onMounted(() => {
+  fetchNodeStatus()
   loadConnections()
   startPolling()
   document.addEventListener('visibilitychange', onVisibilityChange)

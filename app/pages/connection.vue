@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="connect" :soul-meta="soulMeta" :collapsed="sidebarCollapsed"
+      <SysSidebar route="connect" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -157,15 +157,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken } = useSoul()
+const { publicNode, fetchNodeStatus } = useNodeStatus()
+onMounted(() => fetchNodeStatus())
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 
