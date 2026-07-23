@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.14] — 2026-07-23
+
+**Fixed: `/gate`, `/join`, and `/` rendered a legal-links footer (`impressum.pageTitle` / `datenschutz.pageTitle` / `lizenz.pageTitle`) as raw, untranslated i18n keys instead of text — reported after cloning this repo fresh for a Personal Node install.**
+
+**Root cause:** v1.2.12 ported a legal-links footer from the maintainer's own private node, where `impressum.vue`/`datenschutz.vue`/`lizenz.vue` and their i18n namespaces exist because German TMG law requires an operator-specific Impressum for that live, commercial deployment. This generic template has no such pages — and can't ship generic ones, since the content is inherently operator-specific — so the footer had nothing to translate or link to. This exact exclusion was already documented for an earlier port (see the `v1.2.x` history for the passkey/vault-unlock entries noting *"the private repo's version also always renders its Impressum/Datenschutz/Lizenz footer links... this generic template has no such pages, so that part was intentionally left out here"*) — v1.2.12 reintroduced it by mistake.
+
+**Fixed**
+- `app/pages/gate.vue`, `app/pages/join.vue`, `app/pages/index.vue`: removed the legal-links footer block and its associated CSS (`.gate-legal-links`, `.landing-legal-links`, and related selectors).
+- `app/assets/css/sys-v2.css`: reverted the `.gate`/`.gate-card` bottom-padding and mobile logo-width override that existed solely to clear space for that footer.
+- Everything else from v1.2.12 (the `/join` reveal-on-demand pattern, `SysMark`'s optional `operator` prop) is unaffected and stays — those don't depend on the legal pages.
+
+---
+
 ## [1.2.13] — 2026-07-23
 
 **Fixed: on a Multi-Hoster node with more than one soul, an owner/service-token MCP client always got the alphabetically first soul, regardless of which one it actually meant to reach.**

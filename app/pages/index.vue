@@ -21,13 +21,6 @@
             <span class="live-dot" />
             {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
-          <div class="landing-legal-links">
-            <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
-            <span class="landing-legal-sep">·</span>
-            <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
-            <span class="landing-legal-sep">·</span>
-            <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
-          </div>
         </div>
       </div>
     </template>
@@ -707,26 +700,6 @@ onMounted(() => {
 <style scoped>
 /* ── Landing card uses gate CSS from sys-v2.css ─────────────────────── */
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
-
-.landing-legal-links {
-  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
-  margin-top: 12px;
-  max-width: 100%; overflow-x: auto; white-space: nowrap;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none;
-}
-.landing-legal-links::-webkit-scrollbar { display: none; }
-.landing-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
-.landing-legal-links a:hover { color: var(--fg); text-decoration: underline; }
-.landing-legal-sep { color: var(--line-2); }
-
-@media (max-width: 640px) {
-  .landing-legal-links {
-    flex-direction: column; gap: 4px;
-    max-width: 100%; overflow-x: visible; white-space: normal;
-  }
-  .landing-legal-sep { display: none; }
-}
 
 /* ── Inline page layouts ─────────────────────────────────────────────── */
 .page-hero { display: flex; align-items: baseline; gap: 16px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
