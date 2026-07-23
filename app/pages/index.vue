@@ -541,6 +541,7 @@ async function handleLoginUpload(text, filename) {
       loginOpen.value = false
       fetchNodeStatus()
       await exportAsBlob()
+      await warnIfCertMigrated(result)
       setupOpen.value = true
       return
     }
@@ -550,6 +551,7 @@ async function handleLoginUpload(text, filename) {
       loginOpen.value = false
       fetchNodeStatus()
       await exportAsBlob()
+      await warnIfCertMigrated(result)
       return
     }
   } else {
@@ -569,6 +571,7 @@ async function handleLoginUpload(text, filename) {
       loginOpen.value = false
       fetchNodeStatus()
       await exportAsBlob()
+      await warnIfCertMigrated(result)
       setupOpen.value = true
       sessionStorage.removeItem('sys.invite_login')
       return
@@ -576,6 +579,25 @@ async function handleLoginUpload(text, filename) {
   }
   loginOpen.value = false
   fetchNodeStatus()
+}
+
+// soul_cert ist ein HMAC aus (Node-eigener Master-Key, soul_id, cert_version) — node-
+// gebunden. Wird eine sys.md mit bereits vorhandenem Cert auf einem Node importiert,
+// der diese soul_id noch nicht kannte, entsteht eine unabhängige Registrierung mit
+// eigenem Cert, keine Fortführung des Ursprungs-Certs. Ohne diesen Hinweis landet der
+// Nutzer sonst in Cert-Chaos, wenn er dieselbe (alte) lokale Datei später wieder auf
+// dem ursprünglichen Node verwendet — importAndSetup() erkennt genau diesen Fall via
+// result.certMigrated (first_setup + abweichender Cert) und der automatische Download
+// oben liefert bereits die für DIESEN Node korrekte, neue Version.
+async function warnIfCertMigrated(result) {
+  if (!result?.certMigrated) return
+  await confirmAsk({
+    title: t('index.cert_migrated_title'),
+    message: t('index.cert_migrated_message'),
+    confirmText: t('common.ok'),
+    danger: false,
+    hideCancel: true,
+  })
 }
 
 async function handleResetRegistration() {

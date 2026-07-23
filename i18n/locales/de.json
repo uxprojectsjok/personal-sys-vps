@@ -167,7 +167,9 @@
       "import_failed": "Import fehlgeschlagen ({error}).",
       "reset_failed": "Reset fehlgeschlagen: {error}",
       "import_title": "Import-Fehler"
-    }
+    },
+    "cert_migrated_title": "Neuer Cert auf diesem Node ausgestellt",
+    "cert_migrated_message": "Diese Soul war auf diesem Node noch nicht bekannt und wurde hier mit einem eigenen, neuen Cert registriert — unabhängig vom Cert auf dem Node, von dem sie importiert wurde. Die gerade heruntergeladene Datei ist die, die auf diesem Node gültig ist. Verwende keine ältere Kopie dieser Datei auf einem anderen Node — falls diese Soul dort noch aktiv ist, hat sich deren Cert nicht geändert und funktioniert dort weiterhin, die beiden sind ab jetzt getrennt."
   },
   "topbar": {
     "search_placeholder": "Suchen oder Befehl…",

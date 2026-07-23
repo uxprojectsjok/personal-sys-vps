@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.16] — 2026-07-23
+
+**Added: an explanatory alert when importing an existing sys.md onto a node that hasn't seen that soul_id before — clarifies that the node just issued its own independent cert, following up on the previous release's sidebar fix from the same investigation.**
+
+`soul_cert` is an HMAC of `(node's own master key, soul_id, cert_version)` — inherently node-scoped. Uploading an existing sys.md onto a different node (via the "Login with soul" flow on `/`) creates an independently-keyed registration under the same `soul_id`, not a continuation of the original node's cert. Previously this happened silently — the app auto-downloads a corrected sys.md afterward, but nothing explained that the file just downloaded belongs to *this* node only, and an older copy shouldn't be reused elsewhere.
+
+**Added**
+- `app/composables/useSoul.js`: `importAndSetup()` now returns `certMigrated: true` when the import was a first-registration on this node (`first_setup`) and the uploaded file already carried a different cert than the one just issued.
+- `app/pages/index.vue`: new `warnIfCertMigrated()` helper, called after the automatic post-import `exportAsBlob()` download in all three places it happens (single-hoster first setup, multi-hoster admin setup, invite-token registration). Shows a `confirmAsk` dialog (same pattern already used for import errors on this page) explaining the node-scoped cert and that the just-downloaded file is the one to keep using here.
+- `i18n/locales/{en,de}.json`: new `index.cert_migrated_title`/`index.cert_migrated_message` keys.
+
+Scoped precisely to the cross-node-import case — brand-new souls created via `createNew()` never carry a pre-existing cert, so this never fires for them.
+
+---
+
 ## [1.2.15] — 2026-07-23
 
 **Fixed: the sidebar showed "Public Node" on a Private Node, on 13 of the 15 pages that render it — reported after a fresh Personal-Node install correctly configured as Private during setup.**

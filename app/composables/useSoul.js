@@ -287,6 +287,13 @@ ${idea ? idea : "*Not yet described.*"}
       isLoaded.value    = true;
       save();
 
+      // Node-übergreifender Import: dieselbe soul_id existiert hier zum ersten Mal
+      // (first_setup) UND die hochgeladene Datei hatte bereits einen Cert (oldCert),
+      // der sich vom hier neu ausgestellten unterscheidet. soul_cert ist ein HMAC aus
+      // (Node-eigener Master-Key, soul_id, cert_version) — node-gebunden. Diese
+      // Registrierung ist unabhängig von der Quelle, kein Fortführen des alten Certs.
+      const certMigrated = !!(data.first_setup && oldCert && oldCert !== newCert);
+
       if (data.first_setup) {
         if (data.admin_token && data.is_soul_admin) {
           if (!opts.silent) firstSetupToken.value = data.admin_token;
@@ -297,7 +304,7 @@ ${idea ? idea : "*Not yet described.*"}
       }
 
       await pushToServer();
-      return { ok: true };
+      return { ok: true, certMigrated };
     } catch {
       return { ok: false, error: 'network_error' };
     }

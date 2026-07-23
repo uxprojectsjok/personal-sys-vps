@@ -167,7 +167,9 @@
       "import_failed": "Import failed ({error}).",
       "reset_failed": "Reset failed: {error}",
       "import_title": "Import error"
-    }
+    },
+    "cert_migrated_title": "New cert issued on this node",
+    "cert_migrated_message": "This soul wasn't known on this node yet, so it was registered here with its own new cert — independent from any cert on the node you imported it from. The file just downloaded is the one to use on this node. Don't reuse an older copy of this file on a different node, and if this soul is still active elsewhere, that node's cert hasn't changed and still works there — the two are now separate."
   },
   "topbar": {
     "search_placeholder": "Search or command…",
