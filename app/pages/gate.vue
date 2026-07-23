@@ -146,13 +146,21 @@ onMounted(async () => {
   nextUrl.value = route.query.next?.startsWith('/') ? route.query.next : '/'
 
   let selfRegistrationOpen = true
+  let statusKnown = false
   try {
     const status = await $fetch('/api/gate-status')
     soulRegistered.value    = status.soul_registered ?? false
     multiHoster.value       = status.multi_hoster    ?? false
     selfRegistrationOpen    = status.self_registration !== false
+    statusKnown = true
   } catch {
     soulRegistered.value = false
+    // multiHoster.value intentionally left untouched here — it defaults to
+    // false (ref(false)), which previously made a failed status fetch on a
+    // real Multi-Hoster node silently fall into the single-hoster biometric
+    // branch below (checking local WebAuthn creds against whatever soul_id
+    // happens to be in localStorage) instead of correctly staying unknown.
+    // statusKnown gates that branch now so a fetch failure fails safe.
   }
 
   // Multi-hoster with no soul yet → registration happens on /join, not here.
@@ -174,8 +182,10 @@ onMounted(async () => {
     }
   }
 
-  // Biometric: only for single-hoster with saved creds (multi-hoster biometric unreliable)
-  if (!multiHoster.value) {
+  // Biometric: only for confirmed single-hoster with saved creds (multi-hoster
+  // biometric unreliable) — statusKnown guards against treating an unknown
+  // status (failed /api/gate-status fetch) as "single-hoster" by accident.
+  if (statusKnown && !multiHoster.value) {
     lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
     creds.initForSoul(lastSoulId.value)
     hasSavedCreds.value = creds.hasCreds.value

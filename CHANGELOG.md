@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.23] — 2026-07-23
+
+**Fixed: a failed `/api/gate-status` fetch silently left `multiHoster` at its default `false`, making a real Multi-Hoster node incorrectly fall into the single-hoster biometric-unlock branch — found live on `personal-sys-vps-private` (`agency.uxprojects-jok.com`), where that branch is explicitly meant to be unreachable ("multi-hoster biometric unreliable").**
+
+**Root cause:** `app/pages/gate.vue`'s `onMounted()` fetches `/api/gate-status` and sets `multiHoster.value` from the response — but the `catch` block only reset `soulRegistered.value`, never touched `multiHoster.value`. Since the ref defaults to `false`, any fetch failure (network hiccup, timing) made the node look single-hoster to the rest of `onMounted()`, which then ran the single-hoster-only biometric check (`localStorage`/saved-creds lookup) on a node where that path is supposed to be impossible.
+
+**Fixed**
+- `app/pages/gate.vue`: new `statusKnown` flag, only set `true` on a successful status fetch. The biometric branch now requires `statusKnown && !multiHoster.value` instead of just `!multiHoster.value` — an unknown status no longer gets silently treated as "confirmed single-hoster."
+
+---
+
 ## [1.2.22] — 2026-07-23
 
 **Added: `/mcp/discover` — a public, unauthenticated MCP endpoint so an external agent with no credentials yet can browse the souls hosted on a Multi-Hoster node by tag/topic, before deciding how to connect to one.**
