@@ -9,7 +9,7 @@
           <h1>Save Your Soul<em>.</em></h1>
           <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
           <div style="display:flex;flex-direction:column;gap:12px;width:100%">
-            <button v-if="allowCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
+            <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
               {{ $t('index.create_soul') }}
               <SysIcon name="arrow" style="width:18px;height:18px" />
             </button>
@@ -202,7 +202,7 @@
             <h2 class="login-title">{{ $t('index.login_modal_title') }}</h2>
             <p class="login-sub">
               {{ $t('index.login_modal_sub') }}
-              <template v-if="allowCreateSoul">
+              <template v-if="canCreateSoul">
                 <br><em>{{ $t('index.login_modal_sub_import') }}</em>
               </template>
             </p>
@@ -360,7 +360,8 @@ watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate:
 // "/" ohne aktive Session (kein hasSoul) auf so einem Node landet man sonst
 // immer auf dieser Seite, obwohl der Node explizit einem Besitzer gehört —
 // still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
-const gateRedirectChecked = ref(false)
+const gateRedirectChecked  = ref(false)
+const selfRegistrationOpen = ref(true)
 
 onMounted(async () => {
   fetchNodeStatus()
@@ -368,6 +369,7 @@ onMounted(async () => {
   if (!hasSoul.value) {
     try {
       const status = await $fetch('/api/gate-status')
+      selfRegistrationOpen.value = status?.self_registration !== false
       if (status?.soul_registered && !status?.multi_hoster) {
         window.location.replace('/gate')
         return
@@ -376,6 +378,12 @@ onMounted(async () => {
   }
   gateRedirectChecked.value = true
 })
+
+// Node-Lock (allowCreateSoul) und Self-Registration sind zwei unabhängige Sperren —
+// ein Multi-Hoster-Node ist nie node-locked, kann Neuregistrierung aber trotzdem
+// über self_registration hart deaktiviert haben (reiner Access-Point für Souls, die
+// der Betreiber selbst extern anlegt, kein öffentliches Self-Service-Signup).
+const canCreateSoul = computed(() => allowCreateSoul.value && selfRegistrationOpen.value)
 
 // ── Modal-State ───────────────────────────────────────────────────────────
 const createSoulOpen    = ref(false)

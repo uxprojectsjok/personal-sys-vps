@@ -23,8 +23,18 @@ do
   end
 end
 
+local self_registration = true
+do
+  local f = io.open("/var/lib/sys/config/self_registration", "r")
+  if f then
+    local v = f:read("*a"); f:close()
+    self_registration = v ~= "false"
+  end
+end
+
 ngx.status = 200
 ngx.say(cjson.encode({
-  soul_registered = souls_exist,
-  multi_hoster    = cfg.get_multi_hoster() == true,
+  soul_registered   = souls_exist,
+  multi_hoster      = cfg.get_multi_hoster() == true,
+  self_registration = self_registration,
 }))

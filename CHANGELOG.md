@@ -8,6 +8,26 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.20] — 2026-07-23
+
+**Added: ability to fully disable self-registration on a Multi-Hoster node — for operators who want the node to act as a pure access-point for souls they add directly themselves, not a public signup surface.**
+
+**Root cause / gap found:** two independent, previously-unrestricted paths let anyone register a brand-new soul on a Multi-Hoster node:
+- `gate_auth.lua`'s invite-token fallback — anyone who obtained the `invite_token` could register.
+- `soul_cert.lua`'s "new soul" branch (`if not cf then ...`) — issues a cert for **any** unrecognized `soul_id` with **no check at all**, not even an invite token. This is the path `index.vue`'s `importAndSetup()` actually calls, and it was open regardless of the invite-token gate.
+
+**Added**
+- `/var/lib/sys/config/self_registration` flag file, same pattern as the existing `public_node` file — absent/`true` preserves current behavior (registration open), `false` closes both paths above.
+- `lua/gate_auth.lua`: invite-token fallback now checked against the flag.
+- `lua/soul_cert.lua`: new-soul branch now checked against the flag (Multi-Hoster only — single-hoster's existing node-soul-lock already prevents more than one soul regardless).
+- `lua/gate_status.lua`: exposes `self_registration` in its response.
+- `app/pages/join.vue`: redirects to `/gate` if `self_registration === false`, alongside its existing multi-hoster/already-registered guards.
+- `app/pages/index.vue`: new `canCreateSoul` computed (`allowCreateSoul && selfRegistrationOpen`) replaces the bare node-lock check on both create-soul UI surfaces (landing button, sign-in modal's import hint).
+
+No default behavior change — the flag file doesn't exist anywhere by default, so every install keeps working exactly as before until an operator explicitly creates it.
+
+---
+
 ## [1.2.19] — 2026-07-23
 
 **Fixed: `soul_anchor_history` in sys.md lost its earlier entries instead of accumulating them — reported after a second anchor overwrote the genesis entry from the day before with a single new one.**

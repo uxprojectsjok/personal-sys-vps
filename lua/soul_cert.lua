@@ -100,6 +100,25 @@ if multi_hoster then
   if psk and psk ~= "" then active_key = psk end
 end
 
+-- Multi-Hoster + Neuregistrierung gesperrt: dieser Endpoint stellt für eine unbekannte
+-- soul_id bislang völlig ungeprüft einen Cert aus (kein invite_token-Check hier — das
+-- passiert nur in gate_auth.lua, einem separaten Pfad). Ohne diese Sperre könnte jeder,
+-- der eine beliebige neue UUID kennt, hierüber direkt eine neue Soul anlegen, selbst
+-- wenn Neuregistrierung über gate_auth.lua bereits deaktiviert ist. Single-Hoster ist
+-- über den Node-Soul-Lock oben bereits abgedeckt (nur eine Soul, egal welcher Pfad).
+if multi_hoster and not cf then
+  local f = io.open("/var/lib/sys/config/self_registration", "r")
+  if f then
+    local v = f:read("*a"); f:close()
+    if v == "false" then
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"registration_closed","message":"Neuregistrierung auf diesem Node ist deaktiviert."}')
+      return
+    end
+  end
+end
+
 if cf then
   cf:close()
   -- Bestehende Soul → proof erforderlich

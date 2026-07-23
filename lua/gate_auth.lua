@@ -12,6 +12,19 @@ local hmac  = require("hmac_helper")
 
 local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
 
+-- Gleiches Muster wie is_public_node() in soul_amortization.lua/soul_pay_x402.lua —
+-- Default bleibt offen für Altinstallationen ohne die Datei (bisheriges Verhalten:
+-- Invite-Token erlaubt Neuregistrierung). Ein Multi-Hoster-Betreiber, der Souls nur
+-- selbst extern anlegt und den Node ausschließlich als Access-Point für die eigenen
+-- Souls betreibt, kann Neuregistrierung hierüber hart abschalten — Login mit einem
+-- bereits bestehenden Soul-Cert bleibt davon unberührt.
+local function is_self_registration_open()
+  local f = io.open("/var/lib/sys/config/self_registration", "r")
+  if not f then return true end
+  local v = f:read("*a"); f:close()
+  return v ~= "false"
+end
+
 local function read_master_fresh()
   local path = (type(cfg.get_master_path) == "function") and cfg.get_master_path()
                or MASTER_PATH_GLOBAL
@@ -146,8 +159,10 @@ if souls_exist then
       handle:close()
     end
     if bound_soul_id == "" then
-      -- Kein Soul-Cert match → Invite-Token prüfen
-      local invite_tok = type(master.invite_token) == "string" and master.invite_token or ""
+      -- Kein Soul-Cert match → Invite-Token prüfen (nur wenn Neuregistrierung erlaubt ist)
+      local invite_tok = is_self_registration_open()
+        and (type(master.invite_token) == "string" and master.invite_token or "")
+        or ""
       if invite_tok ~= "" and cert == invite_tok then
         -- Gültiger Einladungscode → Gate-Zugang ohne Soul-Binding (Neuregistrierung)
         ngx.log(ngx.INFO, "[gate_auth] Invite-Token Login akzeptiert")

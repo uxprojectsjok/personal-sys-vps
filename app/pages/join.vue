@@ -97,7 +97,9 @@ const nextUrl = ref('/')
 onMounted(async () => {
   nextUrl.value = route.query.next?.startsWith('/') ? route.query.next : '/'
 
-  // Guard: /join only valid on multi-hoster with no soul registered yet
+  // Guard: /join only valid on multi-hoster with no soul registered yet and
+  // self-registration actually enabled (operator may run this node as a
+  // pure access-point for souls added directly, not public self-service)
   try {
     const status = await $fetch('/api/gate-status')
     if (!status.multi_hoster) {
@@ -106,6 +108,10 @@ onMounted(async () => {
     }
     if (status.soul_registered) {
       // Soul already registered → go to gate to authenticate
+      window.location.href = '/gate'
+      return
+    }
+    if (status.self_registration === false) {
       window.location.href = '/gate'
       return
     }
