@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.19] — 2026-07-23
+
+**Fixed: `soul_anchor_history` in sys.md lost its earlier entries instead of accumulating them — reported after a second anchor overwrote the genesis entry from the day before with a single new one.**
+
+**Root cause:** `useChainAnchor.js`'s `anchorSoul()` treats `chainMetrics.value.anchor_count` as the validated on-chain truth to detect a stale local history (e.g. after a contract migration) and discards the local array on any mismatch. But `chainMetrics` is only ever fetched fire-and-forget on page mount (`app/pages/anchor.vue`'s `onMounted`, not awaited, no loading-gate on the anchor button) — so a second anchor triggered before that background fetch resolves finds `chainMetrics.value` still `null`. The old code defaulted that to `serverAnchorCount = 0` via `?? 0`, which almost never matches the real local history length, so it wiped the entire array — including genuine prior entries — right before writing the new one, and even re-marked the new entry `genesis: true`.
+
+**Fixed**
+- `app/composables/useChainAnchor.js`: `anchorSoul()` now awaits `fetchChainMetrics()` once if `chainMetrics.value` is still `null` at this point, and only discards local history when a real numeric `anchor_count` was actually returned and disagrees with it — unknown/unreachable server metrics no longer force a destructive wipe.
+
+**Migration note:** this only prevents *future* data loss. A soul that already lost history entries before this fix can't have them silently reconstructed — the entries were locally-tracked convenience metadata, not the on-chain source of truth itself.
+
+---
+
 ## [1.2.18] — 2026-07-23
 
 **Fixed: Garmin Health Sync stayed stuck on "requires MFA" even after a token save, and background syncs could crash outright — reported after a soul's automated sync silently produced nothing in the Health page while Settings still showed a stale success timestamp.**

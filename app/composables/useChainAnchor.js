@@ -770,11 +770,19 @@ export function useChainAnchor() {
       // Contract gehören — lokale History verwerfen statt blind weiter draufzuschreiben.
       // Ohne diesen Check wächst soul_anchor_history für immer mit Einträgen, die nie
       // wieder zum tatsächlichen On-Chain-Zustand passen.
-      const serverAnchorCount = chainMetrics.value?.anchor_count ?? 0;
-      if (anchorHistory.length !== serverAnchorCount) anchorHistory = [];
+      // chainMetrics wird beim Mount nur fire-and-forget geholt (kein Await, kein Gate
+      // am Anchor-Button) — ist der erste Anchor-Klick schneller als dieser Request,
+      // war chainMetrics.value hier bisher noch null. Deshalb jetzt gezielt nachholen,
+      // und bei weiterhin fehlenden Server-Daten die lokale History NICHT wegen eines
+      // erzwungenen "0" für unbekannt löschen (das war der eigentliche Datenverlust-Bug).
+      if (chainMetrics.value === null) await fetchChainMetrics();
+      const serverAnchorCount = chainMetrics.value?.anchor_count;
+      if (typeof serverAnchorCount === 'number' && anchorHistory.length !== serverAnchorCount) {
+        anchorHistory = [];
+      }
       const histEntry = { tx: tx.hash, ts: new Date().toISOString(), size: soulSize };
       // Genesis nur setzen wenn weder lokale History noch Server-Metriken ältere Anchors kennen
-      if (anchorHistory.length === 0 && serverAnchorCount === 0) histEntry.genesis = true;
+      if (anchorHistory.length === 0 && (serverAnchorCount ?? 0) === 0) histEntry.genesis = true;
       anchorHistory.push(histEntry);
       const histJson = JSON.stringify(anchorHistory);
       if (/soul_anchor_history:/m.test(soulContent.value)) {
