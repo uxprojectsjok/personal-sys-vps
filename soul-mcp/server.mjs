@@ -28,6 +28,7 @@ import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
 import { runSoulDraw, formatSoulDrawSummary } from './tools/soul_draw.mjs';
+import { register as registerSoulDiscoverLocal } from './tools/soul_discover_local.mjs';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { VerifyError, SettleError } from '@x402/core/types';
 import { listVaultSharedFs, formatVaultSharedList } from './tools/vault_shared_list.mjs';
@@ -340,6 +341,43 @@ async function handleMcp(req, res) {
 app.get('/mcp',    handleMcp);
 app.post('/mcp',   handleMcp);
 app.delete('/mcp', handleMcp);
+
+// Public, unauthenticated MCP entry point — the only tool registered is
+// soul_discover_local (node-local soul directory, browsable by tag/topic with
+// zero credentials). Everything else (soul_read/write, chat, payment tools) is
+// intentionally absent — an agent with no soul_cert/token yet needs a way to see
+// what's hosted here before deciding whether to pay (x402/PayPal) or connect
+// with an existing cert via /mcp?soul_id=<id>. No token check at all, unlike
+// handleMcp() above which rejects any request with no Authorization header.
+async function handleMcpDiscover(req, res) {
+  const server = new McpServer({ name: 'soul-mcp-discover', version: '1.0.0' });
+  registerSoulDiscoverLocal(server);
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // stateless
+  });
+
+  res.on('close', async () => {
+    try { await transport.close(); await server.close(); } catch { /* cleanup */ }
+  });
+
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (err) {
+    console.error('[MCP Discover] Request-Fehler:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Interner Fehler.' },
+        id: null,
+      });
+    }
+  }
+}
+
+app.get('/mcp/discover',  handleMcpDiscover);
+app.post('/mcp/discover', handleMcpDiscover);
 
 // Gesundheits-Check
 app.get('/health', (_req, res) => {
@@ -1392,13 +1430,19 @@ app.get('/internal/debug-soul/:soul_id', async (req, res) => {
 });
 
 // ── Soul-Discovery — liest aus lokalem WebSocket-Index (O(1)) ────────────────
-// GET /internal/discover-souls?q=&amortized=&limit=
+// GET /internal/discover-souls?q=&amortized=&limit=&local=
 app.get('/internal/discover-souls', (req, res) => {
   const limit     = Math.min(parseInt(req.query.limit || '20', 10), 100);
   const amortized = req.query.amortized === 'true';
   const q         = (req.query.q || '').trim();
+  const local     = req.query.local === 'true';
 
-  const souls = querySouls({ q, amortized, discoverableOnly: true, limit });
+  // querySouls() returns the global, cross-node chain-scanned index — same
+  // mcp_endpoint-prefix filter /llms.txt uses (line ~1439 below) restricts to
+  // souls actually running on this node, for soul_discover_local's public,
+  // unauthenticated /mcp/discover endpoint.
+  let souls = querySouls({ q, amortized, discoverableOnly: true, limit: local ? 100 : limit });
+  if (local) souls = souls.filter(s => s.mcp_endpoint?.startsWith(BASE_URL)).slice(0, limit);
   const stats = indexStats();
 
   res.json({

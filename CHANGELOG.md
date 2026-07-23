@@ -8,6 +8,24 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.22] — 2026-07-23
+
+**Added: `/mcp/discover` — a public, unauthenticated MCP endpoint so an external agent with no credentials yet can browse the souls hosted on a Multi-Hoster node by tag/topic, before deciding how to connect to one.**
+
+Most of the pieces for this already existed but weren't quite wired together for the "no credentials yet" case:
+- `GET /llms.txt` (public, no auth) already renders this exact content as plain text — every soul on this node, tags, price, `mcp_endpoint`, x402/PayPal instructions — but isn't callable as an MCP tool.
+- The existing `soul_discover` MCP tool does real tag search, but queries the **global**, cross-node chain-scanned index (no domain filter), and is only reachable *inside* an already-authenticated `/mcp` session — `handleMcp()` rejects any request with no `Authorization` header before any tool gets registered, so there was no anonymous MCP entry point at all.
+- Connecting to a specific soul afterward (`GET/POST /mcp?soul_id=<id>`) already handles every case needed: existing `soul_cert` → immediate (peer-cert branch). x402 → fully built (`lua/soul_pay_x402.lua`). PayPal → fully manual today (operator reviews, hand-issues a token) — by design, no automation gap there.
+
+**Added**
+- `soul-mcp/tools/soul_discover_local.mjs`: new tool, adapted from `soul_discover.mjs`'s query/render pattern but always scoped to this node (`local=true`). Kept as a separate file so the existing global-search tool (used inside authenticated sessions) stays untouched.
+- `soul-mcp/server.mjs`: `/internal/discover-souls` accepts a new `local=true` param, applying the same `mcp_endpoint`-prefix filter `/llms.txt` already uses. New route `/mcp/discover` (GET+POST), modeled on `handleMcp()`'s transport setup but with no token check at all — registers only `soul_discover_local`, nothing else (no read/write/chat/payment tools).
+- No nginx changes needed — `location /mcp { proxy_pass .../mcp; }` is a prefix match with no `access_by_lua_file`, so `/mcp/discover` already proxies through correctly.
+
+Verified live on `personal-sys-vps-private` (`agency.uxprojects-jok.com`): `POST /mcp` still 401 with no token (unchanged). `POST /mcp/discover` with no token → 200, `tools/list` returns exactly `soul_discover_local`, `tools/call` returns "No souls hosted on this node yet." Ported here identically — generic Multi-Hoster infrastructure.
+
+---
+
 ## [1.2.21] — 2026-07-23
 
 **Fixed a /gate ↔ /join redirect loop possible since v1.2.20's `self_registration` flag — found live on a node with 0 souls and registration closed.**
