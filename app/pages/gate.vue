@@ -101,6 +101,14 @@
         </div>
       </Transition>
     </div>
+
+    <div class="gate-legal-links">
+      <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
+    </div>
   </div>
 </template>
 
@@ -378,4 +386,25 @@ const showPw = ref(false)
 
 .gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
 .gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
+
+.gate-legal-links {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.04em;
+  z-index: 15;
+  max-width: calc(100vw - 32px); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.gate-legal-links::-webkit-scrollbar { display: none; }
+.gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
+.gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
+.gate-legal-sep { color: var(--line-2); }
+
+@media (max-width: 640px) {
+  .gate-legal-links {
+    flex-direction: column; gap: 6px; bottom: 16px;
+    max-width: calc(100vw - 32px); overflow-x: visible; white-space: normal;
+  }
+  .gate-legal-sep { display: none; }
+}
 </style>

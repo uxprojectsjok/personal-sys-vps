@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.12] — 2026-07-23
+
+**Multi-Hoster registration (`/join`) now matches the reveal-on-demand pattern already used by `/gate`, and both pages gained a legal-links footer that was previously missing on `/gate` (and on the single-hoster landing, `/`).**
+
+**Changed**
+- `app/pages/join.vue`: the registration form (password + invite code) is now hidden behind a discreet top-right reveal button by default, with a close button to return to the blank landing — same rationale as `/gate`: this page can be linked externally and shouldn't visually announce itself as an access point. Subtitle text enlarges to fill the now-more-prominent default state.
+- `app/pages/gate.vue`: added the fixed-to-viewport-bottom Legal Notice · Privacy Policy · License footer (was present nowhere on this page before).
+- `app/pages/index.vue`: added the same legal-links footer to the single-hoster landing card, stacking to a column on mobile so the links no longer overflow the screen edges.
+- `app/components/SysMark.vue`: new optional `operator` prop — renders a small credit line below the logo when set, empty/opt-in by default, for operators who want to identify themselves on their gate/join/landing pages.
+- `app/assets/css/sys-v2.css`: `.gate`/`.gate-card` spacing adjusted (more bottom clearance, larger max-width, top padding) to make room for the new fixed footer without overlapping the card content; mobile logo width capped consistently.
+- `i18n/locales/{en,de}.json`: added `join.reveal_aria` for the new reveal-trigger button's accessible label.
+- `public/sw.js`: cache version bump (v13 → v14) for the app-shell changes above.
+
+---
+
 ## [1.2.11] — 2026-07-23
 
 **Added: `reset.sh`, `recover-password.sh`, `deinstall.sh` — these were only ever distributed via the separate `sys-installer` repo, `.gitignore`d out of this one (grouped with `init.sh`). They belong here: unlike `init.sh` (a live-generated, per-run script with node-specific substitutions), these are static operator tools with no generation step, and a node operator working from this repo had no way to find them.**

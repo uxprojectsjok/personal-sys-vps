@@ -829,8 +829,17 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .tl-body { font-size: 14px; color: var(--fg); line-height: 1.6; }
 
 /* ── Gate / login ───────────────────────────────────────────────────────── */
-.gate { height: 100vh; height: 100dvh; display: grid; place-items: center; background: var(--bg); padding: 24px; }
-.gate-card { width: 100%; max-width: 400px; text-align: center; }
+/* Extra bottom padding pushes the vertically-centered card up, clearing room
+   for the fixed legal-links footer below it so the two never overlap. */
+.gate { height: 100vh; height: 100dvh; display: grid; place-items: center; background: var(--bg); padding: 24px; padding-bottom: 100px; }
+.gate-card { width: 100%; max-width: 480px; text-align: center; padding-top: 32px; }
+
+@media (max-width: 640px) {
+  /* Footer wraps to 3 stacked lines on mobile (see gate.vue/join.vue/index.vue
+     .gate-legal-links media query) -- needs more clearance than desktop's 1 row. */
+  .gate { padding-bottom: 180px; }
+  .gate .sys-mark { width: 240px !important; }
+}
 .gate-sub { color: var(--fg); font-size: 15px; margin-bottom: 40px; }
 .gate-orb { width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 30px;
   background: radial-gradient(circle at 34% 30%, var(--accent-bright), var(--accent-deep) 70%, transparent);

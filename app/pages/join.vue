@@ -1,50 +1,86 @@
 <template>
   <div class="gate">
+    <!-- Blanke Landing per Default, wie gate.vue — die Registrierungsmaske
+         bekommt keine Aufmerksamkeit, bis sie gezielt aufgerufen wird. -->
+    <button
+      v-if="!revealed"
+      class="gate-reveal-trigger"
+      @click="revealed = true"
+      :aria-label="$t('join.reveal_aria')"
+      :title="$t('join.reveal_aria')"
+    >
+      <SysIcon name="arrow" style="width:14px;height:14px" />
+    </button>
+
+    <button
+      v-if="revealed"
+      class="gate-close-trigger"
+      @click="revealed = false"
+      :aria-label="$t('gate.close_aria')"
+      :title="$t('gate.close_aria')"
+    >
+      <SysIcon name="close" style="width:16px;height:16px" />
+    </button>
+
     <div class="gate-card">
-      <SysMark />
-      <div class="gate-sub">{{ $t('join.subtitle') }}</div>
+      <template v-if="!revealed">
+        <SysMark size="220px" />
+        <div class="gate-sub join-sub">{{ $t('join.subtitle') }}</div>
+      </template>
 
-      <h1>{{ $t('join.heading') }}<em>.</em></h1>
-      <p class="welcome">{{ $t('join.intro') }}</p>
-      <p v-if="error" class="gate-error">{{ error }}</p>
+      <Transition name="gate-reveal">
+        <div v-if="revealed">
+          <h1>{{ $t('join.heading') }}<em>.</em></h1>
+          <p class="welcome">{{ $t('join.intro') }}</p>
+          <p v-if="error" class="gate-error">{{ error }}</p>
 
-      <form @submit.prevent="submit" style="width:100%">
-        <div class="gate-field">
-          <input
-            v-model="password"
-            :type="showPw ? 'text' : 'password'"
-            autocomplete="new-password"
-            :placeholder="$t('join.password_placeholder')"
-            :disabled="loading"
-            required
-          />
-          <button type="button" class="reveal" @click="showPw = !showPw" :aria-label="$t('gate.show_password')">
-            <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
-          </button>
+          <form @submit.prevent="submit" style="width:100%">
+            <div class="gate-field">
+              <input
+                v-model="password"
+                :type="showPw ? 'text' : 'password'"
+                autocomplete="new-password"
+                :placeholder="$t('join.password_placeholder')"
+                :disabled="loading"
+                required
+              />
+              <button type="button" class="reveal" @click="showPw = !showPw" :aria-label="$t('gate.show_password')">
+                <SysIcon :name="showPw ? 'eyeoff' : 'eye'" style="width:18px;height:18px" />
+              </button>
+            </div>
+            <div class="gate-field" style="margin-bottom:14px">
+              <input
+                v-model="inviteCode"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                :placeholder="$t('join.invite_placeholder')"
+                :aria-label="$t('join.invite_aria')"
+                :disabled="loading"
+                style="font-family:var(--mono);font-size:13px"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
+              <span v-if="loading" class="gate-spinner" />
+              {{ loading ? $t('join.registering') : $t('join.register') }}
+              <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
+            </button>
+          </form>
+
+          <div class="gate-foot">
+            <span class="live-dot" />
+            {{ $t('join.footer') }}
+          </div>
         </div>
-        <div class="gate-field" style="margin-bottom:14px">
-          <input
-            v-model="inviteCode"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            :placeholder="$t('join.invite_placeholder')"
-            :aria-label="$t('join.invite_aria')"
-            :disabled="loading"
-            style="font-family:var(--mono);font-size:13px"
-            required
-          />
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg" :disabled="loading">
-          <span v-if="loading" class="gate-spinner" />
-          {{ loading ? $t('join.registering') : $t('join.register') }}
-          <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
-        </button>
-      </form>
+      </Transition>
 
-      <div class="gate-foot">
-        <span class="live-dot" />
-        {{ $t('join.footer') }}
+      <div class="gate-legal-links">
+        <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+        <span class="gate-legal-sep">·</span>
+        <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+        <span class="gate-legal-sep">·</span>
+        <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
       </div>
     </div>
   </div>
@@ -61,6 +97,7 @@ const inviteCode = ref('')
 const error      = ref('')
 const loading    = ref(false)
 const showPw     = ref(false)
+const revealed   = ref(false)
 
 const route   = useRoute()
 const nextUrl = ref('/')
@@ -125,4 +162,56 @@ async function submit() {
 .gate-error { font-size: 12px; color: var(--c-err, #e06c75); border-left: 2px solid currentColor; padding-left: 10px; line-height: 1.6; margin: 0 0 14px; text-align: left; }
 .gate-spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: gate-spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
 @keyframes gate-spin { to { transform: rotate(360deg); } }
+
+/* join-sub: eigener Override statt globalem .gate-sub (sys-v2.css) zu ändern
+   — betrifft sonst auch index.vue, das nicht größer werden soll. Größer weil
+   das Formular jetzt standardmäßig versteckt ist (siehe gate-reveal-trigger
+   oben) und der sichtbare Bereich sonst zu leer wirkt. */
+.join-sub { font-size: 20px; margin-bottom: 32px; }
+
+.gate-legal-links {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
+  font-family: var(--mono); font-size: 16px; letter-spacing: 0.04em;
+  z-index: 15;
+  max-width: calc(100vw - 32px); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.gate-legal-links::-webkit-scrollbar { display: none; }
+.gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
+.gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
+.gate-legal-sep { color: var(--line-2); }
+
+@media (max-width: 640px) {
+  .gate-legal-links {
+    flex-direction: column; gap: 6px; bottom: 16px;
+    max-width: calc(100vw - 32px); overflow-x: visible; white-space: normal;
+  }
+  .gate-legal-sep { display: none; }
+}
+
+.gate-reveal-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.gate-reveal-trigger:hover, .gate-reveal-trigger:focus-visible {
+  background: var(--surface-2); color: var(--accent-bright);
+}
+
+.gate-close-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg-3); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.gate-close-trigger:hover, .gate-close-trigger:focus-visible {
+  background: var(--surface-2); color: var(--fg);
+}
+
+.gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
+.gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
 </style>

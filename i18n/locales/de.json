@@ -75,6 +75,7 @@
   },
   "join": {
     "subtitle": "Multi-Hoster Node",
+    "reveal_aria": "Registrieren",
     "heading": "Neu hier",
     "intro": "Gib das Node-Passwort und deinen Einladungscode ein, um deine Soul auf diesem Node zu registrieren.",
     "password_placeholder": "Node-Passwort",

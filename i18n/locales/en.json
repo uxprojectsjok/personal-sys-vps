@@ -75,6 +75,7 @@
   },
   "join": {
     "subtitle": "Multi-Hoster Node",
+    "reveal_aria": "Register",
     "heading": "New here",
     "intro": "Enter the node password and your invite code to register your soul on this node.",
     "password_placeholder": "Node password",
