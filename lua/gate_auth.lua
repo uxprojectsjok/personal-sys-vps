@@ -101,6 +101,19 @@ do
   end
 end
 
+-- Multi-Hoster + keine Soul vorhanden + Neuregistrierung deaktiviert: der Block
+-- unten (Cert-Pflicht) läuft nur "if souls_exist then" — dieser Node-Zustand
+-- (0 Souls, gerade neu auf Multi-Hoster umgestellt, self_registration explizit
+-- zu) fiel bislang komplett daran vorbei und ließ mit korrektem Passwort allein
+-- durch, ganz ohne Cert-Check. Gleiche Absicht wie der Invite-Token-Check
+-- unten, nur für den "noch nie eine Soul registriert" Fall.
+if multi_hoster and not souls_exist and not is_self_registration_open() then
+  ngx.sleep(0.5)
+  ngx.status = 401
+  ngx.say('{"error":"invalid_credentials","message":"Neuregistrierung auf diesem Node ist deaktiviert."}')
+  return
+end
+
 if souls_exist then
   -- Cert ist immer Pflicht sobald Souls existieren
   if cert == "" then

@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.24] — 2026-07-23
+
+**Fixed: `self_registration:false` (v1.2.20) didn't actually block anything on a Multi-Hoster node with zero souls — the correct node password alone was enough to get a `sys_gate` session, completely bypassing the lock. Found live on `personal-sys-vps-private` (`agency.uxprojects-jok.com`) right after entering the node password there.**
+
+**Root cause:** `gate_auth.lua`'s entire cert-requirement block — including the `self_registration` check added in v1.2.20 — is wrapped in `if souls_exist then`. That's correct for the steady-state case (a soul already exists, cert is mandatory), but with zero souls the code fell straight from password verification to issuing a gate token, skipping the entire block — cert/invite-code content was never even inspected, and `self_registration` had no effect at all on a genuinely fresh node. Actual soul creation was never at risk — `soul_cert.lua`'s own `self_registration` check (also from v1.2.20) sits outside any `souls_exist` conditional and correctly rejects every attempt regardless. This bug was specifically about the *gate session* being granted when it shouldn't have been.
+
+**Fixed**
+- `lua/gate_auth.lua`: new guard right after computing `souls_exist` — `if multi_hoster and not souls_exist and not is_self_registration_open() then` rejects with 401 before any token is issued. Same intent as the existing invite-token check just below it, covering the "zero souls yet" case that check never reaches.
+
+---
+
 ## [1.2.23] — 2026-07-23
 
 **Fixed: a failed `/api/gate-status` fetch silently left `multiHoster` at its default `false`, making a real Multi-Hoster node incorrectly fall into the single-hoster biometric-unlock branch — found live on `personal-sys-vps-private` (`agency.uxprojects-jok.com`), where that branch is explicitly meant to be unreachable ("multi-hoster biometric unreliable").**
