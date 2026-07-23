@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.21] — 2026-07-23
+
+**Fixed a /gate ↔ /join redirect loop possible since v1.2.20's `self_registration` flag — found live on a node with 0 souls and registration closed.**
+
+`gate.vue` redirected to `/join` whenever `multi_hoster && !soul_registered`, with no awareness that `/join` (as of v1.2.20) redirects straight back to `/gate` if `self_registration === false`. On a node with no souls yet and self-registration disabled, this bounced forever between the two pages.
+
+**Fixed**
+- `app/pages/gate.vue`: only redirects to `/join` if self-registration is actually open; otherwise falls back to its own normal password/cert form, which is the only valid path left when self-registration is closed (log in with an existing soul_cert).
+
+---
+
 ## [1.2.20] — 2026-07-23
 
 **Added: ability to fully disable self-registration on a Multi-Hoster node — for operators who want the node to act as a pure access-point for souls they add directly themselves, not a public signup surface.**

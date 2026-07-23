@@ -145,17 +145,22 @@ onMounted(async () => {
 
   nextUrl.value = route.query.next?.startsWith('/') ? route.query.next : '/'
 
+  let selfRegistrationOpen = true
   try {
     const status = await $fetch('/api/gate-status')
-    soulRegistered.value = status.soul_registered ?? false
-    multiHoster.value    = status.multi_hoster    ?? false
+    soulRegistered.value    = status.soul_registered ?? false
+    multiHoster.value       = status.multi_hoster    ?? false
+    selfRegistrationOpen    = status.self_registration !== false
   } catch {
     soulRegistered.value = false
   }
 
   // Multi-hoster with no soul yet → registration happens on /join, not here.
+  // But only if /join can actually do anything — if self-registration is closed
+  // (operator-only access-point node), /join immediately redirects back here,
+  // which without this check bounced forever between /gate and /join.
   // replace() avoids adding /gate to history so the browser back button skips it.
-  if (multiHoster.value && !soulRegistered.value) {
+  if (multiHoster.value && !soulRegistered.value && selfRegistrationOpen) {
     const next = nextUrl.value !== '/' ? `?next=${encodeURIComponent(nextUrl.value)}` : ''
     window.location.replace(`/join${next}`)
     return
