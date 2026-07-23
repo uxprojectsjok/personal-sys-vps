@@ -422,7 +422,7 @@ git clone https://github.com/uxprojectsjok/personal-sys-vps.git /opt/sys
 | Mode | Description |
 |------|-------------|
 | **Personal Node** | Single soul. First registrant is the permanent owner. |
-| **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. Agent Runner not available — it runs as root and would have access to all souls on the node. |
+| **Multi-Hoster** | Multiple souls on one VPS. No soul lock. Suitable for families, teams, or soul hosting services. Agent Runner not available on a fresh Multi-Hoster install — `init.sh` skips setup entirely, since it runs as root and would have access to all souls on the node. Not re-checked at runtime, so switching an existing node to Multi-Hoster later does not retroactively remove it. |
 
 These modes are independent of the server's infrastructure. A Personal Node can run on a VPS that already hosts other websites — SYS detects existing sites automatically and integrates safely alongside them.
 
@@ -474,7 +474,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.2.12): 98f0a5969c84028d
+Current release fingerprint (v1.2.13): 674cc552ca41ad37
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 

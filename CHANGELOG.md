@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.13] — 2026-07-23
+
+**Fixed: on a Multi-Hoster node with more than one soul, an owner/service-token MCP client always got the alphabetically first soul, regardless of which one it actually meant to reach.**
+
+**Root cause:** `soul-mcp/server.mjs`'s `handleMcp()` has three token-type branches (paid, peer-cert, owner/service). The paid and peer-cert branches already correctly honor `?soul_id=` and reject ambiguous requests when it's missing and more than one soul exists — the owner/service-token branch never got the same treatment, it just did `dirs.find(d => uuid-regex)` and picked whatever came first.
+
+**Fixed**
+- `soul-mcp/server.mjs`: owner/service-token branch now resolves `?soul_id=` when present and valid, falls back to the single soul when there's only one (unchanged single-hoster behavior), and returns the same `"Multi-Hoster: ?soul_id= Parameter erforderlich"` 401 the peer-cert branch already used, instead of silently guessing, when the param is missing and multiple souls exist.
+- `lua/soul_meta.lua`: the public `/api/soul/meta` endpoint's `mcp_endpoint` field was missing `?soul_id=` — inconsistent with the endpoint `soul-mcp/lib/soul_indexer.mjs` generates, and would have pointed any external client straight into the bug above. Now includes it.
+- `README.md`: the Multi-Hoster row's Agent Runner caveat was worded as an unconditional guarantee. It only holds at `init.sh` provisioning time (which skips installing the cron entirely for a fresh Multi-Hoster install) — there's no runtime check anywhere, so switching an existing Single-Hoster node to Multi-Hoster later does not retroactively remove an already-installed cron. Wording now reflects that.
+
+---
+
 ## [1.2.12] — 2026-07-23
 
 **Multi-Hoster registration (`/join`) now matches the reveal-on-demand pattern already used by `/gate`, and both pages gained a legal-links footer that was previously missing on `/gate` (and on the single-hoster landing, `/`).**

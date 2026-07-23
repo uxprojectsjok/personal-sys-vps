@@ -94,7 +94,7 @@ local meta = {
   cipher_mode    = cipher_mode,
   api_enabled    = api_enabled,
   public_vault   = pub_enabled,
-  mcp_endpoint   = base_url .. "/mcp",
+  mcp_endpoint   = base_url .. "/mcp?soul_id=" .. soul_id,
   soul_endpoint  = base_url .. "/api/soul/meta?soul_id=" .. soul_id,
 }
 

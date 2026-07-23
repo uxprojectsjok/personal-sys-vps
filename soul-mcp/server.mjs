@@ -289,8 +289,26 @@ async function handleMcp(req, res) {
       }
     }
   } else {
-    const dirs = await readdir(SOULS_DIR).catch(() => []);
-    const ownerSoulId = dirs.find(d => /^[a-f0-9-]{36}$/i.test(d)) ?? null;
+    const dirs     = await readdir(SOULS_DIR).catch(() => []);
+    const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+    let ownerSoulId;
+    if (soulIdParam && soulDirs.includes(soulIdParam)) {
+      ownerSoulId = soulIdParam;
+    } else if (soulDirs.length === 1) {
+      ownerSoulId = soulDirs[0];
+    } else if (soulDirs.length > 1) {
+      // Multi-Hoster mit >1 Soul und keinem/ungültigem ?soul_id= — dieselbe
+      // Ambiguität wie im Peer-Cert-Zweig oben, dieselbe Fehlermeldung statt
+      // stillschweigend die (alphabetisch) erste Soul zu liefern.
+      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+      return res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).' },
+        id: null,
+      });
+    } else {
+      ownerSoulId = null;
+    }
     registerTools(server, token, ownerSoulId);
   }
 
