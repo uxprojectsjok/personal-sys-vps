@@ -8,6 +8,27 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.18] — 2026-07-23
+
+**Fixed: Garmin Health Sync stayed stuck on "requires MFA" even after a token save, and background syncs could crash outright — reported after a soul's automated sync silently produced nothing in the Health page while Settings still showed a stale success timestamp.**
+
+**Root cause:** several independent bugs compounded on top of each other:
+- `health_sync.py`'s config discovery glob (`health_sync_*.json`) also matched its own status output file `health_sync_status_{soul_id}.json`. Every run tried to treat the previous run's status JSON as an additional sync target, logging `[skip] soul_id missing` at best — and crashing the entire batch at worst, since `sync_one()`'s `open(config_path)` wasn't guarded against unreadable files.
+- `install.sh` ran the first sync and the one-time `garmin_login.py` MFA flow as **root** (its own invoking user), while the live web-triggered path (`lua/health_sync_trigger.lua`) always runs them as **www-data**. Whichever ran first left root-owned `600` files behind that the other user could never read or write again, producing `PermissionError` crashes on every subsequent automated run.
+- `garmin_login.py` imported `vault_crypto` (which needs the `cryptography` package from the project's venv) *before* inserting the venv's `site-packages` onto `sys.path` — so any invocation with a bare `python3` instead of `.venv/bin/python3`, including the script's own documented `Usage:` line, crashed immediately with `ModuleNotFoundError`.
+- `app/pages/health.vue`'s `triggerSync()` only polled `health.md`'s `last_sync` field and had no error path — if the sync failed for any reason (MFA required, crash, etc.), the button just spun for 90s and gave up with zero feedback, even though `/api/health/sync-status` already had the exact error message.
+
+**Fixed**
+- `health-sync/health_sync.py`: config glob now excludes `_status_` files; `sync_one()`'s file read is wrapped so one bad/unreadable file can't crash the whole batch; `main()`'s per-soul loop also catches unexpected exceptions per soul instead of aborting the run; `_write_status()` now `chown`s its output to `www-data` regardless of which user ran the script.
+- `health-sync/garmin_login.py`: moved the venv `site-packages` path insertion above `import vault_crypto`; applied the same `_status_`-exclusion to its own config auto-discovery glob; token directory and saved token files are now `chown`ed to `www-data` after creation and after a successful login.
+- `health-sync/install.sh`: first sync and the interactive MFA login now run via `runuser -u www-data --` instead of as root, so files never end up owned by the wrong user in the first place.
+- `app/pages/health.vue`: `triggerSync()` now also checks `/api/health/sync-status` while polling and surfaces the real error message (e.g. "Garmin requires MFA…") as soon as it's known, instead of silently timing out after 90s.
+- `i18n/locales/{en,de}.json`: new `health.sync_error_generic` fallback message.
+
+**Migration note:** if a node already has leftover root-owned files from before this fix, reconcile them once: `chown -R www-data:www-data /var/lib/sys/config/health_sync_status_*.json /var/lib/sys/config/garmin_tokens/`.
+
+---
+
 ## [1.2.17] — 2026-07-23
 
 **Fixed: Garmin Health Sync login silently went nowhere after entering the MFA code — reported after a fresh install where the MFA code was accepted but no connection ever showed up in Settings.**

@@ -13,6 +13,10 @@ import argparse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+venv_site = Path(__file__).parent / ".venv/lib"
+for p in venv_site.glob("python*/site-packages"):
+    sys.path.insert(0, str(p))
+
 import vault_crypto
 
 parser = argparse.ArgumentParser(add_help=False)
@@ -28,7 +32,7 @@ TOKEN_BASE  = Path("/var/lib/sys/config/garmin_tokens")
 if args.soul_id:
     config_path = CONFIG_DIR / f"health_sync_{args.soul_id}.json"
 else:
-    configs = list(CONFIG_DIR.glob("health_sync_*.json"))
+    configs = [c for c in CONFIG_DIR.glob("health_sync_*.json") if "_status_" not in c.name]
     if not configs:
         print("No health_sync config found.")
         if args.status_file:
@@ -46,12 +50,19 @@ password  = vault_crypto.decrypt_field(config["garmin_password"], vault_key)
 token_dir = TOKEN_BASE / soul_id
 token_dir.mkdir(parents=True, exist_ok=True)
 
-print(f"  Garmin login for: {email}")
+def _chown_www_data(path):
+    import shutil
+    try:
+        shutil.chown(path, user="www-data", group="www-data")
+        if path.is_dir():
+            for child in path.rglob("*"):
+                shutil.chown(child, user="www-data", group="www-data")
+    except Exception as e:
+        print(f"  [warn] could not chown {path} to www-data: {e}")
 
-sys.path.insert(0, str(Path(__file__).parent))
-venv_site = Path(__file__).parent / ".venv/lib"
-for p in venv_site.glob("python*/site-packages"):
-    sys.path.insert(0, str(p))
+_chown_www_data(token_dir)
+
+print(f"  Garmin login for: {email}")
 
 try:
     from garminconnect import Garmin
@@ -107,6 +118,8 @@ except Exception as e:
 
 if args.status_file:
     Path(args.status_file).write_text("ok")
+
+_chown_www_data(token_dir)
 
 print("  Tokens saved.", flush=True)
 

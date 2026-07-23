@@ -109,7 +109,7 @@ echo ""
 echo "Running first sync (this may take ~30 seconds for 30 days of data)…"
 echo ""
 SYNC_OK=0
-"$VENV/bin/python" "$INSTALL_DIR/health_sync.py" && SYNC_OK=1 || true
+runuser -u www-data -- "$VENV/bin/python" "$INSTALL_DIR/health_sync.py" && SYNC_OK=1 || true
 
 # Check structured status file for MFA requirement
 STATUS_FILE="$CONFIG_DIR/health_sync_status_${SOUL_ID}.json"
@@ -128,7 +128,7 @@ if [ "$SYNC_OK" -eq 0 ] && [ -f "$STATUS_FILE" ]; then
     echo ""
     read -p "Run Garmin MFA login now? [Y/n] " do_mfa
     if [[ ! "$do_mfa" =~ ^[nN]$ ]]; then
-      "$VENV/bin/python" "$INSTALL_DIR/garmin_login.py"
+      runuser -u www-data -- "$VENV/bin/python" "$INSTALL_DIR/garmin_login.py"
     else
       echo "  Skipped. Run later: python3 $INSTALL_DIR/garmin_login.py"
     fi

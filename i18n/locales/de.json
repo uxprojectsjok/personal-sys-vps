@@ -977,6 +977,7 @@
     "refresh": "Aktualisieren",
     "syncing": "Sync läuft…",
     "sync_now": "Jetzt synchronisieren",
+    "sync_error_generic": "Sync fehlgeschlagen — Details in den Einstellungen unter Health.",
     "section_vitals": "Was dein Körper zeigt",
     "rhr": "Ruhepuls",
     "sleep": "Schlaf",

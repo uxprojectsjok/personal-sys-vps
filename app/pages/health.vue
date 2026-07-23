@@ -80,6 +80,7 @@
                 {{ syncing ? $t('health.syncing') : $t('health.sync_now') }}
               </button>
             </div>
+            <div v-if="syncError" class="hl-sync-result hl-sr-err">{{ syncError }}</div>
 
             <!-- Stat Cards -->
             <div class="hl-section-head">{{ $t('health.section_vitals') }}</div>
@@ -322,6 +323,7 @@ const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(fal
 const loading    = ref(true)
 const syncing    = ref(false)
 const syncDone   = ref(false)
+const syncError  = ref(null)
 const apiTips    = ref([])
 
 // ── Health data (from health.md) ──────────────────────────────────────────────
@@ -485,12 +487,25 @@ async function fetchTips() {
   } catch { /**/ }
 }
 
+async function fetchSyncStatus() {
+  try {
+    const r = await fetch('/api/health/sync-status', { headers: authHeaders() })
+    if (r.ok) return await r.json()
+  } catch { /**/ }
+  return null
+}
+
 async function triggerSync() {
-  syncing.value = true; syncDone.value = false
+  syncing.value = true; syncDone.value = false; syncError.value = null
   const prevLastSync = health.lastSync
   try {
     const r = await fetch('/api/health-sync', { method: 'POST', headers: authHeaders() })
-    if (!r.ok) { syncing.value = false; return }
+    if (!r.ok) {
+      syncing.value = false
+      const d = await r.json().catch(() => null)
+      syncError.value = d?.error || t('health.sync_error_generic')
+      return
+    }
     // Pollt health.md alle 5 Sek. bis last_sync sich geändert hat
     const started = Date.now()
     const poll = async () => {
@@ -509,17 +524,29 @@ async function triggerSync() {
             return
           }
         }
+        // Backend kennt das Sync-Ergebnis oft schon, bevor/ohne dass sich last_sync
+        // in health.md ändert (z.B. bei Fehlern wie MFA-Pflicht) — Fehler sofort zeigen
+        // statt bis zum 90s-Timeout stumm weiterzupollen.
+        const status = await fetchSyncStatus()
+        if (status?.last_run && new Date(status.last_run + 'Z').getTime() >= started && !status.ok) {
+          syncing.value   = false
+          syncError.value = status.message || t('health.sync_error_generic')
+          return
+        }
       } catch { /**/ }
       if (Date.now() - started < 90000) {
         setTimeout(poll, 5000)
       } else {
         syncing.value  = false
         syncDone.value = true
+        const status = await fetchSyncStatus()
+        if (status && !status.ok) syncError.value = status.message || t('health.sync_error_generic')
       }
     }
     setTimeout(poll, 5000)
   } catch {
     syncing.value = false
+    syncError.value = t('health.sync_error_generic')
   }
 }
 

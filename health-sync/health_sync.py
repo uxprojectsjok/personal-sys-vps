@@ -35,13 +35,19 @@ def _write_status(soul_id: str, ok: bool, error_type, message: str):
     try:
         path.write_text(json.dumps(status, ensure_ascii=False))
         path.chmod(0o600)
+        import shutil
+        shutil.chown(path, user="www-data", group="www-data")
     except Exception as e:
         print(f"  [warn] could not write status file: {e}")
 
 
 def sync_one(config_path: str) -> bool:
-    with open(config_path) as f:
-        config = json.load(f)
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+    except Exception as e:
+        print(f"  [skip] cannot read {config_path}: {e}")
+        return False
 
     adapter_name = config.get("adapter", "garmin")
     soul_id      = config.get("soul_id")
@@ -105,7 +111,7 @@ def sync_one(config_path: str) -> bool:
 def main():
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M')}] SYS Health Sync starting…")
 
-    configs = sorted(glob.glob(CONFIG_GLOB))
+    configs = sorted(c for c in glob.glob(CONFIG_GLOB) if "_status_" not in Path(c).name)
 
     if not configs:
         if LEGACY_CONFIG.exists():
@@ -129,8 +135,11 @@ def main():
     ok = 0
     for cfg in configs:
         print(f"\n→ {Path(cfg).name}")
-        if sync_one(cfg):
-            ok += 1
+        try:
+            if sync_one(cfg):
+                ok += 1
+        except Exception as e:
+            print(f"  [error] unexpected failure syncing {cfg}: {e}")
 
     print(f"\nDone. {ok}/{len(configs)} soul(s) synced.\n")
 

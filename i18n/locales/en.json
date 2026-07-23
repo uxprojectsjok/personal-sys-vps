@@ -977,6 +977,7 @@
     "refresh": "Refresh",
     "syncing": "Syncing…",
     "sync_now": "Sync now",
+    "sync_error_generic": "Sync failed — see details in Settings under Health.",
     "section_vitals": "What your body shows",
     "rhr": "Resting HR",
     "sleep": "Sleep",
