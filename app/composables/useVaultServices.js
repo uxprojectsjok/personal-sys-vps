@@ -91,6 +91,27 @@ export function useVaultServices() {
     }
   }
 
+  // Leichte Selbst-Verifizierung: der Aufrufer ist schon per Soul-Cert
+  // authentifiziert (soulToken), das ersetzt die biometrische
+  // verify_identity-Challenge, die für fremde OAuth-Clients gedacht ist.
+  async function verifyServiceLight(token) {
+    error.value = null
+    try {
+      const res = await fetch(`/api/vault/services/${token}/verify`, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.ok) {
+        const svc = services.value.find(s => s.token === token)
+        if (svc) svc.verified = true
+      }
+      return data
+    } catch (e) {
+      error.value = e.message
+    }
+  }
+
   function formatExpiry(ts, neverLabel = '∞') {
     if (!ts) return neverLabel
     const d = new Date(ts * 1000)
@@ -110,6 +131,7 @@ export function useVaultServices() {
     fetchServices,
     addService,
     revokeService,
+    verifyServiceLight,
     deleteVault,
     formatExpiry,
     formatDate

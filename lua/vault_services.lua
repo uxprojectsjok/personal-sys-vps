@@ -195,6 +195,34 @@ if method == "DELETE" then
   return
 end
 
+-- ── POST /api/vault/services/{token}/verify ───────────────────────────────────
+-- "Leichte" Verifizierung für Tokens, die der Owner selbst im eigenen Browser
+-- erstellt hat: der Aufrufer ist hier schon per Soul-Cert authentifiziert
+-- (soul_auth.lua) — ein stärkerer Eigentumsbeweis als die biometrische
+-- verify_identity-Challenge, die eigentlich fremde OAuth-Clients (Claude.ai
+-- etc.) einmalig bestätigen soll, bevor SIE mit einem Token loslegen dürfen.
+-- Der Owner braucht dafür keinen zweiten Beweis über sich selbst.
+
+if method == "POST" then
+  local vtoken = uri:match("^/api/vault/services/([a-zA-Z0-9_]+)/verify$")
+  if vtoken then
+    local svcs = load_services()
+    if not svcs[vtoken] then
+      ngx.status = 404
+      ngx.say(cjson.encode({ error = "Service not found" }))
+      return
+    end
+    svcs[vtoken].verified = true
+    if not save_services(svcs) then
+      ngx.status = 500
+      ngx.say(cjson.encode({ error = "Failed to save service" }))
+      return
+    end
+    ngx.say(cjson.encode({ ok = true, verified = true }))
+    return
+  end
+end
+
 -- ── POST /api/vault/services/agent-runner/rotate ─────────────────────────────
 -- Erstellt neuen Agent-Runner-Token, trägt ihn in config.json ein, revoziert den alten.
 

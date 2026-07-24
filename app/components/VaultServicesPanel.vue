@@ -204,9 +204,10 @@
                 :class="testResult === 'ok' ? 'btn-ghost' : testResult === 'error' ? '' : 'btn-ghost'"
                 :style="testResult === 'error' ? 'border:1px solid rgba(224,108,117,0.35);color:#e06c75;background:rgba(224,108,117,0.07)' : ''"
                 :disabled="testLoading"
-                @click="testConnection(tokenModal.token)"
+                @click="handleVerifyOrTest(tokenModal.token)"
               >
-                <span v-if="testLoading">{{ $t('services.btn_testing') }}</span>
+                <span v-if="testLoading">{{ tokenModal.verified ? $t('services.btn_testing') : $t('services.btn_verifying') }}</span>
+                <span v-else-if="!tokenModal.verified">{{ $t('services.btn_verify') }}</span>
                 <span v-else-if="testResult === 'ok'">{{ $t('services.btn_test_ok') }}</span>
                 <span v-else-if="testResult === 'error'">✗ {{ testError }}</span>
                 <span v-else>{{ $t('services.btn_test') }}</span>
@@ -232,6 +233,9 @@
             <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-sm text-white leading-relaxed">
               {{ $t('services.err_no_sync_hint') }}
             </p>
+            <p v-if="testResult === 'error' && testErrorCode === 'verification_required'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">
+              {{ $t('services.err_verification_required_hint') }}
+            </p>
           </div>
         </div>
       </div>
@@ -250,7 +254,7 @@ const { t } = useI18n()
 
 const props = defineProps({ headless: Boolean })
 
-const { services, loading, error, fetchServices, addService, revokeService, formatExpiry } = useVaultServices()
+const { services, loading, error, fetchServices, addService, revokeService, verifyServiceLight, formatExpiry } = useVaultServices()
 
 const open            = ref(false)
 
@@ -324,6 +328,17 @@ async function handleRevoke(token, name) {
   await revokeService(token)
 }
 
+async function handleVerifyOrTest(token) {
+  if (!tokenModal.value?.verified) {
+    testLoading.value = true
+    const data = await verifyServiceLight(token)
+    testLoading.value = false
+    if (data?.ok && tokenModal.value) tokenModal.value.verified = true
+    return
+  }
+  await testConnection(token)
+}
+
 async function testConnection(token) {
   testLoading.value   = true
   testResult.value    = null
@@ -345,6 +360,12 @@ async function testConnection(token) {
         } else if (body.error === 'decryption_failed') {
           testErrorCode.value = 'key_wrong'
           testError.value     = t('services.err_key_wrong')
+        } else if (body.error === 'verification_required') {
+          testErrorCode.value = 'verification_required'
+          testError.value     = t('services.err_verification_required')
+          if (tokenModal.value) tokenModal.value.verified = false
+          const svc = services.value.find(s => s.token === token)
+          if (svc) svc.verified = false
         } else {
           testError.value = t('services.err_access_denied')
         }
