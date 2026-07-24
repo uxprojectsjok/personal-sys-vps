@@ -366,6 +366,13 @@ async function handleMcpDiscover(req, res) {
   if (gkToken && gkToken.includes('.')) {
     const [gkSoulId, gkCert] = gkToken.split('.');
     if (await verifyPeerCert(gkSoulId, gkCert, null)) {
+      // Cert verified against gkSoulId's own master key → this IS gkSoulId's
+      // owner (same proof as isSelfCert in handleMcp() above). A Gatekeeper
+      // soul is a full soul with its own mind.md/context — expose its normal
+      // owner toolset (soul_read, beme_chat, context_get, mind_read, ...) too,
+      // not just the wired-souls proxy, so it can actually reason over its own
+      // configuration instead of being a dumb router.
+      registerTools(server, gkToken, gkSoulId);
       const wired = await loadWired(gkSoulId);
       if (Object.keys(wired).length > 0) {
         registerGatekeeperTools(server, wired);

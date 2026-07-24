@@ -39,9 +39,14 @@ function errResult(msg) {
   return { content: [{ type: 'text', text: msg }], isError: true };
 }
 
+// "wired_"-Präfix ist bewusst: /mcp/discover registriert für den Gatekeeper-Owner
+// zusätzlich dessen eigenes normales Owner-Toolset (soul_read, context_get, ...,
+// siehe server.mjs handleMcpDiscover) — ohne Präfix kollidieren die Tool-Namen
+// mit den hier generischen, soul_id-parametrisierten Varianten für VERDRAHTETE
+// Souls. "wired_context_get" ≠ "context_get" (Gatekeepers eigener Kontext).
 function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
   server.tool(
-    `${kind}_list`,
+    `wired_${kind}_list`,
     `Listet ${kind}-Dateien einer verdrahteten Soul (siehe wire_status).`,
     { soul_id: z.string().describe('soul_id der verdrahteten Soul') },
     async ({ soul_id }) => {
@@ -52,17 +57,17 @@ function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
         const data = await res.json();
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       } catch (err) {
-        return errResult(`${kind}_list fehlgeschlagen: ${err.message}`);
+        return errResult(`wired_${kind}_list fehlgeschlagen: ${err.message}`);
       }
     }
   );
 
   server.tool(
-    `${kind}_get`,
+    `wired_${kind}_get`,
     `Liest eine einzelne ${kind}-Datei einer verdrahteten Soul.`,
     {
       soul_id:  z.string().describe('soul_id der verdrahteten Soul'),
-      filename: z.string().describe('Dateiname, aus ' + `${kind}_list`),
+      filename: z.string().describe('Dateiname, aus ' + `wired_${kind}_list`),
     },
     async ({ soul_id, filename }) => {
       const { token, error } = lookup(wiredMap, soul_id, permKey);
@@ -77,7 +82,7 @@ function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
         const buf = Buffer.from(await res.arrayBuffer());
         return { content: [{ type: 'text', text: `Binärdatei (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
       } catch (err) {
-        return errResult(`${kind}_get fehlgeschlagen: ${err.message}`);
+        return errResult(`wired_${kind}_get fehlgeschlagen: ${err.message}`);
       }
     }
   );
@@ -85,7 +90,7 @@ function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
 
 export function registerGatekeeperTools(server, wiredMap) {
   server.tool(
-    'soul_read',
+    'wired_soul_read',
     'Liest den vollständigen Soul-Inhalt (sys.md) einer beim Gatekeeper verdrahteten Soul. soul_id aus wire_status.',
     { soul_id: z.string().describe('soul_id der verdrahteten Soul') },
     async ({ soul_id }) => {
@@ -96,7 +101,7 @@ export function registerGatekeeperTools(server, wiredMap) {
         const text = await res.text();
         return { content: [{ type: 'text', text }] };
       } catch (err) {
-        return errResult(`soul_read fehlgeschlagen: ${err.message}`);
+        return errResult(`wired_soul_read fehlgeschlagen: ${err.message}`);
       }
     }
   );
