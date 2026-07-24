@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const MCP_BASE = () => `http://127.0.0.1:${process.env.PORT || '3098'}`;
+const BASE_URL = process.env.BASE_URL;
 
 // EU withdrawal-rights consent flow — off by default, opt-in via init.sh
 // ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
@@ -25,6 +26,9 @@ export function register(server) {
       '',
       'SOURCE: this node only — not a cross-node/blockchain-wide search. Use the',
       'authenticated soul_discover tool (requires a token) for that.',
+      '',
+      `Every soul on this node is also documented at ${BASE_URL}/llms.txt (markdown,`,
+      'no auth needed) — same pricing/contact/access-flow info as below, in one file.',
       '',
       'Search (q) searches: name, soul_id, tags, description.',
       '',
@@ -101,6 +105,7 @@ export function register(server) {
 
         if (souls.length === 0) {
           let msg = 'No souls hosted on this node yet.' + (q ? ` (search: "${q}")` : '');
+          msg += `\n\n_Full details for every soul on this node (pricing, contact, agent access flow) are also available at ${BASE_URL}/llms.txt._`;
           return { content: [{ type: 'text', text: msg }] };
         }
 
@@ -146,6 +151,7 @@ export function register(server) {
         lines.push('---');
         lines.push('_Already have a soul_cert for one of these? Connect directly to its mcp_endpoint with that cert as your Bearer token — no payment needed._');
         lines.push('_Otherwise: pay pay_endpoint with the x402 protocol → access_token for MCP access._');
+        lines.push(`_Full details for every soul on this node (pricing, contact, agent access flow) are also available at ${BASE_URL}/llms.txt._`);
 
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (err) {
