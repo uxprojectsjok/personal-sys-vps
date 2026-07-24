@@ -1452,7 +1452,7 @@ server {
   ################################
   location = /favicon.ico {
     log_not_found off;
-    alias /var/www/{{DOMAIN}}/logo/logo.ico;
+    alias /var/www/{{DOMAIN}}/logo.ico;
     default_type image/x-icon;
   }
 
