@@ -2194,9 +2194,6 @@ async function copyInviteToken() {
     inviteCopied.value = true
     setTimeout(() => { inviteCopied.value = false }, 2000)
   } catch { /* silent */ }
-  // Kopierter Token wird geteilt -> alter Wert soll danach nicht mehr gültig
-  // sein. Rotation direkt nach dem Copy, nicht als separater Schritt.
-  await rotateInviteToken()
 }
 
 async function loadAgentStatus() {
