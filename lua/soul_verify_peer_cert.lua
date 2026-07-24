@@ -31,9 +31,16 @@ if not cert:match("^[0-9a-fA-F]+$") or #cert < 16 or #cert > 64 then
   return
 end
 
--- Soul muss auf diesem Server existieren — verhindert HMAC-Arbeit für fremde UUIDs
-local soul_dir = "/var/lib/sys/souls/" .. soul_id .. "/sys.md"
-local sf = io.open(soul_dir, "r")
+-- Soul muss auf diesem Server registriert sein — verhindert HMAC-Arbeit für fremde
+-- UUIDs. Geprüft wird jeder Artefakt, der bei Registrierung entsteht (soul_admin.json
+-- direkt bei erster Cert-Ausstellung, api_context.json/sys.md erst nach vollem Sync)
+-- statt nur sys.md — eine frisch angelegte Multi-Hoster-Soul mit gültigem Cert, deren
+-- sys.md noch nicht auf den Server gepusht wurde, wäre sonst fälschlich "invalid_cert"
+-- statt tatsächlich geprüft zu werden.
+local soul_base = "/var/lib/sys/souls/" .. soul_id .. "/"
+local sf = io.open(soul_base .. "sys.md", "r")
+     or io.open(soul_base .. "api_context.json", "r")
+     or io.open(soul_base .. "soul_admin.json", "r")
 if not sf then
   -- Gleiche Antwort wie bei falschem Cert — kein Enumerationsvektor
   ngx.status = 401
