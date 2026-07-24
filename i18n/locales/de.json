@@ -1125,6 +1125,7 @@
     "label_pinata": "Pinata JWT",
     "pinata_desc": "Für IPFS-Veröffentlichung und Blockchain-Anchoring.",
     "placeholder_overwrite": "Neu eingeben zum Überschreiben…",
+    "step_connect": "Verbinden",
     "step_vault": "Vault",
     "step_services": "Dienste",
     "step_api": "API",

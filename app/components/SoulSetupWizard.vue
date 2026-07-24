@@ -353,11 +353,18 @@ const IconSettings = defineComponent({ render: () => h('svg', { fill:'none', vie
 ]) })
 
 
+// Labels waren gegenüber dem tatsächlichen Tab-Inhalt verschoben: Index 0 zeigt
+// nur die Ordner/Cloud-Speicherort-Verbindung (kein Verschlüsselungs-Schlüssel),
+// hieß aber "Vault" — der eigentliche Schlüssel-Schritt (VaultSessionPanel,
+// Passkey/12-Wort-Bundle) lag unter "Dienste", und die echten Service-Tokens
+// (VaultServicesPanel) unter "Plugins". Labels jetzt an den tatsächlichen
+// Inhalt jedes Tabs angepasst, done-Flags unverändert (waren schon korrekt
+// verdrahtet).
 const steps = computed(() => [
-  { label: t('setup.step_vault'),    done: vaultConnected.value,         color: 'rgba(255,255,255,0.75)', icon: IconConnect  },
-  { label: t('setup.step_services'), done: isUnlocked.value,             color: 'rgba(255,255,255,0.75)', icon: IconVault    },
+  { label: t('setup.step_connect'),  done: vaultConnected.value,         color: 'rgba(255,255,255,0.75)', icon: IconConnect  },
+  { label: t('setup.step_vault'),    done: isUnlocked.value,             color: 'rgba(255,255,255,0.75)', icon: IconVault    },
   { label: t('setup.step_api'),      done: enabled.value,                color: 'rgba(255,255,255,0.75)', icon: IconApi      },
-  { label: t('setup.step_plugins'),  done: services.value.length > 0,    color: 'rgba(255,255,255,0.75)', icon: IconServices },
+  { label: t('setup.step_services'), done: services.value.length > 0,    color: 'rgba(255,255,255,0.75)', icon: IconServices },
   { label: t('setup.step_config'),   done: false,                        color: 'rgba(255,255,255,0.75)', icon: IconSettings },
 ])
 
