@@ -474,10 +474,16 @@ async function confirmReset() {
 
 async function handleSoulCreate({ name, idea }) {
   await createNew(name, idea)
-  await pushToServer()
+  const pushed = await pushToServer()
   await exportAsBlob()
   createSoulOpen.value = false
   fetchNodeStatus()
+  // Fresh souls default to cipher_mode "ciphered" server-side with no vault key
+  // yet -- pushToServer() silently returns false (api_context.lua correctly
+  // refuses to store sys.md unencrypted). Route into the setup wizard so the
+  // user actually sets up a vault key (Vault step) instead of hitting a silent
+  // dead end; they can Sync again afterward (Vault Explorer).
+  if (!pushed) setupOpen.value = true
 }
 
 async function onSetupDownload() {
