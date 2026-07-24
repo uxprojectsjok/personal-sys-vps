@@ -251,6 +251,7 @@
                 :soul-id="soulMeta?.id || ''"
                 :modal="true"
                 @close="setupOpen = false"
+                @unlocked="pushToServer()"
               />
             </div>
           </div>
