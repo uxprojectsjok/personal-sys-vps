@@ -163,7 +163,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 /* soul identity card */
 .sb-soul {
   margin: 4px 14px 6px; padding: 11px 12px;
-  display: flex; align-items: center; gap: 11px;
+  display: flex; align-items: flex-start; gap: 11px;
   border-radius: var(--r); cursor: pointer;
   transition: background .15s;
 }
