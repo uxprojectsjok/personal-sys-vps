@@ -12,19 +12,6 @@ local hmac  = require("hmac_helper")
 
 local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
 
--- Gleiches Muster wie is_public_node() in soul_amortization.lua/soul_pay_x402.lua —
--- Default bleibt offen für Altinstallationen ohne die Datei (bisheriges Verhalten:
--- Invite-Token erlaubt Neuregistrierung). Ein Multi-Hoster-Betreiber, der Souls nur
--- selbst extern anlegt und den Node ausschließlich als Access-Point für die eigenen
--- Souls betreibt, kann Neuregistrierung hierüber hart abschalten — Login mit einem
--- bereits bestehenden Soul-Cert bleibt davon unberührt.
-local function is_self_registration_open()
-  local f = io.open("/var/lib/sys/config/self_registration", "r")
-  if not f then return true end
-  local v = f:read("*a"); f:close()
-  return v ~= "false"
-end
-
 local function read_master_fresh()
   local path = (type(cfg.get_master_path) == "function") and cfg.get_master_path()
                or MASTER_PATH_GLOBAL
@@ -101,20 +88,10 @@ do
   end
 end
 
--- Multi-Hoster + keine Soul vorhanden + Neuregistrierung deaktiviert: der Block
--- unten (Cert-Pflicht) läuft nur "if souls_exist then" — dieser Node-Zustand
--- (0 Souls, gerade neu auf Multi-Hoster umgestellt, self_registration explizit
--- zu) fiel bislang komplett daran vorbei und ließ mit korrektem Passwort allein
--- durch, ganz ohne Cert-Check. Gleiche Absicht wie der Invite-Token-Check
--- unten, nur für den "noch nie eine Soul registriert" Fall.
-if multi_hoster and not souls_exist and not is_self_registration_open() then
-  ngx.sleep(0.5)
-  ngx.status = 401
-  ngx.say('{"error":"invalid_credentials","message":"Neuregistrierung auf diesem Node ist deaktiviert."}')
-  return
-end
-
-if souls_exist then
+-- Multi-Hoster verlangt Cert-oder-Invite-Token immer, auch bevor die erste Soul
+-- lokal registriert ist — sonst genügt auf einem frischen Multi-Hoster-Node
+-- (0 Souls) das reine Passwort für eine volle Session, ganz ohne Cert-Check.
+if souls_exist or multi_hoster then
   -- Cert ist immer Pflicht sobald Souls existieren
   if cert == "" then
     ngx.status = 401
@@ -172,10 +149,12 @@ if souls_exist then
       handle:close()
     end
     if bound_soul_id == "" then
-      -- Kein Soul-Cert match → Invite-Token prüfen (nur wenn Neuregistrierung erlaubt ist)
-      local invite_tok = is_self_registration_open()
-        and (type(master.invite_token) == "string" and master.invite_token or "")
-        or ""
+      -- Kein Soul-Cert match → Invite-Token prüfen. self_registration steuert nur
+      -- die öffentliche Sichtbarkeit von "Get Started" (index.vue/join.vue) — wer
+      -- Passwort UND Invite-Token kennt (der eigentliche Zugangs-Secret), kommt
+      -- unabhängig vom UI-Flag rein, sonst sperrt man sich als Owner selbst aus,
+      -- solange auf diesem Node noch keine eigene Soul lokal registriert ist.
+      local invite_tok = type(master.invite_token) == "string" and master.invite_token or ""
       if invite_tok ~= "" and cert == invite_tok then
         -- Gültiger Einladungscode → Gate-Zugang ohne Soul-Binding (Neuregistrierung)
         ngx.log(ngx.INFO, "[gate_auth] Invite-Token Login akzeptiert")
@@ -221,7 +200,7 @@ ngx.header["Set-Cookie"] = "sys_gate=" .. gate_token
 ngx.status = 200
 if bound_soul_id ~= "" then
   ngx.say('{"ok":true,"soul_id":"' .. bound_soul_id .. '"}')
-elseif multi_hoster and souls_exist then
+elseif multi_hoster then
   -- Invite-Token Login: kein soul_id, aber invite_login Flag für Frontend
   ngx.say('{"ok":true,"invite_login":true}')
 else
