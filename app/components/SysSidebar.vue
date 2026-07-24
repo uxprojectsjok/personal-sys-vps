@@ -19,7 +19,10 @@
     <button class="sb-soul" @click="$emit('go', 'soul')" :title="soulMeta?.id || ''">
       <span class="sb-avatar">{{ initial }}</span>
       <span class="sb-soul-meta">
-        <span class="sb-soul-name">{{ soulMeta?.name || 'Soul' }}</span>
+        <span class="sb-soul-name">
+          {{ soulMeta?.name || 'Soul' }}
+          <span v-if="soulMeta?.isGatekeeper" class="sb-gatekeeper-badge">Gatekeeper</span>
+        </span>
         <span class="sb-soul-id">#{{ shortId }}</span>
       </span>
     </button>

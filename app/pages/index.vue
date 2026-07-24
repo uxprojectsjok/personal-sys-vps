@@ -472,8 +472,8 @@ async function confirmReset() {
   if (ok) lockGate()
 }
 
-async function handleSoulCreate({ name, idea }) {
-  await createNew(name, idea)
+async function handleSoulCreate({ name, idea, isGatekeeper }) {
+  await createNew(name, idea, isGatekeeper)
   await pushToServer()
   await exportAsBlob()
   createSoulOpen.value = false

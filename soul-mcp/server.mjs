@@ -23,7 +23,8 @@ const webpush  = _require('web-push');
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
+import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerGatekeeperTools } from './tools/index.mjs';
+import { loadWired, saveWired, checkOwnServiceToken } from './lib/wired_souls.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -349,9 +350,28 @@ app.delete('/mcp', handleMcp);
 // what's hosted here before deciding whether to pay (x402/PayPal) or connect
 // with an existing cert via /mcp?soul_id=<id>. No token check at all, unlike
 // handleMcp() above which rejects any request with no Authorization header.
+//
+// Gatekeeper extension: if a Bearer token IS present and verifies as a soul's
+// own cert (self-cert, same check as handleMcp()'s isSelfCert branch) AND
+// that soul has wired other souls to it (wired_souls.json non-empty), also
+// register the generic soul_id-parametrised proxy tools for exactly those
+// wired souls — a single connector (this endpoint + that one soul's cert) for
+// multiple souls' tools, no per-soul peer-cert/connector setup needed. Absent
+// a valid gatekeeper cert, behavior is unchanged (soul_discover_local only).
 async function handleMcpDiscover(req, res) {
   const server = new McpServer({ name: 'soul-mcp-discover', version: '1.0.0' });
   registerSoulDiscoverLocal(server);
+
+  const gkToken = extractToken(req);
+  if (gkToken && gkToken.includes('.')) {
+    const [gkSoulId, gkCert] = gkToken.split('.');
+    if (await verifyPeerCert(gkSoulId, gkCert, null)) {
+      const wired = await loadWired(gkSoulId);
+      if (Object.keys(wired).length > 0) {
+        registerGatekeeperTools(server, wired);
+      }
+    }
+  }
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless
@@ -378,6 +398,78 @@ async function handleMcpDiscover(req, res) {
 
 app.get('/mcp/discover',  handleMcpDiscover);
 app.post('/mcp/discover', handleMcpDiscover);
+
+// ── Gatekeeper-Wiring ──────────────────────────────────────────────────────
+// Verknüpft eine Soul mit einer anderen (der faktischen Gatekeeper-Soul):
+// der Aufrufer beweist per eigenem Soul-Cert seine Identität und legt einen
+// selbst erzeugten Service-Token vor (Settings→Services) — beides zusammen
+// ist der Owner-Konsens. Kein neues Krypto-Primitiv: verifyPeerCert() und
+// authorized_services.json existieren beide bereits.
+function parseOwnCertBearer(req) {
+  const token = extractToken(req);
+  if (!token || !token.includes('.')) return null;
+  const [soulId, cert] = token.split('.');
+  if (!soulId || !cert) return null;
+  return { soulId, cert };
+}
+
+app.post('/mcp/discover/wire', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+  if (!(await verifyPeerCert(callerSoulId, cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  const { gatekeeper_soul_id, service_token, name } = req.body || {};
+  if (!gatekeeper_soul_id || !service_token) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id und service_token erforderlich' });
+  }
+
+  const svc = await checkOwnServiceToken(callerSoulId, service_token);
+  if (!svc) {
+    return res.status(400).json({ error: 'service_token unbekannt — muss ein selbst erzeugter Token (Settings→Services) dieser Soul sein.' });
+  }
+
+  const wired = await loadWired(gatekeeper_soul_id);
+  wired[callerSoulId] = {
+    token: service_token,
+    permissions: svc.permissions,
+    name: name || svc.name || callerSoulId,
+    wired_at: Math.floor(Date.now() / 1000),
+  };
+  await saveWired(gatekeeper_soul_id, wired);
+
+  res.json({ ok: true, gatekeeper_soul_id, soul_id: callerSoulId, permissions: svc.permissions });
+});
+
+// Owner-Sicht auf die eigene wired_souls.json (Settings-UI "Wired Souls"-Tabelle).
+// Bearer = eigener Soul-Cert der (faktischen) Gatekeeper-Soul. Kein Token-Klartext
+// in der Antwort.
+app.get('/mcp/discover/wired', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(parsed.soulId);
+  const list = Object.entries(wired).map(([soul_id, e]) => ({
+    soul_id, name: e.name, permissions: e.permissions, wired_at: e.wired_at,
+  }));
+  res.json({ wired: list });
+});
+
+app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(parsed.soulId);
+  delete wired[req.params.soul_id];
+  await saveWired(parsed.soulId, wired);
+  res.json({ ok: true });
+});
 
 // Gesundheits-Check
 app.get('/health', (_req, res) => {

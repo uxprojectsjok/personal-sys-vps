@@ -47,6 +47,14 @@
                 style="resize:none;line-height:1.6"
               ></textarea>
             </div>
+
+            <label class="sys-field" style="flex-direction:row;align-items:flex-start;gap:10px;margin-top:16px;margin-bottom:0;cursor:pointer">
+              <input type="checkbox" v-model="isGatekeeper" style="margin-top:3px;flex:none" />
+              <span>
+                <span class="sys-field-label" style="display:block">{{ $t('create_soul.gatekeeper_label') }}</span>
+                <span class="sys-field-hint" style="display:block">{{ $t('create_soul.gatekeeper_hint') }}</span>
+              </span>
+            </label>
           </div>
 
           <div class="sys-modal-foot">
@@ -77,10 +85,11 @@ const props = defineProps({
 
 const emit = defineEmits(["create", "cancel"]);
 
-const hash      = ref("");
-const idea      = ref("");
-const copied    = ref(false);
-const ideaInput = ref(null);
+const hash        = ref("");
+const idea        = ref("");
+const isGatekeeper = ref(false);
+const copied      = ref(false);
+const ideaInput   = ref(null);
 
 function generateHash() {
   const bytes = crypto.getRandomValues(new Uint8Array(4));
@@ -89,9 +98,10 @@ function generateHash() {
 
 watch(() => props.isOpen, (val) => {
   if (val) {
-    hash.value   = generateHash();
-    idea.value   = "";
-    copied.value = false;
+    hash.value        = generateHash();
+    idea.value        = "";
+    isGatekeeper.value = false;
+    copied.value       = false;
     nextTick(() => ideaInput.value?.focus());
     document.body.style.overflow = "hidden";
   } else {
@@ -106,6 +116,6 @@ async function copyHash() {
 }
 
 function handleCreate() {
-  emit("create", { name: hash.value, idea: idea.value.trim() });
+  emit("create", { name: hash.value, idea: idea.value.trim(), isGatekeeper: isGatekeeper.value });
 }
 </script>

@@ -85,6 +85,9 @@ import { register as vaultSharedGetPeer }    from './vault_shared_get_peer.mjs';
 import { register as requestTrust }          from './request_trust.mjs';
 import { register as requestTrustStatus }    from './request_trust_status.mjs';
 
+// ── Gatekeeper-Proxy-Tools (soul_id-parametrisiert, service-token-basiert) ───
+export { registerGatekeeperTools } from './gatekeeper_proxy.mjs';
+
 /**
  * Registriert alle MCP-Tools für den Soul-Inhaber (service_token / OAuth).
  * @param {string} soulId  — owner soul_id (für Filesystem-basierte Tools); optional

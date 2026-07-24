@@ -27,6 +27,9 @@
             <button @click="tab = 'dienste'" class="sys-rail-item" :class="tab === 'dienste' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_services') }}</span></span>
             </button>
+            <button v-if="isMultiHoster" @click="tab = 'gatekeeper'" class="sys-rail-item" :class="tab === 'gatekeeper' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_gatekeeper') }}</span></span>
+            </button>
             <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
             </button>
@@ -121,6 +124,11 @@
                 >{{ feedback.message }}</div>
               </Transition>
 
+            </template>
+
+            <!-- ── Tab: Gatekeeper ── -->
+            <template v-if="tab === 'gatekeeper'">
+              <GatekeeperPanel />
             </template>
 
             <!-- ── Tab: API ── -->
@@ -985,6 +993,7 @@ import { generateMnemonicWords } from '~/composables/useSoulEncrypt.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useConfirm } from '~/composables/useConfirm.js'
 import { useI18n } from 'vue-i18n'
+import GatekeeperPanel from './GatekeeperPanel.vue'
 
 const props = defineProps({ open: Boolean, inline: { type: Boolean, default: false } })
 const emit  = defineEmits(['close', 'master-rotated'])

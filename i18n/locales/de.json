@@ -713,6 +713,7 @@
     "aria_label": "Einstellungen",
     "tab_api": "API",
     "tab_services": "Dienste",
+    "tab_gatekeeper": "Gatekeeper",
     "tab_plugins": "Plugins",
     "tab_config": "Config",
     "tab_archivar": "Archivar",
@@ -1363,6 +1364,25 @@
     "no_expiry": "Unbegrenzt",
     "btn_token": "Token"
   },
+  "gatekeeper": {
+    "connect_title": "Mit Gatekeeper verbinden",
+    "connect_hint": "Erlaubt einer Gatekeeper-Soul, im Rahmen eines deiner eigenen Service-Tokens auf diese Soul zuzugreifen — z.B. über /mcp/discover als gebündelter Connector.",
+    "gatekeeper_id_placeholder": "Soul-ID des Gatekeepers",
+    "own_token_label": "Eigener Service-Token",
+    "own_token_placeholder": "Service-Token auswählen…",
+    "no_own_tokens": "Noch kein eigener Service-Token — zuerst unter Services einen anlegen.",
+    "btn_connect": "Verbinden",
+    "btn_connecting": "Verbinde…",
+    "connect_success": "Verbunden.",
+    "connect_error": "Verbindung fehlgeschlagen — Soul-ID oder Token prüfen.",
+    "wired_title": "Wired Souls",
+    "wired_hint": "Souls, die sich bei dieser Soul als Gatekeeper eingeklinkt haben.",
+    "wired_empty": "Noch keine Soul verdrahtet.",
+    "disconnect_aria": "{name} trennen",
+    "disconnect_title": "Soul trennen",
+    "disconnect_msg": "\"{name}\" wirklich trennen? Der Zugriff über diesen Gatekeeper endet sofort.",
+    "disconnect_confirm": "Trennen"
+  },
   "first_setup": {
     "kicker_new": "Erste Instanz · §00",
     "kicker_import": "Soul importiert · §00",
@@ -1463,7 +1483,9 @@
     "optional": "(optional)",
     "idea_placeholder": "Wer ist diese Seele in einem Satz?",
     "meta_hash_ready": "Neue Soul · Hash generiert",
-    "btn_create": "Erstellen"
+    "btn_create": "Erstellen",
+    "gatekeeper_label": "Gatekeeper",
+    "gatekeeper_hint": "Kein Marketplace, kein Anchoring — nur Vermittler für andere Souls (siehe Settings → Gatekeeper)."
   },
   "soul_viewer": {
     "section_identity": "Kern-Identität",

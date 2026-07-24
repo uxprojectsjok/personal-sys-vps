@@ -182,6 +182,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .sb-soul-meta { min-width: 0; line-height: 1.3; display: flex; flex-direction: column; }
 .sb-soul-name { display: block; font-weight: 600; font-size: 18px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-soul-id { display: block; font-family: var(--mono); font-size: 12px; color: var(--fg-3); letter-spacing: 0.02em; }
+.sb-gatekeeper-badge {
+  margin-left: 6px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--c-synth); border: 1px solid rgba(210,172,110,0.4);
+  border-radius: var(--r-pill); padding: 1px 6px; vertical-align: middle;
+}
+.is-collapsed .sb-gatekeeper-badge { display: none; }
 .is-collapsed .sb-soul-meta { display: none; }
 .is-collapsed .sb-soul { justify-content: center; margin: 4px 0 6px; padding: 8px 0; }
 

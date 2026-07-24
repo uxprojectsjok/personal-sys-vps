@@ -713,6 +713,7 @@
     "aria_label": "Settings",
     "tab_api": "API",
     "tab_services": "Services",
+    "tab_gatekeeper": "Gatekeeper",
     "tab_plugins": "Plugins",
     "tab_config": "Config",
     "tab_archivar": "Archivist",
@@ -1363,6 +1364,25 @@
     "no_expiry": "Unlimited",
     "btn_token": "Token"
   },
+  "gatekeeper": {
+    "connect_title": "Connect to Gatekeeper",
+    "connect_hint": "Lets a Gatekeeper soul access this soul within the scope of one of your own service tokens — e.g. as a bundled connector via /mcp/discover.",
+    "gatekeeper_id_placeholder": "Gatekeeper soul ID",
+    "own_token_label": "Own service token",
+    "own_token_placeholder": "Select a service token…",
+    "no_own_tokens": "No service token of your own yet — create one under Services first.",
+    "btn_connect": "Connect",
+    "btn_connecting": "Connecting…",
+    "connect_success": "Connected.",
+    "connect_error": "Connection failed — check the soul ID or token.",
+    "wired_title": "Wired Souls",
+    "wired_hint": "Souls that have connected to this soul as their Gatekeeper.",
+    "wired_empty": "No soul wired in yet.",
+    "disconnect_aria": "Disconnect {name}",
+    "disconnect_title": "Disconnect soul",
+    "disconnect_msg": "Really disconnect \"{name}\"? Access through this gatekeeper ends immediately.",
+    "disconnect_confirm": "Disconnect"
+  },
   "first_setup": {
     "kicker_new": "New instance · §00",
     "kicker_import": "Soul imported · §00",
@@ -1463,7 +1483,9 @@
     "optional": "(optional)",
     "idea_placeholder": "Who is this soul in one sentence?",
     "meta_hash_ready": "New Soul · Hash generated",
-    "btn_create": "Create"
+    "btn_create": "Create",
+    "gatekeeper_label": "Gatekeeper",
+    "gatekeeper_hint": "No marketplace, no anchoring — just a broker for other souls (see Settings → Gatekeeper)."
   },
   "soul_viewer": {
     "section_identity": "Core Identity",

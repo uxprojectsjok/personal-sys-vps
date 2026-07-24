@@ -85,12 +85,15 @@ export function useSoul() {
 
   // ── sys.md Template ────────────────────────────────────────────────────
 
-  function buildDefaultSoul(id, cert, name, idea) {
+  function buildDefaultSoul(id, cert, name, idea, isGatekeeper = false) {
     const now = new Date().toISOString().split("T")[0];
     // v3 2026-07-04 — MIND-capable: LONGMEM + MINDIDX (3D index) appear on first
     // crystallization. v2 2026-05-09 — three-sphere: Private Sphere + Social Sphere + Agent Sandbox.
     // Section headers switched to English 2026-07-22 — existing German-header souls
     // keep working unchanged, see resolveHeading() in shared/utils/soulParser.js.
+    // is_gatekeeper: read back into soulMeta.isGatekeeper below, used only for
+    // the Sidebar badge — the actual gatekeeper *mechanism* is driven by
+    // wired_souls.json on the server, not by this flag (see soul-mcp).
     return `---
 soul_id: ${id}
 soul_name: ${name || ""}
@@ -102,6 +105,7 @@ vault_hash: ""
 storage_tx: ""
 elevenlabs_agent_id: ""
 elevenlabs_voice_id: ""
+is_gatekeeper: ${isGatekeeper ? "true" : "false"}
 ---
 
 <!-- LONGMEM + MINDIDX (crystallized long-term memory + 3D index) appear
@@ -197,7 +201,7 @@ ${idea ? idea : "*Not yet described.*"}
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 
-  async function createNew(name, idea) {
+  async function createNew(name, idea, isGatekeeper = false) {
     const id = generateUUID();
 
     // HMAC-Cert vom Server holen (self-validating, kein Admin nötig)
@@ -230,9 +234,24 @@ ${idea ? idea : "*Not yet described.*"}
     if (!cert) cert = generateCert();
 
     soulCert.value = cert;
-    soulContent.value = buildDefaultSoul(id, cert, name, idea);
+    soulContent.value = buildDefaultSoul(id, cert, name, idea, isGatekeeper);
     isLoaded.value = true;
     save();
+
+    // Gatekeeper-Souls sind reine Vermittler, kein öffentliches Angebot — im
+    // Directory (/mcp/discover, /llms.txt) unsichtbar machen. Bestehender
+    // Endpoint, kein neuer Lua-Code (lua/soul_privacy.lua). Silent-fail ist
+    // ok: Owner kann das jederzeit nachträglich in den eigenen Settings setzen.
+    if (isGatekeeper) {
+      try {
+        await fetch("/api/soul/privacy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${id}.${cert}` },
+          body: JSON.stringify({ discoverable: false }),
+        });
+      } catch { /* nicht kritisch, siehe Kommentar oben */ }
+    }
+
     return cert;
   }
 
@@ -896,6 +915,7 @@ Mögliche section-Werte (exakt so schreiben):
     const storageTxMatch  = soulContent.value.match(/storage_tx:\s*(.+)/);
     const certMatch       = soulContent.value.match(/soul_cert:\s*([a-f0-9]+)/i);
     const maturityMatch   = soulContent.value.match(/maturity:\s*(\d+)/);
+    const gatekeeperMatch = soulContent.value.match(/is_gatekeeper:\s*(true|false)/);
     let chainCount = 0;
     const gcMatch = soulContent.value.match(/soul_growth_chain:\s*(\[[\s\S]*?\])/m);
     if (gcMatch) {
@@ -911,6 +931,7 @@ Mögliche section-Werte (exakt so schreiben):
       cert:        certMatch?.[1]?.trim() ?? "",
       chainCount,
       maturity:    maturityMatch   ? parseInt(maturityMatch[1], 10)   : 0,
+      isGatekeeper: gatekeeperMatch?.[1] === "true",
     };
   });
 
