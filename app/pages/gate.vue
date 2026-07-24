@@ -282,8 +282,13 @@ async function submit() {
     }
     if (gateRes?.invite_login) sessionStorage.setItem('sys.invite_login', '1')
 
+    // Biometrics ist an eine soul_id gebunden (creds.initForSoul/authenticateOrRegister
+    // brauchen currentSoulId) — ohne gebundene Soul (Invite-Login auf einem frischen
+    // Multi-Hoster-Node, bound_soul_id noch leer) gibt es nichts, woran Credentials
+    // hängen könnten. Erst per sys.md (Login with Soul) identifizieren, danach ist
+    // Biometrie beim nächsten regulären Login mit Cert sinnvoll.
     const support = await passkey.checkPasskeySupport()
-    if (support.supported && !creds.hasCreds.value) {
+    if (gateRes?.soul_id && support.supported && !creds.hasCreds.value) {
       mode.value = 'saving'
     } else {
       doRedirect()
