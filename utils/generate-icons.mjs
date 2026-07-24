@@ -69,7 +69,14 @@ async function main() {
     // ergänzt den äußeren Rand auf exakt size×size. Ein zweiter .resize() danach
     // überschreibt sharps interne Resize-Konfiguration und verzerrt die Maße
     // (erster Versuch produzierte dadurch 230×230 statt 192×192).
+    // flatten() zuerst: logo.png hat i.d.R. selbst transparente Bereiche
+    // (für Verwendung auf beliebigem UI-Hintergrund gedacht) — resize()s
+    // background-Option füllt nur Letterboxing-Ränder, komposittet aber
+    // nicht die Transparenz IM Bild gegen bg. Ohne flatten() blieb die
+    // eigene Transparenz des Logos bestehen und das Betriebssystem füllte
+    // sie beim Rendern als App-Icon mit Weiß statt mit bg (live bemerkt).
     await sharp(LOGO_PATH)
+      .flatten({ background: bg })
       .resize(inner, inner, { fit: "contain", background: bg })
       .extend({ top: padding, bottom: padding, left: padding, right: padding, background: bg })
       .png()
