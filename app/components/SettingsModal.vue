@@ -1027,7 +1027,7 @@ async function loadNodeStatus() {
   } catch {}
 }
 
-function detectAdmin() {
+async function detectAdmin() {
   if (!isMultiHoster.value) {
     // Single-Hoster: soul owner ist immer Admin — kein Token nötig
     isAdmin.value     = !!soulToken.value
@@ -1051,6 +1051,23 @@ function detectAdmin() {
     isAdmin.value    = true
     adminToken.value  = stored
     isSoulAdmin.value = false
+    return
+  }
+  // localStorage leer (Cache geleert, anderes Gerät/Browser) — Recovery: der
+  // Server hat den admin_token weiterhin in soul_admin.json, per Cert erneut
+  // abrufbar (kein neues Secret, nur die Sichtbarkeit war bisher client-only).
+  if (soulId && soulToken.value) {
+    try {
+      const res = await $fetch('/api/soul/admin-token', {
+        headers: { Authorization: `Bearer ${soulToken.value}` },
+      }).catch(() => null)
+      if (res?.admin_token) {
+        localStorage.setItem(`sys_admin_token_${soulId}`, res.admin_token)
+        isAdmin.value     = true
+        adminToken.value  = res.admin_token
+        isSoulAdmin.value = true
+      }
+    } catch { /* kein admin_token für diese Soul, oder Server nicht erreichbar */ }
   }
 }
 

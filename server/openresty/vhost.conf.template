@@ -274,6 +274,15 @@ server {
     content_by_lua_file /etc/openresty/lua/get_config.lua;
   }
 
+  # ── Eigenen admin_token erneut abrufen (Recovery, falls localStorage verloren) ──
+  location = /api/soul/admin-token {
+    limit_req zone=api burst=5 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_admin_token.lua;
+  }
+
   # ── Config: Anthropic-Key / Modell pro Soul setzen ───────────────────────────
   location = /api/set-config {
     limit_except POST { deny all; }
