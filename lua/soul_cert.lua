@@ -101,20 +101,47 @@ if multi_hoster then
 end
 
 -- Multi-Hoster + Neuregistrierung gesperrt: dieser Endpoint stellt für eine unbekannte
--- soul_id bislang völlig ungeprüft einen Cert aus (kein invite_token-Check hier — das
--- passiert nur in gate_auth.lua, einem separaten Pfad). Ohne diese Sperre könnte jeder,
--- der eine beliebige neue UUID kennt, hierüber direkt eine neue Soul anlegen, selbst
--- wenn Neuregistrierung über gate_auth.lua bereits deaktiviert ist. Single-Hoster ist
--- über den Node-Soul-Lock oben bereits abgedeckt (nur eine Soul, egal welcher Pfad).
+-- soul_id sonst völlig ungeprüft einen Cert aus. Ohne diese Sperre könnte jeder, der
+-- eine beliebige neue UUID kennt, hierüber direkt eine neue Soul anlegen, selbst wenn
+-- Neuregistrierung über gate_auth.lua bereits deaktiviert ist. Single-Hoster ist über
+-- den Node-Soul-Lock oben bereits abgedeckt (nur eine Soul, egal welcher Pfad).
+--
+-- Ausnahme: gültige sys_gate-Session (Passwort + Invite-Token/Cert bereits über /gate
+-- geprüft) umgeht diese Sperre — self_registration ist nur ein UI-Sichtbarkeits-Flag
+-- (siehe gate_auth.lua), keine Zugriffskontrolle für sich bereits authentifizierte
+-- Owner. Sonst blockte dieser Check auch den node-übergreifenden sys.md-Import einer
+-- bereits existierenden, eigenen Soul auf diesem Node zum ersten Mal — der alte Cert
+-- in der Datei ist node-fremd (anderer Master-Key) und kann hier nicht kryptografisch
+-- geprüft werden, die einzig echte Absicherung ist die bereits bestandene Gate-Session.
 if multi_hoster and not cf then
-  local f = io.open("/var/lib/sys/config/self_registration", "r")
-  if f then
-    local v = f:read("*a"); f:close()
-    if v == "false" then
-      ngx.status = 403
-      ngx.header["Content-Type"] = "application/json"
-      ngx.say('{"error":"registration_closed","message":"Neuregistrierung auf diesem Node ist deaktiviert."}')
-      return
+  local gate_ok = false
+  do
+    local gate_token = ngx.var.cookie_sys_gate or ""
+    if gate_token == "" then
+      local cookie_hdr = ngx.req.get_headers()["cookie"] or ""
+      gate_token = cookie_hdr:match("sys_gate=([a-fA-F0-9]+)") or ""
+    end
+    if #gate_token == 64 and gate_token:match("^[a-fA-F0-9]+$") then
+      local sessions = ngx.shared.gate_sessions
+      if sessions then
+        local stored = sessions:get("g:" .. gate_token)
+        if stored then
+          local expires_at = tonumber(stored)
+          if not expires_at or ngx.now() < expires_at then gate_ok = true end
+        end
+      end
+    end
+  end
+  if not gate_ok then
+    local f = io.open("/var/lib/sys/config/self_registration", "r")
+    if f then
+      local v = f:read("*a"); f:close()
+      if v == "false" then
+        ngx.status = 403
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"registration_closed","message":"Neuregistrierung auf diesem Node ist deaktiviert."}')
+        return
+      end
     end
   end
 end
