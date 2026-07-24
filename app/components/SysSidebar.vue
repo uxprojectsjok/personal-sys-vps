@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <div class="sb-head">
       <div class="sb-head-top">
-        <span class="sb-mark">SYS<span class="dot">.</span></span>
+        <img src="/logo.png" alt="SYS" class="sb-mark" />
         <button class="sb-collapse" @click="$emit('collapse')" :title="$t('nav.sidebar_toggle')" :aria-label="$t('nav.sidebar_collapse')">
           <SysIcon name="panel" style="width:19px;height:19px" />
         </button>

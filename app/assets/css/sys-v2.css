@@ -148,11 +148,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .sb-head-top {
   display: flex; align-items: center; gap: 11px; margin-bottom: 8px;
 }
-.sb-mark {
-  font-family: var(--serif); font-weight: 700; font-size: 28px;
-  letter-spacing: -0.03em; color: var(--fg); white-space: nowrap;
-}
-.sb-mark .dot { color: var(--accent); }
+.sb-mark { display: block; height: 28px; width: auto; }
 .sb-collapse {
   margin-left: auto; width: 30px; height: 30px; border-radius: var(--r-xs);
   display: grid; place-items: center; color: var(--fg-3); flex: none;
