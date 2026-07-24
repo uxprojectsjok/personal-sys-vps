@@ -290,10 +290,14 @@ async function handleMcp(req, res) {
       }
     }
   } else {
-    const dirs     = await readdir(SOULS_DIR).catch(() => []);
-    const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
-    let ownerSoulId;
-    if (soulIdParam && soulDirs.includes(soulIdParam)) {
+    // Plain Service-Token: eindeutig per Reverse-Lookup zuordnen, bevor auf
+    // ?soul_id= oder die Single-Soul-Heuristik zurückgefallen wird.
+    let ownerSoulId = await findSoulByServiceToken(token);
+    const dirs     = ownerSoulId ? null : await readdir(SOULS_DIR).catch(() => []);
+    const soulDirs = dirs ? dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d)) : null;
+    if (ownerSoulId) {
+      // gefunden — nichts weiter zu tun
+    } else if (soulIdParam && soulDirs.includes(soulIdParam)) {
       ownerSoulId = soulIdParam;
     } else if (soulDirs.length === 1) {
       ownerSoulId = soulDirs[0];
@@ -2021,6 +2025,25 @@ async function bootstrapAgentSocial() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+// Ein plain Service-Token (kein soul_id.cert) lebt bereits eindeutig in genau
+// einer Soul's authorized_services.json — Reverse-Lookup statt Angewiesenheit
+// auf ?soul_id= oder eine "genau 1 Soul auf dem Node"-Heuristik, die bricht
+// sobald ein zweiter Soul-Ordner existiert (gleiches Muster wie
+// check_service_token() in vault_auth.lua).
+async function findSoulByServiceToken(token) {
+  const dirs     = await readdir(SOULS_DIR).catch(() => []);
+  const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+  for (const id of soulDirs) {
+    try {
+      const raw  = await readFile(`${SOULS_DIR}${id}/authorized_services.json`, 'utf8');
+      const svcs = JSON.parse(raw);
+      if (svcs && Object.prototype.hasOwnProperty.call(svcs, token)) return id;
+    } catch { /* Datei fehlt/ungültig — nächste Soul */ }
+  }
+  return null;
+}
+
 function extractToken(req) {
   const auth = req.headers.authorization || '';
   const match = auth.match(/^Bearer\s+(.+)$/i);
