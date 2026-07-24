@@ -1087,6 +1087,7 @@
     "passkey_tradeoff": "Device-bound: fast and convenient, but tied to this device/password manager — may not sync to other devices depending on your provider.",
     "mnemonic_placeholder": "12 seed words, separated by spaces",
     "mnemonic_tradeoff": "Portable: works on any device, but you must keep the 12 words safe yourself — there is no recovery if they're lost.",
+    "mnemonic_generate": "Generate new words (first-time setup)",
     "word_count": "{n} / 12 words",
     "awaiting_passkey": "Waiting for passkey…",
     "unlocking": "Unlocking…",

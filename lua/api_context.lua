@@ -48,9 +48,17 @@ end
 local function read_context()
   local f = io.open(ctx_file, "r")
   if not f then
+    -- cipher_mode "open" für brandneue Souls: vor der 423-vault_locked-Härtung
+    -- weiter unten (verhindert stilles Downgrade eines BEREITS verschlüsselten
+    -- Vaults auf Klartext) war Verschlüsselung ein expliziter, separater Schritt
+    -- (SoulEncryptModal) — kein neuer Vault-Key nötig, damit der allererste Push
+    -- überhaupt gelingt. "ciphered" als Default blockierte das seither komplett,
+    -- noch bevor je etwas verschlüsselt wurde. Sobald der Owner später einen
+    -- Vault-Key einrichtet, setzt vault_unlock.lua cipher_mode selbst auf
+    -- "ciphered" (siehe had_key_before-Zweig) — ab da greift die Härtung normal.
     return {
       enabled       = false,
-      cipher_mode   = "ciphered",
+      cipher_mode   = "open",
       webhook_token = "",
       permissions   = { soul = false, audio = false, video = false, images = false, context_files = false },
       synced_files  = { audio = cjson.empty_array, video = cjson.empty_array, images = cjson.empty_array, context = cjson.empty_array },

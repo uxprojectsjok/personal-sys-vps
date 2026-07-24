@@ -1087,6 +1087,7 @@
     "passkey_tradeoff": "Gerätegebunden: schnell und bequem, aber an dieses Gerät/diesen Passwort-Manager gekoppelt — synchronisiert je nach Anbieter nicht automatisch auf andere Geräte.",
     "mnemonic_placeholder": "12 Schlüsselwörter, getrennt durch Leerzeichen",
     "mnemonic_tradeoff": "Portabel: funktioniert auf jedem Gerät, du musst die 12 Wörter aber selbst sicher aufbewahren — bei Verlust gibt es keine Wiederherstellung.",
+    "mnemonic_generate": "Neue Wörter generieren (erste Einrichtung)",
     "word_count": "{n} / 12 Wörter",
     "awaiting_passkey": "Warte auf Passkey…",
     "unlocking": "Wird entsperrt…",

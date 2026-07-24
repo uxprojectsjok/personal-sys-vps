@@ -149,6 +149,11 @@
                 <p v-if="mnemonicInput.trim() && mnemonicWordCount !== 12" class="text-sm text-white">
                   {{ $t('vault_session.word_count', { n: mnemonicWordCount }) }}
                 </p>
+                <button
+                  type="button"
+                  style="font-size:14px;color:var(--accent);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px"
+                  @click="generateNewMnemonic"
+                >{{ $t('vault_session.mnemonic_generate') }}</button>
               </div>
             </Transition>
           </div>
@@ -178,6 +183,7 @@ import { useI18n } from 'vue-i18n'
 import { useVaultSession } from '../composables/useVaultSession.js'
 import { useSoulPasskey } from '../composables/useSoulPasskey.js'
 import { useSoul } from '../composables/useSoul.js'
+import { generateMnemonicWords } from '../composables/useSoulEncrypt.js'
 
 const props = defineProps({ headless: Boolean })
 const emit  = defineEmits(['unlocked'])
@@ -270,6 +276,16 @@ async function handleRefresh() {
 // für dasselbe Gerät zu erzwingen. Gleicher Fix wie in SettingsModal.vue.
 function verifyAuthHeaders() {
   return { Authorization: `Bearer ${soulToken.value}`, 'Content-Type': 'application/json' }
+}
+
+// Für eine Soul ohne jemals etabliertem Schlüssel gab es keinen Weg, das
+// Mnemonic-Feld zu befüllen — es setzt nur bestehende Wörter voraus, aber der
+// erste Unlock überhaupt IST die Etablierung (siehe vault_unlock.lua
+// had_key_before-Guard: der Server nimmt beim allerersten Unlock jeden
+// gültigen 64-hex-Schlüssel an). Ohne "Generieren" musste man sich 12 Wörter
+// selbst ausdenken, ohne dass die UI das nahelegt.
+function generateNewMnemonic() {
+  mnemonicInput.value = generateMnemonicWords().join(' ')
 }
 
 async function handleUnlock() {
