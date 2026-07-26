@@ -46,7 +46,7 @@ const { t } = useI18n()
 definePageMeta({ layout: false })
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
+const { soulContent, soulMeta, hasSoul, soulToken, isLoaded, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen       = ref(false)
@@ -56,7 +56,8 @@ onMounted(() => fetchNodeStatus())
 const cmdkOpen         = ref(false)
 
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

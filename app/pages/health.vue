@@ -316,7 +316,7 @@ import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 const { t } = useI18n()
 const router = useRouter()
-const { hasSoul, soulMeta, soulToken } = useSoul()
+const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
@@ -675,7 +675,7 @@ const healthSummary = computed(() => {
 const tips = computed(() => apiTips.value)
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/' }
+function lockSoul() { clear(); document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'; window.location.href = '/' }
 function onNav(id) {
   if (id === 'health') return
   const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', anchor:'/anchor', export:'/export', peers:'/peers', connect:'/connection', market:'/marketplace', earnings:'/earnings', settings:'/settings' }

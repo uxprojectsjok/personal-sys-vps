@@ -98,7 +98,7 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer, isLoaded } = useSoul()
+const { soulContent, soulMeta, hasSoul, soulToken, save, pushToServer, isLoaded, clear } = useSoul()
 const { allFiles } = useVault()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 onMounted(() => fetchNodeStatus())
@@ -195,7 +195,8 @@ async function handlePush() {
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

@@ -215,7 +215,7 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { hasSoul, soulContent, soulMeta, soulToken, isLoaded } = useSoul()
+const { hasSoul, soulContent, soulMeta, soulToken, isLoaded, clear } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles, loadContext } = useApiContext()
 const { readAllVaultFiles, isConnected: vaultConnected } = useVault()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
@@ -312,7 +312,8 @@ async function handleEncrypt() {
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

@@ -110,7 +110,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 
 const router = useRouter()
-const { soulContent, soulMeta, hasSoul, isLoaded, fetchFromServer, acceptServerVersion, syncStatus, serverContent, soulToken } = useSoul()
+const { soulContent, soulMeta, hasSoul, isLoaded, fetchFromServer, acceptServerVersion, syncStatus, serverContent, soulToken, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen       = ref(false)
@@ -294,7 +294,8 @@ const groupedEntries = computed(() => {
 
 // ── Navigation ────────────────────────────────────────────────────────────
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

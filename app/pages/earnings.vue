@@ -136,7 +136,7 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken, isLoaded } = useSoul()
+const { soulMeta, hasSoul, soulToken, isLoaded, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen       = ref(false)
@@ -240,7 +240,8 @@ function exportCSV() {
 }
 
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

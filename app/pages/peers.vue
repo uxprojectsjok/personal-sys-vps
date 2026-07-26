@@ -220,7 +220,7 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { hasSoul, soulMeta, soulToken, soulContent, isLoaded } = useSoul() // soulToken needed for authHeaders
+const { hasSoul, soulMeta, soulToken, soulContent, isLoaded, clear } = useSoul() // soulToken needed for authHeaders
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 const maturity = computed(() => computeMaturity(soulContent.value).score)
 const { ask } = useConfirm()
@@ -438,7 +438,8 @@ onUnmounted(() => {
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 

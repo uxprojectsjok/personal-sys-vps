@@ -310,7 +310,7 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded, pendingSoulFileWrite } = useSoul()
+const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded, pendingSoulFileWrite, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, writeFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
@@ -807,7 +807,8 @@ async function pushVaultToServer() {
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 function lockGate() {
-  document.cookie = 'sys_token=; Max-Age=0; path=/'
+  clear()
+  document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
   window.location.href = '/'
 }
 function onNav(id) {

@@ -166,7 +166,7 @@ import { useNodeStatus } from '~/composables/useNodeStatus.js'
 definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
-const { hasSoul, soulMeta, soulToken } = useSoul()
+const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 onMounted(() => fetchNodeStatus())
 
@@ -314,7 +314,7 @@ onUnmounted(() => {
 })
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-function lockGate() { document.cookie='sys_token=; Max-Age=0; path=/'; window.location.href='/' }
+function lockGate() { clear(); document.cookie='sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'; window.location.href='/' }
 function onNav(id) {
   const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', health:'/health', anchor:'/anchor', export:'/export', peers:'/peers', market:'/marketplace', earnings:'/earnings', settings:'/settings' }
   if (id === 'connect') return
