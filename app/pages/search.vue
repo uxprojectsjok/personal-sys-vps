@@ -1,7 +1,10 @@
 <template>
   <div class="srp-page">
     <header class="srp-header">
-      <NuxtLink to="/" class="srp-logo">SYS<em>.</em></NuxtLink>
+      <NuxtLink to="/" class="srp-logo">
+        <img src="/logo.png" alt="SYS" class="srp-logo-img" />
+        <span class="srp-logo-text">SYS<em>.</em></span>
+      </NuxtLink>
       <form class="srp-search-box" @submit.prevent="runSearch">
         <svg class="srp-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
           <circle cx="11" cy="11" r="7"/>
@@ -27,45 +30,47 @@
     </header>
 
     <main class="srp-main">
-      <p v-if="loading" class="srp-status">{{ $t('landing.search_loading') }}</p>
-      <p v-else-if="error" class="srp-status">{{ $t('landing.search_error') }}</p>
-      <template v-else-if="submittedQuery">
-        <p class="srp-count">{{ $t('landing.search_result_count', { n: allResults.length, q: submittedQuery }) }}</p>
-        <p v-if="allResults.length === 0" class="srp-status">{{ $t('landing.search_empty') }}</p>
+      <div class="srp-col">
+        <p v-if="loading" class="srp-status">{{ $t('landing.search_loading') }}</p>
+        <p v-else-if="error" class="srp-status">{{ $t('landing.search_error') }}</p>
+        <template v-else-if="submittedQuery">
+          <p class="srp-count">{{ $t('landing.search_result_count', { n: allResults.length, q: submittedQuery }) }}</p>
+          <p v-if="allResults.length === 0" class="srp-status">{{ $t('landing.search_empty') }}</p>
 
-        <div v-else class="srp-results">
-          <a
-            v-for="r in pageResults" :key="r.origin"
-            class="srp-item"
-            :href="r.origin"
-            target="_blank" rel="noopener noreferrer"
-          >
-            <div class="srp-item-head">
-              <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
-              <div class="srp-item-headtext">
-                <span class="srp-item-name">{{ r.title }}</span>
-                <span class="srp-item-url">{{ r.hostname }}</span>
+          <div v-else class="srp-results">
+            <a
+              v-for="r in pageResults" :key="r.origin"
+              class="srp-item"
+              :href="r.origin"
+              target="_blank" rel="noopener noreferrer"
+            >
+              <div class="srp-item-head">
+                <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
+                <div class="srp-item-headtext">
+                  <span class="srp-item-name">{{ r.title }}</span>
+                  <span class="srp-item-url">{{ r.hostname }}</span>
+                </div>
               </div>
-            </div>
-            <span v-if="r.meta" class="srp-item-meta">{{ r.meta }}</span>
-            <span v-if="r.snippet" class="srp-item-desc" v-html="r.snippet"></span>
-            <span v-if="r.tags?.length" class="srp-item-tags">
-              <span v-for="t in r.tags.slice(0, 8)" :key="t" class="srp-item-tag">#{{ t }}</span>
-            </span>
-          </a>
-        </div>
+              <span v-if="r.meta" class="srp-item-meta">{{ r.meta }}</span>
+              <span v-if="r.snippet" class="srp-item-desc" v-html="r.snippet"></span>
+              <span v-if="r.tags?.length" class="srp-item-tags">
+                <span v-for="t in r.tags.slice(0, 8)" :key="t" class="srp-item-tag">#{{ t }}</span>
+              </span>
+            </a>
+          </div>
 
-        <nav v-if="pageCount > 1" class="srp-pagination" aria-label="Pagination">
-          <button class="srp-page-btn" :disabled="page === 1" @click="page--">←</button>
-          <button
-            v-for="p in pageCount" :key="p"
-            class="srp-page-btn"
-            :class="{ on: p === page }"
-            @click="page = p"
-          >{{ p }}</button>
-          <button class="srp-page-btn" :disabled="page === pageCount" @click="page++">→</button>
-        </nav>
-      </template>
+          <nav v-if="pageCount > 1" class="srp-pagination" aria-label="Pagination">
+            <button class="srp-page-btn" :disabled="page === 1" @click="page--">←</button>
+            <button
+              v-for="p in pageCount" :key="p"
+              class="srp-page-btn"
+              :class="{ on: p === page }"
+              @click="page = p"
+            >{{ p }}</button>
+            <button class="srp-page-btn" :disabled="page === pageCount" @click="page++">→</button>
+          </nav>
+        </template>
+      </div>
     </main>
   </div>
 </template>
@@ -121,7 +126,8 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
   display: flex; align-items: center; gap: 32px;
   padding: 18px clamp(20px,4vw,48px); border-bottom: 1px solid var(--line);
 }
-.srp-logo { font-family: var(--serif); font-size: 22px; color: var(--fg); text-decoration: none; flex: none; }
+.srp-logo { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 22px; color: var(--fg); text-decoration: none; flex: none; }
+.srp-logo-img { width: 26px; height: 26px; display: block; }
 .srp-logo em { font-style: italic; color: var(--accent); }
 .srp-search-box {
   display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px;
@@ -138,7 +144,8 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-search-submit svg { width: 15px; height: 15px; }
 .srp-search-submit:disabled { opacity: .4; cursor: not-allowed; }
 
-.srp-main { max-width: 700px; margin: 0 auto; padding: 28px clamp(20px,4vw,0) 60px; }
+.srp-main { padding: 28px clamp(20px,4vw,48px) 60px; }
+.srp-col { max-width: 620px; }
 .srp-status { font-size: 14px; color: var(--fg-3); padding: 24px 0; }
 .srp-count { font-size: 13px; color: var(--fg-3); margin: 0 0 20px; }
 
@@ -161,7 +168,7 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .srp-item-tag { font-size: 11px; color: var(--accent); }
 
-.srp-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 40px; }
+.srp-pagination { display: flex; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 40px; }
 .srp-page-btn {
   min-width: 32px; height: 32px; padding: 0 8px; display: flex; align-items: center; justify-content: center;
   background: none; border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--fg-2);
