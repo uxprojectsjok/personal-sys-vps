@@ -742,20 +742,23 @@ onMounted(() => {
   transition: background .2s, color .2s;
 }
 .login-close:hover { background: var(--surface-2); color: var(--fg); }
+/* Nur drei Text-Stimmen in dieser Karte: Serif ausschließlich für den
+   Titel, ruhiges Sans für Fließtext/Labels/Buttons, Uppercase-Mono nur für
+   den Kicker ganz oben. */
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: 26px; letter-spacing: -0.025em; margin: 0 0 8px; color: var(--fg); line-height: 1.15; }
 .login-title em { font-style: italic; color: var(--accent); }
 .login-sub { font-size: 15px; color: var(--fg-2); line-height: 1.5; margin: 0 0 24px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.login-divider span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }
+.login-divider span { font-size: 13px; color: var(--fg-4); }
 .login-alt { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 16px 18px; background: transparent; border: 1px solid var(--line); color: var(--fg); cursor: pointer; text-align: left; font: inherit; transition: all 0.15s; box-sizing: border-box; border-radius: var(--r-sm); }
 .login-alt:hover { border-color: var(--accent); background: var(--accent-dim); }
-.login-alt span { font-family: var(--serif); font-size: clamp(15px,3.5vw,18px); letter-spacing: -0.01em; min-width: 0; }
-.login-alt-sub { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-3); flex: 1; display: none; }
+.login-alt span { font-size: 15px; font-weight: 500; letter-spacing: 0; min-width: 0; }
+.login-alt-sub { font-size: 13px; color: var(--fg-3); flex: 1; display: none; }
 @media (min-width: 400px) { .login-alt-sub { display: block; } }
 .login-alt + .login-alt { margin-top: 10px; }
-.login-arr { font-family: var(--serif); font-size: 20px; color: var(--fg-3); }
+.login-arr { font-size: 16px; color: var(--fg-3); }
 .login-sheet-enter-active, .login-sheet-leave-active { transition: opacity 0.2s ease; }
 .login-sheet-enter-active .login-sheet, .login-sheet-leave-active .login-sheet { transition: transform 0.25s ease, opacity 0.2s; }
 .login-sheet-enter-from, .login-sheet-leave-to { opacity: 0; }
