@@ -808,7 +808,7 @@ async function pushVaultToServer() {
 // ── Navigation ─────────────────────────────────────────────────────────────
 function lockGate() {
   document.cookie = 'sys_token=; Max-Age=0; path=/'
-  window.location.href = '/gate'
+  window.location.href = '/'
 }
 function onNav(id) {
   if (id === 'files')    return

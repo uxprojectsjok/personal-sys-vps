@@ -49,7 +49,7 @@ function go(tab) {
     // reload instead, same pattern every page's own lockGate() uses.
     clear()
     document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
-    window.location.href = '/gate'
+    window.location.href = '/'
     return
   }
   router.push(tab.path)

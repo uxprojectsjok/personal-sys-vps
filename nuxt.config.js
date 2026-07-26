@@ -86,7 +86,7 @@ export default defineNuxtConfig({
         { name: "apple-mobile-web-app-title", content: "SYS" },
       ],
       link: [
-        { rel: "manifest", href: "/manifest.json?v=9" },
+        { rel: "manifest", href: "/manifest.json?v=10" },
         { rel: "icon", type: "image/x-icon", href: "/logo.ico?v=9" },
         {
           rel: "apple-touch-icon",

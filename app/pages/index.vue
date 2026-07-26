@@ -437,7 +437,11 @@ function fmtDate(d) {
 function lockGate() {
   _clear?.()
   document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
-  window.location.href = '/gate'
+  // '/' statt '/gate': gate.vue ist absichtlich blank bis zum dezenten Reveal-
+  // Trigger (siehe dortiger Kommentar) — von hier aus (PWA-Start, Lock/Logout)
+  // soll aber die volle Landingpage erscheinen, nicht eine leere Seite.
+  // gate_check.lua gibt '/' ohnehin öffentlich frei, kein Cookie nötig.
+  window.location.href = '/'
 }
 
 async function confirmReset() {

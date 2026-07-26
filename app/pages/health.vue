@@ -675,7 +675,7 @@ const healthSummary = computed(() => {
 const tips = computed(() => apiTips.value)
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/gate' }
+function lockSoul() { document.cookie = 'sys_token=; Max-Age=0; path=/'; window.location.href = '/' }
 function onNav(id) {
   if (id === 'health') return
   const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', anchor:'/anchor', export:'/export', peers:'/peers', connect:'/connection', market:'/marketplace', earnings:'/earnings', settings:'/settings' }
