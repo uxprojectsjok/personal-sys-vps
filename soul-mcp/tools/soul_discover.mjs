@@ -2,6 +2,71 @@ import { z } from 'zod';
 
 const MCP_BASE = () => `http://127.0.0.1:${process.env.PORT || '3098'}`;
 
+// Zweite Suchquelle neben querySouls() (soul_id/name/mcp_endpoint/description/tags):
+// die frei formulierten llms.txt-Texte der Nodes selbst (Preise, Kontakt, Tool-Liste,
+// Beschreibungstext jenseits der strukturierten Felder). querySouls() durchsucht das
+// NICHT — siehe useNetworkSearch.js (Web-Suche), gleiche Idee, hier server-seitig.
+async function fetchLlmsTxt(origin) {
+  try {
+    const res = await fetch(`${origin}/llms.txt`, {
+      headers: { Accept: 'text/plain' },
+      signal:  AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
+function snippetAround(text, q, radius = 100) {
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return null;
+  const start = Math.max(0, idx - radius);
+  const end   = Math.min(text.length, idx + q.length + radius);
+  let snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+  if (start > 0) snippet = `…${snippet}`;
+  if (end < text.length) snippet += '…';
+  return snippet;
+}
+
+// Sucht q in den llms.txt-Texten aller Nodes, deren Origin NICHT schon über die
+// strukturierten Felder (primary souls) gefunden wurde — vermeidet Doppel-Treffer.
+async function searchLlmsTxtAcrossNodes(q, knownOrigins) {
+  const params = new URLSearchParams({ limit: '100' });
+  const url = `${MCP_BASE()}/internal/discover-souls?${params.toString()}`;
+  let allSouls = [];
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+    if (res.ok) allSouls = (await res.json()).souls || [];
+  } catch {
+    return [];
+  }
+
+  const origins = new Set();
+  for (const s of allSouls) {
+    if (!s.mcp_endpoint) continue;
+    try {
+      const origin = new URL(s.mcp_endpoint).origin;
+      if (!knownOrigins.has(origin)) origins.add(origin);
+    } catch { /* invalid URL, skip */ }
+  }
+  if (origins.size === 0) return [];
+
+  const results = await Promise.allSettled(
+    [...origins].map(async (origin) => {
+      const text = await fetchLlmsTxt(origin);
+      if (!text) return null;
+      const snippet = snippetAround(text, q);
+      if (!snippet) return null;
+      return { origin, snippet };
+    })
+  );
+  return results
+    .filter(r => r.status === 'fulfilled' && r.value)
+    .map(r => r.value);
+}
+
 // EU withdrawal-rights consent flow — off by default, opt-in via init.sh
 // ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
 const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
@@ -27,7 +92,10 @@ export function register(server, token) {
       'Sort: sessions DESC, then anchor_span_days DESC.',
       'Souls without real sessions are not shown (anti-fraud minimum filter).',
       '',
-      'Search (q) searches: name, soul_id, tags, description.',
+      'Search (q) searches: name, soul_id, tags, description — AND, as a second pass,',
+      'the free-text llms.txt of every other known node (prices, contact, tool list,',
+      'anything an operator wrote there that isn\'t in the structured fields above).',
+      'Shown separately as "additional matches in node descriptions" when relevant.',
       '',
       'Parameters:',
       '- q:         Free-text search — name, soul_id, tags, description — optional',
@@ -76,7 +144,7 @@ export function register(server, token) {
       'read_endpoint = pay_endpoint der Soul mit /pay ersetzt durch /paid-read.',
     ].join('\n'),
     {
-      q:         z.string().optional().describe('Freitext-Suche (soul_id oder Name)'),
+      q:         z.string().optional().describe('Freitext-Suche (soul_id, Name, Tags, Description, plus llms.txt-Volltext anderer Nodes)'),
       amortized: z.boolean().optional().describe('Nur zahlungspflichtige Souls'),
       limit:     z.number().min(1).max(100).optional().describe('Max. Ergebnisse'),
     },
@@ -103,7 +171,19 @@ export function register(server, token) {
         const data = await res.json();
         const souls = data.souls || [];
 
-        if (souls.length === 0) {
+        // llms.txt-Zweitpass nur wenn eine echte Freitextsuche vorliegt — bei leerem q
+        // (reine Listing-Anfrage) gibt es nichts sinnvoll gegen Volltext zu matchen.
+        let llmsMatches = [];
+        if (q) {
+          const knownOrigins = new Set();
+          for (const s of souls) {
+            if (!s.mcp_endpoint) continue;
+            try { knownOrigins.add(new URL(s.mcp_endpoint).origin); } catch { /* skip */ }
+          }
+          llmsMatches = await searchLlmsTxtAcrossNodes(q, knownOrigins);
+        }
+
+        if (souls.length === 0 && llmsMatches.length === 0) {
           const scanning = data.indexing === true;
           const indexed  = data.indexed ?? 0;
           let msg = scanning
@@ -113,10 +193,12 @@ export function register(server, token) {
         }
 
         const lines = [];
-        lines.push(`## Soul Directory — ${souls.length} entries${data.total > souls.length ? ` (of ${data.total})` : ''}`);
-        lines.push(`_Quelle: Polygon-Blockchain · sortiert nach Aktivität_`);
-        if (q) lines.push(`_Suche: "${q}"_`);
-        lines.push('');
+        if (souls.length > 0) {
+          lines.push(`## Soul Directory — ${souls.length} entries${data.total > souls.length ? ` (of ${data.total})` : ''}`);
+          lines.push(`_Quelle: Polygon-Blockchain · sortiert nach Aktivität_`);
+          if (q) lines.push(`_Suche: "${q}"_`);
+          lines.push('');
+        }
 
         for (const s of souls) {
           lines.push(`### ${s.name || s.soul_id}`);
@@ -167,8 +249,22 @@ export function register(server, token) {
           lines.push('');
         }
 
-        lines.push('---');
-        lines.push('_Zahlungs-Workflow: pay_endpoint mit dem x402-Protokoll bezahlen → access_token für MCP-Zugriff_');
+        if (llmsMatches.length > 0) {
+          lines.push(`## Zusätzliche Treffer in Node-Beschreibungen (llms.txt) — ${llmsMatches.length}`);
+          lines.push('_Nicht über strukturierte Felder gefunden, sondern im Freitext der Node selbst — z.B. Preise, Kontakt, Tool-Liste._');
+          lines.push('');
+          for (const m of llmsMatches) {
+            lines.push(`### ${m.origin}`);
+            lines.push(`_"${m.snippet}"_`);
+            lines.push(`- **llms.txt:** ${m.origin}/llms.txt`);
+            lines.push('');
+          }
+        }
+
+        if (souls.length > 0) {
+          lines.push('---');
+          lines.push('_Zahlungs-Workflow: pay_endpoint mit dem x402-Protokoll bezahlen → access_token für MCP-Zugriff_');
+        }
 
         return { content: [{ type: 'text', text: lines.join('\n') }] };
       } catch (err) {
