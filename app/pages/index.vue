@@ -8,6 +8,7 @@
           <div class="gate-sub">{{ config.public.nodeName }}</div>
           <h1>Save Your Soul<em>.</em></h1>
           <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
+          <ContextSearch />
           <div style="display:flex;flex-direction:column;gap:12px;width:100%">
             <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
               {{ $t('index.create_soul') }}
@@ -306,6 +307,7 @@ import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
+import ContextSearch from '~/components/ContextSearch.vue'
 
 const config = useRuntimeConfig()
 const { t } = useI18n()

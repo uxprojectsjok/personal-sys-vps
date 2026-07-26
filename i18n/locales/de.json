@@ -131,6 +131,13 @@
     "not_available": "Diese Ansicht ist noch nicht verfügbar.",
     "session_log_entries": "{count} Einträge"
   },
+  "landing": {
+    "search_placeholder": "Node & Context durchsuchen",
+    "search_loading": "Verzeichnis wird geladen…",
+    "search_empty": "Keine Treffer.",
+    "search_error": "Verzeichnis aktuell nicht erreichbar.",
+    "search_hint": "Durchsucht Name, Beschreibung und Tags aller öffentlich auffindbaren Souls im Netzwerk."
+  },
   "index": {
     "landing_sub": "Persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt.",
     "create_soul": "Soul erstellen",
