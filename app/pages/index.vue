@@ -188,16 +188,13 @@
       <Transition name="login-sheet">
         <div
           v-if="loginOpen"
-          class="fixed inset-0 z-50 flex flex-col justify-end items-center"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog" aria-modal="true" :aria-label="$t('index.load_soul_title')"
           @click.self="loginOpen = false"
         >
           <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="loginOpen = false" />
           <div class="login-sheet">
-            <div class="login-handle">
-              <div class="login-bar" />
-              <button class="login-close" @click="loginOpen = false" :aria-label="$t('index.close')">✕</button>
-            </div>
+            <button class="login-close" @click="loginOpen = false" :aria-label="$t('index.close')">✕</button>
             <div class="login-kicker">{{ $t('index.login_modal_kicker') }}</div>
             <h2 class="login-title">{{ $t('index.login_modal_title') }}</h2>
             <p class="login-sub">
@@ -727,23 +724,28 @@ onMounted(() => {
 
 .mat-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-deep), var(--accent-bright)); transition: width .6s var(--ease); }
 
-/* ── Login sheet (reused from old design, simplified) ─────────────────── */
+/* ── Login modal — zentriert, an gate.vue angelehnt (kein Bottom-Sheet mehr) ── */
 .login-sheet {
   position: relative; z-index: 10;
-  background: var(--surface); border-top: 1px solid var(--line-2);
-  border-radius: 20px 20px 0 0;
-  padding: 20px clamp(16px,5vw,28px) 40px;
+  background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  padding: 36px clamp(20px,5vw,32px) 32px;
   max-height: 92dvh; overflow-y: auto;
-  width: 100%; max-width: 520px; box-sizing: border-box;
+  width: 100%; max-width: 460px; box-sizing: border-box;
 }
-.login-handle { display: flex; align-items: center; margin-bottom: 20px; }
-.login-bar { flex: 1; display: flex; justify-content: center; }
-.login-bar::after { content: ""; display: block; width: 40px; height: 2px; background: var(--line-2); border-radius: 2px; }
-.login-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: transparent; color: var(--fg-3); cursor: pointer; font-size: 12px; border-radius: 8px; }
+/* Kreisförmig, ohne Rahmen — gleiche Machart wie gate.vue's .gate-close-trigger */
+.login-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg-3); cursor: pointer; font-size: 14px;
+  transition: background .2s, color .2s;
+}
+.login-close:hover { background: var(--surface-2); color: var(--fg); }
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
-.login-title { font-family: var(--serif); font-weight: 400; font-size: clamp(28px,4vw,36px); letter-spacing: -0.025em; margin: 0 0 10px; color: var(--fg); line-height: 1; }
+.login-title { font-family: var(--serif); font-weight: 400; font-size: 26px; letter-spacing: -0.025em; margin: 0 0 8px; color: var(--fg); line-height: 1.15; }
 .login-title em { font-style: italic; color: var(--accent); }
-.login-sub { font-size: 15px; color: var(--fg); line-height: 1.5; margin: 0 0 20px; }
+.login-sub { font-size: 15px; color: var(--fg-2); line-height: 1.5; margin: 0 0 24px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .login-divider span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-4); }
@@ -752,9 +754,12 @@ onMounted(() => {
 .login-alt span { font-family: var(--serif); font-size: clamp(15px,3.5vw,18px); letter-spacing: -0.01em; min-width: 0; }
 .login-alt-sub { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-3); flex: 1; display: none; }
 @media (min-width: 400px) { .login-alt-sub { display: block; } }
+.login-alt + .login-alt { margin-top: 10px; }
 .login-arr { font-family: var(--serif); font-size: 20px; color: var(--fg-3); }
-.login-sheet-enter-active, .login-sheet-leave-active { transition: transform 0.3s cubic-bezier(0.32,0.72,0,1), opacity 0.25s ease; }
-.login-sheet-enter-from, .login-sheet-leave-to { transform: translateY(100%); opacity: 0; }
+.login-sheet-enter-active, .login-sheet-leave-active { transition: opacity 0.2s ease; }
+.login-sheet-enter-active .login-sheet, .login-sheet-leave-active .login-sheet { transition: transform 0.25s ease, opacity 0.2s; }
+.login-sheet-enter-from, .login-sheet-leave-to { opacity: 0; }
+.login-sheet-enter-from .login-sheet, .login-sheet-leave-to .login-sheet { transform: translateY(16px) scale(0.98); opacity: 0; }
 .login-recovery { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(223,144,144,0.35); background: rgba(223,144,144,0.06); border-radius: var(--r-sm); }
 .login-recovery-msg { font-size: 14px; color: var(--fg-2); line-height: 1.5; margin: 0 0 12px; }
 .login-recovery-btn { width: 100%; padding: 11px 16px; background: transparent; border: 1px solid rgba(223,144,144,0.5); color: var(--c-danger); font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: var(--r-sm); transition: all 0.15s; }

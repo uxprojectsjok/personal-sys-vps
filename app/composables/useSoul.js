@@ -415,6 +415,15 @@ ${idea ? idea : "*Not yet described.*"}
     if (!isClient) return;
     sessionStorage.removeItem(SOUL_KEY);
     sessionStorage.removeItem(CERT_KEY);
+    // gate.vue/join.vue setzen dieses Flag nach erfolgreichem Invite-Login,
+    // damit index.vue das Login-Sheet nach einem Redirect von /gate
+    // automatisch öffnet. Wird der Cert danach per Biometrie entsperrt
+    // (statt über SoulUpload/handleLoginUpload, das einzige, was das Flag
+    // bisher löschte), bleibt es sonst für den Rest der Session stehen — ein
+    // voller Logout (clear()) soll es auch aufräumen, sonst poppt das Sheet
+    // nach jedem erneuten Login/Lock wieder ungefragt auf, statt die reine
+    // Landingpage zu zeigen.
+    sessionStorage.removeItem("sys.invite_login");
     soulContent.value = "";
     soulCert.value = "";
     isLoaded.value = false;
