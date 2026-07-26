@@ -137,7 +137,11 @@
     "search_empty": "No matches.",
     "search_error": "Directory currently unavailable.",
     "search_hint": "Searches name, description and tags of every publicly discoverable node on the network.",
-    "arch_link_scan": "Scan"
+    "arch_link_scan": "Scan",
+    "search_meta_soul_one": "{n} soul",
+    "search_meta_soul_other": "{n} souls",
+    "search_meta_price": "from {p} USDC",
+    "search_meta_free": "free"
   },
   "index": {
     "landing_sub": "Personal identity layer for AI systems. Portable. Encrypted.",

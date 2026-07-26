@@ -34,11 +34,17 @@
         :href="r.origin"
         target="_blank" rel="noopener noreferrer"
       >
-        <span class="ctx-search-name">{{ r.title }}</span>
-        <span class="ctx-search-url">{{ r.origin }}</span>
-        <span v-if="r.snippet" class="ctx-search-desc" v-html="r.snippet"></span>
-        <span v-if="r.tags?.length" class="ctx-search-tags">
-          <span v-for="t in r.tags.slice(0, 6)" :key="t" class="ctx-search-tag">#{{ t }}</span>
+        <span class="ctx-search-avatar" aria-hidden="true">{{ r.initial }}</span>
+        <span class="ctx-search-body">
+          <span class="ctx-search-head">
+            <span class="ctx-search-name">{{ r.title }}</span>
+            <span class="ctx-search-url">{{ r.hostname }}</span>
+          </span>
+          <span v-if="r.meta" class="ctx-search-meta">{{ r.meta }}</span>
+          <span v-if="r.snippet" class="ctx-search-desc" v-html="r.snippet"></span>
+          <span v-if="r.tags?.length" class="ctx-search-tags">
+            <span v-for="t in r.tags.slice(0, 6)" :key="t" class="ctx-search-tag">#{{ t }}</span>
+          </span>
         </span>
       </a>
     </div>
@@ -62,6 +68,9 @@
 // <mark>-Treffer eingefügt, sonst könnte eine Node ihre llms.txt mit Markup
 // befüllen und über v-html Code einschleusen.
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const query          = ref('')
 const submittedQuery = ref('')
@@ -143,6 +152,16 @@ function buildSnippet(rawText, query) {
   return `${prefix}${before}<mark>${match}</mark>${after}${suffix}`
 }
 
+// Blockquote-Intro aus llms.txt ("> ...") als generische Fallback-
+// Beschreibung, damit ein Ergebnis nie inhaltsleer wirkt, auch wenn der
+// Treffer nur im Titel/Tag steckt und keine direkte Textstelle liefert.
+function extractIntro(llmsText) {
+  const lines = llmsText.split('\n').filter(l => l.trim().startsWith('>'))
+  if (!lines.length) return ''
+  const text = lines.map(l => l.replace(/^>\s?/, '')).join(' ').trim()
+  return text.length > 160 ? `${text.slice(0, 160)}…` : text
+}
+
 const results = computed(() => {
   const q = submittedQuery.value
   if (!q || error.value) return []
@@ -152,22 +171,32 @@ const results = computed(() => {
     const fullHaystack = `${soulHaystack} ${node.llmsText}`.toLowerCase()
     if (!fullHaystack.includes(q)) continue
 
-    // Snippet bevorzugt aus llms.txt (mehr Kontext), sonst aus der ersten
-    // passenden Soul-Beschreibung.
+    // Snippet bevorzugt aus llms.txt (mehr Kontext), dann aus der ersten
+    // passenden Soul-Beschreibung, zuletzt die generische Intro — ein
+    // Ergebnis zeigt also immer einen erklärenden Text, nie nur den Titel.
     let snippet = buildSnippet(node.llmsText, q)
     if (!snippet) {
       const hit = node.souls.find(s => (s.description || '').toLowerCase().includes(q))
       if (hit) snippet = buildSnippet(hit.description, q)
     }
+    if (!snippet) snippet = escapeHtml(extractIntro(node.llmsText))
 
     const primarySoul = node.souls.find(s => s.name && !/^[0-9a-f-]{8,}$/.test(s.name)) || node.souls[0]
     const titleMatch = node.llmsText.match(/^#\s*(.+)$/m)
     const title = primarySoul?.name || (titleMatch ? titleMatch[1].trim() : new URL(node.origin).hostname)
 
+    const soulCount = node.souls.length
+    const prices = node.souls.map(s => s.usdc_current ?? s.price_usdc).filter(p => typeof p === 'number' && p > 0)
+    const metaParts = [t(soulCount === 1 ? 'landing.search_meta_soul_one' : 'landing.search_meta_soul_other', { n: soulCount })]
+    metaParts.push(prices.length ? t('landing.search_meta_price', { p: Math.min(...prices) }) : t('landing.search_meta_free'))
+
     out.push({
       origin: node.origin,
+      hostname: new URL(node.origin).hostname,
+      initial: title.trim().charAt(0).toUpperCase() || '?',
       title,
       snippet,
+      meta: metaParts.join(' · '),
       tags: [...new Set(node.souls.flatMap(s => s.tags || []))],
     })
   }
@@ -207,20 +236,29 @@ const results = computed(() => {
 .ctx-search-results {
   margin-top: 14px;
   background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-sm);
-  max-height: 420px; overflow-y: auto; padding: 6px;
+  max-height: 460px; overflow-y: auto; padding: 6px;
 }
 .ctx-search-msg { font-size: 14px; color: var(--fg-3); text-align: center; padding: 16px 8px; margin: 0; }
 .ctx-search-item {
-  display: flex; flex-direction: column; gap: 3px; padding: 12px;
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 12px;
   border-radius: var(--r-sm); text-decoration: none; color: var(--fg);
   transition: background .12s;
 }
 .ctx-search-item + .ctx-search-item { border-top: 1px solid var(--line); }
 .ctx-search-item:hover, .ctx-search-item:focus-visible { background: var(--surface-2); }
-.ctx-search-name { font-size: 15px; font-weight: 500; color: var(--accent); }
-.ctx-search-url { font-family: var(--mono); font-size: 11px; color: var(--fg-4); }
-.ctx-search-desc { font-size: 13px; color: var(--fg-2); line-height: 1.5; }
-.ctx-search-desc :deep(mark) { background: var(--accent-dim, rgba(109,184,154,0.25)); color: var(--fg); border-radius: 2px; }
+.ctx-search-avatar {
+  flex: none; width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim, rgba(109,184,154,0.18)); color: var(--accent);
+  font-family: var(--serif); font-size: 16px; font-weight: 600;
+}
+.ctx-search-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ctx-search-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ctx-search-name { font-size: 16px; font-weight: 600; color: var(--fg); }
+.ctx-search-url { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+.ctx-search-meta { font-size: 12px; color: var(--fg-3); }
+.ctx-search-desc { font-size: 13px; color: var(--fg-2); line-height: 1.55; }
+.ctx-search-desc :deep(mark) { background: var(--accent-dim, rgba(109,184,154,0.25)); color: var(--fg); border-radius: 2px; padding: 0 1px; }
 .ctx-search-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ctx-search-tag { font-size: 11px; color: var(--accent); }
 
