@@ -593,17 +593,18 @@ async function discoverNodesFromChain(apiKey) {
       `&address=${SYS_CONTRACT}&topic0=${ANCHORED_TOPIC0}` +
       `&fromBlock=90674283&toBlock=latest&page=1&offset=1000&apikey=${apiKey}`
     // Ein einzelner Netzwerk-Hänger/Timeout darf nicht sofort die ganze
-    // Discovery degradieren — einmal mit kurzer Pause wiederholen, bevor
+    // Discovery degradieren — bis zu 3 Versuche mit wachsender Pause, bevor
     // aufgegeben wird. Auf einem frisch besuchten Node (kein localStorage-
     // Cache aus vorherigen Besuchen) macht sonst schon ein einzelner
     // flüchtiger Fehlschlag die Seite fälschlich leer.
-    let json = await fetch(url, { signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => null)
-    if (!json || json.status !== '1' || !Array.isArray(json.result)) {
-      await new Promise(r => setTimeout(r, 1500))
+    let json = null
+    for (const delayMs of [0, 1500, 3500]) {
+      if (delayMs) await new Promise(r => setTimeout(r, delayMs))
       json = await fetch(url, { signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => null)
+      if (json && json.status === '1' && Array.isArray(json.result)) break
     }
     if (!json || json.status !== '1' || !Array.isArray(json.result)) {
-      console.warn('[scan] Etherscan getLogs lieferte kein verwertbares Ergebnis (auch nach Retry):', json?.status, json?.message)
+      console.warn('[scan] Etherscan getLogs lieferte kein verwertbares Ergebnis (auch nach Retries):', json?.status, json?.message)
       degraded.value.etherscan = true
       return { origins: [], stubs: [] }
     }
