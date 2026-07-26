@@ -136,12 +136,12 @@
     "search_loading": "Verzeichnis wird geladen…",
     "search_empty": "Keine Treffer.",
     "search_error": "Verzeichnis aktuell nicht erreichbar.",
-    "search_hint": "Durchsucht Name, Beschreibung und Tags aller öffentlich auffindbaren Nodes im Netzwerk.",
     "arch_link_scan": "Scan",
     "search_meta_soul_one": "{n} Soul",
     "search_meta_soul_other": "{n} Souls",
     "search_meta_price": "ab {p} USDC",
-    "search_meta_free": "kostenlos"
+    "search_meta_free": "kostenlos",
+    "search_result_count": "{n} Ergebnis(se) für \"{q}\""
   },
   "index": {
     "landing_sub": "Persönliche Identitätsschicht für KI-Systeme. Portabel. Verschlüsselt.",

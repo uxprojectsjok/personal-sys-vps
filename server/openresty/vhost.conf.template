@@ -1742,6 +1742,24 @@ server {
     try_files $uri $uri.html /scanner/index.html /index.html;
   }
 
+  ################################
+  # Netzwerk-Suchergebnisse: öffentlich, kein Gate-Check — liest nur
+  # /api/soul/scan + llms.txt
+  ################################
+  location = /search {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /search/index.html /index.html;
+  }
+
+  location ^~ /search/ {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /search/index.html /index.html;
+  }
+
   # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   ################################
   # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus
