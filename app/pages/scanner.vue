@@ -859,7 +859,12 @@ async function runScan() {
     updateTable(soulMap)
   })).catch(e => console.warn('[scan] IPFS-Anreicherungs-Batch fehlgeschlagen:', e.message))
 
-  const allSeeds = [...new Set([...seeds, ...chainNodes])]
+  // Eigener Node zuerst — same-origin, funktioniert unabhängig von Etherscan/
+  // RPC-Ausfällen (z.B. durch Ad-/Privacy-Blocker, die Blockchain-Domains
+  // filtern). Ohne das zeigt der Scanner bei einem Discovery-Ausfall "0
+  // Souls", obwohl der eigene Node ganz normal erreichbar ist.
+  const ownOrigin = window.location.origin
+  const allSeeds  = [...new Set([ownOrigin, ...seeds, ...chainNodes])]
   for (const url of allSeeds) queue.push(url)
 
   // BFS: query each node, live data overrides stubs

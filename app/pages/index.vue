@@ -23,6 +23,7 @@
             {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
           <NuxtLink to="/scanner" style="display:block;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);text-decoration:none">{{ $t('landing.arch_link_scan') }} →</NuxtLink>
+          <LocaleToggle style="margin-top:12px;justify-content:center" />
         </div>
       </div>
     </template>
@@ -309,6 +310,7 @@ import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import ContextSearch from '~/components/ContextSearch.vue'
+import LocaleToggle from '~/components/LocaleToggle.vue'
 
 const config = useRuntimeConfig()
 const { t } = useI18n()
