@@ -29,15 +29,16 @@
       <p v-if="error" class="ctx-search-msg">{{ $t('landing.search_error') }}</p>
       <p v-else-if="results.length === 0" class="ctx-search-msg">{{ $t('landing.search_empty') }}</p>
       <a
-        v-for="s in results" :key="s.soul_id"
+        v-for="r in results" :key="r.origin"
         class="ctx-search-item"
-        :href="originOf(s.mcp_endpoint)"
+        :href="r.origin"
         target="_blank" rel="noopener noreferrer"
       >
-        <span class="ctx-search-name">{{ s.name }}</span>
-        <span v-if="s.description" class="ctx-search-desc">{{ s.description }}</span>
-        <span v-if="s.tags?.length" class="ctx-search-tags">
-          <span v-for="t in s.tags.slice(0, 6)" :key="t" class="ctx-search-tag">#{{ t }}</span>
+        <span class="ctx-search-name">{{ r.title }}</span>
+        <span class="ctx-search-url">{{ r.origin }}</span>
+        <span v-if="r.snippet" class="ctx-search-desc" v-html="r.snippet"></span>
+        <span v-if="r.tags?.length" class="ctx-search-tags">
+          <span v-for="t in r.tags.slice(0, 6)" :key="t" class="ctx-search-tag">#{{ t }}</span>
         </span>
       </a>
     </div>
@@ -46,26 +47,43 @@
 
 <script setup>
 // Durchsucht das bestehende protokollweite Node-Verzeichnis (/api/soul/scan,
-// siehe soul-mcp/server.mjs) — aggregiert bereits alle Nodes/Souls über alle
-// bekannten Nodes hinweg per On-Chain-Registry, kein eigener Crawler nötig.
-// Rein clientseitige Stichwortsuche, kein KI-/Embedding-Aufruf (Kostengründe):
-// einmaliges Laden bei erster Suche, danach reine String-Filterung im
-// Browser. Google-artig: Eingabe erst nach explizitem Absenden (Button/Enter)
+// siehe soul-mcp/server.mjs) UND zusätzlich die llms.txt jedes gefundenen
+// Node (freier Volltext — Beschreibung, Preise, Kontakt, alles was ein
+// Betreiber dort reinschreibt, nicht nur die strukturierten Felder aus dem
+// Scan). Kein eigener Crawler nötig, kein KI-/Embedding-Aufruf (Kosten-
+// gründe): einmaliges Laden bei erster Suche, danach reine String-Filterung
+// im Browser — wie Google, mit Textausschnitt um den Treffer herum.
+// Google-artig: Eingabe erst nach explizitem Absenden (Button/Enter)
 // ausgewertet, kein Live-Filtern während des Tippens.
-// Sicherheit: keine Regex aus Nutzereingabe (kein ReDoS), keine
-// Server-Anfrage pro Tastendruck (kein Injection-Ziel), Eingabe auf 80
-// Zeichen gedeckelt, Ausgabe läuft ausschließlich über Vues automatisches
-// Escaping (kein v-html) — auch bösartig befüllte Node-Metadaten können hier
-// kein Markup einschleusen.
+// Sicherheit: keine Regex aus Nutzereingabe (kein ReDoS, indexOf/includes
+// statt RegExp), keine Server-Anfrage pro Tastendruck (kein Injection-Ziel),
+// Eingabe auf 80 Zeichen gedeckelt. Der Snippet-Ausschnitt aus llms.txt wird
+// vor der Anzeige HTML-escaped (eigene escapeHtml()) — erst danach wird der
+// <mark>-Treffer eingefügt, sonst könnte eine Node ihre llms.txt mit Markup
+// befüllen und über v-html Code einschleusen.
 import { ref, computed } from 'vue'
 
 const query          = ref('')
 const submittedQuery = ref('')
-const souls          = ref([])
+const nodes          = ref([])   // [{ origin, souls: [...], llmsText: '' }]
 const loading        = ref(false)
 const loaded         = ref(false)
 const error          = ref(false)
 const hasSearched    = ref(false)
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+async function fetchLlmsTxt(origin) {
+  try {
+    const res = await fetch(`${origin}/llms.txt`, { signal: AbortSignal.timeout(6000) })
+    if (!res.ok) return ''
+    return await res.text()
+  } catch {
+    return ''
+  }
+}
 
 async function ensureLoaded() {
   if (loaded.value || loading.value) return
@@ -75,7 +93,23 @@ async function ensureLoaded() {
     const res = await fetch('/api/soul/scan')
     if (!res.ok) throw new Error('http_error')
     const data = await res.json()
-    souls.value = Array.isArray(data.souls) ? data.souls : []
+    const souls = Array.isArray(data.souls) ? data.souls : []
+
+    const byOrigin = new Map()
+    for (const s of souls) {
+      let origin
+      try { origin = new URL(s.mcp_endpoint).origin } catch { continue }
+      if (!byOrigin.has(origin)) byOrigin.set(origin, [])
+      byOrigin.get(origin).push(s)
+    }
+
+    const origins = [...byOrigin.keys()]
+    const llmsTexts = await Promise.all(origins.map(fetchLlmsTxt))
+    nodes.value = origins.map((origin, i) => ({
+      origin,
+      souls: byOrigin.get(origin),
+      llmsText: llmsTexts[i] || '',
+    }))
     loaded.value = true
   } catch {
     error.value = true
@@ -92,19 +126,53 @@ async function doSearch() {
   hasSearched.value = true
 }
 
+// Google-artiger Textausschnitt: ~60 Zeichen vor/nach dem Treffer, Treffer
+// selbst hervorgehoben. Arbeitet auf bereits escapetem HTML, damit <mark>
+// sicher eingefügt werden kann, ohne dass Node-Text als Markup interpretiert wird.
+function buildSnippet(rawText, query) {
+  const lower = rawText.toLowerCase()
+  const idx = lower.indexOf(query)
+  if (idx === -1) return ''
+  const start = Math.max(0, idx - 60)
+  const end   = Math.min(rawText.length, idx + query.length + 60)
+  const before = escapeHtml(rawText.slice(start, idx))
+  const match  = escapeHtml(rawText.slice(idx, idx + query.length))
+  const after  = escapeHtml(rawText.slice(idx + query.length, end))
+  const prefix = start > 0 ? '…' : ''
+  const suffix = end < rawText.length ? '…' : ''
+  return `${prefix}${before}<mark>${match}</mark>${after}${suffix}`
+}
+
 const results = computed(() => {
   const q = submittedQuery.value
   if (!q || error.value) return []
-  return souls.value.filter(s => {
-    const haystack = [s.name || '', s.description || '', ...(Array.isArray(s.tags) ? s.tags : [])]
-      .join(' ').toLowerCase()
-    return haystack.includes(q)
-  }).slice(0, 20)
-})
+  const out = []
+  for (const node of nodes.value) {
+    const soulHaystack = node.souls.map(s => [s.name || '', s.description || '', ...(Array.isArray(s.tags) ? s.tags : [])].join(' ')).join(' ')
+    const fullHaystack = `${soulHaystack} ${node.llmsText}`.toLowerCase()
+    if (!fullHaystack.includes(q)) continue
 
-function originOf(mcpEndpoint) {
-  try { return new URL(mcpEndpoint).origin } catch { return '#' }
-}
+    // Snippet bevorzugt aus llms.txt (mehr Kontext), sonst aus der ersten
+    // passenden Soul-Beschreibung.
+    let snippet = buildSnippet(node.llmsText, q)
+    if (!snippet) {
+      const hit = node.souls.find(s => (s.description || '').toLowerCase().includes(q))
+      if (hit) snippet = buildSnippet(hit.description, q)
+    }
+
+    const primarySoul = node.souls.find(s => s.name && !/^[0-9a-f-]{8,}$/.test(s.name)) || node.souls[0]
+    const titleMatch = node.llmsText.match(/^#\s*(.+)$/m)
+    const title = primarySoul?.name || (titleMatch ? titleMatch[1].trim() : new URL(node.origin).hostname)
+
+    out.push({
+      origin: node.origin,
+      title,
+      snippet,
+      tags: [...new Set(node.souls.flatMap(s => s.tags || []))],
+    })
+  }
+  return out.slice(0, 20)
+})
 </script>
 
 <style scoped>
@@ -139,17 +207,20 @@ function originOf(mcpEndpoint) {
 .ctx-search-results {
   margin-top: 14px;
   background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-sm);
-  max-height: 360px; overflow-y: auto; padding: 6px;
+  max-height: 420px; overflow-y: auto; padding: 6px;
 }
 .ctx-search-msg { font-size: 14px; color: var(--fg-3); text-align: center; padding: 16px 8px; margin: 0; }
 .ctx-search-item {
-  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 3px; padding: 12px;
   border-radius: var(--r-sm); text-decoration: none; color: var(--fg);
   transition: background .12s;
 }
+.ctx-search-item + .ctx-search-item { border-top: 1px solid var(--line); }
 .ctx-search-item:hover, .ctx-search-item:focus-visible { background: var(--surface-2); }
-.ctx-search-name { font-size: 14px; font-weight: 500; color: var(--fg); }
-.ctx-search-desc { font-size: 13px; color: var(--fg-2); line-height: 1.4; }
+.ctx-search-name { font-size: 15px; font-weight: 500; color: var(--accent); }
+.ctx-search-url { font-family: var(--mono); font-size: 11px; color: var(--fg-4); }
+.ctx-search-desc { font-size: 13px; color: var(--fg-2); line-height: 1.5; }
+.ctx-search-desc :deep(mark) { background: var(--accent-dim, rgba(109,184,154,0.25)); color: var(--fg); border-radius: 2px; }
 .ctx-search-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .ctx-search-tag { font-size: 11px; color: var(--accent); }
 
