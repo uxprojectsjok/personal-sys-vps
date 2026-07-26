@@ -259,26 +259,6 @@
       </Transition>
     </Teleport>
 
-    <!-- Files -->
-    <Teleport to="body">
-      <Transition name="sys-modal">
-        <div v-if="filesOpen" class="sys-modal-wrap" role="dialog" aria-modal="true" @click.self="filesOpen = false">
-          <div class="sys-modal-panel sys-modal-panel--wide">
-            <div class="sys-modal-head">
-              <div>
-                <div class="sys-modal-kicker">{{ $t('index.modal_vault_kicker') }}</div>
-                <h2 class="sys-modal-title">{{ $t('index.modal_files_title') }}<em>.</em></h2>
-              </div>
-              <button class="sys-modal-close" @click="filesOpen = false" :aria-label="$t('index.close')"><span>×</span></button>
-            </div>
-            <div class="sys-modal-body">
-              <VaultExplorer :soul-cert="soulToken" :soul-content="soulContent" @encrypt="encryptOpen = true" />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
     <SoulEncryptModal :is-open="encryptOpen" @close="encryptOpen = false" />
     <SoulAnchorModal  :is-open="anchorOpen"  @close="anchorOpen = false" />
 
@@ -327,7 +307,6 @@ import AgentMarketplacePanel from '~/components/AgentMarketplacePanel.vue'
 import SoulDecryptModal from '~/components/SoulDecryptModal.vue'
 import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
-import VaultExplorer from '~/components/VaultExplorer.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 
@@ -391,7 +370,6 @@ const createSoulOpen    = ref(false)
 const loginOpen         = ref(false)
 const decryptOpen       = ref(false)
 const setupOpen         = ref(false)
-const filesOpen         = ref(false)
 const encryptOpen       = ref(false)
 const anchorOpen        = ref(false)
 const marketplaceOpen   = ref(false)
@@ -695,7 +673,6 @@ const cmdkOpen         = ref(false)
 
 const MODAL_MAP = {
   soul: () => { setupOpen.value    = true },
-  files: () => { filesOpen.value   = true },
   anchor: () => { navigateTo('/anchor') },
   export: () => { navigateTo('/export') },
   settings: () => { navigateTo('/settings') },

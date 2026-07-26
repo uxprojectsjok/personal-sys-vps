@@ -295,7 +295,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
@@ -310,9 +310,9 @@ definePageMeta({ layout: false })
 
 const { t } = useI18n()
 const router = useRouter()
-const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded } = useSoul()
+const { soulMeta, hasSoul, soulToken, soulContent, soulFilename, save: saveSoul, pushToServer, importFromText, isLoaded, pendingSoulFileWrite } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
-const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
+const { isConnected: vaultConnected, allFiles, connectVault: connectVaultFn, readVaultFile, writeFile, deleteLocalFile, scanVault: scanLocalVault } = useVault()
 const { syncedFiles, loaded: serverLoaded, loadContext, syncFile, deleteVaultFile } = useApiContext()
 const { vaultKey } = useVaultSession()
 const { ask: confirmAsk } = useConfirm()
@@ -399,6 +399,22 @@ const soulEntry = computed(() => ({
   id: 'soul', name: 'soul', displayName: soulFilename?.value || 'sys.md',
   type: 'soul', typeLabel: 'sys.md', apiType: 'soul',
 }))
+
+// Identity-Datei: per kind filtern, nicht per Name
+const localSoulFileName = computed(() => {
+  const soulFile = allFiles.value.find(f => f.kind === 'soul')
+  return soulFile ? soulFile.name : 'sys.md'
+})
+
+// pendingSoulFileWrite: von resetCertToV0 gesetzt (aus handleSoulUploaded nach
+// Login, siehe useSoul.js) — holt einen ausstehenden Schreibvorgang der
+// sys.md ins lokale Vault-Verzeichnis nach, sobald das Vault verbunden ist.
+watch(vaultConnected, async (connected) => {
+  if (connected && pendingSoulFileWrite.value && localSoulFileName.value) {
+    await writeFile(localSoulFileName.value, new TextEncoder().encode(soulContent.value))
+    pendingSoulFileWrite.value = false
+  }
+}, { immediate: true })
 
 const localFileList = computed(() => {
   const items = [soulEntry.value]
@@ -867,8 +883,14 @@ onMounted(() => {
 
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-.dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; flex: none; }
-.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; }
+/* overflow-x statt hidden: bei mehreren Tabs (z.B. mit "Widerruf" aktiviert)
+   passt die Leiste auf schmalen Mobile-Viewports oft nicht mehr rein — mit
+   "hidden" wurden rechte Tabs einfach abgeschnitten und waren unerreichbar.
+   onTabWheel oben (Desktop-Mausrad) braucht ein echtes Scroll-Overflow, um
+   zu wirken. */
+.dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow-x: auto; overflow-y: hidden; flex: none; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.dt-tabs::-webkit-scrollbar { display: none; }
+.dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; flex: none; white-space: nowrap; }
 .dt-tab:last-child { border-right: none; }
 .dt-tab.on { background: var(--surface); color: var(--fg); box-shadow: inset 0 -2px 0 0 var(--accent); }
 .dt-tab:hover:not(.on) { color: var(--fg-2); background: rgba(255,255,255,0.03); }

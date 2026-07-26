@@ -17,13 +17,16 @@ const syncStatus           = ref(null); // null | 'checking' | 'in_sync' | 'diff
 const serverContent        = ref("");
 const syncError            = ref("");   // Fehlermeldung beim letzten fetchFromServer()
 // Wird von resetCertToV0 auf true gesetzt wenn der Cert repariert wurde aber
-// der Vault noch nicht verbunden war — VaultExplorer schreibt die Datei beim Connect.
+// der Vault noch nicht verbunden war — vault.vue schreibt die Datei beim Connect.
 const pendingSoulFileWrite = ref(false);
 // true wenn fetchFromServer 403 "encrypted" bekommt und kein vault_key vorhanden ist.
 // Zeigt dem Nutzer auf einem neuen Gerät an, dass er den Vault entsperren muss.
 const serverVaultEncrypted = ref(false);
-// Gesetzt während handleSoulUploaded läuft — verhindert dass der cert-Watcher in
-// VaultExplorer logout-required emittiert während resetCertToV0 den Cert noch repariert.
+// Gesetzt während handleSoulUploaded läuft, während resetCertToV0 den Cert
+// noch repariert. Ursprünglich als Guard für einen cert-Watcher in der
+// mittlerweile entfernten VaultExplorer.vue gedacht (nie tatsächlich als
+// Lesezugriff verdrahtet) — aktuell nur von SoulDecryptModal.vue gesetzt,
+// ohne Konsument. Vor Entfernen prüfen, ob wirklich ungenutzt.
 const isLoginInProgress = ref(false);
 
 export function useSoul() {
@@ -1026,7 +1029,7 @@ async function resetCertToV0() {
       sessionStorage.setItem("sys.soul",      soulContent.value);
       sessionStorage.setItem("sys.soul_cert", soulCert.value);
     } catch { /* */ }
-    // Signal für VaultExplorer: physische Datei muss nach Vault-Connect geschrieben werden
+    // Signal für vault.vue: physische Datei muss nach Vault-Connect geschrieben werden
     pendingSoulFileWrite.value = true;
     return true;
   } catch {
