@@ -33,6 +33,9 @@ export default defineNuxtConfig({
       // Docs öffentlich zugänglich? false = nur eingeloggte User
       docsPublic: process.env.DOCS_PUBLIC === "true",
       reownProjectId: process.env.REOWN_PROJECT_ID || "",
+      // Etherscan API-Key für /scanner (On-Chain-Discovery via getLogs, siehe scanner.vue)
+      // Kostenloser Free-Tier-Key reicht — ohnehin öffentlich im Browser-Bundle sichtbar.
+      etherscanApiKey: process.env.NUXT_PUBLIC_ETHERSCAN_API_KEY || "",
     },
   },
 

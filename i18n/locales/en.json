@@ -136,7 +136,8 @@
     "search_loading": "Loading directory…",
     "search_empty": "No matches.",
     "search_error": "Directory currently unavailable.",
-    "search_hint": "Searches name, description and tags of every publicly discoverable soul on the network."
+    "search_hint": "Searches name, description and tags of every publicly discoverable node on the network.",
+    "arch_link_scan": "Scan"
   },
   "index": {
     "landing_sub": "Personal identity layer for AI systems. Portable. Encrypted.",

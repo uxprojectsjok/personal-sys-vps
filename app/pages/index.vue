@@ -22,6 +22,7 @@
             <span class="live-dot" />
             {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
+          <NuxtLink to="/scanner" style="display:block;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);text-decoration:none">{{ $t('landing.arch_link_scan') }} →</NuxtLink>
         </div>
       </div>
     </template>
