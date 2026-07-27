@@ -1,8 +1,11 @@
 -- /etc/openresty/lua/vault_shared_serve.lua
 -- GET /api/vault/shared/{soul_id}/{filename}
--- Auth: Bearer {requester_soul_id}.{cert}
---   Owner (requester === soul_id): local HMAC verify
---   Peer: must be in trusted_souls + cert verified (same-server: local / cross-domain: verify-peer-cert)
+-- Auth: Bearer {requester_soul_id}.{cert}  ODER  ein Service-Token
+--   Soul-Cert, Owner (requester === soul_id): local HMAC verify
+--   Soul-Cert, Peer: must be in trusted_souls + cert verified (same-server: local / cross-domain: verify-peer-cert)
+--   Service-Token (kein Punkt im Bearer): muss in der authorized_services.json
+--     der Ziel-Soul stehen, verified + nicht abgelaufen — deckt eigene UND
+--     fremde Dateien ab (siehe connected_souls.json's outbound_token)
 
 local cjson = require("cjson.safe")
 local http  = require("resty.http")
@@ -36,10 +39,19 @@ if not bearer then
   ngx.header["Content-Type"] = "application/json"
   ngx.status = 401; ngx.say('{"error":"bearer_required"}'); return
 end
-local req_soul_id, req_cert = bearer:match("^([^.]+)%.(.+)$")
-if not req_soul_id or not req_cert or not req_soul_id:match(UUID_PAT) then
-  ngx.header["Content-Type"] = "application/json"
-  ngx.status = 401; ngx.say('{"error":"invalid_bearer"}'); return
+-- Kein Punkt im Bearer → kein Soul-Cert ({soul_id}.{cert}), sondern ein
+-- Service-Token (z.B. Claude.ai-OAuth-Verbindung, oder der beim
+-- connected_souls-Connect ausgetauschte outbound_token). Wird weiter unten
+-- gegen die authorized_services.json der Ziel-Soul geprüft, statt hier
+-- sofort mit invalid_bearer abzulehnen.
+local is_service_token = not bearer:find(".", 1, true)
+local req_soul_id, req_cert
+if not is_service_token then
+  req_soul_id, req_cert = bearer:match("^([^.]+)%.(.+)$")
+  if not req_soul_id or not req_cert or not req_soul_id:match(UUID_PAT) then
+    ngx.header["Content-Type"] = "application/json"
+    ngx.status = 401; ngx.say('{"error":"invalid_bearer"}'); return
+  end
 end
 
 local global_key = cfg.get_master_key()
@@ -65,9 +77,35 @@ local function verify_local(sid, cert)
   return false
 end
 
+-- Prüft einen Service-Token gegen die authorized_services.json der
+-- Ziel-Soul — gleiches Modell wie vault_auth.lua's check_service_token,
+-- hier lokal nachgebaut, weil dieser Endpoint (Cross-Soul-Zugriff auf
+-- {soul_id} in der URL, nicht nur die eigene) keinen access_by_lua_file
+-- nutzt. Deckt zwei Fälle ab, ohne sie zu unterscheiden: eigene Datei
+-- (eigener Token) und fremde Datei (der von der Ziel-Soul beim Connect für
+-- uns hinterlegte outbound_token) — Tokenbesitz in der Datei der Ziel-Soul
+-- beweist die Berechtigung, keine zusätzliche trusted_souls/
+-- connected_souls-Prüfung nötig.
+local function check_service_token_for_target(target_id, token)
+  local f = io.open(SOULS_DIR .. target_id .. "/authorized_services.json", "r")
+  if not f then return false end
+  local raw = f:read("*a"); f:close()
+  local ok, data = pcall(cjson.decode, raw)
+  if not ok or type(data) ~= "table" then return false end
+  local svc = data[token]
+  if type(svc) ~= "table" then return false end
+  if svc.verified == false then return false end
+  if type(svc.expires_at) == "number" and svc.expires_at ~= 0 and ngx.now() >= svc.expires_at then
+    return false
+  end
+  return true
+end
+
 local cert_ok = false
 
-if req_soul_id == target_soul_id then
+if is_service_token then
+  cert_ok = check_service_token_for_target(target_soul_id, bearer)
+elseif req_soul_id == target_soul_id then
   -- Owner accessing own file
   cert_ok = verify_local(req_soul_id, req_cert)
 else
@@ -118,6 +156,28 @@ else
               found_same = true
             end
             break
+          end
+        end
+      end
+    end
+  end
+
+  -- Fallback: connected_souls.json (direkte Soul-zu-Soul-Verbindung, siehe
+  -- project_sys_v2_vision Memory) — Objekt statt Array, Schlüssel = soul_id.
+  if not found_same and not found_endpoint then
+    local conn3_path = SOULS_DIR .. target_soul_id .. "/connected_souls.json"
+    local cf3 = io.open(conn3_path, "r")
+    if cf3 then
+      local raw3 = cf3:read("*a"); cf3:close()
+      local ok3, conn3_data = pcall(cjson.decode, raw3)
+      if ok3 and type(conn3_data) == "table" then
+        local entry = conn3_data[req_soul_id]
+        if type(entry) == "table" and entry.status == "accepted" then
+          if type(entry.node_url) == "string" and entry.node_url ~= ""
+             and not entry.node_url:find(own_host, 1, true) then
+            found_endpoint = entry.node_url
+          else
+            found_same = true
           end
         end
       end

@@ -724,6 +724,7 @@
     "aria_label": "Settings",
     "tab_api": "API",
     "tab_services": "Services",
+    "tab_connections": "Connections",
     "tab_plugins": "Plugins",
     "tab_config": "Config",
     "tab_archivar": "Archivist",
@@ -1379,6 +1380,31 @@
     "revoke_confirm": "Revoke",
     "no_expiry": "Unlimited",
     "btn_token": "Token"
+  },
+  "connections": {
+    "intro": "Direct connection with another soul — mutual, by consent on both sides. Also works across nodes (a different URL).",
+    "pending_in_title": "Incoming requests",
+    "btn_accept": "Accept",
+    "disconnect_aria": "Disconnect {name}",
+    "request_title": "Request a new connection",
+    "request_hint": "Enter the target soul's ID and node URL, choose the scope, and request. The target soul must accept before the connection goes live.",
+    "soul_id_placeholder": "Target soul ID",
+    "alias_placeholder": "Alias (optional, e.g. \"Jan\")",
+    "btn_request": "Request connection",
+    "list_title": "Connections",
+    "empty": "No connections yet."
+  },
+  "gatekeeper": {
+    "btn_connecting": "Connecting…",
+    "connect_success": "Connected.",
+    "connect_error": "Connection failed — check the soul ID or token.",
+    "disconnect_title": "Disconnect soul",
+    "disconnect_msg": "Really disconnect \"{name}\"? Access ends immediately.",
+    "disconnect_confirm": "Disconnect",
+    "node_url_placeholder": "Node URL of the target soul (e.g. https://other-node.com)",
+    "node_url_hint": "Required — even for connections on the same node.",
+    "federated_pending_out": "Request sent, awaiting confirmation",
+    "federated_accepted": "connected"
   },
   "first_setup": {
     "kicker_new": "New instance · §00",

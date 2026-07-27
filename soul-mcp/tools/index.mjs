@@ -131,7 +131,7 @@ export function registerTools(server, token, soulId = null) {
   healthSync(server, token);
   soulChainMetrics(server, token);
 
-  peerInbox(server, token);
+  peerInbox(server, token, soulId);
   peerSend(server, token, soulId);
   vaultSharedGet(server, token);
   vaultSharedList(server, token);

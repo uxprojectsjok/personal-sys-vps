@@ -724,6 +724,7 @@
     "aria_label": "Einstellungen",
     "tab_api": "API",
     "tab_services": "Dienste",
+    "tab_connections": "Verbindungen",
     "tab_plugins": "Plugins",
     "tab_config": "Config",
     "tab_archivar": "Archivar",
@@ -1379,6 +1380,31 @@
     "revoke_confirm": "Widerrufen",
     "no_expiry": "Unbegrenzt",
     "btn_token": "Token"
+  },
+  "connections": {
+    "intro": "Direkte Verbindung mit einer anderen Soul — beidseitig, mit gegenseitigem Einverständnis. Funktioniert auch über Nodes hinweg (andere URL).",
+    "pending_in_title": "Eingehende Anfragen",
+    "btn_accept": "Annehmen",
+    "disconnect_aria": "{name} trennen",
+    "request_title": "Neue Verbindung anfragen",
+    "request_hint": "Soul-ID und Node-URL der Ziel-Soul eintragen, Umfang wählen, anfragen. Die Ziel-Soul muss die Anfrage annehmen, bevor die Verbindung aktiv wird.",
+    "soul_id_placeholder": "Soul-ID der Ziel-Soul",
+    "alias_placeholder": "Alias (optional, z.B. \"Jan\")",
+    "btn_request": "Verbindung anfragen",
+    "list_title": "Verbindungen",
+    "empty": "Noch keine Verbindungen."
+  },
+  "gatekeeper": {
+    "btn_connecting": "Verbinde…",
+    "connect_success": "Verbunden.",
+    "connect_error": "Verbindung fehlgeschlagen — Soul-ID oder Token prüfen.",
+    "disconnect_title": "Soul trennen",
+    "disconnect_msg": "\"{name}\" wirklich trennen? Der Zugriff endet sofort.",
+    "disconnect_confirm": "Trennen",
+    "node_url_placeholder": "Node-URL der Ziel-Soul (z.B. https://anderer-node.de)",
+    "node_url_hint": "Erforderlich — auch bei Verbindungen auf demselben Node.",
+    "federated_pending_out": "Anfrage gesendet, wartet auf Bestätigung",
+    "federated_accepted": "verbunden"
   },
   "first_setup": {
     "kicker_new": "Erste Instanz · §00",

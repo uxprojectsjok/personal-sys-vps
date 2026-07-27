@@ -27,6 +27,9 @@
             <button @click="tab = 'dienste'" class="sys-rail-item" :class="tab === 'dienste' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_services') }}</span></span>
             </button>
+            <button @click="tab = 'verbindungen'" class="sys-rail-item" :class="tab === 'verbindungen' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_connections') }}</span></span>
+            </button>
             <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
             </button>
@@ -178,6 +181,11 @@
                 >{{ feedback.message }}</div>
               </Transition>
 
+            </template>
+
+            <!-- ── Tab: Verbindungen (Soul-zu-Soul) ── -->
+            <template v-if="tab === 'verbindungen'">
+              <SoulConnectionsPanel />
             </template>
 
             <!-- ── Tab: Plugins ── -->

@@ -2,12 +2,16 @@
  * peer_send — Sendet eine Nachricht (Text oder Datei) an einen oder alle Peers.
  * Schreibt <!-- @msg --> in den SOCIAL-Block von sys.md.
  * Bei Datei-Anhang: Upload in vault_shared → vault-shared:// Link in Nachricht.
+ * Namensauflösung über connected_souls.json (direkte Soul-zu-Soul-Verbindungen,
+ * siehe project_sys_v2_vision Memory) — löst die alte soul_connections.json-
+ * basierte Auflösung ab, gleiches Nachrichtenformat.
  */
 
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
-import { getText, putJson, getJson, verificationRequiredMsg } from '../lib/api.mjs';
+import { getText, putJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { loadConnected } from '../lib/connected_souls.mjs';
 
 const _queues = new Map();
 async function withSoulLock(token, fn) {
@@ -94,20 +98,24 @@ export function register(server, token, soulId = null) {
           } else if (toNorm === 'agent') {
             toField = 'agent';
           } else {
-            const { connections } = await getJson('/api/vault/connections', token);
-            const match = (connections || []).find(c =>
-              c.alias?.toLowerCase() === toNorm ||
-              c.alias?.toLowerCase().startsWith(toNorm) ||
-              c.soul_id?.toLowerCase().startsWith(toNorm)
+            if (!soulId) {
+              return { content: [{ type: 'text', text: 'Peer-Auflösung nicht verfügbar (kein soulId).' }], isError: true };
+            }
+            const connected = await loadConnected(soulId);
+            const accepted  = Object.entries(connected).filter(([, e]) => e.status === 'accepted');
+            const match = accepted.find(([id, e]) =>
+              (e.alias || '').toLowerCase() === toNorm ||
+              (e.alias || '').toLowerCase().startsWith(toNorm) ||
+              id.toLowerCase().startsWith(toNorm)
             );
             if (!match) {
-              const available = (connections || []).map(c => c.alias).filter(Boolean).join(', ') || '(keine)';
+              const available = accepted.map(([, e]) => e.alias).filter(Boolean).join(', ') || '(keine)';
               return {
                 content: [{ type: 'text', text: `Peer "${to}" nicht gefunden.\nVerfügbare Peers: ${available}` }],
                 isError: true,
               };
             }
-            toField = match.soul_id;
+            toField = match[0];
           }
 
           // Datei referenzieren oder hochladen

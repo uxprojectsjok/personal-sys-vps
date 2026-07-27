@@ -24,6 +24,8 @@ import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
+import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
+import { registerGatekeeperTools } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -208,6 +210,28 @@ const OWNER_INSTRUCTIONS = [
   'once verified, proceed normally without repeating it.',
 ].join(' ');
 
+// Registriert die wired_*-Proxy-Tools (gatekeeper_proxy.mjs) für EINE Soul,
+// basierend auf connected_souls.json (direkte Soul-zu-Soul-Verbindungen) —
+// registerGatekeeperTools() vergibt feste Tool-Namen (wired_soul_read, ...)
+// und darf pro Verbindung nur EINMAL aufgerufen werden, sonst wirft die SDK
+// wegen doppeltem Tool-Namen. Jede Soul mit akzeptierten Verbindungen bekommt
+// automatisch Lesezugriff auf sie.
+async function registerConnectionProxyTools(server, soulId, callerToken = null) {
+  const connectedAll = await loadConnected(soulId);
+  const connected = Object.fromEntries(
+    Object.entries(connectedAll)
+      .filter(([, e]) => e.status === 'accepted')
+      // connected_souls.json nutzt "outbound_token" (das WIR präsentieren,
+      // wenn WIR die Gegenseite abfragen) — gatekeeper_proxy.mjs' lookup()
+      // erwartet einheitlich "token".
+      .map(([remoteId, e]) => [remoteId, { ...e, token: e.outbound_token }])
+  );
+  if (Object.keys(connected).length > 0) {
+    registerGatekeeperTools(server, connected, callerToken);
+  }
+  return { connected };
+}
+
 async function handleMcp(req, res) {
   const token = extractToken(req);
   const soulIdParam = req.query.soul_id ?? null;
@@ -257,6 +281,7 @@ async function handleMcp(req, res) {
 
     if (isSelfCert) {
       registerTools(server, token, peerSoulId);
+      await registerConnectionProxyTools(server, peerSoulId, token);
     } else {
       const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
       if (trusted?.error === 'soul_id_required') {
@@ -315,6 +340,9 @@ async function handleMcp(req, res) {
       ownerSoulId = null;
     }
     registerTools(server, token, ownerSoulId);
+    if (ownerSoulId) {
+      await registerConnectionProxyTools(server, ownerSoulId, token);
+    }
   }
 
   registerPrompts(server);
@@ -384,6 +412,231 @@ app.get('/mcp/discover',  handleMcpDiscover);
 app.post('/mcp/discover', handleMcpDiscover);
 
 // Gesundheits-Check
+// ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────
+// Jede Soul kann das nutzen, nicht nur Gatekeeper — direkte, symmetrische
+// Verbindung zwischen zwei beliebigen Souls, mit echten Vault-Permissions.
+function parseOwnCertBearer(req) {
+  const token = extractToken(req);
+  if (!token || !token.includes('.')) return null;
+  const [soulId, cert] = token.split('.');
+  if (!soulId || !cert) return null;
+  return { soulId, cert };
+}
+
+const CONN_PERMS = { soul: true, audio: true, video: true, images: true, context_files: true, network: true };
+function sanitizePerms(input) {
+  const perms = {};
+  if (input && typeof input === 'object') {
+    for (const k of Object.keys(input)) {
+      if (CONN_PERMS[k] && input[k]) perms[k] = true;
+    }
+  }
+  if (!Object.keys(perms).length) return { soul: true, context_files: true };
+  return perms;
+}
+
+app.post('/mcp/connect', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+  if (!(await verifyPeerCert(callerSoulId, cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  const { remote_soul_id, remote_node_url, permissions, alias } = req.body || {};
+  if (!remote_soul_id || !remote_node_url) {
+    return res.status(400).json({ error: 'remote_soul_id und remote_node_url erforderlich' });
+  }
+  if (remote_soul_id === callerSoulId) {
+    return res.status(400).json({ error: 'self_connect_not_allowed' });
+  }
+  const remoteBase = remote_node_url.replace(/\/$/, '');
+  const grantedPerms = sanitizePerms(permissions);
+  // Alias ist NICHT Teil des Austauschs — jede Seite nennt die andere wie sie
+  // will, nicht wie die Gegenseite sich selbst nennt. Fallback: kurze soul_id.
+  const myAlias = (typeof alias === 'string' && alias.trim()) ? alias.trim().slice(0, 64) : remote_soul_id.slice(0, 8);
+
+  const myInboundToken = await createConnectionToken(callerSoulId, `Verbunden mit ${remote_soul_id}`, grantedPerms);
+
+  let theirInboundToken;
+  try {
+    const fres = await fetch(`${remoteBase}/mcp/connect/incoming`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ local_soul_id: remote_soul_id, soul_id: callerSoulId, cert, node_url: BASE_URL, token: myInboundToken, permissions: grantedPerms }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await fres.json().catch(() => ({}));
+    if (!fres.ok || !data.ok) {
+      await revokeConnectionToken(callerSoulId, myInboundToken);
+      return res.status(400).json({ error: 'connect_request_failed', message: data.error || `HTTP ${fres.status}` });
+    }
+    theirInboundToken = data.token;
+  } catch (err) {
+    await revokeConnectionToken(callerSoulId, myInboundToken);
+    return res.status(502).json({ error: 'remote_unreachable', message: err.message });
+  }
+
+  const conn = await loadConnected(callerSoulId);
+  conn[remote_soul_id] = {
+    node_url: remoteBase,
+    status: 'pending_out',
+    requested_at: Math.floor(Date.now() / 1000),
+    inbound_token: myInboundToken,
+    outbound_token: theirInboundToken,
+    permissions: grantedPerms,
+    alias: myAlias,
+  };
+  await saveConnected(callerSoulId, conn);
+
+  res.json({ ok: true, status: 'pending_out' });
+});
+
+app.post('/mcp/connect/incoming', async (req, res) => {
+  // local_soul_id: die im Request adressierte lokale Soul — bei Soul-zu-Soul
+  // gibt es (anders als beim Gatekeeper-Wire) keine feste "Gatekeeper"-Rolle,
+  // der Absender muss die Ziel-soul_id also explizit mitschicken.
+  const { local_soul_id, soul_id, cert, node_url, token, permissions } = req.body || {};
+  if (!local_soul_id || !soul_id || !cert || !node_url || !token) {
+    return res.status(400).json({ ok: false, error: 'local_soul_id, soul_id, cert, node_url und token erforderlich' });
+  }
+  const exists = await stat(`${SOULS_DIR}${local_soul_id}`).then(s => s.isDirectory()).catch(() => false);
+  if (!exists) {
+    return res.status(404).json({ ok: false, error: 'local_soul_not_found' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+
+  const grantedPerms = sanitizePerms(permissions);
+  const myInboundToken = await createConnectionToken(local_soul_id, `Verbunden mit ${soul_id}`, grantedPerms);
+
+  const conn = await loadConnected(local_soul_id);
+  conn[soul_id] = {
+    node_url: node_url.replace(/\/$/, ''),
+    status: 'pending_in',
+    requested_at: Math.floor(Date.now() / 1000),
+    inbound_token: myInboundToken,
+    outbound_token: token,
+    permissions: grantedPerms,
+    // Vorläufiger Alias bis der Owner beim Annehmen einen eigenen vergibt
+    // (siehe /mcp/connections/:id/accept) — kurze soul_id als Platzhalter.
+    alias: soul_id.slice(0, 8),
+  };
+  await saveConnected(local_soul_id, conn);
+
+  res.json({ ok: true, token: myInboundToken });
+});
+
+app.get('/mcp/connections', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const conn = await loadConnected(parsed.soulId);
+  const list = Object.entries(conn).map(([soul_id, e]) => ({
+    soul_id, node_url: e.node_url, status: e.status, alias: e.alias || soul_id.slice(0, 8),
+    permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
+    requested_at: e.requested_at, accepted_at: e.accepted_at || null,
+  }));
+  res.json({ connections: list });
+});
+
+app.post('/mcp/connections/:remote_soul_id/accept', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+  if (!(await verifyPeerCert(callerSoulId, cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  const conn = await loadConnected(callerSoulId);
+  const entry = conn[req.params.remote_soul_id];
+  if (!entry || entry.status !== 'pending_in') {
+    return res.status(404).json({ error: 'no_pending_request' });
+  }
+  const { alias } = req.body || {};
+  if (typeof alias === 'string' && alias.trim()) entry.alias = alias.trim().slice(0, 64);
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveConnected(callerSoulId, conn);
+
+  try {
+    await fetch(`${entry.node_url}/mcp/connections/${req.params.remote_soul_id}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soul_id: callerSoulId, cert, node_url: BASE_URL }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch { /* best effort */ }
+
+  res.json({ ok: true, status: 'accepted' });
+});
+
+app.post('/mcp/connections/:local_soul_id/confirm', async (req, res) => {
+  const { soul_id, cert, node_url } = req.body || {};
+  if (!soul_id || !cert || !node_url) {
+    return res.status(400).json({ ok: false, error: 'soul_id, cert und node_url erforderlich' });
+  }
+  const conn = await loadConnected(req.params.local_soul_id);
+  const entry = conn[soul_id];
+  if (!entry || entry.status !== 'pending_out' || entry.node_url !== node_url.replace(/\/$/, '')) {
+    return res.status(404).json({ ok: false, error: 'no_matching_pending_request' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveConnected(req.params.local_soul_id, conn);
+  res.json({ ok: true });
+});
+
+app.delete('/mcp/connections/:remote_soul_id', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const conn = await loadConnected(parsed.soulId);
+  const entry = conn[req.params.remote_soul_id];
+  delete conn[req.params.remote_soul_id];
+  await saveConnected(parsed.soulId, conn);
+  if (entry?.inbound_token) await revokeConnectionToken(parsed.soulId, entry.inbound_token);
+
+  if (entry?.node_url) {
+    try {
+      await fetch(`${entry.node_url}/mcp/connections/${req.params.remote_soul_id}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soul_id: parsed.soulId, cert: parsed.cert, node_url: BASE_URL }),
+        signal: AbortSignal.timeout(6000),
+      });
+    } catch { /* best effort */ }
+  }
+  res.json({ ok: true });
+});
+
+app.post('/mcp/connections/:local_soul_id/disconnect', async (req, res) => {
+  const { soul_id, cert, node_url } = req.body || {};
+  if (!soul_id || !cert || !node_url) {
+    return res.status(400).json({ ok: false, error: 'soul_id, cert und node_url erforderlich' });
+  }
+  const conn = await loadConnected(req.params.local_soul_id);
+  const entry = conn[soul_id];
+  if (!entry || entry.node_url !== node_url.replace(/\/$/, '')) {
+    return res.status(404).json({ ok: false, error: 'no_matching_entry' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+  delete conn[soul_id];
+  await saveConnected(req.params.local_soul_id, conn);
+  if (entry.inbound_token) await revokeConnectionToken(req.params.local_soul_id, entry.inbound_token);
+  res.json({ ok: true });
+});
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'soul-mcp', ts: new Date().toISOString() });
 });
