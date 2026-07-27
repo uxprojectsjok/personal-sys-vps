@@ -1,7 +1,6 @@
 <template>
   <div class="srp-page">
     <header class="srp-header">
-      <button type="button" class="srp-back" @click="$router.back()">← {{ $t('common.back') }}</button>
       <NuxtLink to="/" class="srp-logo">
         <img src="/logo.png" alt="SYS" class="srp-logo-img" />
         <span class="srp-logo-text">SYS<em>.</em></span>
@@ -28,6 +27,11 @@
           </svg>
         </button>
       </form>
+      <button type="button" class="srp-back" @click="$router.back()" :aria-label="$t('common.back')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6"/>
+        </svg>
+      </button>
     </header>
 
     <main class="srp-main">
@@ -125,20 +129,20 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 <style scoped>
 .srp-page { min-height: 100dvh; background: var(--bg); color: var(--fg); }
 .srp-header {
-  display: flex; align-items: center; gap: 32px;
+  display: flex; align-items: center; gap: 20px;
   padding: 18px clamp(20px,4vw,48px); border-bottom: 1px solid var(--line);
 }
-.srp-back {
-  flex: none; display: flex; align-items: center; gap: 6px;
-  background: none; border: none; cursor: pointer;
-  font-family: var(--mono); font-size: 13px; color: var(--fg-2); padding: 0;
-}
-.srp-back:hover { color: var(--fg); }
 .srp-logo { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 22px; color: var(--fg); text-decoration: none; flex: none; }
 .srp-logo-img { width: 26px; height: 26px; display: block; }
 .srp-logo em { font-style: italic; color: var(--accent); }
+.srp-back {
+  flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--fg-2); cursor: pointer;
+}
+.srp-back svg { width: 17px; height: 17px; }
+.srp-back:hover { color: var(--fg); border-color: var(--accent); }
 .srp-search-box {
-  display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px;
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; max-width: 560px;
   padding: 4px 4px 4px 14px; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r-sm); transition: border-color .15s;
 }
@@ -188,7 +192,9 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-page-btn:disabled { opacity: .35; cursor: not-allowed; }
 
 @media (max-width: 640px) {
-  .srp-header { gap: 16px; }
-  .srp-logo { display: none; }
+  .srp-header { flex-wrap: wrap; gap: 12px 16px; padding: 14px 16px; }
+  .srp-logo { order: 1; }
+  .srp-back { order: 2; margin-left: auto; }
+  .srp-search-box { order: 3; flex-basis: 100%; max-width: none; }
 }
 </style>
