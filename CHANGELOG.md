@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.25] — 2026-07-27
+
+**Fixed: `update.sh`'s frontend build (`npm run generate`) could crash the whole node on small VPS instances — found live on `fab.uxprojects-jok.com` (1.8 GB RAM), where it took down `systemd-journald`, DNS and SSH badly enough to require a manual reboot.**
+
+**Root cause:** two gaps, same underlying issue. First, `init.sh` sets up a 2 GB swapfile on fresh installs but never adds it to `/etc/fstab` — any reboot after install silently drops it (fixed in `sys-installer`). Second, `update.sh` never had swap handling of its own and, unlike `init.sh`, didn't cap Node's heap with `NODE_OPTIONS`. On a node that lost its swap, Node's V8 heap hit its physical-RAM-derived default limit (~945 MB on a 1.8 GB box) mid-build and aborted with `FATAL ERROR: JavaScript heap out of memory` — and without swap as a buffer, the resulting memory pressure was severe enough to kill `systemd-journald` via its watchdog and make the whole node unresponsive.
+
+**Fixed**
+- `update.sh`: new step 0 — idempotently (re-)creates `/swapfile` (2 GB) if missing, `swapon`s it, and ensures it's in `/etc/fstab`, so an update never trips over a node that lost its swap.
+- `update.sh`: frontend build now runs with `NODE_OPTIONS="--max-old-space-size=2048"`, matching what `init.sh` already does on first install.
+
+**Migration required:** already-running nodes should run `update.sh` once (or manually add a 2 GB `/swapfile` + `/etc/fstab` entry) to pick up persistent swap — otherwise the fix only prevents *future* update runs from repeating this, it can't recover swap already lost on a node that hasn't updated yet.
+
+---
+
 ## [1.2.24] — 2026-07-23
 
 **Fixed: `self_registration:false` (v1.2.20) didn't actually block anything on a Multi-Hoster node with zero souls — the correct node password alone was enough to get a `sys_gate` session, completely bypassing the lock. Found live on `personal-sys-vps-private` (`agency.uxprojects-jok.com`) right after entering the node password there.**

@@ -12,6 +12,22 @@ err()   { echo -e "${RED}[error]${NC} $*"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── 0. Swap (2 GB) ─────────────────────────────────────────────────────────────
+# Same rationale as init.sh: the frontend build below can exceed 2 GB RAM on
+# small VPS instances. init.sh sets this up on fresh installs, but the
+# swapfile only survives a reboot if it's also in /etc/fstab — repair both
+# here so an update never trips over a node that lost its swap.
+if [ ! -f /swapfile ]; then
+  info "Setting up swap (2 GB)..."
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap  /swapfile
+fi
+swapon /swapfile 2>/dev/null || true
+if ! grep -q "^/swapfile" /etc/fstab; then
+  echo "/swapfile none swap sw 0 0" >> /etc/fstab
+fi
+
 # ── 1. Pull latest code ───────────────────────────────────────────────────────
 info "Pulling latest code..."
 git -C "$SCRIPT_DIR" pull --ff-only || err "git pull failed — check remote or merge conflicts"
@@ -79,7 +95,7 @@ fi
 info "Building frontend..."
 cd "$SCRIPT_DIR"
 if command -v npm &>/dev/null; then
-  npm run generate 2>&1 | tail -3
+  NODE_OPTIONS="--max-old-space-size=2048" npm run generate 2>&1 | tail -3
   rsync -a --delete "$SCRIPT_DIR/.output/public/" "$DEPLOY_DIR/"
   info "Frontend deployed to $DEPLOY_DIR"
 else
