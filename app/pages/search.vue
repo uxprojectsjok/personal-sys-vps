@@ -46,14 +46,14 @@
             <a
               v-for="r in pageResults" :key="r.origin"
               class="srp-item"
-              :href="r.origin"
+              :href="r.llmsUrl"
               target="_blank" rel="noopener noreferrer"
             >
               <div class="srp-item-breadcrumb">
                 <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
                 <div class="srp-item-breadcrumb-text">
                   <span class="srp-item-site">{{ r.hostname }}</span>
-                  <span class="srp-item-url">{{ r.origin }}</span>
+                  <span class="srp-item-url">{{ r.llmsUrl }}</span>
                 </div>
               </div>
               <span class="srp-item-title">{{ r.title }}</span>

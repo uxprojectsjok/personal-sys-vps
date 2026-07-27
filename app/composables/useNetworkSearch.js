@@ -117,6 +117,11 @@ function search(rawQuery, t) {
 
     out.push({
       origin: node.origin,
+      // Ziel des Ergebnis-Links: llms.txt statt der bloßen Origin — "/" ist bei
+      // fremden Nodes hinter deren eigenem Gate (Login/Create-Soul-Flow für
+      // Besucher ohne lokale Session), llms.txt ist die öffentliche, ungegatete
+      // Content-Seite jeder Node (siehe scanner.vue, gleiches Muster).
+      llmsUrl: `${node.origin}/llms.txt`,
       hostname: new URL(node.origin).hostname,
       initial: title.trim().charAt(0).toUpperCase() || '?',
       title,
