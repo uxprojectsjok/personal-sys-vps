@@ -43,26 +43,24 @@
           <p v-if="allResults.length === 0" class="srp-status">{{ $t('landing.search_empty') }}</p>
 
           <div v-else class="srp-results">
-            <a
-              v-for="r in pageResults" :key="r.origin"
-              class="srp-item"
-              :href="r.llmsUrl"
-              target="_blank" rel="noopener noreferrer"
-            >
-              <div class="srp-item-breadcrumb">
-                <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
-                <div class="srp-item-breadcrumb-text">
-                  <span class="srp-item-site">{{ r.hostname }}</span>
-                  <span class="srp-item-url">{{ r.llmsUrl }}</span>
+            <div v-for="r in pageResults" :key="r.origin" class="srp-item">
+              <a class="srp-item-link" :href="r.origin" target="_blank" rel="noopener noreferrer">
+                <div class="srp-item-breadcrumb">
+                  <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
+                  <div class="srp-item-breadcrumb-text">
+                    <span class="srp-item-site">{{ r.hostname }}</span>
+                    <span class="srp-item-url">{{ r.origin }}</span>
+                  </div>
                 </div>
-              </div>
-              <span class="srp-item-title">{{ r.title }}</span>
+                <span class="srp-item-title">{{ r.title }}</span>
+              </a>
               <span v-if="r.snippet" class="srp-item-desc" v-html="r.snippet"></span>
               <span v-if="r.meta" class="srp-item-meta">{{ r.meta }}</span>
               <span v-if="r.tags?.length" class="srp-item-tags">
                 <span v-for="t in r.tags.slice(0, 8)" :key="t" class="srp-item-tag">#{{ t }}</span>
               </span>
-            </a>
+              <a class="srp-item-llms" :href="r.llmsUrl" target="_blank" rel="noopener noreferrer">{{ r.llmsUrl }}</a>
+            </div>
           </div>
 
           <nav v-if="pageCount > 1" class="srp-pagination" aria-label="Pagination">
@@ -162,7 +160,8 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-count { font-size: 13px; color: var(--fg-3); margin: 0 0 20px; }
 
 .srp-results { display: flex; flex-direction: column; gap: 28px; }
-.srp-item { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--fg); }
+.srp-item { display: flex; flex-direction: column; gap: 2px; color: var(--fg); }
+.srp-item-link { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--fg); }
 .srp-item-breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .srp-avatar {
   flex: none; width: 28px; height: 28px; border-radius: 50%;
@@ -174,12 +173,14 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-item-site { font-size: 13px; color: var(--fg); }
 .srp-item-url { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
 .srp-item-title { font-size: 18px; font-weight: 500; color: var(--accent); }
-.srp-item:hover .srp-item-title { text-decoration: underline; }
+.srp-item-link:hover .srp-item-title { text-decoration: underline; }
 .srp-item-meta { font-size: 12px; color: var(--fg-3); margin-top: 2px; }
 .srp-item-desc { font-size: 14px; color: var(--fg-2); line-height: 1.6; margin-top: 2px; }
 .srp-item-desc :deep(mark) { background: var(--accent-dim, rgba(109,184,154,0.25)); color: var(--fg); border-radius: 2px; padding: 0 1px; }
 .srp-item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .srp-item-tag { font-size: 11px; color: var(--accent); }
+.srp-item-llms { font-family: var(--mono); font-size: 12px; color: var(--fg-3); text-decoration: none; margin-top: 6px; }
+.srp-item-llms:hover { color: var(--accent); text-decoration: underline; }
 
 .srp-pagination { display: flex; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 40px; }
 .srp-page-btn {
