@@ -1327,7 +1327,6 @@ const filteredStream = computed(() => {
   // 'all': AI-Chat + Social-Bubbles — Agent-Block-Einträge nur im 'agents'-Tab
   if (props.filter === 'all')    base = s
   else if (props.filter === 'soul')   base = s.filter(i => i._type === 'ai' || (i._type === 'bubble' && i.from === 'archivar'))
-  else if (props.filter === 'peers')  base = s.filter(i => i._type === 'bubble' && i.sphere !== 'agent' && i.sphere !== 'agent_reply')
   else if (props.filter === 'agents') base = s.filter(i => i._type === 'bubble' && (i.sphere === 'agent' || i.sphere === 'agent_reply'))
   else base = s
 

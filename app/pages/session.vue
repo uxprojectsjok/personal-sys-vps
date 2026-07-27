@@ -25,7 +25,6 @@
               <div class="sfp-chips">
                 <button :class="{ on: filter === 'all' }"    @click="filter = 'all'">{{ $t('session_page.filter_all') }}</button>
                 <button :class="{ on: filter === 'soul' }"   @click="filter = 'soul'">{{ $t('session_page.filter_soul') }}</button>
-                <button :class="{ on: filter === 'peers' }"  @click="filter = 'peers'">{{ $t('session_page.filter_peers') }}</button>
                 <button :class="{ on: filter === 'agents' }" @click="filter = 'agents'">{{ $t('session_page.filter_agents') }}</button>
               </div>
             </div>
