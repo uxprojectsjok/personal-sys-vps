@@ -1,6 +1,7 @@
 <template>
   <div class="srp-page">
     <header class="srp-header">
+      <button type="button" class="srp-back" @click="$router.back()">← {{ $t('common.back') }}</button>
       <NuxtLink to="/" class="srp-logo">
         <img src="/logo.png" alt="SYS" class="srp-logo-img" />
         <span class="srp-logo-text">SYS<em>.</em></span>
@@ -44,15 +45,16 @@
               :href="r.origin"
               target="_blank" rel="noopener noreferrer"
             >
-              <div class="srp-item-head">
+              <div class="srp-item-breadcrumb">
                 <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>
-                <div class="srp-item-headtext">
-                  <span class="srp-item-name">{{ r.title }}</span>
-                  <span class="srp-item-url">{{ r.hostname }}</span>
+                <div class="srp-item-breadcrumb-text">
+                  <span class="srp-item-site">{{ r.hostname }}</span>
+                  <span class="srp-item-url">{{ r.origin }}</span>
                 </div>
               </div>
-              <span v-if="r.meta" class="srp-item-meta">{{ r.meta }}</span>
+              <span class="srp-item-title">{{ r.title }}</span>
               <span v-if="r.snippet" class="srp-item-desc" v-html="r.snippet"></span>
+              <span v-if="r.meta" class="srp-item-meta">{{ r.meta }}</span>
               <span v-if="r.tags?.length" class="srp-item-tags">
                 <span v-for="t in r.tags.slice(0, 8)" :key="t" class="srp-item-tag">#{{ t }}</span>
               </span>
@@ -126,6 +128,12 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
   display: flex; align-items: center; gap: 32px;
   padding: 18px clamp(20px,4vw,48px); border-bottom: 1px solid var(--line);
 }
+.srp-back {
+  flex: none; display: flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2); padding: 0;
+}
+.srp-back:hover { color: var(--fg); }
 .srp-logo { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 22px; color: var(--fg); text-decoration: none; flex: none; }
 .srp-logo-img { width: 26px; height: 26px; display: block; }
 .srp-logo em { font-style: italic; color: var(--accent); }
@@ -150,20 +158,21 @@ const pageResults = computed(() => allResults.value.slice((page.value - 1) * PER
 .srp-count { font-size: 13px; color: var(--fg-3); margin: 0 0 20px; }
 
 .srp-results { display: flex; flex-direction: column; gap: 28px; }
-.srp-item { display: flex; flex-direction: column; gap: 5px; text-decoration: none; color: var(--fg); }
-.srp-item-head { display: flex; align-items: center; gap: 10px; }
+.srp-item { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--fg); }
+.srp-item-breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .srp-avatar {
   flex: none; width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-dim, rgba(109,184,154,0.18)); color: var(--accent);
   font-family: var(--serif); font-size: 13px; font-weight: 600;
 }
-.srp-item-headtext { display: flex; flex-direction: column; min-width: 0; }
-.srp-item-name { font-size: 18px; font-weight: 500; color: var(--fg); }
-.srp-item:hover .srp-item-name { text-decoration: underline; }
-.srp-item-url { font-family: var(--mono); font-size: 12px; color: var(--accent); }
-.srp-item-meta { font-size: 12px; color: var(--fg-3); }
-.srp-item-desc { font-size: 14px; color: var(--fg-2); line-height: 1.6; }
+.srp-item-breadcrumb-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.srp-item-site { font-size: 13px; color: var(--fg); }
+.srp-item-url { font-family: var(--mono); font-size: 12px; color: var(--fg-3); }
+.srp-item-title { font-size: 18px; font-weight: 500; color: var(--accent); }
+.srp-item:hover .srp-item-title { text-decoration: underline; }
+.srp-item-meta { font-size: 12px; color: var(--fg-3); margin-top: 2px; }
+.srp-item-desc { font-size: 14px; color: var(--fg-2); line-height: 1.6; margin-top: 2px; }
 .srp-item-desc :deep(mark) { background: var(--accent-dim, rgba(109,184,154,0.25)); color: var(--fg); border-radius: 2px; padding: 0 1px; }
 .srp-item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .srp-item-tag { font-size: 11px; color: var(--accent); }
