@@ -96,19 +96,20 @@ export function useGatekeeper() {
   }
 
   // gatekeeperNodeUrl = wo der GATEKEEPER lebt (leer = derselbe Node wie ich).
-  // /mcp/discover/wire prüft gatekeeper_soul_id immer LOKAL auf dem Node, der
-  // den Request bekommt — der Request muss also beim Cross-Node-Wire an den
-  // Gatekeeper-Node gehen, nicht (wie zuvor, ein echter Bug) immer relativ an
-  // die eigene Origin. Die eigene Herkunft (body.node_url, für die serverseitige
-  // Cert-Fernverifikation) kennt der Browser selbst (window.location.origin) —
-  // dafür muss niemand die eigene Adresse manuell eintippen.
+  // Ein direkter Browser-fetch() auf ein fremdes Origin würde an der strikten
+  // connect-src-CSP scheitern (nur 'self' + eine feste Drittanbieter-Allowlist,
+  // nie ein beliebiger fremder SYS-Node) — deshalb geht der Cross-Node-Fall
+  // über die eigene Origin (/mcp/discover/wire-out), die den eigentlichen
+  // Fetch zum Gatekeeper-Node server-seitig macht. Same-node bleibt der
+  // direkte relative Aufruf.
   async function wireToGatekeeper(gatekeeperSoulId, serviceToken, name = '', gatekeeperNodeUrl = '') {
     error.value = null
     try {
       const target = gatekeeperNodeUrl.trim().replace(/\/$/, '')
-      const body = { gatekeeper_soul_id: gatekeeperSoulId, service_token: serviceToken, name }
-      if (target) body.node_url = window.location.origin
-      const url = target ? `${target}/mcp/discover/wire` : '/mcp/discover/wire'
+      const url  = target ? '/mcp/discover/wire-out' : '/mcp/discover/wire'
+      const body = target
+        ? { gatekeeper_soul_id: gatekeeperSoulId, service_token: serviceToken, name, gatekeeper_node_url: target }
+        : { gatekeeper_soul_id: gatekeeperSoulId, service_token: serviceToken, name }
       const res = await fetch(url, {
         method:  'POST',
         headers: {

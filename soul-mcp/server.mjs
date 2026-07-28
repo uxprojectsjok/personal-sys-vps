@@ -655,6 +655,52 @@ app.post('/mcp/discover/wire', async (req, res) => {
   res.json({ ok: true, gatekeeper_soul_id, soul_id: callerSoulId, permissions: svc.permissions });
 });
 
+// Browser-seitiges Cross-Node-Wiring würde einen direkten fetch() auf ein
+// fremdes Origin brauchen — verletzt die strikte connect-src-CSP
+// (vhost.conf.template, 'self' + eine feste Allowlist bekannter Drittanbieter,
+// niemals fremde SYS-Nodes, die es beliebig viele geben kann und die auf
+// beliebigen Domains laufen). Deshalb läuft der eigentliche Cross-Node-Request
+// hier server-seitig, exakt wie schon bei notifyWiredToRemoval()/Föderation:
+// der Browser ruft nur die eigene Origin auf, der Server macht den echten
+// Fetch zum fremden Gatekeeper-Node. Nebeneffekt, der eine bestehende Lücke
+// schließt: anders als der reine /mcp/discover/wire-Handler (der bei Cross-
+// Node-Aufrufen keinen Dateisystemzugriff auf die eigene Soul hat, weil der
+// Request vom FREMDEN Node kommt) läuft dieser Handler hier auf dem eigenen
+// Node der wirenden Soul — wired_to.json kann also auch im Cross-Node-Fall
+// direkt geschrieben werden, statt wie bisher ganz auszufallen.
+app.post('/mcp/discover/wire-out', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const { gatekeeper_soul_id, service_token, name, gatekeeper_node_url } = req.body || {};
+  if (!gatekeeper_soul_id || !service_token || !gatekeeper_node_url) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id, service_token und gatekeeper_node_url erforderlich' });
+  }
+  const target = gatekeeper_node_url.trim().replace(/\/$/, '');
+
+  let data;
+  try {
+    const fres = await fetch(`${target}/mcp/discover/wire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${parsed.soulId}.${parsed.cert}` },
+      body: JSON.stringify({ gatekeeper_soul_id, service_token, name, node_url: BASE_URL }),
+      signal: AbortSignal.timeout(10000),
+    });
+    data = await fres.json().catch(() => ({}));
+    if (!fres.ok) return res.status(fres.status).json(data);
+  } catch (err) {
+    return res.status(502).json({ error: 'gatekeeper_unreachable', message: err.message });
+  }
+
+  const wiredTo = await loadWiredTo(parsed.soulId);
+  wiredTo[gatekeeper_soul_id] = { wired_at: Math.floor(Date.now() / 1000), node_url: target };
+  await saveWiredTo(parsed.soulId, wiredTo);
+
+  res.json(data);
+});
+
 // Owner-Sicht auf die eigene wired_souls.json (Settings-UI "Wired Souls"-Tabelle).
 app.get('/mcp/discover/wired', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
@@ -747,23 +793,64 @@ app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {
 });
 
 // Selbst-Trennen von der wiring-Soul-Seite (das Gegenstück zur obigen Route,
-// die nur der Gatekeeper aufrufen kann). Bleibt same-node-only (der Gatekeeper
-// lebt hier immer lokal, siehe /mcp/discover/wire — gatekeeper_soul_id ist
-// nie fremd).
+// die nur der Gatekeeper aufrufen kann): Bearer = eigener Soul-Cert der Soul,
+// die sich getrennt trennen will. Cross-node-fähig seit /mcp/discover/wire-out
+// auch cross-node wired_to.json-Einträge (mit node_url) tatsächlich anlegt —
+// same-node direkter Dateisystemzugriff wie bisher, cross-node per Server-zu-
+// Server-Callback (Gegenstück: POST /mcp/discover/wire-self-remove unten),
+// aus demselben CSP-Grund wie bei /mcp/discover/wire-out: der Browser kann
+// nicht direkt auf den fremden Gatekeeper-Node zugreifen.
 app.delete('/mcp/discover/wired-to/:gatekeeper_soul_id', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
   if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
     return res.status(401).json({ error: 'invalid_cert' });
   }
-  const wired = await loadWired(req.params.gatekeeper_soul_id);
-  delete wired[parsed.soulId];
-  await saveWired(req.params.gatekeeper_soul_id, wired);
 
   const wiredTo = await loadWiredTo(parsed.soulId);
+  const entry = wiredTo[req.params.gatekeeper_soul_id];
   delete wiredTo[req.params.gatekeeper_soul_id];
   await saveWiredTo(parsed.soulId, wiredTo);
 
+  if (entry?.node_url) {
+    try {
+      await fetch(`${entry.node_url}/mcp/discover/wire-self-remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gatekeeper_soul_id: req.params.gatekeeper_soul_id,
+          soul_id: parsed.soulId,
+          cert: parsed.cert,
+          node_url: BASE_URL,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch { /* best effort — Gegenseite evtl. offline */ }
+  } else {
+    const wired = await loadWired(req.params.gatekeeper_soul_id);
+    delete wired[parsed.soulId];
+    await saveWired(req.params.gatekeeper_soul_id, wired);
+  }
+
+  res.json({ ok: true });
+});
+
+// Empfängt eine Selbst-Trennung einer fremden (cross-node) wirenden Soul —
+// Gegenstück zum Cross-Node-Zweig oben. Server-to-server, kein eigener Cert-
+// Bearer der Gatekeeper-Soul nötig: die wirende Soul beweist per eigenem
+// Cert (gegen ihren eigenen node_url geprüft) dass sie wirklich sie selbst
+// ist — dasselbe Cross-Node-Cert-Prinzip wie überall sonst in diesem Feature.
+app.post('/mcp/discover/wire-self-remove', async (req, res) => {
+  const { gatekeeper_soul_id, soul_id, cert, node_url } = req.body || {};
+  if (!gatekeeper_soul_id || !soul_id || !cert || !node_url) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id, soul_id, cert und node_url erforderlich' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(gatekeeper_soul_id);
+  delete wired[soul_id];
+  await saveWired(gatekeeper_soul_id, wired);
   res.json({ ok: true });
 });
 
