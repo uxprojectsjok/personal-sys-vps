@@ -27,7 +27,7 @@ import { registerTools, registerPaidTools, registerPeerTools, registerTrustReque
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
 import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled } from './lib/wired_souls.mjs';
 import { loadFederated, saveFederated } from './lib/federated_gatekeepers.mjs';
-import { registerGatekeeperTools } from './tools/gatekeeper_proxy.mjs';
+import { registerGatekeeperTools, registerWireSearch } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -172,16 +172,26 @@ app.get('/.well-known/oauth-protected-resource/mcp', async (req, res) => {
     ...(hint ? { x_payment: hint } : {}),
   });
 });
+app.get('/.well-known/oauth-protected-resource/mcp/discover', async (req, res) => {
+  const hint = await loadPaymentHint(req.query.soul_id ?? null);
+  res.json({
+    resource: `${BASE_URL}/mcp/discover`,
+    authorization_servers: [BASE_URL],
+    scopes_supported: SCOPES,
+    bearer_methods_supported: ['header'],
+    ...(hint ? { x_payment: hint } : {}),
+  });
+});
 
 // ── OAuth ─────────────────────────────────────────────────────────────────
 app.use('/oauth', oauthRouter);
 
 // ── MCP Streamable HTTP ───────────────────────────────────────────────────
 
-async function unauthorized(res, soulId) {
+async function unauthorized(res, soulId, resourceMetadataPath = '/.well-known/oauth-protected-resource') {
   res.setHeader(
     'WWW-Authenticate',
-    `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`
+    `Bearer resource_metadata="${BASE_URL}${resourceMetadataPath}"`
   );
   const hint = await loadPaymentHint(soulId ?? null);
   const priceNote = hint
@@ -392,16 +402,72 @@ app.get('/mcp',    handleMcp);
 app.post('/mcp',   handleMcp);
 app.delete('/mcp', handleMcp);
 
-// Public, unauthenticated MCP entry point — the only tool registered is
-// soul_discover_local (node-local soul directory, browsable by tag/topic with
-// zero credentials). Everything else (soul_read/write, chat, payment tools) is
-// intentionally absent — an agent with no soul_cert/token yet needs a way to see
-// what's hosted here before deciding whether to pay (x402/PayPal) or connect
-// with an existing cert via /mcp?soul_id=<id>. No token check at all, unlike
-// handleMcp() above which rejects any request with no Authorization header.
+// Bundled connector endpoint: authenticates the caller (self-cert or service
+// token, same formats as /mcp) and registers soul_discover_local (node
+// directory) PLUS, if the caller is a Gatekeeper soul, its own full owner
+// toolset (soul_read/write, chat, mind, ...) PLUS the generic soul_id-
+// parametrised proxy tools for every soul wired/connected/federated to it —
+// a single connector (this endpoint + the caller's cert/OAuth token) for the
+// Gatekeeper's own tools, the node directory, and every soul it bundles.
+const DISCOVER_RESOURCE_PATH = '/.well-known/oauth-protected-resource/mcp/discover';
+
 async function handleMcpDiscover(req, res) {
+  const token = extractToken(req);
+  const soulIdParam = req.query.soul_id ?? null;
+  if (!token) return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
+
+  let gkSoulId = null;
+
+  if (token.includes('.')) {
+    // Self-cert Format ({soul_id}.{cert}) — direkter curl/Wire-Zugriff mit
+    // dem eigenen Soul-Cert, keine ?soul_id= nötig, steckt schon im Token.
+    const [certSoulId, gkCert] = token.split('.');
+    if (certSoulId && gkCert && await verifyPeerCert(certSoulId, gkCert, null)) {
+      gkSoulId = certSoulId;
+    } else {
+      return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
+    }
+  } else {
+    // Plain Service-Token (aus dem OAuth-Flow, z.B. Claude.ai-Connector) —
+    // trägt keine soul_id, wird aber eindeutig per Reverse-Lookup zugeordnet
+    // (der Token lebt in genau einer Soul's authorized_services.json); Fallback
+    // auf ?soul_id=/Single-Soul-Heuristik nur falls der Lookup nichts findet.
+    // Die eigentliche Token-Prüfung passiert lazily pro Tool-Aufruf über den
+    // bestehenden vault_auth-Pfad.
+    gkSoulId = await findSoulByServiceToken(token);
+    if (!gkSoulId) {
+      const dirs     = await readdir(SOULS_DIR).catch(() => []);
+      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
+      if (soulIdParam && soulDirs.includes(soulIdParam)) {
+        gkSoulId = soulIdParam;
+      } else if (soulDirs.length === 1) {
+        gkSoulId = soulDirs[0];
+      } else if (soulDirs.length > 1) {
+        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}${DISCOVER_RESOURCE_PATH}"`);
+        return res.status(401).json({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp/discover?soul_id=<ziel-soul-id>).' },
+          id: null,
+        });
+      } else {
+        return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
+      }
+    }
+  }
+
   const server = new McpServer({ name: 'soul-mcp-discover', version: '1.0.0' });
   registerSoulDiscoverLocal(server);
+
+  // A Gatekeeper soul is a full soul with its own mind.md/context — expose its
+  // normal owner toolset (soul_read, beme_chat, context_get, mind_read, ...) too,
+  // not just the wired-souls proxy, so it can actually reason over its own
+  // configuration instead of being a dumb router.
+  registerTools(server, token, gkSoulId);
+  const { wired } = await registerConnectionProxyTools(server, gkSoulId, token);
+  const fed = await loadFederated(gkSoulId);
+  if (Object.keys(wired).length > 0 || Object.keys(fed).length > 0) {
+    registerWireSearch(server, gkSoulId, wired, fed);
+  }
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless
