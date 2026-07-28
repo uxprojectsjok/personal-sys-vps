@@ -160,7 +160,10 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null) {
         soul_id,
         name: e.name,
         permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
-        node_url: e.node_url || null,
+        // Immer der echte Node, nie null — same-node zeigt den eigenen
+        // BASE_URL statt eines interpretationsbedürftigen null, damit ein
+        // Vergleich zweier node_url-Werte allein schon die Frage beantwortet.
+        node_url: e.node_url || BASE_URL,
       }));
       return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
     }
@@ -185,8 +188,9 @@ export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed) {
           // "via" beschreibt den Suchweg (direkt verdrahtet vs. über Föderation
           // erreicht), nicht den physischen Node — eine cross-node verdrahtete
           // Soul ist trotzdem "local" im Sinne von "direkt bei diesem
-          // Gatekeeper verdrahtet". node_url zeigt separat den echten Home-Node.
-          node_url: e.node_url || null,
+          // Gatekeeper verdrahtet". node_url zeigt separat den echten Home-Node,
+          // immer als echter Wert (same-node = eigener BASE_URL, nie null).
+          node_url: e.node_url || BASE_URL,
           via: 'local',
         }));
 

@@ -103,7 +103,7 @@
               <span v-if="w.status === 'pending'" style="font-size:11px;padding:1px 6px;border-radius:3px;background:rgba(230,180,60,0.12);border:1px solid rgba(230,180,60,0.3);color:#e6b43c;margin-left:6px">{{ $t('gatekeeper.pending_badge') }}</span>
             </p>
             <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.soul_id }}</p>
-            <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.node_url || $t('gatekeeper.same_node') }}</p>
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.node_url }}</p>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
               <span
                 v-for="key in Object.keys(w.permissions || {}).filter(k => w.permissions[k])"

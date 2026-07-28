@@ -1420,7 +1420,6 @@
     "wired_title": "Wired Souls",
     "wired_hint": "Souls, die sich bei dieser Soul als Gatekeeper eingeklinkt haben.",
     "wired_empty": "Noch keine Soul verdrahtet.",
-    "same_node": "(derselbe Node)",
     "disconnect_aria": "{name} trennen",
     "disconnect_title": "Soul trennen",
     "disconnect_msg": "\"{name}\" wirklich trennen? Der Zugriff endet sofort.",

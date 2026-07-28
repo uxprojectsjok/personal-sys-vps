@@ -742,7 +742,9 @@ app.get('/mcp/discover/wired', async (req, res) => {
   // registerConnectionProxyTools() für die KI-Tools) — dieselbe soul_id kann
   // hier mehrfach auftauchen, je einmal pro physischer Node-Instanz.
   const list = Object.entries(wired).map(([key, e]) => ({
-    soul_id: e.soul_id || key.split('@')[0], name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || null,
+    // Immer der echte Node, nie null — same-node zeigt den eigenen BASE_URL
+    // statt eines interpretationsbedürftigen null.
+    soul_id: e.soul_id || key.split('@')[0], name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || BASE_URL,
     // Altbestand ohne status-Feld (vor diesem Feature) gilt als bereits
     // akzeptiert — sonst würden bestehende, aktiv genutzte Verbindungen
     // plötzlich als "wartet auf Bestätigung" erscheinen.
@@ -1236,7 +1238,8 @@ app.get('/mcp/discover/search', async (req, res) => {
     .filter((e) => !needle || (e.name || '').toLowerCase().includes(needle))
     .map((e) => ({
       soul_id: e.soul_id, name: e.name, permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
-      node_url: e.node_url || null,
+      // Immer der echte Node, nie null.
+      node_url: e.node_url || BASE_URL,
     }));
   res.json({ results: list });
 });
