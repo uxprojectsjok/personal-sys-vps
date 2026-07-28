@@ -287,11 +287,15 @@ async function handleMcp(req, res) {
     // + Soul-ID" — Alternative zum service_token). Ohne diesen Check würde sich ein
     // Owner mit dem eigenen soul_id.cert fälschlich als ungetrusteter Peer verbinden
     // und nur request_trust/-status statt vollem Zugang (inkl. beme_chat) bekommen —
-    // peerSoulId === Ziel-soul_id UND kryptografisch gültiger Cert beweist
-    // Eigentümerschaft, nicht Peer-Vertrauen.
-    const ownerCandidateId = targetSoulId || await resolveSingleSoulId();
-    const isSelfCert = !!ownerCandidateId && peerSoulId === ownerCandidateId
-      && await verifyPeerCert(peerSoulId, peerCert, null);
+    // kryptografisch gültiger Cert für peerSoulId beweist Eigentümerschaft für GENAU
+    // diese soul_id, ganz ohne einen zusätzlichen Abgleich gegen eine unabhängig
+    // aufgelöste "erwartete" soul_id (frühere Version verlangte das zusätzlich über
+    // ownerCandidateId = ?soul_id= || resolveSingleSoulId() — auf einem Multi-Hoster
+    // ohne ?soul_id= lieferte resolveSingleSoulId() bei >1 Soul immer null, wodurch
+    // ein technisch gültiger Self-Cert nie erkannt wurde und die Verbindung mit
+    // "Multi-Hoster: ?soul_id= Parameter erforderlich" scheiterte, obwohl der Cert
+    // die soul_id längst eindeutig trägt und beweist — live so aufgetreten).
+    const isSelfCert = await verifyPeerCert(peerSoulId, peerCert, null);
 
     if (isSelfCert) {
       registerTools(server, token, peerSoulId);
