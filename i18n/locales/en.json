@@ -1397,7 +1397,10 @@
   },
   "gatekeeper": {
     "enabled_toggle_label": "Gatekeeper function active",
-    "enabled_toggle_hint": "Off = new wire requests are rejected, already-wired souls stop being offered. wired_souls.json is preserved either way — reversible, no data loss.",
+    "enabled_toggle_hint": "Off = every existing connection ends immediately (including on each wired soul's own side, cross-node included) and new wire requests are rejected. Nothing is restored automatically when switched back on — each soul has to consciously wire in again.",
+    "toggle_off_title": "Turn off the Gatekeeper function?",
+    "toggle_off_msg": "Every currently wired soul gets disconnected — not just paused. To restore access, each one has to wire in again.",
+    "toggle_off_confirm": "Turn off & disconnect",
     "connected_title": "Connected to",
     "connected_hint": "Gatekeeper souls this soul has connected to.",
     "connect_title": "Connect to Gatekeeper",

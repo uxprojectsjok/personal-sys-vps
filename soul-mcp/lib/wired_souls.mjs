@@ -2,12 +2,19 @@
 // Speichert/liest, welche Souls sich bei einer anderen Soul (dem faktischen
 // "Gatekeeper") per /mcp/discover/wire eingeklinkt haben. Ob eine Soul
 // GRUNDSÄTZLICH als Gatekeeper fungieren darf (neue Wire-Anfragen annehmen,
-// bereits verdrahtete Souls weiter bündeln), ist ein separates, explizites
-// An/Aus (gatekeeper_config.json) — vorher gab es dafür gar keinen Schalter,
-// jede Soul mit einer nicht-leeren wired_souls.json war implizit und ohne
-// eigenes Zutun Gatekeeper. Default true (nicht false!), damit bereits
-// aktiv genutzte Gatekeeper (z.B. die dieser Session) beim Deploy nicht
-// plötzlich stillgelegt werden.
+// bereits verdrahtete Souls weiter bündeln), entscheidet AUSSCHLIESSLICH das
+// explizite An/Aus (gatekeeper_config.json) — konsolidiert: es gibt keinen
+// impliziten Default mehr ("jede Soul mit nicht-leerer wired_souls.json ist
+// automatisch Gatekeeper", der historische Ursprungszustand vor dem Toggle).
+// Fehlt die Konfigurationsdatei oder ist enabled nicht exakt true, gilt die
+// Soul als AUS — Gatekeeper-Funktion muss immer ein bewusstes Einschalten
+// sein, nie ein stiller Default.
+//
+// Konsequenz beim Ausschalten: siehe notifyWiredToRemoval() in server.mjs —
+// bestehende Verbindungen werden dabei nicht nur pausiert, sondern echt
+// beendet (wired_souls.json geleert, jede betroffene Soul benachrichtigt,
+// auch cross-node), damit eine Verbindung nie fortbesteht, während der
+// Gatekeeper aus ist.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { SOULS_DIR } from './vault_fs.mjs';
@@ -20,9 +27,9 @@ export async function isGatekeeperEnabled(soulId) {
   try {
     const raw = await readFile(gatekeeperConfigPath(soulId), 'utf8');
     const data = JSON.parse(raw);
-    return data?.enabled !== false;
+    return data?.enabled === true;
   } catch {
-    return true;
+    return false;
   }
 }
 

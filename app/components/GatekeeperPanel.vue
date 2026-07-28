@@ -223,7 +223,17 @@ onMounted(async () => {
 })
 
 async function handleToggleGatekeeper() {
+  if (gatekeeperEnabled.value) {
+    // Ausschalten beendet jetzt echte Verbindungen (nicht nur pausieren) —
+    // dafür eine Bestätigung, analog zu den einzelnen Disconnect-Aktionen.
+    if (!await ask({
+      title: t('gatekeeper.toggle_off_title'),
+      message: t('gatekeeper.toggle_off_msg'),
+      confirmText: t('gatekeeper.toggle_off_confirm'),
+    })) return
+  }
   await setGatekeeperEnabled(!gatekeeperEnabled.value)
+  await fetchWired()
 }
 
 async function handleSelfDisconnect(c) {

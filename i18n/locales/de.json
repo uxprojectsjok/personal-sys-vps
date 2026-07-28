@@ -1397,7 +1397,10 @@
   },
   "gatekeeper": {
     "enabled_toggle_label": "Gatekeeper-Funktion aktiv",
-    "enabled_toggle_hint": "Aus = neue Wire-Anfragen werden abgelehnt, bereits verdrahtete Souls werden nicht mehr angeboten. wired_souls.json bleibt dabei erhalten — reversibel, kein Datenverlust.",
+    "enabled_toggle_hint": "Aus = alle bestehenden Verbindungen werden sofort beendet (auch bei den verdrahteten Souls selbst, cross-node inklusive) und neue Wire-Anfragen abgelehnt. Kein automatisches Wiederherstellen beim erneuten Einschalten — jede Soul muss sich bewusst neu einwirten.",
+    "toggle_off_title": "Gatekeeper-Funktion ausschalten?",
+    "toggle_off_msg": "Alle aktuell verdrahteten Souls werden getrennt — nicht nur pausiert. Zum Wiederherstellen muss sich jede Soul erneut einwirten.",
+    "toggle_off_confirm": "Ausschalten & trennen",
     "connected_title": "Verbunden mit",
     "connected_hint": "Gatekeeper-Souls, mit denen diese Soul sich verbunden hat.",
     "connect_title": "Mit Gatekeeper verbinden",

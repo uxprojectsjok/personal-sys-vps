@@ -554,6 +554,39 @@ async function getCallerSoulName(soulId, cert, nodeUrl) {
   }
 }
 
+// Löscht den wired_to.json-Eintrag der wired Soul für gatekeeperSoulId — damit
+// eine Trennung auf BEIDEN Seiten als beendet gilt, nicht nur beim Gatekeeper
+// selbst. Same-node: direkter Dateisystemzugriff. Cross-node: authentifizierter
+// Server-zu-Server-Callback (Gegenstück: POST /mcp/discover/wired-to/remove
+// unten) — gatekeeperCert ist der gerade LIVE vom Owner präsentierte Cert
+// (aus derselben Anfrage, die die Trennung ausgelöst hat); der Server selbst
+// hält keinen eigenen Cert vor und kann nicht autonom "als" die Gatekeeper-
+// Soul auftreten (gleiches Prinzip wie beim Föderations-Handshake). Best
+// effort im Cross-Node-Fall — ist die Gegenseite gerade nicht erreichbar,
+// blockiert das nicht das eigene Trennen; wired_to.json ist ohnehin rein
+// informativ, die echte Zugriffskontrolle steht in wired_souls.json.
+async function notifyWiredToRemoval(gatekeeperSoulId, gatekeeperCert, wiredSoulId, wiredSoulNodeUrl) {
+  if (wiredSoulNodeUrl) {
+    try {
+      await fetch(`${wiredSoulNodeUrl}/mcp/discover/wired-to/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gatekeeper_soul_id: gatekeeperSoulId,
+          soul_id: wiredSoulId,
+          cert: gatekeeperCert,
+          node_url: BASE_URL,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch { /* best effort — Gegenseite evtl. offline */ }
+  } else {
+    const wiredTo = await loadWiredTo(wiredSoulId);
+    delete wiredTo[gatekeeperSoulId];
+    await saveWiredTo(wiredSoulId, wiredTo);
+  }
+}
+
 app.post('/mcp/discover/wire', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -653,7 +686,10 @@ app.get('/mcp/discover/wired-to', async (req, res) => {
 // Gatekeeper-Funktion selbst an/aus — steuert, ob diese Soul überhaupt als
 // Gatekeeper fungiert: neue Wire-Anfragen werden abgelehnt (403) und bereits
 // verdrahtete Souls werden nicht mehr als Tools angeboten, solange aus.
-// wired_souls.json bleibt dabei unangetastet — reversibel, kein Datenverlust.
+// Konsolidiert: die Funktion darf nur noch über dieses bewusste Umschalten
+// entstehen (kein impliziter Default mehr, siehe wired_souls.mjs). Konsequent
+// heißt das auch: Ausschalten beendet bestehende Verbindungen wirklich, statt
+// sie nur zu pausieren — siehe POST-Handler unten.
 app.get('/mcp/discover/gatekeeper-config', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -673,6 +709,21 @@ app.post('/mcp/discover/gatekeeper-config', async (req, res) => {
   if (typeof enabled !== 'boolean') {
     return res.status(400).json({ error: 'enabled (boolean) erforderlich' });
   }
+
+  if (!enabled) {
+    // Aus heißt: die Verbindung darf nicht fortbestehen, solange der
+    // Gatekeeper aus ist — jede aktuell verdrahtete Soul wird benachrichtigt
+    // (same-node direkt, cross-node per Callback) und wired_souls.json wird
+    // geleert statt nur ignoriert. Wieder-Einschalten setzt keine alten
+    // Verbindungen zurück — jede Soul muss sich bewusst neu einwirten, exakt
+    // dasselbe Prinzip wie beim Gatekeeper-Schalter selbst.
+    const wired = await loadWired(parsed.soulId);
+    for (const [wiredSoulId, entry] of Object.entries(wired)) {
+      await notifyWiredToRemoval(parsed.soulId, parsed.cert, wiredSoulId, entry?.node_url || null);
+    }
+    await saveWired(parsed.soulId, {});
+  }
+
   await setGatekeeperEnabled(parsed.soulId, enabled);
   res.json({ ok: true, enabled });
 });
@@ -684,18 +735,21 @@ app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {
     return res.status(401).json({ error: 'invalid_cert' });
   }
   const wired = await loadWired(parsed.soulId);
+  const entry = wired[req.params.soul_id];
   delete wired[req.params.soul_id];
   await saveWired(parsed.soulId, wired);
 
-  const wiredTo = await loadWiredTo(req.params.soul_id);
-  delete wiredTo[parsed.soulId];
-  await saveWiredTo(req.params.soul_id, wiredTo);
+  // Gegenseite mitpflegen (same-node direkt, cross-node per Callback), damit
+  // die entfernte Soul nicht weiter "connected" anzeigt.
+  await notifyWiredToRemoval(parsed.soulId, parsed.cert, req.params.soul_id, entry?.node_url || null);
 
   res.json({ ok: true });
 });
 
 // Selbst-Trennen von der wiring-Soul-Seite (das Gegenstück zur obigen Route,
-// die nur der Gatekeeper aufrufen kann).
+// die nur der Gatekeeper aufrufen kann). Bleibt same-node-only (der Gatekeeper
+// lebt hier immer lokal, siehe /mcp/discover/wire — gatekeeper_soul_id ist
+// nie fremd).
 app.delete('/mcp/discover/wired-to/:gatekeeper_soul_id', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -710,6 +764,27 @@ app.delete('/mcp/discover/wired-to/:gatekeeper_soul_id', async (req, res) => {
   delete wiredTo[req.params.gatekeeper_soul_id];
   await saveWiredTo(parsed.soulId, wiredTo);
 
+  res.json({ ok: true });
+});
+
+// Empfängt eine Trennungs-Benachrichtigung eines fremden (cross-node)
+// Gatekeepers — Gegenstück zu notifyWiredToRemoval() im Cross-Node-Fall.
+// Server-to-server, kein eigener Cert-Bearer der empfangenden Soul nötig: der
+// Gatekeeper beweist per eigenem Cert (gegen seinen eigenen node_url geprüft,
+// exakt wie beim Cross-Node-Wiring/-Föderieren) dass er wirklich er selbst
+// ist. wired_to.json ist rein informativ — die echte Zugriffskontrolle bleibt
+// beim Gatekeeper in dessen eigener wired_souls.json.
+app.post('/mcp/discover/wired-to/remove', async (req, res) => {
+  const { gatekeeper_soul_id, soul_id, cert, node_url } = req.body || {};
+  if (!gatekeeper_soul_id || !soul_id || !cert || !node_url) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id, soul_id, cert und node_url erforderlich' });
+  }
+  if (!(await verifyPeerCert(gatekeeper_soul_id, cert, node_url))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wiredTo = await loadWiredTo(soul_id);
+  delete wiredTo[gatekeeper_soul_id];
+  await saveWiredTo(soul_id, wiredTo);
   res.json({ ok: true });
 });
 
