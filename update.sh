@@ -42,6 +42,62 @@ info "Deploying shared config templates to /var/lib/sys/config/ ..."
 cp "$SCRIPT_DIR/shared/constants/pricing_params.json" /var/lib/sys/config/pricing_params.json
 cp "$SCRIPT_DIR/shared/constants/default_mind.md"     /var/lib/sys/config/default_mind.md
 
+# ── 2c. Regenerate OpenResty vhost config from template ───────────────────────
+# update.sh only ever copied *.lua files — a location block added to
+# vhost.conf.template (new API route, new SPA page needing its own try_files
+# fallback, ...) never reached already-installed nodes, since only init.sh
+# ever rendered this file. Regenerate it here too, the same way init.sh does,
+# but non-destructively: only touch the live file if the rendered result
+# actually differs, keep a backup, and roll back on a failed syntax check
+# instead of leaving a broken config for step 3's reload to trip over.
+_SITE_CONF=""
+_DOMAIN=""
+for f in /etc/openresty/sites-enabled/*; do
+  [ -f "$f" ] || continue
+  grep -q "root /var/www/" "$f" 2>/dev/null || continue
+  _SITE_CONF="$f"
+  _DOMAIN="$(basename "$f")"
+  break
+done
+
+if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.template" ]; then
+  _SSL_CERT=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
+  _SSL_KEY=$(sed -n 's/^[[:space:]]*ssl_certificate_key[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
+  _RENDERED=$(mktemp)
+  sed \
+    -e "s|{{DOMAIN}}|$_DOMAIN|g" \
+    -e "s|{{SSL_CERT}}|$_SSL_CERT|g" \
+    -e "s|{{SSL_KEY}}|$_SSL_KEY|g" \
+    -e "s|{{MCP_PORT}}|3098|g" \
+    "$SCRIPT_DIR/server/openresty/vhost.conf.template" \
+    > "$_RENDERED"
+
+  _EU_ENABLED=true
+  for _e in "$SCRIPT_DIR/soul-mcp/.env" "/opt/sys/soul-mcp/.env"; do
+    [ -f "$_e" ] && grep -q "^EU_CONSUMER_RIGHTS=false" "$_e" && _EU_ENABLED=false
+  done
+  [ "$_EU_ENABLED" = false ] && sed -i '/EU-CONSENT:START/,/EU-CONSENT:END/d' "$_RENDERED"
+
+  if ! diff -q "$_RENDERED" "$_SITE_CONF" >/dev/null 2>&1; then
+    info "vhost config for $_DOMAIN is out of date — regenerating..."
+    mkdir -p /var/lib/sys/config
+    _BACKUP="/var/lib/sys/config/vhost-backup-$_DOMAIN-$(date +%s).conf"
+    cp "$_SITE_CONF" "$_BACKUP"
+    cp "$_RENDERED" "$_SITE_CONF"
+    if openresty -t 2>&1; then
+      info "vhost config regenerated (previous version backed up to $_BACKUP)."
+    else
+      warn "Regenerated vhost config failed syntax check — restoring previous version."
+      cp "$_BACKUP" "$_SITE_CONF"
+    fi
+  else
+    info "vhost config for $_DOMAIN already up to date."
+  fi
+  rm -f "$_RENDERED"
+else
+  warn "Could not find an existing site config with a /var/www/ root (or vhost.conf.template missing) — skipping vhost regeneration."
+fi
+
 # ── 3. Reload OpenResty ───────────────────────────────────────────────────────
 info "Reloading OpenResty..."
 openresty -t && openresty -s reload && info "OpenResty reloaded."

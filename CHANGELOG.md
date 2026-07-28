@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.27] — 2026-07-28
+
+**Fixed: `update.sh` never regenerated the OpenResty vhost config, so any new nginx location block (new API route, new SPA page) landed in the repo but silently never reached already-installed nodes — found live on `fab.uxprojects-jok.com`, where `/api/soul/verify-service-token` (needed for cross-node Gatekeeper wiring) returned nginx's plain fallback instead of JSON, because the route simply didn't exist in the live config.**
+
+**Root cause:** `/etc/openresty/sites-enabled/<domain>` is rendered from `server/openresty/vhost.conf.template` exactly once, by `init.sh`, at install time. `update.sh` deploys `*.lua` files on every run but has never touched the vhost config itself — so every location block added to the template since a node's install date (in this case: `/api/soul/verify-service-token`, `/api/soul/admin-token`, `/scanner`, `/search`, and a `logo.ico` path fix) simply never reached that node, regardless of how many `git pull`s it did. The Lua *handlers* for these routes were present and correct; nginx just never had a route to call them.
+
+**Fixed**
+- `update.sh`: new step re-renders the vhost config from the current template on every run, reusing the domain/cert paths already in the live file (auto-detected, nothing to configure) and the same EU-consent-block stripping `init.sh` does. Only touches the live file if the rendered result actually differs; keeps a timestamped backup in `/var/lib/sys/config/`; runs `openresty -t` before the regular reload step and rolls back automatically if the new config fails its syntax check, so a bad template can't take a node offline.
+
+**Migration required:** already-running nodes should run `update.sh` once to pick up any vhost routes/pages added since their install — this can't be backfilled automatically for nodes that haven't updated yet.
+
+---
+
 ## [1.2.26] — 2026-07-28
 
 **Fixed: `update.sh` deployed the freshly-built frontend to the wrong directory and then aborted before restarting `soul-mcp` — found live on `fab.uxprojects-jok.com` right after the v1.2.25 fix let the build actually complete for the first time.**
