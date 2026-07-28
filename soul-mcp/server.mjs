@@ -25,6 +25,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
+import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken } from './lib/wired_souls.mjs';
 import { registerGatekeeperTools } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
@@ -222,6 +223,7 @@ const OWNER_INSTRUCTIONS = [
 // wegen doppeltem Tool-Namen. Jede Soul mit akzeptierten Verbindungen bekommt
 // automatisch Lesezugriff auf sie.
 async function registerConnectionProxyTools(server, soulId, callerToken = null) {
+  const wired = await loadWired(soulId);
   const connectedAll = await loadConnected(soulId);
   const connected = Object.fromEntries(
     Object.entries(connectedAll)
@@ -231,10 +233,11 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
       // erwartet einheitlich "token".
       .map(([remoteId, e]) => [remoteId, { ...e, token: e.outbound_token }])
   );
-  if (Object.keys(connected).length > 0) {
-    registerGatekeeperTools(server, connected, callerToken);
+  const merged = { ...wired, ...connected };
+  if (Object.keys(merged).length > 0) {
+    registerGatekeeperTools(server, merged, callerToken);
   }
-  return { connected };
+  return { wired, connected };
 }
 
 async function handleMcp(req, res) {
@@ -416,10 +419,13 @@ async function handleMcpDiscover(req, res) {
 app.get('/mcp/discover',  handleMcpDiscover);
 app.post('/mcp/discover', handleMcpDiscover);
 
-// Gesundheits-Check
-// ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────
-// Jede Soul kann das nutzen, nicht nur Gatekeeper — direkte, symmetrische
-// Verbindung zwischen zwei beliebigen Souls, mit echten Vault-Permissions.
+// ── Gatekeeper-Wiring (Soul → Gatekeeper, asymmetrisch, scope-begrenzt) ───────
+// Verknüpft eine Soul mit einer anderen (der faktischen Gatekeeper-Soul):
+// der Aufrufer beweist per eigenem Soul-Cert seine Identität und legt einen
+// selbst erzeugten Service-Token vor (Settings→Services) — beides zusammen
+// ist der Owner-Konsens. Funktioniert unabhängig vom Hosting-Modus dieses
+// Nodes — jede Soul kann sich bei einem (ggf. entfernten) Gatekeeper
+// einklinken, auch auf einem Single-Hoster-Node.
 function parseOwnCertBearer(req) {
   const token = extractToken(req);
   if (!token || !token.includes('.')) return null;
@@ -428,6 +434,131 @@ function parseOwnCertBearer(req) {
   return { soulId, cert };
 }
 
+app.post('/mcp/discover/wire', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+
+  // node_url gesetzt = Cross-Node-Wiring: die wirende Soul lebt auf einem
+  // anderen Node als dieser Gatekeeper. Cert- und Token-Nachweis laufen dann
+  // per HTTP gegen den Home-Node der Soul statt lokalem Dateisystem-Read.
+  const { gatekeeper_soul_id, service_token, name, node_url } = req.body || {};
+  const callerNodeUrl = typeof node_url === 'string' && node_url.trim() ? node_url.trim().replace(/\/$/, '') : null;
+
+  if (!(await verifyPeerCert(callerSoulId, cert, callerNodeUrl))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  if (!gatekeeper_soul_id || !service_token) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id und service_token erforderlich' });
+  }
+  if (gatekeeper_soul_id === callerSoulId && !callerNodeUrl) {
+    return res.status(400).json({ error: 'self_wire_not_allowed', message: 'gatekeeper_soul_id darf nicht die eigene soul_id sein.' });
+  }
+  // gatekeeper_soul_id ist immer lokal — der Wire-Request geht immer AN den
+  // Node des Gatekeepers, nur die wirende Soul (callerSoulId) kann fremd sein.
+  const gkExists = await stat(`${SOULS_DIR}${gatekeeper_soul_id}`).then(s => s.isDirectory()).catch(() => false);
+  if (!gkExists) {
+    return res.status(404).json({ error: 'gatekeeper_soul_not_found', message: `Keine Soul mit ID "${gatekeeper_soul_id}" auf diesem Node.` });
+  }
+
+  const svc = await checkOwnServiceToken(callerSoulId, service_token, callerNodeUrl);
+  if (!svc) {
+    return res.status(400).json({ error: 'service_token unbekannt — muss ein selbst erzeugter Token (Settings→Services) dieser Soul sein.' });
+  }
+
+  const wired = await loadWired(gatekeeper_soul_id);
+  wired[callerSoulId] = {
+    token: service_token,
+    permissions: svc.permissions,
+    name: name || svc.name || callerSoulId,
+    node_url: callerNodeUrl || undefined,
+    wired_at: Math.floor(Date.now() / 1000),
+  };
+  await saveWired(gatekeeper_soul_id, wired);
+
+  // Umgekehrter Eintrag auf der eigenen Soul — rein informativ, damit die
+  // Settings-UI dieser Soul selbst anzeigen kann "mit X verbunden", ohne dass
+  // man dafür in die (fremde) Gatekeeper-Soul wechseln müsste. Bei Cross-Node-
+  // Wiring lebt callerSoulId auf einem ANDEREN Node als dieser Handler — kann
+  // von hier aus gar nicht geschrieben werden (kein Dateisystemzugriff auf
+  // fremde Nodes), also bewusst ausgelassen statt eines Fake-Best-Effort-Calls.
+  if (!callerNodeUrl) {
+    const wiredTo = await loadWiredTo(callerSoulId);
+    wiredTo[gatekeeper_soul_id] = { wired_at: Math.floor(Date.now() / 1000) };
+    await saveWiredTo(callerSoulId, wiredTo);
+  }
+
+  res.json({ ok: true, gatekeeper_soul_id, soul_id: callerSoulId, permissions: svc.permissions });
+});
+
+// Owner-Sicht auf die eigene wired_souls.json (Settings-UI "Wired Souls"-Tabelle).
+app.get('/mcp/discover/wired', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(parsed.soulId);
+  const list = Object.entries(wired).map(([soul_id, e]) => ({
+    soul_id, name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || null,
+  }));
+  res.json({ wired: list });
+});
+
+// Owner-Sicht auf die eigene wired_to.json (Settings-UI "Connected to"-Anzeige).
+app.get('/mcp/discover/wired-to', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wiredTo = await loadWiredTo(parsed.soulId);
+  const list = Object.entries(wiredTo).map(([gatekeeper_soul_id, e]) => ({
+    gatekeeper_soul_id, wired_at: e.wired_at,
+  }));
+  res.json({ wired_to: list });
+});
+
+app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(parsed.soulId);
+  delete wired[req.params.soul_id];
+  await saveWired(parsed.soulId, wired);
+
+  const wiredTo = await loadWiredTo(req.params.soul_id);
+  delete wiredTo[parsed.soulId];
+  await saveWiredTo(req.params.soul_id, wiredTo);
+
+  res.json({ ok: true });
+});
+
+// Selbst-Trennen von der wiring-Soul-Seite (das Gegenstück zur obigen Route,
+// die nur der Gatekeeper aufrufen kann).
+app.delete('/mcp/discover/wired-to/:gatekeeper_soul_id', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const wired = await loadWired(req.params.gatekeeper_soul_id);
+  delete wired[parsed.soulId];
+  await saveWired(req.params.gatekeeper_soul_id, wired);
+
+  const wiredTo = await loadWiredTo(parsed.soulId);
+  delete wiredTo[req.params.gatekeeper_soul_id];
+  await saveWiredTo(parsed.soulId, wiredTo);
+
+  res.json({ ok: true });
+});
+
+// ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────
+// Jede Soul kann das nutzen, nicht nur Gatekeeper — direkte, symmetrische
+// Verbindung zwischen zwei beliebigen Souls, mit echten Vault-Permissions.
 const CONN_PERMS = { soul: true, audio: true, video: true, images: true, context_files: true, network: true };
 function sanitizePerms(input) {
   const perms = {};

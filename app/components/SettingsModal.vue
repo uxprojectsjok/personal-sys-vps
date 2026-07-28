@@ -30,6 +30,9 @@
             <button @click="tab = 'verbindungen'" class="sys-rail-item" :class="tab === 'verbindungen' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_connections') }}</span></span>
             </button>
+            <button @click="tab = 'gatekeeper'" class="sys-rail-item" :class="tab === 'gatekeeper' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_gatekeeper') }}</span></span>
+            </button>
             <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
             </button>
@@ -186,6 +189,11 @@
             <!-- ── Tab: Verbindungen (Soul-zu-Soul) ── -->
             <template v-if="tab === 'verbindungen'">
               <SoulConnectionsPanel />
+            </template>
+
+            <!-- ── Tab: Gatekeeper (Soul → Gatekeeper, gebündelter Connector) ── -->
+            <template v-if="tab === 'gatekeeper'">
+              <GatekeeperPanel />
             </template>
 
             <!-- ── Tab: Plugins ── -->

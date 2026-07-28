@@ -1383,6 +1383,15 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_verify_peer_cert.lua;
   }
 
+  # ── Service-Token-Verifikation (öffentlich, für Cross-Node Gatekeeper-Wiring) ─
+  location = /api/soul/verify-service-token {
+    limit_except GET { deny all; }
+    limit_req zone=auth burst=3 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_verify_service_token.lua;
+  }
+
   # ── POL-Token Validierung (intern, nur 127.0.0.1) ────────────────────────────
   location = /internal/validate-pol-token {
     allow 127.0.0.1;
