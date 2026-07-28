@@ -25,7 +25,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
-import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled } from './lib/wired_souls.mjs';
+import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey } from './lib/wired_souls.mjs';
 import { loadFederated, saveFederated } from './lib/federated_gatekeepers.mjs';
 import { registerGatekeeperTools, registerWireSearch } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
@@ -239,7 +239,18 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   // Tools angeboten. connected_souls.json (direkte Soul-Verbindungen) ist
   // ein separates Feature und bleibt vom Schalter unberührt.
   const gkEnabled = await isGatekeeperEnabled(soulId);
-  const wired = gkEnabled ? await loadWired(soulId) : {};
+  // wired_souls.json kann pro soul_id mehrere Einträge haben (verschiedene
+  // physische Node-Instanzen derselben Identität, siehe wireKey()) — die
+  // KI-Tools hier sind aber pro soul_id parametrisiert und kennen kein "von
+  // welchem Node", also auf eine kanonische Verbindung je soul_id reduzieren
+  // (zuletzt verdrahtete gewinnt). Die volle, ungekürzte Liste bleibt in
+  // GET /mcp/discover/wired für die Settings-UI erhalten.
+  const wiredRaw = gkEnabled ? await loadWired(soulId) : {};
+  const wired = {};
+  for (const [key, entry] of Object.entries(wiredRaw)) {
+    const sid = entry.soul_id || key.split('@')[0];
+    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = { ...entry, soul_id: sid };
+  }
   const connectedAll = await loadConnected(soulId);
   const connected = Object.fromEntries(
     Object.entries(connectedAll)
@@ -631,7 +642,8 @@ app.post('/mcp/discover/wire', async (req, res) => {
   const realSoulName = await getCallerSoulName(callerSoulId, cert, callerNodeUrl);
 
   const wired = await loadWired(gatekeeper_soul_id);
-  wired[callerSoulId] = {
+  wired[wireKey(callerSoulId, callerNodeUrl)] = {
+    soul_id: callerSoulId,
     token: service_token,
     permissions: svc.permissions,
     name: realSoulName || name || svc.name || callerSoulId,
@@ -709,8 +721,11 @@ app.get('/mcp/discover/wired', async (req, res) => {
     return res.status(401).json({ error: 'invalid_cert' });
   }
   const wired = await loadWired(parsed.soulId);
-  const list = Object.entries(wired).map(([soul_id, e]) => ({
-    soul_id, name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || null,
+  // Volle Liste, nicht auf eine Verbindung je soul_id kanonisiert (anders als
+  // registerConnectionProxyTools() für die KI-Tools) — dieselbe soul_id kann
+  // hier mehrfach auftauchen, je einmal pro physischer Node-Instanz.
+  const list = Object.entries(wired).map(([key, e]) => ({
+    soul_id: e.soul_id || key.split('@')[0], name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || null,
   }));
   res.json({ wired: list });
 });
@@ -764,7 +779,8 @@ app.post('/mcp/discover/gatekeeper-config', async (req, res) => {
     // Verbindungen zurück — jede Soul muss sich bewusst neu einwirten, exakt
     // dasselbe Prinzip wie beim Gatekeeper-Schalter selbst.
     const wired = await loadWired(parsed.soulId);
-    for (const [wiredSoulId, entry] of Object.entries(wired)) {
+    for (const [key, entry] of Object.entries(wired)) {
+      const wiredSoulId = entry.soul_id || key.split('@')[0];
       await notifyWiredToRemoval(parsed.soulId, parsed.cert, wiredSoulId, entry?.node_url || null);
     }
     await saveWired(parsed.soulId, {});
@@ -780,14 +796,24 @@ app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {
   if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
     return res.status(401).json({ error: 'invalid_cert' });
   }
+  // node_url disambiguiert, FALLS dieselbe soul_id mehrfach verdrahtet ist
+  // (verschiedene physische Node-Instanzen, siehe wireKey()) — ohne Angabe
+  // trifft der Aufruf nur den same-node-Eintrag (Standardfall, unverändertes
+  // Verhalten für alle bisherigen Einträge).
+  const nodeUrlParam = typeof req.query.node_url === 'string' && req.query.node_url.trim()
+    ? req.query.node_url.trim().replace(/\/$/, '')
+    : null;
   const wired = await loadWired(parsed.soulId);
-  const entry = wired[req.params.soul_id];
-  delete wired[req.params.soul_id];
+  const key   = wireKey(req.params.soul_id, nodeUrlParam);
+  const entry = wired[key];
+  delete wired[key];
   await saveWired(parsed.soulId, wired);
 
   // Gegenseite mitpflegen (same-node direkt, cross-node per Callback), damit
   // die entfernte Soul nicht weiter "connected" anzeigt.
-  await notifyWiredToRemoval(parsed.soulId, parsed.cert, req.params.soul_id, entry?.node_url || null);
+  if (entry) {
+    await notifyWiredToRemoval(parsed.soulId, parsed.cert, req.params.soul_id, entry?.node_url || null);
+  }
 
   res.json({ ok: true });
 });
@@ -849,7 +875,7 @@ app.post('/mcp/discover/wire-self-remove', async (req, res) => {
     return res.status(401).json({ error: 'invalid_cert' });
   }
   const wired = await loadWired(gatekeeper_soul_id);
-  delete wired[soul_id];
+  delete wired[wireKey(soul_id, node_url)];
   await saveWired(gatekeeper_soul_id, wired);
   res.json({ ok: true });
 });

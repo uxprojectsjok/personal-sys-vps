@@ -42,6 +42,21 @@ function wiredPath(soulId) {
   return `${SOULS_DIR}${soulId}/wired_souls.json`;
 }
 
+// Speicherschlüssel für einen Eintrag in wired_souls.json. Same-node bleibt
+// die reine soul_id (Rückwärtskompatibilität mit bestehenden Einträgen).
+// Cross-node hängt den node_url an — sonst würde dieselbe soul_id, die sich
+// von zwei unterschiedlichen physischen Instanzen aus einwirt (z.B. dieselbe
+// Identität testweise auf zwei Nodes, mit unterschiedlichen Certs), den
+// jeweils anderen Eintrag stillschweigend überschreiben, samt einer nie
+// benachrichtigten, verwaisten wired_to.json auf der überschriebenen Seite —
+// live so aufgetreten. Jede physische Instanz bekommt jetzt ihren eigenen
+// Eintrag; welche für KI-Tool-Aufrufe (soul_id-parametrisiert, kennen kein
+// "von welchem Node") tatsächlich verwendet wird, entscheidet
+// registerConnectionProxyTools() in server.mjs (zuletzt verdrahtete zuerst).
+export function wireKey(soulId, nodeUrl) {
+  return nodeUrl ? `${soulId}@${nodeUrl}` : soulId;
+}
+
 // Umgekehrter Blick: welche Gatekeeper hat DIESE Soul selbst kontaktiert
 // (rein informativ für die eigene Settings-UI — "Connected to" —, die
 // eigentliche Zugriffskontrolle steht ausschließlich in wired_souls.json

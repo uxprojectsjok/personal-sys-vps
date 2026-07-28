@@ -192,10 +192,16 @@ export function useGatekeeper() {
     }
   }
 
-  async function unwireSoul(soulId) {
+  // nodeUrl disambiguiert, falls dieselbe soul_id mehrfach verdrahtet ist
+  // (mehrere physische Node-Instanzen derselben Identität) — ohne Angabe
+  // trifft der Aufruf nur den same-node-Eintrag.
+  async function unwireSoul(soulId, nodeUrl = null) {
     error.value = null
     try {
-      const res = await fetch(`/mcp/discover/wire/${encodeURIComponent(soulId)}`, {
+      const url = nodeUrl
+        ? `/mcp/discover/wire/${encodeURIComponent(soulId)}?node_url=${encodeURIComponent(nodeUrl)}`
+        : `/mcp/discover/wire/${encodeURIComponent(soulId)}`
+      const res = await fetch(url, {
         method:  'DELETE',
         headers: { Authorization: `Bearer ${soulToken.value}` }
       })

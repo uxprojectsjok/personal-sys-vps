@@ -1418,6 +1418,7 @@
     "wired_title": "Wired Souls",
     "wired_hint": "Souls that have connected to this soul as their Gatekeeper.",
     "wired_empty": "No soul wired in yet.",
+    "same_node": "(same node)",
     "disconnect_aria": "Disconnect {name}",
     "disconnect_title": "Disconnect soul",
     "disconnect_msg": "Really disconnect \"{name}\"? Access ends immediately.",

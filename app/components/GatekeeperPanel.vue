@@ -91,12 +91,13 @@
       <div v-if="wired.length" style="display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden">
         <div
           v-for="w in wired"
-          :key="w.soul_id"
+          :key="w.soul_id + '@' + (w.node_url || '')"
           style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
         >
           <div style="min-width:0">
             <p style="font-size:14px;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.name }}</p>
             <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.soul_id }}</p>
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.node_url || $t('gatekeeper.same_node') }}</p>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
               <span
                 v-for="key in Object.keys(w.permissions || {}).filter(k => w.permissions[k])"
@@ -272,7 +273,7 @@ async function handleDisconnect(w) {
     message: t('gatekeeper.disconnect_msg', { name: w.name }),
     confirmText: t('gatekeeper.disconnect_confirm'),
   })) return
-  await unwireSoul(w.soul_id)
+  await unwireSoul(w.soul_id, w.node_url)
 }
 
 async function handleRequestFederation() {
