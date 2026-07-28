@@ -439,6 +439,25 @@ function parseOwnCertBearer(req) {
   return { soulId, cert };
 }
 
+// Liest soul_name direkt aus /api/soul (lokal oder cross-node), mit dem
+// bereits verifizierten eigenen Cert als Bearer. Best effort — liefert null
+// statt zu werfen, der Aufrufer fällt dann auf den alten Namen zurück.
+async function getCallerSoulName(soulId, cert, nodeUrl) {
+  try {
+    const base = nodeUrl || BASE_URL;
+    const res = await fetch(`${base}/api/soul`, {
+      headers: { Authorization: `Bearer ${soulId}.${cert}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    const m = text.match(/soul_name:\s*(.+)/);
+    return m ? m[1].trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 app.post('/mcp/discover/wire', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -475,11 +494,18 @@ app.post('/mcp/discover/wire', async (req, res) => {
     return res.status(400).json({ error: 'service_token unbekannt — muss ein selbst erzeugter Token (Settings→Services) dieser Soul sein.' });
   }
 
+  // Angezeigter Name: die tatsächliche soul_name der wirenden Soul, nicht der
+  // (oft zweckbeschreibende) Name ihres Service-Tokens — der Gatekeeper soll
+  // sehen WER sich verbindet, nicht WOFÜR die wirende Soul ihren Token
+  // benannt hat. cert ist an dieser Stelle bereits via verifyPeerCert
+  // geprüft, dieselbe Bearer-Form ist also legitim.
+  const realSoulName = await getCallerSoulName(callerSoulId, cert, callerNodeUrl);
+
   const wired = await loadWired(gatekeeper_soul_id);
   wired[callerSoulId] = {
     token: service_token,
     permissions: svc.permissions,
-    name: name || svc.name || callerSoulId,
+    name: realSoulName || name || svc.name || callerSoulId,
     node_url: callerNodeUrl || undefined,
     wired_at: Math.floor(Date.now() / 1000),
   };
