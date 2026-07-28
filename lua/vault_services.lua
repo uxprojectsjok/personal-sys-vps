@@ -53,6 +53,7 @@ if method == "GET" then
       permissions = svc.permissions,
       expires_at  = svc.expires_at or cjson.null,
       created_at  = svc.created_at,
+      resource    = svc.resource or cjson.null,
       verified    = svc.verified ~= false
     })
   end
@@ -126,6 +127,16 @@ if method == "POST" and uri == "/api/vault/services" then
   local exp = parse_expires(payload.expires_days) or parse_expires(payload.expires)
   if exp then expires_at = exp end
 
+  -- RFC 8707 Resource Indicator (von /oauth/authorize durchgereicht, siehe
+  -- oauth.mjs) — bindet den Token an EINEN MCP-Endpunkt (/mcp oder
+  -- /mcp/discover). Fehlt das Feld (z.B. manuell in Settings→API erzeugte
+  -- Tokens), bleibt der Token unrestricted wie bisher — Bindung gilt nur für
+  -- den OAuth-Flow, wo ein Client per RFC 8707 explizit eine resource nennt.
+  local resource = nil
+  if type(payload.resource) == "string" and #payload.resource > 0 and #payload.resource <= 512 then
+    resource = payload.resource
+  end
+
   local token = random_token()
   local svcs  = load_services()
 
@@ -134,6 +145,7 @@ if method == "POST" and uri == "/api/vault/services" then
     permissions = permissions,
     expires_at  = (expires_at == cjson.null) and nil or expires_at,
     created_at  = math.floor(ngx.now()),
+    resource    = resource,
     -- Neue Tokens starten unverifiziert: erst nach einer erfolgreichen
     -- verify_identity-Challenge (siehe verify_complete.lua) volle Rechte.
     -- Bestehende Tokens (Feld fehlt) gelten als verifiziert — siehe vault_auth.lua.
@@ -166,6 +178,7 @@ if method == "POST" and uri == "/api/vault/services" then
     name        = name,
     permissions = permissions,
     expires_at  = expires_at,
+    resource    = resource or cjson.null,
     verified    = false
   }))
   return

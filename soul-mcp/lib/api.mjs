@@ -89,8 +89,8 @@ export async function validateCert(soulCert) {
 }
 
 /** Erstellt einen neuen Service-Token für den OAuth-Flow */
-export async function createServiceToken(soulCert, name, permissions, expires = '365d') {
-  return postJson('/api/vault/services', soulCert, { name, permissions, expires });
+export async function createServiceToken(soulCert, name, permissions, expires = '365d', resource = null) {
+  return postJson('/api/vault/services', soulCert, { name, permissions, expires, resource });
 }
 
 /** Gibt die URL einer Vault-Datei mit eingebettetem Token zurück */

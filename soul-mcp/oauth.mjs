@@ -128,7 +128,7 @@ oauthRouter.post('/register', (req, res) => {
 // ── Consent-Seite ──────────────────────────────────────────────────────────
 
 oauthRouter.get('/authorize', (req, res) => {
-  const { client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method } = req.query;
+  const { client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, resource } = req.query;
 
   if (response_type !== 'code') {
     return res.status(400).send('Nur response_type=code wird unterstützt.');
@@ -148,6 +148,7 @@ oauthRouter.get('/authorize', (req, res) => {
     scope: scopes.join(' '),
     code_challenge: code_challenge || '',
     code_challenge_method: code_challenge_method || '',
+    resource: resource || '',
     scopeList,
     error: '',
     cancel_url: redirect_uri ? `${redirect_uri}?error=access_denied&state=${encodeURIComponent(state || '')}` : '/',
@@ -160,7 +161,7 @@ oauthRouter.get('/authorize', (req, res) => {
 // ── Form-Submit: Cert validieren + Token erstellen ─────────────────────────
 
 oauthRouter.post('/authorize', async (req, res) => {
-  const { soul_cert, client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method } = req.body;
+  const { soul_cert, client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, resource } = req.body;
 
   if (!soul_cert || !soul_cert.includes('.')) {
     return resConsent(res, req.body, 'Ungültiges Soul-Cert – Format: uuid.32hexchars');
@@ -176,13 +177,20 @@ oauthRouter.post('/authorize', async (req, res) => {
   const scopes = (scope || 'soul').split(/[\s,+]/);
   const permissions = scopesToPermissions(scopes);
 
+  // RFC 8707 Resource Indicator — bindet den entstehenden Token an genau den
+  // Endpunkt (/mcp oder /mcp/discover), für den der Client ihn per resource=
+  // angefragt hat. Ohne resource-Parameter (nicht-MCP-Clients, ältere Flows)
+  // bleibt der Token unrestricted wie bisher.
+  const boundResource = typeof resource === 'string' && resource.trim() ? resource.trim() : null;
+
   let tokenData;
   try {
     tokenData = await createServiceToken(
       soul_cert,
       `Client (${client_id || 'oauth'})`,
       permissions,
-      '365d'
+      '365d',
+      boundResource
     );
   } catch (err) {
     return resConsent(res, req.body, `Token-Erstellung fehlgeschlagen: ${err.message}`);
@@ -195,6 +203,7 @@ oauthRouter.post('/authorize', async (req, res) => {
     redirect_uri,
     scopes,
     code_challenge: code_challenge || null,
+    resource: boundResource,
   });
 
   const redirect = new URL(redirect_uri);
@@ -207,7 +216,7 @@ oauthRouter.post('/authorize', async (req, res) => {
 // ── Token-Endpunkt ─────────────────────────────────────────────────────────
 
 oauthRouter.post('/token', async (req, res) => {
-  const { grant_type, code, redirect_uri, client_id, code_verifier } = req.body;
+  const { grant_type, code, redirect_uri, client_id, code_verifier, resource } = req.body;
 
   if (grant_type !== 'authorization_code') {
     return res.status(400).json({ error: 'unsupported_grant_type' });
@@ -220,6 +229,13 @@ oauthRouter.post('/token', async (req, res) => {
 
   if (redirect_uri && data.redirect_uri !== redirect_uri) {
     return res.status(400).json({ error: 'invalid_grant', error_description: 'redirect_uri stimmt nicht überein.' });
+  }
+
+  // Falls der Client hier erneut resource= mitschickt (RFC 8707 erlaubt beides),
+  // muss sie zu der bei /authorize gebundenen resource passen — der Token
+  // selbst ist längst mit data.resource erstellt, das ist nur ein Konsistenz-Check.
+  if (resource && data.resource && resource !== data.resource) {
+    return res.status(400).json({ error: 'invalid_target', error_description: 'resource stimmt nicht mit der bei /authorize angeforderten überein.' });
   }
 
   // PKCE prüfen wenn code_challenge gespeichert wurde
@@ -241,7 +257,7 @@ oauthRouter.post('/token', async (req, res) => {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function resConsent(res, body, error) {
-  const { client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method } = body;
+  const { client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, resource } = body;
   const scopes = (scope || 'soul').split(/[\s,+]/);
   const scopeList = scopes
     .filter((s) => SCOPE_LABELS[s])
@@ -256,6 +272,7 @@ function resConsent(res, body, error) {
     scope: scopes.join(' '),
     code_challenge: code_challenge || '',
     code_challenge_method: code_challenge_method || '',
+    resource: resource || '',
     scopeList,
     error,
     cancel_url: redirect_uri
@@ -267,7 +284,7 @@ function resConsent(res, body, error) {
   res.status(400).send(html);
 }
 
-function consentHtml({ client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, scopeList, error, cancel_url }) {
+function consentHtml({ client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, resource, scopeList, error, cancel_url }) {
   const errorHtml = error
     ? `<div class="error">${escHtml(error)}</div>`
     : '';
@@ -316,6 +333,7 @@ function consentHtml({ client_id, redirect_uri, state, response_type, scope, cod
     <input type="hidden" name="scope"                 value="${escHtml(scope || 'soul')}">
     <input type="hidden" name="code_challenge"        value="${escHtml(code_challenge || '')}">
     <input type="hidden" name="code_challenge_method" value="${escHtml(code_challenge_method || '')}">
+    <input type="hidden" name="resource"              value="${escHtml(resource || '')}">
     <label for="soul_cert">Soul-Cert</label>
     <input type="text" id="soul_cert" name="soul_cert" placeholder="uuid.32hexchars" autocomplete="off" spellcheck="false">
     <button class="btn-connect" type="submit">Verbinden ✓</button>

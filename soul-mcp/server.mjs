@@ -349,7 +349,23 @@ async function handleMcp(req, res) {
     const dirs     = ownerSoulId ? null : await readdir(SOULS_DIR).catch(() => []);
     const soulDirs = dirs ? dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d)) : null;
     if (ownerSoulId) {
-      // gefunden — nichts weiter zu tun
+      // RFC 8707 Resource Indicator: ein per /oauth/authorize mit resource=
+      // ausgestellter Token ist an GENAU einen Endpunkt gebunden (/mcp oder
+      // /mcp/discover) — verhindert, dass ein für /mcp autorisierter Token
+      // (z.B. schmal für eine einzelne Drittintegration gedacht) auch an
+      // /mcp/discover repliziert werden kann und dort plötzlich Zugriff auf
+      // alle gewirten/verbundenen Souls bekommt. Ungebundene Tokens (kein
+      // resource-Feld — z.B. manuell in Settings→API erzeugte) bleiben wie
+      // bisher an beiden Endpunkten gültig.
+      const boundResource = await getServiceTokenResource(ownerSoulId, token);
+      if (boundResource && boundResource !== `${BASE_URL}/mcp`) {
+        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+        return res.status(401).json({
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'Token ist an eine andere Resource gebunden (RFC 8707) — für /mcp neu autorisieren.' },
+          id: null,
+        });
+      }
     } else if (soulIdParam && soulDirs.includes(soulIdParam)) {
       ownerSoulId = soulIdParam;
     } else if (soulDirs.length === 1) {
@@ -435,6 +451,15 @@ async function handleMcpDiscover(req, res) {
     // Die eigentliche Token-Prüfung passiert lazily pro Tool-Aufruf über den
     // bestehenden vault_auth-Pfad.
     gkSoulId = await findSoulByServiceToken(token);
+    if (gkSoulId) {
+      // RFC 8707 — Gegenstück zum Check in handleMcp(): ein für /mcp
+      // ausgestellter Token darf nicht an /mcp/discover repliziert werden
+      // und dort das gebündelte Gatekeeper-Toolset freischalten.
+      const boundResource = await getServiceTokenResource(gkSoulId, token);
+      if (boundResource && boundResource !== `${BASE_URL}/mcp/discover`) {
+        return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
+      }
+    }
     if (!gkSoulId) {
       const dirs     = await readdir(SOULS_DIR).catch(() => []);
       const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
@@ -2805,6 +2830,19 @@ async function findSoulByServiceToken(token) {
     } catch { /* Datei fehlt/ungültig — nächste Soul */ }
   }
   return null;
+}
+
+// Liest das resource-Feld (RFC 8707) eines Service-Tokens — gesetzt nur für
+// Tokens, die über /oauth/authorize mit resource= angefragt wurden (siehe
+// oauth.mjs). null/undefined bedeutet "ungebunden", nicht "kein Zugriff".
+async function getServiceTokenResource(soulId, token) {
+  try {
+    const raw  = await readFile(`${SOULS_DIR}${soulId}/authorized_services.json`, 'utf8');
+    const svcs = JSON.parse(raw);
+    return svcs?.[token]?.resource || null;
+  } catch {
+    return null;
+  }
 }
 
 function extractToken(req) {
