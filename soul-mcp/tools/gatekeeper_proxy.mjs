@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 import { wireKey } from '../lib/wired_souls.mjs';
-import { updateSection } from './soul_write.mjs';
+import { updateSection, checkMessageProtocolViolation } from './soul_write.mjs';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -218,6 +218,14 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
       'zur Disambiguierung angeben — sonst geht der Write an die zuletzt',
       'verdrahtete Verbindung.',
       '',
+      'NIE für Nachrichten verwenden: "Social Sphere" wird generell abgelehnt —',
+      'stattdessen peer_send, das baut den korrekten',
+      '<!-- @msg {ISO-ts} {from} {to} {content} -->-Eintrag mit echtem',
+      'Server-Zeitstempel. Ein handgetippter "<!-- @msg"-Marker in JEDER',
+      'Sektion (auch Agent Sandbox) wird ebenfalls abgelehnt — das hat',
+      'wiederholt zu protokollwidrigen Feldern geführt (falsche/geratene',
+      'Timestamps, falsche from/to).',
+      '',
       'WICHTIG — nie Datum/Uhrzeit raten: falls Inhalt ein Datum/eine Uhrzeit',
       'braucht und die nicht sicher aus verifiziertem Kontext bekannt ist',
       '(z.B. gerade per sys_time abgefragt), nicht schätzen — User fragen oder',
@@ -236,6 +244,8 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
       node_url: NODE_URL_PARAM,
     },
     async ({ soul_id, section, content, mode, node_url }) => {
+      const violation = checkMessageProtocolViolation(section, content);
+      if (violation) return errResult(violation);
       const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, 'soul', node_url);
       if (error) return errResult(error);
       try {
