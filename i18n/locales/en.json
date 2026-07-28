@@ -1423,8 +1423,15 @@
     "node_url_hint": "Required — even for connections on the same node.",
     "gk_node_url_placeholder": "Gatekeeper's node URL (empty = same node as me)",
     "gk_node_url_hint": "Only needed if the Gatekeeper runs on a different node than your soul.",
+    "federated_title": "Federated Gatekeepers",
+    "federated_hint": "Other Gatekeeper souls this one has connected to (by mutual consent) — search then also reaches their wired souls.",
+    "federated_pending_in": "wants to connect",
     "federated_pending_out": "Request sent, awaiting confirmation",
-    "federated_accepted": "connected"
+    "federated_accepted": "connected",
+    "federated_empty": "No federated Gatekeepers yet.",
+    "federate_soul_id_placeholder": "Soul ID of the other Gatekeeper",
+    "btn_federate": "Request federation",
+    "btn_accept": "Accept"
   },
   "first_setup": {
     "kicker_new": "New instance · §00",

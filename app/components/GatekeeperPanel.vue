@@ -116,11 +116,77 @@
       <p v-else style="font-size:14px;color:var(--fg-3);margin:0">{{ $t('gatekeeper.wired_empty') }}</p>
     </div>
 
+    <!-- Föderierte Gatekeeper -->
+    <div>
+      <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0 0 4px">{{ $t('gatekeeper.federated_title') }}</p>
+      <p style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0 0 14px">{{ $t('gatekeeper.federated_hint') }}</p>
+
+      <!-- Eingehende Anfragen -->
+      <div v-if="pendingIn.length" style="display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-bottom:14px">
+        <div
+          v-for="f in pendingIn"
+          :key="f.soul_id"
+          style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
+        >
+          <div style="min-width:0">
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.soul_id }}</p>
+            <p style="font-size:12px;color:var(--fg-3);margin:2px 0 0">{{ f.node_url }} — {{ $t('gatekeeper.federated_pending_in') }}</p>
+          </div>
+          <div style="display:flex;gap:6px;flex:none">
+            <button class="btn btn-sm btn-primary" @click="handleAcceptFederation(f)">{{ $t('gatekeeper.btn_accept') }}</button>
+            <button class="icon-btn" style="color:var(--sys-err)" :aria-label="$t('gatekeeper.disconnect_aria', { name: f.soul_id })" @click="handleRemoveFederation(f)">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Neue Anfrage stellen -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <input
+          v-model="federateSoulId"
+          type="text"
+          class="sys-input sys-input--mono"
+          :placeholder="$t('gatekeeper.federate_soul_id_placeholder')"
+          :aria-label="$t('gatekeeper.federate_soul_id_placeholder')"
+        />
+        <input
+          v-model="federateNodeUrl"
+          type="text"
+          class="sys-input sys-input--mono"
+          :placeholder="$t('gatekeeper.node_url_placeholder')"
+          :aria-label="$t('gatekeeper.node_url_placeholder')"
+        />
+        <button
+          class="btn btn-primary"
+          :disabled="!federateSoulId.trim() || !federateNodeUrl.trim() || federateBusy"
+          @click="handleRequestFederation"
+        >{{ federateBusy ? $t('gatekeeper.btn_connecting') : $t('gatekeeper.btn_federate') }}</button>
+        <p v-if="federateFeedback" :style="federateFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'" style="font-size:13px;margin:0">
+          {{ federateFeedback.message }}
+        </p>
+      </div>
+
+      <!-- Bestätigte + ausgehend wartende Föderationen -->
+      <div v-if="otherFederated.length" style="display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden">
+        <div
+          v-for="f in otherFederated"
+          :key="f.soul_id"
+          style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
+        >
+          <div style="min-width:0">
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.soul_id }}</p>
+            <p style="font-size:12px;color:var(--fg-3);margin:2px 0 0">{{ f.node_url }} — {{ f.status === 'accepted' ? $t('gatekeeper.federated_accepted') : $t('gatekeeper.federated_pending_out') }}</p>
+          </div>
+          <button class="icon-btn" style="flex:none;color:var(--sys-err)" :aria-label="$t('gatekeeper.disconnect_aria', { name: f.soul_id })" @click="handleRemoveFederation(f)">✕</button>
+        </div>
+      </div>
+      <p v-else-if="!pendingIn.length" style="font-size:14px;color:var(--fg-3);margin:0">{{ $t('gatekeeper.federated_empty') }}</p>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useVaultServices } from '../composables/useVaultServices.js'
 import { useGatekeeper } from '../composables/useGatekeeper.js'
@@ -131,9 +197,10 @@ const { ask } = useConfirm()
 
 const { services, fetchServices } = useVaultServices()
 const {
-  wired, wiredTo, error: wireError,
+  wired, wiredTo, federated, error: wireError,
   gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
   fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, disconnectFromGatekeeper,
+  fetchFederated, requestFederation, acceptFederation, removeFederation,
   formatDate,
 } = useGatekeeper()
 
@@ -143,8 +210,16 @@ const selectedToken     = ref('')
 const connectBusy       = ref(false)
 const connectFeedback   = ref(null)
 
+const federateSoulId   = ref('')
+const federateNodeUrl  = ref('')
+const federateBusy     = ref(false)
+const federateFeedback = ref(null)
+
+const pendingIn      = computed(() => federated.value.filter(f => f.status === 'pending_in'))
+const otherFederated = computed(() => federated.value.filter(f => f.status !== 'pending_in'))
+
 onMounted(async () => {
-  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo(), fetchGatekeeperEnabled()])
+  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo(), fetchFederated(), fetchGatekeeperEnabled()])
 })
 
 async function handleToggleGatekeeper() {
@@ -188,6 +263,33 @@ async function handleDisconnect(w) {
     confirmText: t('gatekeeper.disconnect_confirm'),
   })) return
   await unwireSoul(w.soul_id)
+}
+
+async function handleRequestFederation() {
+  federateBusy.value = true
+  federateFeedback.value = null
+  const data = await requestFederation(federateSoulId.value.trim(), federateNodeUrl.value.trim())
+  federateBusy.value = false
+  if (data?.ok) {
+    federateFeedback.value = { ok: true, message: t('gatekeeper.connect_success') }
+    federateSoulId.value = ''
+    federateNodeUrl.value = ''
+  } else {
+    federateFeedback.value = { ok: false, message: t('gatekeeper.connect_error') }
+  }
+}
+
+async function handleAcceptFederation(f) {
+  await acceptFederation(f.soul_id)
+}
+
+async function handleRemoveFederation(f) {
+  if (!await ask({
+    title: t('gatekeeper.disconnect_title'),
+    message: t('gatekeeper.disconnect_msg', { name: f.soul_id }),
+    confirmText: t('gatekeeper.disconnect_confirm'),
+  })) return
+  await removeFederation(f.soul_id)
 }
 </script>
 

@@ -15,7 +15,7 @@
 
 import 'dotenv/config';
 import { readFile, readdir, mkdir, stat, writeFile } from 'fs/promises';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
@@ -26,6 +26,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
 import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled } from './lib/wired_souls.mjs';
+import { loadFederated, saveFederated } from './lib/federated_gatekeepers.mjs';
 import { registerGatekeeperTools } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
@@ -615,6 +616,248 @@ app.delete('/mcp/discover/wired-to/:gatekeeper_soul_id', async (req, res) => {
   await saveWiredTo(parsed.soulId, wiredTo);
 
   res.json({ ok: true });
+});
+
+// ── Gatekeeper-Föderation (gegenseitiges Einverständnis) ──────────────────────
+// Zwei Gatekeeper-Souls, potenziell auf unterschiedlichen Nodes, verbinden sich
+// symmetrisch — anders als Wire (Soul→Gatekeeper, asymmetrisch, scope-begrenzt).
+// Kein neues Krypto-Primitiv: derselbe verifyPeerCert(..., node_url)-Cross-Node-
+// Nachweis wie beim Cross-Node-Wiring, nur jetzt in beide Richtungen zwischen
+// zwei Gatekeepern statt Soul→Gatekeeper. Beidseitige Zustimmung nötig
+// (pending_in/pending_out/accept) — strukturell vorsichtiger als Wire's
+// ursprüngliches Design (das inzwischen den gatekeeper_enabled-Schalter hat),
+// deshalb hier von Anfang an ohne zusätzliche Absicherung sicher genug für
+// das generische Template.
+
+// Owner-initiiert: fragt bei einem fremden Gatekeeper eine Föderation an.
+app.post('/mcp/discover/federate', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+  if (!(await verifyPeerCert(callerSoulId, cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  const { remote_soul_id, remote_node_url } = req.body || {};
+  if (!remote_soul_id || !remote_node_url) {
+    return res.status(400).json({ error: 'remote_soul_id und remote_node_url erforderlich' });
+  }
+  if (remote_soul_id === callerSoulId) {
+    return res.status(400).json({ error: 'self_federate_not_allowed' });
+  }
+  const remoteBase = remote_node_url.replace(/\/$/, '');
+
+  // Token, das WIR künftig als Bearer präsentieren, wenn WIR die Suche der
+  // Gegenseite abfragen (siehe /mcp/discover/search) — an sie geschickt, damit
+  // SIE ihn als eingehend gültig erkennt. Zertifikate sind nur in diesem
+  // Moment verfügbar (der Owner hält gerade eine Bearer-Session), Tokens sind
+  // dauerhaft — deshalb Token-Tausch statt wiederholtem Cert-Roundtrip später.
+  const myInboundToken = randomBytes(32).toString('hex');
+
+  let theirInboundToken;
+  try {
+    const fres = await fetch(`${remoteBase}/mcp/discover/federate/incoming`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gatekeeper_soul_id: remote_soul_id, soul_id: callerSoulId, cert, node_url: BASE_URL, token: myInboundToken }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await fres.json().catch(() => ({}));
+    if (!fres.ok || !data.ok) {
+      return res.status(400).json({ error: 'federate_request_failed', message: data.error || `HTTP ${fres.status}` });
+    }
+    theirInboundToken = data.token;
+  } catch (err) {
+    return res.status(502).json({ error: 'remote_unreachable', message: err.message });
+  }
+
+  const fed = await loadFederated(callerSoulId);
+  fed[remote_soul_id] = {
+    node_url: remoteBase,
+    status: 'pending_out',
+    requested_at: Math.floor(Date.now() / 1000),
+    inbound_token: myInboundToken,     // Gegenseite präsentiert das, wenn SIE uns abfragt
+    outbound_token: theirInboundToken, // wir präsentieren das, wenn WIR sie abfragen
+  };
+  await saveFederated(callerSoulId, fed);
+
+  res.json({ ok: true, status: 'pending_out' });
+});
+
+// Empfängt eine Föderationsanfrage eines fremden Gatekeepers (server-to-server,
+// kein eigener Cert-Bearer — die Identität steckt im Body und wird gegen den
+// dort behaupteten node_url verifiziert, exakt wie beim Cross-Node-Wiring).
+app.post('/mcp/discover/federate/incoming', async (req, res) => {
+  const { gatekeeper_soul_id, soul_id, cert, node_url, token } = req.body || {};
+  if (!gatekeeper_soul_id || !soul_id || !cert || !node_url || !token) {
+    return res.status(400).json({ ok: false, error: 'gatekeeper_soul_id, soul_id, cert, node_url und token erforderlich' });
+  }
+  const gkExists = await stat(`${SOULS_DIR}${gatekeeper_soul_id}`).then(s => s.isDirectory()).catch(() => false);
+  if (!gkExists) {
+    return res.status(404).json({ ok: false, error: 'gatekeeper_soul_not_found' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+
+  const myInboundToken = randomBytes(32).toString('hex');
+
+  const fed = await loadFederated(gatekeeper_soul_id);
+  fed[soul_id] = {
+    node_url: node_url.replace(/\/$/, ''),
+    status: 'pending_in',
+    requested_at: Math.floor(Date.now() / 1000),
+    inbound_token: myInboundToken, // Gegenseite präsentiert das, wenn SIE uns abfragt
+    outbound_token: token,          // wir präsentieren das (von ihnen erhalten), wenn WIR sie abfragen
+  };
+  await saveFederated(gatekeeper_soul_id, fed);
+
+  res.json({ ok: true, token: myInboundToken });
+});
+
+// Owner-Sicht auf die eigene federated_gatekeepers.json.
+app.get('/mcp/discover/federated', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const fed = await loadFederated(parsed.soulId);
+  const list = Object.entries(fed).map(([soul_id, e]) => ({
+    soul_id, node_url: e.node_url, status: e.status, requested_at: e.requested_at, accepted_at: e.accepted_at || null,
+  }));
+  res.json({ federated: list });
+});
+
+// Owner bestätigt eine eingehende Föderationsanfrage.
+app.post('/mcp/discover/federated/:remote_soul_id/accept', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  const { soulId: callerSoulId, cert } = parsed;
+  if (!(await verifyPeerCert(callerSoulId, cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+
+  const fed = await loadFederated(callerSoulId);
+  const entry = fed[req.params.remote_soul_id];
+  if (!entry || entry.status !== 'pending_in') {
+    return res.status(404).json({ error: 'no_pending_request' });
+  }
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveFederated(callerSoulId, fed);
+
+  // Best effort: Gegenseite benachrichtigen, damit ihr pending_out ebenfalls
+  // auf accepted springt. Schlägt das fehl, bleibt unsere Seite trotzdem
+  // accepted — Asymmetrie bis zu einem erneuten Versuch, kein Rollback.
+  try {
+    await fetch(`${entry.node_url}/mcp/discover/federated/${req.params.remote_soul_id}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soul_id: callerSoulId, cert, node_url: BASE_URL }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch { /* best effort */ }
+
+  res.json({ ok: true, status: 'accepted' });
+});
+
+// Empfängt die Bestätigung einer zuvor gestellten Föderationsanfrage
+// (server-to-server, wie /federate/incoming).
+app.post('/mcp/discover/federated/:local_soul_id/confirm', async (req, res) => {
+  const { soul_id, cert, node_url } = req.body || {};
+  if (!soul_id || !cert || !node_url) {
+    return res.status(400).json({ ok: false, error: 'soul_id, cert und node_url erforderlich' });
+  }
+  const fed = await loadFederated(req.params.local_soul_id);
+  const entry = fed[soul_id];
+  // Nur bestätigen was wir selbst angefragt hatten, gegen den node_url den WIR
+  // gespeichert haben — verhindert dass eine fremde Partei von woanders eine
+  // Bestätigung vortäuscht.
+  if (!entry || entry.status !== 'pending_out' || entry.node_url !== node_url.replace(/\/$/, '')) {
+    return res.status(404).json({ ok: false, error: 'no_matching_pending_request' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveFederated(req.params.local_soul_id, fed);
+  res.json({ ok: true });
+});
+
+// Owner trennt/lehnt ab — funktioniert für pending_in, pending_out und accepted.
+app.delete('/mcp/discover/federated/:remote_soul_id', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const fed = await loadFederated(parsed.soulId);
+  const entry = fed[req.params.remote_soul_id];
+  delete fed[req.params.remote_soul_id];
+  await saveFederated(parsed.soulId, fed);
+
+  if (entry?.node_url) {
+    try {
+      await fetch(`${entry.node_url}/mcp/discover/federated/${req.params.remote_soul_id}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soul_id: parsed.soulId, cert: parsed.cert, node_url: BASE_URL }),
+        signal: AbortSignal.timeout(6000),
+      });
+    } catch { /* best effort */ }
+  }
+  res.json({ ok: true });
+});
+
+// Empfängt eine Trennung von der Gegenseite (server-to-server, wie /confirm —
+// dieselbe Cert-gegen-node_url-Prüfung, damit nicht irgendwer beliebige
+// Föderationen fremder Souls durch gefälschte Disconnects kappen kann).
+app.post('/mcp/discover/federated/:local_soul_id/disconnect', async (req, res) => {
+  const { soul_id, cert, node_url } = req.body || {};
+  if (!soul_id || !cert || !node_url) {
+    return res.status(400).json({ ok: false, error: 'soul_id, cert und node_url erforderlich' });
+  }
+  const fed = await loadFederated(req.params.local_soul_id);
+  const entry = fed[soul_id];
+  if (!entry || entry.node_url !== node_url.replace(/\/$/, '')) {
+    return res.status(404).json({ ok: false, error: 'no_matching_entry' });
+  }
+  if (!(await verifyPeerCert(soul_id, cert, node_url))) {
+    return res.status(401).json({ ok: false, error: 'invalid_cert' });
+  }
+  delete fed[soul_id];
+  await saveFederated(req.params.local_soul_id, fed);
+  res.json({ ok: true });
+});
+
+// Suche über föderierte Gatekeeper — 1 Hop tief: liefert NUR die eigenen
+// wired Souls dieses Gatekeepers, keine Weiterleitung an dessen eigene
+// Föderationen — verhindert Anfrage-Explosion in einem Mesh ohne TTL. Auth
+// per inbound_token (beim Federate ausgetauscht) statt Cert — Suche ist ein
+// wiederkehrender Vorgang, kein einmaliger Owner-Vorgang, ein dauerhafter
+// Token passt besser als ein Cert-Roundtrip pro Anfrage.
+app.get('/mcp/discover/search', async (req, res) => {
+  const { gatekeeper_soul_id, q } = req.query;
+  const token = extractToken(req);
+  if (!gatekeeper_soul_id || !token) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id (query) und Bearer-Token erforderlich' });
+  }
+  const fed = await loadFederated(gatekeeper_soul_id);
+  const partner = Object.entries(fed).find(([, e]) => e.status === 'accepted' && e.inbound_token === token);
+  if (!partner) {
+    return res.status(401).json({ error: 'not_federated' });
+  }
+
+  const wired = await loadWired(gatekeeper_soul_id);
+  const needle = (q || '').toLowerCase();
+  const list = Object.entries(wired)
+    .filter(([, e]) => !needle || (e.name || '').toLowerCase().includes(needle))
+    .map(([soul_id, e]) => ({
+      soul_id, name: e.name, permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
+    }));
+  res.json({ results: list });
 });
 
 // ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────
