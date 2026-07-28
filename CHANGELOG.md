@@ -8,6 +8,12 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.28] — 2026-07-28
+
+**Added:** a small "Private node, not public" notice on `/gate`, always visible (independent of the discreet login-reveal trigger). The page previously rendered blank by design until the owner clicked the hidden reveal button — deliberately unobtrusive so it wouldn't look like an access point when linked externally, but that same blankness left no indication of what the node actually is to anyone who lands on it, which the node operator wants clarified upfront to avoid being mistaken for a public service.
+
+---
+
 ## [1.2.27] — 2026-07-28
 
 **Fixed: `update.sh` never regenerated the OpenResty vhost config, so any new nginx location block (new API route, new SPA page) landed in the repo but silently never reached already-installed nodes — found live on `fab.uxprojects-jok.com`, where `/api/soul/verify-service-token` (needed for cross-node Gatekeeper wiring) returned nginx's plain fallback instead of JSON, because the route simply didn't exist in the live config.**
