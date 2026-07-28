@@ -7,6 +7,17 @@ const WRITE_PROTECTED = new Set(['Identität', 'Grenzen', 'Identity', 'Boundarie
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+// Self-Reflection-Einträge beschreiben immer eine gerade eben passierte
+// Korrektur — "jetzt" ist immer das richtige Datum, deshalb setzt der Server
+// es selbst statt es dem Modell zu überlassen (geratene Daten sind genau der
+// Bug, den das hier schließt). Falls das Modell trotz Anweisung noch einen
+// eigenen Datums-Header mitschickt, wird der zuerst entfernt statt verdoppelt.
+function withServerDate(content) {
+  const date = new Date().toISOString().slice(0, 10);
+  const stripped = content.replace(/^\s*(?:DATE:\s*|\*\*[^*\n]+\*\*:\s*)/i, '');
+  return `**${date}:** ${stripped.trim()}`;
+}
+
 export function register(server, token, soulId = null) {
   server.tool(
     'mind_write',
@@ -32,7 +43,9 @@ export function register(server, token, soulId = null) {
       '4. Only if the principle is genuinely new: write with mode="prepend".',
       '',
       'Format for Self-Reflection entries:',
-      '`DATE: [What didn\'t fit] → [Why it didn\'t fit] → [What I\'ll do differently next time]`',
+      '`[What didn\'t fit] → [Why it didn\'t fit] → [What I\'ll do differently next time]`',
+      'Do NOT include a date yourself — the server prepends the real current date',
+      'automatically for Self-Reflection entries. Never guess/estimate one.',
       '',
       'Only write for real, new insights — not for variations of already learned principles.',
       'Max. 20 entries. The server removes the oldest automatically when the limit is exceeded.',
@@ -42,7 +55,7 @@ export function register(server, token, soulId = null) {
         'Section name without "##", e.g. "Self-Reflection" or "Communication"'
       ),
       content: z.string().min(1).max(50000).describe(
-        'New section content (Markdown). For logs, start with a date.'
+        'New section content (Markdown). Never invent/guess a date or timestamp — omit it or ask the user if unsure. For "Self-Reflection", the server adds the date automatically — do not include one.'
       ),
       mode: z.enum(['replace', 'append', 'prepend'])
         .default('replace')
@@ -57,6 +70,9 @@ export function register(server, token, soulId = null) {
           }],
           isError: true,
         };
+      }
+      if (section === 'Self-Reflection') {
+        content = withServerDate(content);
       }
 
       try {

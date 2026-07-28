@@ -96,10 +96,17 @@ export function register(server, token) {
     [
       'Writes content permanently to a sys.md section.',
       'Use cases:',
-      '- Session log → section "Session Log (compressed)", mode "prepend" (newest at top)',
+      '- Session log → use session_end instead, NOT this tool — it timestamps automatically',
+      '  with the real server date/time. Only use soul_write on "Session Log (compressed)"',
+      '  directly if session_end genuinely does not fit (e.g. bulk edit/cleanup).',
       '- Personality profile → section "Values & Beliefs", mode "replace"',
       '- Add new topic → mode "replace" (creates section if not present)',
       '- Extend entry → mode "append"',
+      '',
+      'WICHTIG — never guess dates/timestamps: if content should include a date or time',
+      'and you are not already certain of it from verified context (e.g. a timestamp you',
+      'just read from this soul, or something the user just told you), do NOT estimate it',
+      'from conversational flow. Ask the user, or omit the date rather than guess one.',
       '',
       'Reads the current sys.md first, updates the section, and writes back.',
       'Requires soul permission.',
@@ -109,7 +116,7 @@ export function register(server, token) {
         'Name of the ## section without "##", e.g. "Session Log (compressed)" or "Values & Beliefs"'
       ),
       content: z.string().min(1).max(50000).describe(
-        'Markdown content. For session logs: start with a date header, e.g. "- **2026-04-05:** …"'
+        'Markdown content. Never invent/guess a date or timestamp here — omit it or ask the user if unsure.'
       ),
       mode: z.enum(['replace', 'append', 'prepend'])
         .default('replace')

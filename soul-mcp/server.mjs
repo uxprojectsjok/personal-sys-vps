@@ -208,6 +208,11 @@ const OWNER_INSTRUCTIONS = [
   'call verify_identity immediately and do not attempt any other tool until',
   'it reports verified=true. This is a one-time confirmation per connection —',
   'once verified, proceed normally without repeating it.',
+  'Never guess or estimate a date/timestamp for a permanent write (soul_write,',
+  'mind_write, or any other tool) from conversational context — that produces',
+  'wrong dates. Tools that need a timestamp generate it themselves server-side',
+  '(session_end, peer_send, mind_write on Self-Reflection); for anything else',
+  'that would need one, ask the user rather than estimating.',
 ].join(' ');
 
 // Registriert die wired_*-Proxy-Tools (gatekeeper_proxy.mjs) für EINE Soul,
