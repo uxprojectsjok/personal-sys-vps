@@ -56,7 +56,11 @@ function unwrapSphere(existing) {
  * erhalten — die Operation wirkt auf den Inhalt zwischen den Markern, nicht
  * auf den rohen Sektionstext (siehe unwrapSphere).
  */
-function updateSection(md, heading, newContent, mode) {
+// Exportiert für gatekeeper_proxy.mjs' wired_soul_write — dieselbe reine
+// Sektions-Update-Logik, nur mit einem anderen Fetch-Layer (fetchApi mit
+// node_url statt getText/putJson, die fest an den eigenen Node gebunden
+// sind) angewendet auf eine verdrahtete statt die eigene Soul.
+export function updateSection(md, heading, newContent, mode) {
   // CRLF normalisieren (Windows-Zeilenenden) + trailing whitespace entfernen
   md = md.replace(/\r\n/g, '\n').trimEnd();
 

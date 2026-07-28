@@ -11,17 +11,41 @@
  */
 
 import { z } from 'zod';
+import { wireKey } from '../lib/wired_souls.mjs';
+import { updateSection } from './soul_write.mjs';
 
 const BASE_URL = process.env.BASE_URL;
 
-function lookup(wiredMap, soulId, permKey) {
-  const entry = wiredMap[soulId];
-  if (!entry) return { error: `Soul ${soulId} ist bei diesem Gatekeeper nicht verdrahtet.` };
+// wiredMap: kanonisiert, soul_id-keyed (eine Verbindung je soul_id, zuletzt
+// verdrahtete gewinnt — siehe registerConnectionProxyTools in server.mjs).
+// wiredRaw: ungekürzt, wireKey()-keyed — nötig um EINE bestimmte physische
+// Instanz zu adressieren, falls dieselbe soul_id von mehreren Nodes
+// gleichzeitig verdrahtet ist (live aufgetreten: zwei Wires zur selben
+// soul_id waren über soul_id allein nicht mehr unterscheidbar). node_url
+// optional — ohne Angabe wird wie bisher die kanonische Verbindung genutzt.
+function lookup(wiredMap, wiredRaw, soulId, permKey, nodeUrl) {
+  let entry;
+  if (nodeUrl) {
+    const key = nodeUrl === BASE_URL ? soulId : wireKey(soulId, nodeUrl);
+    entry = wiredRaw?.[key];
+    if (!entry) {
+      return { error: `Keine Verbindung zu ${soulId} über node_url "${nodeUrl}" gefunden — siehe wire_status für die tatsächlich vorhandenen node_url-Werte.` };
+    }
+  } else {
+    entry = wiredMap[soulId];
+    if (!entry) return { error: `Soul ${soulId} ist bei diesem Gatekeeper nicht verdrahtet.` };
+  }
   if (permKey && !entry.permissions?.[permKey]) {
     return { error: `Verdrahteter Token für ${soulId} erlaubt keinen Zugriff auf "${permKey}".` };
   }
-  return { token: entry.token, nodeUrl: entry.node_url || null };
+  // resolvedNodeUrl: immer ein echter Wert (nie null) für Anzeige/Logging —
+  // dieselbe Regel wie überall sonst seit dem node_url-nie-null-Fix.
+  return { token: entry.token, nodeUrl: entry.node_url || null, resolvedNodeUrl: entry.node_url || BASE_URL };
 }
+
+const NODE_URL_PARAM = z.string().optional().describe(
+  'Optional: node_url aus wire_status/wire_search zur Disambiguierung, falls dieselbe soul_id von mehreren Nodes gleichzeitig verdrahtet ist. Ohne Angabe wird die zuletzt verdrahtete Verbindung verwendet.'
+);
 
 // nodeUrl gesetzt (Cross-Node-Wiring): Fetch gegen den Home-Node der
 // verdrahteten Soul statt gegen den eigenen Node des Gatekeepers.
@@ -40,8 +64,44 @@ export async function fetchApi(path, token, nodeUrl) {
   return res;
 }
 
+async function putApi(path, token, nodeUrl, body) {
+  const base = nodeUrl || BASE_URL;
+  const res = await fetch(`${base}${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
 function errResult(msg) {
   return { content: [{ type: 'text', text: msg }], isError: true };
+}
+
+// Trennt Herkunfts-Info (node_url) als eigenen Content-Block von der
+// eigentlichen Nutzlast, statt sie in den Dokumenttext hineinzuschreiben —
+// eine KI, die z.B. wired_soul_read-Ergebnisse zitiert/weiterverarbeitet,
+// bekommt sonst ungewollt eine Metadaten-Zeile im echten sys.md-Inhalt.
+function withNodeInfo(nodeUrl, ...blocks) {
+  return { content: [{ type: 'text', text: `[node_url: ${nodeUrl}]` }, ...blocks] };
+}
+
+// Pro verdrahteter Instanz serialisiert (soul_id@node_url) — verhindert
+// Race Conditions bei parallelen wired_soul_write-Aufrufen auf dieselbe
+// Verbindung, gleiches Prinzip wie soul_write.mjs' withSoulLock.
+const _writeQueues = new Map();
+async function withWriteLock(key, fn) {
+  const prev = _writeQueues.get(key) ?? Promise.resolve();
+  let resolveCurrent;
+  const current = new Promise(r => { resolveCurrent = r; });
+  _writeQueues.set(key, prev.then(() => current));
+  await prev;
+  try { return await fn(); } finally { resolveCurrent(); }
 }
 
 // "wired_"-Präfix ist bewusst: /mcp/discover registriert für den Gatekeeper-Owner
@@ -49,18 +109,18 @@ function errResult(msg) {
 // siehe server.mjs handleMcpDiscover) — ohne Präfix kollidieren die Tool-Namen
 // mit den hier generischen, soul_id-parametrisierten Varianten für VERDRAHTETE
 // Souls. "wired_context_get" ≠ "context_get" (Gatekeepers eigener Kontext).
-function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
+function registerVaultTools(server, wiredMap, wiredRaw, kind, permKey, apiSegment) {
   server.tool(
     `wired_${kind}_list`,
     `Listet ${kind}-Dateien einer verdrahteten Soul (siehe wire_status).`,
-    { soul_id: z.string().describe('soul_id der verdrahteten Soul') },
-    async ({ soul_id }) => {
-      const { token, nodeUrl, error } = lookup(wiredMap, soul_id, permKey);
+    { soul_id: z.string().describe('soul_id der verdrahteten Soul'), node_url: NODE_URL_PARAM },
+    async ({ soul_id, node_url }) => {
+      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, permKey, node_url);
       if (error) return errResult(error);
       try {
         const res = await fetchApi(`/api/vault/${apiSegment}`, token, nodeUrl);
         const data = await res.json();
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ node_url: resolvedNodeUrl, ...data }, null, 2) }] };
       } catch (err) {
         return errResult(`wired_${kind}_list fehlgeschlagen: ${err.message}`);
       }
@@ -73,19 +133,20 @@ function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
     {
       soul_id:  z.string().describe('soul_id der verdrahteten Soul'),
       filename: z.string().describe('Dateiname, aus ' + `wired_${kind}_list`),
+      node_url: NODE_URL_PARAM,
     },
-    async ({ soul_id, filename }) => {
-      const { token, nodeUrl, error } = lookup(wiredMap, soul_id, permKey);
+    async ({ soul_id, filename, node_url }) => {
+      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, permKey, node_url);
       if (error) return errResult(error);
       try {
         const res  = await fetchApi(`/api/vault/${apiSegment}/${encodeURIComponent(filename)}`, token, nodeUrl);
         const ctype = res.headers.get('content-type') || '';
         if (ctype.startsWith('text/') || ctype.includes('json')) {
           const text = await res.text();
-          return { content: [{ type: 'text', text }] };
+          return withNodeInfo(resolvedNodeUrl, { type: 'text', text });
         }
         const buf = Buffer.from(await res.arrayBuffer());
-        return { content: [{ type: 'text', text: `Binärdatei (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
+        return { content: [{ type: 'text', text: `Binärdatei von ${resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
       } catch (err) {
         return errResult(`wired_${kind}_get fehlgeschlagen: ${err.message}`);
       }
@@ -93,7 +154,7 @@ function registerVaultTools(server, wiredMap, kind, permKey, apiSegment) {
   );
 }
 
-export function registerGatekeeperTools(server, wiredMap, callerToken = null) {
+export function registerGatekeeperTools(server, wiredMap, callerToken = null, wiredRaw = wiredMap) {
   server.tool(
     'wired_shared_get',
     'Lädt eine Datei aus vault_shared einer verdrahteten/verbundenen Soul (z.B. ein Dateianhang aus peer_send/peer_inbox).',
@@ -110,19 +171,19 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null) {
       // ebenfalls akzeptiert (siehe project_sys_v2_vision Memory).
       const bearer = (callerToken && callerToken.includes('.')) ? callerToken : entry.token;
       if (!bearer) return errResult(`Kein nutzbarer Token für ${soul_id} vorhanden.`);
+      const resolvedNodeUrl = entry.node_url || BASE_URL;
       try {
-        const base = entry.node_url || BASE_URL;
-        const res = await fetch(`${base}/api/vault/shared/${soul_id}/${encodeURIComponent(filename)}`, {
+        const res = await fetch(`${resolvedNodeUrl}/api/vault/shared/${soul_id}/${encodeURIComponent(filename)}`, {
           headers: { Authorization: `Bearer ${bearer}` },
           signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ctype = res.headers.get('content-type') || '';
         if (ctype.startsWith('text/') || ctype.includes('json')) {
-          return { content: [{ type: 'text', text: await res.text() }] };
+          return withNodeInfo(resolvedNodeUrl, { type: 'text', text: await res.text() });
         }
         const buf = Buffer.from(await res.arrayBuffer());
-        return { content: [{ type: 'text', text: `Binärdatei (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
+        return { content: [{ type: 'text', text: `Binärdatei von ${resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
       } catch (err) {
         return errResult(`wired_shared_get fehlgeschlagen: ${err.message}`);
       }
@@ -131,25 +192,69 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null) {
 
   server.tool(
     'wired_soul_read',
-    'Liest den vollständigen Soul-Inhalt (sys.md) einer beim Gatekeeper verdrahteten Soul. soul_id aus wire_status.',
-    { soul_id: z.string().describe('soul_id der verdrahteten Soul') },
-    async ({ soul_id }) => {
-      const { token, nodeUrl, error } = lookup(wiredMap, soul_id, 'soul');
+    'Liest den vollständigen Soul-Inhalt (sys.md) einer beim Gatekeeper verdrahteten Soul. soul_id aus wire_status. Bei mehreren Verbindungen zur selben soul_id (siehe wire_status) node_url zur Disambiguierung angeben.',
+    { soul_id: z.string().describe('soul_id der verdrahteten Soul'), node_url: NODE_URL_PARAM },
+    async ({ soul_id, node_url }) => {
+      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, 'soul', node_url);
       if (error) return errResult(error);
       try {
         const res  = await fetchApi('/api/soul', token, nodeUrl);
         const text = await res.text();
-        return { content: [{ type: 'text', text }] };
+        return withNodeInfo(resolvedNodeUrl, { type: 'text', text });
       } catch (err) {
         return errResult(`wired_soul_read fehlgeschlagen: ${err.message}`);
       }
     }
   );
 
-  registerVaultTools(server, wiredMap, 'audio',   'audio',         'audio');
-  registerVaultTools(server, wiredMap, 'image',   'images',        'images');
-  registerVaultTools(server, wiredMap, 'video',   'video',         'video');
-  registerVaultTools(server, wiredMap, 'context', 'context_files', 'context');
+  server.tool(
+    'wired_soul_write',
+    [
+      'Schreibt Inhalt permanent in eine sys.md-Sektion einer verdrahteten Soul.',
+      'Braucht "soul"-Permission (dieselbe wie wired_soul_read) — ein Token mit',
+      'Lesezugriff auf den Soul-Inhalt hat serverseitig (api_context.lua) auch',
+      'Schreibzugriff, das gilt hier identisch.',
+      'Bei mehreren Verbindungen zur selben soul_id (siehe wire_status) node_url',
+      'zur Disambiguierung angeben — sonst geht der Write an die zuletzt',
+      'verdrahtete Verbindung.',
+      '',
+      'WICHTIG — nie Datum/Uhrzeit raten: falls Inhalt ein Datum/eine Uhrzeit',
+      'braucht und die nicht sicher aus verifiziertem Kontext bekannt ist',
+      '(z.B. gerade per sys_time abgefragt), nicht schätzen — User fragen oder',
+      'weglassen.',
+    ].join('\n'),
+    {
+      soul_id: z.string().describe('soul_id der verdrahteten Soul'),
+      section: z.string().min(1).max(200).regex(/^[^\n\r]+$/, 'Section name must not contain line breaks')
+        .describe('Name der ## Sektion ohne "##", z.B. "Values & Beliefs"'),
+      content: z.string().min(1).max(50000).describe(
+        'Markdown-Inhalt. Nie ein Datum/einen Zeitstempel raten — weglassen oder User fragen, falls unsicher.'
+      ),
+      mode: z.enum(['replace', 'append', 'prepend'])
+        .default('replace')
+        .describe('replace = Sektion überschreiben | append = ans Ende anhängen | prepend = an den Anfang stellen'),
+      node_url: NODE_URL_PARAM,
+    },
+    async ({ soul_id, section, content, mode, node_url }) => {
+      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, 'soul', node_url);
+      if (error) return errResult(error);
+      try {
+        return await withWriteLock(`${soul_id}@${resolvedNodeUrl}`, async () => {
+          const current = await (await fetchApi('/api/soul', token, nodeUrl)).text();
+          const updated = updateSection(current, section, content, mode);
+          await putApi('/api/context', token, nodeUrl, { soul_content: updated });
+          return { content: [{ type: 'text', text: `Geschrieben bei ${soul_id} (${resolvedNodeUrl}), Sektion "${section}".` }] };
+        });
+      } catch (err) {
+        return errResult(`wired_soul_write fehlgeschlagen: ${err.message}`);
+      }
+    }
+  );
+
+  registerVaultTools(server, wiredMap, wiredRaw, 'audio',   'audio',         'audio');
+  registerVaultTools(server, wiredMap, wiredRaw, 'image',   'images',        'images');
+  registerVaultTools(server, wiredMap, wiredRaw, 'video',   'video',         'video');
+  registerVaultTools(server, wiredMap, wiredRaw, 'context', 'context_files', 'context');
 
   server.tool(
     'wire_status',

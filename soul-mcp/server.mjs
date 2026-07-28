@@ -245,15 +245,25 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   // welchem Node", also auf eine kanonische Verbindung je soul_id reduzieren
   // (zuletzt verdrahtete gewinnt). Die volle, ungekürzte Liste bleibt in
   // GET /mcp/discover/wired für die Settings-UI erhalten.
-  const wiredRaw = gkEnabled ? await loadWired(soulId) : {};
+  const wiredAll = gkEnabled ? await loadWired(soulId) : {};
+  // acceptedRaw: gefiltert (accepted-only), aber NICHT kanonisiert — behält
+  // jede physische Instanz unter ihrem eigenen wireKey()-Schlüssel, damit
+  // gatekeeper_proxy.mjs' Tools per optionalem node_url-Parameter gezielt
+  // EINE von mehreren Verbindungen zur selben soul_id ansprechen können
+  // (live aufgetreten: zwei Wires zur selben soul_id waren über soul_id
+  // allein nicht mehr unterscheidbar). wired: kanonisiert für den
+  // Standardfall ohne node_url-Angabe (zuletzt verdrahtete gewinnt).
+  const acceptedRaw = {};
   const wired = {};
-  for (const [key, entry] of Object.entries(wiredRaw)) {
+  for (const [key, entry] of Object.entries(wiredAll)) {
     // Cross-node-Wires warten auf Owner-Bestätigung (siehe POST /mcp/discover/
     // wire) — erst nach Accept KI-seitig nutzbar. Altbestand ohne status-Feld
     // gilt als bereits akzeptiert.
     if (entry.status && entry.status !== 'accepted') continue;
     const sid = entry.soul_id || key.split('@')[0];
-    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = { ...entry, soul_id: sid };
+    const normalized = { ...entry, soul_id: sid };
+    acceptedRaw[key] = normalized;
+    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = normalized;
   }
   const connectedAll = await loadConnected(soulId);
   const connected = Object.fromEntries(
@@ -264,9 +274,28 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
       // erwartet einheitlich "token".
       .map(([remoteId, e]) => [remoteId, { ...e, token: e.outbound_token }])
   );
-  const merged = { ...wired, ...connected };
+  // wired_souls.json (dieses Feature) und connected_souls.json (Stage-A
+  // Soul-zu-Soul-Verbindungen) sind zwei unabhängige Systeme, die für
+  // dieselbe soul_id gleichzeitig einen Eintrag haben können — ein blindes
+  // {...wired, ...connected} ließe "connected" immer gewinnen, unabhängig
+  // davon welche Verbindung tatsächlich neuer/aktiver ist (live so
+  // aufgetreten: ein wired_soul_write landete über die ältere connected-
+  // Verbindung auf dem falschen Node). Stattdessen: die jeweils zuletzt
+  // hergestellte/akzeptierte Verbindung gewinnt, gleiches Prinzip wie bei
+  // mehreren wired-Instanzen derselben soul_id.
+  function mergeByRecency(wiredSource, connectedSource) {
+    const out = { ...wiredSource };
+    for (const [sid, entry] of Object.entries(connectedSource)) {
+      const existingTs = out[sid]?.wired_at || out[sid]?.accepted_at || 0;
+      const newTs       = entry.accepted_at || entry.requested_at || 0;
+      if (!out[sid] || newTs > existingTs) out[sid] = entry;
+    }
+    return out;
+  }
+  const merged    = mergeByRecency(wired, connected);
+  const mergedRaw = mergeByRecency(acceptedRaw, connected);
   if (Object.keys(merged).length > 0) {
-    registerGatekeeperTools(server, merged, callerToken);
+    registerGatekeeperTools(server, merged, callerToken, mergedRaw);
   }
   return { wired, connected };
 }

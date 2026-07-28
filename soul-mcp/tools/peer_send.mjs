@@ -164,14 +164,25 @@ export function register(server, token, soulId = null) {
             };
           }
 
+          const isIndividual = !['peer', 'community', 'agent'].includes(toField);
           const recipientLabel =
             toField === 'peer'        ? 'alle Peers'
             : toField === 'community' ? 'Community'
             : toField === 'agent'     ? 'Agent-Sandbox'
-            : `Peer ${to}`;
+            : `Peer ${to} (soul_id: ${toField})`;
+
+          // Beantwortet proaktiv "wo wurde das hingeschickt?" — peer_send
+          // sendet nicht aktiv, sondern schreibt die Nachricht ins EIGENE
+          // sys.md (SOCIAL-Block), adressiert an die Ziel-soul_id. Die
+          // Gegenseite (oder wer für sie peer_inbox aufruft) holt sie erst
+          // beim nächsten peer_inbox-Aufruf ab — kein Push, kein Node-Hop
+          // bei diesem Schritt.
+          const mechanismNote = isIndividual
+            ? ` In dein eigenes sys.md geschrieben (SOCIAL-Block), adressiert an soul_id ${toField} — kein aktiver Versand: ${to} (bzw. wer für die Soul peer_inbox aufruft) holt die Nachricht beim nächsten peer_inbox-Aufruf ab.`
+            : '';
 
           return {
-            content: [{ type: 'text', text: `Gesendet an ${recipientLabel}${uploadInfo}.\n[${ts}] Du → ${recipientLabel}\n${fullMsg}` }],
+            content: [{ type: 'text', text: `Gesendet an ${recipientLabel}${uploadInfo}.${mechanismNote}\n[${ts}] Du → ${recipientLabel}\n${fullMsg}` }],
           };
         });
       } catch (err) {

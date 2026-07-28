@@ -43,6 +43,7 @@ import { register as healthCheck }           from './health_check.mjs';
 import { register as foodLog }               from './food_log.mjs';
 import { register as healthSync }            from './health_sync.mjs';
 import { register as soulChainMetrics }      from './soul_chain_metrics.mjs';
+import { register as sysTime }               from './sys_time.mjs';
 
 // ── Owner Filesystem-Tools ────────────────────────────────────────────────────
 import { register as shopWriteRead }         from './shop_write_read.mjs';
@@ -130,6 +131,7 @@ export function registerTools(server, token, soulId = null) {
   foodLog(server, token);
   healthSync(server, token);
   soulChainMetrics(server, token);
+  sysTime(server);
 
   peerInbox(server, token, soulId);
   peerSend(server, token, soulId);
