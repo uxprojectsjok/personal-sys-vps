@@ -182,6 +182,11 @@ export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed) {
         .map(([soul_id, e]) => ({
           soul_id, name: e.name,
           permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
+          // "via" beschreibt den Suchweg (direkt verdrahtet vs. über Föderation
+          // erreicht), nicht den physischen Node — eine cross-node verdrahtete
+          // Soul ist trotzdem "local" im Sinne von "direkt bei diesem
+          // Gatekeeper verdrahtet". node_url zeigt separat den echten Home-Node.
+          node_url: e.node_url || null,
           via: 'local',
         }));
 

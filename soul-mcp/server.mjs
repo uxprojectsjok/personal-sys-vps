@@ -1220,12 +1220,23 @@ app.get('/mcp/discover/search', async (req, res) => {
     return res.status(401).json({ error: 'not_federated' });
   }
 
-  const wired = await loadWired(gatekeeper_soul_id);
+  // Wie registerConnectionProxyTools(): pending Cross-Node-Wires (siehe POST
+  // /mcp/discover/wire) sind für ein föderiertes Gegenüber noch unsichtbar,
+  // und mehrere physische Instanzen derselben soul_id (siehe wireKey())
+  // werden auf eine kanonische Verbindung reduziert.
+  const wiredRaw = await loadWired(gatekeeper_soul_id);
+  const wired = {};
+  for (const [key, entry] of Object.entries(wiredRaw)) {
+    if (entry.status && entry.status !== 'accepted') continue;
+    const sid = entry.soul_id || key.split('@')[0];
+    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = { ...entry, soul_id: sid };
+  }
   const needle = (q || '').toLowerCase();
-  const list = Object.entries(wired)
-    .filter(([, e]) => !needle || (e.name || '').toLowerCase().includes(needle))
-    .map(([soul_id, e]) => ({
-      soul_id, name: e.name, permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
+  const list = Object.values(wired)
+    .filter((e) => !needle || (e.name || '').toLowerCase().includes(needle))
+    .map((e) => ({
+      soul_id: e.soul_id, name: e.name, permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
+      node_url: e.node_url || null,
     }));
   res.json({ results: list });
 });
