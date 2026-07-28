@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.26] — 2026-07-28
+
+**Fixed: `update.sh` deployed the freshly-built frontend to the wrong directory and then aborted before restarting `soul-mcp` — found live on `fab.uxprojects-jok.com` right after the v1.2.25 fix let the build actually complete for the first time.**
+
+**Root cause, two independent bugs surfacing together:**
+- Deploy-path detection used `find ... -name "*.conf"`, but `init.sh` names site configs after the domain with no `.conf` suffix (`/etc/openresty/sites-enabled/<domain>`) — the search silently found nothing and fell through to a hardcoded fallback, `/var/www/me.uxprojects-jok.com`, a stale domain from an earlier stage of this project that no longer exists on any current node. The build got deployed there instead of the real site.
+- The soul-mcp sync step's "legacy setup" check (`_MCP_WD = /opt/sys/soul-mcp`) didn't account for the modern-init case where `$SCRIPT_DIR` *is* `/opt/sys` — there `$SCRIPT_DIR/soul-mcp` and `/opt/sys/soul-mcp` are the same directory, and `cp` errors out copying a file onto itself. With `set -e`, that killed the script before `systemctl restart soul-mcp` ever ran, leaving the service running stale in-memory code even though the new files were already on disk.
+
+**Fixed**
+- `update.sh`: deploy-path detection now searches file contents (`grep -rl`) instead of filtering by filename, so it finds site configs regardless of naming convention. If detection still fails, it falls back to the sole directory under `/var/www/` (if there's exactly one) instead of guessing a domain name; if that's ambiguous too, the build still runs but deploy is skipped with an explicit warning rather than silently deploying to the wrong place.
+- `update.sh`: the legacy-vs-modern soul-mcp check now also compares against `$SCRIPT_DIR/soul-mcp`, so the sync step only runs when the service genuinely lives outside the repo checkout. The modern-init path gets its own ownership fix instead (see below).
+- `update.sh`: modern-init nodes now get `chown www-data:www-data` re-applied to `soul-mcp/` after the sync step, restoring ownership `git pull` (run as root) had reset to `root:root`.
+
+**Migration required:** if a node ran `update.sh` while on v1.2.25 and hit this, it built correctly but deployed to `/var/www/me.uxprojects-jok.com` (safe to delete) and left `soul-mcp` running old code — deploy the existing `.output/public/` to the real site directory and run `systemctl restart soul-mcp` manually once.
+
+---
+
 ## [1.2.25] — 2026-07-27
 
 **Fixed: `update.sh`'s frontend build (`npm run generate`) could crash the whole node on small VPS instances — found live on `fab.uxprojects-jok.com` (1.8 GB RAM), where it took down `systemd-journald`, DNS and SSH badly enough to require a manual reboot.**

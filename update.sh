@@ -84,22 +84,32 @@ AGENTEOF
 done
 
 # ── 6. Rebuild + deploy frontend ──────────────────────────────────────────────
-# Find deploy path from nginx config
+# Find deploy path from nginx/openresty config. Site configs in
+# /etc/openresty/sites-enabled/ are named after the domain (no .conf suffix),
+# so search by content, not filename.
 DEPLOY_DIR=""
-_NGINX_CONF=$(find /etc/openresty /usr/local/openresty /etc/nginx -name "*.conf" 2>/dev/null | xargs grep -l "root /var/www/" 2>/dev/null | head -1 || true)
+_NGINX_CONF=$(grep -rl "root /var/www/" /etc/openresty /usr/local/openresty/nginx/conf /etc/nginx 2>/dev/null | head -1 || true)
 if [ -n "$_NGINX_CONF" ]; then
   DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}')
 fi
-[ -z "$DEPLOY_DIR" ] && DEPLOY_DIR="/var/www/me.uxprojects-jok.com"
+if [ -z "$DEPLOY_DIR" ]; then
+  # Fall back to the sole directory under /var/www/, if there's exactly one —
+  # safer than guessing a domain name.
+  _WWW_DIRS=(/var/www/*/)
+  [ "${#_WWW_DIRS[@]}" -eq 1 ] && [ -d "${_WWW_DIRS[0]}" ] && DEPLOY_DIR="${_WWW_DIRS[0]%/}"
+fi
 
 info "Building frontend..."
 cd "$SCRIPT_DIR"
-if command -v npm &>/dev/null; then
+if ! command -v npm &>/dev/null; then
+  warn "npm not found — frontend not rebuilt (Lua + OpenResty update still applied)"
+elif [ -z "$DEPLOY_DIR" ]; then
+  warn "Could not determine deploy directory (no nginx root, no single /var/www/* dir) — frontend built but NOT deployed. Deploy .output/public/ manually."
+  NODE_OPTIONS="--max-old-space-size=2048" npm run generate 2>&1 | tail -3
+else
   NODE_OPTIONS="--max-old-space-size=2048" npm run generate 2>&1 | tail -3
   rsync -a --delete "$SCRIPT_DIR/.output/public/" "$DEPLOY_DIR/"
   info "Frontend deployed to $DEPLOY_DIR"
-else
-  warn "npm not found — frontend not rebuilt (Lua + OpenResty update still applied)"
 fi
 
 # ── 7. soul-mcp: sync + restart ──────────────────────────────────────────────
@@ -110,13 +120,17 @@ fi
 # vergessen, blieben Tool-Änderungen auf Legacy-Installs unwirksam.
 # Bei $SCRIPT_DIR (modernes Init): git pull hat die Dateien schon aktualisiert.
 _MCP_WD=$(systemctl show soul-mcp --property=WorkingDirectory --value 2>/dev/null || true)
-if [ -d "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" = "/opt/sys/soul-mcp" ]; then
+if [ -d "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" = "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" != "$SCRIPT_DIR/soul-mcp" ]; then
   info "Syncing soul-mcp to /opt/sys/soul-mcp/ ..."
   cp "$SCRIPT_DIR"/soul-mcp/*.mjs        /opt/sys/soul-mcp/
   cp -r "$SCRIPT_DIR/soul-mcp/lib/"      /opt/sys/soul-mcp/lib/
   cp -r "$SCRIPT_DIR/soul-mcp/tools/"    /opt/sys/soul-mcp/tools/
   cp -r "$SCRIPT_DIR/soul-mcp/prompts/"  /opt/sys/soul-mcp/prompts/
   chown -R www-data:www-data /opt/sys/soul-mcp/*.mjs /opt/sys/soul-mcp/lib/ /opt/sys/soul-mcp/tools/ /opt/sys/soul-mcp/prompts/
+elif [ -d "$SCRIPT_DIR/soul-mcp" ]; then
+  # Modern init: git pull (running as root) just wrote these files as
+  # root:root — restore www-data ownership so the service user keeps access.
+  chown -R www-data:www-data "$SCRIPT_DIR"/soul-mcp/*.mjs "$SCRIPT_DIR/soul-mcp/lib/" "$SCRIPT_DIR/soul-mcp/tools/" "$SCRIPT_DIR/soul-mcp/prompts/" 2>/dev/null || true
 fi
 
 # ── 8. EU_CONSUMER_RIGHTS backward-compat ─────────────────────────────────────
