@@ -213,6 +213,27 @@ export function useGatekeeper() {
     }
   }
 
+  // Bestätigt eine ausstehende Cross-Node-Wire-Anfrage — same-node ist bereits
+  // bei der Anfrage selbst automatisch akzeptiert, hier also nur für
+  // pending-Einträge relevant.
+  async function acceptWire(soulId, nodeUrl = null) {
+    error.value = null
+    try {
+      const url = nodeUrl
+        ? `/mcp/discover/wire/${encodeURIComponent(soulId)}/accept?node_url=${encodeURIComponent(nodeUrl)}`
+        : `/mcp/discover/wire/${encodeURIComponent(soulId)}/accept`
+      const res = await fetch(url, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.ok) await fetchWired()
+      return data
+    } catch (e) {
+      error.value = e.message
+    }
+  }
+
   function formatDate(ts) {
     if (!ts) return '—'
     return new Date(ts * 1000).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -221,7 +242,7 @@ export function useGatekeeper() {
   return {
     wired, wiredTo, federated, loading, error,
     gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
-    fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, disconnectFromGatekeeper,
+    fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, acceptWire, disconnectFromGatekeeper,
     fetchFederated, requestFederation, acceptFederation, removeFederation,
     formatDate,
   }

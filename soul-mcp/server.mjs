@@ -248,6 +248,10 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   const wiredRaw = gkEnabled ? await loadWired(soulId) : {};
   const wired = {};
   for (const [key, entry] of Object.entries(wiredRaw)) {
+    // Cross-node-Wires warten auf Owner-Bestätigung (siehe POST /mcp/discover/
+    // wire) — erst nach Accept KI-seitig nutzbar. Altbestand ohne status-Feld
+    // gilt als bereits akzeptiert.
+    if (entry.status && entry.status !== 'accepted') continue;
     const sid = entry.soul_id || key.split('@')[0];
     if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = { ...entry, soul_id: sid };
   }
@@ -641,6 +645,13 @@ app.post('/mcp/discover/wire', async (req, res) => {
   // geprüft, dieselbe Bearer-Form ist also legitim.
   const realSoulName = await getCallerSoulName(callerSoulId, cert, callerNodeUrl);
 
+  // Same-node: Owner kontrolliert ohnehin jede Soul auf dem eigenen Node
+  // direkt (Dateisystem, andere Admin-Wege) — sofort aktiv, wie bisher.
+  // Cross-node: eine fremde Soul auf einem fremden Node könnte sich sonst
+  // ohne jedes Zutun des Gatekeeper-Owners selbst einwirten — braucht eine
+  // bewusste Bestätigung, analog zum Föderations-Accept-Flow.
+  const isCrossNode = !!callerNodeUrl;
+  const now = Math.floor(Date.now() / 1000);
   const wired = await loadWired(gatekeeper_soul_id);
   wired[wireKey(callerSoulId, callerNodeUrl)] = {
     soul_id: callerSoulId,
@@ -648,7 +659,9 @@ app.post('/mcp/discover/wire', async (req, res) => {
     permissions: svc.permissions,
     name: realSoulName || name || svc.name || callerSoulId,
     node_url: callerNodeUrl || undefined,
-    wired_at: Math.floor(Date.now() / 1000),
+    wired_at: now,
+    status: isCrossNode ? 'pending' : 'accepted',
+    ...(isCrossNode ? {} : { accepted_at: now }),
   };
   await saveWired(gatekeeper_soul_id, wired);
 
@@ -660,11 +673,11 @@ app.post('/mcp/discover/wire', async (req, res) => {
   // fremde Nodes), also bewusst ausgelassen statt eines Fake-Best-Effort-Calls.
   if (!callerNodeUrl) {
     const wiredTo = await loadWiredTo(callerSoulId);
-    wiredTo[gatekeeper_soul_id] = { wired_at: Math.floor(Date.now() / 1000) };
+    wiredTo[gatekeeper_soul_id] = { wired_at: now, status: 'accepted', accepted_at: now };
     await saveWiredTo(callerSoulId, wiredTo);
   }
 
-  res.json({ ok: true, gatekeeper_soul_id, soul_id: callerSoulId, permissions: svc.permissions });
+  res.json({ ok: true, gatekeeper_soul_id, soul_id: callerSoulId, permissions: svc.permissions, status: isCrossNode ? 'pending' : 'accepted' });
 });
 
 // Browser-seitiges Cross-Node-Wiring würde einen direkten fetch() auf ein
@@ -707,7 +720,11 @@ app.post('/mcp/discover/wire-out', async (req, res) => {
   }
 
   const wiredTo = await loadWiredTo(parsed.soulId);
-  wiredTo[gatekeeper_soul_id] = { wired_at: Math.floor(Date.now() / 1000), node_url: target };
+  // wire-out ist per Definition immer cross-node — der Gatekeeper muss die
+  // Anfrage erst bestätigen (siehe /mcp/discover/wire/:soul_id/accept),
+  // bevor der Status hier (per Callback über /mcp/discover/wire/confirm)
+  // auf accepted springt.
+  wiredTo[gatekeeper_soul_id] = { wired_at: Math.floor(Date.now() / 1000), node_url: target, status: data.status || 'pending' };
   await saveWiredTo(parsed.soulId, wiredTo);
 
   res.json(data);
@@ -726,8 +743,78 @@ app.get('/mcp/discover/wired', async (req, res) => {
   // hier mehrfach auftauchen, je einmal pro physischer Node-Instanz.
   const list = Object.entries(wired).map(([key, e]) => ({
     soul_id: e.soul_id || key.split('@')[0], name: e.name, permissions: e.permissions, wired_at: e.wired_at, node_url: e.node_url || null,
+    // Altbestand ohne status-Feld (vor diesem Feature) gilt als bereits
+    // akzeptiert — sonst würden bestehende, aktiv genutzte Verbindungen
+    // plötzlich als "wartet auf Bestätigung" erscheinen.
+    status: e.status || 'accepted',
   }));
   res.json({ wired: list });
+});
+
+// Owner bestätigt eine ausstehende Cross-Node-Wire-Anfrage (same-node ist
+// bereits bei der Anfrage selbst automatisch akzeptiert, siehe POST
+// /mcp/discover/wire). node_url disambiguiert wie bei DELETE .../wire/:soul_id.
+app.post('/mcp/discover/wire/:soul_id/accept', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const nodeUrlParam = typeof req.query.node_url === 'string' && req.query.node_url.trim()
+    ? req.query.node_url.trim().replace(/\/$/, '')
+    : null;
+  const wired = await loadWired(parsed.soulId);
+  const key   = wireKey(req.params.soul_id, nodeUrlParam);
+  const entry = wired[key];
+  if (!entry || entry.status !== 'pending') {
+    return res.status(404).json({ error: 'no_pending_request' });
+  }
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveWired(parsed.soulId, wired);
+
+  // Best effort: die wirende Soul benachrichtigen, damit ihre eigene
+  // wired_to.json ebenfalls auf accepted springt — analog zu
+  // /mcp/discover/federated/:id/confirm. Schlägt das fehl, bleibt unsere
+  // Seite trotzdem accepted; die Gegenseite zeigt bis zu einem erneuten
+  // Abgleich weiterhin "pending" an, kein Rollback.
+  if (entry.node_url) {
+    try {
+      await fetch(`${entry.node_url}/mcp/discover/wire/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gatekeeper_soul_id: parsed.soulId, soul_id: req.params.soul_id, cert: parsed.cert, node_url: BASE_URL }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch { /* best effort */ }
+  }
+
+  res.json({ ok: true, status: 'accepted' });
+});
+
+// Empfängt die Bestätigung einer zuvor gestellten Wire-Anfrage (server-to-
+// server, wie /mcp/discover/federated/:id/confirm) — Gegenstück zum Callback
+// oben.
+app.post('/mcp/discover/wire/confirm', async (req, res) => {
+  const { gatekeeper_soul_id, soul_id, cert, node_url } = req.body || {};
+  if (!gatekeeper_soul_id || !soul_id || !cert || !node_url) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id, soul_id, cert und node_url erforderlich' });
+  }
+  const wiredTo = await loadWiredTo(soul_id);
+  const entry = wiredTo[gatekeeper_soul_id];
+  // Nur bestätigen was wir selbst angefragt hatten, gegen den node_url den
+  // WIR gespeichert haben — verhindert dass eine fremde Partei von woanders
+  // eine Bestätigung vortäuscht.
+  if (!entry || entry.status !== 'pending' || entry.node_url !== node_url.replace(/\/$/, '')) {
+    return res.status(404).json({ error: 'no_matching_pending_request' });
+  }
+  if (!(await verifyPeerCert(gatekeeper_soul_id, cert, node_url))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  entry.status = 'accepted';
+  entry.accepted_at = Math.floor(Date.now() / 1000);
+  await saveWiredTo(soul_id, wiredTo);
+  res.json({ ok: true });
 });
 
 // Owner-Sicht auf die eigene wired_to.json (Settings-UI "Connected to"-Anzeige).
@@ -739,7 +826,7 @@ app.get('/mcp/discover/wired-to', async (req, res) => {
   }
   const wiredTo = await loadWiredTo(parsed.soulId);
   const list = Object.entries(wiredTo).map(([gatekeeper_soul_id, e]) => ({
-    gatekeeper_soul_id, wired_at: e.wired_at,
+    gatekeeper_soul_id, wired_at: e.wired_at, status: e.status || 'accepted',
   }));
   res.json({ wired_to: list });
 });

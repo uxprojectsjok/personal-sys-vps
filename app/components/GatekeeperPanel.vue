@@ -29,7 +29,10 @@
           style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
         >
           <div style="min-width:0">
-            <p style="font-size:12px;font-family:var(--mono);color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.gatekeeper_soul_id }}</p>
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ c.gatekeeper_soul_id }}
+              <span v-if="c.status === 'pending'" style="font-size:11px;padding:1px 6px;border-radius:3px;background:rgba(230,180,60,0.12);border:1px solid rgba(230,180,60,0.3);color:#e6b43c;margin-left:6px">{{ $t('gatekeeper.pending_badge') }}</span>
+            </p>
             <p style="font-size:12px;color:var(--fg-3);margin:2px 0 0">{{ formatDate(c.wired_at) }}</p>
           </div>
           <button
@@ -95,7 +98,10 @@
           style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
         >
           <div style="min-width:0">
-            <p style="font-size:14px;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ w.name }}</p>
+            <p style="font-size:14px;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ w.name }}
+              <span v-if="w.status === 'pending'" style="font-size:11px;padding:1px 6px;border-radius:3px;background:rgba(230,180,60,0.12);border:1px solid rgba(230,180,60,0.3);color:#e6b43c;margin-left:6px">{{ $t('gatekeeper.pending_badge') }}</span>
+            </p>
             <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.soul_id }}</p>
             <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ w.node_url || $t('gatekeeper.same_node') }}</p>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
@@ -106,12 +112,19 @@
               >{{ key }}</span>
             </div>
           </div>
-          <button
-            class="icon-btn"
-            :aria-label="$t('gatekeeper.disconnect_aria', { name: w.name })"
-            style="flex:none;color:var(--sys-err)"
-            @click="handleDisconnect(w)"
-          >✕</button>
+          <div style="display:flex;gap:6px;flex:none">
+            <button
+              v-if="w.status === 'pending'"
+              class="btn btn-sm btn-primary"
+              @click="handleAcceptWire(w)"
+            >{{ $t('gatekeeper.btn_accept') }}</button>
+            <button
+              class="icon-btn"
+              :aria-label="$t('gatekeeper.disconnect_aria', { name: w.name })"
+              style="color:var(--sys-err)"
+              @click="handleDisconnect(w)"
+            >✕</button>
+          </div>
         </div>
       </div>
       <p v-else style="font-size:14px;color:var(--fg-3);margin:0">{{ $t('gatekeeper.wired_empty') }}</p>
@@ -200,7 +213,7 @@ const { services, fetchServices } = useVaultServices()
 const {
   wired, wiredTo, federated, error: wireError,
   gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
-  fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, disconnectFromGatekeeper,
+  fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, acceptWire, disconnectFromGatekeeper,
   fetchFederated, requestFederation, acceptFederation, removeFederation,
   formatDate,
 } = useGatekeeper()
@@ -253,7 +266,10 @@ async function handleConnect() {
   const data = await wireToGatekeeper(gatekeeperSoulId.value.trim(), selectedToken.value, svc?.name || '', gatekeeperNodeUrl.value)
   connectBusy.value = false
   if (data?.ok) {
-    connectFeedback.value = { ok: true, message: t('gatekeeper.connect_success') }
+    connectFeedback.value = {
+      ok: true,
+      message: data.status === 'pending' ? t('gatekeeper.connect_pending') : t('gatekeeper.connect_success'),
+    }
     await fetchWiredTo()
     gatekeeperSoulId.value = ''
     gatekeeperNodeUrl.value = ''
@@ -274,6 +290,10 @@ async function handleDisconnect(w) {
     confirmText: t('gatekeeper.disconnect_confirm'),
   })) return
   await unwireSoul(w.soul_id, w.node_url)
+}
+
+async function handleAcceptWire(w) {
+  await acceptWire(w.soul_id, w.node_url)
 }
 
 async function handleRequestFederation() {
