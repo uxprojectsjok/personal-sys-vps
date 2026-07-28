@@ -1,6 +1,22 @@
 <template>
   <div style="display:flex;flex-direction:column;gap:28px">
 
+    <!-- Gatekeeper-Funktion an/aus -->
+    <div>
+      <label class="field-label--toggle" @click.prevent="handleToggleGatekeeper">
+        <span
+          class="toggle-switch"
+          :class="{ on: gatekeeperEnabled }"
+          role="switch"
+          :aria-checked="gatekeeperEnabled"
+          tabindex="0"
+          @keydown.enter.space.prevent="handleToggleGatekeeper"
+        ><span class="toggle-knob"></span></span>
+        <span class="field-label">{{ $t('gatekeeper.enabled_toggle_label') }}</span>
+      </label>
+      <p style="font-size:12px;color:var(--fg-3);line-height:1.6;margin:6px 0 0">{{ $t('gatekeeper.enabled_toggle_hint') }}</p>
+    </div>
+
     <!-- Connected to (ausgehende Verbindungen dieser Soul) -->
     <div v-if="wiredTo.length">
       <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0 0 4px">{{ $t('gatekeeper.connected_title') }}</p>
@@ -116,6 +132,7 @@ const { ask } = useConfirm()
 const { services, fetchServices } = useVaultServices()
 const {
   wired, wiredTo, error: wireError,
+  gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
   fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, disconnectFromGatekeeper,
   formatDate,
 } = useGatekeeper()
@@ -127,8 +144,12 @@ const connectBusy       = ref(false)
 const connectFeedback   = ref(null)
 
 onMounted(async () => {
-  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo()])
+  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo(), fetchGatekeeperEnabled()])
 })
+
+async function handleToggleGatekeeper() {
+  await setGatekeeperEnabled(!gatekeeperEnabled.value)
+}
 
 async function handleSelfDisconnect(c) {
   if (!await ask({
@@ -169,3 +190,13 @@ async function handleDisconnect(w) {
   await unwireSoul(w.soul_id)
 }
 </script>
+
+<style scoped>
+/* Toggle switch — gleiches Muster wie AgentMarketplacePanel.vue */
+.field-label { font-family: var(--sans); font-size: 16px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg); }
+.field-label--toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 10px 0; }
+.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; background: var(--line-2); border-radius: 10px; transition: background 0.2s; cursor: pointer; flex-shrink: 0; }
+.toggle-switch.on { background: var(--accent); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.toggle-switch.on .toggle-knob { transform: translateX(16px); }
+</style>

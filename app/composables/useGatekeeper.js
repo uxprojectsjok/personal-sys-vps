@@ -8,13 +8,47 @@
 import { ref } from 'vue'
 import { useSoul } from './useSoul.js'
 
-const wired     = ref([])
-const wiredTo    = ref([])
-const loading   = ref(false)
-const error     = ref(null)
+const wired            = ref([])
+const wiredTo          = ref([])
+const loading          = ref(false)
+const error            = ref(null)
+const gatekeeperEnabled = ref(true) // Server-Default ist ebenfalls true, siehe wired_souls.mjs
 
 export function useGatekeeper() {
   const { soulToken } = useSoul()
+
+  async function fetchGatekeeperEnabled() {
+    if (!soulToken.value || soulToken.value === 'anonymous') return
+    try {
+      const res = await fetch('/mcp/discover/gatekeeper-config', {
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      gatekeeperEnabled.value = data.enabled !== false
+    } catch (e) {
+      error.value = e.message
+    }
+  }
+
+  async function setGatekeeperEnabled(enabled) {
+    error.value = null
+    try {
+      const res = await fetch('/mcp/discover/gatekeeper-config', {
+        method:  'POST',
+        headers: {
+          Authorization:  `Bearer ${soulToken.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.ok) gatekeeperEnabled.value = enabled
+      return data
+    } catch (e) {
+      error.value = e.message
+    }
+  }
 
   async function fetchWired() {
     if (!soulToken.value || soulToken.value === 'anonymous') return
@@ -116,6 +150,7 @@ export function useGatekeeper() {
 
   return {
     wired, wiredTo, loading, error,
+    gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
     fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, disconnectFromGatekeeper,
     formatDate,
   }

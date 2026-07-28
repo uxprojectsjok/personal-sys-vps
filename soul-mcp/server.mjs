@@ -25,7 +25,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
-import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken } from './lib/wired_souls.mjs';
+import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled } from './lib/wired_souls.mjs';
 import { registerGatekeeperTools } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
@@ -223,7 +223,12 @@ const OWNER_INSTRUCTIONS = [
 // wegen doppeltem Tool-Namen. Jede Soul mit akzeptierten Verbindungen bekommt
 // automatisch Lesezugriff auf sie.
 async function registerConnectionProxyTools(server, soulId, callerToken = null) {
-  const wired = await loadWired(soulId);
+  // Gatekeeper-Funktion global ausgeschaltet → bereits verdrahtete Souls
+  // bleiben in wired_souls.json gespeichert, werden aber nicht mehr als
+  // Tools angeboten. connected_souls.json (direkte Soul-Verbindungen) ist
+  // ein separates Feature und bleibt vom Schalter unberührt.
+  const gkEnabled = await isGatekeeperEnabled(soulId);
+  const wired = gkEnabled ? await loadWired(soulId) : {};
   const connectedAll = await loadConnected(soulId);
   const connected = Object.fromEntries(
     Object.entries(connectedAll)
@@ -461,6 +466,9 @@ app.post('/mcp/discover/wire', async (req, res) => {
   if (!gkExists) {
     return res.status(404).json({ error: 'gatekeeper_soul_not_found', message: `Keine Soul mit ID "${gatekeeper_soul_id}" auf diesem Node.` });
   }
+  if (!(await isGatekeeperEnabled(gatekeeper_soul_id))) {
+    return res.status(403).json({ error: 'gatekeeper_disabled', message: 'Diese Soul hat die Gatekeeper-Funktion deaktiviert und nimmt aktuell keine neuen Wire-Anfragen an.' });
+  }
 
   const svc = await checkOwnServiceToken(callerSoulId, service_token, callerNodeUrl);
   if (!svc) {
@@ -518,6 +526,33 @@ app.get('/mcp/discover/wired-to', async (req, res) => {
     gatekeeper_soul_id, wired_at: e.wired_at,
   }));
   res.json({ wired_to: list });
+});
+
+// Gatekeeper-Funktion selbst an/aus — steuert, ob diese Soul überhaupt als
+// Gatekeeper fungiert: neue Wire-Anfragen werden abgelehnt (403) und bereits
+// verdrahtete Souls werden nicht mehr als Tools angeboten, solange aus.
+// wired_souls.json bleibt dabei unangetastet — reversibel, kein Datenverlust.
+app.get('/mcp/discover/gatekeeper-config', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  res.json({ enabled: await isGatekeeperEnabled(parsed.soulId) });
+});
+
+app.post('/mcp/discover/gatekeeper-config', async (req, res) => {
+  const parsed = parseOwnCertBearer(req);
+  if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
+  if (!(await verifyPeerCert(parsed.soulId, parsed.cert, null))) {
+    return res.status(401).json({ error: 'invalid_cert' });
+  }
+  const { enabled } = req.body || {};
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'enabled (boolean) erforderlich' });
+  }
+  await setGatekeeperEnabled(parsed.soulId, enabled);
+  res.json({ ok: true, enabled });
 });
 
 app.delete('/mcp/discover/wire/:soul_id', async (req, res) => {

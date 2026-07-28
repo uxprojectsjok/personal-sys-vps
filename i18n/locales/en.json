@@ -1396,6 +1396,8 @@
     "empty": "No connections yet."
   },
   "gatekeeper": {
+    "enabled_toggle_label": "Gatekeeper function active",
+    "enabled_toggle_hint": "Off = new wire requests are rejected, already-wired souls stop being offered. wired_souls.json is preserved either way — reversible, no data loss.",
     "connected_title": "Connected to",
     "connected_hint": "Gatekeeper souls this soul has connected to.",
     "connect_title": "Connect to Gatekeeper",

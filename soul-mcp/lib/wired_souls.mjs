@@ -1,11 +1,35 @@
 // soul-mcp/lib/wired_souls.mjs
 // Speichert/liest, welche Souls sich bei einer anderen Soul (dem faktischen
-// "Gatekeeper") per /mcp/discover/wire eingeklinkt haben. Eine Soul ist
-// Gatekeeper, sobald ihre eigene wired_souls.json nicht leer ist — kein
-// separates Typ-Flag nötig, siehe handleMcpDiscover() in server.mjs.
+// "Gatekeeper") per /mcp/discover/wire eingeklinkt haben. Ob eine Soul
+// GRUNDSÄTZLICH als Gatekeeper fungieren darf (neue Wire-Anfragen annehmen,
+// bereits verdrahtete Souls weiter bündeln), ist ein separates, explizites
+// An/Aus (gatekeeper_config.json) — vorher gab es dafür gar keinen Schalter,
+// jede Soul mit einer nicht-leeren wired_souls.json war implizit und ohne
+// eigenes Zutun Gatekeeper. Default true (nicht false!), damit bereits
+// aktiv genutzte Gatekeeper (z.B. die dieser Session) beim Deploy nicht
+// plötzlich stillgelegt werden.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { SOULS_DIR } from './vault_fs.mjs';
+
+function gatekeeperConfigPath(soulId) {
+  return `${SOULS_DIR}${soulId}/gatekeeper_config.json`;
+}
+
+export async function isGatekeeperEnabled(soulId) {
+  try {
+    const raw = await readFile(gatekeeperConfigPath(soulId), 'utf8');
+    const data = JSON.parse(raw);
+    return data?.enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+export async function setGatekeeperEnabled(soulId, enabled) {
+  await mkdir(`${SOULS_DIR}${soulId}`, { recursive: true });
+  await writeFile(gatekeeperConfigPath(soulId), JSON.stringify({ enabled: !!enabled }), 'utf8');
+}
 
 function wiredPath(soulId) {
   return `${SOULS_DIR}${soulId}/wired_souls.json`;

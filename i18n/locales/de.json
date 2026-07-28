@@ -1396,6 +1396,8 @@
     "empty": "Noch keine Verbindungen."
   },
   "gatekeeper": {
+    "enabled_toggle_label": "Gatekeeper-Funktion aktiv",
+    "enabled_toggle_hint": "Aus = neue Wire-Anfragen werden abgelehnt, bereits verdrahtete Souls werden nicht mehr angeboten. wired_souls.json bleibt dabei erhalten — reversibel, kein Datenverlust.",
     "connected_title": "Verbunden mit",
     "connected_hint": "Gatekeeper-Souls, mit denen diese Soul sich verbunden hat.",
     "connect_title": "Mit Gatekeeper verbinden",
