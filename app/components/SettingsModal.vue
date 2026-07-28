@@ -1006,6 +1006,15 @@ const props = defineProps({ open: Boolean, inline: { type: Boolean, default: fal
 const emit  = defineEmits(['close', 'master-rotated'])
 
 const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer, exportAsBlob } = useSoul()
+
+// Auf Multi-Hoster teilen sich alle Souls denselben RP_ID (Hostname) — ohne
+// eine soul-spezifische Kennung im Anzeigenamen sind ihre Passkeys in
+// Windows Hello/dem Passwortmanager alle identisch "Soul · <host>" und nicht
+// unterscheidbar. Kurzes soul_id-Präfix statt des generischen Literals.
+function passkeyUsername() {
+  const soulId = soulToken.value?.split('.')?.[0]
+  return soulId ? soulId.slice(0, 8) : 'Soul'
+}
 const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
@@ -1854,7 +1863,7 @@ async function handleResyncVaultKey() {
     // getAuthHeaders übergeben, damit ein hier evtl. NEU registrierter Passkey
     // (z.B. weil der alte im OS gelöscht wurde) auch server-seitig für Fingerprint-
     // Verify registriert wird — siehe verifyAuthHeaders()-Kommentar oben.
-    const prf = await passkey.authenticateOrRegister('Soul', verifyAuthHeaders)
+    const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
     if (!prf) {
       vaultKeyError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
       return
@@ -1932,7 +1941,7 @@ async function handleVaultKeyChange() {
   try {
     let newKey = ''
     if (newVaultKeyMethod.value === 'passkey') {
-      const prf = await passkey.authenticateOrRegister('Soul', verifyAuthHeaders)
+      const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
       if (!prf) {
         vaultKeyChangeError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
         return

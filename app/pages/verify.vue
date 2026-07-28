@@ -332,6 +332,15 @@ const { t } = useI18n()
 const route  = useRoute()
 const { hasSoul, soulToken } = useSoul()
 const { authenticatePasskey, lastAssertion, registerPasskey, lastRegisteredCredentialId, lastUsedCredentialId, pruneToCredentialId } = useSoulPasskey()
+
+// Auf Multi-Hoster teilen sich alle Souls denselben RP_ID (Hostname) — ohne
+// eine soul-spezifische Kennung im Anzeigenamen sind ihre Passkeys in
+// Windows Hello/dem Passwortmanager alle identisch "Soul · <host>" und nicht
+// unterscheidbar. Kurzes soul_id-Präfix statt des generischen Literals.
+function passkeyUsername() {
+  const soulId = soulToken.value?.split('.')?.[0]
+  return soulId ? soulId.slice(0, 8) : 'Soul'
+}
 const {
   connectWallet,
   isConnected:   walletConnected,
@@ -785,7 +794,7 @@ async function doFingerprint() {
       // blieb false) — sichtbar daran, dass "fingerprint" nie in completed_methods
       // landete, obwohl die Migration selbst jedes Mal erfolgreich war (passkeys.json
       // sammelte einen neuen Eintrag pro Versuch, statt den einen wiederzuverwenden).
-      const migrated = await registerPasskey('Soul', authHeaders)
+      const migrated = await registerPasskey(passkeyUsername(), authHeaders)
       if (migrated) {
         // Auf genau das gerade neu registrierte Credential einschränken — sonst kann
         // das Betriebssystem (residentKey:'preferred' legt bei jedem create() einen

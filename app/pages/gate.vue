@@ -328,7 +328,11 @@ async function doSaveCreds() {
     // lists a credential ID that was deleted outside the app, e.g. via the OS/
     // Google Password Manager) by falling back to registration instead of
     // failing forever on an authenticate attempt with nothing to authenticate.
-    const prf = await passkey.authenticateOrRegister('Soul', () => ({
+    // Auf Multi-Hoster teilen sich alle Souls denselben RP_ID (Hostname) — ohne
+    // eine soul-spezifische Kennung im Anzeigenamen sind ihre Passkeys in
+    // Windows Hello/dem Passwortmanager alle identisch "Soul · <host>" und
+    // nicht unterscheidbar. Kurzes soul_id-Präfix statt des generischen Literals.
+    const prf = await passkey.authenticateOrRegister(currentSoulId.value ? currentSoulId.value.slice(0, 8) : 'Soul', () => ({
       Authorization: `Bearer ${currentSoulId.value}.${cert.value}`,
       'Content-Type': 'application/json',
     }))

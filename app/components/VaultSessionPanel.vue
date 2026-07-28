@@ -196,6 +196,15 @@ const { isUnlocked, expiresAt, isUnlimited, loading, error, vaultKey, timeRemain
 const { hasPasskey, isAuthenticating, passkeyError, authenticateOrRegister, deriveVaultKeyHex, lastUsedCredentialId, pruneToCredentialId } = useSoulPasskey()
 const { soulToken } = useSoul()
 
+// Auf Multi-Hoster teilen sich alle Souls denselben RP_ID (Hostname) — ohne
+// eine soul-spezifische Kennung im Anzeigenamen sind ihre Passkeys in
+// Windows Hello/dem Passwortmanager alle identisch "Soul · <host>" und nicht
+// unterscheidbar. Kurzes soul_id-Präfix statt des generischen Literals.
+function passkeyUsername() {
+  const soulId = soulToken.value?.split('.')?.[0]
+  return soulId ? soulId.slice(0, 8) : 'Soul'
+}
+
 const open             = ref(false)
 const selectedDuration = ref('1d')
 const mnemonicInput    = ref('')
@@ -292,7 +301,7 @@ async function handleUnlock() {
   if (encryptMode.value === 'passkey') {
     passkeyLoading.value = true
     try {
-      const prf = await authenticateOrRegister('Soul', verifyAuthHeaders)
+      const prf = await authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
       await unlock(selectedDuration.value, '', hexKey, 'passkey')
