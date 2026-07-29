@@ -752,7 +752,7 @@
 
               <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
 
-              <div v-if="isMultiHoster && !autonomousAgentEnabled" class="sm-infoblock sm-infoblock--warn" style="margin-bottom:20px">
+              <div v-if="!autonomousAgentEnabled" class="sm-infoblock sm-infoblock--warn" style="margin-bottom:20px">
                 {{ $t('settings.agent_master_switch_hint') }}
               </div>
 
@@ -802,7 +802,10 @@
 
               <!-- Enable / Disable toggle -->
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:14px 16px;border:1px solid var(--sys-rule);border-radius:var(--r-xs)"
-                :style="agentEnabled ? 'border-color:var(--sys-ok);background:rgba(184,220,196,0.04)' : ''">
+                :style="[
+                  agentEnabled ? 'border-color:var(--sys-ok);background:rgba(184,220,196,0.04)' : '',
+                  !autonomousAgentEnabled ? 'opacity:0.45' : '',
+                ]">
                 <div>
                   <div style="font-family:var(--sys-mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg)"
                     :style="agentEnabled ? 'color:var(--sys-ok)' : ''">
@@ -814,7 +817,8 @@
                 </div>
                 <button
                   @click="toggleAgent(!agentEnabled)"
-                  :disabled="agentToggleBusy"
+                  :disabled="agentToggleBusy || !autonomousAgentEnabled"
+                  :title="!autonomousAgentEnabled ? $t('settings.agent_master_switch_hint') : ''"
                   class="agent-toggle"
                   :class="agentEnabled ? 'agent-toggle--on' : ''"
                   :aria-label="agentEnabled ? $t('settings.agent_disable') : $t('settings.agent_enable')"
