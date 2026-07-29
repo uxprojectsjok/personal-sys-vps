@@ -123,9 +123,16 @@ function M.get_master_key_prev()
 end
 
 -- ── Per-Soul SOUL_MASTER_KEY (Multi-Hoster) ──────────────────────────────────
--- Gibt per-soul Key aus soul_admin.json zurück, oder nil wenn nicht vorhanden.
--- nil = Fallback auf globalen get_master_key().
+-- Gibt per-soul Key aus soul_admin.json zurück, oder nil wenn nicht vorhanden
+-- ODER der Node aktuell nicht in Multi-Hoster ist. nil = Fallback auf
+-- globalen get_master_key(). Der Modus-Check ist nötig, weil soul_admin.json
+-- beim Umschalten auf Single-Hoster nicht gelöscht wird — ohne ihn würden
+-- alle Consumer dieser Funktion (soul_auth.lua, vault_auth.lua, ...) nach
+-- einem Multi→Single-Wechsel weiterhin den alten, nicht mehr aktiven
+-- Multi-Hoster-Key benutzen und frisch ausgestellte (mit dem globalen Key
+-- signierte) Certs als ungültig zurückweisen.
 function M.get_soul_master_key(soul_id)
+  if not M.get_multi_hoster() then return nil end
   local sa = read_soul_admin(soul_id)
   if not sa then return nil end
   local k = sa.soul_master_key
@@ -136,7 +143,9 @@ function M.get_soul_master_key(soul_id)
 end
 
 -- ── Vorheriger per-Soul Key (Grace-Period nach Rotation) ─────────────────────
+-- Gleicher Modus-Check wie oben, gleicher Grund.
 function M.get_soul_master_key_prev(soul_id)
+  if not M.get_multi_hoster() then return nil end
   local sa = read_soul_admin(soul_id)
   if not sa then return nil end
   local k  = sa.soul_master_key_prev

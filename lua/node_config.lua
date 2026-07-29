@@ -28,17 +28,22 @@ local owner_id = cfg.get_node_owner_id()
 local authed   = false
 
 if owner_id then
-  -- 1. Soul-Cert-Bearer (Single-Hoster: soul owner = Node-Owner)
+  -- 1. Soul-Cert-Bearer (Node-Owner in JEDEM Modus — nicht auf Single-Hoster
+  -- beschränkt: bearer_soul_id == owner_id ist bereits die eigentliche Prüfung.
+  -- Aktiven Key wie soul_auth.lua ermitteln (per-Soul-Key bevorzugt, sonst
+  -- global) — vorher war hier hart cfg.get_master_key() verdrahtet, was in
+  -- Multi-Hoster ohnehin nie gepasst hätte, daher der frühere Mode-Ausschluss.
   local auth_bearer  = ngx.req.get_headers()["authorization"] or ""
   local bearer_token = auth_bearer:match("^[Bb]earer%s+(.+)$")
-  if bearer_token and not cfg.get_multi_hoster() then
+  if bearer_token then
     local dot = bearer_token:find(".", 1, true)
     if dot then
       local bearer_soul_id = bearer_token:sub(1, dot - 1)
       local bearer_cert    = bearer_token:sub(dot + 1)
       if bearer_soul_id == owner_id and bearer_cert ~= "" then
-        local hmac_m   = require("hmac_helper")
-        local akey     = cfg.get_master_key()
+        local hmac_m        = require("hmac_helper")
+        local per_soul_key  = cfg.get_soul_master_key(owner_id)
+        local akey          = (per_soul_key and per_soul_key ~= "") and per_soul_key or cfg.get_master_key()
         for v = 0, 20 do
           if hmac_m.cert_for_soul(akey, bearer_soul_id, v) == bearer_cert then
             authed = true; break
