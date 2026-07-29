@@ -92,6 +92,8 @@ if not authed then
   return
 end
 
+local new_cert, new_cert_version
+
 ngx.req.read_body()
 local raw = ngx.req.get_body_data()
 local ok, body = pcall(cjson.decode, raw or "")
@@ -194,6 +196,45 @@ if type(body.multi_hoster) == "boolean" then
   end
 
   cfg.invalidate_master_cache()
+
+  -- Owner-Cert sofort auf den neuen Modus umstellen: Single-Hoster signiert mit
+  -- dem globalen master_key, Multi-Hoster (falls vorhanden) mit dem per-Soul-Key
+  -- (soul_admin.json) — derselbe Fallback wie gate_auth.lua/soul_cert.lua, damit
+  -- der neue Cert überall konsistent validiert. Ohne das bleibt der im Browser
+  -- gecachte alte Cert nach dem Wechsel ungültig (anderer Signierschlüssel) und
+  -- sperrt den Owner aus eigener Session aus, bis er manuell neu importiert.
+  do
+    local hmac_m = require("hmac_helper")
+    local new_active_key = cfg.get_master_key()
+    if body.multi_hoster then
+      local psk = cfg.get_soul_master_key(owner_id)
+      if psk and psk ~= "" then new_active_key = psk end
+    end
+
+    local ctx_path = "/var/lib/sys/souls/" .. owner_id .. "/api_context.json"
+    local ctx = {}
+    local cf = io.open(ctx_path, "r")
+    if cf then
+      local raw = cf:read("*a"); cf:close()
+      local cok, cparsed = pcall(cjson.decode, raw)
+      if cok and type(cparsed) == "table" then ctx = cparsed end
+    end
+    local old_version = (type(ctx.cert_version) == "number") and ctx.cert_version or 0
+    new_cert_version = old_version + 1
+    new_cert = hmac_m.cert_for_soul(new_active_key, owner_id, new_cert_version)
+    ctx.cert_version = new_cert_version
+
+    os.execute("mkdir -p /var/lib/sys/souls/" .. owner_id)
+    local wc = io.open(ctx_path, "w")
+    if wc then
+      wc:write(cjson.encode(ctx)); wc:close()
+      os.execute("chown www-data:www-data " .. ctx_path .. " 2>/dev/null || true")
+    end
+  end
 end
 
-ngx.say(cjson.encode({ ok = true }))
+if new_cert then
+  ngx.say(cjson.encode({ ok = true, new_cert = new_cert, new_cert_version = new_cert_version, owner_soul_id = owner_id }))
+else
+  ngx.say(cjson.encode({ ok = true }))
+end

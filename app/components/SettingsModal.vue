@@ -1068,12 +1068,13 @@ import { useVaultSession } from '~/composables/useVaultSession.js'
 import { generateMnemonicWords } from '~/composables/useSoulEncrypt.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useConfirm } from '~/composables/useConfirm.js'
+import { updateFrontmatterField } from '#shared/utils/soulParser.js'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({ open: Boolean, inline: { type: Boolean, default: false } })
 const emit  = defineEmits(['close', 'master-rotated'])
 
-const { soulToken, rotateCert, soulContent: composableSoulContent, pushToServer, exportAsBlob } = useSoul()
+const { soulToken, rotateCert, soulContent: composableSoulContent, soulCert: composableSoulCert, save: saveSoulSession, pushToServer, exportAsBlob } = useSoul()
 
 // Auf Multi-Hoster teilen sich alle Souls denselben RP_ID (Hostname) — ohne
 // eine soul-spezifische Kennung im Anzeigenamen sind ihre Passkeys in
@@ -1469,6 +1470,19 @@ async function toggleMultiHoster() {
     const d = await res.json().catch(() => ({}))
     if (res.ok && d.ok) {
       multiHosterCfg.value = next
+      // Der Signierschlüssel wechselt mit dem Modus (Single-Hoster: globaler
+      // Key, Multi-Hoster: per-Soul-Key) — der bisherige lokale Cert wird durch
+      // den Wechsel sofort ungültig. node-config liefert direkt einen frischen,
+      // zum neuen Modus passenden Cert mit; lokale Session damit aktualisieren,
+      // BEVOR die folgenden Calls (die den alten Cert brauchen würden) laufen —
+      // sonst sperrt man sich selbst aus der eigenen Session aus.
+      if (d.new_cert && composableSoulContent.value) {
+        let updated = updateFrontmatterField(composableSoulContent.value, 'soul_cert', d.new_cert)
+        updated     = updateFrontmatterField(updated, 'cert_version', d.new_cert_version)
+        composableSoulContent.value = updated
+        composableSoulCert.value    = d.new_cert
+        saveSoulSession()
+      }
       await loadNodeStatus()
       await detectAdmin()
       await loadNodeConfig()
