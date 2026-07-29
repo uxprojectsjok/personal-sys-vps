@@ -36,16 +36,13 @@
             <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
             </button>
-            <button @click="tab = 'config'" class="sys-rail-item" :class="tab === 'config' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_config') }}</span></span>
-            </button>
             <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_archivar') }}</span></span>
             </button>
             <button @click="tab = 'gesundheit'; loadHealthConfig()" class="sys-rail-item" :class="tab === 'gesundheit' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_health') }}</span></span>
             </button>
-            <button v-if="!isMultiHoster" @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
+            <button v-if="!isMultiHoster || isNodeOwner" @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_agent') }}</span></span>
             </button>
             <button v-if="!isMultiHoster" @click="tab = 'x402'; loadX402Status()" class="sys-rail-item" :class="tab === 'x402' ? 'is-active' : ''">
@@ -53,6 +50,9 @@
             </button>
             <button v-if="isAdmin && isMultiHoster" @click="tab = 'einladen'; loadInviteToken()" class="sys-rail-item" :class="tab === 'einladen' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_invite') }}</span></span>
+            </button>
+            <button @click="tab = 'config'" class="sys-rail-item" :class="tab === 'config' ? 'is-active' : ''">
+              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_config') }}</span></span>
             </button>
           </div>
 
@@ -309,6 +309,62 @@
                 </div>
               </div>
 
+              <!-- Toggles: Scan-Sichtbarkeit + (nur Node-Owner) Multi-Hoster / EU-Verbraucherrechte / Autonomous Agent -->
+              <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
+                <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
+                <div class="sm-infoblock">{{ $t('settings.privacy_desc') }}</div>
+
+                <label class="api-panel-row" style="cursor:pointer;margin-top:14px">
+                  <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
+                    <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>
+                  </div>
+                  <input type="checkbox" :checked="discoverable" class="sr-only" :disabled="discoverableSaving" @change="toggleDiscoverable" />
+                  <span class="api-panel-row-label">{{ $t('settings.privacy_toggle_label') }}</span>
+                </label>
+                <div class="sm-infoblock" :class="{ 'sm-infoblock--warn': !discoverable }" style="margin-top:10px">
+                  {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
+                </div>
+                <Transition name="sys-modal-fade">
+                  <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
+                </Transition>
+
+                <template v-if="isNodeOwner">
+                  <label class="api-panel-row" style="cursor:pointer;margin-top:18px">
+                    <div class="api-toggle" :class="multiHosterCfg ? 'is-on' : ''">
+                      <div class="api-toggle-thumb" :class="multiHosterCfg ? 'is-on' : ''"></div>
+                    </div>
+                    <input type="checkbox" :checked="multiHosterCfg" class="sr-only" :disabled="nodeConfigSaving" @change="toggleMultiHoster" />
+                    <span class="api-panel-row-label">{{ $t('settings.multi_hoster_toggle_label') }}</span>
+                  </label>
+                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.multi_hoster_desc') }}</div>
+                  <div v-if="multiHosterCfg && soulCount > 1" class="sm-infoblock sm-infoblock--warn" style="margin-top:10px">
+                    {{ $t('settings.multi_hoster_locked_hint', { n: soulCount }) }}
+                  </div>
+
+                  <label class="api-panel-row" style="cursor:pointer;margin-top:18px">
+                    <div class="api-toggle" :class="euConsumerRights ? 'is-on' : ''">
+                      <div class="api-toggle-thumb" :class="euConsumerRights ? 'is-on' : ''"></div>
+                    </div>
+                    <input type="checkbox" :checked="euConsumerRights" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('eu_consumer_rights')" />
+                    <span class="api-panel-row-label">{{ $t('settings.eu_consumer_rights_toggle_label') }}</span>
+                  </label>
+                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.eu_consumer_rights_desc') }}</div>
+
+                  <label class="api-panel-row" style="cursor:pointer;margin-top:18px">
+                    <div class="api-toggle" :class="autonomousAgentEnabled ? 'is-on' : ''">
+                      <div class="api-toggle-thumb" :class="autonomousAgentEnabled ? 'is-on' : ''"></div>
+                    </div>
+                    <input type="checkbox" :checked="autonomousAgentEnabled" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('autonomous_agent')" />
+                    <span class="api-panel-row-label">{{ $t('settings.autonomous_agent_toggle_label') }}</span>
+                  </label>
+                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.autonomous_agent_desc') }}</div>
+
+                  <Transition name="sys-modal-fade">
+                    <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
+                  </Transition>
+                </template>
+              </div>
+
               <!-- Soul-Cert -->
               <div style="margin-bottom:24px">
                 <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.soul_cert') }}</div>
@@ -504,29 +560,37 @@
                 </Transition>
               </div>
 
-              <!-- Datenschutz: Scan-Sichtbarkeit -->
-              <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
-                <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
-                <div class="sm-infoblock">
-                  {{ $t('settings.privacy_desc') }}
-                </div>
-                <label class="api-panel-row" style="cursor:pointer;margin-bottom:14px">
-                  <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
-                    <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>
+              <!-- Vault: Verbinden / Löschen (nur Node-Owner) -->
+              <template v-if="isNodeOwner">
+                <div style="padding-top:20px;border-top:1px solid var(--sys-rule);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
+                  <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.vault_section_title') }}</div>
+
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:12px">
+                    <span style="width:8px;height:8px;border-radius:50%;flex:none" :style="vaultConnected ? 'background:var(--accent)' : 'background:var(--fg-4)'"></span>
+                    <div class="flex-1 min-w-0">
+                      <p style="font-size:14px;font-weight:500;color:var(--fg);margin:0">
+                        {{ vaultConnected ? $t('setup.vault_local_connected') : $t('setup.vault_none') }}
+                      </p>
+                    </div>
                   </div>
-                  <input type="checkbox" :checked="discoverable" class="sr-only" :disabled="discoverableSaving" @change="toggleDiscoverable" />
-                  <span class="api-panel-row-label">{{ $t('settings.privacy_toggle_label') }}</span>
-                </label>
-                <div class="sm-infoblock" :class="{ 'sm-infoblock--warn': !discoverable }" style="margin-bottom:0">
-                  {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
+
+                  <button
+                    v-if="!vaultConnected"
+                    @click="connectVaultOwner"
+                    :disabled="connectingVaultOwner"
+                    class="sys-btn-ed sys-btn-ed--primary"
+                    style="width:100%;justify-content:center;margin-bottom:12px"
+                  >{{ connectingVaultOwner ? $t('setup.vault_selecting') : $t('setup.vault_local_btn') }}</button>
+
+                  <button
+                    v-if="!isMultiHoster"
+                    @click="handleDeleteVaultOwner"
+                    :disabled="deleteVaultOwnerBusy"
+                    class="sys-btn-ed"
+                    style="width:100%;justify-content:center;border-color:rgba(224,108,117,0.4);color:#e06c75"
+                  >{{ deleteVaultOwnerBusy ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</button>
                 </div>
-                <div v-if="discoverable" class="sm-infoblock sm-infoblock--warn" style="margin-top:10px">
-                  {{ $t('settings.privacy_permanence_warning') }}
-                </div>
-                <Transition name="sys-modal-fade">
-                  <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
-                </Transition>
-              </div>
+              </template>
 
               <!-- Admin verbinden (Multi-Hoster, kein Admin) -->
               <template v-if="!isAdmin && isMultiHoster">
@@ -687,6 +751,10 @@
             <template v-if="tab === 'agent'">
 
               <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
+
+              <div v-if="isMultiHoster && !autonomousAgentEnabled" class="sm-infoblock sm-infoblock--warn" style="margin-bottom:20px">
+                {{ $t('settings.agent_master_switch_hint') }}
+              </div>
 
               <!-- Status Block -->
               <div class="archivar-lm-block" style="margin-bottom:20px">
@@ -1015,7 +1083,7 @@ function passkeyUsername() {
   const soulId = soulToken.value?.split('.')?.[0]
   return soulId ? soulId.slice(0, 8) : 'Soul'
 }
-const { isConnected: vaultConnected, writeFile, allFiles } = useVault()
+const { isConnected: vaultConnected, connectVault, writeFile, allFiles } = useVault()
 const savedCreds = useSavedCreds()
 const passkey    = useSoulPasskey()
 const vaultSession = useVaultSession()
@@ -1331,6 +1399,128 @@ async function toggleDiscoverable() {
     discoverableFeedback.value = { ok: false, message: t('settings.privacy_save_failed') }
   }
   discoverableSaving.value = false
+}
+
+// ── Node-Owner: node-weite Toggles (multi_hoster/eu_consumer_rights/autonomous_agent) ─
+const isNodeOwner            = ref(false)
+const multiHosterCfg         = ref(false)
+const euConsumerRights       = ref(false)
+const autonomousAgentEnabled = ref(false)
+const soulCount              = ref(1)
+const nodeConfigSaving       = ref(false)
+const nodeConfigFeedback     = ref(null)
+const connectingVaultOwner   = ref(false)
+const deleteVaultOwnerBusy   = ref(false)
+
+function nodeConfigAuthHeaders() {
+  if (isSoulAdmin.value && currentSoulId.value) {
+    return { 'X-Soul-Admin-Token': adminToken.value, 'X-Soul-Id': currentSoulId.value }
+  }
+  return { Authorization: `Bearer ${soulToken.value}` }
+}
+
+async function loadNodeConfig() {
+  try {
+    const res = await fetch('/api/node-config', { headers: nodeConfigAuthHeaders() })
+    if (!res.ok) return
+    const d = await res.json()
+    isNodeOwner.value            = !!d.is_node_owner
+    multiHosterCfg.value         = !!d.multi_hoster
+    euConsumerRights.value       = !!d.eu_consumer_rights
+    autonomousAgentEnabled.value = !!d.autonomous_agent
+    soulCount.value              = d.soul_count || 1
+  } catch {}
+}
+
+async function toggleNodeConfig(field) {
+  const current = field === 'eu_consumer_rights' ? euConsumerRights.value : autonomousAgentEnabled.value
+  const next = !current
+  nodeConfigSaving.value   = true
+  nodeConfigFeedback.value = null
+  try {
+    const res = await fetch('/api/node-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...nodeConfigAuthHeaders() },
+      body: JSON.stringify({ [field]: next }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok && d.ok) {
+      if (field === 'eu_consumer_rights') euConsumerRights.value = next
+      else autonomousAgentEnabled.value = next
+    } else {
+      nodeConfigFeedback.value = { ok: false, message: d.message || t('settings.node_config_save_failed') }
+    }
+  } catch {
+    nodeConfigFeedback.value = { ok: false, message: t('settings.node_config_save_failed') }
+  }
+  nodeConfigSaving.value = false
+}
+
+async function toggleMultiHoster() {
+  const next = !multiHosterCfg.value
+  nodeConfigSaving.value   = true
+  nodeConfigFeedback.value = null
+  try {
+    const res = await fetch('/api/node-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...nodeConfigAuthHeaders() },
+      body: JSON.stringify({ multi_hoster: next }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok && d.ok) {
+      multiHosterCfg.value = next
+      await loadNodeStatus()
+      await detectAdmin()
+      await loadNodeConfig()
+    } else if (res.status === 409) {
+      soulCount.value = d.soul_count || soulCount.value
+      nodeConfigFeedback.value = { ok: false, message: d.message || t('settings.multi_hoster_locked_hint', { n: soulCount.value }) }
+    } else {
+      nodeConfigFeedback.value = { ok: false, message: d.message || t('settings.node_config_save_failed') }
+    }
+  } catch {
+    nodeConfigFeedback.value = { ok: false, message: t('settings.node_config_save_failed') }
+  }
+  nodeConfigSaving.value = false
+}
+
+async function connectVaultOwner() {
+  if (!currentSoulId.value) return
+  const ok = await confirmAsk({
+    title:       t('setup.connect_vault_title'),
+    message:     t('setup.connect_vault_msg'),
+    confirmText: t('setup.connect_vault_confirm'),
+    cancelText:  t('common.cancel'),
+    danger:      false,
+  })
+  if (!ok) return
+  connectingVaultOwner.value = true
+  await connectVault(currentSoulId.value)
+  connectingVaultOwner.value = false
+}
+
+async function handleDeleteVaultOwner() {
+  const ok = await confirmAsk({
+    title:       t('setup.delete_vault_title'),
+    message:     t('setup.delete_vault_msg'),
+    confirmText: t('setup.delete_vault_confirm'),
+    cancelText:  t('common.cancel'),
+    danger:      true,
+  })
+  if (!ok) return
+  deleteVaultOwnerBusy.value = true
+  try {
+    const res = await fetch('/api/vault', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    if (!res.ok) throw new Error(await res.text())
+    document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
+    window.location.href = '/'
+  } catch (e) {
+    nodeConfigFeedback.value = { ok: false, message: e.message }
+  }
+  deleteVaultOwnerBusy.value = false
 }
 
 async function confirmRotateWebhook() {
@@ -1972,7 +2162,7 @@ async function handleVaultKeyChange() {
   }
 }
 
-watch(tab, (val) => { if (val === 'config') fetchVaultKeyStatus() })
+watch(tab, (val) => { if (val === 'config') { fetchVaultKeyStatus(); loadNodeConfig() } })
 
 // ── Archivar Tab ──────────────────────────────────────────────────────────────
 const herzActive       = ref(false)
@@ -2362,8 +2552,9 @@ async function saveAgentQueue() {
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
 async function initSettings() {
   await loadNodeStatus()
-  detectAdmin()
+  await detectAdmin()
   loadStatus()
+  loadNodeConfig()
   tab.value            = 'api'
   elevenlabsKey.value  = ''
   elevenlabsDirty.value = false
