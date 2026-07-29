@@ -102,12 +102,19 @@ if not ok or type(body) ~= "table" then
 end
 
 -- ── eu_consumer_rights ────────────────────────────────────────────────────────
+-- Beide Flag-Dateien werden von init.sh als root angelegt — falls eine davon
+-- (Alt-Install oder manueller Fix) noch root:root ist, kann www-data (dieser
+-- Prozess) sie nicht überschreiben; io.open("w") schlägt dann lautlos fehl.
+-- chown NACH dem Schreiben ist best-effort (www-data kann eine root-Datei
+-- nicht chownen) — der eigentliche Fix ist, dass init.sh sie von Anfang an
+-- www-data-owned anlegt (siehe init.sh).
 if type(body.eu_consumer_rights) == "boolean" then
   os.execute("mkdir -p " .. CONFIG_DIR)
   local f = io.open(CONFIG_DIR .. "eu_consumer_rights", "w")
   if f then
     f:write(tostring(body.eu_consumer_rights)); f:close()
     os.execute("chmod 644 " .. CONFIG_DIR .. "eu_consumer_rights")
+    os.execute("chown www-data:www-data " .. CONFIG_DIR .. "eu_consumer_rights 2>/dev/null || true")
   end
 end
 
@@ -118,6 +125,7 @@ if type(body.autonomous_agent) == "boolean" then
   if f then
     f:write(tostring(body.autonomous_agent)); f:close()
     os.execute("chmod 644 " .. CONFIG_DIR .. "autonomous_agent")
+    os.execute("chown www-data:www-data " .. CONFIG_DIR .. "autonomous_agent 2>/dev/null || true")
   end
 end
 
