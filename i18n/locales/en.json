@@ -747,7 +747,7 @@
     "x402_test_pay_hint": "Pays for real against this soul's own x402 endpoint — uses the balance shown above.",
     "agent_cron_title": "Maintenance Agent",
     "agent_cron_desc": "Claude Code runs on this server on a schedule and works through tasks from the queue. No SSH needed — write tasks in the chat, the agent handles them.",
-    "agent_master_switch_hint": "The Autonomous Agent is disabled node-wide (Settings → config). Even if you enable it for yourself here, it won't run until the global switch is also on.",
+    "agent_master_switch_hint": "The Autonomous Agent is disabled node-wide. Even if you enable it for yourself below, it won't run until the switch above is also on.",
     "agent_installed": "Claude Code installed",
     "agent_not_installed": "Claude Code not installed",
     "agent_not_installed_hint": "Run init.sh and select the Agent setup step to install Claude Code automatically.",

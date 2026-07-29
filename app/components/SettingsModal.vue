@@ -350,15 +350,6 @@
                   </label>
                   <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.eu_consumer_rights_desc') }}</div>
 
-                  <label class="api-panel-row" style="cursor:pointer;margin-top:18px">
-                    <div class="api-toggle" :class="autonomousAgentEnabled ? 'is-on' : ''">
-                      <div class="api-toggle-thumb" :class="autonomousAgentEnabled ? 'is-on' : ''"></div>
-                    </div>
-                    <input type="checkbox" :checked="autonomousAgentEnabled" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('autonomous_agent')" />
-                    <span class="api-panel-row-label">{{ $t('settings.autonomous_agent_toggle_label') }}</span>
-                  </label>
-                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.autonomous_agent_desc') }}</div>
-
                   <Transition name="sys-modal-fade">
                     <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
                   </Transition>
@@ -751,6 +742,26 @@
             <template v-if="tab === 'agent'">
 
               <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
+
+              <!-- Node-weiter Kill-Switch (nur Node-Owner) — steuert ob der Runner
+                   auf diesem Node überhaupt läuft, unabhängig vom Per-Soul-Toggle
+                   unten. Gehört inhaltlich hierher statt in den config-Tab, da er
+                   ausschließlich den Agent betrifft. -->
+              <template v-if="isNodeOwner">
+                <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--sys-rule)">
+                  <label class="api-panel-row" style="cursor:pointer">
+                    <div class="api-toggle" :class="autonomousAgentEnabled ? 'is-on' : ''">
+                      <div class="api-toggle-thumb" :class="autonomousAgentEnabled ? 'is-on' : ''"></div>
+                    </div>
+                    <input type="checkbox" :checked="autonomousAgentEnabled" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('autonomous_agent')" />
+                    <span class="api-panel-row-label">{{ $t('settings.autonomous_agent_toggle_label') }}</span>
+                  </label>
+                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.autonomous_agent_desc') }}</div>
+                  <Transition name="sys-modal-fade">
+                    <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
+                  </Transition>
+                </div>
+              </template>
 
               <div v-if="!autonomousAgentEnabled" class="sm-infoblock sm-infoblock--warn" style="margin-bottom:20px">
                 {{ $t('settings.agent_master_switch_hint') }}
