@@ -2266,26 +2266,34 @@ app.post('/internal/verify-x402', async (req, res) => {
   }
 });
 
-// ── x402 Operator-Testwallet (Settings → x402) ────────────────────────────────
-// Node-global, nicht soul-gebunden — siehe lib/x402_agent_wallet.mjs.
+// ── x402 Test-Wallet pro Soul (Settings → x402) ──────────────────────────────
+// Per-soul seit 2026-07-29 (vorher node-global) — siehe lib/x402_agent_wallet.mjs.
+// soul_id kommt vom Lua-Layer (bereits soul_auth.lua-geprüft), hier nur noch
+// strukturell validiert (soulDir() in x402_agent_wallet.mjs wirft sonst).
 // Nur über 127.0.0.1 erreichbar (kein öffentliches /api/*-Präfix), genau wie
-// /internal/verify-x402 oben — Lua ist die öffentlich erreichbare, auth-
-// geprüfte Schicht davor (vault_auth.lua + Multi-Hoster-Sperre je Datei).
-app.get('/internal/x402-agent/status', async (_req, res) => {
+// /internal/verify-x402 oben.
+app.get('/internal/x402-agent/status', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
   try {
-    res.json(await getX402AgentStatus());
+    res.json(await getX402AgentStatus(soulId));
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 app.post('/internal/x402-agent/key', async (req, res) => {
-  const { private_key } = req.body || {};
+  const { soul_id: soulId, private_key } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
   if (typeof private_key !== 'string' || !private_key.trim()) {
     return res.status(400).json({ ok: false, error: 'private_key_required' });
   }
   try {
-    const address = await saveX402AgentKey(private_key);
+    const address = await saveX402AgentKey(soulId, private_key);
     res.json({ ok: true, address });
   } catch (err) {
     if (err.message === 'invalid_private_key') {
@@ -2295,9 +2303,13 @@ app.post('/internal/x402-agent/key', async (req, res) => {
   }
 });
 
-app.get('/internal/x402-agent/balance', async (_req, res) => {
+app.get('/internal/x402-agent/balance', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
   try {
-    const account = await loadX402AgentAccount();
+    const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
     const balances = await getX402AgentBalances(account.address);
     res.json({ ok: true, address: account.address, ...balances });
@@ -2307,12 +2319,15 @@ app.get('/internal/x402-agent/balance', async (_req, res) => {
 });
 
 app.post('/internal/x402-agent/pay', async (req, res) => {
-  const { url, method, body, headers } = req.body || {};
+  const { soul_id: soulId, url, method, body, headers } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
   if (typeof url !== 'string' || !url.trim()) {
     return res.status(400).json({ ok: false, error: 'url_required' });
   }
   try {
-    const account = await loadX402AgentAccount();
+    const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
     const result = await payX402AsAgent(account, { url, method, body, headers });
     res.json({ ok: true, ...result });

@@ -732,7 +732,7 @@
     "tab_health": "Gesundheit",
     "tab_agent": "Agent",
     "tab_x402": "x402",
-    "x402_desc": "Teste deinen eigenen x402-Verkaufsweg (POST /api/soul/pay/x402), indem du selbst als zahlender Agent auftrittst — mit einer eigenen, kleinen Test-Wallet. Reines Werkzeug für dich als Betreiber, ändert nichts an dieser oder anderen Souls.",
+    "x402_desc": "Teste deinen eigenen x402-Verkaufsweg (POST /api/soul/pay/x402), indem du selbst als zahlender Agent auftrittst — mit deiner eigenen, kleinen Test-Wallet. Gehört nur dieser Soul, ändert nichts an anderen Souls auf diesem Node.",
     "x402_wallet_label": "Wallet",
     "x402_wallet_ready": "eingerichtet",
     "x402_wallet_missing": "noch nicht eingerichtet",

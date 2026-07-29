@@ -732,7 +732,7 @@
     "tab_health": "Health",
     "tab_agent": "Agent",
     "tab_x402": "x402",
-    "x402_desc": "Test your own x402 sell-side (POST /api/soul/pay/x402) by acting as the paying agent yourself — with your own small test wallet. Purely operator tooling, doesn't change this or any other soul.",
+    "x402_desc": "Test your own x402 sell-side (POST /api/soul/pay/x402) by acting as the paying agent yourself — with your own small test wallet. Belongs to this soul only, doesn't change any other soul on this node.",
     "x402_wallet_label": "Wallet",
     "x402_wallet_ready": "ready",
     "x402_wallet_missing": "not set up yet",

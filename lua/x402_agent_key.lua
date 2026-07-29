@@ -1,24 +1,20 @@
 -- POST /api/x402/agent/key  { private_key }  → { ok, address }
 --
--- Saves the operator's own test-wallet private key (exported from a MetaMask
+-- Saves the soul's own test-wallet private key (exported from a MetaMask
 -- account they created specifically for this, never their main wallet — see
--- CHANGELOG v1.0.56). Encrypted at rest by soul-mcp (lib/x402_agent_wallet.mjs);
--- this file never sees the key beyond passing the request body through.
+-- CHANGELOG v1.0.56). Per-soul since 2026-07-29 (was node-global/Single-
+-- Hoster-only before). Encrypted at rest by soul-mcp
+-- (lib/x402_agent_wallet.mjs); this file never sees the key beyond passing
+-- the request body through, only injects soul_id server-side (not client-
+-- supplied, so a soul can't write another soul's wallet).
 
 local cjson = require("cjson.safe")
-local cfg   = require("config_reader")
 local http  = require("resty.http")
 
 local soul_id = ngx.ctx.soul_id
 if not soul_id or soul_id == "" then
   ngx.status = 401
   ngx.say('{"error":"unauthorized"}')
-  return
-end
-
-if cfg.get_multi_hoster() then
-  ngx.status = 403
-  ngx.say('{"error":"not_available_multi_hoster","message":"x402 test tooling is Personal-node only."}')
   return
 end
 
@@ -31,13 +27,20 @@ end
 ngx.header["Content-Type"] = "application/json"
 
 ngx.req.read_body()
-local body = ngx.req.get_body_data()
+local raw = ngx.req.get_body_data()
+local ok, body = pcall(cjson.decode, raw or "")
+if not ok or type(body) ~= "table" then
+  ngx.status = 400
+  ngx.say('{"error":"invalid_json"}')
+  return
+end
+body.soul_id = soul_id
 
 local httpc = http.new()
 httpc:set_timeout(10000)
 local res, err = httpc:request_uri("http://127.0.0.1:3098/internal/x402-agent/key", {
   method  = "POST",
-  body    = body,
+  body    = cjson.encode(body),
   headers = { ["Content-Type"] = "application/json" },
 })
 

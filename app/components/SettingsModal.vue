@@ -45,7 +45,7 @@
             <button v-if="!isMultiHoster || isNodeOwner" @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_agent') }}</span></span>
             </button>
-            <button v-if="!isMultiHoster" @click="tab = 'x402'; loadX402Status()" class="sys-rail-item" :class="tab === 'x402' ? 'is-active' : ''">
+            <button @click="tab = 'x402'; loadX402Status()" class="sys-rail-item" :class="tab === 'x402' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_x402') }}</span></span>
             </button>
             <button v-if="isAdmin && isMultiHoster" @click="tab = 'einladen'; loadInviteToken()" class="sys-rail-item" :class="tab === 'einladen' ? 'is-active' : ''">
