@@ -219,10 +219,15 @@ if type(body.multi_hoster) == "boolean" then
       local cok, cparsed = pcall(cjson.decode, raw)
       if cok and type(cparsed) == "table" then ctx = cparsed end
     end
-    local old_version = (type(ctx.cert_version) == "number") and ctx.cert_version or 0
+    local old_version = hmac_m.read_cert_version(owner_id)
     new_cert_version = old_version + 1
     new_cert = hmac_m.cert_for_soul(new_active_key, owner_id, new_cert_version)
     ctx.cert_version = new_cert_version
+    -- soul_cert_version ist das Feld, das hmac_helper.read_cert_version()
+    -- zuerst prüft (siehe soul_rotate_cert.lua) — synchron halten, sonst
+    -- liefert read_cert_version() bis zum nächsten pushToServer() die
+    -- falsche Version zurück.
+    ctx.soul_cert_version = new_cert_version
 
     os.execute("mkdir -p /var/lib/sys/souls/" .. owner_id)
     local wc = io.open(ctx_path, "w")

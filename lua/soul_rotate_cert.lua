@@ -46,6 +46,13 @@ if cf then
   if ok and type(parsed) == "table" then ctx = parsed end
 end
 ctx.cert_version = new_version
+-- soul_cert_version ist das Feld, das hmac_helper.read_cert_version() zuerst
+-- prüft (api_context.lua synct es aus dem geposteten sys.md) — ohne diesen
+-- Schreib hier bleibt es auf dem alten Stand, bis der Client als nächstes
+-- pushToServer() aufruft. Bis dahin würde read_cert_version() die falsche
+-- Version zurückgeben (nur durch den 0..20-Fallback in soul_auth.lua u.a.
+-- kaschiert, nicht überall vorhanden). Beide Felder synchron halten.
+ctx.soul_cert_version = new_version
 -- Verzeichnis anlegen falls noch nicht vorhanden
 os.execute("mkdir -p /var/lib/sys/souls/" .. soul_id)
 local wc = io.open(ctx_path, "w")
