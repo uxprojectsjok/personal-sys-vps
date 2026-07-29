@@ -66,6 +66,16 @@ if not f then
 end
 io.close(f)
 
+-- Node-Owner-Schutz: in Multi-Hoster ist die erste Soul Admin für alle
+-- (siehe soul_cert.lua first_soul_id) — deren Löschung würde den Node
+-- verwaisen lassen. UI blendet den Löschen-Button dafür aus, dieser Check
+-- verhindert das Umgehen davon (z. B. direkter API-Call).
+if cfg.get_multi_hoster() and soul_id == cfg.get_first_soul_id() then
+  ngx.status = 403
+  ngx.say(cjson.encode({ error = "node_owner_soul", message = "Node-Owner-Soul kann in Multi-Hoster nicht gelöscht werden" }))
+  return
+end
+
 -- Vault-Session invalidieren
 local sessions = ngx.shared.vault_sessions
 if sessions then

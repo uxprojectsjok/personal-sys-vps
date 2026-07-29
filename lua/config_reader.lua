@@ -232,4 +232,35 @@ function M.get_multi_hoster()
   return m and m.multi_hoster == true
 end
 
+-- ── Erste Soul in Multi-Hoster lesen (Node-Owner-Basis, siehe soul_cert.lua) ──
+function M.get_first_soul_id()
+  local m = read_master()
+  if not m then return nil end
+  local id = m.first_soul_id
+  if type(id) == "string" and id ~= "" then return id end
+  return nil
+end
+
+-- ── Node-Owner ermitteln: node_soul_id (Single-Hoster) oder first_soul_id
+-- (Multi-Hoster) — vereinheitlicht für alle node-weiten Admin-Checks ──────────
+function M.get_node_owner_id()
+  if M.get_multi_hoster() then
+    return M.get_first_soul_id()
+  end
+  return M.get_node_soul_id()
+end
+
+-- ── Souls unter /var/lib/sys/souls/ zählen (echter Count, nicht nur Existenz) ─
+function M.count_souls()
+  local count = 0
+  local h = io.popen("ls /var/lib/sys/souls/ 2>/dev/null")
+  if h then
+    for d in h:lines() do
+      if d:match("^[a-zA-Z0-9%-]+$") then count = count + 1 end
+    end
+    h:close()
+  end
+  return count
+end
+
 return M

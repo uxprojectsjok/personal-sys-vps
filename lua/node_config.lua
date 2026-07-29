@@ -1,0 +1,181 @@
+-- /etc/openresty/lua/node_config.lua
+-- GET/PUT /api/node-config
+-- Node-weite Einstellungen (multi_hoster, eu_consumer_rights, autonomous_agent),
+-- nur für den Node-Owner (Single-Hoster: die eine Soul; Multi-Hoster: first_soul_id).
+--
+-- Auth: Soul-Cert-Bearer (Single-Hoster) ODER X-Soul-Admin-Token + X-Soul-Id
+-- (Multi-Hoster) — in beiden Fällen muss die Soul zusätzlich cfg.get_node_owner_id()
+-- entsprechen. Anders als set_master.lua (wo jede Soul ihren EIGENEN Key rotieren
+-- darf) sind diese Felder node-weit — nur der Owner darf sie ändern.
+
+local cjson = require("cjson.safe")
+local cfg   = require("config_reader")
+
+local CONFIG_DIR    = "/var/lib/sys/config/"
+local MASTER_PATH_GLOBAL = "/var/lib/sys/config/master.json"
+
+local function get_master_path()
+  if type(cfg.get_master_path) == "function" then return cfg.get_master_path() end
+  return MASTER_PATH_GLOBAL
+end
+
+ngx.header["Content-Type"]  = "application/json"
+ngx.header["Cache-Control"] = "no-store"
+
+-- ── Auth: node_owner_id ermitteln + verifizieren ──────────────────────────────
+local UUID_PAT = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
+local owner_id = cfg.get_node_owner_id()
+local authed   = false
+
+if owner_id then
+  -- 1. Soul-Cert-Bearer (Single-Hoster: soul owner = Node-Owner)
+  local auth_bearer  = ngx.req.get_headers()["authorization"] or ""
+  local bearer_token = auth_bearer:match("^[Bb]earer%s+(.+)$")
+  if bearer_token and not cfg.get_multi_hoster() then
+    local dot = bearer_token:find(".", 1, true)
+    if dot then
+      local bearer_soul_id = bearer_token:sub(1, dot - 1)
+      local bearer_cert    = bearer_token:sub(dot + 1)
+      if bearer_soul_id == owner_id and bearer_cert ~= "" then
+        local hmac_m   = require("hmac_helper")
+        local akey     = cfg.get_master_key()
+        for v = 0, 20 do
+          if hmac_m.cert_for_soul(akey, bearer_soul_id, v) == bearer_cert then
+            authed = true; break
+          end
+        end
+      end
+    end
+  end
+
+  -- 2. X-Soul-Admin-Token + X-Soul-Id (Multi-Hoster: first_soul_id)
+  if not authed and cfg.get_multi_hoster() then
+    local soul_admin_token = ngx.req.get_headers()["x-soul-admin-token"] or ""
+    local soul_id_header   = ngx.req.get_headers()["x-soul-id"]          or ""
+    if soul_id_header:match(UUID_PAT) and soul_id_header == owner_id
+       and cfg.validate_soul_admin_token(soul_id_header, soul_admin_token) then
+      authed = true
+    end
+  end
+end
+
+if ngx.req.get_method() == "GET" then
+  ngx.say(cjson.encode({
+    multi_hoster       = cfg.get_multi_hoster() == true,
+    eu_consumer_rights  = (function()
+      local f = io.open(CONFIG_DIR .. "eu_consumer_rights", "r")
+      if not f then return false end
+      local v = f:read("*a"); f:close()
+      return v ~= "false"
+    end)(),
+    autonomous_agent    = (function()
+      local f = io.open(CONFIG_DIR .. "autonomous_agent", "r")
+      if not f then return not cfg.get_multi_hoster() end
+      local v = f:read("*a"); f:close()
+      return v ~= "false"
+    end)(),
+    is_node_owner       = authed,
+    soul_count          = cfg.count_souls(),
+  }))
+  return
+end
+
+if ngx.req.get_method() ~= "PUT" then
+  ngx.status = 405
+  ngx.say('{"error":"method_not_allowed"}')
+  return
+end
+
+if not authed then
+  ngx.status = 403
+  ngx.say('{"error":"forbidden","message":"Nur der Node-Owner kann diese Einstellungen ändern"}')
+  return
+end
+
+ngx.req.read_body()
+local raw = ngx.req.get_body_data()
+local ok, body = pcall(cjson.decode, raw or "")
+if not ok or type(body) ~= "table" then
+  ngx.status = 400
+  ngx.say('{"error":"invalid_json"}')
+  return
+end
+
+-- ── eu_consumer_rights ────────────────────────────────────────────────────────
+if type(body.eu_consumer_rights) == "boolean" then
+  os.execute("mkdir -p " .. CONFIG_DIR)
+  local f = io.open(CONFIG_DIR .. "eu_consumer_rights", "w")
+  if f then
+    f:write(tostring(body.eu_consumer_rights)); f:close()
+    os.execute("chmod 644 " .. CONFIG_DIR .. "eu_consumer_rights")
+  end
+end
+
+-- ── autonomous_agent ───────────────────────────────────────────────────────────
+if type(body.autonomous_agent) == "boolean" then
+  os.execute("mkdir -p " .. CONFIG_DIR)
+  local f = io.open(CONFIG_DIR .. "autonomous_agent", "w")
+  if f then
+    f:write(tostring(body.autonomous_agent)); f:close()
+    os.execute("chmod 644 " .. CONFIG_DIR .. "autonomous_agent")
+  end
+end
+
+-- ── multi_hoster ───────────────────────────────────────────────────────────────
+if type(body.multi_hoster) == "boolean" then
+  local currently_multi = cfg.get_multi_hoster()
+  if body.multi_hoster == false and currently_multi == true then
+    local soul_count = cfg.count_souls()
+    if soul_count > 1 then
+      ngx.status = 409
+      ngx.say(cjson.encode({
+        error   = "soul_count_too_high",
+        message = "Wechsel zu Single-Hoster nur möglich wenn genau eine Soul übrig ist (aktuell " .. soul_count .. ").",
+        soul_count = soul_count,
+      }))
+      return
+    end
+  end
+
+  local mpath = get_master_path()
+  local existing = {}
+  local ef = io.open(mpath, "r")
+  if ef then
+    local er = ef:read("*a"); ef:close()
+    local eok, edata = pcall(cjson.decode, er)
+    if eok and type(edata) == "table" then existing = edata end
+  end
+
+  existing.multi_hoster = body.multi_hoster
+  -- Beim Umschalten auf Multi-Hoster: bestehende node_soul_id als first_soul_id
+  -- weiterleben lassen, damit die bereits vorhandene Soul Owner bleibt.
+  if body.multi_hoster == true and (not existing.first_soul_id or existing.first_soul_id == "")
+     and type(existing.node_soul_id) == "string" and existing.node_soul_id ~= "" then
+    existing.first_soul_id = existing.node_soul_id
+  end
+
+  os.execute("mkdir -p /var/lib/sys/config")
+  local wf, werr = io.open(mpath, "w")
+  if not wf then
+    ngx.log(ngx.ERR, "[node_config] Schreibfehler: ", werr)
+    ngx.status = 500
+    ngx.say('{"error":"write_failed"}')
+    return
+  end
+  wf:write(cjson.encode(existing)); wf:close()
+  os.execute("chmod 600 " .. mpath)
+  os.execute("chown www-data:www-data " .. mpath .. " 2>/dev/null || true")
+
+  if mpath ~= MASTER_PATH_GLOBAL then
+    local gf = io.open(MASTER_PATH_GLOBAL, "w")
+    if gf then
+      gf:write(cjson.encode(existing)); gf:close()
+      os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+      os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+    end
+  end
+
+  cfg.invalidate_master_cache()
+end
+
+ngx.say(cjson.encode({ ok = true }))

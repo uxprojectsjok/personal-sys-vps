@@ -32,6 +32,16 @@ fi
 # Force-mode: specific soul_id passed as first arg (from "run now" button)
 FORCE_SOUL="${1:-}"
 
+# Node-wide kill-switch (Settings → config → Autonomous Agent). Missing file
+# defaults to enabled — matches the eu_consumer_rights/public_node flag pattern
+# for installs predating this flag. Applies to force-run too: if the node owner
+# turned this off, "run now" must not bypass it.
+AUTONOMOUS_AGENT_FLAG="$CONFIG_DIR/autonomous_agent"
+if [[ -f "$AUTONOMOUS_AGENT_FLAG" ]] && [[ "$(cat "$AUTONOMOUS_AGENT_FLAG" 2>/dev/null)" == "false" ]]; then
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] autonomous_agent disabled — exiting" >> "$LOG_MASTER"
+  exit 0
+fi
+
 mkdir -p "$AGENT_DIR/.claude"
 
 ts() { date -u '+%Y-%m-%d %H:%M:%S UTC'; }

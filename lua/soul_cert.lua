@@ -289,7 +289,42 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
   end)
 
   if multi_hoster then
-    -- Multi-Hoster: jede neue Soul bekommt eigenen Master-Key + Admin-Token
+    -- Node-Owner in Multi-Hoster: die Soul, die als erste registriert (Souls-
+    -- Verzeichnis war davor leer), wird first_soul_id in master.json — Basis für
+    -- node-weite Admin-Rechte (siehe config_reader.get_node_owner_id), getrennt
+    -- vom per-Soul admin_token unten (Selbstverwaltung der eigenen Cert-Rotation).
+    if not master_data.first_soul_id or master_data.first_soul_id == "" then
+      local souls_dir_was_empty = true
+      local h = io.popen("ls " .. SOULS_DIR .. " 2>/dev/null")
+      if h then
+        for d in h:lines() do
+          if d:match("^[a-zA-Z0-9%-]+$") then souls_dir_was_empty = false; break end
+        end
+        h:close()
+      end
+      if souls_dir_was_empty then
+        master_data.first_soul_id = soul_id
+        local mpath_owner = get_master_path()
+        os.execute("mkdir -p /var/lib/sys/config")
+        local owf = io.open(mpath_owner, "w")
+        if owf then
+          owf:write(cjson.encode(master_data)); owf:close()
+          os.execute("chmod 600 " .. mpath_owner)
+          os.execute("chown www-data:www-data " .. mpath_owner .. " 2>/dev/null || true")
+          cfg.invalidate_master_cache()
+        end
+        if mpath_owner ~= MASTER_PATH_GLOBAL then
+          local gowf = io.open(MASTER_PATH_GLOBAL, "w")
+          if gowf then
+            gowf:write(cjson.encode(master_data)); gowf:close()
+            os.execute("chmod 600 " .. MASTER_PATH_GLOBAL)
+            os.execute("chown www-data:www-data " .. MASTER_PATH_GLOBAL .. " 2>/dev/null || true")
+          end
+        end
+      end
+    end
+
+    -- jede neue Soul bekommt eigenen Master-Key + Admin-Token
     -- Beides wird in souls/{soul_id}/soul_admin.json gespeichert (nie in master.json).
     -- Nur generieren wenn soul_admin.json noch NICHT existiert (verhindert Key-Wechsel bei
     -- wiederholtem refreshCert vor dem ersten pushToServer).

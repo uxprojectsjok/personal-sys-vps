@@ -265,6 +265,16 @@ server {
     content_by_lua_file /etc/openresty/lua/set_master.lua;
   }
 
+  # ── Node-Owner: node-weite Toggles (multi_hoster/eu_consumer_rights/autonomous_agent) ─
+  # Auth intern in Lua geprüft (Soul-Cert-Bearer oder X-Soul-Admin-Token, siehe node_config.lua)
+  location = /api/node-config {
+    limit_except GET PUT { deny all; }
+    limit_req zone=api burst=5 nodelay;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/node_config.lua;
+  }
+
   # ── Config: Anthropic-Key pro Soul lesen ──────────────────────────────────────
   location = /api/get-config {
     limit_req zone=api burst=5 nodelay;
