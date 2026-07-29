@@ -290,15 +290,19 @@ if not cf then  -- cf ist nil → neue Soul (kein api_context.json gefunden)
 
   if multi_hoster then
     -- Node-Owner in Multi-Hoster: die Soul, die als erste registriert (Souls-
-    -- Verzeichnis war davor leer), wird first_soul_id in master.json — Basis für
-    -- node-weite Admin-Rechte (siehe config_reader.get_node_owner_id), getrennt
-    -- vom per-Soul admin_token unten (Selbstverwaltung der eigenen Cert-Rotation).
+    -- Verzeichnis enthielt außer ihr selbst noch keine andere Soul), wird
+    -- first_soul_id in master.json — Basis für node-weite Admin-Rechte (siehe
+    -- config_reader.get_node_owner_id), getrennt vom per-Soul admin_token
+    -- unten (Selbstverwaltung der eigenen Cert-Rotation).
+    -- Eigenes Verzeichnis wird oben (mkdir -p .../vault/context) bereits VOR
+    -- dieser Prüfung angelegt — d ~= soul_id verhindert Selbst-Zählung, sonst
+    -- wäre der Ordner nie "leer" und first_soul_id würde nie gesetzt.
     if not master_data.first_soul_id or master_data.first_soul_id == "" then
       local souls_dir_was_empty = true
       local h = io.popen("ls " .. SOULS_DIR .. " 2>/dev/null")
       if h then
         for d in h:lines() do
-          if d:match("^[a-zA-Z0-9%-]+$") then souls_dir_was_empty = false; break end
+          if d:match("^[a-zA-Z0-9%-]+$") and d ~= soul_id then souls_dir_was_empty = false; break end
         end
         h:close()
       end
