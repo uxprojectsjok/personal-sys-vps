@@ -161,6 +161,16 @@ if type(body.multi_hoster) == "boolean" then
      and type(existing.node_soul_id) == "string" and existing.node_soul_id ~= "" then
     existing.first_soul_id = existing.node_soul_id
   end
+  -- Umgekehrte Richtung: beim Umschalten auf Single-Hoster muss node_soul_id
+  -- gesetzt sein, sonst findet get_node_owner_id() (Single-Hoster-Zweig liest
+  -- node_soul_id, nicht first_soul_id) niemanden mehr — isNodeOwner würde für
+  -- die tatsächliche Owner-Soul plötzlich false werden. Der PUT-Guard oben
+  -- garantiert an dieser Stelle bereits soul_count == 1, also ist first_soul_id
+  -- eindeutig die verbleibende Soul.
+  if body.multi_hoster == false and (not existing.node_soul_id or existing.node_soul_id == "")
+     and type(existing.first_soul_id) == "string" and existing.first_soul_id ~= "" then
+    existing.node_soul_id = existing.first_soul_id
+  end
 
   os.execute("mkdir -p /var/lib/sys/config")
   local wf, werr = io.open(mpath, "w")
