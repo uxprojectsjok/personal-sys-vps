@@ -9,7 +9,9 @@
         <div class="scroll">
           <div class="page ar-page">
             <div class="ar-head">
-              <h1 class="ar-title">{{ $t('nav.archivar') }}</h1>
+              <div class="ar-eyebrow">{{ $t('archivar.eyebrow') }}</div>
+              <h1 class="ar-title">{{ $t('archivar.hero_prefix') }} <em>{{ $t('archivar.hero_em') }}</em></h1>
+              <p class="ar-sub">{{ $t('archivar.lede') }}</p>
             </div>
 
             <!-- LONGMEM Status -->
@@ -173,8 +175,18 @@ async function triggerCrystallize() {
 
 <style scoped>
 .ar-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
-.ar-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
-.ar-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+.ar-head { padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+.ar-eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.ar-title {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
+  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
+  line-height: 1.05; margin-bottom: 14px;
+}
+.ar-title em { font-style: italic; color: var(--accent); }
+.ar-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 .archivar-loading {
   font-family: var(--mono); font-size: 12px;

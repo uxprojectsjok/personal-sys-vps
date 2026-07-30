@@ -9,7 +9,9 @@
         <div class="scroll">
           <div class="page gk-page">
             <div class="gk-head">
-              <h1 class="gk-title">{{ $t('nav.gatekeeper') }}</h1>
+              <div class="gk-eyebrow">{{ $t('gatekeeper.eyebrow') }}</div>
+              <h1 class="gk-title">{{ $t('gatekeeper.hero_prefix') }} <em>{{ $t('gatekeeper.hero_em') }}</em></h1>
+              <p class="gk-sub">{{ $t('gatekeeper.lede') }}</p>
             </div>
             <GatekeeperPanel />
           </div>
@@ -47,6 +49,16 @@ function onNav(id) {
 
 <style scoped>
 .gk-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
-.gk-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
-.gk-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+.gk-head { padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+.gk-eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.gk-title {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
+  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
+  line-height: 1.05; margin-bottom: 14px;
+}
+.gk-title em { font-style: italic; color: var(--accent); }
+.gk-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 </style>

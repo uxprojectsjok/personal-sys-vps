@@ -1,8 +1,6 @@
 <template>
   <div style="display:flex;flex-direction:column;gap:28px">
 
-    <p style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0">{{ $t('connections.intro') }}</p>
-
     <!-- Eingehende Anfragen -->
     <div v-if="pendingIn.length">
       <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0 0 4px">{{ $t('connections.pending_in_title') }}</p>

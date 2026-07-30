@@ -1360,7 +1360,32 @@
     "no_expiry": "Unlimited",
     "btn_token": "Token"
   },
+  "archivar": {
+    "eyebrow": "MEMORY",
+    "hero_prefix": "Long-term memory,",
+    "hero_em": "crystallized",
+    "lede": "Facts and patterns condensed from your sessions — the Archivist keeps what matters and clears the rest."
+  },
+  "wallet": {
+    "eyebrow": "X402 · WALLET",
+    "hero_prefix": "Test your own,",
+    "hero_em": "payments"
+  },
+  "agent": {
+    "eyebrow": "AUTONOMOUS AGENT",
+    "hero_prefix": "Your soul,",
+    "hero_em": "autonomous"
+  },
+  "apps": {
+    "eyebrow": "APPS · MCP",
+    "hero_prefix": "Extend your,",
+    "hero_em": "chat",
+    "lede": "MCP apps you upload here become tools any soul can use — more than just files."
+  },
   "connections": {
+    "eyebrow": "NETWORK",
+    "hero_prefix": "Soul to soul,",
+    "hero_em": "connected",
     "intro": "Direct connection with another soul — mutual, by consent on both sides. Also works across nodes (a different URL).",
     "pending_in_title": "Incoming requests",
     "btn_accept": "Accept",
@@ -1374,6 +1399,10 @@
     "empty": "No connections yet."
   },
   "gatekeeper": {
+    "eyebrow": "GATEKEEPER",
+    "hero_prefix": "One door,",
+    "hero_em": "many souls",
+    "lede": "Bundle multiple souls behind a single MCP connector — one door, shared access for trusted agents.",
     "enabled_toggle_label": "Gatekeeper function active",
     "enabled_toggle_hint": "Off = every existing connection ends immediately (including on each wired soul's own side, cross-node included) and new wire requests are rejected. Nothing is restored automatically when switched back on — each soul has to consciously wire in again.",
     "toggle_off_title": "Turn off the Gatekeeper function?",

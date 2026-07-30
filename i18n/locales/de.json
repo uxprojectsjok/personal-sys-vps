@@ -1360,7 +1360,32 @@
     "no_expiry": "Unbegrenzt",
     "btn_token": "Token"
   },
+  "archivar": {
+    "eyebrow": "GEDÄCHTNIS",
+    "hero_prefix": "Langzeitgedächtnis,",
+    "hero_em": "kristallisiert",
+    "lede": "Fakten und Muster aus deinen Sessions, verdichtet — der Archivar behält was zählt und räumt den Rest auf."
+  },
+  "wallet": {
+    "eyebrow": "X402 · WALLET",
+    "hero_prefix": "Teste deine eigenen,",
+    "hero_em": "Zahlungen"
+  },
+  "agent": {
+    "eyebrow": "AUTONOMER AGENT",
+    "hero_prefix": "Deine Soul,",
+    "hero_em": "autonom"
+  },
+  "apps": {
+    "eyebrow": "APPS · MCP",
+    "hero_prefix": "Erweitere deinen,",
+    "hero_em": "Chat",
+    "lede": "MCP-Apps, die du hier hochlädst, werden zu Tools, die jede Soul nutzen kann — mehr als nur Dateien."
+  },
   "connections": {
+    "eyebrow": "NETZWERK",
+    "hero_prefix": "Soul zu Soul,",
+    "hero_em": "verbunden",
     "intro": "Direkte Verbindung mit einer anderen Soul — beidseitig, mit gegenseitigem Einverständnis. Funktioniert auch über Nodes hinweg (andere URL).",
     "pending_in_title": "Eingehende Anfragen",
     "btn_accept": "Annehmen",
@@ -1374,6 +1399,10 @@
     "empty": "Noch keine Verbindungen."
   },
   "gatekeeper": {
+    "eyebrow": "GATEKEEPER",
+    "hero_prefix": "Eine Tür,",
+    "hero_em": "viele Souls",
+    "lede": "Bündle mehrere Souls hinter einem einzigen MCP-Connector — eine Tür, geteilter Zugang für vertrauenswürdige Agenten.",
     "enabled_toggle_label": "Gatekeeper-Funktion aktiv",
     "enabled_toggle_hint": "Aus = alle bestehenden Verbindungen werden sofort beendet (auch bei den verdrahteten Souls selbst, cross-node inklusive) und neue Wire-Anfragen abgelehnt. Kein automatisches Wiederherstellen beim erneuten Einschalten — jede Soul muss sich bewusst neu einwirten.",
     "toggle_off_title": "Gatekeeper-Funktion ausschalten?",

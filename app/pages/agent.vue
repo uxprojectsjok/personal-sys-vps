@@ -9,10 +9,10 @@
         <div class="scroll">
           <div class="page ag-page">
             <div class="ag-head">
-              <h1 class="ag-title">{{ $t('nav.agent') }}</h1>
+              <div class="ag-eyebrow">{{ $t('agent.eyebrow') }}</div>
+              <h1 class="ag-title">{{ $t('agent.hero_prefix') }} <em>{{ $t('agent.hero_em') }}</em></h1>
+              <p class="ag-sub">{{ $t('settings.agent_cron_desc') }}</p>
             </div>
-
-            <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
 
             <!-- Node-weiter Kill-Switch (nur Node-Owner) -->
             <template v-if="isNodeOwner">
@@ -463,8 +463,18 @@ async function saveAgentQueue() {
 
 <style scoped>
 .ag-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
-.ag-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
-.ag-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+.ag-head { padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+.ag-eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.ag-title {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
+  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
+  line-height: 1.05; margin-bottom: 14px;
+}
+.ag-title em { font-style: italic; color: var(--accent); }
+.ag-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 .api-panel-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-top: 0; }
 .api-panel-row-label { font-family: var(--sys-mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }

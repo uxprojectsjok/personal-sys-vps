@@ -9,10 +9,10 @@
         <div class="scroll">
           <div class="page wa-page">
             <div class="wa-head">
-              <h1 class="wa-title">{{ $t('nav.wallet') }}</h1>
+              <div class="wa-eyebrow">{{ $t('wallet.eyebrow') }}</div>
+              <h1 class="wa-title">{{ $t('wallet.hero_prefix') }} <em>{{ $t('wallet.hero_em') }}</em></h1>
+              <p class="wa-sub">{{ $t('settings.x402_desc') }}</p>
             </div>
-
-            <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.x402_desc') }}</p>
 
             <!-- Status Block -->
             <div class="archivar-lm-block" style="margin-bottom:20px;font-size:15px">
@@ -210,8 +210,18 @@ async function x402SendTestPayment() {
 
 <style scoped>
 .wa-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
-.wa-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
-.wa-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+.wa-head { padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+.wa-eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.wa-title {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
+  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
+  line-height: 1.05; margin-bottom: 14px;
+}
+.wa-title em { font-style: italic; color: var(--accent); }
+.wa-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 .archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
 .archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 12px; }

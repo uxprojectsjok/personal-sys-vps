@@ -9,7 +9,9 @@
         <div class="scroll">
           <div class="page cx-page">
             <div class="cx-head">
-              <h1 class="cx-title">{{ $t('nav.connections') }}</h1>
+              <div class="cx-eyebrow">{{ $t('connections.eyebrow') }}</div>
+              <h1 class="cx-title">{{ $t('connections.hero_prefix') }} <em>{{ $t('connections.hero_em') }}</em></h1>
+              <p class="cx-sub">{{ $t('connections.intro') }}</p>
             </div>
             <SoulConnectionsPanel />
           </div>
@@ -47,6 +49,16 @@ function onNav(id) {
 
 <style scoped>
 .cx-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
-.cx-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
-.cx-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+.cx-head { padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
+.cx-eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+}
+.cx-title {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
+  font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
+  line-height: 1.05; margin-bottom: 14px;
+}
+.cx-title em { font-style: italic; color: var(--accent); }
+.cx-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 </style>
