@@ -41,19 +41,6 @@
             <!-- ── Tab: Dienste ── -->
             <template v-if="tab === 'dienste'">
 
-              <!-- Model -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.model') }}</label>
-                <select v-model="model" class="sys-input" style="cursor:pointer">
-                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
-                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
-                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
-                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
-                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
-                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
-                </select>
-              </div>
-
               <!-- Anthropic Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
@@ -74,6 +61,19 @@
                   <span v-if="keyPreview" class="sm-key-ok">{{ keyPreview }}</span>
                   <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
+              </div>
+
+              <!-- Model -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.model') }}</label>
+                <select v-model="model" class="sys-input" style="cursor:pointer">
+                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
+                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
+                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
+                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
+                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+                </select>
               </div>
 
               <!-- ElevenLabs Key -->
@@ -636,11 +636,7 @@
           <!-- Foot -->
           <div class="sys-modal-foot">
             <div class="sys-foot-meta">
-              <template v-if="tab === 'config'">
-                <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
-                {{ $t('settings.admin_cert') }}
-              </template>
-              <template v-else-if="tab === 'gesundheit'">
+              <template v-if="tab === 'gesundheit'">
                 <span class="sys-dot" :class="healthHasPassword ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ healthHasPassword ? $t('settings.garmin_connected') : $t('settings.not_configured') }}
               </template>

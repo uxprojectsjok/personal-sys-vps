@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
-    <div class="app" :class="{ 'drawer-open': drawerOpen }">
-      <SysSidebar route="settings" :soul-meta="soulMeta" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="() => {}" />
+    <div class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <SysSidebar route="settings" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[t('settings.title')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
@@ -37,6 +37,7 @@ const { hasSoul, soulMeta, refreshCert, clear } = useSoul()
 const { publicNode, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false)
+const sidebarCollapsed = ref(false)
 const cmdkOpen   = ref(false)
 
 onMounted(() => fetchNodeStatus())
