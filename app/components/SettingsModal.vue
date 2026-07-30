@@ -572,8 +572,8 @@
                 </div>
               </template>
 
-              <!-- Cloud-Vault löschen (Node-Owner, Single-Hoster) -->
-              <template v-if="isNodeOwner && !isMultiHoster">
+              <!-- Cloud-Vault löschen (Node-Owner; in Multi-Hoster nur wenn keine weitere Soul existiert) -->
+              <template v-if="isNodeOwner && (!isMultiHoster || soulCount <= 1)">
                 <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
                   <button
                     @click="handleDeleteVaultOwner"
