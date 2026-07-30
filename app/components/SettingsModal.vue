@@ -41,7 +41,7 @@
             <!-- ── Tab: Dienste ── -->
             <template v-if="tab === 'dienste'">
 
-              <!-- Anthropic Key -->
+              <!-- Anthropic Key + Model (ein Feld-Block, Model gehört zum Key) -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
                 <div style="display:flex;gap:0">
@@ -61,10 +61,6 @@
                   <span v-if="keyPreview" class="sm-key-ok">{{ keyPreview }}</span>
                   <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
-              </div>
-
-              <!-- Model -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
                 <label class="sys-field-label">{{ $t('settings.model') }}</label>
                 <select v-model="model" class="sys-input" style="cursor:pointer">
                   <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>

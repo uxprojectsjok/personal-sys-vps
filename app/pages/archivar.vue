@@ -175,4 +175,19 @@ async function triggerCrystallize() {
 .ar-page { max-width: 720px; margin: 0 auto; padding: 36px clamp(22px,4vw,42px) 88px; }
 .ar-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 32px; }
 .ar-title { font-family: var(--serif); font-size: clamp(28px,4vw,42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); line-height: 1.05; margin: 0; }
+
+.archivar-loading {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--fg-4); letter-spacing: 0.06em;
+}
+.archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
+.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 12px; }
+.archivar-lm-row:last-child { border-bottom: none; }
+.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
+.archivar-lm-ok   { color: var(--sys-ok); }
+.archivar-lm-dim  { color: var(--fg); }
+.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
+.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+.archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
 </style>

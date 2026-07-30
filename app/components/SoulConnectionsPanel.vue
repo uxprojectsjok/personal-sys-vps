@@ -68,11 +68,18 @@
         />
         <p style="font-size:12px;color:var(--fg-3);margin:0">{{ $t('gatekeeper.node_url_hint') }}</p>
 
-        <div style="display:flex;flex-wrap:wrap;gap:10px">
-          <label v-for="p in allPermissions" :key="p.value" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--fg-2)">
-            <input type="checkbox" :value="p.value" v-model="selectedPerms" />
-            {{ p.label }}
-          </label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button
+            v-for="p in allPermissions"
+            :key="p.value"
+            type="button"
+            style="font-size:15px;font-weight:500;padding:6px 14px;border:1px solid;border-radius:var(--r-xs);transition:all .15s;min-height:34px"
+            :style="selectedPerms.includes(p.value)
+              ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-dim)'
+              : 'border-color:var(--line-2);color:var(--fg)'"
+            @click="togglePerm(p.value)"
+            :aria-pressed="selectedPerms.includes(p.value)"
+          >{{ p.label }}</button>
         </div>
 
         <button
@@ -143,6 +150,12 @@ const allPermissions = computed(() => [
   { value: 'video',         label: 'Video' },
   { value: 'context_files', label: t('services.perm_context') },
 ])
+
+function togglePerm(value) {
+  const i = selectedPerms.value.indexOf(value)
+  if (i === -1) selectedPerms.value.push(value)
+  else selectedPerms.value.splice(i, 1)
+}
 
 // node_url ist bei Soul-zu-Soul Pflicht (anders als beim Gatekeeper-Wire, wo
 // "leer = gleicher Node" ein sinnvoller Default ist) — der Zielserver muss
