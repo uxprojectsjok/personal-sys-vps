@@ -61,7 +61,6 @@
                   <span v-if="keyPreview" class="sm-key-ok">{{ keyPreview }}</span>
                   <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
-                <label class="sys-field-label">{{ $t('settings.model') }}</label>
                 <select v-model="model" class="sys-input" style="cursor:pointer">
                   <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
                   <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>

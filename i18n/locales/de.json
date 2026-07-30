@@ -801,7 +801,6 @@
     "connect_btn": "Verbinden",
     "access_denied": "Token ungültig — Zugang verweigert",
     "chaos_label": "wächst",
-    "model": "Modell",
     "model_default": "Server-Standard",
     "agent_url_label": "ElevenLabs Agent-URL",
     "agent_saved": "gespeichert",

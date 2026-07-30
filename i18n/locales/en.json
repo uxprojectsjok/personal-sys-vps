@@ -801,7 +801,6 @@
     "connect_btn": "Connect",
     "access_denied": "Token invalid — access denied",
     "chaos_label": "growing",
-    "model": "Model",
     "model_default": "Server default",
     "agent_url_label": "ElevenLabs Agent URL",
     "agent_saved": "saved",
