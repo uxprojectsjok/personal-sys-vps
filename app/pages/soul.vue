@@ -215,6 +215,11 @@ function onNav(id) {
   if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }
+  if (id === 'archivar')    { router.push('/archivar');    return }
+  if (id === 'connections') { router.push('/connections'); return }
+  if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
+  if (id === 'wallet')      { router.push('/wallet');      return }
+  if (id === 'agent')       { router.push('/agent');       return }
   drawerOpen.value = false
   router.push('/')
 }

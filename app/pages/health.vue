@@ -678,7 +678,7 @@ const tips = computed(() => apiTips.value)
 function lockSoul() { clear(); document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'; window.location.href = '/' }
 function onNav(id) {
   if (id === 'health') return
-  const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', anchor:'/anchor', export:'/export', peers:'/peers', connect:'/connection', market:'/marketplace', earnings:'/earnings', settings:'/settings' }
+  const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', anchor:'/anchor', export:'/export', peers:'/peers', connect:'/connection', market:'/marketplace', earnings:'/earnings', settings:'/settings', archivar:'/archivar', connections:'/connections', gatekeeper:'/gatekeeper', wallet:'/wallet', agent:'/agent' }
   if (routes[id]) { router.push(routes[id]); return }
   drawerOpen.value = false; router.push('/')
 }

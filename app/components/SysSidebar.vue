@@ -75,13 +75,17 @@ const nav = computed(() => [
     { id: 'chronik',  icon: 'history', label: t('nav.chronik') },
     { id: 'maturity', icon: 'spark',   label: t('nav.maturity') },
     { id: 'health',   icon: 'pulse',   label: t('nav.health') },
+    { id: 'archivar', icon: 'history', label: t('nav.archivar') },
   ]},
   { group: t('nav.group_vault'), items: [
     { id: 'files',    icon: 'files',    label: t('nav.files') },
   ]},
   { group: t('nav.group_network'), items: [
-    { id: 'peers',    icon: 'peers',  label: t('nav.peers') },
-    { id: 'connect',  icon: 'qr',     label: t('nav.connect') },
+    { id: 'peers',       icon: 'peers',      label: t('nav.peers') },
+    { id: 'connect',     icon: 'qr',         label: t('nav.connect') },
+    { id: 'connections', icon: 'peers',      label: t('nav.connections') },
+    { id: 'gatekeeper',  icon: 'gatekeeper', label: t('nav.gatekeeper') },
+    { id: 'wallet',      icon: 'wallet',     label: t('nav.wallet') },
     // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
     // Zugriff (soul_amortization.lua/soul_pay_x402.lua lehnen ab) — hier zusätzlich
     // aus der Navigation genommen, damit der Nutzer nicht ins Leere klickt.
@@ -91,6 +95,7 @@ const nav = computed(() => [
     ] : []),
   ]},
   { group: t('nav.group_tools'), items: [
+    { id: 'agent',    icon: 'agent',    label: t('nav.agent') },
     { id: 'anchor',   icon: 'anchor',   label: t('nav.anchor') },
     { id: 'export',   icon: 'export',   label: t('nav.export') },
     { id: 'settings', icon: 'settings', label: t('nav.settings') },

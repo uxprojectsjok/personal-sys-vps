@@ -21,29 +21,11 @@
 
           <!-- Rail / Tabs -->
           <div class="sys-rail" @wheel="onTabWheel">
-            <button @click="tab = 'api'" class="sys-rail-item" :class="tab === 'api' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_api') }}</span></span>
-            </button>
             <button @click="tab = 'dienste'" class="sys-rail-item" :class="tab === 'dienste' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_services') }}</span></span>
             </button>
-            <button @click="tab = 'verbindungen'" class="sys-rail-item" :class="tab === 'verbindungen' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_connections') }}</span></span>
-            </button>
-            <button @click="tab = 'gatekeeper'" class="sys-rail-item" :class="tab === 'gatekeeper' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_gatekeeper') }}</span></span>
-            </button>
-            <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_archivar') }}</span></span>
-            </button>
             <button @click="tab = 'gesundheit'; loadHealthConfig()" class="sys-rail-item" :class="tab === 'gesundheit' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_health') }}</span></span>
-            </button>
-            <button v-if="!isMultiHoster || isNodeOwner" @click="tab = 'agent'; loadAgentStatus()" class="sys-rail-item" :class="tab === 'agent' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_agent') }}</span></span>
-            </button>
-            <button @click="tab = 'x402'; loadX402Status()" class="sys-rail-item" :class="tab === 'x402' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_x402') }}</span></span>
             </button>
             <button v-if="isAdmin && isMultiHoster" @click="tab = 'einladen'; loadInviteToken()" class="sys-rail-item" :class="tab === 'einladen' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_invite') }}</span></span>
@@ -59,12 +41,44 @@
             <!-- ── Tab: Dienste ── -->
             <template v-if="tab === 'dienste'">
 
+              <!-- Model -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.model') }}</label>
+                <select v-model="model" class="sys-input" style="cursor:pointer">
+                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
+                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
+                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
+                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
+                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+                </select>
+              </div>
+
+              <!-- Anthropic Key -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="apiKey"
+                    type="password"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-radius:var(--r-xs)"
+                    :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="keySource === 'soul' ? $t('common.overwrite_placeholder') : 'sk-ant-...'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @keyup.enter="saveConfig"
+                  />
+                </div>
+                <div v-if="keySource === 'soul'" style="display:flex;align-items:center;gap:8px">
+                  <span v-if="keyPreview" class="sm-key-ok">{{ keyPreview }}</span>
+                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
+                </div>
+              </div>
+
               <!-- ElevenLabs Key -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.elevenlabs_key') }}
-                  <span v-if="elevenlabsKeySet" class="sm-key-ok">{{ elevenlabsPreview }}</span>
-                </label>
+                <label class="sys-field-label">{{ $t('settings.elevenlabs_key') }}</label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="elevenlabsKey"
@@ -79,7 +93,8 @@
                     @keyup.enter="saveConfig"
                   />
                 </div>
-                <div v-if="elevenlabsKeySet" style="display:flex;gap:8px">
+                <div v-if="elevenlabsKeySet" style="display:flex;align-items:center;gap:8px">
+                  <span class="sm-key-ok">{{ elevenlabsPreview }}</span>
                   <button @click="deleteKey('elevenlabs_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
@@ -117,10 +132,7 @@
 
               <!-- Reown Project ID -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.reown_id') }}
-                  <span v-if="reownSet" class="sm-key-ok">{{ reownPreview }}</span>
-                </label>
+                <label class="sys-field-label">{{ $t('settings.reown_id') }}</label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="reownProjectId"
@@ -135,17 +147,15 @@
                     @keyup.enter="saveConfig"
                   />
                 </div>
-                <div v-if="reownSet" style="display:flex;gap:8px">
+                <div v-if="reownSet" style="display:flex;align-items:center;gap:8px">
+                  <span class="sm-key-ok">{{ reownPreview }}</span>
                   <button @click="deleteKey('reown_project_id')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- Zapier MCP -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.mcp_label') }}
-                  <span v-if="mcpUrlSet" class="sm-key-ok">{{ mcpPreview }}</span>
-                </label>
+                <label class="sys-field-label">{{ $t('settings.mcp_label') }}</label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="mcpUrl"
@@ -160,17 +170,15 @@
                     @keyup.enter="saveConfig"
                   />
                 </div>
-                <div v-if="mcpUrlSet" style="display:flex;gap:8px">
+                <div v-if="mcpUrlSet" style="display:flex;align-items:center;gap:8px">
+                  <span class="sm-key-ok">{{ mcpPreview }}</span>
                   <button @click="deleteKey('mcp_url')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                 </div>
               </div>
 
               <!-- Pinata JWT -->
               <div class="sys-field" style="gap:12px">
-                <label class="sys-field-label">
-                  {{ $t('settings.pinata_jwt') }}
-                  <span v-if="pinataJwtSet" class="sm-key-ok">{{ pinataPreview }}</span>
-                </label>
+                <label class="sys-field-label">{{ $t('settings.pinata_jwt') }}</label>
                 <div style="display:flex;gap:0">
                   <input
                     v-model="pinataJwt"
@@ -185,6 +193,7 @@
                   />
                 </div>
                 <div v-if="pinataJwtSet || pinataFeedback" style="display:flex;align-items:center;gap:8px">
+                  <span v-if="pinataJwtSet" class="sm-key-ok">{{ pinataPreview }}</span>
                   <button v-if="pinataJwtSet" @click="deletePinataJwt" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                   <span v-if="pinataFeedback" class="sm-feedback"
                     :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
@@ -203,74 +212,6 @@
               </Transition>
 
             </template>
-
-            <!-- ── Tab: API ── -->
-            <template v-if="tab === 'api'">
-
-              <!-- Key status -->
-              <div class="sys-state" :class="keySource === 'soul' ? 'sys-state--ok' : keySource === 'none' ? '' : 'sys-state--info'" style="margin-bottom:20px">
-                <div class="sys-state-mark"></div>
-                <div class="sys-state-text">
-                  <span class="sys-state-label">{{ keySourceLabel }}</span>
-                  <span v-if="keyPreview" class="sys-state-value">{{ keyPreview }}</span>
-                </div>
-              </div>
-
-              <!-- Model -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.model') }}</label>
-                <select v-model="model" class="sys-input" style="cursor:pointer">
-                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
-                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
-                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
-                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
-                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
-                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
-                </select>
-              </div>
-
-              <!-- Anthropic Key -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
-                <div style="display:flex;gap:0">
-                  <input
-                    v-model="apiKey"
-                    type="password"
-                    class="sys-input sys-input--mono"
-                    style="flex:1;border-radius:var(--r-xs)"
-                    :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
-                    placeholder="sk-ant-..."
-                    autocomplete="off"
-                    spellcheck="false"
-                    @keyup.enter="saveConfig"
-                  />
-                </div>
-                <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
-                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
-                </div>
-              </div>
-
-              <!-- Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="feedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ feedback.message }}</div>
-              </Transition>
-
-            </template>
-
-            <!-- ── Tab: Verbindungen (Soul-zu-Soul) ── -->
-            <template v-if="tab === 'verbindungen'">
-              <SoulConnectionsPanel />
-            </template>
-
-            <!-- ── Tab: Gatekeeper (Soul → Gatekeeper, gebündelter Connector) ── -->
-            <template v-if="tab === 'gatekeeper'">
-              <GatekeeperPanel />
-            </template>
-
 
             <!-- ── Tab: Config ── -->
             <template v-if="tab === 'config'">
@@ -665,275 +606,6 @@
 
             </template>
 
-            <!-- ── Tab: Archivar ── -->
-            <template v-if="tab === 'archivar'">
-
-              <!-- LONGMEM Status -->
-              <div class="sys-field" style="margin-bottom:24px">
-                <div class="sys-field-label" style="margin-bottom:10px">{{ $t('settings.longmem_title') }}</div>
-                <div v-if="archivLoading" class="archivar-loading">{{ $t('common.loading') }}</div>
-                <template v-else>
-                  <div class="archivar-lm-block">
-                    <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">{{ $t('settings.facts_label') }}</span>
-                      <span class="archivar-lm-val" :class="longmemFacts > 0 ? 'archivar-lm-ok' : 'archivar-lm-dim'">
-                        {{ longmemFacts > 0 ? $t('settings.facts_count', { n: longmemFacts }) : $t('chat.no_facts') }}
-                      </span>
-                    </div>
-                    <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">{{ $t('settings.last_cleanup') }}</span>
-                      <span class="archivar-lm-val archivar-lm-dim">{{ longmemUpdated || '—' }}</span>
-                    </div>
-                    <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">{{ $t('settings.size') }}</span>
-                      <span class="archivar-lm-val archivar-lm-dim">{{ longmemSizeKb }}</span>
-                    </div>
-                    <div class="archivar-lm-row">
-                      <span class="archivar-lm-key">{{ $t('chat.chaos') }}</span>
-                      <span class="archivar-lm-val archivar-chaos-wrap">
-                        <span class="archivar-chaos-bar">
-                          <span class="archivar-chaos-fill" :style="{ width: longmemChaos.pct + '%', background: longmemChaos.color }" />
-                        </span>
-                        <span :style="{ color: longmemChaos.color }">{{ longmemChaos.label }}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    class="sys-btn-ed sys-btn-ed--primary"
-                    style="margin-top:14px;width:100%;justify-content:center"
-                    :disabled="crystallizeBusy"
-                    @click="triggerCrystallize"
-                  ><span v-if="crystallizeBusy" class="dots-running">{{ $t('settings.cleanup_running') }}</span><template v-else>{{ $t('settings.cleanup_now') }}</template></button>
-                  <Transition name="sys-modal-fade">
-                    <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                      :style="archivFeedback.ok
-                        ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                        : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                    >{{ archivFeedback.message }}</div>
-                  </Transition>
-                </template>
-              </div>
-
-            </template>
-
-            <!-- ── Tab: Agent ── -->
-            <template v-if="tab === 'agent'">
-
-              <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.agent_cron_desc') }}</p>
-
-              <!-- Node-weiter Kill-Switch (nur Node-Owner) — steuert ob der Runner
-                   auf diesem Node überhaupt läuft, unabhängig vom Per-Soul-Toggle
-                   unten. Gehört inhaltlich hierher statt in den config-Tab, da er
-                   ausschließlich den Agent betrifft. -->
-              <template v-if="isNodeOwner">
-                <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--sys-rule)">
-                  <label class="api-panel-row" style="cursor:pointer">
-                    <div class="api-toggle" :class="autonomousAgentEnabled ? 'is-on' : ''">
-                      <div class="api-toggle-thumb" :class="autonomousAgentEnabled ? 'is-on' : ''"></div>
-                    </div>
-                    <input type="checkbox" :checked="autonomousAgentEnabled" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('autonomous_agent')" />
-                    <span class="api-panel-row-label">{{ $t('settings.autonomous_agent_toggle_label') }}</span>
-                  </label>
-                  <Transition name="sys-modal-fade">
-                    <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
-                  </Transition>
-                </div>
-              </template>
-
-              <!-- Status Block -->
-              <div class="archivar-lm-block" style="margin-bottom:20px">
-                <div class="archivar-lm-row">
-                  <span class="archivar-lm-key">Claude Code</span>
-                  <span class="archivar-lm-val" :class="agentInstalled ? 'archivar-lm-ok' : ''">
-                    {{ agentInstalled ? $t('settings.agent_installed') : $t('settings.agent_not_installed') }}
-                  </span>
-                </div>
-                <div class="archivar-lm-row">
-                  <span class="archivar-lm-key">{{ $t('settings.agent_interval_label') }}</span>
-                  <span class="archivar-lm-val">
-                    {{ agentInterval === 'daily' ? $t('settings.agent_interval_daily') : $t('settings.agent_interval_hourly') }}
-                  </span>
-                </div>
-                <div class="archivar-lm-row">
-                  <span class="archivar-lm-key">{{ $t('settings.agent_last_run') }}</span>
-                  <span class="archivar-lm-val archivar-lm-dim">{{ agentLastRun || $t('settings.agent_last_run_never') }}</span>
-                </div>
-              </div>
-
-              <!-- Not installed hint -->
-              <div v-if="!agentInstalled" class="sm-infoblock" style="margin-bottom:20px">
-                {{ $t('settings.agent_not_installed_hint') }}
-              </div>
-
-              <!-- No API key warning -->
-              <div v-if="keySource === 'none'" class="sm-infoblock" style="margin-bottom:20px;border-color:var(--sys-warn)">
-                {{ $t('settings.agent_no_api_key') }}
-              </div>
-
-              <!-- MCP Service Token fehlt -->
-              <div v-if="agentInstalled && !agentMcpTokenOk" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:12px 16px;border:1px solid var(--sys-warn);border-radius:var(--r-xs);background:rgba(220,184,109,0.04)">
-                <div>
-                  <div style="font-size:14px;font-weight:500;color:var(--sys-warn)">{{ $t('settings.agent_mcp_token_missing') }}</div>
-                  <div style="font-size:13px;line-height:1.55;color:var(--fg-2);margin-top:4px">{{ $t('settings.agent_mcp_token_missing_hint') }}</div>
-                </div>
-                <button
-                  class="sys-btn-ed sys-btn-ed--ghost"
-                  style="flex-shrink:0;margin-left:12px"
-                  :disabled="agentSetupMcpBusy"
-                  @click="setupAgentMcpToken"
-                >{{ agentSetupMcpBusy ? '…' : $t('settings.agent_mcp_token_setup') }}</button>
-              </div>
-
-              <!-- Enable / Disable toggle -->
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:14px 16px;border:1px solid var(--sys-rule);border-radius:var(--r-xs)"
-                :style="[
-                  agentEnabled ? 'border-color:var(--sys-ok);background:rgba(184,220,196,0.04)' : '',
-                  !autonomousAgentEnabled ? 'opacity:0.45' : '',
-                ]">
-                <div>
-                  <div style="font-family:var(--sys-mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg)"
-                    :style="agentEnabled ? 'color:var(--sys-ok)' : ''">
-                    {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
-                  </div>
-                  <div style="font-family:var(--sys-mono);font-size:11px;color:var(--fg-4);margin-top:3px;letter-spacing:0.04em">
-                    {{ agentInterval === 'daily' ? $t('settings.agent_interval_daily') : $t('settings.agent_interval_hourly') }}
-                  </div>
-                </div>
-                <button
-                  @click="toggleAgent(!agentEnabled)"
-                  :disabled="agentToggleBusy || !autonomousAgentEnabled"
-                  :title="!autonomousAgentEnabled ? $t('settings.agent_master_switch_hint') : ''"
-                  class="agent-toggle"
-                  :class="agentEnabled ? 'agent-toggle--on' : ''"
-                  :aria-label="agentEnabled ? $t('settings.agent_disable') : $t('settings.agent_enable')"
-                >
-                  <span class="agent-toggle-knob"></span>
-                </button>
-              </div>
-
-              <!-- Interval selector + Run now -->
-              <div class="sys-field" style="gap:10px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.agent_interval_label') }}</label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button
-                    v-for="iv in ['hourly','daily']"
-                    :key="iv"
-                    class="sys-btn-ed"
-                    :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
-                    @click="setAgentInterval(iv)"
-                  >{{ iv === 'hourly' ? $t('settings.agent_interval_hourly') : $t('settings.agent_interval_daily') }}</button>
-                  <button
-                    class="sys-btn-ed sys-btn-ed--ghost"
-                    style="margin-left:auto"
-                    :disabled="agentRunNowBusy"
-                    @click="runAgentNow"
-                  >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
-                </div>
-              </div>
-
-              <!-- Queue editor -->
-              <div class="sys-field" style="gap:10px">
-                <label class="sys-field-label">{{ $t('settings.agent_queue_title') }}</label>
-                <p style="font-size:13px;line-height:1.55;color:var(--fg-2);margin:0 0 8px">{{ $t('settings.agent_queue_desc') }}</p>
-                <textarea
-                  v-model="agentQueueText"
-                  class="sys-input"
-                  rows="6"
-                  :placeholder="$t('settings.agent_queue_placeholder')"
-                  style="font-family:var(--sys-mono);font-size:12px;resize:vertical;line-height:1.6"
-                  spellcheck="false"
-                ></textarea>
-              </div>
-
-              <!-- Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="agentFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="agentFeedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ agentFeedback.message }}</div>
-              </Transition>
-
-              <!-- Agent running status -->
-              <div v-if="agentRunNowBusy || agentRunPolling" class="agent-status-running">
-                <span class="agent-status-dot"></span>
-                {{ agentRunNowBusy ? $t('settings.agent_starting') : $t('settings.agent_working') }}
-              </div>
-
-            </template>
-
-            <!-- ── Tab: x402 test tooling ── -->
-            <template v-if="tab === 'x402'">
-
-              <p style="font-size:15px;line-height:1.65;color:var(--fg);margin:0 0 20px">{{ $t('settings.x402_desc') }}</p>
-
-              <!-- Status Block -->
-              <div class="archivar-lm-block" style="margin-bottom:20px;font-size:15px">
-                <div class="archivar-lm-row" style="gap:16px">
-                  <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_wallet_label') }}</span>
-                  <span class="archivar-lm-val" :class="x402Configured ? 'archivar-lm-ok' : ''">
-                    {{ x402Configured ? $t('settings.x402_wallet_ready') : $t('settings.x402_wallet_missing') }}
-                  </span>
-                </div>
-                <div v-if="x402Address" class="archivar-lm-row" style="gap:16px">
-                  <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_address_label') }}</span>
-                  <code class="archivar-lm-val archivar-lm-dim" style="font-size:13px;word-break:break-all;text-align:right">{{ x402Address }}</code>
-                </div>
-                <div v-if="x402Balances" class="archivar-lm-row" style="gap:16px">
-                  <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_balance_label') }}</span>
-                  <span class="archivar-lm-val">{{ x402Balances.usdc }} USDC · {{ x402Balances.pol }} POL</span>
-                </div>
-              </div>
-
-              <!-- Key entry -->
-              <div class="sys-field" style="gap:10px;margin-bottom:24px">
-                <label class="sys-field-label">{{ x402Configured ? $t('settings.x402_replace_key_label') : $t('settings.x402_key_label') }}</label>
-                <p style="font-size:15px;line-height:1.65;color:var(--fg-2);margin:0 0 8px">{{ $t('settings.x402_key_desc') }}</p>
-                <div style="display:flex;gap:8px">
-                  <input
-                    v-model="x402KeyInput"
-                    type="password"
-                    class="sys-input sys-input--mono"
-                    style="flex:1"
-                    placeholder="0x…"
-                    autocomplete="off"
-                  />
-                  <button
-                    class="sys-btn-ed sys-btn-ed--primary"
-                    :disabled="!x402KeyInput.trim() || x402KeySaving"
-                    @click="x402SaveKey"
-                  >{{ x402KeySaving ? $t('settings.agent_running') : $t('common.save') }}</button>
-                </div>
-              </div>
-
-              <!-- Balance + test payment -->
-              <div v-if="x402Configured" class="sys-field" style="gap:10px;margin-bottom:24px">
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <button class="sys-btn-ed sys-btn-ed--primary" :disabled="x402BalancesBusy" @click="x402GetBalances">
-                    {{ x402BalancesBusy ? $t('settings.agent_running') : $t('settings.x402_balances_btn') }}
-                  </button>
-                  <button class="sys-btn-ed sys-btn-ed--primary" :disabled="x402PayBusy" @click="x402SendTestPayment">
-                    {{ x402PayBusy ? $t('settings.agent_running') : $t('settings.x402_test_pay_btn') }}
-                  </button>
-                </div>
-                <p style="font-size:15px;line-height:1.65;color:var(--fg-4);margin:0">{{ $t('settings.x402_test_pay_hint') }}</p>
-
-                <div v-if="x402PayResult" class="sm-infoblock" style="margin-top:8px">
-                  <pre style="white-space:pre-wrap;word-break:break-all;margin:0;font-family:var(--sys-mono);font-size:11px">{{ x402PayResult }}</pre>
-                </div>
-              </div>
-
-              <!-- Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="x402Feedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="x402Feedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ x402Feedback.message }}</div>
-              </Transition>
-
-            </template>
-
             <!-- ── Tab: Einladen ── -->
             <template v-if="tab === 'einladen'">
               <p class="sm-desc" style="margin-bottom:20px;line-height:1.7">{{ $t('settings.invite_desc') }}</p>
@@ -964,49 +636,28 @@
           <!-- Foot -->
           <div class="sys-modal-foot">
             <div class="sys-foot-meta">
-              <template v-if="tab === 'api'">
-                <span class="sys-dot" :class="keySource === 'soul' ? 'sys-dot--ok' : keySource === 'none' ? 'sys-dot--idle' : 'sys-dot--live'"></span>
-                {{ keySourceLabel }}
-              </template>
-              <template v-else-if="tab === 'dienste'">
-                <span class="sys-dot sys-dot--idle"></span>
-                {{ $t('settings.tab_services') }}
-              </template>
-              <template v-else-if="tab === 'config'">
+              <template v-if="tab === 'config'">
                 <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
                 {{ $t('settings.admin_cert') }}
-              </template>
-              <template v-else-if="tab === 'archivar'">
-                <span class="sys-dot" :class="longmemFacts > 0 ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
-                {{ longmemFacts > 0 ? $t('settings.facts_count', { n: longmemFacts }) : $t('settings.memory_empty') }}
               </template>
               <template v-else-if="tab === 'gesundheit'">
                 <span class="sys-dot" :class="healthHasPassword ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ healthHasPassword ? $t('settings.garmin_connected') : $t('settings.not_configured') }}
-              </template>
-              <template v-else-if="tab === 'agent'">
-                <span class="sys-dot" :class="agentEnabled ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
-                {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
               </template>
               <template v-else-if="tab === 'einladen'">
                 <span class="sys-dot" :class="inviteToken ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
                 {{ inviteToken ? $t('settings.invite_active') : $t('settings.invite_inactive') }}
               </template>
             </div>
-            <div class="sys-foot-actions">
-              <template v-if="tab === 'api' || tab === 'dienste'">
-                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
+            <div class="sys-foot-actions" :style="tab === 'dienste' ? 'grid-column:1/-1' : ''">
+              <template v-if="tab === 'dienste'">
+                <button class="sys-btn-ed sys-btn-ed--primary" style="width:100%;justify-content:center" @click="saveConfig" :disabled="saving">
                   {{ saving ? $t('settings.saving') : $t('common.save') }}
                 </button>
               </template>
               <template v-else-if="tab === 'einladen'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="rotateInviteToken" :disabled="inviteRotating">
                   {{ inviteRotating ? $t('settings.invite_rotating') : $t('settings.invite_rotate') }}
-                </button>
-              </template>
-              <template v-else-if="tab === 'agent'">
-                <button class="sys-btn-ed sys-btn-ed--primary" @click="saveAgentQueue" :disabled="agentQueueSaving">
-                  {{ agentQueueSaving ? $t('settings.agent_queue_saving') : $t('settings.agent_queue_save') }}
                 </button>
               </template>
               <template v-else-if="tab === 'gesundheit'">
@@ -1150,7 +801,7 @@ async function detectAdmin() {
 }
 
 // ── Tab ──────────────────────────────────────────────────────────────────────
-const tab = ref('api')
+const tab = ref('dienste')
 
 // Vertical mouse wheel -> horizontal scroll for the overflowing tab rail
 // (no visible scrollbar, so without this desktop mouse users can't reach
@@ -2162,201 +1813,6 @@ async function handleVaultKeyChange() {
 
 watch(tab, (val) => { if (val === 'config') { fetchVaultKeyStatus(); loadNodeConfig() } })
 
-// ── Archivar Tab ──────────────────────────────────────────────────────────────
-const herzActive       = ref(false)
-const longmemFacts     = ref(0)
-const longmemUpdated   = ref('')
-const bootstrapPending = ref(false)
-const archivLoading    = ref(false)
-const crystallizeBusy   = ref(false)
-const longmemSizeBytes  = ref(0)
-const longmemLogEntries = ref(0)
-const longmemDaysSince  = ref(0)
-
-const longmemSizeKb = computed(() => {
-  const kb = longmemSizeBytes.value / 1024
-  return kb < 1 ? longmemSizeBytes.value + ' B' : kb.toFixed(1) + ' KB'
-})
-
-const longmemChaos = computed(() => {
-  const e = longmemLogEntries.value, d = longmemDaysSince.value
-  const pct = Math.min(100, Math.round(e / 15 * 70 + d / 30 * 30))
-  if (e <= 7 && d <= 14) return { pct: Math.max(8, pct), color: '#22c55e', label: t('settings.chaos_calm') }
-  if (e <= 12 || d <= 21) return { pct: Math.max(40, pct), color: '#f59e0b', label: t('settings.chaos_growing') }
-  return { pct: 100, color: '#ef4444', label: t('settings.chaos_chaotic') }
-})
-const archivFeedback   = ref(null)
-
-async function loadArchivStatus() {
-  archivLoading.value = true
-  try {
-    const [herzRes, lmRes] = await Promise.all([
-      fetch('/api/soul/herz/status', {
-        headers: { Authorization: `Bearer ${soulToken.value}` }
-      }).then(r => r.json()).catch(() => null),
-      fetch('/api/soul/longmem-status', {
-        headers: { Authorization: `Bearer ${soulToken.value}` }
-      }).then(r => r.json()).catch(() => null),
-    ])
-    herzActive.value        = herzRes?.active ?? false
-    longmemFacts.value      = lmRes?.facts ?? 0
-    longmemUpdated.value    = lmRes?.updated ?? ''
-    bootstrapPending.value  = lmRes?.bootstrap_pending ?? false
-    longmemSizeBytes.value  = lmRes?.size_bytes ?? 0
-    longmemLogEntries.value = lmRes?.log_entries ?? 0
-    longmemDaysSince.value  = lmRes?.days_since_cleanup ?? 0
-  } finally {
-    archivLoading.value = false
-  }
-}
-
-async function triggerCrystallize() {
-  const token = soulToken.value
-  if (!token || token === 'anonymous') {
-    archivFeedback.value = { ok: false, message: t('settings.soul_not_loaded') }
-    setTimeout(() => { archivFeedback.value = null }, 8000)
-    return
-  }
-  crystallizeBusy.value = true
-  archivFeedback.value  = null
-  try {
-    const res = await fetch('/api/soul/herz/crystallize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    })
-    const data = await res.json()
-    await loadArchivStatus()
-    crystallizeBusy.value = false
-    if (data?.ok) {
-      archivFeedback.value = { ok: true, message: t('settings.cleanup_done') }
-      setTimeout(() => { archivFeedback.value = null }, 5000)
-    } else {
-      archivFeedback.value = { ok: false, message: data?.error || t('settings.cleanup_error') }
-      setTimeout(() => { archivFeedback.value = null }, 8000)
-    }
-  } catch {
-    crystallizeBusy.value = false
-    archivFeedback.value = { ok: false, message: t('common.network_error') }
-    setTimeout(() => { archivFeedback.value = null }, 8000)
-  }
-}
-
-// ── Agent Tab ─────────────────────────────────────────────────────────────────
-const agentInstalled    = ref(false)
-const agentEnabled      = ref(false)
-const agentInterval     = ref('hourly')
-const agentLastRun      = ref('')
-const agentToggleBusy   = ref(false)
-const agentRunNowBusy   = ref(false)
-const agentQueueText    = ref('')
-const agentQueueSaving  = ref(false)
-const agentFeedback     = ref(null)
-const agentRunPolling   = ref(false)
-let   agentLogTimer     = null
-const agentMcpTokenOk   = ref(true)
-const agentSetupMcpBusy = ref(false)
-
-// ── x402 Tab ──────────────────────────────────────────────────────────────────
-// Operator-only test tooling (see lua/soul_pay_x402.lua) — lets the node
-// operator act as a real payer to test their own x402 sell-side. Node-global,
-// not soul-scoped, so this tab is Personal-node only (enforced server-side too,
-// not just hidden here — see the multi_hoster check in each x402_agent_*.lua).
-//
-// v1.0.56: replaced polygon-agent/AgentConnect (unreliable session-creation
-// step, see CHANGELOG) with a direct private-key flow — the operator exports
-// a key from a MetaMask account they made specifically for this and pastes
-// it in once; soul-mcp encrypts it at rest and signs payments with
-// @x402/evm + viem directly, no third-party pairing dance involved.
-const x402Configured     = ref(false)
-const x402Address        = ref('')
-const x402Balances       = ref(null)
-const x402KeyInput       = ref('')
-const x402KeySaving      = ref(false)
-const x402BalancesBusy   = ref(false)
-const x402PayBusy        = ref(false)
-const x402PayResult      = ref('')
-const x402Feedback       = ref(null)
-
-function x402ShowFeedback(ok, message) {
-  x402Feedback.value = { ok, message }
-  setTimeout(() => { x402Feedback.value = null }, 5000)
-}
-
-async function loadX402Status() {
-  try {
-    const r = await fetch('/api/x402/agent/status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      x402Configured.value = !!d.configured
-      x402Address.value    = d.address || ''
-    }
-  } catch { /* silent */ }
-}
-
-async function x402SaveKey() {
-  x402KeySaving.value = true
-  x402Feedback.value  = null
-  try {
-    const r = await fetch('/api/x402/agent/key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ private_key: x402KeyInput.value.trim() }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) {
-      x402Configured.value = true
-      x402Address.value    = d.address
-      x402KeyInput.value   = ''
-      x402ShowFeedback(true, t('settings.x402_key_saved') + ' ✓')
-    } else {
-      x402ShowFeedback(false, d.message || d.error || `Error ${r.status}`)
-    }
-  } catch (e) {
-    x402ShowFeedback(false, e.message)
-  }
-  x402KeySaving.value = false
-}
-
-async function x402GetBalances() {
-  x402BalancesBusy.value = true
-  try {
-    const r = await fetch('/api/x402/agent/balances', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) {
-      x402Balances.value = { usdc: d.usdc, pol: d.pol }
-    } else {
-      x402ShowFeedback(false, d.error || `Error ${r.status}`)
-    }
-  } catch (e) {
-    x402ShowFeedback(false, e.message)
-  }
-  x402BalancesBusy.value = false
-}
-
-async function x402SendTestPayment() {
-  x402PayBusy.value   = true
-  x402PayResult.value = ''
-  x402Feedback.value  = null
-  try {
-    const soul_id = soulToken.value?.split('.')?.[0]
-    const r = await fetch('/api/x402/agent/pay', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({
-        url: `${window.location.origin}/api/soul/pay/x402`,
-        method: 'POST',
-        body: { soul_id },
-      }),
-    })
-    const d = await r.json().catch(() => ({}))
-    x402PayResult.value = JSON.stringify(d, null, 2)
-    if (r.ok && d.ok) x402GetBalances()
-  } catch (e) {
-    x402ShowFeedback(false, e.message)
-  }
-  x402PayBusy.value = false
-}
-
 // ── Invite Token (Multi-Hoster) ───────────────────────────────────────────────
 const inviteToken      = ref('')
 const inviteCopied     = ref(false)
@@ -2409,151 +1865,13 @@ async function copyInviteToken() {
   } catch { /* silent */ }
 }
 
-async function loadAgentStatus() {
-  try {
-    const r = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      agentInstalled.value = !!d.installed
-      agentEnabled.value   = !!d.enabled
-      agentInterval.value  = d.interval || 'hourly'
-      agentLastRun.value   = d.last_run || ''
-    }
-  } catch {}
-  // Check if Agent Runner MCP service token exists
-  try {
-    const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      agentMcpTokenOk.value = (d.services || []).some(s => s.name === 'SYS Agent Runner')
-    }
-  } catch {}
-  // Load current agent.md content
-  try {
-    const r = await fetch('/api/agent/queue', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      agentQueueText.value = d.content || ''
-    }
-  } catch {}
-}
-
-async function setupAgentMcpToken() {
-  agentSetupMcpBusy.value = true
-  try {
-    const r = await fetch('/api/vault/services/agent-runner/rotate', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${soulToken.value}` }
-    })
-    if (r.ok) agentMcpTokenOk.value = true
-  } catch { /* silent */ } finally {
-    agentSetupMcpBusy.value = false
-  }
-}
-
-async function toggleAgent(enable) {
-  agentToggleBusy.value = true
-  agentFeedback.value   = null
-  try {
-    const r = await fetch('/api/agent/cron', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ enabled: enable }),
-    })
-    if (r.ok) {
-      agentEnabled.value   = enable
-      agentFeedback.value  = { ok: true, message: enable ? t('settings.agent_enabled') + ' ✓' : t('settings.agent_disabled') }
-    } else {
-      agentFeedback.value = { ok: false, message: `Error ${r.status}` }
-    }
-  } catch (e) {
-    agentFeedback.value = { ok: false, message: e.message }
-  }
-  agentToggleBusy.value = false
-  setTimeout(() => { agentFeedback.value = null }, 4000)
-}
-
-async function setAgentInterval(iv) {
-  agentInterval.value = iv
-  try {
-    await fetch('/api/agent/cron', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ interval: iv }),
-    })
-  } catch {}
-}
-
-async function runAgentNow() {
-  agentRunNowBusy.value = true
-  agentFeedback.value   = null
-  clearInterval(agentLogTimer)
-  try {
-    const r = await fetch('/api/agent/run', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${soulToken.value}` },
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok) {
-      agentFeedback.value   = { ok: true, message: d.message || t('settings.agent_run_started') }
-      agentRunNowBusy.value = false
-      agentRunPolling.value = true
-      let ticks = 0
-      agentLogTimer = setInterval(async () => {
-        ticks++
-        try {
-          const lr = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-          if (lr.ok) {
-            const ld = await lr.json()
-            if (!ld.running) {
-              clearInterval(agentLogTimer)
-              agentRunPolling.value = false
-              const cr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-              if (cr.ok) { const cd = await cr.json(); agentLastRun.value = cd.last_run || '' }
-              return
-            }
-          }
-        } catch {}
-        if (ticks >= 90) { clearInterval(agentLogTimer); agentRunPolling.value = false }
-      }, 2000)
-    } else {
-      agentFeedback.value   = { ok: false, message: d.error || `Error ${r.status}` }
-      agentRunNowBusy.value = false
-    }
-  } catch (e) {
-    agentFeedback.value   = { ok: false, message: e.message }
-    agentRunNowBusy.value = false
-  }
-}
-
-async function saveAgentQueue() {
-  agentQueueSaving.value = true
-  agentFeedback.value    = null
-  try {
-    const r = await fetch('/api/agent/queue', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ content: agentQueueText.value }),
-    })
-    if (r.ok) {
-      agentFeedback.value = { ok: true, message: t('settings.agent_queue_saved') }
-    } else {
-      agentFeedback.value = { ok: false, message: `Error ${r.status}` }
-    }
-  } catch (e) {
-    agentFeedback.value = { ok: false, message: e.message }
-  }
-  agentQueueSaving.value = false
-  setTimeout(() => { agentFeedback.value = null }, 4000)
-}
-
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
 async function initSettings() {
   await loadNodeStatus()
   await detectAdmin()
   loadStatus()
   loadNodeConfig()
-  tab.value            = 'api'
+  tab.value            = 'dienste'
   elevenlabsKey.value  = ''
   elevenlabsDirty.value = false
 }
@@ -2634,69 +1952,6 @@ onMounted(() => { if (props.inline) initSettings() })
   }
 }
 
-/* Archivar Tab */
-.archivar-status-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px;
-  background: var(--surface-2);
-  border: 1px solid var(--sys-rule);
-  border-radius: var(--r-xs);
-}
-.archivar-status-lbl {
-  font-family: var(--mono); font-size: 12px;
-  color: var(--fg-2); letter-spacing: 0.04em;
-}
-.archivar-loading {
-  font-family: var(--mono); font-size: 12px;
-  color: var(--fg-4); letter-spacing: 0.06em;
-}
-.archivar-lm-block {
-  border: 1px solid var(--sys-rule);
-  border-radius: var(--r-xs);
-  overflow: hidden;
-}
-.archivar-lm-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--sys-rule);
-  font-family: var(--mono); font-size: 12px;
-}
-.archivar-lm-row:last-child { border-bottom: none; }
-.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
-.archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
-.archivar-lm-ok   { color: var(--sys-ok); }
-.archivar-lm-warn { color: var(--sys-warn); }
-.archivar-lm-dim  { color: var(--fg); }
-.archivar-chaos-wrap { display: flex; align-items: center; gap: 8px; }
-.archivar-chaos-bar  { width: 64px; flex-shrink: 0; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
-.archivar-chaos-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.6s ease; }
 .settings-inline-body { max-height: none; overflow: visible; }
-
-/* Agent on/off toggle */
-.agent-toggle {
-  position: relative; display: inline-flex; align-items: center;
-  width: 44px; height: 24px; border-radius: 12px; border: none; cursor: pointer;
-  background: var(--sys-rule-strong); transition: background 0.2s ease;
-  flex-shrink: 0;
-}
-.agent-toggle--on { background: var(--sys-ok); }
-.agent-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
-.agent-toggle-knob {
-  position: absolute; left: 3px; width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; transition: transform 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-.agent-toggle--on .agent-toggle-knob { transform: translateX(20px); }
-.agent-status-running {
-  display: flex; align-items: center; gap: 7px;
-  margin-top: 12px;
-  font-family: var(--sys-mono); font-size: 11px; letter-spacing: 0.05em;
-  color: var(--sys-ok);
-}
-.agent-status-dot {
-  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-  background: var(--sys-ok);
-  box-shadow: 0 0 6px var(--sys-ok);
-  animation: soul-pulse 1.4s ease-in-out infinite;
-}
 
 </style>

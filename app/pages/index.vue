@@ -696,6 +696,11 @@ function onNav(id) {
   if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/connection'); return }
   if (id === 'earnings') { navigateTo('/earnings');  return }
+  if (id === 'archivar')    { navigateTo('/archivar');    return }
+  if (id === 'connections') { navigateTo('/connections'); return }
+  if (id === 'gatekeeper')  { navigateTo('/gatekeeper');  return }
+  if (id === 'wallet')      { navigateTo('/wallet');      return }
+  if (id === 'agent')       { navigateTo('/agent');       return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
