@@ -489,16 +489,8 @@
                     @click="connectVaultOwner"
                     :disabled="connectingVaultOwner"
                     class="sys-btn-ed sys-btn-ed--primary"
-                    style="width:100%;justify-content:center;margin-bottom:12px"
+                    style="width:100%;justify-content:center"
                   >{{ connectingVaultOwner ? $t('setup.vault_selecting') : $t('setup.vault_local_btn') }}</button>
-
-                  <button
-                    v-if="!isMultiHoster"
-                    @click="handleDeleteVaultOwner"
-                    :disabled="deleteVaultOwnerBusy"
-                    class="sys-btn-ed"
-                    style="width:100%;justify-content:center;border-color:rgba(224,108,117,0.4);color:#e06c75"
-                  >{{ deleteVaultOwnerBusy ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</button>
                 </div>
               </template>
 
@@ -577,6 +569,19 @@
                         : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
                     >{{ adminFeedback.message }}</div>
                   </Transition>
+                </div>
+              </template>
+
+              <!-- Cloud-Vault löschen (Node-Owner, Single-Hoster) -->
+              <template v-if="isNodeOwner && !isMultiHoster">
+                <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
+                  <button
+                    @click="handleDeleteVaultOwner"
+                    :disabled="deleteVaultOwnerBusy"
+                    class="sys-btn-ed"
+                    style="width:100%;justify-content:center;border-color:rgba(224,108,117,0.4);color:#e06c75"
+                  >{{ deleteVaultOwnerBusy ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</button>
+                  <p class="sm-desc" style="margin-top:8px;color:rgba(224,108,117,0.65)">{{ $t('setup.vault_delete_desc') }}</p>
                 </div>
               </template>
 

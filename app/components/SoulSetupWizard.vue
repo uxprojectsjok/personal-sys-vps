@@ -105,24 +105,6 @@
               <span style="font-size:13px;color:var(--fg-3)">FileSystem API</span>
             </button>
 
-            <!-- Cloud-Vault löschen -->
-            <button
-              @click="handleDeleteVault"
-              :disabled="deleteLoading"
-              class="w-full flex items-center gap-3 px-4 py-3 transition-all duration-150 text-left disabled:opacity-50"
-              style="background: rgba(224,108,117,0.07); border: 1px solid rgba(224,108,117,0.25); border-radius: var(--r);"
-            >
-              <div class="w-7 h-7 flex items-center justify-center flex-none" style="background: rgba(224,108,117,0.12); border: 1px solid rgba(224,108,117,0.25); border-radius: var(--r-xs);">
-                <svg width="14" height="14" style="color:#e06c75" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-                </svg>
-              </div>
-              <div class="min-w-0">
-                <p style="font-size:15px;font-weight:500;margin:0;color:#e06c75">{{ deleteLoading ? $t('setup.vault_delete_loading') : $t('setup.vault_delete_btn') }}</p>
-                <p style="font-size:14px;margin:2px 0 0;color:rgba(224,108,117,0.65)">{{ $t('setup.vault_delete_desc') }}</p>
-              </div>
-            </button>
-
           </div>
 
           <!-- Step 1: Vault (Session) -->
@@ -141,82 +123,11 @@
           </div>
 
           <!-- Step 4: Einstellungen -->
-          <div v-show="currentStep === 4" style="display:flex;flex-direction:column;gap:20px;padding:20px">
-
-            <!-- Modell -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">{{ $t('setup.label_model') }}</label>
-              <select v-model="cfgModel" class="sys-input" style="cursor:pointer;font-size:14px">
-                <option value="">{{ $t('setup.model_default') }}</option>
-                <option value="claude-opus-4-6">{{ $t('setup.model_powerful') }}</option>
-                <option value="claude-sonnet-4-6">{{ $t('setup.model_balanced') }}</option>
-                <option value="claude-haiku-4-5-20251001">{{ $t('setup.model_fast') }}</option>
-              </select>
-            </div>
-
-            <!-- Anthropic -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_anthropic') }}
-                <span v-if="cfgAnthSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgAnthKey" type="password" class="sys-input sys-input--mono"
-                placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
-                :style="cfgAnthSet ? 'border-color:var(--sys-ok)' : ''" />
-            </div>
-
-            <!-- ElevenLabs -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_elevenlabs') }}
-                <span v-if="cfgLabsSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgLabsKey" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgLabsSet ? $t('setup.placeholder_overwrite') : 'sk_…'"
-                autocomplete="off" spellcheck="false" @input="cfgLabsDirty = true"
-                :style="cfgLabsSet ? 'border-color:var(--sys-ok)' : ''" />
-            </div>
-
-            <!-- ElevenLabs Agent-URL -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_agent_url') }}
-                <span v-if="cfgAgentSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgAgentUrl" type="text" class="sys-input sys-input--mono"
-                placeholder="https://elevenlabs.io/app/talk-to?agent_id=…"
-                autocomplete="off" spellcheck="false"
-                :style="cfgAgentSet ? 'border-color:var(--sys-ok)' : ''" />
-            </div>
-
-            <!-- Pinata JWT -->
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <label class="sys-field-label">
-                {{ $t('setup.label_pinata') }}
-                <span v-if="cfgPinataSet" style="font-size:13px;color:var(--c-ok);margin-left:8px">{{ $t('common.saved') }}</span>
-              </label>
-              <input v-model="cfgPinataJwt" type="password" class="sys-input sys-input--mono"
-                :placeholder="cfgPinataSet ? $t('setup.placeholder_overwrite') : 'eyJ…'"
-                autocomplete="off" spellcheck="false"
-                :style="cfgPinataSet ? 'border-color:var(--sys-ok)' : ''" />
-              <p style="font-size:13px;color:var(--fg-3);letter-spacing:0.04em;margin:0">
-                {{ $t('setup.pinata_desc') }}
-                <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener" style="color:var(--accent-bright)">app.pinata.cloud</a>
-              </p>
-            </div>
-
-            <!-- Speichern -->
-            <button
-              @click="saveCfgStep"
-              :disabled="cfgSaving"
-              class="sys-btn-ed sys-btn-ed--primary"
-              style="width:100%;justify-content:center"
-            >{{ cfgSaving ? $t('setup.cfg_saving') : $t('setup.cfg_save') }}</button>
-            <p v-if="cfgFeedback" style="font-family:var(--sys-mono);font-size:12px;margin:0"
-              :style="cfgFeedback.ok === true ? 'color:var(--sys-ok)' : cfgFeedback.ok === false ? 'color:var(--sys-err)' : 'color:var(--sys-fg-muted)'">
-              {{ cfgFeedback.message }}
-            </p>
-
+          <div v-show="currentStep === 4" style="display:flex;flex-direction:column;gap:14px;padding:20px">
+            <p style="font-size:15px;line-height:1.65;color:var(--fg-2);margin:0">{{ $t('setup.config_moved_desc') }}</p>
+            <NuxtLink to="/settings" class="sys-btn-ed sys-btn-ed--primary" style="width:100%;justify-content:center;text-decoration:none">
+              {{ $t('setup.config_moved_link') }}
+            </NuxtLink>
           </div>
 
         </div>
@@ -270,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineComponent, h } from 'vue'
+import { ref, computed, defineComponent, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '../composables/useConfirm.js'
 const { ask } = useConfirm();
@@ -295,7 +206,6 @@ const emit = defineEmits(['unlocked', 'encrypt', 'decrypt', 'close'])
 const open        = ref(false)
 const currentStep = ref(0)
 const { isDark } = useColorScheme()
-const deleteLoading = ref(false)
 
 // Vertical mouse wheel -> horizontal scroll for the overflowing tab bar
 // (no visible scrollbar, so without this desktop mouse users can't reach
@@ -308,7 +218,7 @@ function onTabWheel(e) {
 }
 
 const { isUnlocked, vaultKey } = useVaultSession()
-const { enabled, encryptData, saveContext, resetContext } = useApiContext()
+const { enabled, encryptData, saveContext } = useApiContext()
 const { services }    = useVaultServices()
 const { isConnected: vaultConnected, connectVault, clearVault, memoryMode: vaultMemoryMode, cloudSource: vaultCloudSrc, writeFile, allFiles } = useVault()
 
@@ -390,130 +300,7 @@ async function onDownloadApiExport() {
   finally { apiExportLoading.value = false }
 }
 
-async function handleDeleteVault() {
-  if (!await ask({ title: t('setup.delete_vault_title'), message: t('setup.delete_vault_msg'), confirmText: t('setup.delete_vault_confirm'), danger: true })) return
-  deleteLoading.value = true
-  try {
-    const res = await fetch('/api/vault', {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${props.soulCert}` }
-    })
-    if (!res.ok) throw new Error(await res.text())
-    resetContext()
-    clearSoul()
-    document.cookie = 'sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'
-    window.location.href = '/'
-  } catch (e) {
-    alert(t('setup.delete_vault_error', { msg: e.message }))
-  } finally {
-    deleteLoading.value = false
-  }
-}
-
 const { rotateCert, soulContent: composableSoulContent, clear: clearSoul, pushToServer, exportAsBlob, soulToken } = useSoul()
-
-// ── Step 5: Config ─────────────────────────────────────────────────────────────
-const cfgModel     = ref('')
-const cfgAnthKey   = ref('')
-const cfgAnthSet   = ref(false)
-const cfgLabsKey   = ref('')
-const cfgLabsSet   = ref(false)
-const cfgLabsDirty = ref(false)
-const cfgPinataJwt  = ref('')
-const cfgPinataSet  = ref(false)
-const cfgAgentUrl   = ref('')
-const cfgAgentSet   = ref(false)
-const cfgSaving     = ref(false)
-const cfgFeedback  = ref(null)
-
-async function loadCfgStep() {
-  if (!soulToken.value) return
-  try {
-    const res = await fetch('/api/get-config', {
-      headers: { Authorization: `Bearer ${soulToken.value}` }
-    })
-    if (!res.ok) return
-    const data = await res.json()
-    cfgModel.value   = data.model || ''
-    cfgAnthSet.value = data.has_own_key || data.key_source === 'master'
-    cfgLabsSet.value  = !!data.elevenlabs_key_set
-    cfgAgentUrl.value = data.elevenlabs_agent_url || ''
-    cfgAgentSet.value = !!data.elevenlabs_agent_url
-  } catch {}
-  try {
-    const pr = await fetch('/api/soul/pinata-config', {
-      headers: { Authorization: `Bearer ${soulToken.value}` }
-    })
-    if (pr.ok) { const pd = await pr.json(); cfgPinataSet.value = pd.configured }
-  } catch {}
-}
-
-async function saveCfgStep() {
-  if (cfgSaving.value) return
-  cfgSaving.value   = true
-  cfgFeedback.value = null
-  try {
-    const sanitizeKey = k => (k || '').replace(/[^\x20-\xFF]/g, '').trim()
-    const body = {}
-    if (cfgModel.value)   body.model         = cfgModel.value
-    if (cfgAnthKey.value) body.anthropic_key  = sanitizeKey(cfgAnthKey.value)
-    if (cfgLabsKey.value)  body.elevenlabs_key = sanitizeKey(cfgLabsKey.value)
-    if (cfgAgentUrl.value !== undefined) body.elevenlabs_agent_url = cfgAgentUrl.value.trim()
-    const res = await fetch('/api/set-config', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body:    JSON.stringify(body)
-    })
-    if (!res.ok) { cfgFeedback.value = { ok: false, message: t('setup.cfg_save_error') }; return }
-
-    if (cfgAnthKey.value) { cfgAnthSet.value = true; cfgAnthKey.value = '' }
-    if (cfgLabsKey.value)  { cfgLabsSet.value = true;  cfgLabsKey.value = '';  cfgLabsDirty.value = false }
-    cfgAgentSet.value = !!cfgAgentUrl.value.trim()
-    if (cfgPinataJwt.value) {
-      try {
-        const pr = await fetch('/api/soul/pinata-config', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-          body: JSON.stringify({ jwt: cfgPinataJwt.value.trim() })
-        })
-        if (pr.ok) { cfgPinataSet.value = true; cfgPinataJwt.value = '' }
-      } catch {}
-    }
-
-    // Anthropic-Verbindung testen (immer wenn Key vorhanden)
-    if (cfgAnthSet.value) {
-      cfgFeedback.value = { ok: null, message: t('setup.cfg_testing') }
-      try {
-        const tr = await fetch('/api/test-key', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-          body:    JSON.stringify({ use_stored: true, key_type: 'anthropic' })
-        })
-        const td = await tr.json()
-        if (td.ok) {
-          cfgFeedback.value = { ok: true, message: t('setup.cfg_ok') }
-        } else if (td.status === 0 || td.error === 'no_stored_key') {
-          cfgFeedback.value = { ok: null, message: t('setup.cfg_test_failed') }
-        } else {
-          cfgFeedback.value = { ok: false, message: t('setup.cfg_wrong_status', { status: td.status }) }
-        }
-      } catch {
-        cfgFeedback.value = { ok: true, message: t('setup.cfg_test_impossible') }
-      }
-    } else {
-      cfgFeedback.value = { ok: true, message: t('setup.cfg_saved_ok') }
-    }
-    setTimeout(() => { cfgFeedback.value = null }, 5000)
-  } catch (e) {
-    cfgFeedback.value = { ok: false, message: t('setup.cfg_network_error', { msg: e.message }) }
-  } finally {
-    cfgSaving.value = false
-  }
-}
-
-watch(currentStep, (step) => {
-  if (step === 4) loadCfgStep()
-})
 
 const certRotateBusy     = ref(false)
 const certRotationResult = ref(null)
