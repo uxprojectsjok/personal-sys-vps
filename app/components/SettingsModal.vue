@@ -33,9 +33,6 @@
             <button @click="tab = 'gatekeeper'" class="sys-rail-item" :class="tab === 'gatekeeper' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_gatekeeper') }}</span></span>
             </button>
-            <button @click="tab = 'plugins'" class="sys-rail-item" :class="tab === 'plugins' ? 'is-active' : ''">
-              <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_plugins') }}</span></span>
-            </button>
             <button @click="tab = 'archivar'; loadArchivStatus()" class="sys-rail-item" :class="tab === 'archivar' ? 'is-active' : ''">
               <span class="sys-rail-lbl"><span class="sys-rail-t">{{ $t('settings.tab_archivar') }}</span></span>
             </button>
@@ -117,87 +114,6 @@
                   </span>
                 </div>
               </div>
-
-              <!-- Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="feedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ feedback.message }}</div>
-              </Transition>
-
-            </template>
-
-            <!-- ── Tab: API ── -->
-            <template v-if="tab === 'api'">
-
-              <!-- Key status -->
-              <div class="sys-state" :class="keySource === 'soul' ? 'sys-state--ok' : keySource === 'none' ? '' : 'sys-state--info'" style="margin-bottom:20px">
-                <div class="sys-state-mark"></div>
-                <div class="sys-state-text">
-                  <span class="sys-state-label">{{ keySourceLabel }}</span>
-                  <span v-if="keyPreview" class="sys-state-value">{{ keyPreview }}</span>
-                </div>
-              </div>
-
-              <!-- Model -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.model') }}</label>
-                <select v-model="model" class="sys-input" style="cursor:pointer">
-                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
-                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
-                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
-                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
-                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
-                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
-                </select>
-              </div>
-
-              <!-- Anthropic Key -->
-              <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
-                <div style="display:flex;gap:0">
-                  <input
-                    v-model="apiKey"
-                    type="password"
-                    class="sys-input sys-input--mono"
-                    style="flex:1;border-radius:var(--r-xs)"
-                    :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
-                    placeholder="sk-ant-..."
-                    autocomplete="off"
-                    spellcheck="false"
-                    @keyup.enter="saveConfig"
-                  />
-                </div>
-                <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
-                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
-                </div>
-              </div>
-
-              <!-- Feedback -->
-              <Transition name="sys-modal-fade">
-                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
-                  :style="feedback.ok
-                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-                >{{ feedback.message }}</div>
-              </Transition>
-
-            </template>
-
-            <!-- ── Tab: Verbindungen (Soul-zu-Soul) ── -->
-            <template v-if="tab === 'verbindungen'">
-              <SoulConnectionsPanel />
-            </template>
-
-            <!-- ── Tab: Gatekeeper (Soul → Gatekeeper, gebündelter Connector) ── -->
-            <template v-if="tab === 'gatekeeper'">
-              <GatekeeperPanel />
-            </template>
-
-            <!-- ── Tab: Plugins ── -->
-            <template v-if="tab === 'plugins'">
 
               <!-- Reown Project ID -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
@@ -288,6 +204,74 @@
 
             </template>
 
+            <!-- ── Tab: API ── -->
+            <template v-if="tab === 'api'">
+
+              <!-- Key status -->
+              <div class="sys-state" :class="keySource === 'soul' ? 'sys-state--ok' : keySource === 'none' ? '' : 'sys-state--info'" style="margin-bottom:20px">
+                <div class="sys-state-mark"></div>
+                <div class="sys-state-text">
+                  <span class="sys-state-label">{{ keySourceLabel }}</span>
+                  <span v-if="keyPreview" class="sys-state-value">{{ keyPreview }}</span>
+                </div>
+              </div>
+
+              <!-- Model -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.model') }}</label>
+                <select v-model="model" class="sys-input" style="cursor:pointer">
+                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6 — Standard</option>
+                  <option value="claude-sonnet-5">Claude Sonnet 5 — neu</option>
+                  <option value="claude-fable-5">Claude Fable 5 — kreativ</option>
+                  <option value="claude-opus-4-7">Claude Opus 4.7 — tief</option>
+                  <option value="claude-opus-4-8">Claude Opus 4.8 — leistungsstark</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — schnell</option>
+                </select>
+              </div>
+
+              <!-- Anthropic Key -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.anthropic_key') }}</label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="apiKey"
+                    type="password"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-radius:var(--r-xs)"
+                    :style="(keySource === 'soul' || keySource === 'master') ? 'border-color:var(--sys-ok)' : ''"
+                    placeholder="sk-ant-..."
+                    autocomplete="off"
+                    spellcheck="false"
+                    @keyup.enter="saveConfig"
+                  />
+                </div>
+                <div v-if="keySource === 'soul'" style="display:flex;gap:8px">
+                  <button @click="deleteKey('anthropic_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
+                </div>
+              </div>
+
+              <!-- Feedback -->
+              <Transition name="sys-modal-fade">
+                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  :style="feedback.ok
+                    ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
+                    : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
+                >{{ feedback.message }}</div>
+              </Transition>
+
+            </template>
+
+            <!-- ── Tab: Verbindungen (Soul-zu-Soul) ── -->
+            <template v-if="tab === 'verbindungen'">
+              <SoulConnectionsPanel />
+            </template>
+
+            <!-- ── Tab: Gatekeeper (Soul → Gatekeeper, gebündelter Connector) ── -->
+            <template v-if="tab === 'gatekeeper'">
+              <GatekeeperPanel />
+            </template>
+
+
             <!-- ── Tab: Config ── -->
             <template v-if="tab === 'config'">
 
@@ -312,18 +296,14 @@
               <!-- Toggles: Scan-Sichtbarkeit + (nur Node-Owner) Multi-Hoster / EU-Verbraucherrechte / Autonomous Agent -->
               <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
                 <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
-                <div class="sm-infoblock">{{ $t('settings.privacy_desc') }}</div>
 
-                <label class="api-panel-row" style="cursor:pointer;margin-top:14px">
+                <label class="api-panel-row" style="cursor:pointer">
                   <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
                     <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>
                   </div>
                   <input type="checkbox" :checked="discoverable" class="sr-only" :disabled="discoverableSaving" @change="toggleDiscoverable" />
                   <span class="api-panel-row-label">{{ $t('settings.privacy_toggle_label') }}</span>
                 </label>
-                <div class="sm-infoblock" :class="{ 'sm-infoblock--warn': !discoverable }" style="margin-top:10px">
-                  {{ discoverable ? $t('settings.privacy_on_hint') : $t('settings.privacy_off_hint') }}
-                </div>
                 <Transition name="sys-modal-fade">
                   <p v-if="discoverableFeedback" class="sm-desc" style="color:var(--sys-err);margin-top:6px">{{ discoverableFeedback.message }}</p>
                 </Transition>
@@ -336,7 +316,6 @@
                     <input type="checkbox" :checked="multiHosterCfg" class="sr-only" :disabled="nodeConfigSaving" @change="toggleMultiHoster" />
                     <span class="api-panel-row-label">{{ $t('settings.multi_hoster_toggle_label') }}</span>
                   </label>
-                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.multi_hoster_desc') }}</div>
                   <div v-if="multiHosterCfg && soulCount > 1" class="sm-infoblock sm-infoblock--warn" style="margin-top:10px">
                     {{ $t('settings.multi_hoster_locked_hint', { n: soulCount }) }}
                   </div>
@@ -348,7 +327,6 @@
                     <input type="checkbox" :checked="euConsumerRights" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('eu_consumer_rights')" />
                     <span class="api-panel-row-label">{{ $t('settings.eu_consumer_rights_toggle_label') }}</span>
                   </label>
-                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.eu_consumer_rights_desc') }}</div>
 
                   <Transition name="sys-modal-fade">
                     <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
@@ -756,16 +734,11 @@
                     <input type="checkbox" :checked="autonomousAgentEnabled" class="sr-only" :disabled="nodeConfigSaving" @change="toggleNodeConfig('autonomous_agent')" />
                     <span class="api-panel-row-label">{{ $t('settings.autonomous_agent_toggle_label') }}</span>
                   </label>
-                  <div class="sm-infoblock" style="margin-top:10px">{{ $t('settings.autonomous_agent_desc') }}</div>
                   <Transition name="sys-modal-fade">
                     <p v-if="nodeConfigFeedback" class="sm-desc" :style="nodeConfigFeedback.ok ? 'color:var(--sys-ok);margin-top:6px' : 'color:var(--sys-err);margin-top:6px'">{{ nodeConfigFeedback.message }}</p>
                   </Transition>
                 </div>
               </template>
-
-              <div v-if="!autonomousAgentEnabled" class="sm-infoblock sm-infoblock--warn" style="margin-bottom:20px">
-                {{ $t('settings.agent_master_switch_hint') }}
-              </div>
 
               <!-- Status Block -->
               <div class="archivar-lm-block" style="margin-bottom:20px">
@@ -999,13 +972,9 @@
                 <span class="sys-dot sys-dot--idle"></span>
                 {{ $t('settings.tab_services') }}
               </template>
-              <template v-else-if="tab === 'plugins'">
-                <span class="sys-dot sys-dot--idle"></span>
-                {{ $t('settings.tab_plugins') }}
-              </template>
               <template v-else-if="tab === 'config'">
                 <span class="sys-dot" :class="isAdmin ? 'sys-dot--warn' : 'sys-dot--idle'"></span>
-                {{ isAdmin ? $t('settings.rotation_admin') : $t('settings.admin_cert') }}
+                {{ $t('settings.admin_cert') }}
               </template>
               <template v-else-if="tab === 'archivar'">
                 <span class="sys-dot" :class="longmemFacts > 0 ? 'sys-dot--ok' : 'sys-dot--idle'"></span>
@@ -1025,7 +994,7 @@
               </template>
             </div>
             <div class="sys-foot-actions">
-              <template v-if="tab === 'api' || tab === 'dienste' || tab === 'plugins'">
+              <template v-if="tab === 'api' || tab === 'dienste'">
                 <button class="sys-btn-ed sys-btn-ed--primary" @click="saveConfig" :disabled="saving">
                   {{ saving ? $t('settings.saving') : $t('common.save') }}
                 </button>
