@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.31] — 2026-07-31
+
+**Fixed: switching Single-/Multi-Hoster mode locked the owner out of the node — the owner's saved `sys.md` (used to log back in on any device, or after a session ended) became invalid the moment the mode switch rotated the cert, because nothing re-synced or re-downloaded it. Found live: switched Multi-Hoster off from one device, then got stuck at `/gate` with "Soul-Cert invalid" trying to log in on another device with the previously-downloaded `sys.md`.**
+
+**Root cause:** the signing key changes with the mode (Single-Hoster: global master key, Multi-Hoster: per-soul key), so `/api/node-config` correctly rotates the owner's cert and returns a fresh one — but `toggleMultiHoster()` (`SettingsModal.vue`) only fed that new cert into the *current browser tab's* `sessionStorage` (`saveSoulSession()`/`useSoul().save()`). Any other already-downloaded `sys.md` file, or any other device's own session, still carries the old cert and has no way to learn about the new one — the next login attempt with that stale file fails outright, with no path back in except knowing to go log in with password-only and manually issue a fresh cert from the Admin tab.
+
+The fix pattern already existed for the *other* cert-rotating action, the manual "Rotate Cert" button (`handleRotateCert()`): update the connected vault file, push to the server, **and** trigger a fresh `sys.md` download (`exportAsBlob()`) — all three, every time the cert changes. `toggleMultiHoster()` just never got the same treatment when it was added.
+
+**Fixed**
+- `toggleMultiHoster()` now follows the exact same three-step pattern as `handleRotateCert()` after a successful mode switch: write the connected vault file (if any), push the updated soul to the server, and trigger a `sys.md` download — so the owner always walks away with a file matching the currently active cert, instead of finding out it's stale the next time they try to log in somewhere else.
+
+**Ported from the private instance** (`/opt/sys` v1.0.84) — genuine behavioral bug in shared code, no operator-specific judgment call involved.
+
+---
+
 ## [1.2.30] — 2026-07-31
 
 **Fixed: the node-wide "Autonomous Agent" kill-switch (and the other node-owner-only toggles in Settings) went invisible on a fresh device/browser — no error, the toggle just silently never rendered. Found live logging into the node's owner soul from a mobile browser for the first time.**

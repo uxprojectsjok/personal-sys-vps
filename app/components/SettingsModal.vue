@@ -1123,6 +1123,19 @@ async function toggleMultiHoster() {
         composableSoulContent.value = updated
         composableSoulCert.value    = d.new_cert
         saveSoulSession()
+        // Gleiches Muster wie handleRotateCert() (siehe dort) — jeder Cert-
+        // Wechsel muss Vault-Datei + Server + lokalen Download aktualisieren,
+        // sonst hat jedes andere Gerät (oder eine frühere sys.md-Datei) einen
+        // jetzt ungültigen Cert und der Owner sperrt sich selbst aus, bis er
+        // manuell im Admin-Tab einen neuen ausstellt. saveSoulSession() allein
+        // aktualisiert nur sessionStorage in DIESEM Tab — live so aufgetreten
+        // (Multi-Hoster-Toggle auf einem Gerät → "Soul-Cert invalid" beim
+        // nächsten Login-Versuch mit der alten sys.md auf einem anderen Gerät).
+        if (vaultConnected.value && composableSoulContent.value) {
+          await writeFile(localSoulFileName.value, new TextEncoder().encode(composableSoulContent.value))
+        }
+        await pushToServer()
+        await exportAsBlob()
       }
       await loadNodeStatus()
       await detectAdmin()
