@@ -1045,10 +1045,20 @@ const connectingVaultOwner   = ref(false)
 const deleteVaultOwnerBusy   = ref(false)
 
 function nodeConfigAuthHeaders() {
+  // Bearer (Cert direkt aus sys.md) IMMER mitschicken — node_config.lua prüft
+  // ihn zuerst und er ist unabhängig von jedem Gerät/localStorage gültig,
+  // sobald die Soul eingeloggt ist. Der Admin-Token-Header kommt zusätzlich
+  // dazu, wenn vorhanden, schadet aber nicht und deckt Edge-Cases ab — ohne
+  // ihn wäre "bin ich Node-Owner" auf einem frischen Gerät (leeres
+  // localStorage, Admin-Token-Auto-Fetch noch nicht durchgelaufen) fälschlich
+  // "nein", obwohl Cert + sys.md dafür längst ausreichen (live so aufgetreten:
+  // Kill-Switch auf einem neuen Mobile-Login unsichtbar).
+  const headers = { Authorization: `Bearer ${soulToken.value}` }
   if (isSoulAdmin.value && currentSoulId.value) {
-    return { 'X-Soul-Admin-Token': adminToken.value, 'X-Soul-Id': currentSoulId.value }
+    headers['X-Soul-Admin-Token'] = adminToken.value
+    headers['X-Soul-Id'] = currentSoulId.value
   }
-  return { Authorization: `Bearer ${soulToken.value}` }
+  return headers
 }
 
 async function loadNodeConfig() {

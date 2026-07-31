@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.30] — 2026-07-31
+
+**Fixed: the node-wide "Autonomous Agent" kill-switch (and the other node-owner-only toggles in Settings) went invisible on a fresh device/browser — no error, the toggle just silently never rendered. Found live logging into the node's owner soul from a mobile browser for the first time.**
+
+**Root cause:** `nodeConfigAuthHeaders()` (`app/pages/agent.vue` and `app/components/SettingsModal.vue`, duplicated) picked *either* the soul-cert bearer *or* an admin-token header pair, never both — preferring the admin-token pair whenever `isSoulAdmin` was true. On a Multi-Hoster node, `detectAdmin()` auto-fetches and caches a per-soul admin token in `localStorage` for essentially every soul, so `isSoulAdmin` ends up true almost immediately in practice — meaning the *simpler and always-sufficient* bearer-cert path (derived straight from the already-decrypted sys.md, no extra fetch/cache step, no dependency on any one device) got dropped as soon as that admin-token dance happened to succeed. `/api/node-config`'s Lua handler correctly derives `is_node_owner` from the cert bearer alone and doesn't need the admin-token at all for this check — confirmed by curling the endpoint directly with just the cert. So the fragility was purely self-inflicted on the frontend: whether the kill-switch renders ended up depending on `localStorage` state instead of the one thing that should matter, the soul's own cert.
+
+**Fixed**
+- `nodeConfigAuthHeaders()` (both call sites) now always includes the bearer cert header; the admin-token header pair is added on top when available, never in its place. `is_node_owner` (and the other node-config toggles gated on it) is now correctly derived from cert + sys.md alone, regardless of device or `localStorage` state.
+
+**Ported from the private instance** (`/opt/sys` v1.0.83) — genuine behavioral bug in shared code, no operator-specific judgment call involved.
+
+---
+
 ## [1.2.29] — 2026-07-31
 
 **Fixed: Gatekeeper toggle appeared unresponsive, and its confirm-off dialog surfaced on an unrelated page instead of `/gatekeeper` — both found live while debugging a "why don't my wired tools show up" report.**
