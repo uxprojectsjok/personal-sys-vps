@@ -73,9 +73,9 @@ if not soul_id or not soul_id:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x
   return
 end
 
--- Private Node: gleicher Schutz wie beim POL-Weg.
+-- Private Node: gleicher Schutz wie beim POL-Weg. Umbenannt von "public_node".
 do
-  local pf = io.open("/var/lib/sys/config/public_node", "r")
+  local pf = io.open("/var/lib/sys/config/monetization_enabled", "r")
   if pf then
     local pv = pf:read("*a"); pf:close()
     if pv == "false" then

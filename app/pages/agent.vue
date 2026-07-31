@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="agent" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
+      <SysSidebar route="agent" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -176,7 +176,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 onMounted(async () => {
   fetchNodeStatus()
   await loadNodeStatus()

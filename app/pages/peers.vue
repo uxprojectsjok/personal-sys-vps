@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="peers" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :public-node="publicNode"
+      <SysSidebar route="peers" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -221,7 +221,7 @@ definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, soulContent, isLoaded, clear } = useSoul() // soulToken needed for authHeaders
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 const maturity = computed(() => computeMaturity(soulContent.value).score)
 const { ask } = useConfirm()
 

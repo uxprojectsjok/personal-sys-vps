@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="export" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
+      <SysSidebar route="export" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -218,7 +218,7 @@ const router = useRouter()
 const { hasSoul, soulContent, soulMeta, soulToken, isLoaded, clear } = useSoul()
 const { syncedFiles, fetchVpsVaultFiles, loadContext } = useApiContext()
 const { readAllVaultFiles, isConnected: vaultConnected } = useVault()
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 onMounted(() => fetchNodeStatus())
 const { mnemonic, isEncrypting, encryptError, encrypt } = useSoulEncrypt()
 

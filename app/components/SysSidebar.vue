@@ -9,7 +9,7 @@
       </div>
       <div class="sb-node">
         <span class="live-dot" />
-        <span>{{ props.publicNode ? $t('nav.public_node') : $t('nav.private_node') }}</span>
+        <span>{{ props.monetizationEnabled ? $t('nav.public_node') : $t('nav.private_node') }}</span>
         <button class="lock" :title="$t('nav.lock_node')" :aria-label="$t('nav.lock_node')" @click="$emit('lock')">
           <SysIcon name="lock" style="width:20px;height:20px" />
         </button>
@@ -55,7 +55,7 @@ const props = defineProps({
   route: { type: String, default: 'home' },
   soulMeta: { type: Object, default: null },
   collapsed: { type: Boolean, default: false },
-  publicNode: { type: Boolean, default: true },
+  monetizationEnabled: { type: Boolean, default: true },
 })
 
 defineEmits(['collapse', 'lock', 'go'])
@@ -89,7 +89,7 @@ const nav = computed(() => [
     // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
     // Zugriff (soul_amortization.lua/soul_pay_x402.lua lehnen ab) — hier zusätzlich
     // aus der Navigation genommen, damit der Nutzer nicht ins Leere klickt.
-    ...(props.publicNode ? [
+    ...(props.monetizationEnabled ? [
       { id: 'market',   icon: 'market', label: t('nav.marketplace') },
       { id: 'earnings', icon: 'earn',   label: t('nav.earnings') },
     ] : []),

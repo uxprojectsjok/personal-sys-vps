@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="market" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
+      <SysSidebar route="market" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -19,7 +19,7 @@
 
             <!-- ── Panel, embedded flat via the `inline` prop (see AgentMarketplacePanel.vue) ── -->
             <div class="mk-panel">
-              <AgentMarketplacePanel v-if="publicNode" inline :soul-cert="soulToken" @close="router.push('/')" />
+              <AgentMarketplacePanel v-if="monetizationEnabled" inline :soul-cert="soulToken" @close="router.push('/')" />
               <p v-else class="empty-hint">{{ $t('marketplace.private_node_disabled') }}</p>
             </div>
 
@@ -46,7 +46,7 @@ const { soulMeta, hasSoul, soulToken, isLoaded, clear } = useSoul()
 const drawerOpen       = ref(false)
 const sidebarCollapsed = ref(false)
 const cmdkOpen         = ref(false)
-const publicNode       = ref(true)
+const monetizationEnabled = ref(true)
 
 watch(soulToken, async (tok) => {
   if (!tok) return
@@ -54,7 +54,7 @@ watch(soulToken, async (tok) => {
     const r = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${tok}` } })
     if (!r.ok) return
     const d = await r.json()
-    publicNode.value = d.public_node !== false
+    monetizationEnabled.value = d.monetization_enabled !== false
   } catch {}
 }, { immediate: true })
 

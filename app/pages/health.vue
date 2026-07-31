@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="health" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode"
+      <SysSidebar route="health" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockSoul" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -317,7 +317,7 @@ import { useNodeStatus } from '~/composables/useNodeStatus.js'
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 const loading    = ref(true)

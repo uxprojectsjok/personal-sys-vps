@@ -37,7 +37,7 @@
           :route="route"
           :soul-meta="soulMeta ? { ...soulMeta, maturity } : null"
           :collapsed="sidebarCollapsed"
-          :public-node="publicNode"
+          :monetization-enabled="monetizationEnabled"
           @go="onNav"
           @collapse="sidebarCollapsed = !sidebarCollapsed"
           @lock="lockGate"
@@ -376,7 +376,7 @@ const encryptOpen       = ref(false)
 const anchorOpen        = ref(false)
 const marketplaceOpen   = ref(false)
 const settingsOpen      = ref(false)
-const publicNode        = ref(true)
+const monetizationEnabled = ref(true)
 
 watch(soulToken, async (tok) => {
   if (!tok) return
@@ -384,7 +384,7 @@ watch(soulToken, async (tok) => {
     const r = await fetch('/api/get-config', { headers: { Authorization: `Bearer ${tok}` } })
     if (!r.ok) return
     const d = await r.json()
-    publicNode.value = d.public_node !== false
+    monetizationEnabled.value = d.monetization_enabled !== false
   } catch {}
 }, { immediate: true })
 

@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.34] — 2026-07-31
+
+**Renamed `public_node` → `monetization_enabled` across the whole stack.** The flag only ever gated Marketplace/paid-agent access (`soul_amortization.lua`, `soul_pay_x402.lua`, `soul_pay_manual.lua`) — it never restricted general node reachability, that's always been a separate, always-adjustable concern (the per-soul `discoverable` flag + Gatekeeper federation). The old name and `init.sh`'s own wording ("this soul stays reachable for its owner and trusted peers only") suggested otherwise, which doesn't match what the code actually does — pure naming/labeling confusion, not an architecture problem, confirmed after discussion.
+
+**Migration required:** the config file itself is renamed (`/var/lib/sys/config/public_node` → `/var/lib/sys/config/monetization_enabled`) and the JSON field in `/api/get-config` / `/api/node-status` changes name accordingly. Already-installed nodes must copy the old file's value over to the new path once (`cp public_node monetization_enabled`) before updating, or re-run `init.sh`.
+
+**Changed**
+- `init.sh` (see companion change in `sys-installer`/`SaveYourSoul_private_installer`): `PUBLIC_NODE` → `MONETIZATION_ENABLED`, install prompt reworded to ask about payment/Marketplace access specifically instead of "public or private," and no longer claims to restrict reachability.
+- `lua/get_config.lua`, `lua/node_status.lua`, `lua/soul_pay_x402.lua`, `lua/soul_pay_manual.lua`, `lua/soul_amortization.lua`: read the renamed config file, emit `monetization_enabled` instead of `public_node`.
+- `app/composables/useNodeStatus.js`: exposes `monetizationEnabled` instead of `publicNode`.
+- `app/components/SysSidebar.vue` and all pages that pass the prop through: renamed accordingly. The sidebar's user-facing "Public Node"/"Private Node" badge text is unchanged — this was a naming fix for the underlying flag, not the user-facing label.
+
+**Ported from the private instance** (`/opt/sys` v1.0.87).
+
+---
+
 ## [1.2.33] — 2026-07-31
 
 **Added a visible confirmation after automatic `sys.md` downloads.** `exportAsBlob()` tries the File System Access API (`showSaveFilePicker`) first — Desktop Chrome/Edge only — where the save dialog itself already makes it obvious a new file just arrived. Everywhere else (Android, iOS, Firefox, Safari — that API doesn't exist there at all), the fallback silently drops the file into the Downloads folder with no feedback, so a user could easily miss that their `sys.md` was just replaced.

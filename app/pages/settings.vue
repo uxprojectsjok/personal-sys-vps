@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="settings" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
+      <SysSidebar route="settings" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[t('settings.title')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
@@ -34,7 +34,7 @@ definePageMeta({ layout: false })
 
 const router = useRouter()
 const { hasSoul, soulMeta, refreshCert, clear } = useSoul()
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 
 const drawerOpen = ref(false)
 const sidebarCollapsed = ref(false)

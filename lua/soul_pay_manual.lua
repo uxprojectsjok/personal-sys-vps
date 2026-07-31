@@ -25,8 +25,9 @@ end
 
 -- Private Node: auch der manuelle (owner-getriebene) Token-Weg bleibt zu — sonst
 -- könnte ein Private Node über diesen Umweg trotzdem zahlende Agenten zulassen.
+-- Umbenannt von "public_node".
 do
-  local pf = io.open("/var/lib/sys/config/public_node", "r")
+  local pf = io.open("/var/lib/sys/config/monetization_enabled", "r")
   if pf then
     local pv = pf:read("*a"); pf:close()
     if pv == "false" then

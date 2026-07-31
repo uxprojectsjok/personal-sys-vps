@@ -112,16 +112,16 @@ for k, v in pairs(DEFAULTS) do
 end
 
 -- Private Node: Marketplace/Paid-Access serverseitig unterbunden, nicht nur in
--- der UI versteckt — via init.sh gesetzt (/var/lib/sys/config/public_node),
--- kann nur durch erneuten init.sh-Lauf geändert werden.
-local function is_public_node()
-  local f = io.open("/var/lib/sys/config/public_node", "r")
-  if not f then return true end  -- Altinstallationen ohne die Datei: Default bleibt public
+-- der UI versteckt — via init.sh gesetzt (/var/lib/sys/config/monetization_enabled,
+-- umbenannt von "public_node"), kann nur durch erneuten init.sh-Lauf geändert werden.
+local function is_monetization_enabled()
+  local f = io.open("/var/lib/sys/config/monetization_enabled", "r")
+  if not f then return true end  -- Altinstallationen ohne die Datei: Default bleibt aktiviert
   local v = f:read("*a"); f:close()
   return v ~= "false"
 end
 
-if not is_public_node() and (incoming.enabled == true or incoming.paypal_enabled == true) then
+if not is_monetization_enabled() and (incoming.enabled == true or incoming.paypal_enabled == true) then
   ngx.status = 403
   ngx.say(cjson.encode({
     error   = "private_node",

@@ -8,14 +8,17 @@ local cjson = require("cjson.safe")
 local host = (ngx.var and ngx.var.host) or ""
 
 -- Gleiches Muster wie soul_amortization.lua/soul_pay_x402.lua — Default bleibt
--- public für Altinstallationen ohne die Datei.
-local function is_public_node()
-  local f = io.open("/var/lib/sys/config/public_node", "r")
+-- monetarisierungsfähig für Altinstallationen ohne die Datei. Umbenannt von
+-- "public_node"/is_public_node() — das Flag steuert ausschließlich Marketplace/
+-- Monetarisierung, nicht die allgemeine Erreichbarkeit der Node (die läuft über
+-- discoverable + Gatekeeper-Wiring, unabhängig davon).
+local function is_monetization_enabled()
+  local f = io.open("/var/lib/sys/config/monetization_enabled", "r")
   if not f then return true end
   local v = f:read("*a"); f:close()
   return v ~= "false"
 end
-local public_node = is_public_node()
+local monetization_enabled = is_monetization_enabled()
 
 -- Domain-spezifischer Pfad zuerst, Fallback auf global
 local function try_read(path)
@@ -41,15 +44,15 @@ ngx.header["Access-Control-Allow-Origin"] = "*"
 
 if not data then
   ngx.status = 200
-  ngx.say(cjson.encode({ locked = false, public_node = public_node }))
+  ngx.say(cjson.encode({ locked = false, monetization_enabled = monetization_enabled }))
   return
 end
 
 -- Multi-Hoster: Registrierung immer offen, kein Soul-Lock
 if data.multi_hoster then
-  ngx.say(cjson.encode({ locked = false, multi_hoster = true, public_node = public_node }))
+  ngx.say(cjson.encode({ locked = false, multi_hoster = true, monetization_enabled = monetization_enabled }))
   return
 end
 
 local soul_id = (type(data.node_soul_id) == "string") and data.node_soul_id or ""
-ngx.say(cjson.encode({ locked = soul_id ~= "", public_node = public_node }))
+ngx.say(cjson.encode({ locked = soul_id ~= "", monetization_enabled = monetization_enabled }))

@@ -33,7 +33,7 @@ fi
 FORCE_SOUL="${1:-}"
 
 # Node-wide kill-switch (Settings → config → Autonomous Agent). Missing file
-# defaults to enabled — matches the eu_consumer_rights/public_node flag pattern
+# defaults to enabled — matches the eu_consumer_rights/monetization_enabled flag pattern
 # for installs predating this flag. Applies to force-run too: if the node owner
 # turned this off, "run now" must not bypass it.
 AUTONOMOUS_AGENT_FLAG="$CONFIG_DIR/autonomous_agent"

@@ -1,7 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
-      <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :public-node="publicNode" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
+      <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('nav.group_soul'), $t('nav.session')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true">
@@ -136,7 +136,7 @@ import { computeMaturity } from '#shared/utils/soulMaturity.js'
 
 const router = useRouter()
 const { soulContent, soulToken, hasSoul, soulMeta, load, save, updateVaultInSoul, importFromText, importAndSetup, exportAsBlob, clear, refreshCert, fetchFromServer, syncStatus, serverContent, acceptServerVersion, serverVaultEncrypted, firstSetupToken, enrichFromSession, pushToServer, pushSessionLogEntry, isLoaded } = useSoul()
-const { publicNode, fetchNodeStatus } = useNodeStatus()
+const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
 const { messages, clearSession, addMessage, toApiMessages } = useSession()
 const { appendGrowthEntry } = useChainAnchor()
 const { requestPermissions: requestCameraPermissions } = useCamera()
