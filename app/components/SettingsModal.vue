@@ -231,8 +231,6 @@
 
               <!-- Toggles: Scan-Sichtbarkeit + (nur Node-Owner) Multi-Hoster / EU-Verbraucherrechte / Autonomous Agent -->
               <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--sys-rule)">
-                <div class="sys-field-label" style="margin-bottom:12px">{{ $t('settings.privacy_title') }}</div>
-
                 <label class="api-panel-row" style="cursor:pointer">
                   <div class="api-toggle" :class="discoverable ? 'is-on' : ''">
                     <div class="api-toggle-thumb" :class="discoverable ? 'is-on' : ''"></div>

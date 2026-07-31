@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.32] — 2026-07-31
+
+**Removed the redundant "Privacy: Discoverability" section heading above the Scan-network toggle in Settings** — the toggle's own label ("Discoverable in the Scan network") already says everything the heading was repeating. Unused `settings.privacy_title` i18n key removed from both locales.
+
+**Confirmed by design (not a bug):** node visibility (`public_node`) has no runtime toggle and is set once, permanently, by `init.sh` at install time — `init.sh` says so explicitly ("amortization/paid access can never be turned on later without re-running init.sh, enforced server-side, not just hidden in the UI"). That's a deliberate trust guarantee for a node advertised as Private, not a missing feature — left as-is after review.
+
+**Ported from the private instance** (`/opt/sys` v1.0.85).
+
+---
+
 ## [1.2.31] — 2026-07-31
 
 **Fixed: switching Single-/Multi-Hoster mode locked the owner out of the node — the owner's saved `sys.md` (used to log back in on any device, or after a session ended) became invalid the moment the mode switch rotated the cert, because nothing re-synced or re-downloaded it. Found live: switched Multi-Hoster off from one device, then got stuck at `/gate` with "Soul-Cert invalid" trying to log in on another device with the previously-downloaded `sys.md`.**

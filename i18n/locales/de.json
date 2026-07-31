@@ -809,7 +809,6 @@
     "key_status_env": "Env-Key aktiv",
     "key_status_none": "Kein Key konfiguriert",
     "mcp_label": "Zapier MCP Server",
-    "privacy_title": "Datenschutz: Auffindbarkeit",
     "privacy_toggle_label": "Im Scan-Netzwerk auffindbar",
     "privacy_save_failed": "Änderung konnte nicht gespeichert werden — bitte erneut versuchen.",
     "multi_hoster_toggle_label": "Multi-Hoster",
