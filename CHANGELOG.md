@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.33] — 2026-07-31
+
+**Added a visible confirmation after automatic `sys.md` downloads.** `exportAsBlob()` tries the File System Access API (`showSaveFilePicker`) first — Desktop Chrome/Edge only — where the save dialog itself already makes it obvious a new file just arrived. Everywhere else (Android, iOS, Firefox, Safari — that API doesn't exist there at all), the fallback silently drops the file into the Downloads folder with no feedback, so a user could easily miss that their `sys.md` was just replaced.
+
+**Fixed**
+- `exportAsBlob()`'s fallback path now shows a small "Neue sys.md heruntergeladen" toast after triggering the download — a self-contained DOM element, not tied to any one caller's local feedback state, so it covers all five call sites (`SettingsModal.vue`, `SoulSetupWizard.vue`, `SoulDownload.vue`, `index.vue`, `session.vue`) without touching each individually.
+
+**Ported from the private instance** (`/opt/sys` v1.0.86).
+
+---
+
 ## [1.2.32] — 2026-07-31
 
 **Removed the redundant "Privacy: Discoverability" section heading above the Scan-network toggle in Settings** — the toggle's own label ("Discoverable in the Scan network") already says everything the heading was repeating. Unused `settings.privacy_title` i18n key removed from both locales.

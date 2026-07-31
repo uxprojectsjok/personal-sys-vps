@@ -882,6 +882,32 @@ Mögliche section-Werte (exakt so schreiben):
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    notifyDownload();
+  }
+
+  // Nur im automatischen Fallback-Pfad nötig — showSaveFilePicker() macht die
+  // Übernahme durch den eigenen Dateiauswahl-Dialog schon bewusst sichtbar,
+  // der stille Auto-Download sonst nicht (live so aufgetreten: Nutzer merkte
+  // auf Mobile/Firefox/Safari nicht, dass überhaupt eine neue sys.md kam).
+  // Eigenständiges DOM-Element statt eines App-weiten Toast-Systems, damit
+  // das für ALLE exportAsBlob()-Aufrufer funktioniert, ohne jede Aufrufstelle
+  // einzeln anzupassen.
+  function notifyDownload() {
+    if (!isClient) return;
+    const el = document.createElement("div");
+    el.textContent = "Neue sys.md heruntergeladen";
+    el.style.cssText =
+      "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);" +
+      "background:#1a1a1a;color:#e8e8e8;padding:10px 18px;border-radius:8px;" +
+      "font:500 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" +
+      "box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:99999;" +
+      "opacity:0;transition:opacity 0.25s ease;pointer-events:none;";
+    document.body.appendChild(el);
+    requestAnimationFrame(() => { el.style.opacity = "1"; });
+    setTimeout(() => {
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 300);
+    }, 3000);
   }
 
   // ── Computed ────────────────────────────────────────────────────────────
