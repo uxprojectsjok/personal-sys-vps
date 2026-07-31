@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.29] — 2026-07-31
+
+**Fixed: Gatekeeper toggle appeared unresponsive, and its confirm-off dialog surfaced on an unrelated page instead of `/gatekeeper` — both found live while debugging a "why don't my wired tools show up" report.**
+
+**Root cause 1 — service worker caching authenticated `/mcp/discover/*` calls:** `sw.js`'s fetch handler only excluded `/api/*` from its network-first caching strategy. `/mcp/discover/gatekeeper-config` and friends live under `/mcp/`, not `/api/`, so the SW intercepted them too — cache-by-URL ignores the `Authorization` header entirely, so a failed live fetch could fall back to a cached response tied to a different (or no longer valid) token, or fail outright with no cache entry to fall back to (`TypeError: Failed to convert value to 'Response'`). The toggle's `POST` went through the same path, so clicking it visibly did nothing.
+
+**Root cause 2 — `gatekeeper.vue` never mounted `<ConfirmModal />`:** every `layout: false` page owns its own copy of the shared confirm-dialog UI component (see `settings.vue`, `vault.vue`, `index.vue`, etc.) because `useConfirm()`'s dialog state is a module-level singleton with no UI attached to it globally. `gatekeeper.vue` was missing it — turning the toggle off called `ask()` (setting the singleton's `open` state), but nothing on that page rendered it, so the confirmation appeared to do nothing until the user happened to navigate to a page that *does* include `<ConfirmModal />`, where the still-pending dialog would suddenly show up.
+
+**Root cause 3 — Gatekeeper tools required at least one wired soul to register at all:** `registerConnectionProxyTools()` only called `registerGatekeeperTools()` when the merged wired/connected map was non-empty, even when the Gatekeeper toggle itself was on. Being a Gatekeeper is a deliberate, stored setting on the soul, not a live function of whether anyone happens to be wired in at this exact moment — a soul with the toggle on and nothing wired yet (or no longer wired, after a disconnect) should still expose its Gatekeeper tools (`wire_status`, etc.), the same way the toggle's own sidebar badge already worked correctly independent of wired state.
+
+**Fixed**
+- `public/sw.js`: exclude `/mcp/` from SW fetch interception, same as `/api/`. Cache version bumped to force existing installs to pick up the new script.
+- `app/pages/gatekeeper.vue`: added the missing `<ConfirmModal />`.
+- `soul-mcp/server.mjs`: `registerConnectionProxyTools()` now registers the Gatekeeper toolset whenever `gkEnabled` is true, in addition to the existing non-empty-merged-map condition (kept for the separate, toggle-independent `connected_souls.json` case).
+
+---
+
 ## [1.2.28] — 2026-07-28
 
 **Added:** a small "Private node, not public" notice on `/gate`, always visible (independent of the discreet login-reveal trigger). The page previously rendered blank by design until the owner clicked the hidden reveal button — deliberately unobtrusive so it wouldn't look like an access point when linked externally, but that same blankness left no indication of what the node actually is to anyone who lands on it, which the node operator wants clarified upfront to avoid being mistaken for a public service.

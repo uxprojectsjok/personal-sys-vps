@@ -294,7 +294,14 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   }
   const merged    = mergeByRecency(wired, connected);
   const mergedRaw = mergeByRecency(acceptedRaw, connected);
-  if (Object.keys(merged).length > 0) {
+  // gkEnabled allein reicht schon: "ich bin Gatekeeper" ist eine bewusste
+  // Einstellung dieser Soul, kein Live-Zustand, der davon abhängt, ob gerade
+  // irgendwer verdrahtet ist — die Tools (wire_status etc.) müssen sichtbar
+  // sein, sobald der Schalter an ist, auch mit leerer wired_souls.json (z.B.
+  // direkt nach dem ersten Einschalten, oder nachdem Aus die letzte
+  // Verbindung beendet hat). connected_souls.json bleibt zusätzlich sein
+  // eigenes, vom Schalter unabhängiges Feature (siehe Kommentar oben).
+  if (gkEnabled || Object.keys(merged).length > 0) {
     registerGatekeeperTools(server, merged, callerToken, mergedRaw);
   }
   return { wired, connected };

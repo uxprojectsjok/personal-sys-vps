@@ -1,8 +1,8 @@
 // sw.js — Minimal Service Worker für PWA-Installierbarkeit
 // Strategie: Network-first, Cache als Offline-Fallback für App-Shell.
-// API-Calls (/api/*) werden nie gecacht.
+// API-Calls (/api/* und /mcp/*) werden nie gecacht.
 
-const CACHE = 'sys-shell-v18'
+const CACHE = 'sys-shell-v19'
 const SHELL = ['/', '/gate', '/session', '/manifest.json']
 
 self.addEventListener('install', e => {
@@ -54,8 +54,13 @@ self.addEventListener('fetch', e => {
   const { request } = e
   if (request.method !== 'GET') return
   const url = new URL(request.url)
-  // API und externe Requests: immer Netzwerk, kein Cache
-  if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) return
+  // API und externe Requests: immer Netzwerk, kein Cache. /mcp/ trägt live
+  // authentifizierte Discover/Wire-Calls (gatekeeper-config, wired, ...) —
+  // cache-by-URL kennt den Authorization-Header nicht, ein SW-Fallback auf
+  // eine gecachte Antwort hier wäre potenziell falsch/veraltet UND unabhängig
+  // vom aktuell gültigen Token (live so aufgetreten: Gatekeeper-Toggle blieb
+  // hängen, weil GET/POST .../gatekeeper-config über den SW liefen).
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/mcp/') || url.origin !== self.location.origin) return
 
   e.respondWith(
     fetch(request)

@@ -18,6 +18,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <ConfirmModal />
     </div>
     <SysPageLoading v-else />
   </ClientOnly>
@@ -29,6 +30,7 @@ import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import GatekeeperPanel from '~/components/GatekeeperPanel.vue'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 const router = useRouter()
