@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.35] — 2026-08-01
+
+**Agent Runner's "Last run" now displays in the browser's local time instead of raw UTC** — the timestamp led to a "this doesn't match the clock" moment (log said `05:03 UTC`, wall clock said `07:00 CEST`, same instant, just not converted).
+
+**Changed**
+- `shared/sys-agent-run.sh`: log timestamps switched from the human-formatted `YYYY-MM-DD HH:MM:SS UTC` to proper ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`) — still UTC under the hood, still greppable in raw log files, but now reliably machine-parseable.
+- `app/pages/agent.vue`: added `agentLastRunLocal`, a computed that parses the ISO timestamp and formats it via the browser's own locale/timezone (`toLocaleString`). Falls back to the raw value if parsing fails, so older log lines written before this change (still in the old format) don't break the display.
+- `lua/agent_cron_config.lua`'s log-parsing regex needed no change — it only anchors on the `[YYYY-MM-DD` prefix, which both formats share.
+
+**Ported from the private instance** (`/opt/sys` v1.0.88).
+
+---
+
 ## [1.2.34] — 2026-07-31
 
 **Renamed `public_node` → `monetization_enabled` across the whole stack.** The flag only ever gated Marketplace/paid-agent access (`soul_amortization.lua`, `soul_pay_x402.lua`, `soul_pay_manual.lua`) — it never restricted general node reachability, that's always been a separate, always-adjustable concern (the per-soul `discoverable` flag + Gatekeeper federation). The old name and `init.sh`'s own wording ("this soul stays reachable for its owner and trusted peers only") suggested otherwise, which doesn't match what the code actually does — pure naming/labeling confusion, not an architecture problem, confirmed after discussion.

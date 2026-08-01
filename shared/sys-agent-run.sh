@@ -38,13 +38,13 @@ FORCE_SOUL="${1:-}"
 # turned this off, "run now" must not bypass it.
 AUTONOMOUS_AGENT_FLAG="$CONFIG_DIR/autonomous_agent"
 if [[ -f "$AUTONOMOUS_AGENT_FLAG" ]] && [[ "$(cat "$AUTONOMOUS_AGENT_FLAG" 2>/dev/null)" == "false" ]]; then
-  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] autonomous_agent disabled — exiting" >> "$LOG_MASTER"
+  echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] autonomous_agent disabled — exiting" >> "$LOG_MASTER"
   exit 0
 fi
 
 mkdir -p "$AGENT_DIR/.claude"
 
-ts() { date -u '+%Y-%m-%d %H:%M:%S UTC'; }
+ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 
 run_soul() {
   local soul_id="$1"

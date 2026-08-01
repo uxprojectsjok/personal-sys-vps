@@ -46,7 +46,7 @@
               </div>
               <div class="archivar-lm-row">
                 <span class="archivar-lm-key">{{ $t('settings.agent_last_run') }}</span>
-                <span class="archivar-lm-val archivar-lm-dim">{{ agentLastRun || $t('settings.agent_last_run_never') }}</span>
+                <span class="archivar-lm-val archivar-lm-dim">{{ agentLastRunLocal || $t('settings.agent_last_run_never') }}</span>
               </div>
             </div>
 
@@ -332,6 +332,20 @@ const agentFeedback     = ref(null)
 const agentRunPolling   = ref(false)
 let   agentLogTimer     = null
 const agentMcpTokenOk   = ref(true)
+
+// Log-Zeitstempel bleiben serverseitig UTC (ISO 8601, z.B. "[2026-08-01T05:03:16Z]")
+// — nur die UI-Anzeige rechnet in die Browser-Zeitzone um, damit "Last run"
+// nicht gegen die eigene Uhr umgerechnet werden muss. Fällt bei älteren
+// Log-Zeilen im alten "YYYY-MM-DD HH:MM:SS UTC"-Format (vor diesem Fix) oder
+// sonstigem Parse-Fehler auf den Rohwert zurück, statt kaputt zu rendern.
+const agentLastRunLocal = computed(() => {
+  const raw = agentLastRun.value
+  if (!raw) return raw
+  const inner = raw.replace(/^\[|\]$/g, '')
+  const d = new Date(inner)
+  if (isNaN(d.getTime())) return raw
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
+})
 const agentSetupMcpBusy = ref(false)
 
 async function loadAgentStatus() {
