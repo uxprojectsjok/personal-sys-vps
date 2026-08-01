@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.42] — 2026-08-01
+
+**Fixed the actual remaining cause of the non-English-voice-with-English-accent bug: cloned voices from vault audio never got tagged with a language, so 1.2.40's "derive language from the voice's own label" fix had nothing to read and silently fell back to English.**
+
+**Fixed**
+- `lua/create_agent.lua`: when cloning a new voice from vault audio (no `voice_id` given), the voice is now tagged with `labels.language` from `config_language` at creation time. Without this, ElevenLabs leaves a fresh clone's language label empty, so 1.2.40's per-voice language lookup found nothing and defaulted to `"en"` regardless of what language the source recording was actually in. `config_language` still has no dedicated Settings UI (tracked as a follow-up) — set it directly in `config.json` if a clone's language needs to be forced.
+
+---
+
 ## [1.2.41] — 2026-08-01
 
 **Fixed two more bugs behind "the Gatekeeper's ElevenLabs agent doesn't behave right": its voice tools were the generic personal-soul set, not its own, and roughly half of the tools it *was* bound to had been silently failing on every call.**

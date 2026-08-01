@@ -350,6 +350,14 @@ if not voice_id and audio_data then
   field("name",                     soul_name .. " Soul Voice")
   field("description",              "Auto-generated from Soul Vault via SYS @create-agent")
   field("remove_background_noise",  "true")
+  -- Tag the cloned voice with its language -- without this, ElevenLabs leaves
+  -- labels.language empty on a fresh clone, and the language-derivation logic
+  -- below (which reads exactly this label) silently falls back to English,
+  -- even for German source audio. config_language is the only signal we have
+  -- at clone time (no voice_id/label to derive from yet, chicken-and-egg).
+  if config_language:match("^%a%a$") then
+    field("labels", '{"language":"' .. config_language .. '"}')
+  end
   parts[#parts+1] = "--" .. boundary .. CRLF
   parts[#parts+1] = 'Content-Disposition: form-data; name="files"; filename="' .. audio_filename .. '"' .. CRLF
   parts[#parts+1] = "Content-Type: " .. mime .. CRLF
