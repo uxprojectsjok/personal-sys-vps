@@ -141,12 +141,19 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
 end
 
 -- ── Gatekeeper role (adds wired_* webhook tools below, see SYS_TOOL_NAMES) ────
--- is_gatekeeper is a stored sys.md flag, not something to infer -- a Gatekeeper
--- soul should get its wire_status/wired_*/wire_search tools on the voice agent
--- too, same as it already has them over MCP.
+-- Sole authority is gatekeeper_config.json (soul-mcp/lib/wired_souls.mjs's
+-- isGatekeeperEnabled(), same file the toggle in Settings writes) -- there is
+-- no sys.md field for this anymore (removed 2026-08-01, was only ever read
+-- back into the Sidebar badge, which now also reads this same config file).
 local is_gatekeeper = false
-if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
-  if sys_text:match("is_gatekeeper:%s*true") then is_gatekeeper = true end
+do
+  local gk_raw = read_file(BASE_DIR .. "/gatekeeper_config.json")
+  if gk_raw then
+    local gk_ok, gk_data = pcall(cjson.decode, gk_raw)
+    if gk_ok and type(gk_data) == "table" and gk_data.enabled == true then
+      is_gatekeeper = true
+    end
+  end
 end
 
 -- ── Read a mind.md section ────────────────────────────────────────────────────

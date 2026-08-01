@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.44] — 2026-08-01
+
+**Fixed: `create_agent.lua`'s Gatekeeper detection (1.2.41, for binding the wired_* voice-agent tools) relied on a sys.md field this repo never wrote in the first place — the private repo's equivalent creation-time checkbox was removed there too, for the same reason: becoming a Gatekeeper is exclusively a post-creation Settings toggle.**
+
+**Fixed**
+- `lua/create_agent.lua`: `is_gatekeeper` detection switched from a sys.md frontmatter field (never populated in this repo) to reading `gatekeeper_config.json` directly — the same file `soul-mcp/lib/wired_souls.mjs`'s `isGatekeeperEnabled()` already treats as sole authority. Without this, no Gatekeeper soul on the generic template could ever get its voice-agent tools, since the field it was checking for was never written anywhere.
+
+---
+
 ## [1.2.43] — 2026-08-01
 
 **Ported the Gatekeeper sidebar badge from the private repo — it never made it over during the 2026-07-28 Gatekeeper-parity work, and its logic needed a fix anyway.**
