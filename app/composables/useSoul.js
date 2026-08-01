@@ -1044,6 +1044,7 @@ async function resetCertToV0() {
 
     // Sofort rotieren — verhindert dass der alte (ggf. bekannte) v0-Cert dauerhaft
     // sichtbar ist. Nach Rotation hat der User einen frischen Cert auf cert_version=1.
+    let rotated = false;
     try {
       const rotRes = await fetch("/api/soul-rotate-cert", {
         method: "POST",
@@ -1056,6 +1057,7 @@ async function resetCertToV0() {
           updated = updateFrontmatterField(updated, "cert_version", newVersion);
           soulContent.value = updated;
           soulCert.value    = newCert;
+          rotated = true;
         }
       }
     } catch { /* Rotation optional — v0 ist schlechter aber funktional */ }
@@ -1066,6 +1068,21 @@ async function resetCertToV0() {
     } catch { /* */ }
     // Signal für vault.vue: physische Datei muss nach Vault-Connect geschrieben werden
     pendingSoulFileWrite.value = true;
+
+    // Gleiches Muster wie handleRotateCert()/toggleMultiHoster(): Server + lokaler
+    // Download müssen dem neuen Cert folgen, sonst hat der Server (soul_rotate_cert.lua
+    // persistiert cert_version sofort, unbedingt) eine höhere Version als jede sys.md,
+    // die der Nutzer gerade lokal besitzt oder herunterlädt — genau der Zustand, der
+    // live dazu führte, dass eine gespeicherte sys.md den v0-Cert trug, obwohl der
+    // Server (und die Session) bereits auf v1 stand. Bisher setzte diese Funktion nur
+    // pendingSoulFileWrite (nur wirksam, wenn/wann ein lokaler Vault verbunden wird) —
+    // ohne Server-Push und ohne Download blieb jede in der Zwischenzeit gespeicherte
+    // Kopie auf dem alten, jetzt ungültigen Stand.
+    if (rotated) {
+      const { pushToServer, exportAsBlob } = useSoul();
+      await pushToServer();
+      await exportAsBlob();
+    }
     return true;
   } catch {
     return false;

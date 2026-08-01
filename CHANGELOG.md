@@ -8,6 +8,21 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.36] — 2026-08-01
+
+**Fixed: `resetCertToV0()`'s automatic v0→v1 cert rotation never pushed the result anywhere the owner could actually pick it up — found live via a real, reproducible cert/version mismatch after a fresh reinstall + sys.md re-import.**
+
+**How it was found:** re-imported an existing soul's `sys.md` onto a freshly reinstalled node. Later, a downloaded copy of that `sys.md` was found to contain `soul_cert: f3774321...` alongside `cert_version: 1` — but `f3774321...` is cryptographically the **v0** cert (verified by recomputing `HMAC(per-soul-key, soul_id, version)` for both the file's cert and the currently-active session cert: the file's value matched v0, the active session's `8fc88bda...` matched v1, same key both times — confirmed with the live per-soul key from `soul_admin.json`, not a caching artifact). So the file was internally inconsistent: a version number one step ahead of the cert value actually written next to it.
+
+**Root cause:** `resetCertToV0()` (`app/composables/useSoul.js`) is the automatic recovery path that fires when the current cert gets rejected (401) — it requests a `cert_version: 0` cert, verifies it, then immediately rotates to v1 via `/api/soul-rotate-cert` so the "known" v0 cert isn't left active. `soul_rotate_cert.lua` persists the new `cert_version` in `api_context.json` **unconditionally and immediately**, server-side, on that call alone — it explicitly does not touch the stored `sys.md` itself and documents that the client is responsible for following up (`PUT /api/context`). But `resetCertToV0()` only updated in-memory state + `sessionStorage`, and set `pendingSoulFileWrite` — a flag `vault.vue` only acts on if/when a local vault folder gets (re-)connected. No `pushToServer()`, no `exportAsBlob()`. Any `sys.md` downloaded, or any local vault file written, before that deferred flag happened to fire (or if a local vault was never connected at all) ends up carrying the pre-rotation cert while the server has already moved on — exactly the mismatch found.
+
+**Fixed**
+- `resetCertToV0()` now calls `pushToServer()` and `exportAsBlob()` immediately after a successful rotation, matching the pattern already used by `handleRotateCert()` and `toggleMultiHoster()` (both fixed earlier this session for the same class of bug: a cert change that updates the server/session but leaves every other saved copy silently stale). `pendingSoulFileWrite` is kept as-is for the local-vault case, now alongside — not instead of — the server push and download.
+
+**Ported from the private instance** (`/opt/sys` v1.0.89).
+
+---
+
 ## [1.2.35] — 2026-08-01
 
 **Agent Runner's "Last run" now displays in the browser's local time instead of raw UTC** — the timestamp led to a "this doesn't match the clock" moment (log said `05:03 UTC`, wall clock said `07:00 CEST`, same instant, just not converted).
