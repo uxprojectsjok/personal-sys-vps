@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.41] — 2026-08-01
+
+**Fixed two more bugs behind "the Gatekeeper's ElevenLabs agent doesn't behave right": its voice tools were the generic personal-soul set, not its own, and roughly half of the tools it *was* bound to had been silently failing on every call.**
+
+**Fixed**
+- `lua/create_agent.lua`: a Gatekeeper soul's voice agent now also gets the `wire_status`/`wired_soul_read`/`wired_soul_write`/`wired_{audio,image,video,context}_{list,get}`/`wired_shared_get`/`wired_list_apps`/`wire_search` tools it already has over MCP (see mind.md `## Gatekeeper`) — previously `is_gatekeeper` was never read here, so every voice agent got the same fixed, generic tool set regardless of role.
+- `soul-mcp/server.mjs`: `/internal/run-tool`'s generic MCP fallback (used by any tool not covered by the hand-written `case` blocks — `peer_inbox`, `web_search`, `audio_list`, `session_end`, and now the new `wired_*` tools among them) only ever matched 64-hex service tokens when picking one to authenticate with. The actual ElevenLabs webhook token is `wh_`-prefixed (see `create_agent.lua`'s `webhook_token`), so it was never found — every one of those tool calls failed with a silent 400, since the very first `authorized_services.json` boot. Regex now accepts both formats. Verified live (on the private instance running the same code): `soul_maturity` and the new `wire_status` both now return real data through the same webhook path that previously 400'd.
+
+---
+
 ## [1.2.40] — 2026-08-01
 
 **Fixed: Create-Agent could pick an English-only ElevenLabs voice model for a non-English voice, making the agent mispronounce its own configured language.** Root cause: `config.json`'s `elevenlabs_language` field has no UI write path anywhere in the app — it was always empty, so `create_agent.lua` fell back to hardcoded `"en"` regardless of which voice was actually selected. A German (or any non-English) voice clone got an English `tts.model_id` and mispronounced its own language badly.

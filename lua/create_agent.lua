@@ -140,6 +140,15 @@ if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
   if m and m ~= '""' and m ~= "" then soul_name = m; soul_name_resolved = true end
 end
 
+-- ── Gatekeeper role (adds wired_* webhook tools below, see SYS_TOOL_NAMES) ────
+-- is_gatekeeper is a stored sys.md flag, not something to infer -- a Gatekeeper
+-- soul should get its wire_status/wired_*/wire_search tools on the voice agent
+-- too, same as it already has them over MCP.
+local is_gatekeeper = false
+if sys_text ~= "" and sys_text:sub(1, 2) ~= "SY" then
+  if sys_text:match("is_gatekeeper:%s*true") then is_gatekeeper = true end
+end
+
 -- ── Read a mind.md section ────────────────────────────────────────────────────
 local function get_mind_section(section)
   local text = read_file(BASE_DIR .. "/vault/context/mind.md") or ""
@@ -525,6 +534,12 @@ do
     profile_get     = true, shop_log        = true,
     soul_earnings   = true, soul_maturity   = true, soul_skills    = true,
     soul_discover   = true, verify_human    = true, session_end    = true,
+    wire_status     = true, wired_soul_read = true, wired_soul_write = true,
+    wired_audio_list = true, wired_audio_get = true,
+    wired_image_list = true, wired_image_get = true,
+    wired_video_list = true, wired_video_get = true,
+    wired_context_list = true, wired_context_get = true,
+    wired_shared_get = true, wired_list_apps = true, wire_search = true,
   }
 
   local tres, _ = hc_cleanup:request_uri(ELEVEN .. "/convai/tools", {
@@ -593,7 +608,7 @@ local conv_config = {
         local s = { type="string" }
         local function sd(d) return { type="string", description=d } end
         local function nd(d) return { type="number", description=d } end
-        return {
+        local tools = {
           -- Verification (always first)
           wh("verify_identity", "Creates a verification request. ALWAYS call first. Returns challenge_id.", verify_url, {}, nil),
           wh("verify_status",   "Checks whether verification is complete. Call after verify_identity until verified=true.",
@@ -662,6 +677,49 @@ local conv_config = {
             { summary=sd("Compact session content — only what was new"), channel=sd("Channel: elevenlabs") },
             { "summary" }),
         }
+
+        -- Gatekeeper: same wire_status/wired_*/wire_search tools this soul
+        -- already has over MCP (see mind.md "## Gatekeeper"), now also bound
+        -- to the voice agent -- previously only the generic personal-soul
+        -- tools above were attached, even for a Gatekeeper.
+        if is_gatekeeper then
+          table.insert(tools, whget("wire_status",
+            "Lists every soul wired to this Gatekeeper and its granted scopes (audio/images/video/context_files/shared/soul_read). Always call this first when asked about wired souls.",
+            tool_url("wire_status")))
+          table.insert(tools, wh("wired_soul_read",
+            "Reads the full sys.md of a wired soul. soul_id from wire_status.",
+            tool_url("wired_soul_read"), { soul_id=sd("soul_id from wire_status") }, { "soul_id" }))
+          table.insert(tools, wh("wired_soul_write",
+            "Writes to a sys.md section of a wired soul (only if that soul granted write access).",
+            tool_url("wired_soul_write"),
+            { soul_id=sd("soul_id from wire_status"), section=sd("Section name without ##"),
+              content=sd("Content"), mode=sd("append | replace | prepend") },
+            { "soul_id", "section", "content" }))
+          for _, kind in ipairs({ "audio", "image", "video", "context" }) do
+            table.insert(tools, wh("wired_" .. kind .. "_list",
+              "Lists " .. kind .. " files of a wired soul, scoped by its granted permissions.",
+              tool_url("wired_" .. kind .. "_list"),
+              { soul_id=sd("soul_id from wire_status") }, { "soul_id" }))
+            table.insert(tools, wh("wired_" .. kind .. "_get",
+              "Reads a single " .. kind .. " file of a wired soul.",
+              tool_url("wired_" .. kind .. "_get"),
+              { soul_id=sd("soul_id from wire_status"), filename=sd("File name, from wired_" .. kind .. "_list") },
+              { "soul_id", "filename" }))
+          end
+          table.insert(tools, wh("wired_shared_get",
+            "Loads a shared vault file of a wired soul (e.g. an attachment from peer_send/peer_inbox).",
+            tool_url("wired_shared_get"),
+            { soul_id=sd("soul_id from wire_status"), filename=sd("File name in their vault_shared") },
+            { "soul_id", "filename" }))
+          table.insert(tools, wh("wired_list_apps",
+            "Lists the MCP Apps a wired soul has published.",
+            tool_url("wired_list_apps"), { soul_id=sd("soul_id from wire_status") }, { "soul_id" }))
+          table.insert(tools, wh("wire_search",
+            "Searches own wired souls and, if federated with other Gatekeepers, theirs too, by name. Empty q = all.",
+            tool_url("wire_search"), { q=sd("Search term, empty for all") }, nil))
+        end
+
+        return tools
       end)(),
     },
     first_message = first_message,

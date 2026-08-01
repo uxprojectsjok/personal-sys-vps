@@ -2014,7 +2014,11 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         try {
           const authRaw = await readFile(`${SOULS_DIR}${soulId}/authorized_services.json`, 'utf8').catch(() => '{}');
           const authData = JSON.parse(authRaw);
-          const serviceToken = Object.keys(authData).find(k => /^[a-f0-9]{64}$/.test(k));
+          // Service-Token kann 64-Hex (klassisch) oder wh_... (ElevenLabs-Style,
+          // siehe create_agent.lua webhook_token) sein -- die alte Hex-only-Regex
+          // fand nie den ElevenLabs-Token, wodurch jeder Tool-Call, der hier statt
+          // in einem der obigen case-Blöcke landet, mit 400 fehlschlug.
+          const serviceToken = Object.keys(authData).find(k => /^([a-f0-9]{64}|wh_[a-f0-9]+)$/.test(k));
           if (!serviceToken) return res.status(400).json({ error: `Tool nicht verfügbar: ${tool}` });
 
           const mcpRes = await fetch(`http://127.0.0.1:${PORT}/mcp`, {
