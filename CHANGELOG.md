@@ -8,6 +8,23 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.37] — 2026-08-01
+
+**Fixed the actual root cause of the v0/v1 cert-version mismatch documented in 1.2.36 — `resetCertToV0()` (fixed there) turned out to be dead code, never called from anywhere. The real source: `importAndSetup()`.**
+
+**How it was traced:** grepped every call site of `resetCertToV0` — only comment references existed, no actual invocation anywhere in the app. The real path for "import an existing soul's `sys.md` onto a node that doesn't know it yet" (e.g. after a reinstall) goes through `handleLoginUpload()` → `importAndSetup()` → `result.certMigrated`, a separate, already-wired mechanism with its own warning dialog (`warnIfCertMigrated`) — that code path's own comment describes exactly this scenario.
+
+**Root cause:** `importAndSetup()`'s POST to `/api/soul-cert` never sends a `cert_version` field, so the server always defaults to issuing a **v0** cert for a soul new to this node — correct and expected. But the response also includes the server's `cert_version` (0 in this case), which the function never read or applied: it only wrote the new `soul_cert` into the frontmatter, leaving whatever `cert_version` number was already in the *uploaded* file untouched. If that uploaded `sys.md` came from a node/session where the soul had already been rotated to v1, the result is an internally inconsistent document: a freshly-issued v0 `soul_cert` sitting next to a stale `cert_version: 1` label. `exportAsBlob()` (called right after, as part of the existing cert-migration flow) then faithfully downloads that inconsistent pair.
+
+**Fixed**
+- `importAndSetup()` now writes both `soul_cert` and `cert_version` from the server's response, not just the cert.
+
+**Correction:** 1.2.36 was a real bug and a real fix (`resetCertToV0()` genuinely didn't push its rotation anywhere) but not what actually produced the mismatch reported live — left in since it's still correct for its own (currently unreachable, possibly used in the future) code path.
+
+**Ported from the private instance** (`/opt/sys` v1.0.90).
+
+---
+
 ## [1.2.36] — 2026-08-01
 
 **Fixed: `resetCertToV0()`'s automatic v0→v1 cert rotation never pushed the result anywhere the owner could actually pick it up — found live via a real, reproducible cert/version mismatch after a fresh reinstall + sys.md re-import.**

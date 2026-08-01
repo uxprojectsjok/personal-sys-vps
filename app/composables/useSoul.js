@@ -285,8 +285,18 @@ ${idea ? idea : "*Not yet described.*"}
       const newCert = data.cert;
       if (!newCert) return { ok: false, error: 'no_cert' };
 
+      // cert_version MUSS mitkommen, nicht nur soul_cert: diese Anfrage schickt nie ein
+      // eigenes cert_version-Feld (server-seitiger Default 0), der zurückgegebene Cert
+      // ist also immer v0 — aber die hochgeladene Datei kann von einem ANDEREN Node
+      // stammen und dort z.B. schon auf cert_version:1 rotiert gewesen sein. Ohne diesen
+      // Schreib blieb die alte Versionsnummer im Frontmatter stehen, während soul_cert
+      // bereits den neuen v0-Wert trug — ein intern widersprüchliches Dokument (Cert und
+      // Versions-Label passen nicht zusammen). Live so gefunden: eine reimportierte
+      // sys.md trug soul_cert (v0) neben cert_version:1 aus dem alten Node.
       soulCert.value    = newCert;
-      soulContent.value = updateFrontmatterField(markdown, 'soul_cert', newCert);
+      let updatedMd = updateFrontmatterField(markdown, 'soul_cert', newCert);
+      updatedMd     = updateFrontmatterField(updatedMd, 'cert_version', data.cert_version ?? 0);
+      soulContent.value = updatedMd;
       isLoaded.value    = true;
       save();
 
