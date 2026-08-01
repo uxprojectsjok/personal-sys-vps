@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.45] — 2026-08-01
+
+**Fixed the source of the recurring `{name}`-in-voice-prompt bug: `shared/constants/default_mind.md` — the template every new soul's mind.md starts from — had `{name}` placeholders in its `## ElevenLabs Agent` section, the same anti-pattern already fixed in the private repo's own Gatekeeper mind.md.**
+
+**Fixed**
+- `shared/constants/default_mind.md`: the three `{name}` placeholders replaced with generic, name-independent phrasing (matching `create_agent.lua`'s own hardcoded no-template fallback wording) — every soul created from now on starts clean, instead of inheriting a prompt that needs a substitution mechanism that's proven unreliable in practice.
+
+---
+
 ## [1.2.44] — 2026-08-01
 
 **Fixed: `create_agent.lua`'s Gatekeeper detection (1.2.41, for binding the wired_* voice-agent tools) relied on a sys.md field this repo never wrote in the first place — the private repo's equivalent creation-time checkbox was removed there too, for the same reason: becoming a Gatekeeper is exclusively a post-creation Settings toggle.**
