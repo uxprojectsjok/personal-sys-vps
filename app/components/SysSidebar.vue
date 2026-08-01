@@ -20,6 +20,7 @@
       <span class="sb-avatar">{{ initial }}</span>
       <span class="sb-soul-meta">
         <span class="sb-soul-name">{{ soulMeta?.name || 'Soul' }}</span>
+        <span v-if="showGatekeeperBadge" class="sb-gatekeeper-badge">Gatekeeper</span>
         <span class="sb-soul-id">#{{ shortId }}</span>
       </span>
     </button>
@@ -46,8 +47,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useGatekeeper } from '../composables/useGatekeeper.js'
 
 const { t } = useI18n()
 
@@ -59,6 +61,12 @@ const props = defineProps({
 })
 
 defineEmits(['collapse', 'lock', 'go'])
+
+// Gatekeeper-Status entscheidet ausschließlich der Toggle (gatekeeper_config.json
+// / gatekeeperEnabled, siehe wired_souls.mjs) -- kein sys.md-Frontmatter-Feld.
+const { gatekeeperEnabled, fetchGatekeeperEnabled } = useGatekeeper()
+onMounted(() => { fetchGatekeeperEnabled() })
+const showGatekeeperBadge = computed(() => gatekeeperEnabled.value)
 
 const initial = computed(() => (props.soulMeta?.name || 'S')[0].toUpperCase())
 const shortId = computed(() => {

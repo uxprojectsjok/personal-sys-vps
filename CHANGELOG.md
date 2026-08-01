@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.43] — 2026-08-01
+
+**Ported the Gatekeeper sidebar badge from the private repo — it never made it over during the 2026-07-28 Gatekeeper-parity work, and its logic needed a fix anyway.**
+
+**Added / Fixed**
+- `app/components/SysSidebar.vue`: added the `Gatekeeper` badge next to a soul's own name, shown when `gatekeeperEnabled` (the live `gatekeeper_config.json` toggle, the sole authority per `wired_souls.mjs`'s 2026-07-28 consolidation) is on — no dependency on any sys.md frontmatter field, since nothing server-side reads one for this anymore.
+- `app/composables/useGatekeeper.js`: the shared `gatekeeperEnabled` ref's pre-fetch default corrected from `true` to `false`, matching the server's actual post-consolidation default — an uncorrected `true` default would have briefly flashed the badge for every soul on page load, including non-Gatekeepers.
+- `app/assets/css/sys-v2.css`: added the `.sb-gatekeeper-badge` rule (ported unchanged from the private repo).
+
+---
+
 ## [1.2.42] — 2026-08-01
 
 **Fixed the actual remaining cause of the non-English-voice-with-English-accent bug: cloned voices from vault audio never got tagged with a language, so 1.2.40's "derive language from the voice's own label" fix had nothing to read and silently fell back to English.**

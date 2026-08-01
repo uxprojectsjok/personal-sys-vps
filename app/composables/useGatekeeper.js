@@ -10,7 +10,11 @@ const wiredTo          = ref([])
 const federated        = ref([])
 const loading          = ref(false)
 const error            = ref(null)
-const gatekeeperEnabled = ref(true) // Server-Default ist ebenfalls true, siehe wired_souls.mjs
+// Server-Default ist seit der 2026-07-28-Konsolidierung false (kein impliziter
+// Default mehr, siehe wired_souls.mjs) -- bis fetchGatekeeperEnabled() den
+// echten Wert lädt, hier ebenfalls false, sonst blitzt das Sidebar-Badge kurz
+// für jede Soul auf, auch nicht-Gatekeeper.
+const gatekeeperEnabled = ref(false)
 
 export function useGatekeeper() {
   const { soulToken } = useSoul()
