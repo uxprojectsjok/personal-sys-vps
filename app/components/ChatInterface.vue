@@ -50,20 +50,8 @@
             <div v-else-if="item.mediaType === 'video' && item.mediaUrl" class="media-video">
               <video controls :src="item.mediaUrl" playsinline></video>
             </div>
-            <div v-if="item.youtubeEmbed" class="media-embed">
-              <iframe
-                :src="`https://www.youtube-nocookie.com/embed/${item.youtubeEmbed.videoId}`"
-                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
-              ></iframe>
-            </div>
-            <div v-if="item.spotifyEmbed" class="media-spotify">
-              <iframe
-                :src="`https://open.spotify.com/embed/track/${item.spotifyEmbed.id}?utm_source=generator&theme=0`"
-                frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
-              ></iframe>
-            </div>
             <a v-if="item.linkCard" :href="item.linkCard.url" target="_blank" rel="noopener" class="link-card">
-              <span class="lc-icon">{{ item.linkCard.service === 'youtube' ? '▶' : item.linkCard.service === 'spotify' ? '♫' : '🔍' }}</span>
+              <span class="lc-icon">🔍</span>
               <span class="lc-label">{{ item.linkCard.label }}</span>
               <span class="lc-arr">→</span>
             </a>
@@ -489,8 +477,6 @@ import { useMind } from '~/composables/useMind.js'
 import { useMcpTools } from '~/composables/useMcpTools.js'
 import { useSession } from '~/composables/useSession.js'
 import { useVault } from '~/composables/useVault.js'
-import { useYouTube } from '~/composables/useYouTube.js'
-import { useSpotify } from '~/composables/useSpotify.js'
 import { useSoul } from '~/composables/useSoul.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
 import CameraRecorder      from '~/components/CameraRecorder.vue'
@@ -522,8 +508,6 @@ const {
 } = useSession()
 const { contextText, profileBase64, fileManifest, allFiles, readImageFile, readImageAsBase64, isConnected: vaultConnected, writeSoulMd } = useVault()
 const { vaultKey: _vaultKey } = useVaultSession()
-const { isConnected: ytConnected, accessToken: ytToken } = useYouTube()
-const { isConnected: spConnected, accessToken: spToken } = useSpotify()
 
 // ── Cert error passthrough ─────────────────────────────────────────
 watch(certError, (v) => { if (v) emit('cert-error') })
@@ -2037,14 +2021,8 @@ async function processPickedFile(file) {
 function detectIntent(text) {
   const t = text.trim()
   // Legacy @search- prefix (backward compat)
-  const legacy = t.match(/^@search-(youtube|spotify|google)\s*(.*)/is)
+  const legacy = t.match(/^@search-(google)\s*(.*)/is)
   if (legacy) return { type: legacy[1].toLowerCase(), query: legacy[2].trim() }
-  // YouTube
-  const ytMatch = t.match(/^(?:zeig(?:\s+mir)?\s+(?:ein\s+)?(?:youtube\s+)?video\s+(?:von\s+)?|youtube\s+)(.+)/i)
-  if (ytMatch) return { type: 'youtube', query: ytMatch[1].trim() }
-  // Spotify / music
-  const spMatch = t.match(/^(?:spiele?\s+(?:(?:das\s+)?(?:lied|song|musik)\s+)?|musik\s+|song\s+|spotify\s+)(.+)/i)
-  if (spMatch) return { type: 'spotify', query: spMatch[1].trim() }
   // Capture intents — checked before generic @name match
   if (/^@audio\b|^@stimme\b/i.test(t)) return { type: 'capture-audio' }
   if (/^@face\b|^@gesicht\b/i.test(t)) return { type: 'capture-face' }
@@ -2128,44 +2106,10 @@ function detectIntent(text) {
   return { type: 'chat', query: t }
 }
 
-async function searchYouTubeApi(query) {
-  try {
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1`, { headers: { Authorization: `Bearer ${ytToken.value}` } })
-    const data = await res.json()
-    const item = data.items?.[0]
-    if (!item) return null
-    return { videoId: item.id.videoId, title: item.snippet.title }
-  } catch { return null }
-}
-
-async function searchSpotifyApi(query) {
-  try {
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`, { headers: { Authorization: `Bearer ${spToken.value}` } })
-    const data = await res.json()
-    const track = data.tracks?.items?.[0]
-    if (!track) return null
-    return { id: track.id, title: `${track.name} – ${track.artists[0]?.name}` }
-  } catch { return null }
-}
-
 async function handleSearchCommand(cmd) {
   const safe = cmd.query.replace(/<[^>]*>/g, '').trim().slice(0, 200)
   if (!safe) return null
 
-  if (cmd.type === 'youtube') {
-    if (ytConnected.value) {
-      const yt = await searchYouTubeApi(safe)
-      if (yt) return { text: `[YouTube: "${yt.title}"]`, contentBlocks: null, youtubeEmbed: yt }
-    }
-    return { text: `[YouTube-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://www.youtube.com/results?search_query=${encodeURIComponent(safe)}`, service: 'youtube', label: safe } }
-  }
-  if (cmd.type === 'spotify') {
-    if (spConnected.value) {
-      const sp = await searchSpotifyApi(safe)
-      if (sp) return { text: `[Spotify: "${sp.title}"]`, contentBlocks: null, spotifyEmbed: sp }
-    }
-    return { text: `[Spotify-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://open.spotify.com/search/${encodeURIComponent(safe)}`, service: 'spotify', label: safe } }
-  }
   if (cmd.type === 'google') {
     return { text: `[Web-Suche: "${safe}"]`, contentBlocks: null, linkCard: { url: `https://www.google.com/search?q=${encodeURIComponent(safe)}`, service: 'google', label: safe } }
   }
@@ -3239,14 +3183,12 @@ async function handleSend() {
     return
   }
 
-  if (intent.type === 'youtube' || intent.type === 'spotify' || intent.type === 'google') {
+  if (intent.type === 'google') {
     const result = await handleSearchCommand({ type: intent.type, query: intent.query })
     if (!result) return
     const meta = {}
     if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
     if (result.mediaUrl)      { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
-    if (result.youtubeEmbed)  meta.youtubeEmbed = result.youtubeEmbed
-    if (result.spotifyEmbed)  meta.spotifyEmbed = result.spotifyEmbed
     if (result.linkCard)      meta.linkCard = result.linkCard
     await dispatchToChat(result.text, meta)
     return
@@ -3452,8 +3394,6 @@ defineExpose({
 .media-video video { max-width: 100%; display: block; border-radius: 10px; margin-bottom: 10px; }
 .media-audio { min-width: 240px; }
 .media-audio audio  { width: 100%; height: 36px; display: block; margin-bottom: 4px; }
-.media-embed iframe { width: 100%; max-width: 320px; aspect-ratio: 16/9; display: block; margin-bottom: 10px; border-radius: 10px; }
-.media-spotify iframe { width: 100%; max-width: 320px; height: 80px; display: block; margin-bottom: 10px; border-radius: 10px; }
 
 .link-card {
   display: inline-flex; align-items: center; gap: 8px;
@@ -4347,7 +4287,6 @@ defineExpose({
   .msg-inner img, .msg-inner video, .msg-inner iframe { max-width: 100%; width: auto; }
   .media-audio { min-width: 220px; }
   .media-audio audio { width: 100%; max-width: 100%; }
-  .media-embed iframe, .media-spotify iframe { max-width: 100%; }
   .msg-doc-a { max-width: 100%; }
   .msg-doc-name { max-width: 100%; }
 

@@ -348,9 +348,8 @@ export function useClaude() {
 
     // Media-Signal Handling (geteilt zwischen beiden Modi)
     const mediaSignalInstructions = `
-Wenn im Gespräch ein Signal wie [YouTube-Suche: "..."], [Spotify-Suche: "..."], [Google-Suche: "..."] oder [Lokale Datei: "..."] auftaucht:
+Wenn im Gespräch ein Signal wie [Google-Suche: "..."] oder [Lokale Datei: "..."] auftaucht:
 - Reagiere auf die Wahl selbst – was steckt da drin, was sagt das aus?
-- Bei Musik: bring eine eigene Assoziation, Erinnerung oder Meinung dazu – und wenn es passt, eine neugierige Frage.
 - Keine Qualitätsbewertungen. Ob die Suche Ergebnisse hatte, weißt du nicht – kommentiere das nie.`;
 
     let systemPrompt;
@@ -428,8 +427,6 @@ Chat & Netzwerk:
 - "@agent" → in den Agent Sandbox
 
 Suche (direkt im Chat tippen):
-- "zeig mir YouTube-Video von X"
-- "spiele Lied X" (Spotify)
 - "such nach X im Web"
 
 Profil-Aufnahmen (einmalig, im Vault gespeichert):

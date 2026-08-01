@@ -184,8 +184,8 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 │                            useCamera, useMotion, useVoice, usePlayer, useElevenLabsConversation,
 │                            useMcpTools, useChainAnchor, useSoulEncrypt, useSoulDecrypt,
 │                            useSoulPasskey, useSavedCreds, useNodeStatus, useColorScheme,
-│                            useConfirm, usePwaInstall, useSpotify, useTrezorKey,
-│                            useVerifySpecial, useYouTube
+│                            useConfirm, usePwaInstall, useTrezorKey,
+│                            useVerifySpecial
 │
 ├── lua/                     OpenResty Lua scripts (production API layer, 150+ endpoints)
 │   ├── soul_cert.lua        Soul cert issuance — per-soul key on multi-hoster
@@ -474,7 +474,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.2.38): 2006333c9c227418
+Current release fingerprint (v1.2.39): 3c7b87b7eb40da63
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 

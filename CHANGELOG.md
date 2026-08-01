@@ -8,6 +8,24 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.39] — 2026-08-01
+
+**Removed Spotify/YouTube integration entirely — dead since the Connect UI was pulled long ago, only the code behind it was left.** Part of bringing SYS to production maturity: dead DEV-era code gets removed, not just hidden.
+
+**Removed**
+- `app/composables/useSpotify.js`, `app/composables/useYouTube.js` — deleted.
+- `ChatInterface.vue`: imports, `ytConnected`/`spConnected`/`ytToken`/`spToken`, the `youtubeEmbed`/`spotifyEmbed` template blocks and their CSS, `searchYouTubeApi`/`searchSpotifyApi`, the `youtube`/`spotify` branches in `detectIntent()` and `handleSearchCommand()` (Google web search kept, now the only search intent). `linkCard`'s icon is now always 🔍 — youtube/spotify were the only other cases.
+- `useClaude.js`: system-prompt references to YouTube-Suche/Spotify-Suche signals and the "zeig mir YouTube-Video"/"spiele Lied X" capability bullets — the AI no longer claims a capability that doesn't exist.
+- `nuxt.config.js`: `spotifyClientId`/`youtubeClientId` runtime config entries. `.env.example`: `SPOTIFY_CLIENT_ID`/`YOUTUBE_CLIENT_ID` block (the Etherscan block right below it was already documented here and is untouched).
+- CSP (`server/openresty/vhost.conf.template`): `api.spotify.com`, `accounts.spotify.com`, `www.googleapis.com` (was YouTube-search-only, nothing else used it), `i.ytimg.com`, `mosaic.scdn.co`, `i.scdn.co`, `www.youtube-nocookie.com`, `open.spotify.com` — all dropped from `connect-src`/`img-src`/`frame-src`.
+- `README.md`'s composables listing updated to match.
+
+**Not touched:** `shared/utils/soulParser.js`'s `SOUL_TOPIC_MAP` keyword list still contains "spotify"/"youtube" as plain conversational vocabulary (routes chat mentioning them to the Aesthetics section) — unrelated to the removed integration, still valid regardless of whether the app has live API access to either service.
+
+**Ported from the private instance** (`/opt/sys` v1.0.94).
+
+---
+
 ## [1.2.38] — 2026-08-01
 
 **Every remaining cert-changing code path now pushes to the server and downloads a fresh `sys.md` — closing this out as a general rule, not another one-off patch.** This session already fixed the same class of bug three times individually (`toggleMultiHoster`, `handleRotateCert`'s pattern, `resetCertToV0`, `importAndSetup`'s content consistency) — audited every remaining place `soul_cert` gets written to make sure none were missed.

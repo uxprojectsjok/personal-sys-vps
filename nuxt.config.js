@@ -21,10 +21,6 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Spotify App Client ID (developer.spotify.com → App → Client ID)
-      spotifyClientId: process.env.SPOTIFY_CLIENT_ID || "",
-      // Google OAuth 2.0 Web Client ID (console.cloud.google.com → APIs & Dienste → Anmeldedaten)
-      youtubeClientId: process.env.YOUTUBE_CLIENT_ID || "",
       // Personal Node: Soul-Erstellung immer erlaubt (Single-Soul, erster Nutzer wird Owner)
       allowCreateSoul: true,
       // Node-Identität — wird auf der Landingpage angezeigt
