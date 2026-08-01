@@ -357,6 +357,13 @@ ${idea ? idea : "*Not yet described.*"}
 
     if (!cert) return;
 
+    // Ob sich der Cert WIRKLICH geändert hat, merken, bevor er überschrieben wird —
+    // refreshCert() läuft routinemäßig (Session-Start, Vault-Connect, ...) und ist meist
+    // ein No-Op (Server bestätigt nur den bereits bekannten Cert). Nur bei einer echten
+    // Änderung lohnt sich Server-Push + Download; sonst würde jeder Routine-Aufruf einen
+    // Download auslösen.
+    const certChanged = cert !== currentCert;
+
     soulContent.value = updateFrontmatterField(soulContent.value, "soul_cert", cert);
     if (certVersionFromServer !== null) {
       soulContent.value = updateFrontmatterField(soulContent.value, "cert_version", certVersionFromServer);
@@ -379,6 +386,17 @@ ${idea ? idea : "*Not yet described.*"}
         }
       }
     } catch { /* offline oder Fehler — lokale Version behalten */ }
+
+    // Jeder ECHTE Cert-Wechsel muss Server + lokalen Download nach sich ziehen — gleiches
+    // Prinzip wie bei toggleMultiHoster()/handleRotateCert()/resetCertToV0() (alle diese
+    // Session gefixt): ohne das hat jedes andere Gerät oder jede zuvor gespeicherte sys.md
+    // einen jetzt veralteten Cert, ohne Chance das zu merken, bis der nächste Login fehlschlägt.
+    // refreshCert() wird u.a. nach einer Master-Key-Rotation aufgerufen (handleMasterRotated
+    // in session.vue/settings.vue) — genau der Fall, für den dieses Prinzip gilt.
+    if (certChanged) {
+      await pushToServer();
+      await exportAsBlob();
+    }
   }
 
   // Rotiert den soul_cert: inkrementiert cert_version auf dem Server,

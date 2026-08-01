@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.38] — 2026-08-01
+
+**Every remaining cert-changing code path now pushes to the server and downloads a fresh `sys.md` — closing this out as a general rule, not another one-off patch.** This session already fixed the same class of bug three times individually (`toggleMultiHoster`, `handleRotateCert`'s pattern, `resetCertToV0`, `importAndSetup`'s content consistency) — audited every remaining place `soul_cert` gets written to make sure none were missed.
+
+**Audit:** grepped every `soulCert.value =` / `updateFrontmatterField(..., 'soul_cert', ...)` site in `useSoul.js` and traced each to its callers. `createNew()` (new soul) and `importFromText()` (raw, no-server-call import) don't introduce drift themselves. `rotateCert()`'s two callers (`SettingsModal.vue`, `SoulSetupWizard.vue`) already do the full vault+server+download sequence. The one gap: `refreshCert()` — called routinely (session start, vault connect) and, more importantly, from both `handleMasterRotated()` handlers (`session.vue`, `settings.vue`) after an actual master-key rotation — updated `soul_cert`/`cert_version` and pushed nowhere.
+
+**Fixed**
+- `refreshCert()` now tracks whether the cert it received actually differs from the one it started with, and only then calls `pushToServer()` + `exportAsBlob()` — real changes get pushed and downloaded, the frequent no-op calls (nothing rotated, server just re-confirms the known cert) don't spam a download on every session start.
+
+**Ported from the private instance** (`/opt/sys` v1.0.91).
+
+---
+
 ## [1.2.37] — 2026-08-01
 
 **Fixed the actual root cause of the v0/v1 cert-version mismatch documented in 1.2.36 — `resetCertToV0()` (fixed there) turned out to be dead code, never called from anywhere. The real source: `importAndSetup()`.**
