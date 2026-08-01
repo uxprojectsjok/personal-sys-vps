@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.46] — 2026-08-01
+
+**Added: `update.sh` now self-heals a missing Claude Code CLI instead of only warning about it — found live on `fab.uxprojects-jok.com`, where the binary had been removed outside of any SYS tooling and every update since then just logged a warning nobody was watching.**
+
+Every node is meant to have Autonomous Agent capability out of the box (`init.sh` now always installs the CLI, see `sys-installer`'s `cdd50cf`/`815268f` — no more opt-in prompt, no more Multi-Hoster exception). But `init.sh` only runs once, at install time; if the binary later goes missing for any reason, nothing previously brought it back.
+
+**Added**
+- `update.sh`: if `claude` isn't on `PATH`, runs `npm install -g @anthropic-ai/claude-code` before falling through to the existing sentinel-file logic, so a node recovers Autonomous Agent capability on its next routine update instead of staying degraded until someone notices.
+
+---
+
 ## [1.2.45] — 2026-08-01
 
 **Fixed the source of the recurring `{name}`-in-voice-prompt bug: `shared/constants/default_mind.md` — the template every new soul's mind.md starts from — had `{name}` placeholders in its `## ElevenLabs Agent` section, the same anti-pattern already fixed in the private repo's own Gatekeeper mind.md.**

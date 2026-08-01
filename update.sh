@@ -102,8 +102,20 @@ fi
 info "Reloading OpenResty..."
 openresty -t && openresty -s reload && info "OpenResty reloaded."
 
-# ── 4. Write claude_path sentinel if claude is installed ──────────────────────
+# ── 4. Ensure Claude Code CLI is installed, write claude_path sentinel ────────
+# Every node gets Autonomous Agent capability (see init.sh) — if the binary
+# went missing since install (uninstalled, npm prefix wiped, ...), self-heal
+# here instead of just warning, so a node never silently loses this without
+# an operator noticing the warning in an update log they may not read.
 CLAUDE_PATH_FILE="/var/lib/sys/claude_path"
+if ! command -v claude &>/dev/null; then
+  if command -v npm &>/dev/null; then
+    info "claude not found — reinstalling Claude Code CLI..."
+    npm install -g @anthropic-ai/claude-code || warn "npm install -g @anthropic-ai/claude-code failed — see output above."
+  else
+    warn "claude not found and npm unavailable — cannot reinstall."
+  fi
+fi
 if command -v claude &>/dev/null; then
   CLAUDE_BIN=$(command -v claude)
   echo "$CLAUDE_BIN" > "$CLAUDE_PATH_FILE"
