@@ -156,12 +156,14 @@ local function get_mind_section(section)
   return nil
 end
 
--- Default is English for new installs. Set config.json's "elevenlabs_language"
--- (e.g. "de") to override -- used for ElevenLabs' STT/response language and to
--- pick the matching "xx:" tagged line in the ElevenLabs Greeting section below.
-local language   = config_language ~= "" and config_language or "en"
-local LANG_NAMES  = { en = "English", de = "Deutsch" }
-local lang_name   = LANG_NAMES[language] or "English"
+-- Language is derived from the actual voice's own ElevenLabs "language" label
+-- once voice_id is known below (a voice tagged language=de should obviously
+-- speak German) -- config.json's "elevenlabs_language" never had any UI path
+-- to set it, so it silently stayed empty and this always fell back to
+-- English, even for a German voice (live symptom: German voice, English
+-- model -- ElevenLabs' English-only v2 models mispronounce German badly).
+-- config_language, if ever set, still wins as an explicit manual override.
+-- (Actual determination happens further below, once voice_id is resolved.)
 
 -- ── Webhook-Token + Permissions sicherstellen ─────────────────────────────────
 local ctx_path = BASE_DIR .. "/api_context.json"
@@ -371,6 +373,35 @@ if not voice_id and audio_data then
       vres and (" body=" .. (vres.body or ""):sub(1, 200)) or "")
   end
 end
+
+-- ── Language: derive from the voice's own ElevenLabs "language" label ────────
+-- config_language (config.json's "elevenlabs_language") wins if ever set
+-- manually, otherwise ask ElevenLabs what language THIS voice_id is tagged
+-- as -- a German voice should speak German, no separate setting needed.
+-- Falls back to "en" only if the lookup fails or there's no voice_id at all.
+local language = config_language
+if language == "" and voice_id then
+  local hc2 = http.new()
+  hc2:set_timeout(8000)
+  local lres, lerr = hc2:request_uri(ELEVEN .. "/voices/" .. voice_id, {
+    method     = "GET",
+    ssl_verify = true,
+    headers    = { ["xi-api-key"] = eleven_key },
+  })
+  if lres and lres.status == 200 then
+    local lok, ldata = pcall(cjson.decode, lres.body)
+    if lok and type(ldata) == "table" and type(ldata.labels) == "table"
+       and type(ldata.labels.language) == "string" and ldata.labels.language ~= "" then
+      language = ldata.labels.language
+    end
+  else
+    ngx.log(ngx.WARN, "[create_agent] voice language lookup failed: ",
+      lres and lres.status or "no response", " ", lerr or "")
+  end
+end
+if language == "" then language = "en" end
+local LANG_NAMES = { en = "English", de = "Deutsch" }
+local lang_name  = LANG_NAMES[language] or LANG_NAMES[language:sub(1,2)] or "English"
 
 -- ── Build system prompt ───────────────────────────────────────────────────────
 local system_prompt

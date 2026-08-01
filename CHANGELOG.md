@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.2.40] — 2026-08-01
+
+**Fixed: Create-Agent could pick an English-only ElevenLabs voice model for a non-English voice, making the agent mispronounce its own configured language.** Root cause: `config.json`'s `elevenlabs_language` field has no UI write path anywhere in the app — it was always empty, so `create_agent.lua` fell back to hardcoded `"en"` regardless of which voice was actually selected. A German (or any non-English) voice clone got an English `tts.model_id` and mispronounced its own language badly.
+
+**Fixed**
+- `lua/create_agent.lua`: language is now derived from the *selected voice's own* ElevenLabs `labels.language` (live `GET /v1/voices/{voice_id}` lookup) instead of the always-empty `elevenlabs_language` config field. A non-English voice now correctly gets a multilingual-capable model; `config_language` still wins if ever set manually, `"en"` remains the fallback only when the lookup fails or no voice is selected at all.
+
+---
+
 ## [1.2.39] — 2026-08-01
 
 **Removed Spotify/YouTube integration entirely — dead since the Connect UI was pulled long ago, only the code behind it was left.** Part of bringing SYS to production maturity: dead DEV-era code gets removed, not just hidden.
