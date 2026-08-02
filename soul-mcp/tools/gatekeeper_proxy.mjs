@@ -83,6 +83,18 @@ function errResult(msg) {
   return { content: [{ type: 'text', text: msg }], isError: true };
 }
 
+// BETA (wire_scanner): plain substring match, no ReDoS surface (same reasoning
+// as useNetworkSearch.js's client-side search) -- returns null when no match
+// so callers can filter without needing a separate "found?" check.
+function extractSnippet(text, needle, context = 80) {
+  const idx = text.toLowerCase().indexOf(needle);
+  if (idx === -1) return null;
+  const start = Math.max(0, idx - context);
+  const end   = Math.min(text.length, idx + needle.length + context);
+  const body  = text.slice(start, end).replace(/\s+/g, ' ').trim();
+  return (start > 0 ? '…' : '') + body + (end < text.length ? '…' : '');
+}
+
 // Trennt Herkunfts-Info (node_url) als eigenen Content-Block von der
 // eigentlichen Nutzlast, statt sie in den Dokumenttext hineinzuschreiben —
 // eine KI, die z.B. wired_soul_read-Ergebnisse zitiert/weiterverarbeitet,
@@ -281,6 +293,50 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
         node_url: e.node_url || BASE_URL,
       }));
       return { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'wire_scanner',
+    'BETA: durchsucht den tatsächlichen Inhalt (sys.md + Context-Dateien) aller verdrahteten Souls nach einem Suchbegriff — anders als wire_status/wire_search (nur Namen/Metadaten). Nutzt exakt dieselben Scopes und Tokens wie wired_soul_read/wired_context_get, keine neue Berechtigung. Kann bei vielen verdrahteten Souls mit vielen Context-Dateien langsam sein (noch unoptimiert, kein soul_id-Filter in dieser Version).',
+    { q: z.string().min(1).describe('Suchbegriff (Volltextsuche, Groß-/Kleinschreibung egal)') },
+    async ({ q }) => {
+      const needle  = q.toLowerCase();
+      const results = [];
+
+      for (const [soul_id, entry] of Object.entries(wiredMap)) {
+        const resolvedNodeUrl = entry.node_url || BASE_URL;
+        const perms = entry.permissions || {};
+
+        if (perms.soul) {
+          try {
+            const text    = await (await fetchApi('/api/soul', entry.token, entry.node_url)).text();
+            const snippet = extractSnippet(text, needle);
+            if (snippet) results.push({ soul_id, name: entry.name, node_url: resolvedNodeUrl, source: 'sys.md', snippet });
+          } catch { /* best-effort — skip this soul's sys.md, don't abort the scan */ }
+        }
+
+        if (perms.context_files) {
+          try {
+            const listData = await (await fetchApi('/api/vault/context', entry.token, entry.node_url)).json();
+            const files = Array.isArray(listData.files) ? listData.files : [];
+            for (const f of files) {
+              const fname = f?.name;
+              if (!fname) continue;
+              try {
+                const fText   = await (await fetchApi(`/api/vault/context/${encodeURIComponent(fname)}`, entry.token, entry.node_url)).text();
+                const snippet = extractSnippet(fText, needle);
+                if (snippet) results.push({ soul_id, name: entry.name, node_url: resolvedNodeUrl, source: `context:${fname}`, snippet });
+              } catch { /* best-effort — skip this file, keep scanning the rest */ }
+            }
+          } catch { /* best-effort — skip context entirely for this soul */ }
+        }
+      }
+
+      if (!results.length) {
+        return { content: [{ type: 'text', text: `Keine Treffer für "${q}" in verdrahteten Souls.` }] };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
     }
   );
 }

@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.0] — 2026-08-02
+
+**Added `wire_scanner` (BETA) — full-text search over wired souls' actual content, not just names/metadata.** `wire_status` lists wired souls, `wire_search` matches only their names — neither can answer "which wired soul mentioned X." `wire_scanner` closes that gap the same way the app's own network search (`useNetworkSearch.js`) already does for public `llms.txt` content: no new authorization primitive, purely a convenience aggregation over content the Gatekeeper can already fetch through the existing `wired_soul_read`/`wired_context_get` REST paths and their per-soul granted scopes.
+
+**Added**
+- `soul-mcp/tools/gatekeeper_proxy.mjs`: `wire_scanner` tool, registered alongside `wire_status` (same function, same availability everywhere `wire_status` already is — both `/mcp` and `/mcp/discover`). For each wired soul: searches `sys.md` if `soul` scope is granted, and every context file if `context_files` scope is granted; returns matching snippets with soul/source. Best-effort per soul/file — one unreachable soul or unreadable file doesn't abort the rest of the scan.
+
+**Known limitations (beta, deliberately deferred):** no `soul_id` filter yet — every scan touches every wired soul with a granted scope, which doesn't scale well with many wired souls or many context files. No caching, no parallelization. Not yet bound to the ElevenLabs voice agent's tool set (`create_agent.lua`) — MCP clients (Claude.ai, Claude Desktop) only for now. Optimize when it's actually needed, not preemptively.
+
+---
+
 ## [1.2.46] — 2026-08-01
 
 **Added: `update.sh` now self-heals a missing Claude Code CLI instead of only warning about it — found live on `fab.uxprojects-jok.com`, where the binary had been removed outside of any SYS tooling and every update since then just logged a warning nobody was watching.**
