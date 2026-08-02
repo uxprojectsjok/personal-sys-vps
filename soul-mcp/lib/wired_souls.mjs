@@ -90,6 +90,26 @@ export async function loadWired(soulId) {
   }
 }
 
+// Gemeinsame Kanonisierung für alles, was "aktuell gültige wired_souls.json
+// dieser Soul" braucht, ohne connected_souls.json/Owner-Kontext (das macht
+// registerConnectionProxyTools in server.mjs zusätzlich) — genutzt sowohl von
+// GET /mcp/discover/search als auch von den /mcp/discover/federated/relay/*
+// Routen, die jeweils NUR die wiredMap des angefragten Gatekeepers brauchen.
+// Siehe registerConnectionProxyTools für die exakt gleiche Logik inline.
+export async function loadAcceptedWired(soulId) {
+  const wiredAll = await loadWired(soulId);
+  const wiredRaw = {};
+  const wired    = {};
+  for (const [key, entry] of Object.entries(wiredAll)) {
+    if (entry.status && entry.status !== 'accepted') continue;
+    const sid = entry.soul_id || key.split('@')[0];
+    const normalized = { ...entry, soul_id: sid };
+    wiredRaw[key] = normalized;
+    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = normalized;
+  }
+  return { wired, wiredRaw };
+}
+
 export async function saveWired(soulId, data) {
   await mkdir(`${SOULS_DIR}${soulId}`, { recursive: true });
   await writeFile(wiredPath(soulId), JSON.stringify(data), 'utf8');

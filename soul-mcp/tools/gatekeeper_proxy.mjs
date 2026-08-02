@@ -23,7 +23,7 @@ const BASE_URL = process.env.BASE_URL;
 // gleichzeitig verdrahtet ist (live aufgetreten: zwei Wires zur selben
 // soul_id waren über soul_id allein nicht mehr unterscheidbar). node_url
 // optional — ohne Angabe wird wie bisher die kanonische Verbindung genutzt.
-function lookup(wiredMap, wiredRaw, soulId, permKey, nodeUrl) {
+export function lookup(wiredMap, wiredRaw, soulId, permKey, nodeUrl) {
   let entry;
   if (nodeUrl) {
     const key = nodeUrl === BASE_URL ? soulId : wireKey(soulId, nodeUrl);
@@ -47,6 +47,18 @@ const NODE_URL_PARAM = z.string().optional().describe(
   'Optional: node_url aus wire_status/wire_search zur Disambiguierung, falls dieselbe soul_id von mehreren Nodes gleichzeitig verdrahtet ist. Ohne Angabe wird die zuletzt verdrahtete Verbindung verwendet.'
 );
 
+// err.code trägt (falls vorhanden) den maschinenlesbaren Fehlercode der
+// Gegenseite (z.B. "target_not_wired" von /mcp/discover/federated/relay/*) —
+// resolveCandidates()' Aufrufer nutzt das, um "dieser föderierte Gatekeeper
+// kennt die Soul nicht" (nächsten Kandidaten probieren) von einem echten
+// Fehler beim tatsächlich richtigen Kandidaten zu unterscheiden.
+function apiError(status, data) {
+  const err = new Error(data?.message || data?.error || `HTTP ${status}`);
+  err.status = status;
+  err.code   = data?.error;
+  return err;
+}
+
 // nodeUrl gesetzt (Cross-Node-Wiring): Fetch gegen den Home-Node der
 // verdrahteten Soul statt gegen den eigenen Node des Gatekeepers.
 // Exportiert, weil peer_inbox.mjs/wired_shared_get denselben node_url-
@@ -59,12 +71,12 @@ export async function fetchApi(path, token, nodeUrl) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    throw apiError(res.status, err);
   }
   return res;
 }
 
-async function putApi(path, token, nodeUrl, body) {
+export async function putApi(path, token, nodeUrl, body) {
   const base = nodeUrl || BASE_URL;
   const res = await fetch(`${base}${path}`, {
     method: 'PUT',
@@ -74,13 +86,100 @@ async function putApi(path, token, nodeUrl, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.ok) {
-    throw new Error(data.error || `HTTP ${res.status}`);
+    throw apiError(res.status, data);
   }
   return data;
 }
 
 function errResult(msg) {
   return { content: [{ type: 'text', text: msg }], isError: true };
+}
+
+// Ermittelt, WIE eine soul_id für ein wired_*-Tool erreicht wird: entweder
+// direkt bei diesem Gatekeeper verdrahtet (wie bisher — ein lokaler Eintrag
+// ist immer autoritativ/terminal, unabhängig davon ob der gewünschte Scope
+// gewährt wurde, damit eine Soul, die zufällig gleichzeitig lokal UND über
+// Föderation erreichbar wäre, nie über den jeweils anderen Weg den lokal
+// gesetzten Scope umgeht), oder — nur falls hier überhaupt nicht verdrahtet —
+// 1 Hop über jeden akzeptierten föderierten Gatekeeper (dieselbe Reichweite
+// wie wire_search/wire_scanner), via dessen /mcp/discover/federated/relay/*.
+// node_url-Disambiguierung (mehrere physische Instanzen derselben soul_id)
+// ergibt nur lokal Sinn, bleibt dort unverändert.
+//
+// Rückgabe: Liste von Kandidaten, die der Aufrufer der Reihe nach probiert
+// (siehe tryCandidates). Ein Kandidat trägt entweder `error` (terminal) oder
+// `token`/`nodeUrl`/`resolvedNodeUrl` + optional `relay`
+// ({gatekeeperSoulId, targetSoulId}, gesetzt wenn über Föderation erreicht).
+function resolveCandidates(wiredMap, wiredRaw, fed, soulId, permKey, nodeUrl) {
+  const localKey   = nodeUrl ? (nodeUrl === BASE_URL ? soulId : wireKey(soulId, nodeUrl)) : null;
+  const localKnown = nodeUrl ? Boolean(wiredRaw?.[localKey]) : Boolean(wiredMap[soulId]);
+  if (localKnown || nodeUrl) {
+    return [{ ...lookup(wiredMap, wiredRaw, soulId, permKey, nodeUrl), relay: null }];
+  }
+  const partners = Object.entries(fed || {}).filter(([, e]) => e.status === 'accepted');
+  if (!partners.length) {
+    return [{ error: `Soul ${soulId} ist bei diesem Gatekeeper nicht verdrahtet.` }];
+  }
+  return partners.map(([fedSoulId, entry]) => ({
+    token: entry.outbound_token,
+    nodeUrl: entry.node_url,
+    resolvedNodeUrl: entry.node_url,
+    relay: { gatekeeperSoulId: fedSoulId, targetSoulId: soulId },
+  }));
+}
+
+// Probiert `candidates` der Reihe nach durch. candidate.error → terminal
+// (lokal nicht gefunden/kein Scope/keine Föderation vorhanden), sofort
+// abbrechen. Sonst run(candidate) ausführen — wirft die Gegenseite
+// "target_not_wired" (dieser föderierte Gatekeeper kennt die Soul selbst
+// nicht), wird der nächste Kandidat probiert; jeder andere Fehler ist
+// terminal (richtigen Kandidaten gefunden, aber ein echtes Problem, z.B.
+// falscher Scope dort oder Ziel-Node nicht erreichbar).
+async function tryCandidates(candidates, run) {
+  let lastError = null;
+  for (const c of candidates) {
+    if (c.error) { lastError = c.error; continue; }
+    try {
+      return await run(c);
+    } catch (err) {
+      if (c.relay && err.code === 'target_not_wired') { lastError = err.message; continue; }
+      throw err;
+    }
+  }
+  throw new Error(lastError || 'nicht erreichbar');
+}
+
+function relayQS(relay) {
+  return `gatekeeper_soul_id=${encodeURIComponent(relay.gatekeeperSoulId)}&target_soul_id=${encodeURIComponent(relay.targetSoulId)}`;
+}
+function soulPath(relay) {
+  return relay ? `/mcp/discover/federated/relay/soul?${relayQS(relay)}` : '/api/soul';
+}
+function vaultListPath(relay, apiSegment) {
+  return relay ? `/mcp/discover/federated/relay/vault/${apiSegment}?${relayQS(relay)}` : `/api/vault/${apiSegment}`;
+}
+function vaultGetPath(relay, apiSegment, filename) {
+  return relay
+    ? `/mcp/discover/federated/relay/vault/${apiSegment}/${encodeURIComponent(filename)}?${relayQS(relay)}`
+    : `/api/vault/${apiSegment}/${encodeURIComponent(filename)}`;
+}
+function sharedPath(relay, soulId, filename) {
+  return relay
+    ? `/mcp/discover/federated/relay/shared/${encodeURIComponent(filename)}?${relayQS(relay)}`
+    : `/api/vault/shared/${encodeURIComponent(soulId)}/${encodeURIComponent(filename)}`;
+}
+// Lokal: PUT /api/context (wie bisher). Über Föderation: PUT auf den
+// Relay-Endpoint des föderierten Gatekeepers, der intern denselben
+// /api/context-Call mit SEINEM gespeicherten Token für die Ziel-Soul macht.
+async function writeSoulContent(candidate, soulContent) {
+  if (candidate.relay) {
+    return putApi('/mcp/discover/federated/relay/soul', candidate.token, candidate.nodeUrl, {
+      gatekeeper_soul_id: candidate.relay.gatekeeperSoulId,
+      target_soul_id: candidate.relay.targetSoulId,
+      soul_content: soulContent,
+    });
+  }
+  return putApi('/api/context', candidate.token, candidate.nodeUrl, { soul_content: soulContent });
 }
 
 // BETA (wire_scanner): plain substring match, no ReDoS surface (same reasoning
@@ -121,18 +220,18 @@ async function withWriteLock(key, fn) {
 // siehe server.mjs handleMcpDiscover) — ohne Präfix kollidieren die Tool-Namen
 // mit den hier generischen, soul_id-parametrisierten Varianten für VERDRAHTETE
 // Souls. "wired_context_get" ≠ "context_get" (Gatekeepers eigener Kontext).
-function registerVaultTools(server, wiredMap, wiredRaw, kind, permKey, apiSegment) {
+function registerVaultTools(server, wiredMap, wiredRaw, fed, kind, permKey, apiSegment) {
   server.tool(
     `wired_${kind}_list`,
-    `Listet ${kind}-Dateien einer verdrahteten Soul (siehe wire_status).`,
+    `Listet ${kind}-Dateien einer verdrahteten oder (1 Hop) über einen föderierten Gatekeeper erreichbaren Soul (siehe wire_status/wire_search).`,
     { soul_id: z.string().describe('soul_id der verdrahteten Soul'), node_url: NODE_URL_PARAM },
     async ({ soul_id, node_url }) => {
-      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, permKey, node_url);
-      if (error) return errResult(error);
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, permKey, node_url);
       try {
-        const res = await fetchApi(`/api/vault/${apiSegment}`, token, nodeUrl);
-        const data = await res.json();
-        return { content: [{ type: 'text', text: JSON.stringify({ node_url: resolvedNodeUrl, ...data }, null, 2) }] };
+        return await tryCandidates(candidates, async (c) => {
+          const data = await (await fetchApi(vaultListPath(c.relay, apiSegment), c.token, c.nodeUrl)).json();
+          return { content: [{ type: 'text', text: JSON.stringify({ node_url: c.resolvedNodeUrl, ...data }, null, 2) }] };
+        });
       } catch (err) {
         return errResult(`wired_${kind}_list fehlgeschlagen: ${err.message}`);
       }
@@ -141,24 +240,25 @@ function registerVaultTools(server, wiredMap, wiredRaw, kind, permKey, apiSegmen
 
   server.tool(
     `wired_${kind}_get`,
-    `Liest eine einzelne ${kind}-Datei einer verdrahteten Soul.`,
+    `Liest eine einzelne ${kind}-Datei einer verdrahteten oder (1 Hop) über einen föderierten Gatekeeper erreichbaren Soul.`,
     {
       soul_id:  z.string().describe('soul_id der verdrahteten Soul'),
       filename: z.string().describe('Dateiname, aus ' + `wired_${kind}_list`),
       node_url: NODE_URL_PARAM,
     },
     async ({ soul_id, filename, node_url }) => {
-      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, permKey, node_url);
-      if (error) return errResult(error);
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, permKey, node_url);
       try {
-        const res  = await fetchApi(`/api/vault/${apiSegment}/${encodeURIComponent(filename)}`, token, nodeUrl);
-        const ctype = res.headers.get('content-type') || '';
-        if (ctype.startsWith('text/') || ctype.includes('json')) {
-          const text = await res.text();
-          return withNodeInfo(resolvedNodeUrl, { type: 'text', text });
-        }
-        const buf = Buffer.from(await res.arrayBuffer());
-        return { content: [{ type: 'text', text: `Binärdatei von ${resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
+        return await tryCandidates(candidates, async (c) => {
+          const res  = await fetchApi(vaultGetPath(c.relay, apiSegment, filename), c.token, c.nodeUrl);
+          const ctype = res.headers.get('content-type') || '';
+          if (ctype.startsWith('text/') || ctype.includes('json')) {
+            const text = await res.text();
+            return withNodeInfo(c.resolvedNodeUrl, { type: 'text', text });
+          }
+          const buf = Buffer.from(await res.arrayBuffer());
+          return { content: [{ type: 'text', text: `Binärdatei von ${c.resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
+        });
       } catch (err) {
         return errResult(`wired_${kind}_get fehlgeschlagen: ${err.message}`);
       }
@@ -166,7 +266,7 @@ function registerVaultTools(server, wiredMap, wiredRaw, kind, permKey, apiSegmen
   );
 }
 
-export function registerGatekeeperTools(server, wiredMap, callerToken = null, wiredRaw = wiredMap) {
+export function registerGatekeeperTools(server, wiredMap, callerToken = null, wiredRaw = wiredMap, fed = {}) {
   server.tool(
     'wired_shared_get',
     'Lädt eine Datei aus vault_shared einer verdrahteten/verbundenen Soul (z.B. ein Dateianhang aus peer_send/peer_inbox).',
@@ -175,27 +275,24 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
       filename: z.string().describe('Dateiname in deren vault_shared'),
     },
     async ({ soul_id, filename }) => {
-      const entry = wiredMap[soul_id];
-      if (!entry) return errResult(`Soul ${soul_id} ist bei dieser Soul nicht verdrahtet/verbunden.`);
-      // Self-Cert-Session: eigenen Cert cross-node an die Ziel-Soul schicken
-      // (dort verifiziert). Sonst: den beim Wire/Connect ausgetauschten
-      // Token nutzen, den vault_shared_serve.lua seit dem Stage-A-Fix
-      // ebenfalls akzeptiert (siehe project_sys_v2_vision Memory).
-      const bearer = (callerToken && callerToken.includes('.')) ? callerToken : entry.token;
-      if (!bearer) return errResult(`Kein nutzbarer Token für ${soul_id} vorhanden.`);
-      const resolvedNodeUrl = entry.node_url || BASE_URL;
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, null, null);
       try {
-        const res = await fetch(`${resolvedNodeUrl}/api/vault/shared/${soul_id}/${encodeURIComponent(filename)}`, {
-          headers: { Authorization: `Bearer ${bearer}` },
-          signal: AbortSignal.timeout(15000),
+        return await tryCandidates(candidates, async (c) => {
+          // Self-Cert-Session: eigenen Cert cross-node an die Ziel-Soul schicken
+          // (dort verifiziert) — nur sinnvoll bei direktem Wiring, ein föderierter
+          // Gatekeeper-Node kennt unseren Owner-Cert nicht. Sonst: den beim
+          // Wire/Connect (lokal) bzw. bei der Föderation (relay) ausgetauschten
+          // Token nutzen.
+          const bearer = (!c.relay && callerToken && callerToken.includes('.')) ? callerToken : c.token;
+          if (!bearer) throw Object.assign(new Error(`Kein nutzbarer Token für ${soul_id} vorhanden.`), { code: 'no_token' });
+          const res = await fetchApi(sharedPath(c.relay, soul_id, filename), bearer, c.nodeUrl);
+          const ctype = res.headers.get('content-type') || '';
+          if (ctype.startsWith('text/') || ctype.includes('json')) {
+            return withNodeInfo(c.resolvedNodeUrl, { type: 'text', text: await res.text() });
+          }
+          const buf = Buffer.from(await res.arrayBuffer());
+          return { content: [{ type: 'text', text: `Binärdatei von ${c.resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const ctype = res.headers.get('content-type') || '';
-        if (ctype.startsWith('text/') || ctype.includes('json')) {
-          return withNodeInfo(resolvedNodeUrl, { type: 'text', text: await res.text() });
-        }
-        const buf = Buffer.from(await res.arrayBuffer());
-        return { content: [{ type: 'text', text: `Binärdatei von ${resolvedNodeUrl} (${buf.length} Bytes, ${ctype}) — Direktzugriff nur über den REST-Endpoint möglich.` }] };
       } catch (err) {
         return errResult(`wired_shared_get fehlgeschlagen: ${err.message}`);
       }
@@ -204,15 +301,15 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
 
   server.tool(
     'wired_soul_read',
-    'Liest den vollständigen Soul-Inhalt (sys.md) einer beim Gatekeeper verdrahteten Soul. soul_id aus wire_status. Bei mehreren Verbindungen zur selben soul_id (siehe wire_status) node_url zur Disambiguierung angeben.',
+    'Liest den vollständigen Soul-Inhalt (sys.md) einer verdrahteten oder (1 Hop) über einen föderierten Gatekeeper erreichbaren Soul. soul_id aus wire_status/wire_search. Bei mehreren Verbindungen zur selben soul_id (siehe wire_status) node_url zur Disambiguierung angeben.',
     { soul_id: z.string().describe('soul_id der verdrahteten Soul'), node_url: NODE_URL_PARAM },
     async ({ soul_id, node_url }) => {
-      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, 'soul', node_url);
-      if (error) return errResult(error);
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
       try {
-        const res  = await fetchApi('/api/soul', token, nodeUrl);
-        const text = await res.text();
-        return withNodeInfo(resolvedNodeUrl, { type: 'text', text });
+        return await tryCandidates(candidates, async (c) => {
+          const text = await (await fetchApi(soulPath(c.relay), c.token, c.nodeUrl)).text();
+          return withNodeInfo(c.resolvedNodeUrl, { type: 'text', text });
+        });
       } catch (err) {
         return errResult(`wired_soul_read fehlgeschlagen: ${err.message}`);
       }
@@ -258,14 +355,17 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
     async ({ soul_id, section, content, mode, node_url }) => {
       const violation = checkMessageProtocolViolation(section, content);
       if (violation) return errResult(violation);
-      const { token, nodeUrl, resolvedNodeUrl, error } = lookup(wiredMap, wiredRaw, soul_id, 'soul', node_url);
-      if (error) return errResult(error);
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
       try {
-        return await withWriteLock(`${soul_id}@${resolvedNodeUrl}`, async () => {
-          const current = await (await fetchApi('/api/soul', token, nodeUrl)).text();
-          const updated = updateSection(current, section, content, mode);
-          await putApi('/api/context', token, nodeUrl, { soul_content: updated });
-          return { content: [{ type: 'text', text: `Geschrieben bei ${soul_id} (${resolvedNodeUrl}), Sektion "${section}".` }] };
+        return await tryCandidates(candidates, async (c) => {
+          const lockKey = c.relay ? `${soul_id}@${c.relay.gatekeeperSoulId}` : `${soul_id}@${c.resolvedNodeUrl}`;
+          return await withWriteLock(lockKey, async () => {
+            const current = await (await fetchApi(soulPath(c.relay), c.token, c.nodeUrl)).text();
+            const updated = updateSection(current, section, content, mode);
+            await writeSoulContent(c, updated);
+            const via = c.relay ? `, über föderierten Gatekeeper ${c.relay.gatekeeperSoulId}` : '';
+            return { content: [{ type: 'text', text: `Geschrieben bei ${soul_id} (${c.resolvedNodeUrl}${via}), Sektion "${section}".` }] };
+          });
         });
       } catch (err) {
         return errResult(`wired_soul_write fehlgeschlagen: ${err.message}`);
@@ -273,14 +373,14 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
     }
   );
 
-  registerVaultTools(server, wiredMap, wiredRaw, 'audio',   'audio',         'audio');
-  registerVaultTools(server, wiredMap, wiredRaw, 'image',   'images',        'images');
-  registerVaultTools(server, wiredMap, wiredRaw, 'video',   'video',         'video');
-  registerVaultTools(server, wiredMap, wiredRaw, 'context', 'context_files', 'context');
+  registerVaultTools(server, wiredMap, wiredRaw, fed, 'audio',   'audio',         'audio');
+  registerVaultTools(server, wiredMap, wiredRaw, fed, 'image',   'images',        'images');
+  registerVaultTools(server, wiredMap, wiredRaw, fed, 'video',   'video',         'video');
+  registerVaultTools(server, wiredMap, wiredRaw, fed, 'context', 'context_files', 'context');
 
   server.tool(
     'wire_status',
-    'Listet alle beim Gatekeeper verdrahteten Souls und ihre erlaubten Scopes.',
+    'Listet alle DIREKT bei diesem Gatekeeper verdrahteten Souls und ihre erlaubten Scopes (nicht die föderiert erreichbaren — dafür wire_search, das lokale UND 1 Hop tief föderiert erreichbare Souls zusammen zeigt; alle wired_*-Tools funktionieren für beide Wege identisch).',
     {},
     async () => {
       const list = Object.entries(wiredMap).map(([soul_id, e]) => ({
@@ -296,49 +396,78 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
     }
   );
 
-  // Target direction (2026-08-02, not yet acted on): wire_scanner stays
-  // Gatekeeper-only, unlike wire_search below (planned to become a public AI
-  // tool later). Keep it registered here, gated the same way as wire_status/
-  // wired_* -- do not relax its auth if/when wire_search's changes.
+  // Target direction (2026-08-02): wire_scanner stays Gatekeeper-only (who may
+  // CALL it), unlike wire_search below (planned to become a public AI tool
+  // later) -- do not relax its auth if/when wire_search's changes. Its REACH
+  // was separately extended the same day to also cover 1-hop federated
+  // souls (see resolveCandidates), same principle as every other wired_*
+  // tool -- that's an orthogonal axis (who may call it, vs. how far it sees).
   server.tool(
     'wire_scanner',
-    'BETA: durchsucht den tatsächlichen Inhalt (sys.md + Context-Dateien) aller verdrahteten Souls nach einem Suchbegriff — anders als wire_status/wire_search (nur Namen/Metadaten). Nutzt exakt dieselben Scopes und Tokens wie wired_soul_read/wired_context_get, keine neue Berechtigung. Kann bei vielen verdrahteten Souls mit vielen Context-Dateien langsam sein (noch unoptimiert, kein soul_id-Filter in dieser Version).',
+    'BETA: durchsucht den tatsächlichen Inhalt (sys.md + Context-Dateien) aller verdrahteten UND (1 Hop) über akzeptierte föderierte Gatekeeper erreichbaren Souls nach einem Suchbegriff — anders als wire_status/wire_search (nur Namen/Metadaten). Nutzt exakt dieselben Scopes und Tokens wie wired_soul_read/wired_context_get (föderiert: über den jeweiligen Gatekeeper-Relay), keine neue Berechtigung. Kann bei vielen Souls mit vielen Context-Dateien langsam sein (noch unoptimiert, kein soul_id-Filter in dieser Version).',
     { q: z.string().min(1).describe('Suchbegriff (Volltextsuche, Groß-/Kleinschreibung egal)') },
     async ({ q }) => {
       const needle  = q.toLowerCase();
       const results = [];
 
-      for (const [soul_id, entry] of Object.entries(wiredMap)) {
-        const resolvedNodeUrl = entry.node_url || BASE_URL;
-        const perms = entry.permissions || {};
-
+      async function scanSoul(soul_id, name, resolvedNodeUrl, perms, token, nodeUrl, relay) {
+        const via = relay ? `federated:${relay.gatekeeperSoulId}` : 'local';
         if (perms.soul) {
           try {
-            const text    = await (await fetchApi('/api/soul', entry.token, entry.node_url)).text();
+            const text    = await (await fetchApi(soulPath(relay), token, nodeUrl)).text();
             const snippet = extractSnippet(text, needle);
-            if (snippet) results.push({ soul_id, name: entry.name, node_url: resolvedNodeUrl, source: 'sys.md', snippet });
+            if (snippet) results.push({ soul_id, name, node_url: resolvedNodeUrl, source: 'sys.md', snippet, via });
           } catch { /* best-effort — skip this soul's sys.md, don't abort the scan */ }
         }
 
         if (perms.context_files) {
           try {
-            const listData = await (await fetchApi('/api/vault/context', entry.token, entry.node_url)).json();
+            const listData = await (await fetchApi(vaultListPath(relay, 'context'), token, nodeUrl)).json();
             const files = Array.isArray(listData.files) ? listData.files : [];
             for (const f of files) {
               const fname = f?.name;
               if (!fname) continue;
               try {
-                const fText   = await (await fetchApi(`/api/vault/context/${encodeURIComponent(fname)}`, entry.token, entry.node_url)).text();
+                const fText   = await (await fetchApi(vaultGetPath(relay, 'context', fname), token, nodeUrl)).text();
                 const snippet = extractSnippet(fText, needle);
-                if (snippet) results.push({ soul_id, name: entry.name, node_url: resolvedNodeUrl, source: `context:${fname}`, snippet });
+                if (snippet) results.push({ soul_id, name, node_url: resolvedNodeUrl, source: `context:${fname}`, snippet, via });
               } catch { /* best-effort — skip this file, keep scanning the rest */ }
             }
           } catch { /* best-effort — skip context entirely for this soul */ }
         }
       }
 
+      for (const [soul_id, entry] of Object.entries(wiredMap)) {
+        await scanSoul(soul_id, entry.name, entry.node_url || BASE_URL, entry.permissions || {}, entry.token, entry.node_url, null);
+      }
+
+      // 1 Hop über jeden akzeptierten föderierten Gatekeeper — dessen eigene
+      // wired Souls per /mcp/discover/search auflisten (Namen+Scopes, kein
+      // Content), dann jede über den Relay genauso scannen wie lokal.
+      const partners = Object.entries(fed || {}).filter(([, e]) => e.status === 'accepted');
+      for (const [fedSoulId, fedEntry] of partners) {
+        let remoteWired = [];
+        try {
+          const url = `${fedEntry.node_url}/mcp/discover/search?gatekeeper_soul_id=${encodeURIComponent(fedSoulId)}`;
+          const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${fedEntry.outbound_token}` },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            remoteWired = Array.isArray(data.results) ? data.results : [];
+          }
+        } catch { /* best-effort — skip this federated gatekeeper entirely */ }
+
+        for (const r of remoteWired) {
+          const perms = Object.fromEntries((r.permissions || []).map(p => [p, true]));
+          const relay = { gatekeeperSoulId: fedSoulId, targetSoulId: r.soul_id };
+          await scanSoul(r.soul_id, r.name, r.node_url, perms, fedEntry.outbound_token, fedEntry.node_url, relay);
+        }
+      }
+
       if (!results.length) {
-        return { content: [{ type: 'text', text: `Keine Treffer für "${q}" in verdrahteten Souls.` }] };
+        return { content: [{ type: 'text', text: `Keine Treffer für "${q}" in verdrahteten oder föderiert erreichbaren Souls.` }] };
       }
       return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
     }

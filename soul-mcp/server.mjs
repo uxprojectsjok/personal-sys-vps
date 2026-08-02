@@ -25,9 +25,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
-import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey } from './lib/wired_souls.mjs';
-import { loadFederated, saveFederated } from './lib/federated_gatekeepers.mjs';
-import { registerGatekeeperTools, registerWireSearch } from './tools/gatekeeper_proxy.mjs';
+import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
+import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
+import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -294,6 +294,13 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   }
   const merged    = mergeByRecency(wired, connected);
   const mergedRaw = mergeByRecency(acceptedRaw, connected);
+  // Föderierte Gatekeeper (federated_gatekeepers.json) erweitern die
+  // Reichweite der wired_*-Tools um deren eigene wired Souls (1 Hop, siehe
+  // resolveCandidates() in gatekeeper_proxy.mjs) — geladen für JEDE Soul,
+  // nicht nur "echte" Gatekeeper, exakt wie wired/connected oben; für Souls
+  // ohne eigene Föderationen ist die Datei einfach leer, keine
+  // Sonderbehandlung nötig.
+  const fed = await loadFederated(soulId);
   // gkEnabled allein reicht schon: "ich bin Gatekeeper" ist eine bewusste
   // Einstellung dieser Soul, kein Live-Zustand, der davon abhängt, ob gerade
   // irgendwer verdrahtet ist — die Tools (wire_status etc.) müssen sichtbar
@@ -301,10 +308,10 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   // direkt nach dem ersten Einschalten, oder nachdem Aus die letzte
   // Verbindung beendet hat). connected_souls.json bleibt zusätzlich sein
   // eigenes, vom Schalter unabhängiges Feature (siehe Kommentar oben).
-  if (gkEnabled || Object.keys(merged).length > 0) {
-    registerGatekeeperTools(server, merged, callerToken, mergedRaw);
+  if (gkEnabled || Object.keys(merged).length > 0 || Object.keys(fed).length > 0) {
+    registerGatekeeperTools(server, merged, callerToken, mergedRaw, fed);
   }
-  return { wired, connected };
+  return { wired, connected, fed };
 }
 
 async function handleMcp(req, res) {
@@ -539,8 +546,7 @@ async function handleMcpDiscover(req, res) {
   // not just the wired-souls proxy, so it can actually reason over its own
   // configuration instead of being a dumb router.
   registerTools(server, token, gkSoulId);
-  const { wired } = await registerConnectionProxyTools(server, gkSoulId, token);
-  const fed = await loadFederated(gkSoulId);
+  const { wired, fed } = await registerConnectionProxyTools(server, gkSoulId, token);
   if (Object.keys(wired).length > 0 || Object.keys(fed).length > 0) {
     registerWireSearch(server, gkSoulId, wired, fed);
   }
@@ -1252,9 +1258,7 @@ app.get('/mcp/discover/search', async (req, res) => {
   if (!gatekeeper_soul_id || !token) {
     return res.status(400).json({ error: 'gatekeeper_soul_id (query) und Bearer-Token erforderlich' });
   }
-  const fed = await loadFederated(gatekeeper_soul_id);
-  const partner = Object.entries(fed).find(([, e]) => e.status === 'accepted' && e.inbound_token === token);
-  if (!partner) {
+  if (!(await authenticateFederatedCaller(gatekeeper_soul_id, token))) {
     return res.status(401).json({ error: 'not_federated' });
   }
 
@@ -1262,13 +1266,7 @@ app.get('/mcp/discover/search', async (req, res) => {
   // /mcp/discover/wire) sind für ein föderiertes Gegenüber noch unsichtbar,
   // und mehrere physische Instanzen derselben soul_id (siehe wireKey())
   // werden auf eine kanonische Verbindung reduziert.
-  const wiredRaw = await loadWired(gatekeeper_soul_id);
-  const wired = {};
-  for (const [key, entry] of Object.entries(wiredRaw)) {
-    if (entry.status && entry.status !== 'accepted') continue;
-    const sid = entry.soul_id || key.split('@')[0];
-    if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = { ...entry, soul_id: sid };
-  }
+  const { wired } = await loadAcceptedWired(gatekeeper_soul_id);
   const needle = (q || '').toLowerCase();
   const list = Object.values(wired)
     .filter((e) => !needle || (e.name || '').toLowerCase().includes(needle))
@@ -1278,6 +1276,133 @@ app.get('/mcp/discover/search', async (req, res) => {
       node_url: e.node_url || BASE_URL,
     }));
   res.json({ results: list });
+});
+
+// ── Föderierter Vault-Relay ────────────────────────────────────────────────
+// Macht jedes wired_*-Tool (gatekeeper_proxy.mjs) für Souls nutzbar, die nicht
+// bei UNS, sondern bei einem föderierten Gegenüber verdrahtet sind — nicht nur
+// deren Namen (das leistet /mcp/discover/search schon), sondern echten
+// Lese-/Schreibzugriff über exakt dieselben Scopes, die die Soul beim Wiring
+// dem JEWEILS ANDEREN Gatekeeper gewährt hat. Wir selbst haben für diese Soul
+// keinen Token — der föderierte Gatekeeper führt die eigentliche Aktion mit
+// SEINEM gespeicherten Token aus und reicht nur das Ergebnis durch. 1 Hop,
+// keine Weiterleitung an dessen eigene Föderationen (wie /mcp/discover/search).
+//
+// Konsent-Modell: das bestehende Wire-Opt-in EINER Soul zu einem Gatekeeper
+// ist die einzige Zustimmung, die nötig ist — föderiert dieser Gatekeeper
+// später mit einem anderen, wird die Soul automatisch darüber miterreichbar,
+// ohne erneute Einzelzustimmung. Wer das nicht will, entwirtet sich
+// (unwireSoul) oder der Gatekeeper-Owner trennt die Föderation.
+//
+// Auth identisch zu /mcp/discover/search: gatekeeper_soul_id (wessen wiredMap
+// + Föderationsliste wir befragen) + Bearer inbound_token, gegen die EIGENE
+// federated_gatekeepers.json geprüft — nicht gegen die des Aufrufers.
+async function authenticateRelay(req, res) {
+  const gatekeeperSoulId = req.query.gatekeeper_soul_id || req.body?.gatekeeper_soul_id;
+  const targetSoulId     = req.query.target_soul_id || req.body?.target_soul_id;
+  const token = extractToken(req);
+  if (!gatekeeperSoulId || !targetSoulId || !token) {
+    res.status(400).json({ error: 'gatekeeper_soul_id, target_soul_id und Bearer-Token erforderlich' });
+    return null;
+  }
+  if (!(await authenticateFederatedCaller(gatekeeperSoulId, token))) {
+    res.status(401).json({ error: 'not_federated' });
+    return null;
+  }
+  const { wired } = await loadAcceptedWired(gatekeeperSoulId);
+  const entry = wired[targetSoulId];
+  if (!entry) {
+    res.status(404).json({ error: 'target_not_wired' });
+    return null;
+  }
+  return entry;
+}
+
+function relayCheckPerm(res, entry, permKey) {
+  if (permKey && !entry.permissions?.[permKey]) {
+    res.status(403).json({ error: 'permission_denied' });
+    return false;
+  }
+  return true;
+}
+
+// Reicht Status/Content-Type/Body einer fetchApi()-Response 1:1 durch — der
+// Relay-Aufrufer (gatekeeper_proxy.mjs) verarbeitet Text-/Binärinhalte genauso
+// wie beim direkten Zugriff, soll also exakt dieselbe Response-Form sehen.
+async function relayPipe(res, upstream) {
+  const ctype = upstream.headers.get('content-type') || '';
+  res.setHeader('Content-Type', ctype || 'application/octet-stream');
+  res.send(Buffer.from(await upstream.arrayBuffer()));
+}
+
+app.get('/mcp/discover/federated/relay/soul', async (req, res) => {
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  if (!relayCheckPerm(res, entry, 'soul')) return;
+  try {
+    await relayPipe(res, await fetchApi('/api/soul', entry.token, entry.node_url));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
+});
+
+app.put('/mcp/discover/federated/relay/soul', async (req, res) => {
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  if (!relayCheckPerm(res, entry, 'soul')) return;
+  const { soul_content } = req.body || {};
+  if (typeof soul_content !== 'string') {
+    return res.status(400).json({ error: 'soul_content erforderlich' });
+  }
+  try {
+    await putApi('/api/context', entry.token, entry.node_url, { soul_content });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
+});
+
+const RELAY_VAULT_KINDS = { audio: 'audio', images: 'images', video: 'video', context: 'context_files' };
+
+app.get('/mcp/discover/federated/relay/vault/:kind', async (req, res) => {
+  const permKey = RELAY_VAULT_KINDS[req.params.kind];
+  if (!permKey) return res.status(400).json({ error: 'unknown_kind' });
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  if (!relayCheckPerm(res, entry, permKey)) return;
+  try {
+    await relayPipe(res, await fetchApi(`/api/vault/${req.params.kind}`, entry.token, entry.node_url));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
+});
+
+app.get('/mcp/discover/federated/relay/vault/:kind/:filename', async (req, res) => {
+  const permKey = RELAY_VAULT_KINDS[req.params.kind];
+  if (!permKey) return res.status(400).json({ error: 'unknown_kind' });
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  if (!relayCheckPerm(res, entry, permKey)) return;
+  try {
+    const path = `/api/vault/${req.params.kind}/${encodeURIComponent(req.params.filename)}`;
+    await relayPipe(res, await fetchApi(path, entry.token, entry.node_url));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
+});
+
+// Kein permKey-Check — mirrort wired_shared_get() in gatekeeper_proxy.mjs,
+// das ebenfalls nur einen bestehenden Wire-Eintrag voraussetzt, keinen
+// bestimmten Scope (vault_shared ist die für Peer-Anhänge gedachte Ablage).
+app.get('/mcp/discover/federated/relay/shared/:filename', async (req, res) => {
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  try {
+    const path = `/api/vault/shared/${encodeURIComponent(entry.soul_id)}/${encodeURIComponent(req.params.filename)}`;
+    await relayPipe(res, await fetchApi(path, entry.token, entry.node_url));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
 });
 
 // ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────

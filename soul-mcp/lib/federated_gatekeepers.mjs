@@ -31,3 +31,15 @@ export async function saveFederated(soulId, data) {
   await mkdir(`${SOULS_DIR}${soulId}`, { recursive: true });
   await writeFile(fedPath(soulId), JSON.stringify(data), 'utf8');
 }
+
+// Prüft einen eingehenden Cross-Node-Aufruf eines föderierten Gatekeepers
+// gegen gatekeeperSoulId's eigene federated_gatekeepers.json — exakt dieselbe
+// Prüfung, die GET /mcp/discover/search schon einzeln inline gemacht hat,
+// jetzt auch für /mcp/discover/federated/relay/* wiederverwendet. Gibt bei
+// Erfolg die soul_id des anfragenden (föderierten) Gatekeepers zurück.
+export async function authenticateFederatedCaller(gatekeeperSoulId, token) {
+  if (!token) return null;
+  const fed = await loadFederated(gatekeeperSoulId);
+  const match = Object.entries(fed).find(([, e]) => e.status === 'accepted' && e.inbound_token === token);
+  return match ? { callerSoulId: match[0], entry: match[1] } : null;
+}

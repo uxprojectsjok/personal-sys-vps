@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.2] — 2026-08-02
+
+**Federated Gatekeepers are now usable through every `wired_*` tool, not just visible via `wire_search`/`wire_scanner`.** Federation (Gatekeeper↔Gatekeeper) was previously scoped to name search only ("empty search-only scope", by original design). Extended so a Gatekeeper's reach also covers real read/write access to souls wired to an accepted federated partner, 1 hop deep, symmetric in both directions.
+
+**Consent model:** the existing wire opt-in of a soul to a Gatekeeper remains the only consent required — if that Gatekeeper later federates with another one, the soul becomes reachable through it too, without a separate per-soul re-confirmation. Anyone who doesn't want that can unwire, or the Gatekeeper owner can remove the federation.
+
+**Added**
+- `soul-mcp/server.mjs`: new `/mcp/discover/federated/relay/*` routes (soul GET/PUT, vault list/get for audio/images/video/context, vault_shared get) — server-to-server, authenticated with the same `inbound_token` mechanism as `/mcp/discover/search`. Runs the actual action with the receiving Gatekeeper's own stored token against a soul wired to it, and only pipes the result through — no new token needed on the requesting side.
+- `soul-mcp/tools/gatekeeper_proxy.mjs`: `resolveCandidates()` — every `wired_*` tool (`wired_soul_read/write`, `wired_{audio,image,video,context}_{list,get}`, `wired_shared_get`, `wire_scanner`) now tries the local `wiredMap` first (unchanged, authoritative), and only if not found there, each accepted federated Gatekeeper in turn via its relay — first success wins, `target_not_wired` from the wrong partner is skipped, any other error (e.g. missing scope) is terminal.
+- `soul-mcp/lib/wired_souls.mjs`: `loadAcceptedWired()` — shared canonicalization of the wiredMap, now used by both `/mcp/discover/search` and the new relay routes instead of being duplicated.
+- `soul-mcp/lib/federated_gatekeepers.mjs`: `authenticateFederatedCaller()` — shared check of a federated caller against `inbound_token`, likewise now shared instead of duplicated.
+
+**Unchanged:** `wire_status` stays strictly local (directly wired souls only) — `wire_search` remains the federated-inclusive discovery view. `wire_scanner` stays Gatekeeper-only in terms of who may call it (see 1.3.1); its *reach* was separately extended to federated souls, an orthogonal axis.
+
+---
+
 ## [1.3.1] — 2026-08-02
 
 **Documented the intended target-audience split between `wire_search` and `wire_scanner` — no behavior change.**
