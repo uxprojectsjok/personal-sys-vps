@@ -296,6 +296,10 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
     }
   );
 
+  // Target direction (2026-08-02, not yet acted on): wire_scanner stays
+  // Gatekeeper-only, unlike wire_search below (planned to become a public AI
+  // tool later). Keep it registered here, gated the same way as wire_status/
+  // wired_* -- do not relax its auth if/when wire_search's changes.
   server.tool(
     'wire_scanner',
     'BETA: durchsucht den tatsächlichen Inhalt (sys.md + Context-Dateien) aller verdrahteten Souls nach einem Suchbegriff — anders als wire_status/wire_search (nur Namen/Metadaten). Nutzt exakt dieselben Scopes und Tokens wie wired_soul_read/wired_context_get, keine neue Berechtigung. Kann bei vielen verdrahteten Souls mit vielen Context-Dateien langsam sein (noch unoptimiert, kein soul_id-Filter in dieser Version).',
@@ -344,6 +348,13 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
 // Suche über eigene wired Souls PLUS 1 Hop tief über akzeptierte föderierte
 // Gatekeeper (siehe Phase 4/3, project_sys_v2_vision Memory) — ergänzt
 // wire_status (bleibt unverändert, einfache lokale Liste), ersetzt es nicht.
+//
+// Target direction (2026-08-02, not yet acted on): wire_search is planned to
+// become a public AI tool later -- unlike wire_scanner (content search, see
+// registerGatekeeperTools above), which stays Gatekeeper-only. Right now
+// it's still gated the same way (registered only in handleMcpDiscover,
+// requires the Gatekeeper's own cert/token) -- relaxing that is a deliberate,
+// separate decision, not something to do incidentally alongside another fix.
 export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed) {
   server.tool(
     'wire_search',

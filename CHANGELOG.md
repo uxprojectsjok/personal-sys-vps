@@ -8,6 +8,14 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.1] — 2026-08-02
+
+**Documented the intended target-audience split between `wire_search` and `wire_scanner` — no behavior change.**
+
+`wire_search` (names) is planned to become a public AI tool later; `wire_scanner` (content, added in 1.3.0) is meant to stay Gatekeeper-only. Both are still gated identically today (Gatekeeper's own cert/token required) — added comments at each tool's registration site so relaxing `wire_search`'s auth later doesn't get done incidentally alongside an unrelated change, and doesn't get mistakenly applied to `wire_scanner` too.
+
+---
+
 ## [1.3.0] — 2026-08-02
 
 **Added `wire_scanner` (BETA) — full-text search over wired souls' actual content, not just names/metadata.** `wire_status` lists wired souls, `wire_search` matches only their names — neither can answer "which wired soul mentioned X." `wire_scanner` closes that gap the same way the app's own network search (`useNetworkSearch.js`) already does for public `llms.txt` content: no new authorization primitive, purely a convenience aggregation over content the Gatekeeper can already fetch through the existing `wired_soul_read`/`wired_context_get` REST paths and their per-soul granted scopes.
