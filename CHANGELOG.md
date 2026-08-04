@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.3] — 2026-08-03
+
+**Added `wired_beme_chat` — talk to a wired or (1 hop) federated soul as itself, not just read/write its files.** `beme_chat` (conversation with a soul, answering fully in character) existed only for a soul's own owner session — never proxied through a Gatekeeper, unlike every other soul capability (`soul_read/write`, vault files). Closes that gap using the same local/federated fallback as the rest of the `wired_*` family.
+
+**Added**
+- `soul-mcp/tools/gatekeeper_proxy.mjs`: `postApi()` (generic POST-JSON helper, 65s timeout — `beme.lua` budgets up to 60s for its own Anthropic call, needs to fit through both hops of a federated relay), `bemeChat()` (local vs. relay body construction, mirrors `writeSoulContent()`), `wired_beme_chat` tool (same `soul` permission scope as `wired_soul_read/write`, same local-then-federated candidate resolution).
+- `soul-mcp/server.mjs`: `POST /mcp/discover/federated/relay/beme` — runs `/api/beme` against a soul wired to the *receiving* Gatekeeper, using its own stored token, same auth as the other relay routes. The target soul's own configured Anthropic key/model is used (and billed), not the caller's.
+
+**Unchanged infrastructure:** no new nginx location needed — `/mcp/discover/federated/relay/beme` is already covered by the existing `location /mcp` block's 300s `proxy_read_timeout`, comfortably above the 65s any single hop needs.
+
+---
+
 ## [1.3.2] — 2026-08-02
 
 **Federated Gatekeepers are now usable through every `wired_*` tool, not just visible via `wire_search`/`wire_scanner`.** Federation (Gatekeeper↔Gatekeeper) was previously scoped to name search only ("empty search-only scope", by original design). Extended so a Gatekeeper's reach also covers real read/write access to souls wired to an accepted federated partner, 1 hop deep, symmetric in both directions.

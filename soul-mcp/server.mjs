@@ -27,7 +27,7 @@ import { registerTools, registerPaidTools, registerPeerTools, registerTrustReque
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
 import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
 import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
-import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi } from './tools/gatekeeper_proxy.mjs';
+import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi, postApi } from './tools/gatekeeper_proxy.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -1400,6 +1400,29 @@ app.get('/mcp/discover/federated/relay/shared/:filename', async (req, res) => {
   try {
     const path = `/api/vault/shared/${encodeURIComponent(entry.soul_id)}/${encodeURIComponent(req.params.filename)}`;
     await relayPipe(res, await fetchApi(path, entry.token, entry.node_url));
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
+  }
+});
+
+// gatekeeper_soul_id/target_soul_id kommen hier aus dem Body (nicht Query) --
+// authenticateRelay() liest ohnehin beide Quellen, und /api/beme hat schon
+// einen JSON-Body (message/history/max_tokens), keine zusätzliche
+// Query-String-Konstruktion auf der Aufrufer-Seite nötig (siehe bemeChat() in
+// gatekeeper_proxy.mjs). permKey 'soul' -- gleicher Scope wie soul GET/PUT.
+app.post('/mcp/discover/federated/relay/beme', async (req, res) => {
+  const entry = await authenticateRelay(req, res);
+  if (!entry) return;
+  if (!relayCheckPerm(res, entry, 'soul')) return;
+  const { message, history, max_tokens } = req.body || {};
+  if (typeof message !== 'string' || !message) {
+    return res.status(400).json({ error: 'message erforderlich' });
+  }
+  try {
+    const data = await postApi('/api/beme', entry.token, entry.node_url, {
+      message, history: Array.isArray(history) ? history : [], max_tokens,
+    });
+    res.json(data);
   } catch (err) {
     res.status(err.status || 502).json({ error: err.code || 'upstream_failed', message: err.message });
   }

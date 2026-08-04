@@ -91,6 +91,27 @@ export async function putApi(path, token, nodeUrl, body) {
   return data;
 }
 
+// Wie putApi, aber POST und ohne den {ok:true}-Envelope zu erwarten -- /api/beme
+// antwortet bei Erfolg direkt mit {response, soul_name, model}, kein "ok"-Feld.
+// Deutlich längeres Timeout als fetchApi/putApi (15s): beme.lua ruft serverseitig
+// die Anthropic-API mit einem eigenen 60s-Budget auf, das muss hier durchpassen
+// (auf beiden Hops bei einem föderierten Relay -- nginx' `location /mcp` erlaubt
+// dafür bereits 300s proxy_read_timeout, siehe vhost.conf.template).
+export async function postApi(path, token, nodeUrl, body) {
+  const base = nodeUrl || BASE_URL;
+  const res = await fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(65000),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw apiError(res.status, data);
+  }
+  return data;
+}
+
 function errResult(msg) {
   return { content: [{ type: 'text', text: msg }], isError: true };
 }
@@ -180,6 +201,20 @@ async function writeSoulContent(candidate, soulContent) {
     });
   }
   return putApi('/api/context', candidate.token, candidate.nodeUrl, { soul_content: soulContent });
+}
+
+// Wie writeSoulContent: lokal direkt /api/beme, über Föderation der Relay mit
+// gatekeeper_soul_id/target_soul_id im selben Body statt in der Query -- /api/beme
+// hat ohnehin schon einen JSON-Body, keine zusätzliche Query-String-Konstruktion nötig.
+async function bemeChat(candidate, body) {
+  if (candidate.relay) {
+    return postApi('/mcp/discover/federated/relay/beme', candidate.token, candidate.nodeUrl, {
+      gatekeeper_soul_id: candidate.relay.gatekeeperSoulId,
+      target_soul_id: candidate.relay.targetSoulId,
+      ...body,
+    });
+  }
+  return postApi('/api/beme', candidate.token, candidate.nodeUrl, body);
 }
 
 // BETA (wire_scanner): plain substring match, no ReDoS surface (same reasoning
@@ -369,6 +404,49 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
         });
       } catch (err) {
         return errResult(`wired_soul_write fehlgeschlagen: ${err.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    'wired_beme_chat',
+    [
+      'Gespräch mit einer verdrahteten oder (1 Hop) über einen föderierten Gatekeeper',
+      'erreichbaren Soul — die AI antwortet als DIESE Soul selbst, in erster Person,',
+      'ohne sich als KI zu erkennen zu geben. Braucht "soul"-Permission (dieselbe wie',
+      'wired_soul_read/write).',
+      '',
+      'Nutzt das eigene Anthropic-Setup der Ziel-Soul (deren konfigurierter API-Key',
+      'und Modell), nicht das des Aufrufers -- Kosten fallen bei der Ziel-Soul an,',
+      'genau wie bei ihrem eigenen beme_chat.',
+      '',
+      'history enthält bisherige Gesprächszüge (user/assistant), max_tokens begrenzt',
+      'die Antwortlänge (default 1024, max 4096). Kann bei langen Antworten mehrere',
+      'Sekunden dauern (Anthropic-Aufruf serverseitig bei der Ziel-Soul).',
+    ].join('\n'),
+    {
+      soul_id: z.string().describe('soul_id der verdrahteten Soul'),
+      message: z.string().min(1).max(8000).describe('Die Nachricht an die Soul'),
+      history: z.array(
+        z.object({
+          role:    z.enum(['user', 'assistant']),
+          content: z.string().max(8000),
+        })
+      ).max(20).optional().describe('Bisheriger Gesprächsverlauf (optional)'),
+      max_tokens: z.number().int().min(64).max(4096).optional()
+        .describe('Maximale Antwortlänge in Tokens (default 1024)'),
+      node_url: NODE_URL_PARAM,
+    },
+    async ({ soul_id, message, history, max_tokens, node_url }) => {
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
+      try {
+        return await tryCandidates(candidates, async (c) => {
+          const data = await bemeChat(c, { message, history: history ?? [], max_tokens: max_tokens ?? 1024 });
+          const speaker = data.soul_name || 'Soul';
+          return withNodeInfo(c.resolvedNodeUrl, { type: 'text', text: `**${speaker}:** ${data.response}` });
+        });
+      } catch (err) {
+        return errResult(`wired_beme_chat fehlgeschlagen: ${err.message}`);
       }
     }
   );
