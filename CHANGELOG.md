@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.5] — 2026-08-05
+
+**Every soul now has its own `llms.txt`, and it closes three gaps for genuine AI-network orientation, not just a static description.** Explicit ask: "SYS soll ein echtes Internetprotokoll werden, kein nettes Spielzeug" (a real internet protocol, not a nice toy).
+
+**Per-soul llms.txt:** `llms.txt?soul_id={soul_id}` renders a standalone, soul-scoped document — same query-param scoping pattern already used by `/mcp?soul_id=`/`/api/soul/preview?soul_id=`, so this stays protocol-conform rather than inventing a new path convention. The node-wide `/llms.txt` now links each soul's own llms.txt inline, and both views render from the exact same shared functions (`pushSoulFieldLines`/`pushSoulNetworkLines`/`pushAccessFlowLines`) so they can't drift apart. A known `soul_id` bypasses the on-chain-discoverable requirement for the soul *itself* (same precedent as `soul_read_by_token`/`/api/soul/preview`) via a direct-file-read fallback (`loadLocalSoulForLlms`) when a soul isn't chain-indexed yet — the Network section's *referenced* third parties still require their own `discoverable !== false`.
+
+**Three orientation gaps closed:**
+1. **Crawlable links.** Every Network entry (Gatekeeper reach, Wired to, Connected to) now includes its own `llms.txt` URL — an AI can follow a connection, not just read that it exists.
+2. **Activity signal.** Sessions count + last anchor date, for the soul itself and every Network connection, from the existing on-chain index — without this an AI can't tell an active connection from a dead/orphaned one.
+3. **Gatekeeper role, stated explicitly.** A soul with `isGatekeeperEnabled()` true now lists its `wire_*`/`wired_*` tool names — distinct from "Tools after payment" (the anonymous paid-agent whitelist): these require an authenticated owner/peer/service-token session, explicitly not part of the anonymous x402/PayPal flow.
+
+---
+
 ## [1.3.4] — 2026-08-05
 
 **`/llms.txt` now surfaces every listed soul's own network — a Gatekeeper's own wired souls and 1-hop federated Gatekeepers, which Gatekeeper(s) a soul is itself wired into, and its direct soul-to-soul connections.** `llms.txt` is the AI-facing meta-tag equivalent of this node, framed as the first step toward a real "SYS internet" — an agent reading it to judge relevance/context density previously saw only each soul's own name/description/tags, with no signal that wiring/federation/direct connections raise its effective knowledge density. Now stated explicitly, with soul_id/name/tags per connection, for all three relationship types:

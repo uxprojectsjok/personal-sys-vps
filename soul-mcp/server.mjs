@@ -2739,143 +2739,191 @@ app.get('/internal/discover-souls', (req, res) => {
   });
 });
 
-// GET /llms.txt — AI-readable node description (llms.txt convention)
-app.get('/llms.txt', async (_req, res) => {
-  res.set('Cache-Control', 'public, max-age=300');
-  res.set('Content-Type', 'text/plain; charset=utf-8');
+// Direkter Datei-Lookup für /llms.txt?soul_id=X, wenn die Soul (noch) nicht im
+// on-chain-Index steht (getIndexedSoul() liefert null) — analog zum Prinzip
+// "bekannte soul_id umgeht den discoverable-Filter" (siehe soul_read_by_token,
+// api/soul/preview): wer den soul_id schon kennt, bekommt trotzdem eine
+// llms.txt für GENAU diese Soul, auch unangekert. Liest nur, was ohne
+// Vault-Entschlüsselung verfügbar ist (verschlüsseltes sys.md → kein Name,
+// kein Fehler) — bewusst best-effort, kein Auth-Bypass für echten Inhalt.
+async function loadLocalSoulForLlms(soulId) {
+  const dir = `${SOULS_DIR}${soulId}`;
+  let name = null;
+  try {
+    const sys = await readFile(`${dir}/sys.md`, 'utf8');
+    name = sys.match(/soul_name:\s*(.+)/)?.[1]?.trim()?.replace(/^["']|["']$/g, '') || null;
+  } catch {
+    return null; // keine sys.md → Soul existiert nicht auf diesem Node
+  }
+  let tags = [], description = null;
+  try {
+    const anchor = JSON.parse(await readFile(`${dir}/chain_anchor.json`, 'utf8'));
+    tags = Array.isArray(anchor.tags) ? anchor.tags : [];
+    description = anchor.description || null;
+    name = anchor.name || name;
+  } catch {}
+  let amortization = {};
+  try {
+    const ctx = JSON.parse(await readFile(`${dir}/api_context.json`, 'utf8'));
+    amortization = ctx.amortization || {};
+  } catch {}
+  return { soul_id: soulId, name, tags, description, amortization, mcp_endpoint: `${BASE_URL}/mcp?soul_id=${soulId}` };
+}
 
-  // Nur Souls, die tatsächlich auf diesem Node laufen — querySouls() liefert den
-  // globalen, per Chain-Scan aggregierten Index (inkl. fremder Nodes).
-  const souls = querySouls({ limit: 100, discoverableOnly: true }).filter(s => s.mcp_endpoint?.startsWith(BASE_URL));
-  const lines = [];
-  lines.push(`# SYS Node — ${BASE_URL}`);
-  lines.push('');
-  lines.push('> Personal AI identity node running the SYS open protocol.');
-  lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
-  lines.push('');
-  lines.push('This node is operated independently. The operator is solely responsible for');
-  lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
-  lines.push('a legal notice and privacy policy if required by their jurisdiction.');
-  lines.push('SYS provides infrastructure, not legal services.');
-  lines.push('');
+// Nur Souls, die tatsächlich auf DIESEM Node laufen — getIndexedSoul()/
+// querySouls() liefern den globalen, per Chain-Scan aggregierten Index
+// (inkl. fremder Nodes); ein anderer Node beschreibt sich selbst über seine
+// eigene /llms.txt, nicht über unsere.
+async function loadSoulForLlms(soulId) {
+  const idx = getIndexedSoul(soulId);
+  if (idx && idx.mcp_endpoint?.startsWith(BASE_URL)) return idx;
+  return loadLocalSoulForLlms(soulId);
+}
 
-  if (souls.length > 0) {
-    lines.push('## Souls on this node');
-    lines.push('');
-    for (const s of souls) {
-      const a = s.amortization ?? {};
-      const base = parseFloat(a.price_usdc) || 0;
-      const dynamic = a.dynamic_pricing === true;
-      // quick effective price (no file I/O for llms.txt)
-      lines.push(`### ${s.name || s.soul_id}`);
-      if (s.description) lines.push(`_${s.description}_`);
-      if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
-      lines.push('');
-      lines.push(`- **soul_id:** \`${s.soul_id}\``);
-      lines.push(`- **Price:** ${base} USDC per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
-      lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
-      if (a.wallet) {
-        lines.push(EU_CONSUMER_RIGHTS
-          ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
-          : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
-      }
-      if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
-        lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
-      }
-      if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
-      if (a.paypal_enabled) {
-        const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-        lines.push(EU_CONSUMER_RIGHTS
-          ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
-          : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
-      }
-      if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
-      // read default_model from soul config
-      try {
-        const scRaw = await readFile(`${SOULS_DIR}${s.soul_id}/config.json`, 'utf8');
-        const sc = JSON.parse(scRaw);
-        if (sc.model) lines.push(`- **Default model:** ${sc.model}`);
-      } catch {}
+// Network: jede Soul's eigene Verbindungen erweitern ihren effektiven Context
+// über das eigene sys.md hinaus — nicht nur bei einem Gatekeeper. Aufgerufen
+// pro Soul (node-weite Liste UND Soul-spezifische Ansicht), damit eine KI, die
+// llms.txt liest (das Meta-Tag-Äquivalent für Agenten, erster Schritt Richtung
+// echtem "SYS-Internet"), die höhere Wissensdichte einer gut vernetzten Soul
+// erkennt — dieselbe Überlegung wie bei wire_search/wire_scanner. Drei
+// Beziehungstypen, alle aus Daten, die wired_*/wire_search-Tools ohnehin lesen:
+//   - Gatekeeper reach: Souls, die DIESE Soul selbst verdrahtet hat, + föderierte Gatekeeper (1 Hop)
+//   - Wired to: Gatekeeper, bei denen DIESE Soul sich selbst eingewirtet hat (Umkehrung)
+//   - Connected to: direkte, symmetrische Soul-zu-Soul-Verbindungen
+// Gated auf: die REFERENZIERTE Soul muss unabhängig on-chain-discoverable sein
+// (getIndexedSoul(...).discoverable !== false, dieselbe Flag wie überall sonst)
+// — Wiring/Föderation/Connect ist Zustimmung zu authentifiziertem Tool-Zugriff,
+// nicht automatisch Zustimmung, in diesem öffentlichen, unauthentifizierten
+// Dokument namentlich genannt zu werden.
+// Aktivitäts-Suffix (Sessions/letzter Anchor) aus dem on-chain-Index — ohne
+// das kann eine KI nicht zwischen einer aktiv genutzten und einer toten/
+// verwaisten Verbindung unterscheiden, reine Namen/Tags reichen dafür nicht.
+function activitySuffix(idx) {
+  const parts = [];
+  if (idx.sessions) parts.push(`${idx.sessions} session(s)`);
+  if (idx.anchor_date) parts.push(`last anchor ${String(idx.anchor_date).slice(0, 10)}`);
+  return parts.length ? ` (${parts.join(', ')})` : '';
+}
 
-      // Network: every soul's own connections widen its effective context
-      // beyond its own sys.md, not just a Gatekeeper's — surfaced here so an
-      // AI reading llms.txt (the meta-tag equivalent for agents, first step
-      // toward a real "SYS internet") can recognize the higher knowledge
-      // density of a well-connected soul, same reasoning as wire_search/
-      // wire_scanner now spanning both. Three relationship types, all sourced
-      // from data the wired_*/wire_search tools already read:
-      //   - Gatekeeper reach: souls THIS soul has wired in, + federated Gatekeepers (1 hop)
-      //   - Wired to: Gatekeeper(s) THIS soul itself wired into (reverse of the above)
-      //   - Connected to: direct, symmetric soul-to-soul connections
-      // Gated on each REFERENCED soul being independently on-chain-discoverable
-      // (getIndexedSoul(...).discoverable !== false, same flag querySouls()
-      // already respects everywhere else): being wired/federated/connected is
-      // consent to be reached via authenticated wired_*/relay/connection
-      // tools, not automatic consent for either side to be publicly named in
-      // this fully public, unauthenticated document.
-      const publicOf = (soulId) => {
-        const idx = getIndexedSoul(soulId);
-        return (idx && idx.discoverable !== false) ? idx : null;
-      };
+// Crawlbarer Link statt reiner Text-Erwähnung — ohne das kann eine KI eine
+// Verbindung nur zur Kenntnis nehmen, nicht ihr folgen. node_url nie null
+// (Konvention wie überall sonst: same-node zeigt BASE_URL statt null).
+function llmsTxtLink(nodeUrl, soulId) {
+  return `${nodeUrl || BASE_URL}/llms.txt?soul_id=${soulId}`;
+}
 
-      const { wired: gkWired } = await loadAcceptedWired(s.soul_id);
-      const gkFed = await loadFederated(s.soul_id);
-      const wiredPublic = Object.values(gkWired)
-        .map(e => ({ e, idx: publicOf(e.soul_id) }))
-        .filter(({ idx }) => idx);
-      const fedPublic = Object.entries(gkFed)
-        .filter(([, e]) => e.status === 'accepted')
-        .map(([fedSoulId, e]) => ({ fedSoulId, e, idx: publicOf(fedSoulId) }))
-        .filter(({ idx }) => idx);
-      if (wiredPublic.length || fedPublic.length) {
-        lines.push(`- **Gatekeeper reach:** ${wiredPublic.length} wired soul(s) + ${fedPublic.length} federated Gatekeeper(s) (1 hop) — extends this soul's effective context/knowledge density beyond its own sys.md, reachable via wired_soul_read/wired_beme_chat/etc. once connected.`);
-        for (const { e, idx } of wiredPublic) {
-          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
-          lines.push(`  - Wired: ${idx.name || e.name || e.soul_id} (\`${e.soul_id}\`)${tags}`);
-        }
-        for (const { fedSoulId, e, idx } of fedPublic) {
-          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
-          lines.push(`  - Federated Gatekeeper: ${idx.name || fedSoulId} (\`${fedSoulId}\`) @ ${e.node_url}${tags}`);
-        }
-      }
+async function pushSoulNetworkLines(lines, soulId) {
+  const publicOf = (id) => {
+    const idx = getIndexedSoul(id);
+    return (idx && idx.discoverable !== false) ? idx : null;
+  };
 
-      const wiredTo = await loadWiredTo(s.soul_id);
-      const wiredToPublic = Object.entries(wiredTo)
-        .filter(([, e]) => (e.status || 'accepted') === 'accepted')
-        .map(([gkSoulId, e]) => ({ gkSoulId, e, idx: publicOf(gkSoulId) }))
-        .filter(({ idx }) => idx);
-      if (wiredToPublic.length) {
-        lines.push(`- **Wired to:** bundled behind ${wiredToPublic.length} Gatekeeper(s) — those Gatekeepers' own AI sessions can reach this soul via wired_soul_read/wired_beme_chat/etc.`);
-        for (const { gkSoulId, idx } of wiredToPublic) {
-          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
-          lines.push(`  - Gatekeeper: ${idx.name || gkSoulId} (\`${gkSoulId}\`)${tags}`);
-        }
-      }
-
-      const connected = await loadConnected(s.soul_id);
-      const connectedPublic = Object.entries(connected)
-        .filter(([, e]) => e.status === 'accepted')
-        .map(([peerSoulId, e]) => ({ peerSoulId, e, idx: publicOf(peerSoulId) }))
-        .filter(({ idx }) => idx);
-      if (connectedPublic.length) {
-        lines.push(`- **Connected to:** ${connectedPublic.length} soul(s) directly (symmetric, no Gatekeeper in between).`);
-        for (const { peerSoulId, e, idx } of connectedPublic) {
-          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
-          lines.push(`  - ${idx.name || e.alias || peerSoulId} (\`${peerSoulId}\`)${tags}`);
-        }
-      }
-
-      lines.push('');
+  const { wired: gkWired } = await loadAcceptedWired(soulId);
+  const gkFed = await loadFederated(soulId);
+  const wiredPublic = Object.values(gkWired)
+    .map(e => ({ e, idx: publicOf(e.soul_id) }))
+    .filter(({ idx }) => idx);
+  const fedPublic = Object.entries(gkFed)
+    .filter(([, e]) => e.status === 'accepted')
+    .map(([fedSoulId, e]) => ({ fedSoulId, e, idx: publicOf(fedSoulId) }))
+    .filter(({ idx }) => idx);
+  if (wiredPublic.length || fedPublic.length) {
+    lines.push(`- **Gatekeeper reach:** ${wiredPublic.length} wired soul(s) + ${fedPublic.length} federated Gatekeeper(s) (1 hop) — extends this soul's effective context/knowledge density beyond its own sys.md, reachable via wired_soul_read/wired_beme_chat/etc. once connected.`);
+    for (const { e, idx } of wiredPublic) {
+      const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+      lines.push(`  - Wired: ${idx.name || e.name || e.soul_id} (\`${e.soul_id}\`)${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, e.soul_id)}`);
     }
-  } else {
-    lines.push('_No souls registered on this node._');
-    lines.push('');
+    for (const { fedSoulId, e, idx } of fedPublic) {
+      const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+      lines.push(`  - Federated Gatekeeper: ${idx.name || fedSoulId} (\`${fedSoulId}\`) @ ${e.node_url}${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, fedSoulId)}`);
+    }
   }
 
+  const wiredTo = await loadWiredTo(soulId);
+  const wiredToPublic = Object.entries(wiredTo)
+    .filter(([, e]) => (e.status || 'accepted') === 'accepted')
+    .map(([gkSoulId, e]) => ({ gkSoulId, e, idx: publicOf(gkSoulId) }))
+    .filter(({ idx }) => idx);
+  if (wiredToPublic.length) {
+    lines.push(`- **Wired to:** bundled behind ${wiredToPublic.length} Gatekeeper(s) — those Gatekeepers' own AI sessions can reach this soul via wired_soul_read/wired_beme_chat/etc.`);
+    for (const { gkSoulId, e, idx } of wiredToPublic) {
+      const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+      lines.push(`  - Gatekeeper: ${idx.name || gkSoulId} (\`${gkSoulId}\`)${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, gkSoulId)}`);
+    }
+  }
+
+  const connected = await loadConnected(soulId);
+  const connectedPublic = Object.entries(connected)
+    .filter(([, e]) => e.status === 'accepted')
+    .map(([peerSoulId, e]) => ({ peerSoulId, e, idx: publicOf(peerSoulId) }))
+    .filter(({ idx }) => idx);
+  if (connectedPublic.length) {
+    lines.push(`- **Connected to:** ${connectedPublic.length} soul(s) directly (symmetric, no Gatekeeper in between).`);
+    for (const { peerSoulId, e, idx } of connectedPublic) {
+      const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+      lines.push(`  - ${idx.name || e.alias || peerSoulId} (\`${peerSoulId}\`)${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, peerSoulId)}`);
+    }
+  }
+}
+
+// Restliche Soul-Felder (Preis/Wallet/Tools/Kontakt/PayPal/Endpoint/Modell) --
+// identisch für die node-weite Liste und die Soul-spezifische Einzelansicht.
+async function pushSoulFieldLines(lines, s) {
+  const a = s.amortization ?? {};
+  const base = parseFloat(a.price_usdc) || 0;
+  const dynamic = a.dynamic_pricing === true;
+  lines.push(`- **soul_id:** \`${s.soul_id}\``);
+  // Activity: ohne sessions/anchor_date kann eine KI diese Soul nicht von
+  // einer toten/verwaisten unterscheiden — dieselbe Info wie im Network-
+  // Abschnitt pro Verbindung, hier für die Soul selbst.
+  const selfActivity = activitySuffix(s).trim();
+  if (selfActivity) lines.push(`- **Activity:** ${selfActivity.slice(1, -1)}`);
+  lines.push(`- **Price:** ${base} USDC per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
+  lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
+  if (a.wallet) {
+    lines.push(EU_CONSUMER_RIGHTS
+      ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
+      : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
+  }
+  if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
+    lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
+  }
+  if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
+  if (a.paypal_enabled) {
+    const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
+    lines.push(EU_CONSUMER_RIGHTS
+      ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
+      : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
+  }
+  if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
+  try {
+    const scRaw = await readFile(`${SOULS_DIR}${s.soul_id}/config.json`, 'utf8');
+    const sc = JSON.parse(scRaw);
+    if (sc.model) lines.push(`- **Default model:** ${sc.model}`);
+  } catch {}
+  // Gatekeeper role, stated explicitly -- distinct from "Tools after payment"
+  // above (that's the paid-agent whitelist, agent_tools). These wired_*/wire_*
+  // tools are NOT part of the anonymous paid-agent flow -- only an owner/peer/
+  // service-token session (not a pol_access_token from x402/PayPal) gets them,
+  // see registerConnectionProxyTools()'s call sites in this file. Stated here
+  // so a crawling AI understands WHY this soul has elevated context/value
+  // (see pushSoulNetworkLines above) without implying anonymous access to it.
+  if (await isGatekeeperEnabled(s.soul_id)) {
+    lines.push('- **Gatekeeper role:** wire_status, wire_search, wire_scanner, wired_soul_read, wired_soul_write, wired_beme_chat, wired_shared_get, wired_{audio,image,video,context}_list/get — available to an authenticated owner/peer/service-token session for this soul (not part of the anonymous paid-agent flow above).');
+  }
+  await pushSoulNetworkLines(lines, s.soul_id);
+}
+
+// "How to access" + "More" -- identisch für node-weite und Soul-spezifische
+// llms.txt, nur dass die Soul-spezifische Fassung {soul_id} durch den echten
+// Wert ersetzt (direkt nutzbar, kein Platzhalter-Rätselraten für eine KI, die
+// eh schon genau diese eine Soul meint).
+function pushAccessFlowLines(lines, soulIdExample) {
+  const sid = soulIdExample || '{soul_id}';
   lines.push('## How to access (agent flow)');
   lines.push('');
   lines.push('**1. Preview (optional)**');
-  lines.push(`\`\`\`\nGET ${BASE_URL}/api/soul/preview?soul_id={soul_id}\n\`\`\``);
+  lines.push(`\`\`\`\nGET ${BASE_URL}/api/soul/preview?soul_id=${sid}\n\`\`\``);
   lines.push('Returns public profile and confirmed live price before payment.');
   lines.push('');
   if (EU_CONSUMER_RIGHTS) {
@@ -2883,11 +2931,11 @@ app.get('/llms.txt', async (_req, res) => {
     lines.push('You do NOT have an /mcp session yet at this point (it always requires a token, and none');
     lines.push('exists before payment) — use the plain HTTP twins, not the MCP tool names, unless you');
     lines.push('already hold an owner/peer/paid token for this node:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "payment_method": "x402" }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "payment_method": "x402" }\n\`\`\``);
     lines.push('Returns `{ terms_token, preview_url, preview_url_txt, terms_url, terms_url_txt, legal_text }`.');
     lines.push('Show preview_url (or preview_url_txt if you cannot render a PDF) to the buyer. Once they');
     lines.push('explicitly agree to both (a) immediate performance and (b) losing their 14-day withdrawal right:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "{soul_id}", "terms_token": "{from above}", "payment_method": "x402", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "terms_token": "{from above}", "payment_method": "x402", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
     lines.push('Returns `{ download_url, download_url_txt, reference_id, payment: { value: wallet }, invoice_number }`');
     lines.push('— the wallet address AND a reference_id (UUID) are only revealed here, both required for step 4.');
     lines.push('(If you already have an MCP session on this node, the equivalent tools are show_withdrawal_terms');
@@ -2915,7 +2963,7 @@ app.get('/llms.txt', async (_req, res) => {
     lines.push('');
   }
   lines.push('**4. Use token**');
-  lines.push('```\nAuthorization: Bearer {access_token}\nPOST {mcp_endpoint}\n```');
+  lines.push(`\`\`\`\nAuthorization: Bearer {access_token}\nPOST ${soulIdExample ? `${BASE_URL}/mcp?soul_id=${sid}` : '{mcp_endpoint}'}\n\`\`\``);
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
   lines.push('');
   lines.push('**Non-crypto alternative**');
@@ -2927,6 +2975,79 @@ app.get('/llms.txt', async (_req, res) => {
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
   lines.push('- Soul Network: https://sys.uxprojects-jok.com/scan');
   lines.push('- Source: https://github.com/uxprojectsjok/personal-sys-vps');
+}
+
+// GET /llms.txt — AI-readable node description (llms.txt convention), or with
+// ?soul_id= a soul-specific document — same query-param scoping pattern as
+// /mcp?soul_id=/api/soul/preview?soul_id= elsewhere in this protocol, so a
+// soul has a stable, protocol-conform "own" llms.txt without a new path
+// convention. A known soul_id bypasses the discoverable-index requirement
+// (see loadSoulForLlms/loadLocalSoulForLlms) -- same precedent as direct
+// soul_id lookups elsewhere (soul_read_by_token, api/soul/preview) -- only
+// the Network section's REFERENCED third parties stay gated on their own
+// discoverable flag.
+app.get('/llms.txt', async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+
+  const soulIdParam = req.query.soul_id;
+  if (soulIdParam) {
+    if (!/^[a-f0-9-]{36}$/i.test(soulIdParam)) {
+      return res.status(400).send('Invalid soul_id.');
+    }
+    const s = await loadSoulForLlms(soulIdParam);
+    if (!s) {
+      return res.status(404).send(`No soul '${soulIdParam}' on this node. Node-wide info: ${BASE_URL}/llms.txt`);
+    }
+    const lines = [];
+    lines.push(`# SYS Soul — ${s.name || s.soul_id}`);
+    lines.push('');
+    lines.push('> Personal AI identity running the SYS open protocol.');
+    lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
+    lines.push('');
+    if (s.description) lines.push(`_${s.description}_`);
+    if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
+    lines.push('');
+    await pushSoulFieldLines(lines, s);
+    lines.push('');
+    pushAccessFlowLines(lines, s.soul_id);
+    return res.send(lines.join('\n'));
+  }
+
+  // Nur Souls, die tatsächlich auf diesem Node laufen — querySouls() liefert den
+  // globalen, per Chain-Scan aggregierten Index (inkl. fremder Nodes).
+  const souls = querySouls({ limit: 100, discoverableOnly: true }).filter(s => s.mcp_endpoint?.startsWith(BASE_URL));
+  const lines = [];
+  lines.push(`# SYS Node — ${BASE_URL}`);
+  lines.push('');
+  lines.push('> Personal AI identity node running the SYS open protocol.');
+  lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
+  lines.push('');
+  lines.push('This node is operated independently. The operator is solely responsible for');
+  lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
+  lines.push('a legal notice and privacy policy if required by their jurisdiction.');
+  lines.push('SYS provides infrastructure, not legal services.');
+  lines.push('');
+
+  if (souls.length > 0) {
+    lines.push('## Souls on this node');
+    lines.push('');
+    for (const s of souls) {
+      lines.push(`### ${s.name || s.soul_id}`);
+      if (s.description) lines.push(`_${s.description}_`);
+      if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
+      lines.push('');
+      lines.push(`Own llms.txt: ${BASE_URL}/llms.txt?soul_id=${s.soul_id}`);
+      lines.push('');
+      await pushSoulFieldLines(lines, s);
+      lines.push('');
+    }
+  } else {
+    lines.push('_No souls registered on this node._');
+    lines.push('');
+  }
+
+  pushAccessFlowLines(lines, null);
 
   res.send(lines.join('\n'));
 });
