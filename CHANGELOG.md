@@ -8,6 +8,22 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.4] — 2026-08-05
+
+**`/llms.txt` now surfaces every listed soul's own network — a Gatekeeper's own wired souls and 1-hop federated Gatekeepers, which Gatekeeper(s) a soul is itself wired into, and its direct soul-to-soul connections.** `llms.txt` is the AI-facing meta-tag equivalent of this node, framed as the first step toward a real "SYS internet" — an agent reading it to judge relevance/context density previously saw only each soul's own name/description/tags, with no signal that wiring/federation/direct connections raise its effective knowledge density. Now stated explicitly, with soul_id/name/tags per connection, for all three relationship types:
+
+- **Gatekeeper reach** — souls this soul has wired in, plus 1-hop federated Gatekeepers.
+- **Wired to** — the reverse: which Gatekeeper(s) this soul itself wired into.
+- **Connected to** — direct, symmetric soul-to-soul connections (no Gatekeeper involved).
+
+**Added**
+- `soul-mcp/lib/soul_indexer.mjs`: `getIndexedSoul(soul_id)` — direct single-soul lookup against the existing on-chain-backed index (no query scan), used to pull each connection's tags/discoverable-flag without a network call.
+- `soul-mcp/server.mjs`: `/llms.txt`'s per-soul loop now lists all three relationship types where present, one line per connection (name, soul_id, tags where available). Data comes from `loadAcceptedWired()`/`loadFederated()`/`loadWiredTo()`/`loadConnected()` — the same functions the `wired_*`/`wire_search` tools and the Settings UI already use, no new storage.
+
+**Privacy gate, deliberate:** an entry only appears if the *referenced* soul/Gatekeeper is independently on-chain-discoverable (`discoverable !== false`, the same flag `querySouls()` already respects everywhere). Being wired/federated/connected is consent to be reached via authenticated `wired_*`/relay/connection tools — not automatic consent for either side to be named in this fully public, unauthenticated document. A soul or Gatekeeper that never anchored on-chain, or that opted out of discovery, stays unnamed here even though the actual tool access still works.
+
+---
+
 ## [1.3.3] — 2026-08-03
 
 **Added `wired_beme_chat` — talk to a wired or (1 hop) federated soul as itself, not just read/write its files.** `beme_chat` (conversation with a soul, answering fully in character) existed only for a soul's own owner session — never proxied through a Gatekeeper, unlike every other soul capability (`soul_read/write`, vault files). Closes that gap using the same local/federated fallback as the rest of the `wired_*` family.

@@ -1651,7 +1651,7 @@ app.get('/health', (_req, res) => {
 
 // ── Interne Endpoints (nur localhost, kein Auth) ──────────────────────────────
 import { verifyHuman } from './lib/blockchain.mjs';
-import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul, reindexLocal } from './lib/soul_indexer.mjs';
+import { startIndexer, querySouls, indexStats, seedFromLocalAnchors, retryFailedEnrichments, deregisterSoul, reindexLocal, getIndexedSoul } from './lib/soul_indexer.mjs';
 import { readFile as readFileFs }   from 'fs/promises';
 import { decryptIfNeeded, encryptBuf, loadVaultMeta, SOULS_DIR } from './lib/vault_fs.mjs';
 import { ethers }      from 'ethers';
@@ -2796,6 +2796,75 @@ app.get('/llms.txt', async (_req, res) => {
         const sc = JSON.parse(scRaw);
         if (sc.model) lines.push(`- **Default model:** ${sc.model}`);
       } catch {}
+
+      // Network: every soul's own connections widen its effective context
+      // beyond its own sys.md, not just a Gatekeeper's — surfaced here so an
+      // AI reading llms.txt (the meta-tag equivalent for agents, first step
+      // toward a real "SYS internet") can recognize the higher knowledge
+      // density of a well-connected soul, same reasoning as wire_search/
+      // wire_scanner now spanning both. Three relationship types, all sourced
+      // from data the wired_*/wire_search tools already read:
+      //   - Gatekeeper reach: souls THIS soul has wired in, + federated Gatekeepers (1 hop)
+      //   - Wired to: Gatekeeper(s) THIS soul itself wired into (reverse of the above)
+      //   - Connected to: direct, symmetric soul-to-soul connections
+      // Gated on each REFERENCED soul being independently on-chain-discoverable
+      // (getIndexedSoul(...).discoverable !== false, same flag querySouls()
+      // already respects everywhere else): being wired/federated/connected is
+      // consent to be reached via authenticated wired_*/relay/connection
+      // tools, not automatic consent for either side to be publicly named in
+      // this fully public, unauthenticated document.
+      const publicOf = (soulId) => {
+        const idx = getIndexedSoul(soulId);
+        return (idx && idx.discoverable !== false) ? idx : null;
+      };
+
+      const { wired: gkWired } = await loadAcceptedWired(s.soul_id);
+      const gkFed = await loadFederated(s.soul_id);
+      const wiredPublic = Object.values(gkWired)
+        .map(e => ({ e, idx: publicOf(e.soul_id) }))
+        .filter(({ idx }) => idx);
+      const fedPublic = Object.entries(gkFed)
+        .filter(([, e]) => e.status === 'accepted')
+        .map(([fedSoulId, e]) => ({ fedSoulId, e, idx: publicOf(fedSoulId) }))
+        .filter(({ idx }) => idx);
+      if (wiredPublic.length || fedPublic.length) {
+        lines.push(`- **Gatekeeper reach:** ${wiredPublic.length} wired soul(s) + ${fedPublic.length} federated Gatekeeper(s) (1 hop) — extends this soul's effective context/knowledge density beyond its own sys.md, reachable via wired_soul_read/wired_beme_chat/etc. once connected.`);
+        for (const { e, idx } of wiredPublic) {
+          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+          lines.push(`  - Wired: ${idx.name || e.name || e.soul_id} (\`${e.soul_id}\`)${tags}`);
+        }
+        for (const { fedSoulId, e, idx } of fedPublic) {
+          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+          lines.push(`  - Federated Gatekeeper: ${idx.name || fedSoulId} (\`${fedSoulId}\`) @ ${e.node_url}${tags}`);
+        }
+      }
+
+      const wiredTo = await loadWiredTo(s.soul_id);
+      const wiredToPublic = Object.entries(wiredTo)
+        .filter(([, e]) => (e.status || 'accepted') === 'accepted')
+        .map(([gkSoulId, e]) => ({ gkSoulId, e, idx: publicOf(gkSoulId) }))
+        .filter(({ idx }) => idx);
+      if (wiredToPublic.length) {
+        lines.push(`- **Wired to:** bundled behind ${wiredToPublic.length} Gatekeeper(s) — those Gatekeepers' own AI sessions can reach this soul via wired_soul_read/wired_beme_chat/etc.`);
+        for (const { gkSoulId, idx } of wiredToPublic) {
+          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+          lines.push(`  - Gatekeeper: ${idx.name || gkSoulId} (\`${gkSoulId}\`)${tags}`);
+        }
+      }
+
+      const connected = await loadConnected(s.soul_id);
+      const connectedPublic = Object.entries(connected)
+        .filter(([, e]) => e.status === 'accepted')
+        .map(([peerSoulId, e]) => ({ peerSoulId, e, idx: publicOf(peerSoulId) }))
+        .filter(({ idx }) => idx);
+      if (connectedPublic.length) {
+        lines.push(`- **Connected to:** ${connectedPublic.length} soul(s) directly (symmetric, no Gatekeeper in between).`);
+        for (const { peerSoulId, e, idx } of connectedPublic) {
+          const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
+          lines.push(`  - ${idx.name || e.alias || peerSoulId} (\`${peerSoulId}\`)${tags}`);
+        }
+      }
+
       lines.push('');
     }
   } else {

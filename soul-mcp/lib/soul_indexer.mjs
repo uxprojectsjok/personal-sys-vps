@@ -757,6 +757,15 @@ export { seedFromLocalAnchors, retryFailedEnrichments };
 // verarbeiteAnchorEvent), was für sofort wirksame Owner-Einstellungen (z.B.
 // discoverable-Umschalter) zu langsam ist. Von soul_privacy.lua/soul_amortization.lua
 // nach jedem erfolgreichen Schreiben aufgerufen.
+// Direkter Einzel-Lookup (kein Query-Scan) — genutzt von /llms.txt, um für eine
+// wired/föderiert erreichbare Soul deren on-chain-registrierte Tags/Beschreibung
+// beizusteuern, falls vorhanden. Liefert null statt eines Fehlers, wenn die Soul
+// (noch) nicht im Index steht — die meisten wired/test-Souls sind das nicht.
+export function getIndexedSoul(soulId) {
+  if (!soulId || !UUID_RE.test(soulId)) return null;
+  return _souls.get(soulIdToBytes32(soulId)) ?? null;
+}
+
 export async function reindexLocal(soulId) {
   if (!soulId || !UUID_RE.test(soulId)) return false;
   const key = soulIdToBytes32(soulId);
