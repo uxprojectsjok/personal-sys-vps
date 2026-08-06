@@ -8,7 +8,14 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.3.7] — 2026-08-06
+## [1.3.8] — 2026-08-06
+
+**Fixed the real root cause of "Scanner shows Etherscan/RPC failures" — CSP, not a browser/ad-blocker issue as earlier suspected.** `/scanner` itself sends no CSP header, but as an SPA reached via client-side navigation (not a fresh page load), the browser keeps enforcing whatever CSP the *original* page load had — and that CSP's `connect-src` is a fixed allowlist missing `api.etherscan.io`, the actual RPC domain used (`polygon-bor-rpc.publicnode.com` — different from the already-allowlisted `polygon-rpc.com`), and both IPFS gateways (`gateway.pinata.cloud`, `ipfs.io`).
+
+**Two fixes:**
+1. **CSP allowlist**: added the four missing domains to `connect-src` in `server/openresty/vhost.conf.template`.
+2. **Cross-node discovery, architecturally**: a fixed CSP allowlist can never include every SYS node discovered *at runtime* via the chain scan. New `GET /api/proxy/soul-scan?origin=` / `GET /api/proxy/llms-txt?origin=` in `soul-mcp/server.mjs` relay these calls server-side (CSP is browser-only) — same pattern already used for cross-node Gatekeeper wire-out. Not an open proxy: GET-only, two fixed target paths, `https://` required, basic private/internal-hostname rejection (SSRF guard). New matching `location = /api/proxy/soul-scan` / `.../llms-txt` blocks in `vhost.conf.template` (every `/api/*` route needs its own explicit location — no generic prefix proxy — otherwise these fall through to the SPA catch-all and get gate-redirected).
+3. `app/composables/useNetworkSearch.js` (`fetchLlmsTxt`) and `app/pages/scanner.vue` (`checkNodeOnline`, the BFS crawler) now route non-own-origin calls through these proxy endpoints instead of fetching directly.
 
 **`show_withdrawal_terms`/`accept_digital_content_terms` now explain their own session-binding instead of a generic "this soul doesn't accept X" dead end.** These MCP tools take no `soul_id` and always act on whichever soul the CALLER's own MCP session belongs to, never an arbitrary target — an AI trying to buy a *different* soul's paid access through them would get a confusing rejection with no indication that a different soul, or a different path, was the actual issue.
 

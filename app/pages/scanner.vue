@@ -796,11 +796,22 @@ const verifying  = ref(0)
 const lastUpdate = ref(null)
 const nodeOnline = ref({})   // soul_id → true | false | null (checking)
 
+// /api/soul/scan eines fremden, zur Laufzeit entdeckten Node geht über den
+// eigenen Server-Proxy statt direkt aus dem Browser — CSP's connect-src ist
+// eine feste Allowlist, kann unmöglich jeden entdeckten Node enthalten. Der
+// eigene Node braucht das nicht (same-origin, sowieso schon in connect-src
+// 'self' erlaubt). Siehe /api/proxy/soul-scan in server.mjs.
+function soulScanUrl(origin) {
+  return origin === window.location.origin
+    ? `${origin}/api/soul/scan`
+    : `/api/proxy/soul-scan?origin=${encodeURIComponent(origin)}`
+}
+
 async function checkNodeOnline(soul) {
   if (!soul.mcp_endpoint) return
   try {
     const origin = new URL(soul.mcp_endpoint).origin
-    const r = await fetch(`${origin}/api/soul/scan`, { signal: AbortSignal.timeout(5000) })
+    const r = await fetch(soulScanUrl(origin), { signal: AbortSignal.timeout(5000) })
     const json = r.ok ? await r.json().catch(() => null) : null
     nodeOnline.value = { ...nodeOnline.value, [soul.soul_id]: json?.ok === true }
   } catch {
@@ -887,7 +898,7 @@ async function runScan() {
     try {
       // Ein einzelner unerreichbarer Peer ist normaler Netzwerk-Churn, kein
       // Grund für den globalen Degraded-Hinweis — nur leichtes Logging.
-      const data = await fetch(`${base}/api/soul/scan`, {
+      const data = await fetch(soulScanUrl(base), {
         signal: AbortSignal.timeout(8000),
       }).then(r => r.ok ? r.json() : null).catch(e => {
         console.debug(`[scan] Node ${base} nicht erreichbar:`, e.message)

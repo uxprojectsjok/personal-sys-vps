@@ -23,7 +23,10 @@ function escapeHtml(str) {
 
 async function fetchLlmsTxt(origin) {
   try {
-    const res = await fetch(`${origin}/llms.txt`, { signal: AbortSignal.timeout(6000) })
+    // Über den eigenen Server geproxyt statt direkt aus dem Browser — CSP's
+    // connect-src ist eine feste Allowlist, kann unmöglich jeden zur Laufzeit
+    // entdeckten Node enthalten. Siehe /api/proxy/llms-txt in server.mjs.
+    const res = await fetch(`/api/proxy/llms-txt?origin=${encodeURIComponent(origin)}`, { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return ''
     return await res.text()
   } catch {

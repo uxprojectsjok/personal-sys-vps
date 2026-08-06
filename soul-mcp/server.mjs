@@ -3210,6 +3210,53 @@ app.get('/api/soul/scan', async (req, res) => {
   res.json({ ok: true, souls: merged, indexed: stats.souls, scanning: stats.scanning });
 });
 
+// ── Cross-Node-Proxy für Browser-seitige Discovery ────────────────────────────
+// scanner.vue/useNetworkSearch.js entdecken zur Laufzeit beliebige, vorher
+// unbekannte SYS-Nodes (per Chain-Scan bzw. /api/soul/scan) und wollen deren
+// /api/soul/scan bzw. /llms.txt direkt aus dem Browser abfragen. CSP's
+// connect-src ist aber eine feste, statische Allowlist — kann unmöglich jeden
+// erst zur Laufzeit entdeckten Node enthalten. Server-zu-Server-Fetches
+// unterliegen keiner CSP (reines Browser-Konzept), deshalb übernimmt dieser
+// Node stellvertretend den eigentlichen Cross-Origin-Call und liefert
+// same-origin zurück — exakt dasselbe Muster wie beim Cross-Node-Wire-out
+// (siehe app/composables/useGatekeeper.js' wireToGatekeeper()-Kommentar).
+//
+// Kein offener Proxy: nur GET, nur zwei fest verdrahtete Zielpfade, origin
+// muss https:// sein und darf nicht auf offensichtlich internes/privates Netz
+// zeigen (SSRF-Schutz) — strenger als der bestehende /api/soul/scan-Aggregator
+// oben, dessen Origins ausschließlich aus bereits on-chain-validierten
+// mcp_endpoint-Werten kommen, nicht aus rohem, unauthentifiziertem Nutzer-Input
+// wie hier (origin kommt direkt aus dem Query-Parameter).
+const PROXY_BLOCKED_HOST_RE = /^(localhost$|127\.|0\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|\[?::1\]?$|\[?f[cd][0-9a-f]{2}:|\[?fe80:)/i;
+function proxyableOrigin(originStr) {
+  let u;
+  try { u = new URL(String(originStr || '')); } catch { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password) return null;
+  if (PROXY_BLOCKED_HOST_RE.test(u.hostname)) return null;
+  return u.origin;
+}
+
+async function proxyGet(req, res, path, contentType) {
+  const origin = proxyableOrigin(req.query.origin);
+  if (!origin) return res.status(400).json({ error: 'invalid_origin' });
+  try {
+    const r = await fetch(`${origin}${path}`, { signal: AbortSignal.timeout(8000) });
+    const text = await r.text();
+    res.status(r.status);
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=300');
+    // Obergrenze statt unbegrenzter Weiterleitung — ein fremder Node könnte
+    // sonst über diesen Proxy beliebig große Antworten an jeden Besucher
+    // ausliefern lassen.
+    res.send(text.slice(0, 2_000_000));
+  } catch (err) {
+    res.status(502).json({ error: 'upstream_unreachable', message: err.message });
+  }
+}
+
+app.get('/api/proxy/llms-txt',  (req, res) => proxyGet(req, res, '/llms.txt', 'text/plain; charset=utf-8'));
+app.get('/api/proxy/soul-scan', (req, res) => proxyGet(req, res, '/api/soul/scan', 'application/json'));
+
 // ── EU-Widerrufsrecht-Flow als reines REST-API (kein MCP-Client nötig) ────────
 // Gleiche Logik/Gates wie show_withdrawal_terms.mjs / accept_digital_content_terms.mjs
 // (MCP-Tools, für KI-Chat-Clients), hier zusätzlich als plain-HTTP-Endpoints,
