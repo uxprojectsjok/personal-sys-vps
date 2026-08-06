@@ -43,7 +43,7 @@
           <p v-if="allResults.length === 0" class="srp-status">{{ $t('landing.search_empty') }}</p>
 
           <div v-else class="srp-results">
-            <div v-for="r in pageResults" :key="r.origin" class="srp-item">
+            <div v-for="r in pageResults" :key="r.llmsUrl" class="srp-item">
               <a class="srp-item-link" :href="r.origin" target="_blank" rel="noopener noreferrer">
                 <div class="srp-item-breadcrumb">
                   <span class="srp-avatar" aria-hidden="true">{{ r.initial }}</span>

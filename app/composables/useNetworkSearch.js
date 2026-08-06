@@ -90,45 +90,83 @@ function extractIntro(llmsText) {
   return text.length > 160 ? `${text.slice(0, 160)}…` : text
 }
 
+// Zerlegt die node-weite llms.txt in ihre "### {Soul}"-Blöcke (server-seitig
+// erzeugt, siehe soul-mcp/server.mjs pushSoulFieldLines) — ein Treffer wird
+// dadurch der EINZELNEN Soul zugeordnet statt pauschal dem ganzen Node, samt
+// deren eigener "Own llms.txt: {url}"-Zeile als direktes Link-Ziel. Sonst
+// verlinkt jedes Ergebnis nur auf die generische Node-Übersicht, und eine KI
+// bräuchte einen zweiten Hop, um bei der tatsächlich gemeinten Soul zu landen
+// — genau das Problem, das die Soul-eigene llms.txt (siehe pushSoulFieldLines)
+// lösen sollte. parts[0] ist der Node-Intro-Text vor der ersten Soul (Legal-
+// Hinweis etc.), bleibt für Treffer außerhalb jeder Soul als Fallback.
+function splitSoulSegments(llmsText) {
+  const parts = llmsText.split(/\n(?=### )/)
+  const intro = parts[0] || ''
+  const souls = parts.slice(1).map(seg => {
+    const cut = seg.indexOf('\n## How to access')
+    return cut === -1 ? seg : seg.slice(0, cut)
+  })
+  return { intro, souls }
+}
+
 function search(rawQuery, t) {
   const q = (rawQuery || '').trim().slice(0, 80).toLowerCase()
   if (!q || error.value) return []
   const out = []
   for (const node of nodes.value) {
-    const soulHaystack = node.souls.map(s => [s.name || '', s.description || '', ...(Array.isArray(s.tags) ? s.tags : [])].join(' ')).join(' ')
-    const fullHaystack = `${soulHaystack} ${node.llmsText}`.toLowerCase()
-    if (!fullHaystack.includes(q)) continue
+    const { intro, souls: segments } = splitSoulSegments(node.llmsText)
+    let anySoulMatched = false
 
-    let snippet = buildSnippet(node.llmsText, q)
-    if (!snippet) {
-      const hit = node.souls.find(s => (s.description || '').toLowerCase().includes(q))
-      if (hit) snippet = buildSnippet(hit.description, q)
+    for (const segment of segments) {
+      if (!segment.toLowerCase().includes(q)) continue
+      anySoulMatched = true
+
+      const soulId  = segment.match(/\*\*soul_id:\*\*\s*`([^`]+)`/)?.[1]
+      const ownUrl  = segment.match(/Own llms\.txt:\s*(\S+)/)?.[1]
+      const heading = segment.match(/^### (.+)/)?.[1]?.trim()
+      const meta    = soulId ? node.souls.find(s => s.soul_id === soulId) : null
+
+      let snippet = buildSnippet(segment, q)
+      if (!snippet) snippet = escapeHtml(extractIntro(segment)) || escapeHtml(extractIntro(node.llmsText))
+
+      const price = meta && (meta.usdc_current ?? meta.price_usdc)
+      const metaParts = [t('landing.search_meta_soul_one', { n: 1 })]
+      metaParts.push(typeof price === 'number' && price > 0 ? t('landing.search_meta_price', { p: price }) : t('landing.search_meta_free'))
+
+      out.push({
+        origin: node.origin,
+        // Direkter Soul-Link statt der Node-Übersicht — siehe splitSoulSegments()
+        // oben. Fällt nur auf die Node-llms.txt zurück, falls die Zeile aus
+        // irgendeinem Grund fehlt (z.B. Node läuft noch auf einer älteren
+        // Version ohne Soul-eigene llms.txt).
+        llmsUrl: ownUrl || `${node.origin}/llms.txt`,
+        hostname: new URL(node.origin).hostname,
+        initial: (heading || meta?.name || '?').trim().charAt(0).toUpperCase() || '?',
+        title: heading || meta?.name || soulId || new URL(node.origin).hostname,
+        snippet,
+        meta: metaParts.join(' · '),
+        tags: meta?.tags || [],
+      })
     }
-    if (!snippet) snippet = escapeHtml(extractIntro(node.llmsText))
 
-    const primarySoul = node.souls.find(s => s.name && !/^[0-9a-f-]{8,}$/.test(s.name)) || node.souls[0]
-    const titleMatch = node.llmsText.match(/^#\s*(.+)$/m)
-    const title = primarySoul?.name || (titleMatch ? titleMatch[1].trim() : new URL(node.origin).hostname)
-
-    const soulCount = node.souls.length
-    const prices = node.souls.map(s => s.usdc_current ?? s.price_usdc).filter(p => typeof p === 'number' && p > 0)
-    const metaParts = [t(soulCount === 1 ? 'landing.search_meta_soul_one' : 'landing.search_meta_soul_other', { n: soulCount })]
-    metaParts.push(prices.length ? t('landing.search_meta_price', { p: Math.min(...prices) }) : t('landing.search_meta_free'))
-
-    out.push({
-      origin: node.origin,
-      // Ziel des Ergebnis-Links: llms.txt statt der bloßen Origin — "/" ist bei
-      // fremden Nodes hinter deren eigenem Gate (Login/Create-Soul-Flow für
-      // Besucher ohne lokale Session), llms.txt ist die öffentliche, ungegatete
-      // Content-Seite jeder Node (siehe scanner.vue, gleiches Muster).
-      llmsUrl: `${node.origin}/llms.txt`,
-      hostname: new URL(node.origin).hostname,
-      initial: title.trim().charAt(0).toUpperCase() || '?',
-      title,
-      snippet,
-      meta: metaParts.join(' · '),
-      tags: [...new Set(node.souls.flatMap(s => s.tags || []))],
-    })
+    // Fallback: Treffer nur im Node-Intro (Legal-Text etc.) oder Node ohne
+    // Souls — unverändertes altes Verhalten, verlinkt auf die Node-Übersicht,
+    // weil hier keine einzelne Soul zuständig ist.
+    if (!anySoulMatched && intro.toLowerCase().includes(q)) {
+      let snippet = buildSnippet(intro, q) || escapeHtml(extractIntro(node.llmsText))
+      const titleMatch = node.llmsText.match(/^#\s*(.+)$/m)
+      const title = titleMatch ? titleMatch[1].trim() : new URL(node.origin).hostname
+      out.push({
+        origin: node.origin,
+        llmsUrl: `${node.origin}/llms.txt`,
+        hostname: new URL(node.origin).hostname,
+        initial: title.trim().charAt(0).toUpperCase() || '?',
+        title,
+        snippet,
+        meta: t(node.souls.length === 1 ? 'landing.search_meta_soul_one' : 'landing.search_meta_soul_other', { n: node.souls.length }),
+        tags: [...new Set(node.souls.flatMap(s => s.tags || []))],
+      })
+    }
   }
   return out
 }

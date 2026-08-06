@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.6] — 2026-08-06
+
+**Fixed: network search results linked to a node's generic `llms.txt`, not the specific soul that actually matched.** A hit on a soul's tags correctly found and displayed that soul's own `### {name}` block, but the visible `llms.txt` reference link still pointed at the node-wide document, forcing a second hop instead of landing directly on that soul's own llms.txt (`?soul_id=...`, added in 1.3.5). Defeats the point of giving every soul its own llms.txt if search results don't actually link to it.
+
+- `app/composables/useNetworkSearch.js`: `splitSoulSegments()` splits a node's llms.txt into its per-soul `### {name}` blocks and searches each independently — a match now produces one result per matching soul, linking to that soul's own `Own llms.txt:` URL parsed out of its segment, not the node-level one. A match only in the node's intro/legal text still falls back to the old node-level result.
+- `app/pages/search.vue`: `:key="r.origin"` → `:key="r.llmsUrl"` — a node with multiple matching souls now produces multiple results with the same `origin`, would have collided on the old key.
+
+**Not a regression, closes a gap left by 1.3.5:** per-soul llms.txt existed since then, but nothing pointed the search UI at it until now.
+
+---
+
 ## [1.3.5] — 2026-08-05
 
 **Every soul now has its own `llms.txt`, and it closes three gaps for genuine AI-network orientation, not just a static description.** Explicit ask: "SYS soll ein echtes Internetprotokoll werden, kein nettes Spielzeug" (a real internet protocol, not a nice toy).
