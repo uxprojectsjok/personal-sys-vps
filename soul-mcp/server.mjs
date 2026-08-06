@@ -2939,7 +2939,10 @@ function pushAccessFlowLines(lines, soulIdExample) {
     lines.push('Returns `{ download_url, download_url_txt, reference_id, payment: { value: wallet }, invoice_number }`');
     lines.push('— the wallet address AND a reference_id (UUID) are only revealed here, both required for step 4.');
     lines.push('(If you already have an MCP session on this node, the equivalent tools are show_withdrawal_terms');
-    lines.push('and accept_digital_content_terms — same fields, same rules.)');
+    lines.push('and accept_digital_content_terms — same fields, same rules, EXCEPT they take no soul_id: they');
+    lines.push(`always act on whichever soul YOUR session belongs to. To buy soul_id ${sid} specifically`);
+    lines.push('while connected as a different soul, those tools will not work — use the plain HTTP endpoints');
+    lines.push('above instead, which take soul_id explicitly and need no MCP session at all.)');
     lines.push('');
     lines.push('**3. Pay via x402 (USDC on Polygon, chainId 137)**');
     lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/pay/x402\n\`\`\``);

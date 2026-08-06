@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.7] — 2026-08-06
+
+**`show_withdrawal_terms`/`accept_digital_content_terms` now explain their own session-binding instead of a generic "this soul doesn't accept X" dead end.** These MCP tools take no `soul_id` and always act on whichever soul the CALLER's own MCP session belongs to, never an arbitrary target — an AI trying to buy a *different* soul's paid access through them would get a confusing rejection with no indication that a different soul, or a different path, was the actual issue.
+
+- `soul-mcp/tools/show_withdrawal_terms.mjs` / `accept_digital_content_terms.mjs`: tool descriptions now state the session-binding explicitly up front, and every "doesn't accept X" error names the actual soul involved (name + soul_id) plus the HTTP fallback (`POST {node}/api/soul/terms/show` / `.../accept`, both take `soul_id` explicitly, no MCP session needed) for targeting a *different* soul.
+- `soul-mcp/server.mjs` (`pushAccessFlowLines`): `llms.txt`'s own mention of these tools gained the same caveat, visible before an AI ever calls anything.
+
+---
+
 ## [1.3.6] — 2026-08-06
 
 **Fixed: network search results linked to a node's generic `llms.txt`, not the specific soul that actually matched.** A hit on a soul's tags correctly found and displayed that soul's own `### {name}` block, but the visible `llms.txt` reference link still pointed at the node-wide document, forcing a second hop instead of landing directly on that soul's own llms.txt (`?soul_id=...`, added in 1.3.5). Defeats the point of giving every soul its own llms.txt if search results don't actually link to it.

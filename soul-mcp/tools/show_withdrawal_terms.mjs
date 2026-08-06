@@ -32,6 +32,17 @@ export function register(server, soulId) {
       'aufgerufen wird — ohne den hier erzeugten terms_token schlägt',
       'accept_digital_content_terms fehl.',
       '',
+      'GEBUNDEN AN DIESE SESSION, kein soul_id-Parameter: dieses Tool prüft/verkauft',
+      'ausschließlich die Soul, mit der die aktuelle MCP-Verbindung besteht — NIE eine',
+      'andere, beliebige Soul. Soll eine ANDERE, dir bekannte soul_id gekauft werden',
+      '(z.B. weil ein Nutzer explizit nach dieser Soul fragt), funktioniert das über',
+      'dieses Tool NICHT — auch dann nicht, wenn diese Soul genau denselben Zahlungsweg',
+      'anbietet. Stattdessen den rohen HTTP-Weg nutzen, ganz ohne MCP-Session:',
+      'POST {node_url}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>",',
+      '"payment_method": "paypal"|"x402"} im Body (node_url aus llms.txt/wire_search/',
+      'wire_status). Liefert dieselben Felder wie hier. Zweiter Schritt dann',
+      'POST {node_url}/api/soul/terms/accept, Gegenstück zu accept_digital_content_terms.',
+      '',
       'WICHTIG: Die Wallet-Adresse bzw. das PayPal-Ziel werden NICHT vorab genannt',
       '(auch nicht von soul_preview/soul_discover) — sie erscheinen erst in der',
       'PDF-Antwort von accept_digital_content_terms, nach erteilter Zustimmung.',
@@ -60,14 +71,22 @@ export function register(server, soulId) {
       const paypalAvailable = amort.paypal_enabled === true;
       const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
+      // Nennt die betroffene Soul explizit (Name + soul_id) und den HTTP-Fallback --
+      // sonst liest sich "diese Soul" wie eine generische Ablehnung, obwohl es fast
+      // immer bedeutet "du bist als die FALSCHE Soul verbunden, um DIESE zu kaufen"
+      // (live beobachtet: ein Agent, der eigentlich soul_id X kaufen wollte, aber
+      // über seine EIGENE Session getestet hat -- die Meldung gab keinen Hinweis,
+      // dass ein anderer Weg für eine andere soul_id existiert).
+      const selfLabel = `${ctx.name || soulId.slice(0, 8)} (${soulId}, deine aktuelle MCP-Session)`;
+      const httpHint  = `Für eine ANDERE soul_id (nicht ${soulId}): POST ${BASE_URL}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>", "payment_method": "${payment_method}"} im Body -- keine MCP-Session dafür nötig.`;
       if (payment_method === 'paypal' && !paypalAvailable) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
+        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen PayPal-Zahlungsweg.\n\n${httpHint}` }], isError: true };
       }
       if (payment_method === 'x402' && !x402Available) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' }], isError: true };
+        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).\n\n${httpHint}` }], isError: true };
       }
       if (!paypalAvailable && !x402Available) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen Zahlungsweg.' }], isError: true };
+        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen Zahlungsweg.\n\n${httpHint}` }], isError: true };
       }
 
       try {

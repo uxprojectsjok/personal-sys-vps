@@ -38,6 +38,13 @@ export function register(server, soulId) {
       'Ein erfundener oder geratener terms_token wird abgelehnt (es muss ein',
       'tatsächlich existierendes Dokument dazu geben).',
       '',
+      'GEBUNDEN AN DIESE SESSION, kein soul_id-Parameter: exakt wie show_withdrawal_terms',
+      'wirkt dieses Tool ausschließlich auf die Soul der aktuellen MCP-Verbindung. Für',
+      'eine ANDERE soul_id (die dir bekannt ist, aber zu der du keine Session hast) den',
+      'HTTP-Weg nutzen: POST {node_url}/api/soul/terms/accept mit soul_id, terms_token',
+      '(aus POST {node_url}/api/soul/terms/show), payment_method und beiden Consent-',
+      'Feldern im Body — keine MCP-Session nötig, gleiche Felder/Regeln wie hier.',
+      '',
       'Nur mit beiden Einwilligungen (=true) UND gültigem terms_token wird der',
       'Bezahlweg genannt. Niemals consent=true raten oder ohne echte, vom Nutzer',
       'im Chat ausdrücklich erklärte Zustimmung aufrufen.',
@@ -73,11 +80,16 @@ export function register(server, soulId) {
       const paypalAvailable = amort.paypal_enabled === true;
       const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
+      // Siehe show_withdrawal_terms.mjs für die Begründung: "diese Soul" ohne Name/
+      // soul_id/HTTP-Fallback liest sich wie eine generische Ablehnung, obwohl es
+      // fast immer heißt "du bist als die FALSCHE Soul verbunden".
+      const selfLabel = `${ctx.name || soulId.slice(0, 8)} (${soulId}, deine aktuelle MCP-Session)`;
+      const httpHint  = `Für eine ANDERE soul_id (nicht ${soulId}): POST ${BASE_URL}/api/soul/terms/accept mit soul_id + terms_token (aus POST ${BASE_URL}/api/soul/terms/show) im Body -- keine MCP-Session dafür nötig.`;
       if (payment_method === 'paypal' && !paypalAvailable) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' }], isError: true };
+        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen PayPal-Zahlungsweg.\n\n${httpHint}` }], isError: true };
       }
       if (payment_method === 'x402' && !x402Available) {
-        return { content: [{ type: 'text', text: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' }], isError: true };
+        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).\n\n${httpHint}` }], isError: true };
       }
 
       const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;

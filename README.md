@@ -474,7 +474,7 @@ Verify your clone against the official release:
 node utils/project-hash.mjs
 ```
 
-Current release fingerprint (v1.3.6): 6df58bb281c8dd55
+Current release fingerprint (v1.3.7): f14a70211708bba5
 
 The hash covers every git-tracked file with a source extension (`.vue`, `.js`, `.mjs`, `.lua`, `.sh`, `.json`, `.md`, `.template`, `.css`, `.sol`) — untracked/gitignored files never count, and this README plus a handful of other self-referential or environment-specific files (`package-lock.json`, `.env`) are explicitly excluded.
 
