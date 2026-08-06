@@ -8,7 +8,11 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.3.8] — 2026-08-06
+## [1.3.9] — 2026-08-06
+
+**Fixed: `soul_preview` reported every soul as "private — no preview available", even though nothing was actually private.** `soul_preview.mjs` derived the preview URL from `pay_endpoint` via `.replace(/\/pay(\?.*)?$/, '/preview')`, assuming `pay_endpoint` ends in exactly `/pay` — but the real, currently-issued value ends in `/pay/x402` (`server.mjs`: `` `${BASE_URL}/api/soul/pay/x402` ``), so `/pay` is never at the string's end and the regex never matched. `previewUrl` silently stayed the unmodified `pay_endpoint` (+ query) — a bare GET against the real payment endpoint, no payment proof attached, correctly 403s, which the tool then misreported as "this soul is private."
+
+Fixed regex (`/\/pay(\/.*)?(\?.*)?$/`) also consumes the `/x402` suffix.
 
 **Fixed the real root cause of "Scanner shows Etherscan/RPC failures" — CSP, not a browser/ad-blocker issue as earlier suspected.** `/scanner` itself sends no CSP header, but as an SPA reached via client-side navigation (not a fresh page load), the browser keeps enforcing whatever CSP the *original* page load had — and that CSP's `connect-src` is a fixed allowlist missing `api.etherscan.io`, the actual RPC domain used (`polygon-bor-rpc.publicnode.com` — different from the already-allowlisted `polygon-rpc.com`), and both IPFS gateways (`gateway.pinata.cloud`, `ipfs.io`).
 

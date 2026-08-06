@@ -72,7 +72,14 @@ export function register(server, _token) {
     },
     async ({ pay_endpoint, soul_id }) => {
       try {
-        const previewUrl = pay_endpoint.replace(/\/pay(\?.*)?$/, '/preview') + `?soul_id=${soul_id}`;
+        // Regex erwartete pay_endpoint endet exakt auf "/pay" -- der reale, aktuell
+        // überall ausgegebene Wert endet aber auf "/pay/x402" (siehe server.mjs:
+        // pay_endpoint: `${BASE_URL}/api/soul/pay/x402`), "/pay" steht also nie am
+        // Stringende. Traf nie, previewUrl blieb der unveränderte pay_endpoint (+
+        // Query) -- ein GET ohne Zahlungsnachweis auf den echten Pay-Endpoint liefert
+        // 403, was hier fälschlich als "Soul ist privat" gemeldet wurde, obwohl gar
+        // keine Soul je privat war. Live reproduziert und verifiziert (KRO).
+        const previewUrl = pay_endpoint.replace(/\/pay(\/.*)?(\?.*)?$/, '/preview') + `?soul_id=${soul_id}`;
 
         const res = await fetch(previewUrl, {
           signal: AbortSignal.timeout(8000),
