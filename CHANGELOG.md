@@ -8,7 +8,11 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.3.10] — 2026-08-07
+## [1.3.11] — 2026-08-07
+
+**Removed the non-functional "Daily" Autonomous Agent interval option, and scoped the interval selector to the Node-Owner only.** `sys-agent-run.sh` never reads any stored `interval` field, and `init.sh` installs exactly one system-wide cron entry (hourly, no per-soul or per-interval variant) — "Daily (06:00 UTC)" has never had any effect regardless of what a soul selected. Interval is inherently a node-wide concept (one shared crontab), not a per-soul one, even though it was stored per-soul.
+
+`app/pages/agent.vue`: the interval button group now only renders for `isNodeOwner` (already loaded from `/api/node-config`'s existing `is_node_owner` field) and only offers "Hourly". Other souls no longer see an interval control at all — "Run now" (a genuinely per-soul action) stays visible for everyone, unconditional.
 
 **Fixed: on Multi-Hoster nodes, the Autonomous Agent panel showed "Claude Code not installed" for every soul except the one most recently authenticated via `/gate`.**
 

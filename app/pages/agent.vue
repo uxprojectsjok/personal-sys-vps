@@ -106,17 +106,26 @@
               </button>
             </div>
 
-            <!-- Interval selector + Run now -->
+            <!-- Interval selector (Node-Owner only) + Run now (jede Soul).
+                 "Daily" entfernt -- hatte nie eine Wirkung: sys-agent-run.sh
+                 liest kein interval-Feld, init.sh installiert genau EINEN
+                 Cron-Eintrag (stündlich, node-weit), keinen zweiten für
+                 "daily". Interval ist damit ohnehin ein node-weites, kein
+                 per-Soul-Konzept -- nur der Node-Owner bekommt die UI dafür,
+                 andere Souls sehen nur noch den "Run now"-Button (der bleibt
+                 pro Soul sinnvoll, unabhängig vom gemeinsamen Cron-Takt). -->
             <div class="sys-field" style="gap:10px;margin-bottom:24px">
               <label class="sys-field-label">{{ $t('settings.agent_interval_label') }}</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button
-                  v-for="iv in ['hourly','daily']"
-                  :key="iv"
-                  class="sys-btn-ed"
-                  :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
-                  @click="setAgentInterval(iv)"
-                >{{ iv === 'hourly' ? $t('settings.agent_interval_hourly') : $t('settings.agent_interval_daily') }}</button>
+                <template v-if="isNodeOwner">
+                  <button
+                    v-for="iv in ['hourly']"
+                    :key="iv"
+                    class="sys-btn-ed"
+                    :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
+                    @click="setAgentInterval(iv)"
+                  >{{ $t('settings.agent_interval_hourly') }}</button>
+                </template>
                 <button
                   class="sys-btn-ed sys-btn-ed--ghost"
                   style="margin-left:auto"
