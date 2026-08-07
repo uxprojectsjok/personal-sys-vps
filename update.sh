@@ -42,7 +42,17 @@ info "Deploying shared config templates to /var/lib/sys/config/ ..."
 cp "$SCRIPT_DIR/shared/constants/pricing_params.json" /var/lib/sys/config/pricing_params.json
 cp "$SCRIPT_DIR/shared/constants/default_mind.md"     /var/lib/sys/config/default_mind.md
 
-# ── 2c. Regenerate OpenResty vhost config from template ───────────────────────
+# ── 2c. Sync internal-soul-api site config ────────────────────────────────────
+# Same init.sh-only-copies-it-once gap as the vhost/agent-runner fixes below —
+# static file, no template placeholders, so a plain sync is enough.
+if [ -f "$SCRIPT_DIR/server/openresty/internal-soul-api.conf" ] \
+   && [ -f /etc/openresty/sites-enabled/internal-soul-api ] \
+   && ! diff -q "$SCRIPT_DIR/server/openresty/internal-soul-api.conf" /etc/openresty/sites-enabled/internal-soul-api >/dev/null 2>&1; then
+  cp "$SCRIPT_DIR/server/openresty/internal-soul-api.conf" /etc/openresty/sites-enabled/internal-soul-api
+  info "internal-soul-api config updated."
+fi
+
+# ── 2d. Regenerate OpenResty vhost config from template ───────────────────────
 # update.sh only ever copied *.lua files — a location block added to
 # vhost.conf.template (new API route, new SPA page needing its own try_files
 # fallback, ...) never reached already-installed nodes, since only init.sh
@@ -125,6 +135,19 @@ elif [ -f "$CLAUDE_PATH_FILE" ]; then
   warn "claude not in PATH — existing sentinel file kept: $(cat "$CLAUDE_PATH_FILE")"
 else
   warn "claude not installed — sentinel file not written (Agent panel will show 'not installed')"
+fi
+
+# ── 4b. Sync SYS Agent Runner ──────────────────────────────────────────────────
+# init.sh copies shared/sys-agent-run.sh to /usr/local/bin/ once, at install
+# time — nothing previously re-synced it on update, so fixes landing in the
+# repo (like the vault-decryption fix that motivated this step) never reached
+# the actual cron script already deployed on a node.
+if [ -f "$SCRIPT_DIR/shared/sys-agent-run.sh" ]; then
+  if ! diff -q "$SCRIPT_DIR/shared/sys-agent-run.sh" /usr/local/bin/sys-agent-run.sh >/dev/null 2>&1; then
+    cp "$SCRIPT_DIR/shared/sys-agent-run.sh" /usr/local/bin/sys-agent-run.sh
+    chmod +x /usr/local/bin/sys-agent-run.sh
+    info "sys-agent-run.sh updated."
+  fi
 fi
 
 # ── 5. Create agent.md for existing souls ────────────────────────────────────

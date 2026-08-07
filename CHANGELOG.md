@@ -8,6 +8,19 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.14] — 2026-08-07
+
+**Fixed: `update.sh` never re-synced two more install-time-only files, the same class of bug as the vhost-config gap fixed in v1.2.27 — found live on `fab.uxprojects-jok.com`, where today's Autonomous Agent Runner vault-decryption fix (`d19f7fb`) landed in the repo but never reached the actual cron script already deployed on the node.**
+
+**Root cause:** `init.sh` copies `shared/sys-agent-run.sh` to `/usr/local/bin/sys-agent-run.sh` and `server/openresty/internal-soul-api.conf` to `/etc/openresty/sites-enabled/internal-soul-api` exactly once, at install time — same pattern as the vhost config before v1.2.27. Nothing in `update.sh` ever re-copied either afterward, so fixes to either file silently never reached an already-running node no matter how many times it updated. On this node specifically, that meant the hourly Autonomous Agent Runner kept running a version of the script from install day, missing every fix made to it since — including one from earlier today.
+
+**Fixed**
+- `update.sh`: new steps re-sync `shared/sys-agent-run.sh` → `/usr/local/bin/sys-agent-run.sh` and `server/openresty/internal-soul-api.conf` → `/etc/openresty/sites-enabled/internal-soul-api` on every run, only touching the live file when the content actually differs (both are plain static copies, no template placeholders to render).
+
+**Migration required:** already-running nodes should run `update.sh` once to pick up any fixes to either file made since their install date — this can't be backfilled automatically for nodes that haven't updated yet.
+
+---
+
 ## [1.3.13] — 2026-08-07
 
 **Fixed: the Autonomous Agent Runner never actually detected pending tasks for a soul whose vault is encrypted (`cipher_mode: "ciphered"`, e.g. after passkey vault setup).** `shared/sys-agent-run.sh` read `vault/context/agent.md` straight off disk, assuming it was always plaintext markdown. But vault-protected context files are stored as `SYS\x01`-magic AES-256-CBC ciphertext (see `soul-mcp/lib/vault_fs.mjs`) — the runner's `grep`-based task detection ran directly against that ciphertext, found zero matches every time, logged "no pending tasks — idle", and exited. No error was surfaced anywhere; it looked identical to a soul that genuinely had no open tasks. Even had detection somehow passed, the prompt told Claude Code to "Read" the same ciphertext path — it has no vault key either.
