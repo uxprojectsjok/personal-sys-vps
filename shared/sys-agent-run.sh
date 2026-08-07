@@ -83,15 +83,34 @@ run_soul() {
     return
   fi
 
+  # agent.md may be vault-encrypted on disk (cipher_mode "ciphered", e.g. after
+  # passkey vault setup — SYS\x01-magic AES-256-CBC, see vault_fs.mjs). grep/Read
+  # can't see through that, so decrypt to a scratch plaintext copy first; the
+  # helper is a no-op passthrough for unciphered vaults (decryptIfNeeded checks
+  # the magic bytes itself), so this is safe either way.
+  local SCRATCH_DIR="$AGENT_DIR/scratch"
+  mkdir -p "$SCRATCH_DIR"
+  chmod 700 "$SCRATCH_DIR" 2>/dev/null || true
+  local PLAIN_AGENT_MD="$SCRATCH_DIR/agent_${soul_id}.md"
+  rm -f "$PLAIN_AGENT_MD"
+
+  if ! node "$WORK_DIR/soul-mcp/scripts/agent_vault_ctx.mjs" decrypt "$soul_id" "$PLAIN_AGENT_MD" >>"$LOG_FILE" 2>&1; then
+    log_s "ERROR: could not decrypt agent.md (vault key issue?) — skip"
+    rm -f "$PLAIN_AGENT_MD"
+    return
+  fi
+  chmod 600 "$PLAIN_AGENT_MD" 2>/dev/null || true
+
   # Detect pending tasks — supports both formats:
   #   checkbox:  - [ ] task
   #   section:   **Status:** open  (current, documented in soul-mcp/prompts/index.mjs)
   #              **Status:** offen | Status: offen | status: open | **Status:** aktiv  (legacy/German)
   local task_count=0
-  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* open|\*\*Status:\*\* offen|Status: offen|status: open|\*\*Status:\*\* aktiv" "$AGENT_MD" 2>/dev/null || true)
+  task_count=$(grep -cE "^- \[ \]|\*\*Status:\*\* open|\*\*Status:\*\* offen|Status: offen|status: open|\*\*Status:\*\* aktiv" "$PLAIN_AGENT_MD" 2>/dev/null || true)
 
   if [[ "$task_count" -eq 0 ]]; then
     log_s "no pending tasks — idle"
+    rm -f "$PLAIN_AGENT_MD"
     return
   fi
 
@@ -116,6 +135,7 @@ print(key)
 
   if [[ -z "$API_KEY" ]]; then
     log_s "ERROR: no anthropic_key — set in Settings → API tab"
+    rm -f "$PLAIN_AGENT_MD"
     return
   fi
   log_s "API key: ok"
@@ -195,7 +215,7 @@ except: print('claude-sonnet-4-6')
 
 "
 
-  local PROMPT="${CLAUDE_MD_HINT}Read $AGENT_MD and work through every pending task.
+  local PROMPT="${CLAUDE_MD_HINT}Read $PLAIN_AGENT_MD and work through every pending task.
 
 ## Sections in agent.md
 - **## Standing Tasks (always active)** — standing rules, always apply after completing each task. Never mark them done.
@@ -239,6 +259,19 @@ Work sequentially. Be careful and conservative."
     $MCP_CONFIG_ARG \
     >> "$LOG_FILE" 2>&1 \
     || log_s "WARNING: claude exited non-zero"
+
+  # Re-encrypt (or plain-write, matching whatever cipher_mode was found) the
+  # scratch copy — possibly edited by Claude — back into the real vault path.
+  # Runs even if claude exited non-zero above: it may have edited the file
+  # before failing, and re-saving unedited content back is a harmless no-op.
+  if [[ -f "$PLAIN_AGENT_MD" ]]; then
+    if node "$WORK_DIR/soul-mcp/scripts/agent_vault_ctx.mjs" encrypt "$soul_id" "$PLAIN_AGENT_MD" >>"$LOG_FILE" 2>&1; then
+      log_s "agent.md saved back to vault"
+      rm -f "$PLAIN_AGENT_MD"
+    else
+      log_s "ERROR: failed to save agent.md back to vault — scratch copy kept for recovery: $PLAIN_AGENT_MD"
+    fi
+  fi
 
   # Restore www-data ownership + permissions on files root may have created/modified
   chown -R www-data:www-data "$soul_dir/vault/context/" 2>/dev/null || true

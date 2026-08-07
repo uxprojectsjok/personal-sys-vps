@@ -8,6 +8,12 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.13] — 2026-08-07
+
+**Fixed: the Autonomous Agent Runner never actually detected pending tasks for a soul whose vault is encrypted (`cipher_mode: "ciphered"`, e.g. after passkey vault setup).** `shared/sys-agent-run.sh` read `vault/context/agent.md` straight off disk, assuming it was always plaintext markdown. But vault-protected context files are stored as `SYS\x01`-magic AES-256-CBC ciphertext (see `soul-mcp/lib/vault_fs.mjs`) — the runner's `grep`-based task detection ran directly against that ciphertext, found zero matches every time, logged "no pending tasks — idle", and exited. No error was surfaced anywhere; it looked identical to a soul that genuinely had no open tasks. Even had detection somehow passed, the prompt told Claude Code to "Read" the same ciphertext path — it has no vault key either.
+
+New `soul-mcp/scripts/agent_vault_ctx.mjs` decrypts/encrypts `agent.md` by reusing `vault_fs.mjs`'s exact scheme (a safe no-op passthrough for souls without vault encryption — `decryptIfNeeded` checks the magic bytes itself). `sys-agent-run.sh` now decrypts to a scratch plaintext copy (`/var/lib/sys/agent/scratch/`, `chmod 600`, deleted after the run) before task detection and the Claude invocation, and re-encrypts (or plain-writes, matching whatever mode was found) the result back into the real vault path afterward — even if Claude exited non-zero, since it may have edited the file before failing.
+
 ## [1.3.12] — 2026-08-07
 
 **Fixed a visual regression from the 1.3.11 interval-selector change: non-Node-Owner souls saw an orphaned "Interval" heading above an unstyled "Run now" button.** The 1.3.11 fix wrapped only the interval *button group* in `v-if="isNodeOwner"`, leaving the section label and layout wrapper unconditional — so every other soul still saw the "Interval" heading (now pointing at nothing) with a ghost-styled "Run now" button underneath it instead of the intended primary green button.
