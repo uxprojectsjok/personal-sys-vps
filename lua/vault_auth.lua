@@ -85,22 +85,38 @@ local function check_soul_cert(token)
       return nil
     end
 
-    -- Single-Soul-Lock: nur der registrierte Node-Inhaber hat Zugriff
-    local node_soul_id = cfg.get_node_soul_id()
-    if node_soul_id and node_soul_id ~= soul_id then
-      ngx.log(ngx.WARN, "[vault_auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
-      return nil
-    end
+    -- Single-Soul-Lock: nur der registrierte Node-Inhaber hat Zugriff.
+    -- Im Multi-Hoster-Modus entfällt dieser Lock (mehrere Souls erlaubt) —
+    -- exakt dasselbe Muster wie soul_auth.lua:78, das hier bisher fehlte
+    -- (aktuell folgenlos, weil node_soul_id auf diesem Node nicht gesetzt ist,
+    -- aber ein latenter Bug für jeden Multi-Hoster-Node, der es doch setzt).
+    if not cfg.get_multi_hoster() then
+      local node_soul_id = cfg.get_node_soul_id()
+      if node_soul_id and node_soul_id ~= soul_id then
+        ngx.log(ngx.WARN, "[vault_auth] Falsche soul_id – Node gesperrt soul_id=", soul_id)
+        return nil
+      end
 
-    -- Gate-Soul-Binding: Gate-Token muss zur selben soul_id gehören
-    local gate_token = ngx.var.cookie_sys_gate or ""
-    if #gate_token == 64 and gate_token:match("^[a-fA-F0-9]+$") then
-      local sessions = ngx.shared.gate_sessions
-      if sessions then
-        local bound = sessions:get("gs:" .. gate_token)
-        if bound and bound ~= "" and bound ~= soul_id then
-          ngx.log(ngx.WARN, "[vault_auth] Gate soul mismatch: gate=", bound, " cert=", soul_id)
-          return nil
+      -- Gate-Soul-Binding: Gate-Token muss zur selben soul_id gehören. Nur im
+      -- Single-Hoster-Fall sinnvoll (dort ohnehin ein No-Op, da nie eine andere
+      -- Soul existiert) — im Multi-Hoster-Fall verwaltet EINE Browser-Session
+      -- legitim MEHRERE Souls (z.B. Gatekeeper + KRO), und dieser Check sperrt
+      -- dann jeden Cert-Request für eine andere Soul als die, mit der /gate
+      -- zuletzt aufgerufen wurde — die Cert-Prüfung oben ist bereits der
+      -- vollständige, kryptografisch starke Auth-Beweis, dieser Zusatz-Check
+      -- bringt keinen echten Sicherheitsgewinn, nur einen echten Bug (live
+      -- gemeldet: KRO's Autonomous-Agent-Panel zeigte "Claude Code not
+      -- installed", weil /api/agent/* mit dem auf den Gatekeeper gebundenen
+      -- Gate-Cookie 401'te, bevor der eigentliche Installed-Check je lief).
+      local gate_token = ngx.var.cookie_sys_gate or ""
+      if #gate_token == 64 and gate_token:match("^[a-fA-F0-9]+$") then
+        local sessions = ngx.shared.gate_sessions
+        if sessions then
+          local bound = sessions:get("gs:" .. gate_token)
+          if bound and bound ~= "" and bound ~= soul_id then
+            ngx.log(ngx.WARN, "[vault_auth] Gate soul mismatch: gate=", bound, " cert=", soul_id)
+            return nil
+          end
         end
       end
     end

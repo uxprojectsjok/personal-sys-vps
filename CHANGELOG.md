@@ -8,7 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.3.9] — 2026-08-06
+## [1.3.10] — 2026-08-07
+
+**Fixed: on Multi-Hoster nodes, the Autonomous Agent panel showed "Claude Code not installed" for every soul except the one most recently authenticated via `/gate`.**
+
+**Root cause:** `vault_auth.lua` (the `access_by_lua_file` for `/api/agent/*` among others) had a gate-soul-binding check with no `multi_hoster` guard — `soul_auth.lua` has the equivalent guard, `vault_auth.lua` never did. The check ties the whole `sys_gate` browser cookie to whichever soul's cert was presented at `/gate` login; on Multi-Hoster, one browser session legitimately manages several souls, so any cert-bearer request for a *different* soul than the one last used to unlock the gate got a silent 401 — before the actual "is Claude Code installed" check ever ran. On Single-Hoster this check is a pure no-op (only one soul can ever exist).
+
+**Fixed:** wrapped both the pre-existing single-soul-lock and the gate-soul-binding check in `if not cfg.get_multi_hoster() then`, mirroring `soul_auth.lua`'s already-correct pattern.
+
+**Also fixed, compounding UX bug:** `app/pages/agent.vue`'s `loadAgentStatus()` silently swallowed any non-200 response (including this 401), leaving `agentInstalled` at its `false` default — indistinguishable from a genuine "not installed" state. Now surfaces a distinct error banner (new `settings.agent_load_error` i18n key, EN+DE) naming the actual HTTP status instead of the misleading install-hint.
 
 **Fixed: `soul_preview` reported every soul as "private — no preview available", even though nothing was actually private.** `soul_preview.mjs` derived the preview URL from `pay_endpoint` via `.replace(/\/pay(\?.*)?$/, '/preview')`, assuming `pay_endpoint` ends in exactly `/pay` — but the real, currently-issued value ends in `/pay/x402` (`server.mjs`: `` `${BASE_URL}/api/soul/pay/x402` ``), so `/pay` is never at the string's end and the regex never matched. `previewUrl` silently stayed the unmodified `pay_endpoint` (+ query) — a bare GET against the real payment endpoint, no payment proof attached, correctly 403s, which the tool then misreported as "this soul is private."
 

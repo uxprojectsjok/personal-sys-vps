@@ -50,8 +50,13 @@
               </div>
             </div>
 
+            <!-- Load error (auth/network) -- distinct from "not installed", see loadAgentStatus() -->
+            <div v-if="agentLoadError" class="sm-infoblock" style="margin-bottom:20px;border-color:var(--sys-warn)">
+              {{ $t('settings.agent_load_error', { status: agentLoadError }) }}
+            </div>
+
             <!-- Not installed hint -->
-            <div v-if="!agentInstalled" class="sm-infoblock" style="margin-bottom:20px">
+            <div v-else-if="!agentInstalled" class="sm-infoblock" style="margin-bottom:20px">
               {{ $t('settings.agent_not_installed_hint') }}
             </div>
 
@@ -332,6 +337,7 @@ const agentFeedback     = ref(null)
 const agentRunPolling   = ref(false)
 let   agentLogTimer     = null
 const agentMcpTokenOk   = ref(true)
+const agentLoadError    = ref('')
 
 // Log-Zeitstempel bleiben serverseitig UTC (ISO 8601, z.B. "[2026-08-01T05:03:16Z]")
 // — nur die UI-Anzeige rechnet in die Browser-Zeitzone um, damit "Last run"
@@ -352,13 +358,23 @@ async function loadAgentStatus() {
   try {
     const r = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
+      agentLoadError.value = ''
       const d = await r.json()
       agentInstalled.value = !!d.installed
       agentEnabled.value   = !!d.enabled
       agentInterval.value  = d.interval || 'hourly'
       agentLastRun.value   = d.last_run || ''
+    } else {
+      // Vorher stillschweigend ignoriert -- ein 401 (z.B. Auth-Fehler) sah dadurch
+      // exakt wie "Claude Code not installed" aus (agentInstalled blieb bei seinem
+      // false-Default), obwohl das zwei völlig unterschiedliche Zustände sind. Live
+      // so aufgetreten: vault_auth.lua's Gate-Soul-Binding hat /api/agent/cron für
+      // jede Soul außer der zuletzt per /gate authentifizierten mit 401 abgelehnt.
+      agentLoadError.value = String(r.status)
     }
-  } catch {}
+  } catch {
+    agentLoadError.value = 'network'
+  }
   try {
     const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {

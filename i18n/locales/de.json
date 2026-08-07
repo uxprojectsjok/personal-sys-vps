@@ -749,6 +749,7 @@
     "agent_installed": "Claude Code installiert",
     "agent_not_installed": "Claude Code nicht installiert",
     "agent_not_installed_hint": "init.sh erneut ausführen und den Agent-Setup-Schritt wählen, um Claude Code automatisch zu installieren.",
+    "agent_load_error": "Agent-Status konnte nicht geladen werden ({status}) — das ist nicht dasselbe wie \"nicht installiert\", Seite neu laden versuchen.",
     "agent_enabled": "Agent aktiv",
     "agent_disabled": "Agent pausiert",
     "agent_enable": "Aktivieren",
