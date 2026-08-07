@@ -8,6 +8,12 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.3.12] — 2026-08-07
+
+**Fixed a visual regression from the 1.3.11 interval-selector change: non-Node-Owner souls saw an orphaned "Interval" heading above an unstyled "Run now" button.** The 1.3.11 fix wrapped only the interval *button group* in `v-if="isNodeOwner"`, leaving the section label and layout wrapper unconditional — so every other soul still saw the "Interval" heading (now pointing at nothing) with a ghost-styled "Run now" button underneath it instead of the intended primary green button.
+
+`app/pages/agent.vue`: split into two fully separate blocks — `v-if="isNodeOwner"` renders the label, disabled "Hourly" pill, and a primary-styled "Run now" button inline; `v-else` renders only a standalone primary-styled "Run now" button, no heading. Removed the now fully unused `setAgentInterval(iv)` function.
+
 ## [1.3.11] — 2026-08-07
 
 **Removed the non-functional "Daily" Autonomous Agent interval option, and scoped the interval selector to the Node-Owner only.** `sys-agent-run.sh` never reads any stored `interval` field, and `init.sh` installs exactly one system-wide cron entry (hourly, no per-soul or per-interval variant) — "Daily (06:00 UTC)" has never had any effect regardless of what a soul selected. Interval is inherently a node-wide concept (one shared crontab), not a per-soul one, even though it was stored per-soul.

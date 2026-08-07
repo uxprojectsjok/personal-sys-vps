@@ -111,28 +111,34 @@
                  liest kein interval-Feld, init.sh installiert genau EINEN
                  Cron-Eintrag (stündlich, node-weit), keinen zweiten für
                  "daily". Interval ist damit ohnehin ein node-weites, kein
-                 per-Soul-Konzept -- nur der Node-Owner bekommt die UI dafür,
-                 andere Souls sehen nur noch den "Run now"-Button (der bleibt
-                 pro Soul sinnvoll, unabhängig vom gemeinsamen Cron-Takt). -->
-            <div class="sys-field" style="gap:10px;margin-bottom:24px">
+                 per-Soul-Konzept -- nur der Node-Owner bekommt die UI dafür.
+                 Zwei komplett getrennte Blöcke statt eines gemeinsamen mit
+                 versteckten Teilen: sonst bleibt bei anderen Souls die
+                 "Interval"-Überschrift über einem einsamen Run-now-Button
+                 stehen (falsche Beschriftung) und der Ghost-Button-Stil, der
+                 vorher gegen den primären Interval-Button abgesetzt war, sieht
+                 allein ungestylt aus -- live so aufgefallen. -->
+            <div v-if="isNodeOwner" class="sys-field" style="gap:10px;margin-bottom:24px">
               <label class="sys-field-label">{{ $t('settings.agent_interval_label') }}</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <template v-if="isNodeOwner">
-                  <button
-                    v-for="iv in ['hourly']"
-                    :key="iv"
-                    class="sys-btn-ed"
-                    :class="agentInterval === iv ? 'sys-btn-ed--primary' : 'sys-btn-ed--ghost'"
-                    @click="setAgentInterval(iv)"
-                  >{{ $t('settings.agent_interval_hourly') }}</button>
-                </template>
                 <button
-                  class="sys-btn-ed sys-btn-ed--ghost"
+                  class="sys-btn-ed sys-btn-ed--primary"
+                  disabled
+                >{{ $t('settings.agent_interval_hourly') }}</button>
+                <button
+                  class="sys-btn-ed sys-btn-ed--primary"
                   style="margin-left:auto"
                   :disabled="agentRunNowBusy"
                   @click="runAgentNow"
                 >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
               </div>
+            </div>
+            <div v-else style="margin-bottom:24px">
+              <button
+                class="sys-btn-ed sys-btn-ed--primary"
+                :disabled="agentRunNowBusy"
+                @click="runAgentNow"
+              >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
             </div>
 
             <!-- Queue editor -->
@@ -433,17 +439,6 @@ async function toggleAgent(enable) {
   }
   agentToggleBusy.value = false
   setTimeout(() => { agentFeedback.value = null }, 4000)
-}
-
-async function setAgentInterval(iv) {
-  agentInterval.value = iv
-  try {
-    await fetch('/api/agent/cron', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ interval: iv }),
-    })
-  } catch {}
 }
 
 async function runAgentNow() {
