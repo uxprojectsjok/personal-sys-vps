@@ -60,15 +60,39 @@ fi
 # but non-destructively: only touch the live file if the rendered result
 # actually differs, keep a backup, and roll back on a failed syntax check
 # instead of leaving a broken config for step 3's reload to trip over.
-_SITE_CONF=""
-_DOMAIN=""
-for f in /etc/openresty/sites-enabled/*; do
-  [ -f "$f" ] || continue
-  grep -q "root /var/www/" "$f" 2>/dev/null || continue
-  _SITE_CONF="$f"
-  _DOMAIN="$(basename "$f")"
+#
+# Find THIS node's own domain via the marker init.sh leaves behind
+# (mkdir -p /var/lib/sys/config/"$DOMAIN"), instead of guessing from
+# sites-enabled — on a shared-server node hosting several SYS-adjacent
+# sites (this one plus a docs subdomain, another product, ...) more than
+# one vhost has a "root /var/www/..." line, and grabbing "whichever the
+# filesystem returns first" previously deployed this node's own frontend
+# into an unrelated site's docroot (confirmed live 2026-08-08).
+_NODE_DOMAIN=""
+for d in /var/lib/sys/config/*/; do
+  [ -d "$d" ] || continue
+  _bn="$(basename "$d")"
+  [[ "$_bn" == *.* ]] || continue
+  _NODE_DOMAIN="$_bn"
   break
 done
+
+_SITE_CONF=""
+_DOMAIN=""
+if [ -n "$_NODE_DOMAIN" ] && [ -f "/etc/openresty/sites-enabled/$_NODE_DOMAIN" ]; then
+  _SITE_CONF="/etc/openresty/sites-enabled/$_NODE_DOMAIN"
+  _DOMAIN="$_NODE_DOMAIN"
+else
+  # Older installs without the config-dir marker — fall back to the
+  # previous heuristic (first sites-enabled file with a /var/www/ root).
+  for f in /etc/openresty/sites-enabled/*; do
+    [ -f "$f" ] || continue
+    grep -q "root /var/www/" "$f" 2>/dev/null || continue
+    _SITE_CONF="$f"
+    _DOMAIN="$(basename "$f")"
+    break
+  done
+fi
 
 if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.template" ]; then
   _SSL_CERT=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
@@ -193,13 +217,21 @@ for _SOUL_DIR in /var/lib/sys/souls/*/; do
 done
 
 # ── 6. Rebuild + deploy frontend ──────────────────────────────────────────────
-# Find deploy path from nginx/openresty config. Site configs in
-# /etc/openresty/sites-enabled/ are named after the domain (no .conf suffix),
-# so search by content, not filename.
+# Find deploy path for THIS node's own frontend. Reuse _SITE_CONF from step
+# 2d (resolved via the /var/lib/sys/config/<domain>/ marker) rather than
+# re-deriving it — on a shared-server node, a generic "any vhost with a
+# /var/www/ root, whichever the filesystem returns first" search can land on
+# a completely unrelated site's docroot instead of this node's own (see the
+# comment in step 2d for the incident that exposed this).
 DEPLOY_DIR=""
-_NGINX_CONF=$(grep -rl "root /var/www/" /etc/openresty /usr/local/openresty/nginx/conf /etc/nginx 2>/dev/null | head -1 || true)
-if [ -n "$_NGINX_CONF" ]; then
-  DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}')
+if [ -n "$_SITE_CONF" ]; then
+  DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_SITE_CONF" 2>/dev/null | head -1 | awk '{print $2}')
+fi
+if [ -z "$DEPLOY_DIR" ]; then
+  _NGINX_CONF=$(grep -rl "root /var/www/" /etc/openresty /usr/local/openresty/nginx/conf /etc/nginx 2>/dev/null | head -1 || true)
+  if [ -n "$_NGINX_CONF" ]; then
+    DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}')
+  fi
 fi
 if [ -z "$DEPLOY_DIR" ]; then
   # Fall back to the sole directory under /var/www/, if there's exactly one —
