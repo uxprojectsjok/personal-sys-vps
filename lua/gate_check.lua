@@ -2,35 +2,53 @@
 -- access_by_lua_file für location / (SPA-Root)
 -- Prüft den sys_gate Cookie. Kein gültiges Token → Redirect zu /gate.
 
-local uri = ngx.var.uri
+-- request_uri statt uri: try_files' interner Fallback auf /index.html (kein
+-- Datei-Match für die meisten SPA-Routen — sie liegen als {route}/index.html,
+-- nicht {route}.html) löst diesen Handler ein zweites Mal aus, dabei ist
+-- ngx.var.uri dann "/index.html". ngx.var.request_uri bleibt aber über beide
+-- Durchläufe die ursprünglich angefragte URI — deshalb müssen ALLE
+-- Pfad-Whitelist-Checks hier gegen request_path prüfen, nicht gegen uri.
+-- (Live-Bug gewesen: /connect und /link/* nutzten uri statt request_path,
+-- funktionierten dadurch nur im ersten Durchlauf, redirecteten aber trotzdem
+-- zu /gate — ngx.ctx.gate_done half nicht, weil auch ngx.ctx zwischen den
+-- beiden Durchläufen zurückgesetzt wird, nicht nur uri. /gate und /join
+-- kamen damit ungeschoren davon, weil sie zusätzlich einen eigenen
+-- nginx-Bypass-Block haben, der gate_check.lua für sie gar nicht erst
+-- aufruft — dieser Lua-Whitelist-Pfad wurde für sie also nie wirklich
+-- getestet.)
+local request_path = (ngx.var.request_uri or ""):match("^([^?]*)")
+
+if request_path == "/" then
+  ngx.ctx.gate_done = true
+  return
+end
 
 -- Gate-Seite selbst ist immer zugänglich (inkl. /gate?next=...)
--- ngx.var.uri enthält nie den Query-String, daher reicht == "/gate"
-if uri == "/gate" or uri:sub(1, 6) == "/gate/" then
+if request_path == "/gate" or request_path:sub(1, 6) == "/gate/" then
   ngx.ctx.gate_done = true
   return
 end
 
 -- QR-Connect-Landingpage für Fremde (kein sys_gate Cookie erforderlich)
-if uri == "/connect" then
+if request_path == "/connect" then
   ngx.ctx.gate_done = true
   return
 end
 
 -- Multi-Hoster Registrierungsseite: öffentlich — join.vue prüft selbst ob Registrierung erlaubt ist
-if uri == "/join" then
+if request_path == "/join" then
   ngx.ctx.gate_done = true
   return
 end
 
 -- Share-Link Viewer: öffentlich zugänglich (Token = Auth)
-if uri:sub(1, 6) == "/link/" then
+if request_path:sub(1, 6) == "/link/" then
   ngx.ctx.gate_done = true
   return
 end
 
 -- Biometrie-Verify: QR-Scan-Flow — gültige verify_token im ?vt= Param bypassen Gate
-if uri == "/verify" then
+if request_path == "/verify" then
   local args = ngx.req.get_uri_args()
   local vt = (args.vt or ""):lower()
   if #vt == 48 and vt:match("^[a-f0-9]+$") then
@@ -48,10 +66,14 @@ if uri == "/verify" then
   end
 end
 
--- try_files interne Weiterleitung zu /index.html würde diesen Handler ein zweites
--- Mal auslösen (uri wäre dann "/index.html"). ngx.ctx bleibt im selben Request
--- erhalten → einmal geprüft reicht.
-if ngx.ctx.gate_done then return end
+-- Bewusst KEIN "ngx.ctx.gate_done bereits gesetzt → skip"-Kurzschluss hier:
+-- ngx.ctx wird über den try_files-internen Redirect zu /index.html NICHT
+-- zuverlässig erhalten (anders als request_path oben) — ein Check dagegen
+-- würde auf dem zweiten Durchlauf einfach immer "nil" sehen und nichts
+-- sparen. Für geschützte Routen validiert das die Cookie-Session dadurch
+-- zweimal pro Request statt einmal — unschön, aber unschädlich, kein
+-- Sicherheitsproblem. ngx.ctx.gate_done wird trotzdem gesetzt, für den Fall
+-- dass ngx.ctx in einer künftigen OpenResty-Version doch erhalten bleibt.
 ngx.ctx.gate_done = true
 
 -- sys_gate Cookie lesen (via nginx $cookie_* Variable)
