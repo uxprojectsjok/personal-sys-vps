@@ -16,29 +16,27 @@
       <div class="uc-wrap">
 
         <!-- HERO -->
-        <div class="topbar">
-          <div class="topbar-left">
-            <span class="kicker">{{ t.kicker }}</span>
-            <h1 class="uc-h1" v-html="t.h1"></h1>
-            <p class="uc-intro">{{ t.intro }}</p>
-          </div>
+        <div class="uc-hero">
+          <span class="kicker">{{ t.kicker }}</span>
+          <h1 class="uc-h1" v-html="t.h1"></h1>
+          <p class="uc-intro">{{ t.intro }}</p>
         </div>
 
-        <!-- CASE STUDY -->
-        <section class="uc-case">
+        <!-- CASE STUDIES -->
+        <section v-for="c in cases" :key="c.badge" class="uc-case">
           <div class="case-head">
-            <span class="case-badge">{{ t.caseBadge }}</span>
-            <h2 class="case-title">{{ t.caseTitle }}</h2>
-            <p class="case-sub">{{ t.caseSub }}</p>
+            <span class="case-badge">{{ c.badge }}</span>
+            <h2 class="case-title">{{ c.title }}</h2>
+            <p class="case-sub">{{ c.sub }}</p>
           </div>
 
-          <div v-for="s in steps" :key="s.n" class="uc-step">
+          <div v-for="s in c.steps" :key="s.n" class="uc-step">
             <span class="step-n">{{ s.n }}</span>
             <div class="step-body">
               <div class="step-label" v-html="s.label"></div>
               <div class="copy-block" v-if="s.request">
                 <code class="copy-code">{{ s.request }}</code>
-                <button class="copy-btn" @click="copy(s.request, s.n)">{{ copied === s.n ? t.copied : t.copy }}</button>
+                <button class="copy-btn" @click="copy(s.request, c.badge + s.n)">{{ copied === c.badge + s.n ? t.copied : t.copy }}</button>
               </div>
               <pre v-if="s.example" class="uc-example"><code>{{ s.example }}</code></pre>
               <p v-if="s.note" class="step-sub" v-html="s.note"></p>
@@ -47,7 +45,7 @@
 
           <div class="uc-callout">
             <span class="callout-mark">→</span>
-            <p v-html="t.calloutText"></p>
+            <p v-html="c.callout"></p>
           </div>
         </section>
 
@@ -72,7 +70,7 @@
       <footer class="colophon">
         <div class="col-brand">
           <div class="col-name">SYS<em>.</em></div>
-          <span class="fr-tag">Apache 2.0</span>
+          <span class="uc-fr-tag">Apache 2.0</span>
         </div>
         <div class="col-group">
           <div class="col-head">{{ t.footerProtocol }}</div>
@@ -114,25 +112,19 @@ function copy(text, key) {
 // ── i18n ────────────────────────────────────────────────────────────────────
 const de = {
   back: '← Zurück',
-  kicker: 'USE CASES · BEISPIEL 1',
+  kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in der Praxis.',
-  intro: 'Kein Konzept, kein Mockup — ein echter Ablauf gegen diesen laufenden Node. So sieht es aus, wenn ein fremder, autonomer KI-Agent ohne jedes Vorwissen und ohne besondere Rechte eine bezahlte Soul findet, das gesetzliche Widerrufsrecht respektiert, per x402 zahlt und Zugriff bekommt — ausschließlich über die öffentliche HTTP-Schnittstelle, keine internen Abkürzungen.',
-
-  caseBadge: 'x402 / Polygon',
-  caseTitle: 'Ein autonomer Agent kauft bezahlten Zugriff.',
-  caseSub: 'Sechs Schritte, sechs öffentliche Endpunkte. Werte unten sind Beispielwerte — Preis und Wallet-Adresse sind auf diesem Node dynamisch bzw. erst nach Zustimmung sichtbar.',
-
-  calloutText: 'Dieser Ablauf wurde live gegen diesen Node verifiziert — inklusive echter on-chain-Zahlung, signiert von einem eigenständigen Skript, das ausschließlich die oben gezeigten öffentlichen Endpunkte anspricht. Kein Aufruf ging an interne, nur lokal erreichbare Routen.',
+  intro: 'Kein Konzept, kein Mockup — echte Abläufe gegen diesen laufenden Node. So sieht es aus, wenn ein fremder, autonomer KI-Agent ohne jedes Vorwissen und ohne besondere Rechte eine bezahlte Soul findet, das gesetzliche Widerrufsrecht respektiert, zahlt — per x402 oder PayPal — und Zugriff bekommt — ausschließlich über die öffentliche HTTP-Schnittstelle, keine internen Abkürzungen.',
 
   guaranteesH2: 'Was dabei technisch garantiert ist.',
   guarantees: [
     {
       title: 'Widerrufsrecht zuerst',
-      body: 'Ohne Zustimmung zur Widerrufsbelehrung (Schritt 3+4) nennt der Node kein Zahlungsziel — technisch erzwungen, nicht nur dokumentiert.',
+      body: 'Ohne Zustimmung zur Widerrufsbelehrung nennt der Node kein Zahlungsziel — technisch erzwungen, nicht nur dokumentiert. Gilt für beide Zahlungswege gleichermaßen.',
     },
     {
       title: 'Rechnung = tatsächlicher Betrag',
-      body: 'Der bei der Zustimmung gezeigte Preis kann bis zur echten Zahlung leicht driften (dynamische Preisbildung). Die Rechnung wird nach Zahlungsbestätigung mit dem exakt abgebuchten Betrag final korrigiert — nie eine Differenz zwischen Beleg und Kontobewegung.',
+      body: 'Der bei der Zustimmung gezeigte Preis kann bis zur echten Zahlung leicht driften (dynamische Preisbildung, nur x402). Die Rechnung wird nach Zahlungsbestätigung mit dem exakt abgebuchten Betrag final korrigiert — nie eine Differenz zwischen Beleg und Kontobewegung.',
     },
     {
       title: 'Kein Vorwissen nötig',
@@ -140,7 +132,7 @@ const de = {
     },
   ],
 
-  moreText: 'Weitere Fallbeispiele — PayPal-Zahlungsweg, Gatekeeper-Zugriff für gewirte Souls, Peer-to-Peer-Nachrichten im Social Sphere — folgen hier nach demselben Muster.',
+  moreText: 'Weitere Fallbeispiele — Gatekeeper-Zugriff für gewirte Souls, Peer-to-Peer-Nachrichten im Social Sphere — folgen hier nach demselben Muster.',
 
   copy: 'Kopieren',
   copied: 'Kopiert ✓',
@@ -154,25 +146,19 @@ const de = {
 
 const en = {
   back: '← Back',
-  kicker: 'USE CASES · EXAMPLE 1',
+  kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in practice.',
-  intro: 'Not a concept, not a mockup — a real run against this live node. This is what it looks like when a foreign, autonomous AI agent — with no prior knowledge and no special privileges — finds a paid soul, respects the statutory right of withdrawal, pays via x402, and gets access — entirely through the public HTTP surface, no internal shortcuts.',
-
-  caseBadge: 'x402 / Polygon',
-  caseTitle: 'An autonomous agent buys paid access.',
-  caseSub: 'Six steps, six public endpoints. Values below are example values — price and wallet address are dynamic on this node, and the wallet is only revealed after consent.',
-
-  calloutText: 'This flow was verified live against this node — including a real on-chain payment, signed by a standalone script that talks exclusively to the public endpoints shown above. No call went to any internal, localhost-only route.',
+  intro: 'Not a concept, not a mockup — real runs against this live node. This is what it looks like when a foreign, autonomous AI agent — with no prior knowledge and no special privileges — finds a paid soul, respects the statutory right of withdrawal, pays — via x402 or PayPal — and gets access — entirely through the public HTTP surface, no internal shortcuts.',
 
   guaranteesH2: 'What is technically guaranteed here.',
   guarantees: [
     {
       title: 'Withdrawal rights come first',
-      body: 'Without consent to the withdrawal notice (steps 3+4), the node never reveals a payment target — enforced technically, not just documented.',
+      body: 'Without consent to the withdrawal notice, the node never reveals a payment target — enforced technically, not just documented. Applies to both payment paths alike.',
     },
     {
       title: 'Invoice = actual amount charged',
-      body: 'The price shown at consent time can drift slightly by the time payment settles (dynamic pricing). The invoice is finalized after payment confirmation with the exact charged amount — never a mismatch between receipt and ledger.',
+      body: 'The price shown at consent time can drift slightly by the time payment settles (dynamic pricing, x402 only). The invoice is finalized after payment confirmation with the exact charged amount — never a mismatch between receipt and ledger.',
     },
     {
       title: 'No prior knowledge required',
@@ -180,7 +166,7 @@ const en = {
     },
   ],
 
-  moreText: 'More case studies — the PayPal payment path, Gatekeeper access for wired souls, peer-to-peer messages in the Social Sphere — will follow here in the same format.',
+  moreText: 'More case studies — Gatekeeper access for wired souls, peer-to-peer messages in the Social Sphere — will follow here in the same format.',
 
   copy: 'Copy',
   copied: 'Copied ✓',
@@ -194,14 +180,21 @@ const en = {
 
 const t = computed(() => lang.value === 'de' ? de : en)
 
-// ── Steps (bilingual labels, protocol-accurate request/response shapes,
-// example values — never the real soul_id/wallet/tx_hash of a live purchase) ──
-const stepsDe = [
+// ── Cases (bilingual labels, protocol-accurate request/response shapes,
+// example values — never the real soul_id/wallet/tx_hash/reference_id of a
+// live purchase) ─────────────────────────────────────────────────────────
+const casesDe = [
   {
-    n: '01',
-    label: 'Discovery — der Agent kennt noch keine Soul, nur den Node.',
-    request: 'GET /api/soul/scan',
-    example: `{
+    badge: 'x402 / Polygon',
+    title: 'Ein autonomer Agent kauft bezahlten Zugriff.',
+    sub: 'Sechs Schritte, sechs öffentliche Endpunkte. Werte unten sind Beispielwerte — Preis und Wallet-Adresse sind auf diesem Node dynamisch bzw. erst nach Zustimmung sichtbar.',
+    callout: 'Dieser Ablauf wurde live gegen diesen Node verifiziert — inklusive echter on-chain-Zahlung, signiert von einem eigenständigen Skript, das ausschließlich die oben gezeigten öffentlichen Endpunkte anspricht. Kein Aufruf ging an interne, nur lokal erreichbare Routen.',
+    steps: [
+      {
+        n: '01',
+        label: 'Discovery — der Agent kennt noch keine Soul, nur den Node.',
+        request: 'GET /api/soul/scan',
+        example: `{
   "ok": true,
   "souls": [{
     "soul_id": "{soul_id}",
@@ -212,30 +205,30 @@ const stepsDe = [
     "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
   }]
 }`,
-  },
-  {
-    n: '02',
-    label: 'Preview — aktuellen Preis und Zahlungsendpunkt bestätigen.',
-    request: 'GET /api/soul/preview?soul_id={soul_id}',
-    example: `{
+      },
+      {
+        n: '02',
+        label: 'Preview — aktuellen Preis und Zahlungsendpunkt bestätigen.',
+        request: 'GET /api/soul/preview?soul_id={soul_id}',
+        example: `{
   "usdc_required": "0.81xxxx",
   "pay_endpoint": "https://agency.uxprojects-jok.com/api/soul/pay/x402",
   "wallet": ""   // noch nicht genannt — siehe Schritt 4
 }`,
-  },
-  {
-    n: '03',
-    label: 'Vorabinformation zum Widerrufsrecht — <strong>Pflicht</strong> vor jeder Zahlung.',
-    request: 'POST /api/soul/terms/show',
-    example: `{ "soul_id": "{soul_id}", "payment_method": "x402" }
+      },
+      {
+        n: '03',
+        label: 'Vorabinformation zum Widerrufsrecht — <strong>Pflicht</strong> vor jeder Zahlung.',
+        request: 'POST /api/soul/terms/show',
+        example: `{ "soul_id": "{soul_id}", "payment_method": "x402" }
 
 → { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
-  },
-  {
-    n: '04',
-    label: 'Zustimmung — erst jetzt wird das Zahlungsziel genannt.',
-    request: 'POST /api/soul/terms/accept',
-    example: `{
+      },
+      {
+        n: '04',
+        label: 'Zustimmung — erst jetzt wird das Zahlungsziel genannt.',
+        request: 'POST /api/soul/terms/accept',
+        example: `{
   "soul_id": "{soul_id}",
   "terms_token": "{terms_token}",
   "payment_method": "x402",
@@ -244,32 +237,115 @@ const stepsDe = [
 }
 
 → { "payment": { "value": "0x…" }, "price": "0.81xxxx", "invoice_number": "…" }`,
-  },
-  {
-    n: '05',
-    label: 'Zahlung — echter x402-Handshake (402 → signierte Autorisierung → Settlement).',
-    request: 'POST /api/soul/pay/x402',
-    example: `{ "soul_id": "{soul_id}", "reference_id": "{terms_token}" }
+      },
+      {
+        n: '05',
+        label: 'Zahlung — echter x402-Handshake (402 → signierte Autorisierung → Settlement).',
+        request: 'POST /api/soul/pay/x402',
+        example: `{ "soul_id": "{soul_id}", "reference_id": "{terms_token}" }
 // ohne Signatur: 402 + PAYMENT-REQUIRED-Header
 // mit signierter EIP-3009-Autorisierung im X-PAYMENT-Header: 200
 
 → { "ok": true, "tx_hash": "0x…", "usdc_amount": "0.81xxxx", "access_token": "{access_token}" }`,
-    note: 'Signiert wird lokal, mit der eigenen Wallet des Agenten — der Node sieht nie einen privaten Schlüssel.',
+        note: 'Signiert wird lokal, mit der eigenen Wallet des Agenten — der Node sieht nie einen privaten Schlüssel.',
+      },
+      {
+        n: '06',
+        label: 'Zugriff — mit dem erhaltenen Token lesen, ohne erneut zu zahlen.',
+        request: 'POST {mcp_endpoint}',
+        example: `Header: Authorization: Bearer {access_token}
+
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "<tool>", "arguments": {} } }`,
+        note: 'Gültig für die konfigurierte Token-Laufzeit, mehrfach nutzbar — für jedes Tool, das der Soul-Inhaber für zahlende Agenten freigegeben hat.',
+      },
+    ],
   },
   {
-    n: '06',
-    label: 'Zugriff — mit dem erhaltenen Token lesen, ohne erneut zu zahlen.',
-    request: 'GET /api/soul/paid-read?soul_id={soul_id}',
-    note: 'Header: <code class="i-code">Authorization: Bearer {access_token}</code> — gültig für die konfigurierte Token-Laufzeit, mehrfach nutzbar.',
+    badge: 'PayPal',
+    title: 'Ein menschlicher Käufer zahlt ohne Wallet.',
+    sub: 'Gleicher Zustimmungsablauf wie beim x402-Weg — nur mit einer echten, manuell geprüften Überweisung statt automatischem On-Chain-Settlement. Für Käufer ohne Polygon-Wallet.',
+    callout: 'Auch dieser Ablauf wurde live gegen diesen Node verifiziert — echte PayPal-Zahlung, manuelle Token-Ausstellung durch den Betreiber, danach erfolgreiche Einlösung durch einen extern per MCP verbundenen Agenten (Claude), bestätigt durch einen echten, protokollierten Tool-Aufruf.',
+    steps: [
+      {
+        n: '01',
+        label: 'Discovery — derselbe öffentliche Scan wie bei x402.',
+        request: 'GET /api/soul/scan',
+        example: `{
+  "ok": true,
+  "souls": [{
+    "soul_id": "{soul_id}",
+    "name": "KRO",
+    "paypal_enabled": true,
+    "price_eur": "0.50",
+    "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
+  }]
+}`,
+      },
+      {
+        n: '02',
+        label: 'Preview — bestätigt Preis in EUR und dass PayPal akzeptiert wird.',
+        request: 'GET /api/soul/preview?soul_id={soul_id}',
+        example: `{
+  "paypal_accepted": true,
+  "price_eur": "0.50",
+  "paypal_target": ""   // noch nicht genannt — siehe Schritt 4
+}`,
+      },
+      {
+        n: '03',
+        label: 'Vorabinformation zum Widerrufsrecht — <strong>Pflicht</strong> vor jeder Zahlung, identisch zu x402.',
+        request: 'POST /api/soul/terms/show',
+        example: `{ "soul_id": "{soul_id}", "payment_method": "paypal" }
+
+→ { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
+      },
+      {
+        n: '04',
+        label: 'Zustimmung — erst jetzt wird das PayPal-Ziel genannt.',
+        request: 'POST /api/soul/terms/accept',
+        example: `{
+  "soul_id": "{soul_id}",
+  "terms_token": "{terms_token}",
+  "payment_method": "paypal",
+  "consent_immediate_performance": true,
+  "consent_withdrawal_waiver": true
+}
+
+→ { "payment": { "value": "https://paypal.me/{provider}" }, "price": "0.50", "invoice_number": "…" }`,
+        note: 'Die <code class="i-code">reference_id</code> (= <code class="i-code">terms_token</code>) muss in die PayPal-Zahlungsnotiz — sonst kann der Betreiber die Zahlung nicht zuordnen.',
+      },
+      {
+        n: '05',
+        label: 'Zahlung — echte Überweisung außerhalb der API, manuell geprüft.',
+        note: 'Kein Endpunkt — dieser Schritt läuft auf paypal.com selbst. Der Käufer überweist den genannten Betrag mit <code class="i-code">{terms_token}</code> in der Notiz. Der Betreiber gleicht den Zahlungseingang gegen diese Referenz ab und stellt danach von Hand einen Zugangs-Token aus — üblich innerhalb von 48h, nicht sofort wie bei x402.',
+      },
+      {
+        n: '06',
+        label: 'Zugriff — sobald der Token vorliegt, identisch zu x402.',
+        request: 'POST {mcp_endpoint}',
+        example: `Header: Authorization: Bearer {access_token}
+
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "<tool>", "arguments": {} } }`,
+        note: 'Ab hier kein Unterschied mehr zum x402-Weg — derselbe Token, dieselbe Bearer-Auth, dieselben freigegebenen Tools.',
+      },
+    ],
   },
 ]
 
-const stepsEn = [
+const casesEn = [
   {
-    n: '01',
-    label: 'Discovery — the agent doesn\'t know any soul yet, only the node.',
-    request: 'GET /api/soul/scan',
-    example: `{
+    badge: 'x402 / Polygon',
+    title: 'An autonomous agent buys paid access.',
+    sub: 'Six steps, six public endpoints. Values below are example values — price and wallet address are dynamic on this node, and the wallet is only revealed after consent.',
+    callout: 'This flow was verified live against this node — including a real on-chain payment, signed by a standalone script that talks exclusively to the public endpoints shown above. No call went to any internal, localhost-only route.',
+    steps: [
+      {
+        n: '01',
+        label: 'Discovery — the agent doesn\'t know any soul yet, only the node.',
+        request: 'GET /api/soul/scan',
+        example: `{
   "ok": true,
   "souls": [{
     "soul_id": "{soul_id}",
@@ -280,30 +356,30 @@ const stepsEn = [
     "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
   }]
 }`,
-  },
-  {
-    n: '02',
-    label: 'Preview — confirm the current price and payment endpoint.',
-    request: 'GET /api/soul/preview?soul_id={soul_id}',
-    example: `{
+      },
+      {
+        n: '02',
+        label: 'Preview — confirm the current price and payment endpoint.',
+        request: 'GET /api/soul/preview?soul_id={soul_id}',
+        example: `{
   "usdc_required": "0.81xxxx",
   "pay_endpoint": "https://agency.uxprojects-jok.com/api/soul/pay/x402",
   "wallet": ""   // not revealed yet — see step 4
 }`,
-  },
-  {
-    n: '03',
-    label: 'Pre-purchase withdrawal-rights notice — <strong>mandatory</strong> before any payment.',
-    request: 'POST /api/soul/terms/show',
-    example: `{ "soul_id": "{soul_id}", "payment_method": "x402" }
+      },
+      {
+        n: '03',
+        label: 'Pre-purchase withdrawal-rights notice — <strong>mandatory</strong> before any payment.',
+        request: 'POST /api/soul/terms/show',
+        example: `{ "soul_id": "{soul_id}", "payment_method": "x402" }
 
 → { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
-  },
-  {
-    n: '04',
-    label: 'Consent — only now is the payment target revealed.',
-    request: 'POST /api/soul/terms/accept',
-    example: `{
+      },
+      {
+        n: '04',
+        label: 'Consent — only now is the payment target revealed.',
+        request: 'POST /api/soul/terms/accept',
+        example: `{
   "soul_id": "{soul_id}",
   "terms_token": "{terms_token}",
   "payment_method": "x402",
@@ -312,27 +388,104 @@ const stepsEn = [
 }
 
 → { "payment": { "value": "0x…" }, "price": "0.81xxxx", "invoice_number": "…" }`,
-  },
-  {
-    n: '05',
-    label: 'Payment — a real x402 handshake (402 → signed authorization → settlement).',
-    request: 'POST /api/soul/pay/x402',
-    example: `{ "soul_id": "{soul_id}", "reference_id": "{terms_token}" }
+      },
+      {
+        n: '05',
+        label: 'Payment — a real x402 handshake (402 → signed authorization → settlement).',
+        request: 'POST /api/soul/pay/x402',
+        example: `{ "soul_id": "{soul_id}", "reference_id": "{terms_token}" }
 // without a signature: 402 + PAYMENT-REQUIRED header
 // with a signed EIP-3009 authorization in the X-PAYMENT header: 200
 
 → { "ok": true, "tx_hash": "0x…", "usdc_amount": "0.81xxxx", "access_token": "{access_token}" }`,
-    note: 'Signing happens locally, with the agent\'s own wallet — the node never sees a private key.',
+        note: 'Signing happens locally, with the agent\'s own wallet — the node never sees a private key.',
+      },
+      {
+        n: '06',
+        label: 'Access — read with the received token, without paying again.',
+        request: 'POST {mcp_endpoint}',
+        example: `Header: Authorization: Bearer {access_token}
+
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "<tool>", "arguments": {} } }`,
+        note: 'Valid for the configured token lifetime, reusable — for any tool the soul owner enabled for paying agents.',
+      },
+    ],
   },
   {
-    n: '06',
-    label: 'Access — read with the received token, without paying again.',
-    request: 'GET /api/soul/paid-read?soul_id={soul_id}',
-    note: 'Header: <code class="i-code">Authorization: Bearer {access_token}</code> — valid for the configured token lifetime, reusable.',
+    badge: 'PayPal',
+    title: 'A human buyer pays without a wallet.',
+    sub: 'Same consent flow as the x402 path — just with a real, manually reviewed transfer instead of automatic on-chain settlement. For buyers without a Polygon wallet.',
+    callout: 'This flow was also verified live against this node — a real PayPal payment, manual token issuance by the operator, then successful redemption by an externally connected agent (Claude, via MCP), confirmed by a real, logged tool call.',
+    steps: [
+      {
+        n: '01',
+        label: 'Discovery — the same public scan as x402.',
+        request: 'GET /api/soul/scan',
+        example: `{
+  "ok": true,
+  "souls": [{
+    "soul_id": "{soul_id}",
+    "name": "KRO",
+    "paypal_enabled": true,
+    "price_eur": "0.50",
+    "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
+  }]
+}`,
+      },
+      {
+        n: '02',
+        label: 'Preview — confirms the EUR price and that PayPal is accepted.',
+        request: 'GET /api/soul/preview?soul_id={soul_id}',
+        example: `{
+  "paypal_accepted": true,
+  "price_eur": "0.50",
+  "paypal_target": ""   // not revealed yet — see step 4
+}`,
+      },
+      {
+        n: '03',
+        label: 'Pre-purchase withdrawal-rights notice — <strong>mandatory</strong> before any payment, identical to x402.',
+        request: 'POST /api/soul/terms/show',
+        example: `{ "soul_id": "{soul_id}", "payment_method": "paypal" }
+
+→ { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
+      },
+      {
+        n: '04',
+        label: 'Consent — only now is the PayPal target revealed.',
+        request: 'POST /api/soul/terms/accept',
+        example: `{
+  "soul_id": "{soul_id}",
+  "terms_token": "{terms_token}",
+  "payment_method": "paypal",
+  "consent_immediate_performance": true,
+  "consent_withdrawal_waiver": true
+}
+
+→ { "payment": { "value": "https://paypal.me/{provider}" }, "price": "0.50", "invoice_number": "…" }`,
+        note: 'The <code class="i-code">reference_id</code> (= <code class="i-code">terms_token</code>) must go into the PayPal payment note — otherwise the operator can\'t match the payment.',
+      },
+      {
+        n: '05',
+        label: 'Payment — a real transfer outside the API, reviewed manually.',
+        note: 'No endpoint — this step happens on paypal.com itself. The buyer sends the invoiced amount with <code class="i-code">{terms_token}</code> in the note. The operator matches the incoming payment against that reference, then issues an access token by hand — typically within 48h, not instant like x402.',
+      },
+      {
+        n: '06',
+        label: 'Access — once the token exists, identical to x402.',
+        request: 'POST {mcp_endpoint}',
+        example: `Header: Authorization: Bearer {access_token}
+
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "<tool>", "arguments": {} } }`,
+        note: 'No difference from here on out — same token, same bearer auth, same enabled tools.',
+      },
+    ],
   },
 ]
 
-const steps = computed(() => lang.value === 'de' ? stepsDe : stepsEn)
+const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 </script>
 
 <style scoped>
@@ -340,9 +493,12 @@ const steps = computed(() => lang.value === 'de' ? stepsDe : stepsEn)
   --bg:     #0f0f0f;
   --bg-2:   #161616;
   --line:   rgba(255,255,255,0.07);
+  --line-2: rgba(255,255,255,0.11);
   --teal:   #6db89a;
+  --teal-bright: #8ad0b3;
   --fg:     #f0f0f0;
-  --fg-dim: rgba(240,240,240,0.50);
+  --fg-2:   rgba(240,240,240,0.78);
+  --fg-dim: rgba(240,240,240,0.52);
   --serif:  'Noto Serif', Georgia, serif;
   --sans:   'Inter', system-ui, sans-serif;
   --mono:   'JetBrains Mono', 'Oxanium', ui-monospace, monospace;
@@ -365,67 +521,69 @@ const steps = computed(() => lang.value === 'de' ? stepsDe : stepsEn)
 .back:hover { color: var(--teal); }
 
 /* ── WRAP / HERO ──────────────────────────────────────────────────── */
-.uc-wrap { padding: clamp(28px,4vw,48px) clamp(20px,4vw,52px) 0; max-width: 860px; margin: 0 auto; }
-.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); display: block; margin-bottom: 14px; }
-.topbar { margin-bottom: 48px; }
-.uc-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px,5vw,52px); line-height: 1.05; letter-spacing: -0.03em; color: #fff; margin: 0 0 18px; }
+.uc-wrap { padding: clamp(32px,5vw,56px) clamp(20px,4vw,52px) 0; max-width: 860px; margin: 0 auto; }
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); display: block; margin-bottom: 16px; }
+.uc-hero { padding-bottom: clamp(32px,5vw,48px); margin-bottom: clamp(40px,6vw,64px); border-bottom: 1px solid var(--line); }
+.uc-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px,5.5vw,56px); line-height: 1.05; letter-spacing: -0.03em; color: #fff; margin: 0 0 22px; }
 .uc-h1 :deep(em) { font-style: italic; color: var(--teal); }
-.uc-intro { font-size: 16px; line-height: 1.75; color: var(--fg-dim); max-width: 68ch; }
+.uc-intro { font-size: 17px; line-height: 1.75; color: var(--fg-2); max-width: 62ch; }
 
 /* ── CASE STUDY ───────────────────────────────────────────────────── */
-.uc-case { border: 1px solid var(--line); background: rgba(255,255,255,0.015); padding: clamp(24px,4vw,40px); margin-bottom: 56px; }
-.case-head { margin-bottom: 32px; }
+.uc-case { border: 1px solid var(--line); background: rgba(255,255,255,0.015); padding: clamp(24px,4vw,40px); margin-bottom: 40px; }
+.uc-case + .uc-case { margin-top: 0; }
+.uc-guarantees { margin-top: 16px; }
+.case-head { margin-bottom: 36px; }
 .case-badge {
   display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--teal); border: 1px solid rgba(109,184,154,0.3); padding: 4px 10px; margin-bottom: 14px;
+  color: var(--teal-bright); border: 1px solid rgba(109,184,154,0.35); padding: 4px 10px; margin-bottom: 16px;
 }
-.case-title { font-family: var(--serif); font-weight: 400; font-size: clamp(22px,3vw,30px); color: #fff; margin: 0 0 10px; letter-spacing: -0.01em; }
-.case-sub { font-size: 14px; color: var(--fg-dim); line-height: 1.6; max-width: 62ch; }
+.case-title { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: #fff; margin: 0 0 12px; letter-spacing: -0.01em; }
+.case-sub { font-size: 15.5px; color: var(--fg-2); line-height: 1.7; max-width: 62ch; }
 
-.uc-step { display: flex; gap: 18px; margin-bottom: 28px; align-items: flex-start; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
-.uc-step:last-of-type { border-bottom: none; }
+.uc-step { display: flex; gap: 20px; margin-bottom: 30px; align-items: flex-start; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
+.uc-step:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 .step-n {
-  font-family: var(--mono); font-size: 13px; color: var(--teal); border: 1px solid rgba(109,184,154,0.3);
+  font-family: var(--mono); font-size: 13px; color: var(--teal-bright); border: 1px solid rgba(109,184,154,0.35);
   min-width: 32px; height: 26px; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; margin-top: 2px;
 }
-.step-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1; }
-.step-label { font-size: var(--text); color: var(--fg); line-height: 1.6; }
-.step-label :deep(strong) { color: var(--teal); font-weight: 600; }
-.step-sub { font-size: 14px; color: var(--fg-dim); line-height: 1.6; }
-.i-code, :deep(.i-code) { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(109,184,154,0.1); padding: 1px 6px; }
+.step-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1; }
+.step-label { font-size: var(--text); color: var(--fg); line-height: 1.65; }
+.step-label :deep(strong) { color: var(--teal-bright); font-weight: 600; }
+.step-sub { font-size: 15px; color: var(--fg-2); line-height: 1.7; }
+.i-code, :deep(.i-code) { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(109,184,154,0.14); padding: 1px 6px; }
 
-.copy-block { display: flex; align-items: stretch; border: 1px solid var(--line); background: rgba(255,255,255,0.025); }
-.copy-code { font-family: var(--mono); font-size: 13px; color: var(--fg); padding: 9px 12px; flex: 1; word-break: break-all; min-width: 0; display: block; }
-.copy-btn { font-family: var(--sans); font-size: 12px; background: none; border: none; border-left: 1px solid var(--line); color: var(--fg); padding: 0 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
-.copy-btn:hover { background: rgba(109,184,154,0.07); color: var(--teal); }
+.copy-block { display: flex; align-items: stretch; border: 1px solid var(--line-2); background: rgba(255,255,255,0.03); }
+.copy-code { font-family: var(--mono); font-size: 13.5px; color: var(--fg); padding: 10px 12px; flex: 1; word-break: break-all; min-width: 0; display: block; }
+.copy-btn { font-family: var(--sans); font-size: 12px; background: none; border: none; border-left: 1px solid var(--line-2); color: var(--fg-2); padding: 0 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.copy-btn:hover { background: rgba(109,184,154,0.1); color: var(--teal-bright); }
 
 .uc-example {
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--fg-dim);
-  background: rgba(0,0,0,0.3); border: 1px solid var(--line); padding: 14px 16px;
+  font-family: var(--mono); font-size: 13px; line-height: 1.7; color: var(--fg-2);
+  background: rgba(0,0,0,0.35); border: 1px solid var(--line-2); padding: 16px 18px;
   overflow-x: auto; margin: 0; white-space: pre;
 }
 .uc-example code { color: inherit; }
 
 .uc-callout {
-  display: flex; gap: 14px; align-items: flex-start; margin-top: 8px;
-  padding: 18px 20px; border: 1px solid rgba(109,184,154,0.25); background: rgba(109,184,154,0.05);
+  display: flex; gap: 14px; align-items: flex-start; margin-top: 10px;
+  padding: 20px 22px; border: 1px solid rgba(109,184,154,0.3); background: rgba(109,184,154,0.07);
 }
-.callout-mark { font-family: var(--serif); font-style: italic; color: var(--teal); font-size: 18px; flex: none; }
-.uc-callout p { font-size: 14px; line-height: 1.65; color: var(--fg); margin: 0; }
+.callout-mark { font-family: var(--serif); font-style: italic; color: var(--teal-bright); font-size: 18px; flex: none; }
+.uc-callout p { font-size: 15px; line-height: 1.7; color: var(--fg); margin: 0; }
 
 /* ── GUARANTEES ───────────────────────────────────────────────────── */
 .uc-guarantees { margin-bottom: 56px; }
-.uc-h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(22px,3vw,30px); color: #fff; margin: 0 0 24px; letter-spacing: -0.01em; }
+.uc-h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: #fff; margin: 0 0 26px; letter-spacing: -0.01em; }
 .guarantee-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 @media (max-width: 760px) { .guarantee-grid { grid-template-columns: 1fr; } }
-.guarantee-card { border: 1px solid var(--line); padding: 20px; }
-.guarantee-title { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--teal); margin-bottom: 10px; }
-.guarantee-body { font-size: 14px; line-height: 1.65; color: var(--fg-dim); margin: 0; }
+.guarantee-card { border: 1px solid var(--line); padding: 22px; }
+.guarantee-title { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--teal-bright); margin-bottom: 12px; }
+.guarantee-body { font-size: 15px; line-height: 1.7; color: var(--fg-2); margin: 0; }
 
 /* ── MORE ─────────────────────────────────────────────────────────── */
 .uc-more { padding-bottom: 56px; }
-.uc-more p { font-size: 14px; color: var(--fg-dim); line-height: 1.7; font-style: italic; }
+.uc-more p { font-size: 15px; color: var(--fg-2); line-height: 1.75; font-style: italic; }
 
 /* ── FOOTER ───────────────────────────────────────────────────────── */
 .colophon { border-top: 1px solid var(--line); padding: clamp(32px,5vw,64px) clamp(20px,4vw,52px); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; max-width: 1100px; margin: 0 auto; }
@@ -433,7 +591,7 @@ const steps = computed(() => lang.value === 'de' ? stepsDe : stepsEn)
 .col-brand { display: flex; flex-direction: column; gap: 12px; }
 .col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
 .col-name em { font-style: italic; color: var(--teal); }
-.fr-tag { font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
+.uc-fr-tag { font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
 .col-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 14px; }
 .colophon ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .colophon a { font-size: 15px; color: var(--fg); text-decoration: none; transition: color 0.15s; }
