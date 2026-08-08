@@ -592,7 +592,7 @@ async function loadConsentFiles() {
     const r = await fetch('/api/vault/consent-list', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
       const d = await r.json()
-      consentPurchases.value = d.purchases || []
+      consentPurchases.value = Array.isArray(d.purchases) ? d.purchases : []
       consentSoulId.value    = d.soul_id || ''
     }
   } catch {}

@@ -76,7 +76,10 @@ if eu_consumer_rights then
     return
   end
 
-  local consent_path = "/var/lib/sys/souls/" .. soul_id .. "/consent_docs/" .. reference_id .. ".pdf"
+  -- Ein Ordner pro Kauf (reference_id = terms_token), feste Dateinamen statt
+  -- einer einzelnen UUID.pdf — siehe soul-mcp/lib/eu_withdrawal_terms.mjs
+  -- (consentPurchaseDir/DOC_TYPES) und vault_consent_list.lua.
+  local consent_path = "/var/lib/sys/souls/" .. soul_id .. "/consent_docs/" .. reference_id .. "/vorabinformation.pdf"
   local cf = io.open(consent_path, "r")
   if not cf then
     ngx.status = 404

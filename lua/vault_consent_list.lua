@@ -25,10 +25,14 @@ local dir = "/var/lib/sys/souls/" .. soul_id .. "/consent_docs/"
 
 local handle = io.popen('ls -1 "' .. dir .. '" 2>/dev/null')
 if not handle then
-  ngx.say(cjson.encode({ ok = true, soul_id = soul_id, purchases = {} })); return
+  ngx.say(cjson.encode({ ok = true, soul_id = soul_id, purchases = setmetatable({}, cjson.array_mt) })); return
 end
 
-local purchases = {}
+-- array_mt erzwingt JSON-Array-Serialisierung auch bei 0 Einträgen — cjson kann
+-- bei einer leeren Lua-Tabelle sonst nicht zwischen Array und Objekt
+-- unterscheiden und kodiert sie als "{}" statt "[]" (Frontend prüft
+-- consentPurchases.length === 0, was bei einem Objekt "undefined" statt 0 ist).
+local purchases = setmetatable({}, cjson.array_mt)
 for line in handle:lines() do
   local reference_id = line:gsub("^%s+", ""):gsub("%s+$", "")
   -- Nur Kaufordner (reference_id = UUID) berücksichtigen — überspringt stillschweigend
@@ -59,7 +63,7 @@ for line in handle:lines() do
 
       -- Welche der vier Dokumente existieren bereits (Vorabinformation immer,
       -- die anderen drei erst nach erteilter Zustimmung)?
-      local docs = {}
+      local docs = setmetatable({}, cjson.array_mt)
       local mtime = 0
       for _, doc_type in ipairs(DOC_TYPES) do
         local fpath = folderPath .. doc_type .. ".pdf"
