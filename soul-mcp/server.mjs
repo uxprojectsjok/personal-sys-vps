@@ -38,7 +38,13 @@ import { register as registerSoulDiscoverLocal } from './tools/soul_discover_loc
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { VerifyError, SettleError } from '@x402/core/types';
 import { listVaultSharedFs, formatVaultSharedList } from './tools/vault_shared_list.mjs';
-import { buildTermsPreviewPdf, buildTermsPreviewTxt, buildConsentPdf, buildConsentTxt, legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt } from './lib/eu_withdrawal_terms.mjs';
+import {
+  buildTermsPreviewPdf, buildTermsPreviewTxt,
+  buildInvoicePdf, buildInvoiceTxt,
+  buildWithdrawalNoticePdf, buildWithdrawalNoticeTxt,
+  buildWaiverPdf, buildWaiverTxt,
+  legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt,
+} from './lib/eu_withdrawal_terms.mjs';
 import {
   getStatus as getX402AgentStatus,
   savePrivateKey as saveX402AgentKey,
@@ -3131,8 +3137,10 @@ function pushAccessFlowLines(lines, soulIdExample) {
     lines.push('Show preview_url (or preview_url_txt if you cannot render a PDF) to the buyer. Once they');
     lines.push('explicitly agree to both (a) immediate performance and (b) losing their 14-day withdrawal right:');
     lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "terms_token": "{from above}", "payment_method": "x402", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
-    lines.push('Returns `{ download_url, download_url_txt, reference_id, payment: { value: wallet }, invoice_number }`');
-    lines.push('— the wallet address AND a reference_id (UUID) are only revealed here, both required for step 4.');
+    lines.push('Returns `{ invoice: { download_url, download_url_txt }, withdrawal_notice: { download_url, download_url_txt },');
+    lines.push('waiver: { download_url, download_url_txt }, reference_id, payment: { value: wallet }, invoice_number }`');
+    lines.push('— three separate documents (invoice, withdrawal notice, waiver declaration). The wallet address AND');
+    lines.push('a reference_id (UUID) are only revealed here, both required for step 4.');
     lines.push('(If you already have an MCP session on this node, the equivalent tools are show_withdrawal_terms');
     lines.push('and accept_digital_content_terms — same fields, same rules, EXCEPT they take no soul_id: they');
     lines.push(`always act on whichever soul YOUR session belongs to. To buy soul_id ${sid} specifically`);
@@ -3585,7 +3593,7 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     const invoiceNumber = await nextInvoiceNumber(soul_id, amort.trader_name || '');
     const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
 
-    const consentFields = {
+    const sharedFields = {
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
       price,
@@ -3605,15 +3613,42 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       invoiceDate,
     };
 
-    const pdfBuffer = await buildConsentPdf(consentFields);
-    await writeFile(docPath, pdfBuffer);
-    const txtContent = buildConsentTxt(consentFields);
-    await writeFile(txtPath, txtContent, 'utf8');
+    // Drei eigene UUIDs statt terms_token als Dateiname — siehe
+    // accept_digital_content_terms.mjs für die ausführliche Begründung. Die
+    // Vorschau unter terms_token.pdf/.txt (aus /api/soul/terms/show) bleibt
+    // dadurch unangetastet als eigenständiges Vorab-Dokument bestehen.
+    const invoiceToken    = randomUUID();
+    const withdrawalToken = randomUUID();
+    const waiverToken     = randomUUID();
+
+    const [invoicePdf, withdrawalPdf, waiverPdf] = await Promise.all([
+      buildInvoicePdf(sharedFields),
+      buildWithdrawalNoticePdf(sharedFields),
+      buildWaiverPdf(sharedFields),
+    ]);
+    await Promise.all([
+      writeFile(`${consentDir}/${invoiceToken}.pdf`, invoicePdf),
+      writeFile(`${consentDir}/${invoiceToken}.txt`, buildInvoiceTxt(sharedFields), 'utf8'),
+      writeFile(`${consentDir}/${withdrawalToken}.pdf`, withdrawalPdf),
+      writeFile(`${consentDir}/${withdrawalToken}.txt`, buildWithdrawalNoticeTxt(sharedFields), 'utf8'),
+      writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
+      writeFile(`${consentDir}/${waiverToken}.txt`, buildWaiverTxt(sharedFields), 'utf8'),
+    ]);
 
     res.json({
       ok: true,
-      download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.pdf`,
-      download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}.txt`,
+      invoice: {
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${invoiceToken}.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${invoiceToken}.txt`,
+      },
+      withdrawal_notice: {
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${withdrawalToken}.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${withdrawalToken}.txt`,
+      },
+      waiver: {
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${waiverToken}.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${waiverToken}.txt`,
+      },
       reference_id: terms_token,
       payment: payment_method === 'x402'
         ? { method: 'x402', label: 'Wallet-Adresse (Polygon, USDC via x402)', value: wallet }

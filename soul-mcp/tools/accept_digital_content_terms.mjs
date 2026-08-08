@@ -1,5 +1,6 @@
 /**
- * accept_digital_content_terms — EU-Widerrufsrecht-Einwilligung + PDF-Beleg.
+ * accept_digital_content_terms — EU-Widerrufsrecht-Einwilligung + drei
+ * getrennte PDF-Belege (Rechnung, Widerrufsbelehrung, Verzichtserklärung).
  *
  * Setzt einen vorherigen Aufruf von show_withdrawal_terms voraus: terms_token
  * MUSS aus dessen Antwort stammen. Ein erfundener/ausgedachter terms_token wird
@@ -7,21 +8,33 @@
  * consent_docs/{terms_token}.pdf existieren) — das erzwingt den Erstaufruf
  * technisch, statt sich auf die Kooperation der aufrufenden KI zu verlassen.
  *
- * Nach Zustimmung wird dieselbe Datei/derselbe Link (aus show_withdrawal_terms)
- * zum bestätigten Kaufbeleg aktualisiert — kein neuer, zweiter Link.
+ * Die Vorabinformation aus show_withdrawal_terms bleibt unter terms_token.pdf
+ * unverändert bestehen (wird NICHT mehr überschrieben) — sie ist ein eigenes
+ * Dokument mit eigenem rechtlichen Zweck (Art. 246a EGBGB, VOR Vertragsschluss),
+ * getrennt von den drei hier neu erzeugten Dokumenten (jeweils eigene UUID,
+ * eigener Link): Rechnung (§ 14 UStG), Widerrufsbelehrung inkl.
+ * Muster-Widerrufsformular (Art. 246a EGBGB, als eigenständiges Nachschlage-
+ * dokument) und Verzichtserklärung (§ 356 Abs. 5 BGB, der Einwilligungsnachweis).
  *
- * Das PDF landet NICHT in vault_shared (dort für alle zahlenden/Peer-Verbindungen
- * lesbar — ungeeignet für ein personenbezogenes Rechtsdokument), sondern in einem
- * eigenen consent_docs/-Ordner, der von keinem vault_shared_list/-get erreicht
- * wird. Der Download-Link braucht deshalb keinen Zahlungs-Token (existiert an
- * dieser Stelle im Flow noch nicht) — er ist stattdessen durch die Unratbarkeit
- * der UUID gesichert (wie ein Freigabe-Link bei Dropbox/Google Docs).
+ * Die PDFs landen NICHT in vault_shared (dort für alle zahlenden/Peer-
+ * Verbindungen lesbar — ungeeignet für personenbezogene Rechtsdokumente),
+ * sondern in einem eigenen consent_docs/-Ordner, der von keinem
+ * vault_shared_list/-get erreicht wird. Die Download-Links brauchen deshalb
+ * keinen Zahlungs-Token (existiert an dieser Stelle im Flow noch nicht) — sie
+ * sind stattdessen durch die Unratbarkeit der jeweiligen UUID gesichert (wie
+ * ein Freigabe-Link bei Dropbox/Google Docs).
  */
 
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { writeFile, stat } from 'fs/promises';
 import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
-import { buildConsentPdf, buildConsentTxt, nextInvoiceNumber } from '../lib/eu_withdrawal_terms.mjs';
+import {
+  buildInvoicePdf, buildInvoiceTxt,
+  buildWithdrawalNoticePdf, buildWithdrawalNoticeTxt,
+  buildWaiverPdf, buildWaiverTxt,
+  nextInvoiceNumber,
+} from '../lib/eu_withdrawal_terms.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
@@ -49,11 +62,13 @@ export function register(server, soulId) {
       'Bezahlweg genannt. Niemals consent=true raten oder ohne echte, vom Nutzer',
       'im Chat ausdrücklich erklärte Zustimmung aufrufen.',
       '',
-      'Bei Erfolg: derselbe Link aus show_withdrawal_terms wird zum bestätigten',
-      'Kaufbeleg (PDF) aktualisiert. PFLICHT: Diesen Link IMMER wörtlich an den',
-      'Nutzer weitergeben — als klickbaren Markdown-Link, nicht nur in eigenen',
-      'Worten zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich darauf',
-      'hinweisen: die Referenz-ID (= terms_token) MUSS bei der Zahlung angegeben',
+      'Bei Erfolg: drei getrennte PDFs werden neu erzeugt — Rechnung,',
+      'Widerrufsbelehrung (inkl. Muster-Widerrufsformular) und Verzichtserklärung.',
+      'Der Link aus show_withdrawal_terms bleibt unverändert bestehen (eigenes',
+      'Dokument, wird NICHT überschrieben). PFLICHT: Alle drei neuen Links IMMER',
+      'wörtlich an den Nutzer weitergeben — als klickbare Markdown-Links, nicht nur',
+      'in eigenen Worten zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich',
+      'darauf hinweisen: die Referenz-ID (= terms_token) MUSS bei der Zahlung angegeben',
       'werden (PayPal: in der Notiz; x402: als reference_id beim Aufruf von',
       'POST /api/soul/pay/x402), sonst kann der Betreiber/das System die Zahlung',
       'nicht zuordnen.',
@@ -143,7 +158,7 @@ export function register(server, soulId) {
         const invoiceNumber = await nextInvoiceNumber(soulId, amort.trader_name || '');
         const invoiceDate   = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
 
-        const consentFields = {
+        const sharedFields = {
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
           price,
@@ -163,18 +178,40 @@ export function register(server, soulId) {
           invoiceDate,
         };
 
-        const pdfBuffer = await buildConsentPdf(consentFields);
-        await writeFile(docPath, pdfBuffer);
+        // Drei eigene UUIDs statt terms_token als Dateiname — die Vorschau unter
+        // terms_token.pdf/.txt (aus show_withdrawal_terms) bleibt dadurch unangetastet
+        // als eigenständiges Vorab-Dokument bestehen, statt überschrieben zu werden.
+        // vault_consent_serve.lua verlangt einen reinen UUID-Dateinamen (kein Suffix),
+        // daher keine sprechenden Namen wie "{token}-rechnung.pdf" — jedes Dokument
+        // nennt seine Art stattdessen im eigenen Titel/Text.
+        const invoiceToken    = randomUUID();
+        const withdrawalToken = randomUUID();
+        const waiverToken     = randomUUID();
 
-        // Maschinenlesbares Pendant — überschreibt dieselbe TXT, die show_withdrawal_terms
-        // als Vorschau angelegt hat (gleiches "ein Link, ein Zyklus"-Muster wie beim PDF).
-        // NICHT im Vault sichtbar — vault_consent_list.lua filtert ohnehin nur auf *.pdf,
-        // Menschen sehen dort weiterhin ausschließlich die PDF-Fassung.
-        const txtContent = buildConsentTxt(consentFields);
-        await writeFile(txtPath, txtContent, 'utf8');
+        const [invoicePdf, withdrawalPdf, waiverPdf] = await Promise.all([
+          buildInvoicePdf(sharedFields),
+          buildWithdrawalNoticePdf(sharedFields),
+          buildWaiverPdf(sharedFields),
+        ]);
+        const invoiceTxtContent    = buildInvoiceTxt(sharedFields);
+        const withdrawalTxtContent = buildWithdrawalNoticeTxt(sharedFields);
+        const waiverTxtContent     = buildWaiverTxt(sharedFields);
 
-        const downloadUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.pdf`;
-        const downloadUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}.txt`;
+        await Promise.all([
+          writeFile(`${consentDir}/${invoiceToken}.pdf`, invoicePdf),
+          writeFile(`${consentDir}/${invoiceToken}.txt`, invoiceTxtContent, 'utf8'),
+          writeFile(`${consentDir}/${withdrawalToken}.pdf`, withdrawalPdf),
+          writeFile(`${consentDir}/${withdrawalToken}.txt`, withdrawalTxtContent, 'utf8'),
+          writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
+          writeFile(`${consentDir}/${waiverToken}.txt`, waiverTxtContent, 'utf8'),
+        ]);
+
+        const invoiceUrl        = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.pdf`;
+        const invoiceUrlTxt     = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.txt`;
+        const withdrawalUrl     = `${BASE_URL}/api/vault/consent/${soulId}/${withdrawalToken}.pdf`;
+        const withdrawalUrlTxt  = `${BASE_URL}/api/vault/consent/${soulId}/${withdrawalToken}.txt`;
+        const waiverUrl         = `${BASE_URL}/api/vault/consent/${soulId}/${waiverToken}.pdf`;
+        const waiverUrlTxt      = `${BASE_URL}/api/vault/consent/${soulId}/${waiverToken}.txt`;
 
         const paymentLines = payment_method === 'x402'
           ? [
@@ -198,22 +235,35 @@ export function register(server, soulId) {
             {
               type: 'text',
               text: [
-                'Einwilligung erfasst. Rechnung + Widerrufsbelehrung als PDF erzeugt.',
+                'Einwilligung erfasst. Drei getrennte Dokumente erzeugt: Rechnung,',
+                'Widerrufsbelehrung (inkl. Muster-Widerrufsformular) und Verzichtserklärung.',
                 '',
-                `📄 [Rechnung & Widerrufsbelehrung herunterladen](${downloadUrl})`,
-                `${downloadUrl}`,
+                `📄 [Rechnung herunterladen](${invoiceUrl})`,
+                `${invoiceUrl}`,
                 '',
-                'PFLICHT: Gib dem Nutzer IMMER den Link oben — als klickbaren Link UND',
-                'als reine URL zum Kopieren. Nicht in einer eigenen Zusammenfassung weglassen.',
+                `📄 [Widerrufsbelehrung herunterladen](${withdrawalUrl})`,
+                `${withdrawalUrl}`,
                 '',
-                `Maschinenlesbare Fassung (für den zahlenden Agenten, kein PDF-Parsing nötig): ${downloadUrlTxt}`,
-                `Verfügbar für die Token-Gültigkeit + ${14} Tage Puffer, danach automatisch entfernt.`,
+                `📄 [Verzichtserklärung herunterladen](${waiverUrl})`,
+                `${waiverUrl}`,
+                '',
+                'PFLICHT: Gib dem Nutzer IMMER alle drei Links oben — jeweils als klickbaren',
+                'Link UND als reine URL zum Kopieren. Nicht in einer eigenen Zusammenfassung weglassen.',
+                '',
+                `Maschinenlesbare Fassungen (für den zahlenden Agenten, kein PDF-Parsing nötig):`,
+                `Rechnung: ${invoiceUrlTxt}`,
+                `Widerrufsbelehrung: ${withdrawalUrlTxt}`,
+                `Verzichtserklärung: ${waiverUrlTxt}`,
+                `Die maschinenlesbaren .txt-Fassungen werden nach Token-Gültigkeit + ${14} Tage Puffer`,
+                'automatisch entfernt — die PDFs bleiben unbefristet erhalten (steuerliche Aufbewahrungspflicht).',
                 '',
                 `Referenz-ID: ${terms_token}`,
                 ...paymentLines,
               ].join('\n'),
             },
-            { type: 'resource', resource: { uri: downloadUrl, mimeType: 'application/pdf', blob: pdfBuffer.toString('base64') } },
+            { type: 'resource', resource: { uri: invoiceUrl, mimeType: 'application/pdf', blob: invoicePdf.toString('base64') } },
+            { type: 'resource', resource: { uri: withdrawalUrl, mimeType: 'application/pdf', blob: withdrawalPdf.toString('base64') } },
+            { type: 'resource', resource: { uri: waiverUrl, mimeType: 'application/pdf', blob: waiverPdf.toString('base64') } },
           ],
         };
       } catch (err) {

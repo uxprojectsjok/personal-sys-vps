@@ -1,8 +1,15 @@
 /**
  * Gemeinsamer Rechtstext + PDF-Bausteine für den EU-Widerrufsrecht-Flow.
- * Geteilt zwischen show_withdrawal_terms.mjs (Vorschau, Pflicht-Erstaufruf)
- * und accept_digital_content_terms.mjs (Einwilligung + Kaufbeleg), damit
- * beide nie unterschiedlichen Text zeigen können.
+ * Geteilt zwischen show_withdrawal_terms.mjs (Vorabinformation vor Kauf,
+ * Pflicht-Erstaufruf) und accept_digital_content_terms.mjs (Einwilligung),
+ * damit beide nie unterschiedlichen Text zeigen können.
+ *
+ * accept_digital_content_terms erzeugt bewusst DREI getrennte Dokumente statt
+ * eines kombinierten Kaufbelegs: Rechnung (buildInvoicePdf, § 14 UStG),
+ * Widerrufsbelehrung inkl. Muster-Widerrufsformular (buildWithdrawalNoticePdf,
+ * Art. 246a EGBGB) und Verzichtserklärung (buildWaiverPdf, § 356 Abs. 5 BGB) —
+ * jedes Dokument hat einen eigenen rechtlichen Zweck und sollte einzeln
+ * auffindbar/weiterreichbar sein, statt in einem Blatt zu verschwimmen.
  */
 
 import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
@@ -165,6 +172,118 @@ export function writeLegalSections(doc) {
   }
 }
 
+// Muster-Widerrufsformular (Art. 246a § 1 Abs. 2 S. 2 EGBGB, Anlage 2) — als
+// Datenstruktur statt Fließtext, damit PDF- und TXT-Fassung nie auseinanderlaufen
+// können (gleiches Muster wie LEGAL_SECTIONS). Felder bleiben zum Ausfüllen leer
+// (Formularcharakter) — die Referenz-ID wird nur als Ausfüllhilfe angezeigt,
+// ersetzt aber nicht das eigenhändige Eintragen durch den Verbraucher.
+function withdrawalFormFields(referenceId) {
+  return [
+    ['Bestellt am (*) / erhalten am (*)', '_____________________________'],
+    ['Bestellnummer / Referenz-ID', referenceId ? `_____________________________  (z. B. ${referenceId})` : '_____________________________'],
+    ['Name des/der Verbraucher(s)', '_____________________________'],
+    ['Anschrift des/der Verbraucher(s)', '_____________________________'],
+    ['Unterschrift des/der Verbraucher(s)', '_____________________________  (nur bei Mitteilung auf Papier)'],
+    ['Datum', '_____________________________'],
+  ];
+}
+
+export function writeWithdrawalForm(doc, { traderName, traderAddress, traderEmail, referenceId }) {
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(BRAND_DARK).text('Muster-Widerrufsformular');
+  doc.font('Helvetica').fontSize(8.5).fillColor(BRAND_DIM).text(
+    '(Wenn Sie den Vertrag widerrufen wollen, dann füllen Sie bitte dieses Formular aus und senden es zurück.)'
+  );
+  doc.fillColor(BRAND_DARK).moveDown(0.5);
+
+  doc.font('Helvetica-Bold').fontSize(9).text('An');
+  doc.font('Helvetica').fontSize(9);
+  if (traderName)    doc.text(traderName);
+  if (traderAddress) doc.text(traderAddress);
+  if (traderEmail)   doc.text(`E-Mail: ${traderEmail}`);
+  doc.moveDown(0.5);
+
+  doc.font('Helvetica').fontSize(9.5).text(
+    'Hiermit widerrufe(n) ich/wir (*) den von mir/uns (*) abgeschlossenen Vertrag über den Kauf der folgenden digitalen Inhalte:'
+  );
+  doc.moveDown(0.4);
+
+  for (const [label, value] of withdrawalFormFields(referenceId)) {
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor(BRAND_DIM).text(label);
+    doc.font('Helvetica').fontSize(9.5).fillColor(BRAND_DARK).text(value);
+    doc.moveDown(0.25);
+  }
+
+  doc.moveDown(0.2);
+  doc.font('Helvetica-Oblique').fontSize(8).fillColor(BRAND_DIM).text('(*) Bitte Unzutreffendes streichen.');
+  doc.fillColor(BRAND_DARK);
+}
+
+function withdrawalFormTxtLines(referenceId) {
+  return [
+    'MUSTER-WIDERRUFSFORMULAR',
+    '(Wenn Sie den Vertrag widerrufen wollen, dann füllen Sie bitte dieses Formular aus und senden es zurück.)',
+    '',
+    ...withdrawalFormFields(referenceId).map(([label, value]) => `${label}: ${value}`),
+    '',
+    '(*) Bitte Unzutreffendes streichen.',
+  ];
+}
+
+// Eigenständige Widerrufsbelehrung inkl. Muster-Widerrufsformular — inhaltlich
+// losgelöst vom konkreten Kauf (kein Preis, kein Soul-Kontext), damit sie
+// unverändert für jeden Kauf bei diesem Anbieter gilt. Wird sowohl vor
+// Vertragsschluss (Baustein von buildTermsPreviewPdf/-Txt) als auch danach als
+// eigenständiges Dokument (accept_digital_content_terms) verwendet — Text und
+// Formular sind in beiden Fällen identisch, nur der Rahmen (Titel,
+// Referenz-ID-Hinweis) unterscheidet sich leicht.
+export async function buildWithdrawalNoticePdf({ traderName, traderAddress, traderEmail, referenceId }) {
+  const { default: PDFDocument } = await import('pdfkit');
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
+    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9).text(traderName || 'SaveYourSoul');
+    doc.moveDown(0.3);
+    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
+    doc.moveDown(0.8);
+
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND_DARK).text('Widerrufsbelehrung');
+    if (referenceId) {
+      doc.moveDown(0.3);
+      doc.font('Helvetica').fontSize(9).fillColor(BRAND_DIM).text(`Zugehörige Referenz-ID: ${referenceId}`);
+    }
+    doc.fillColor(BRAND_DARK).moveDown();
+
+    writeLegalSections(doc);
+    doc.moveDown(0.5);
+    doc.save().strokeColor('#dddddd').lineWidth(1)
+      .moveTo(doc.page.margins.left, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
+    doc.moveDown();
+    writeWithdrawalForm(doc, { traderName, traderAddress, traderEmail, referenceId });
+
+    doc.end();
+  });
+}
+
+export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmail, referenceId }) {
+  const lines = [
+    `SYS. — ${traderName || 'SaveYourSoul'}`,
+    'Widerrufsbelehrung',
+    referenceId ? `Zugehörige Referenz-ID: ${referenceId}` : '',
+    '',
+    ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
+    ...withdrawalFormTxtLines(referenceId),
+  ];
+  return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
+}
+
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
 // Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
 // voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
@@ -228,6 +347,11 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     doc.moveDown();
 
     writeLegalSections(doc);
+    doc.moveDown(0.5);
+    doc.save().strokeColor('#dddddd').lineWidth(1)
+      .moveTo(doc.page.margins.left, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
+    doc.moveDown();
+    writeWithdrawalForm(doc, { traderName, traderAddress, traderEmail, referenceId: termsToken });
 
     doc.end();
   });
@@ -264,21 +388,22 @@ export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, curr
       `genannte Kontakt-E-Mail des Anbieters nutzen.`,
     '',
     ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
+    ...withdrawalFormTxtLines(termsToken),
   ];
   return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
 }
 
-// Textfassung des bestätigten Kaufbelegs — inhaltlich identisch zu
-// buildConsentPdf. invoiceNumber/invoiceDate werden vom Aufrufer übergeben
-// (statt hier erneut über nextInvoiceNumber gezogen zu werden), damit PDF und
-// TXT NIE unterschiedliche Rechnungsnummern für denselben Kauf bekommen — der
-// Zähler ist "lückenlos fortlaufend" (§ 14 Abs. 4 Nr. 4 UStG), ein zweiter
-// Aufruf hier hätte eine Nummer verbraucht, ohne dass ein zweiter Kauf stattfand.
-export function buildConsentTxt({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
+// Textfassung der Rechnung — inhaltlich identisch zu buildInvoicePdf.
+// invoiceNumber/invoiceDate werden vom Aufrufer übergeben (statt hier erneut
+// über nextInvoiceNumber gezogen zu werden), damit PDF und TXT NIE
+// unterschiedliche Rechnungsnummern für denselben Kauf bekommen — der Zähler
+// ist "lückenlos fortlaufend" (§ 14 Abs. 4 Nr. 4 UStG), ein zweiter Aufruf
+// hier hätte eine Nummer verbraucht, ohne dass ein zweiter Kauf stattfand.
+export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
-    'Rechnung & Widerrufsbelehrung',
+    'Rechnung',
     '',
     `Rechnungsnummer: ${invoiceNumber}`,
     `Rechnungsdatum: ${invoiceDate}`,
@@ -306,25 +431,20 @@ export function buildConsentTxt({ soulName, soulId, price, currency = 'EUR', tar
     pm.targetValue,
     pm.provisionNote,
     '',
-    'WIDERRUFSBELEHRUNG',
-    ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
-    'ERTEILTE EINWILLIGUNGEN',
-    `[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung: JA`,
-    `[${timestamp}] Kenntnisnahme des dadurch erlöschenden Widerrufsrechts: JA`,
-    '',
     `${invoiceNumber} · Automatisch erzeugt vom SYS-Protokoll`,
   ];
   return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
 }
 
-// Bestätigter Kaufbeleg — von accept_digital_content_terms erzeugt, überschreibt
-// dieselbe Datei/denselben Link, den show_withdrawal_terms bereits ausgegeben hat.
-// Kombiniert Rechnung (§ 14 UStG) + Widerrufsbelehrung in einem Dokument —
-// rechtlich unproblematisch (übliche Praxis), vermeidet eine zweite, separate
-// Rechnungserzeugung (z.B. über PayPals eigenes Invoice-Feature, das dafür die
-// Leistungsbeschreibung an PayPal übermitteln müsste — bewusst vermieden, siehe
-// verify-identity-hq-plan.md, Abschnitt Datensparsamkeit/Rechnungsstellung).
-export async function buildConsentPdf({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
+// Reine Rechnung (§ 14 UStG) — von accept_digital_content_terms erzeugt, als
+// eigenes Dokument neben der Widerrufsbelehrung (buildWithdrawalNoticePdf) und
+// der Verzichtserklärung (buildWaiverPdf), statt (wie früher) alles in ein
+// einziges "Rechnung & Widerrufsbelehrung"-PDF zu mischen. Vermeidet weiterhin
+// eine zweite, separate Rechnungserzeugung (z.B. über PayPals eigenes
+// Invoice-Feature, das dafür die Leistungsbeschreibung an PayPal übermitteln
+// müsste — bewusst vermieden, siehe verify-identity-hq-plan.md, Abschnitt
+// Datensparsamkeit/Rechnungsstellung).
+export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
   const { default: PDFDocument } = await import('pdfkit');
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
 
@@ -351,7 +471,7 @@ export async function buildConsentPdf({ soulName, soulId, price, currency = 'EUR
     // ── Titel + Rechnungs-Meta (zweispaltig) ─────────────────────────────────
     const metaTop = doc.y;
     doc.fontSize(18).fillColor(BRAND_DARK).font('Helvetica-Bold')
-      .text('Rechnung & Widerrufsbelehrung', left, metaTop, { width: pageWidth * 0.6 });
+      .text('Rechnung', left, metaTop, { width: pageWidth * 0.6 });
 
     const metaX = left + pageWidth * 0.62;
     const metaW = pageWidth * 0.38;
@@ -450,21 +570,6 @@ export async function buildConsentPdf({ soulName, soulId, price, currency = 'EUR
     doc.moveDown();
 
     doc.font('Helvetica').fontSize(9).text(pm.provisionNote, left, doc.y, { width: pageWidth });
-    doc.moveDown();
-
-    // ── Widerrufsbelehrung ────────────────────────────────────────────────
-    doc.save().strokeColor('#dddddd').lineWidth(1)
-      .moveTo(left, doc.y).lineTo(left + pageWidth, doc.y).stroke().restore();
-    doc.moveDown();
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(BRAND_DARK).text('Widerrufsbelehrung');
-    doc.moveDown(0.3);
-    writeLegalSections(doc);
-
-    // ── Erteilte Einwilligungen ───────────────────────────────────────────
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(BRAND_DARK).text('Erteilte Einwilligungen');
-    doc.font('Helvetica').fontSize(10);
-    doc.text(`[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung: JA`);
-    doc.text(`[${timestamp}] Kenntnisnahme des dadurch erlöschenden Widerrufsrechts: JA`);
 
     // ── Fußzeile ──────────────────────────────────────────────────────────
     doc.fontSize(8).fillColor(BRAND_DIM)
@@ -472,4 +577,95 @@ export async function buildConsentPdf({ soulName, soulId, price, currency = 'EUR
 
     doc.end();
   });
+}
+
+// Verzichtserklärung — eigenständiger Nachweis der Einwilligung zum sofortigen
+// Beginn der Leistung und des dadurch vorzeitig erlöschenden Widerrufsrechts
+// (§ 356 Abs. 5 BGB), von der Rechnung und der Widerrufsbelehrung getrennt
+// (jeweils eigenes Dokument) statt wie früher in einem Abschnitt am Ende des
+// Kaufbelegs versteckt.
+export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, contactNote, invoiceNumber }) {
+  const { default: PDFDocument } = await import('pdfkit');
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
+    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9).text(traderName || 'SaveYourSoul');
+    doc.moveDown(0.3);
+    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
+    doc.moveDown(0.8);
+
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND_DARK).text('Verzichtserklärung — digitale Inhalte');
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#8a5a1c').text(`Referenz-ID: ${referenceId}`);
+    doc.font('Helvetica').fontSize(9).fillColor(BRAND_DIM).text(`Zugehörige Rechnung: ${invoiceNumber || '—'}`);
+    doc.fillColor(BRAND_DARK).moveDown();
+
+    doc.font('Helvetica').fontSize(10);
+    doc.text(`Soul: ${soulName} (${soulId.slice(0, 8)})`);
+    doc.text(`Betrag: ${price} ${currency}`);
+    doc.text(`Leistungsempfänger: ${contactNote || '—'}`);
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(BRAND_DARK).text('Erteilte Einwilligungen');
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(10);
+    doc.text(`[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung vor Ablauf der 14-tägigen Widerrufsfrist: JA`);
+    doc.moveDown(0.3);
+    doc.text(`[${timestamp}] Kenntnisnahme, dass diese Zustimmung das gesetzliche Widerrufsrecht zum Erlöschen bringt: JA`);
+    doc.moveDown();
+
+    doc.font('Helvetica').fontSize(9).fillColor(BRAND_DIM).text(
+      'Rechtsgrundlage: § 356 Abs. 5 BGB — das Widerrufsrecht bei Verträgen über die ' +
+      'Lieferung nicht auf einem körperlichen Datenträger befindlicher digitaler Inhalte ' +
+      'erlischt vorzeitig, wenn der Unternehmer mit der Vertragserfüllung begonnen hat, ' +
+      'nachdem der Verbraucher ausdrücklich zugestimmt hat, dass der Unternehmer vor ' +
+      'Ablauf der Widerrufsfrist mit der Vertragserfüllung beginnt, und seine Kenntnis ' +
+      'davon bestätigt hat, dass er durch seine Zustimmung sein Widerrufsrecht verliert.'
+    );
+    doc.fillColor(BRAND_DARK);
+
+    doc.fontSize(8).fillColor(BRAND_DIM).text(
+      `${referenceId} · Automatisch erzeugt vom SYS-Protokoll`,
+      doc.page.margins.left, doc.page.height - doc.page.margins.bottom - 12,
+      { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'center' }
+    );
+
+    doc.end();
+  });
+}
+
+export function buildWaiverTxt({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, contactNote, invoiceNumber }) {
+  const lines = [
+    `SYS. — ${traderName || 'SaveYourSoul'}`,
+    'Verzichtserklärung — digitale Inhalte',
+    '',
+    `Referenz-ID: ${referenceId}`,
+    `Zugehörige Rechnung: ${invoiceNumber || '—'}`,
+    '',
+    `Soul: ${soulName} (${soulId.slice(0, 8)})`,
+    `Betrag: ${price} ${currency}`,
+    `Leistungsempfänger: ${contactNote || '—'}`,
+    '',
+    'ERTEILTE EINWILLIGUNGEN',
+    `[${timestamp}] Zustimmung zum sofortigen Beginn der Leistung vor Ablauf der 14-tägigen Widerrufsfrist: JA`,
+    `[${timestamp}] Kenntnisnahme, dass diese Zustimmung das gesetzliche Widerrufsrecht zum Erlöschen bringt: JA`,
+    '',
+    'Rechtsgrundlage: § 356 Abs. 5 BGB — das Widerrufsrecht bei Verträgen über die ' +
+      'Lieferung nicht auf einem körperlichen Datenträger befindlicher digitaler Inhalte ' +
+      'erlischt vorzeitig, wenn der Unternehmer mit der Vertragserfüllung begonnen hat, ' +
+      'nachdem der Verbraucher ausdrücklich zugestimmt hat, dass der Unternehmer vor ' +
+      'Ablauf der Widerrufsfrist mit der Vertragserfüllung beginnt, und seine Kenntnis ' +
+      'davon bestätigt hat, dass er durch seine Zustimmung sein Widerrufsrecht verliert.',
+    '',
+    `${referenceId} · Automatisch erzeugt vom SYS-Protokoll`,
+  ];
+  return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
 }
