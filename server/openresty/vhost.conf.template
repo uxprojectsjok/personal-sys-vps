@@ -1819,6 +1819,39 @@ server {
     try_files $uri $uri.html /use-cases/index.html /index.html;
   }
 
+  ################################
+  # Impressum / Datenschutz / Lizenz: gesetzlich vorgeschriebene Pflichtseiten
+  # (§5 DDG, Art. 13 DSGVO) — MÜSSEN ohne Login/Session erreichbar sein, kein
+  # Gate-Check. Unconditional (nicht im EU-CONSENT-Block unten), da diese
+  # Pflicht unabhängig vom EU_CONSUMER_RIGHTS-Schalter besteht. No-ops until
+  # a node operator adds their own impressum.vue/datenschutz.vue/lizenz.vue —
+  # this template ships only agb.vue by default (see agb.vue's placeholder
+  # notice); the location blocks are here so operators don't have to.
+  ################################
+  location = /impressum {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /impressum/index.html /index.html;
+  }
+
+  location = /datenschutz {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /datenschutz/index.html /index.html;
+  }
+
+  location = /lizenz {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /lizenz/index.html /index.html;
+  }
+
   # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   ################################
   # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus
