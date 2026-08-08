@@ -13,7 +13,14 @@
  */
 
 import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
+import { fileURLToPath } from 'url';
 import { SOULS_DIR } from './vault_fs.mjs';
+
+// UX-Projects-Logo (aus Homepage-Uxprojects/public/logo/, dunkle Variante —
+// transparenter Hintergrund, funktioniert auf dem weißen Dokumenthintergrund)
+// statisch in soul-mcp/assets/ kopiert, damit dieses Modul nicht auf ein
+// fremdes Repo außerhalb von soul-mcp verweist.
+const LOGO_PATH = fileURLToPath(new URL('../assets/logo.png', import.meta.url));
 
 // Wie lange die maschinenlesbare .txt-Fassung über die Token-Gültigkeit hinaus
 // aufbewahrt wird — Puffer für Reklamation/Nachweis, danach gilt Datensparsamkeit.
@@ -49,6 +56,19 @@ export async function sweepExpiredConsentTxt(soulId, tokenDurationDays = 1) {
 const BRAND_TEAL = '#4a8f74';   // gedeckter als das helle Website-Teal (#6db89a) — besser lesbar auf Papier/Druck
 const BRAND_DARK = '#1a1a1a';
 const BRAND_DIM  = '#666666';
+
+// Logo oben rechts auf jedem Dokument — absolute Positionierung, rührt doc.y
+// nicht an (der restliche Briefkopf baut links unabhängig davon auf). Fehlt
+// die Datei aus irgendeinem Grund, bricht die PDF-Erzeugung nicht deswegen ab
+// (Rechnung/Widerruf sind rechtlich Pflichtdokumente — ein fehlendes Logo darf
+// das nicht verhindern).
+const LOGO_SIZE = 42;
+function drawLogo(doc) {
+  try {
+    const x = doc.page.width - doc.page.margins.right - LOGO_SIZE;
+    doc.image(LOGO_PATH, x, doc.page.margins.top, { width: LOGO_SIZE, height: LOGO_SIZE });
+  } catch { /* Logo optional — Dokument bleibt ohne gültig */ }
+}
 
 // Initialen aus dem Anbieternamen — Firmen-Präfix vor " – "/" - " wird ignoriert,
 // falls vorhanden (z.B. "Acme GmbH – Max Mustermann" → nur "Max Mustermann"
@@ -244,6 +264,7 @@ export async function buildWithdrawalNoticePdf({ traderName, traderAddress, trad
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
     doc.fillColor(BRAND_TEAL).text('.');
@@ -296,6 +317,7 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
     doc.fillColor(BRAND_TEAL).text('.');
@@ -454,6 +476,7 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    drawLogo(doc);
 
     const pageWidth  = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const left        = doc.page.margins.left;
@@ -592,6 +615,7 @@ export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR'
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
     doc.fillColor(BRAND_TEAL).text('.');
