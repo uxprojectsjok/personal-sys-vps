@@ -386,6 +386,31 @@ end
 local uewf = io.open(usdc_earnings_file, "w")
 if uewf then uewf:write(cjson.encode(usdc_earnings)); uewf:close() end
 
+-- ── Rechnung + Verzichtserklärung mit dem ECHTEN abgebuchten Betrag korrigieren
+-- (blockierend, VOR der Antwort an den Käufer) — der bei accept_digital_content_terms
+-- gezeigte Preis ist eine Quote und kann bis zur tatsächlichen Zahlung minimal
+-- driften (Anker/Nachfrage ändern sich zwischen Zustimmung und Zahlung). Best-effort:
+-- ein Fehlschlag hier darf die bereits erfolgte, echte Zahlung nicht rückgängig
+-- machen oder den Käufer seinen access_token kosten — nur geloggt, nicht geprüft.
+if reference_id then
+  local httpc_fi = http.new()
+  httpc_fi:set_timeout(10000)
+  local fi_res, fi_err = httpc_fi:request_uri("http://127.0.0.1:3098/internal/x402-finalize-invoice", {
+    method  = "POST",
+    headers = { ["Content-Type"] = "application/json" },
+    body    = cjson.encode({
+      soul_id      = soul_id,
+      reference_id = reference_id,
+      usdc_amount  = vdata.usdc_amount,
+      tx_hash      = vdata.tx_hash,
+      confirmed_at = vdata.confirmed_at,
+    }),
+  })
+  if not fi_res or fi_err then
+    ngx.log(ngx.WARN, "x402-finalize-invoice fehlgeschlagen für ", reference_id, ": ", tostring(fi_err))
+  end
+end
+
 -- ── sys.md: Einnahmen-Sektion aktualisieren (non-blocking, via MCP soul_write) ─
 local _se = new_entry
 ngx.timer.at(0, function()

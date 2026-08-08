@@ -35,6 +35,7 @@ import {
   buildWaiverPdf, buildWaiverTxt,
   nextInvoiceNumber,
 } from '../lib/eu_withdrawal_terms.mjs';
+import { computeDynamicUsdcPrice } from '../lib/dynamic_pricing.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
@@ -140,7 +141,22 @@ export function register(server, soulId) {
       try {
         const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
         const wallet       = amort.wallet || '';
-        const price        = payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?');
+        // Für x402 den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe
+        // Formel wie soul_pay_x402.lua verwendet, um ihn beim Settlement zu
+        // berechnen) statt des statischen Basispreises — sonst zeigt die Rechnung
+        // einen anderen Betrag als tatsächlich abgebucht wird (live gefunden,
+        // 2026-08-08: Rechnung zeigte 0.50, abgebucht wurden 0.760856 USDC).
+        // PayPal-Preise sind bewusst NIE dynamisch (siehe soul_preview.lua) — dort
+        // bleibt der konfigurierte Festpreis immer korrekt.
+        let price;
+        if (payment_method === 'x402') {
+          const basePrice = Number(amort.price_usdc) || 0;
+          price = amort.dynamic_pricing === true
+            ? (await computeDynamicUsdcPrice(soulId, basePrice)).toFixed(6)
+            : (amort.price_usdc || '?');
+        } else {
+          price = amort.price_eur || '?';
+        }
         const currency     = payment_method === 'x402' ? 'USDC' : 'EUR';
         const now          = new Date();
         // Lokale Zeit statt UTC — für ein an Verbraucher gerichtetes Rechtsdokument
@@ -205,6 +221,20 @@ export function register(server, soulId) {
           writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
           writeFile(`${consentDir}/${waiverToken}.txt`, waiverTxtContent, 'utf8'),
         ]);
+
+        // Nur für x402: Metadaten für die Rechnungskorrektur nach echtem Settlement
+        // hinterlegen (siehe /internal/x402-finalize-invoice in server.mjs, aufgerufen
+        // von soul_pay_x402.lua nach bestätigter Zahlung). Der hier gezeigte Preis ist
+        // eine Quote — der tatsächlich abgebuchte Betrag kann sich bis zur echten
+        // Zahlung minimal verschieben (Anker/Nachfrage ändern sich zwischen Zustimmung
+        // und Zahlung). Diese Datei erlaubt es, Rechnung + Verzichtserklärung danach mit
+        // dem TATSÄCHLICHEN Betrag zu überschreiben, statt sich auf die Quote zu verlassen.
+        // PayPal braucht das nicht — dort ist der Preis nie dynamisch (siehe oben).
+        if (payment_method === 'x402') {
+          await writeFile(`${consentDir}/${terms_token}.invoice_meta.json`, JSON.stringify({
+            invoiceToken, waiverToken, quotedPrice: price, ...sharedFields,
+          }), 'utf8');
+        }
 
         const invoiceUrl        = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.pdf`;
         const invoiceUrlTxt     = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.txt`;

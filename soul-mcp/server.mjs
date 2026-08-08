@@ -14,7 +14,7 @@
  */
 
 import 'dotenv/config';
-import { readFile, readdir, mkdir, stat, writeFile } from 'fs/promises';
+import { readFile, readdir, mkdir, stat, writeFile, unlink } from 'fs/promises';
 import { randomUUID, randomBytes } from 'crypto';
 import path from 'node:path';
 import { spawn } from 'child_process';
@@ -45,6 +45,7 @@ import {
   buildWaiverPdf, buildWaiverTxt,
   legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt,
 } from './lib/eu_withdrawal_terms.mjs';
+import { computeDynamicUsdcPrice } from './lib/dynamic_pricing.mjs';
 import {
   getStatus as getX402AgentStatus,
   savePrivateKey as saveX402AgentKey,
@@ -2626,6 +2627,71 @@ app.post('/internal/verify-x402', async (req, res) => {
   }
 });
 
+// POST /internal/x402-finalize-invoice  { soul_id, reference_id, usdc_amount, tx_hash, confirmed_at }
+// Aufgerufen von soul_pay_x402.lua NACH bestätigtem Settlement (echter, on-chain
+// verifizierter Betrag) — korrigiert Rechnung + Verzichtserklärung mit dem
+// TATSÄCHLICH abgebuchten Betrag, falls er von der bei accept_digital_content_terms
+// gezeigten Quote abweicht (dynamischer Preis kann zwischen Zustimmung und
+// tatsächlicher Zahlung minimal driften — Anker/Nachfrage ändern sich). Ohne
+// diesen Schritt könnte die Rechnung einen anderen Betrag zeigen als real
+// abgebucht wurde — inakzeptabel für ein Dokument mit gesetzlicher Rechnungsnummer.
+// no-op (200, nichts zu tun) wenn keine invoice_meta.json existiert — z.B. weil
+// EU_CONSUMER_RIGHTS deaktiviert ist oder es sich um einen PayPal-Kauf handelt
+// (dort ist der Preis nie dynamisch, siehe accept_digital_content_terms.mjs).
+app.post('/internal/x402-finalize-invoice', async (req, res) => {
+  const { soul_id: soulId, reference_id: referenceId, usdc_amount: usdcAmount, tx_hash: txHash, confirmed_at: confirmedAt } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId || typeof referenceId !== 'string' || !referenceId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_and_reference_id_required' });
+  }
+  if (!(Number(usdcAmount) > 0)) {
+    return res.status(400).json({ ok: false, error: 'invalid_usdc_amount' });
+  }
+
+  const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
+  const metaPath    = `${consentDir}/${referenceId}.invoice_meta.json`;
+  let meta;
+  try {
+    meta = JSON.parse(await readFile(metaPath, 'utf8'));
+  } catch {
+    return res.json({ ok: true, corrected: false, reason: 'no_invoice_meta' });
+  }
+
+  try {
+    const correctedFields = {
+      ...meta,
+      price: Number(usdcAmount).toFixed(6),
+    };
+    const [invoicePdf, waiverPdf] = await Promise.all([
+      buildInvoicePdf(correctedFields),
+      buildWaiverPdf(correctedFields),
+    ]);
+    await Promise.all([
+      writeFile(`${consentDir}/${meta.invoiceToken}.pdf`, invoicePdf),
+      writeFile(`${consentDir}/${meta.invoiceToken}.txt`, buildInvoiceTxt(correctedFields), 'utf8'),
+      writeFile(`${consentDir}/${meta.waiverToken}.pdf`, waiverPdf),
+      writeFile(`${consentDir}/${meta.waiverToken}.txt`, buildWaiverTxt(correctedFields), 'utf8'),
+    ]);
+    // Metadaten nicht mehr nötig nach erfolgreicher Korrektur — Aufräumen statt
+    // unbegrenzt in consent_docs/ anzusammeln (sweepExpiredConsentTxt kennt dieses
+    // Dateiformat nicht, würde es also nie von selbst entfernen).
+    await unlink(metaPath).catch(() => {});
+    res.json({
+      ok: true,
+      corrected: true,
+      quoted_price: meta.quotedPrice,
+      final_price: correctedFields.price,
+      price_changed: meta.quotedPrice !== correctedFields.price,
+      tx_hash: txHash,
+      confirmed_at: confirmedAt,
+    });
+  } catch (err) {
+    // Fehlschlag hier darf die Zahlung selbst nicht rückgängig machen — der Käufer
+    // hat bereits echt bezahlt und muss seinen access_token trotzdem bekommen.
+    // soul_pay_x402.lua behandelt diesen Aufruf entsprechend als best-effort.
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ── x402 Test-Wallet pro Soul (Settings → x402) ──────────────────────────────
 // Per-soul seit 2026-07-29 (vorher node-global) — siehe lib/x402_agent_wallet.mjs.
 // soul_id kommt vom Lua-Layer (bereits soul_auth.lua-geprüft), hier nur noch
@@ -3578,7 +3644,18 @@ app.post('/api/soul/terms/accept', async (req, res) => {
 
     const target = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
     const wallet  = amort.wallet || '';
-    const price    = payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?');
+    // Siehe accept_digital_content_terms.mjs: für x402 den aktuellen dynamischen
+    // Preis zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
+    // zeigt die Rechnung einen anderen Betrag als tatsächlich abgebucht wird.
+    let price;
+    if (payment_method === 'x402') {
+      const basePrice = Number(amort.price_usdc) || 0;
+      price = amort.dynamic_pricing === true
+        ? (await computeDynamicUsdcPrice(soul_id, basePrice)).toFixed(6)
+        : (amort.price_usdc || '?');
+    } else {
+      price = amort.price_eur || '?';
+    }
     const currency = payment_method === 'x402' ? 'USDC' : 'EUR';
     const now = new Date();
     const timestampDisplay = now.toLocaleString('de-DE', {
@@ -3634,6 +3711,15 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
       writeFile(`${consentDir}/${waiverToken}.txt`, buildWaiverTxt(sharedFields), 'utf8'),
     ]);
+
+    // Siehe accept_digital_content_terms.mjs: Metadaten für die Rechnungskorrektur
+    // nach echtem x402-Settlement (/internal/x402-finalize-invoice, aufgerufen von
+    // soul_pay_x402.lua). PayPal-Preise sind nie dynamisch, brauchen das nicht.
+    if (payment_method === 'x402') {
+      await writeFile(`${consentDir}/${terms_token}.invoice_meta.json`, JSON.stringify({
+        invoiceToken, waiverToken, quotedPrice: price, ...sharedFields,
+      }), 'utf8');
+    }
 
     res.json({
       ok: true,
