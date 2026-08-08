@@ -18,6 +18,17 @@ app.connect().then(() => {
   try { applyDocumentTheme(getDocumentTheme()); } catch { /* Theme optional */ }
   loadMessages();
 }).catch(() => {});
+
+// setupSizeChangedNotifications() hängt NICHT am Handshake (kein
+// _assertInitialized im SDK-Quelltext) — normalerweise ruft connect() das
+// erst als letzten Schritt NACH dem Handshake auf. Hängt der Handshake
+// (derselbe Claude.ai-Bug wie oben), bleibt die Iframe-Höhe sonst auf dem
+// Host-Default stehen, obwohl der Inhalt längst da ist — sichtbar wird er
+// erst, wenn man das iframe manuell vergrößert. Sofort selbst aufrufen
+// behebt das unabhängig vom Handshake-Ausgang (gleicher Fix wie im
+// iframe-probe-Diagnosewerkzeug, hier auf die echten Apps übertragen).
+app.setupSizeChangedNotifications();
+
 setTimeout(() => {
   if (!handshakeDone) {
     app.notification({ method: "ui/notifications/initialized" }).catch(() => {});
