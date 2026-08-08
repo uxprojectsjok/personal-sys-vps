@@ -220,6 +220,14 @@ export function register(server, soulId) {
           writeFile(`${consentDir}/${withdrawalToken}.txt`, withdrawalTxtContent, 'utf8'),
           writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
           writeFile(`${consentDir}/${waiverToken}.txt`, waiverTxtContent, 'utf8'),
+          // Dokumenttyp-Sidecars fürs Vault-Explorer-Frontend (vault_consent_list.lua
+          // liest das mit) — rein informativ, damit "Rechnung"/"Widerrufsbelehrung"/
+          // "Verzichtserklärung" statt nur der UUID sichtbar wird. Rechnungsnummer nur
+          // bei Rechnung/Verzichtserklärung mitgegeben (Widerrufsbelehrung ist generisch,
+          // gehört zu keiner einzelnen Rechnung).
+          writeFile(`${consentDir}/${invoiceToken}.doctype.json`, JSON.stringify({ type: 'invoice', invoice_number: invoiceNumber }), 'utf8'),
+          writeFile(`${consentDir}/${withdrawalToken}.doctype.json`, JSON.stringify({ type: 'withdrawal_notice' }), 'utf8'),
+          writeFile(`${consentDir}/${waiverToken}.doctype.json`, JSON.stringify({ type: 'waiver', invoice_number: invoiceNumber }), 'utf8'),
         ]);
 
         // Nur für x402: Metadaten für die Rechnungskorrektur nach echtem Settlement

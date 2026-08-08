@@ -173,8 +173,8 @@
                       </svg>
                     </div>
                     <div class="dt-name-info">
-                      <span class="dt-filename">{{ $t('files.consent_ref') }}: {{ f.reference_id }}</span>
-                      <span class="dt-filetype">{{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</span>
+                      <span class="dt-filename">{{ consentDocLabel(f) }}</span>
+                      <span class="dt-filetype">{{ $t('files.consent_ref') }}: {{ f.reference_id }} · {{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</span>
                     </div>
                   </div>
                   <div class="dt-actions">
@@ -561,6 +561,21 @@ async function deleteSharedFile(name) {
 }
 
 // ── Widerruf (EU-Consent) tab ────────────────────────────────────────────────
+// doc_type kommt aus der {reference_id}.doctype.json-Sidecar, die show_withdrawal_terms.mjs/
+// accept_digital_content_terms.mjs schreiben (siehe dortige Kommentare) — fehlt sie (ältere,
+// davor erzeugte Dokumente), fällt das Label auf die reine Referenz-ID zurück statt zu raten.
+const DOCTYPE_LABEL_KEYS = {
+  preview:            'files.doctype_preview',
+  invoice:            'files.doctype_invoice',
+  withdrawal_notice:  'files.doctype_withdrawal_notice',
+  waiver:             'files.doctype_waiver',
+}
+function consentDocLabel(f) {
+  const key = DOCTYPE_LABEL_KEYS[f.doc_type]
+  if (!key) return `${t('files.consent_ref')}: ${f.reference_id}`
+  const label = t(key)
+  return f.invoice_number ? `${label} · ${f.invoice_number}` : label
+}
 async function loadConsentFiles() {
   if (!soulToken.value) return
   try {

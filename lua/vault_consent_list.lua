@@ -43,7 +43,27 @@ for line in handle:lines() do
       mtime = tonumber(s) or 0
     end
     -- Referenz-ID = Dateiname ohne .pdf-Endung
-    files[#files + 1] = { name = name, reference_id = name:gsub("%.pdf$", ""), size = size, mtime = mtime }
+    local reference_id = name:gsub("%.pdf$", "")
+
+    -- Dokumenttyp-Sidecar (von show_withdrawal_terms.mjs/accept_digital_content_terms.mjs
+    -- geschrieben, siehe dortiger Kommentar) — rein informativ fürs Frontend, damit der
+    -- Vault-Explorer "Rechnung"/"Widerrufsbelehrung"/... statt nur der UUID zeigen kann.
+    -- Fehlt sie (ältere, vor dieser Änderung erzeugte Dokumente), bleibt doc_type/
+    -- invoice_number einfach nil — das Frontend fällt dann auf die reine Referenz-ID zurück.
+    local doc_type, invoice_number
+    local tf = io.open(dir .. reference_id .. ".doctype.json", "r")
+    if tf then
+      local ok_t, meta = pcall(cjson.decode, tf:read("*a")); tf:close()
+      if ok_t and type(meta) == "table" then
+        doc_type       = meta.type
+        invoice_number = meta.invoice_number
+      end
+    end
+
+    files[#files + 1] = {
+      name = name, reference_id = reference_id, size = size, mtime = mtime,
+      doc_type = doc_type, invoice_number = invoice_number,
+    }
   end
 end
 handle:close()

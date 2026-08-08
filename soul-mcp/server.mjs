@@ -3581,6 +3581,8 @@ app.post('/api/soul/terms/show', async (req, res) => {
     await mkdir(consentDir, { recursive: true });
     await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
     await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
+    // Dokumenttyp-Sidecar fürs Vault-Explorer-Frontend, siehe show_withdrawal_terms.mjs.
+    await writeFile(`${consentDir}/${termsToken}.doctype.json`, JSON.stringify({ type: 'preview' }), 'utf8');
 
     sweepExpiredConsentTxt(soul_id, tokenDurationDays).catch(() => {});
 
@@ -3710,6 +3712,10 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       writeFile(`${consentDir}/${withdrawalToken}.txt`, buildWithdrawalNoticeTxt(sharedFields), 'utf8'),
       writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
       writeFile(`${consentDir}/${waiverToken}.txt`, buildWaiverTxt(sharedFields), 'utf8'),
+      // Dokumenttyp-Sidecars fürs Vault-Explorer-Frontend, siehe accept_digital_content_terms.mjs.
+      writeFile(`${consentDir}/${invoiceToken}.doctype.json`, JSON.stringify({ type: 'invoice', invoice_number: invoiceNumber }), 'utf8'),
+      writeFile(`${consentDir}/${withdrawalToken}.doctype.json`, JSON.stringify({ type: 'withdrawal_notice' }), 'utf8'),
+      writeFile(`${consentDir}/${waiverToken}.doctype.json`, JSON.stringify({ type: 'waiver', invoice_number: invoiceNumber }), 'utf8'),
     ]);
 
     // Siehe accept_digital_content_terms.mjs: Metadaten für die Rechnungskorrektur

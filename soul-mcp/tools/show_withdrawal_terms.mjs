@@ -114,6 +114,10 @@ export function register(server, soulId) {
         await mkdir(consentDir, { recursive: true });
         await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
         await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
+        // Dokumenttyp-Sidecar fürs Vault-Explorer-Frontend (vault_consent_list.lua liest
+        // das mit) — rein informativ, damit "Vorabinformation" statt nur der UUID sichtbar
+        // wird. Keine Sicherheitsrelevanz: die eigentliche Datei bleibt UUID-benannt.
+        await writeFile(`${consentDir}/${termsToken}.doctype.json`, JSON.stringify({ type: 'preview' }), 'utf8');
         const previewUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.pdf`;
         const previewUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.txt`;
 
