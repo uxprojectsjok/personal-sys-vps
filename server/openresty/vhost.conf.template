@@ -1918,6 +1918,46 @@ server {
     proxy_set_header   Host $host;
   }
 
+  # Dashboard-Seite /apps (app/pages/apps.vue) — exact match schlägt ^~
+  # prefix match in nginx, muss also VOR dem generischen Proxy unten stehen
+  # (Reihenfolge ist hier egal, exact match gewinnt immer, aber lesbarer
+  # direkt davor). Ohne diesen Block würde die App-Verwaltungsseite selbst
+  # ebenfalls an server.mjs proxied und dort 404en ("Cannot GET /apps/"),
+  # weil server.mjs nur /apps/_sdk/... und /apps/{soul_id}/{app}-Routen
+  # kennt, keine bare /apps/ Route.
+  location = /apps/ {
+    root /var/www/{{DOMAIN}};
+    index index.html;
+    access_by_lua_file /etc/openresty/lua/gate_check.lua;
+    try_files /apps/index.html /index.html;
+
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma        "no-cache" always;
+    add_header Expires       "0" always;
+    add_header Vary          "Accept-Encoding" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; script-src-elem 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline' 'nonce-${nonce}'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; connect-src 'self' wss://relay.walletconnect.com https://relay.walletconnect.com https://explorer-api.walletconnect.com https://api.web3modal.com https://api.web3modal.org wss://relay.walletconnect.org https://relay.walletconnect.org https://verify.walletconnect.org https://rpc.walletconnect.org https://pulse.walletconnect.org https://rpc-amoy.polygon.technology https://polygon-rpc.com https://polygon-bor-rpc.publicnode.com https://api.etherscan.io https://gateway.pinata.cloud https://ipfs.io https://*.cloudfront.net https://api.anthropic.com https://api.elevenlabs.io wss://api.elevenlabs.io; font-src 'self' data:; media-src 'self' blob: https://*.cloudfront.net; img-src 'self' data: blob: https://explorer-api.walletconnect.com https://imagedelivery.net https://*.cloudfront.net https://*.cachecloud.net; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'self' https://secure.walletconnect.com https://secure.walletconnect.org https://verify.walletconnect.org; frame-ancestors 'self'; upgrade-insecure-requests" always;
+
+    body_filter_by_lua_block {
+      local chunk, eof = ngx.arg[1], ngx.arg[2]
+      if not ngx.ctx.buffer then ngx.ctx.buffer = {} end
+      if chunk ~= "" then
+        table.insert(ngx.ctx.buffer, chunk)
+        ngx.arg[1] = nil
+      end
+      if eof then
+        local ct = ngx.header["Content-Type"] or ""
+        if ct:find("text/html", 1, true) then
+          local data = table.concat(ngx.ctx.buffer)
+          data = data:gsub("<script(.-)>", "<script%1 nonce=\"" .. ngx.var.nonce .. "\">")
+          data = data:gsub("<style(.-)>",  "<style%1 nonce=\""  .. ngx.var.nonce .. "\">")
+          ngx.arg[1] = data
+        else
+          ngx.arg[1] = table.concat(ngx.ctx.buffer)
+        end
+      end
+    }
+  }
+
   # MCP Apps: App-Shell, gebündeltes SDK (/apps/_sdk/app.js) und pro-App
   # Asset-Dateien (style.css, app.js, download.zip, ...) — alles über
   # server.mjs' /apps/*-Routen bedient. Ohne diesen Block landen alle
