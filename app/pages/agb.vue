@@ -1,7 +1,7 @@
 <template>
   <div class="legal-page">
     <nav class="l-nav">
-      <div class="lockup"><span class="mark">SYS<span class="dot">.</span></span></div>
+      <div class="lockup"><NuxtLink to="/"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink></div>
       <div class="center"><span class="page-title">Kaufbedingungen</span></div>
       <div class="nav-end">
         <button class="back" @click="$router.back()" aria-label="Zurück">← Zurück</button>
@@ -103,8 +103,7 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
   background: rgba(23,23,23,0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .lockup { display: flex; align-items: center; gap: 10px; }
-.mark { font-family: var(--serif); font-size: clamp(20px,3vw,26px); font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
-.dot { color: var(--accent); }
+.nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
 .center { text-align: center; }
 .page-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--fg); }
 .nav-end { display: flex; align-items: center; gap: 16px; }

@@ -5,7 +5,7 @@
       <!-- NAV -->
       <nav class="l-nav">
         <div class="lockup">
-          <NuxtLink to="/" class="nav-home">SYS<span class="dot">.</span></NuxtLink>
+          <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS." class="nav-logo-img" /></NuxtLink>
         </div>
         <div class="nav-end">
           <LangToggle />
@@ -514,8 +514,8 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
   position: sticky; top: 0; z-index: 100;
   background: rgba(15,15,15,0.95); backdrop-filter: blur(12px);
 }
-.nav-home { font-family: var(--serif); font-weight: 700; font-size: clamp(22px,3vw,28px); letter-spacing: -0.02em; color: var(--fg); text-decoration: none; }
-.nav-home .dot { color: var(--teal); }
+.nav-home { display: flex; text-decoration: none; }
+.nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
 .nav-end { display: flex; align-items: center; gap: 16px; }
 .back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; cursor: pointer; transition: color 0.15s; white-space: nowrap; }
 .back:hover { color: var(--teal); }
