@@ -264,6 +264,29 @@ For **cross-domain peers** (on a different server), add the peer as `{ "soul_id"
 
 ---
 
+## Gatekeeper & Federation
+
+A distinct mechanism from Soul-to-Soul peer whitelisting above: a soul can act as a **Gatekeeper**, giving other souls wired to it (e.g. a family or team sharing one AI access point) proxied access to their own tools through it. Gatekeeper mode is an explicit per-soul toggle — `gatekeeper_config.json`, `{ "enabled": true }` — checked by `isGatekeeperEnabled()`; a non-empty `wired_souls.json` alone no longer implies Gatekeeper status (that implicit default was retired).
+
+```
+Soul B → POST /mcp/discover/wire   (service token, granular scopes)
+       → Gatekeeper stores the token in wired_souls.json, keyed by soul_id
+         (or soul_id@node_url, for cross-node disambiguation when the same
+         soul_id is wired from multiple physical instances)
+       → AI at the Gatekeeper calls wired_soul_read(soul_id="...") etc.
+       → gatekeeper_proxy.mjs replays the call through the SAME /api/soul
+         or /api/vault/* route (vault_auth.lua) the token owner would use
+         themselves — no separate Gatekeeper-specific auth path
+```
+
+**Scopes:** `soul`, `audio`, `images`, `video`, `context_files` — checked per wired tool call against the entry's stored `permissions`.
+
+**Wired tools** (`soul-mcp/tools/gatekeeper_proxy.mjs`, `wired_apps.mjs`): `wired_soul_read`/`wired_soul_write` (needs `soul` scope), `wired_beme_chat` (persona chat using the *target* soul's own Anthropic API key/model — cost is incurred there, not at the caller), `wired_shared_get`, and per-media `wired_{audio,image,video,context}_list`/`_get`. `wire_status` lists directly wired souls and their granted scopes; `wire_search` searches wired (and federated) souls by name; `wire_scanner` (BETA) full-text-searches the actual sys.md + context-file content of wired and federated souls.
+
+**Federation:** two Gatekeepers can mutually opt in to federate (`federated_gatekeepers.json`, status `pending_out` → `pending_in` on the other side → `accepted` once both confirm), extending a caller's reach one hop further through souls the local Gatekeeper doesn't wire directly. A locally wired soul is always authoritative and terminal — if the same soul_id happens to be reachable both locally and via federation, the federated path can never be used to bypass a scope set locally. Federated calls proxy through `/mcp/discover/federated/relay/*` on the remote Gatekeeper's node, which replays the call there using its own stored token for the target soul.
+
+---
+
 ## Amortization (Agent Marketplace)
 
 Souls can expose MCP access for paid external agents. Two rails: x402 (USDC on Polygon, crypto-native agents) and PayPal (human buyers without a wallet, manually reviewed).
@@ -335,11 +358,21 @@ Three more zones (`main` 10 r/s, `system` 2 r/s, `health` 30 r/s) are declared i
 
 `soul-mcp/` — Node.js MCP server with OAuth 2.0 + PKCE, port 3098, accessible via OpenResty at `/mcp`.
 
-**Available tools (owner):** effectively every registered tool (~45) — `registerTools()` in `soul-mcp/tools/index.mjs`, reachable via MCP OAuth (Claude Desktop, Claude Code, ChatGPT connectors, …) or the ElevenLabs voice agent. Includes full sys.md/mind.md read-write, all vault media, health, shopping, peer messaging, and account-level tools (`soul_delete`, `soul_cloud_push`, `create_agent`) no other tier gets. The ElevenLabs voice agent (`lua/create_agent.lua`) uses a separately curated ~27-tool webhook list rather than the raw MCP protocol — generous, but not literally identical to the owner's MCP set.
+**Available tools (owner):** effectively every registered tool (~45) — `registerTools()` in `soul-mcp/tools/index.mjs`, reachable via MCP OAuth (Claude Desktop, Claude Code, ChatGPT connectors, …) or the ElevenLabs voice agent. Includes full sys.md/mind.md read-write, all vault media, health, shopping, peer messaging, and account-level tools (`soul_delete`, `soul_cloud_push`, `create_agent`) no other tier gets. The ElevenLabs voice agent (`lua/create_agent.lua`) uses a separately curated ~27-tool webhook list rather than the raw MCP protocol — generous, but not literally identical to the owner's MCP set. On top of this base set, two more are registered separately and conditionally, per connection: Gatekeeper tools (`wire_status`/`wire_search`/`wire_scanner` plus soul_id-parametrized `wired_*` tools, one soul at a time — see [Gatekeeper & Federation](#gatekeeper--federation)) if the soul has Gatekeeper mode enabled and wired souls, and MCP Apps (`app_<name>`, one per published app — see [MCP Apps](#mcp-apps)) if `vault_shared/apps/` has any.
 
 **Available tools (paid agent / access_token):** configured per soul via `amortization.agent_tools` (16 configurable options: `soul_read`, `verify_human`, `soul_maturity`, `soul_skills`, `audio_list`, `audio_get`, `image_list`, `image_get`, `video_list`, `video_get`, `context_list`, `context_get`, `profile_get`, `beme_chat_paid`, `health_check_payed`, `shop_write_read`), plus `soul_discover`, `soul_preview`, `soul_paid_comment`, and read-only `vault_shared_get`/`vault_shared_list` always available regardless of configuration. Never gets `soul_write` or `soul_earnings`.
 
 **Available tools (trusted peer soul):** a distinct, fixed tool set (`registerPeerTools()`) — not the same list as paid agents, and no per-tool allowlist (every trusted peer gets the same set). Peer-specific implementations that read directly from the filesystem, since a peer's own soul_cert isn't valid on the target server: `soul_read`/`soul_write` (Social Sphere only), `verify_human`, `soul_maturity`, `soul_skills`, `soul_context_query`, `profile_get`, per-media-type vault list/get (audio, images, video, context), plus `soul_discover`/`soul_preview`.
+
+---
+
+## MCP Apps
+
+Any soul can publish its own interactive UI, rendered as an embedded widget in the chat instead of plain text — per the [MCP Apps extension](https://modelcontextprotocol.io/extensions/apps/overview). Drop `index.html` (required) plus optional `style.css`/`app.js`/`manifest.json` (`title`, `description`, `initialData`) into `vault_shared/apps/{app-name}/` — no upload tool, files are placed manually.
+
+**Registration (`soul-mcp/tools/soul_apps.mjs`):** on every MCP connection, the soul's `vault_shared/apps/` folder is scanned fresh and, per valid app folder, one MCP tool `app_<name>` plus a `ui://{soul_id}/{app-name}/index.html` resource are registered. A `<base>` tag is injected into the served HTML so the app's relative asset/fetch paths resolve against the node regardless of how the host renders the `ui://` resource — and the resource's CSP (`resourceDomains`/`connectDomains`/`baseUriDomains`) is explicitly set to the node's own `BASE_URL`, since the sandboxed `ui://` origin's restrictive default (`base-uri 'self'`) would otherwise block that injected `<base>` tag. Real functionality is left to the app's own JS calling back into the soul's already-registered tools (`soul_read`, `context_get`, …) — the opener tool handler itself stays deliberately thin.
+
+**Gatekeeper reach (`soul-mcp/tools/wired_apps.mjs`):** apps published by a wired soul are proxied the same way — `wired_app_<soul>_<name>` tools (plus matching `ui://wired/...` resources) are registered eagerly, per wired soul with `context_files` scope, at connection time. Eager rather than lazy because each MCP connection gets a fresh, stateless server instance — a tool registered only during a prior tool call would already be gone by the next request. `wired_list_apps` gives a human-readable listing of a wired soul's apps without registering anything itself.
 
 ---
 
