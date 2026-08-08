@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.4.0] — 2026-08-08
+
+**Added: MCP Apps — souls can publish interactive UIs that render inline in the chat, not just text.** Previously private-only; ported here now that the rendering issues below are resolved. A soul drops `index.html` (+ optional `style.css`/`app.js`/`manifest.json`) into `vault_shared/apps/{app-name}/`, and `soul-mcp` registers it as an MCP Apps tool + `ui://` resource per connection (`soul-mcp/tools/soul_apps.mjs`) — same mechanism for apps of wired/gatekeeper-connected souls (`soul-mcp/tools/wired_apps.mjs`). New standalone **Apps** page (`app/pages/apps.vue`, sidebar entry) to upload, browse, and manage app folders; `manifest.json` is listed but delete-protected (client + server, `403 manifest_protected`) since losing it silently resets the tool's title/description without anything visibly breaking. Two read-only reference apps ship in `shared/apps/` (Social Sphere / Agent Sandbox chat windows) and get installed once per soul on `update.sh` runs, never overwritten afterward.
+
+**Fixed, before this could actually render in Claude.ai (all four found live against the production endpoint, via browser console traces + `curl`):**
+1. `_meta.ui.csp.baseUriDomains` was never declared, so the host defaulted to the spec's restrictive `base-uri 'self'`, silently blocking the `<base>` tag every served app needs for relative asset resolution. Claude.ai turns out not to honor this field regardless — likely the same class of deliberate CSP restriction as `frame-src` (confirmed by an Anthropic engineer on a related GitHub issue: "can't allow nested iframes... security concerns"). `app_html.mjs`'s `injectBaseTag()` now additionally rewrites the SDK import to a fully-qualified absolute URL, bypassing `<base>` entirely for the one script every app must load.
+2. No `location /apps/` block existed in the OpenResty vhost template at all — every request under `/apps/` fell through to the SPA's static 404 page instead of reaching `soul-mcp`, so the feature was never reachable via the public domain regardless of server-side correctness. Added with `^~` so the existing generic static-asset regex location (which matches `*.js` and would otherwise win on path-matching precedence) doesn't intercept it first.
+3. `/apps/_sdk/app.js` and the per-app asset route never sent `Access-Control-Allow-Origin` — `import()` is always CORS-gated regardless of same-origin intent, and Claude's sandboxed per-conversation iframe origin (`*.claudemcpcontent.com`) is foreign to the node's domain.
+4. Missing `Cross-Origin-Resource-Policy: cross-origin` on the same two routes, likely the cause of a `net::ERR_HTTP2_PROTOCOL_ERROR` observed after CORS alone was fixed — Claude's sandbox document likely enforces COEP.
+
+Verified end-to-end on Claude.ai web with a purpose-built diagnostic app: iframe mounts, script runs, handshake completes, tool-calls succeed, sizing reports correctly. **Still broken on Android (renders but sizing/scroll off) and Desktop (no iframe at all)** with the identical resource — those look like separate host-side bugs in those specific clients rather than anything fixable node-side.
+
 ## [1.3.14] — 2026-08-07
 
 **Fixed: `update.sh` never re-synced two more install-time-only files, the same class of bug as the vhost-config gap fixed in v1.2.27 — found live on `fab.uxprojects-jok.com`, where today's Autonomous Agent Runner vault-decryption fix (`d19f7fb`) landed in the repo but never reached the actual cron script already deployed on the node.**

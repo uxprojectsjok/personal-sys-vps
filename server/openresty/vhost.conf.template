@@ -1918,4 +1918,20 @@ server {
     proxy_set_header   Host $host;
   }
 
+  # MCP Apps: App-Shell, gebündeltes SDK (/apps/_sdk/app.js) und pro-App
+  # Asset-Dateien (style.css, app.js, download.zip, ...) — alles über
+  # server.mjs' /apps/*-Routen bedient. Ohne diesen Block landen alle
+  # /apps/-Requests in der SPA-Static-File-Ausgabe und 404en (dort gibt's
+  # keine /apps/-Dateien), egal wie korrekt server.mjs selbst ist.
+  location ^~ /apps/ {
+    limit_req          zone=api burst=20 nodelay;
+    limit_req_status   429;
+    proxy_pass         http://127.0.0.1:3098/apps/;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+  }
+
 }

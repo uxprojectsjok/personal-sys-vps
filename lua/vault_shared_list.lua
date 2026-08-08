@@ -27,7 +27,10 @@ end
 local files = {}
 for line in handle:lines() do
   local name = line:gsub("^%s+", ""):gsub("%s+$", "")
-  if name ~= "" then
+  -- "apps" ist der reservierte Unterordner für MCP Apps (siehe api_serve.lua,
+  -- soul_apps.mjs) — kein normales Shared-File, gehört nicht in diese Liste
+  -- (taucht sonst mit Müll-Größe auf, weil es ein Verzeichnis ist).
+  if name ~= "" and name ~= "apps" then
     local fpath = dir .. name
     local f = io.open(fpath, "rb")
     local size = 0

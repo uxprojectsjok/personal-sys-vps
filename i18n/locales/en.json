@@ -28,7 +28,8 @@
     "gatekeeper": "Gatekeeper",
     "wallet": "Wallet",
     "agent": "Agent",
-    "archivar": "Archivist"
+    "archivar": "Archivist",
+    "apps": "Apps"
   },
   "mobile_nav": {
     "start": "Home",
@@ -1396,6 +1397,34 @@
     "btn_request": "Request connection",
     "list_title": "Connections",
     "empty": "No connections yet."
+  },
+  "vault_apps": {
+    "soul_cert_required": "Only available with direct soul access.",
+    "intro": "Apps in the shared vault — appear as an MCP tool as soon as they're uploaded here.",
+    "empty": "No apps yet.",
+    "delete_aria": "Delete {name}",
+    "delete_title": "Delete app",
+    "delete_msg": "Really delete \"{name}\"? This removes the whole app folder permanently.",
+    "delete_confirm": "Delete",
+    "app_name_placeholder": "App name (a-z, 0-9, -, _)",
+    "pick_folder": "Choose folder…",
+    "pick_files": "Choose files…",
+    "pending_count": "{n} file(s) selected",
+    "btn_upload": "Upload",
+    "uploading": "Uploading…",
+    "upload_success": "{n} file(s) uploaded.",
+    "upload_error": "Upload failed.",
+    "pick_empty": "No files selected — choose a folder or files first.",
+    "invalid_name": "Invalid app name — only a-z, 0-9, - and _ allowed.",
+    "open": "Open in new tab",
+    "download_zip": "Download as ZIP",
+    "download_file": "Download file",
+    "loading_files": "Loading files…",
+    "no_files": "No files.",
+    "add_files": "Add file(s)…",
+    "delete_file_title": "Delete file",
+    "delete_file_msg": "Really delete \"{name}\"?",
+    "manifest_hint": "controls title/description"
   },
   "gatekeeper": {
     "eyebrow": "GATEKEEPER",

@@ -1,0 +1,100 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--color-background-primary, #0a0a0a);
+  color: var(--color-text-primary, #e2e8f0);
+  font-size: 13px;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 200px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border-primary, rgba(255,255,255,.08));
+  flex: none;
+}
+
+.bar h1 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text-primary, #e2e8f0);
+}
+
+.bar button {
+  background: var(--color-background-secondary, rgba(255,255,255,.06));
+  border: 1px solid var(--color-border-primary, rgba(255,255,255,.1));
+  color: var(--color-text-primary, #e2e8f0);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bar button:hover { background: var(--color-background-tertiary, rgba(255,255,255,.1)); }
+.bar button:disabled { opacity: .5; cursor: default; }
+
+.bio {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #94a3b8);
+  white-space: pre-wrap;
+  border-bottom: 1px solid var(--color-border-primary, rgba(255,255,255,.08));
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg { max-width: 80%; }
+.msg.me { align-self: flex-end; }
+.msg.them { align-self: flex-start; }
+
+.msg .meta {
+  font-size: 10px;
+  color: var(--color-text-tertiary, #64748b);
+  margin-bottom: 2px;
+  padding: 0 4px;
+}
+.msg.me .meta { text-align: right; }
+
+.msg .bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
+.msg.me .bubble {
+  background: var(--color-background-info, #6db89a);
+  color: #0c1410;
+  border-bottom-right-radius: 4px;
+}
+.msg.them .bubble {
+  background: var(--color-background-secondary, rgba(255,255,255,.07));
+  border-bottom-left-radius: 4px;
+}
+
+.empty, .error {
+  margin: auto;
+  text-align: center;
+  color: var(--color-text-tertiary, #64748b);
+  font-size: 12px;
+  padding: 20px;
+}
+.error { color: var(--color-text-danger, #f87171); }

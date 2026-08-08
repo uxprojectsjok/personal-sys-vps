@@ -185,6 +185,295 @@ if uri == "/api/vault/manifest" then
   return
 end
 
+-- ── /api/vault/apps[/{app_name}] ───────────────────────────────────────────
+-- MCP Apps (siehe soul-mcp/tools/soul_apps.mjs): eigener Zweig statt im
+-- TYPE_DIRS-System unten, weil Apps unverschlüsselt, mehrdateiig und unter
+-- vault_shared/apps/ statt vault/{type} liegen — passt nicht zum
+-- synced_files/cipher-Modell der übrigen Vault-Typen. Gleiche Auth wie der
+-- Rest dieser Datei (vault_auth.lua: Soul-Cert oder Service-Token) — macht
+-- diesen Endpunkt automatisch cross-node-tauglich für Gatekeeper-Wiring
+-- (Phase 1, /api/soul/verify-service-token), kein neuer Auth-Code nötig.
+
+if uri == "/api/vault/apps" or uri:match("^/api/vault/apps/") then
+  local apps_dir = base_dir .. "/vault_shared/apps"
+  local app_name = uri:match("^/api/vault/apps/([a-z0-9_%-]+)$")
+  -- Datei-Verwaltung INNERHALB einer bereits angelegten App (Liste + Einzel-
+  -- Datei löschen). Hochladen zusätzlicher/ersetzender Dateien in eine
+  -- bestehende App läuft weiter über den POST-Zweig oben — der überschreibt
+  -- gleiche Pfade und legt neue an, ohne andere Dateien der App anzurühren.
+  local files_app_name, file_relpath = uri:match("^/api/vault/apps/([a-z0-9_%-]+)/files/?(.*)$")
+
+  -- ── GET /api/vault/apps/{app_name}/files — Dateiliste einer App ────────────
+  -- manifest.json wird MIT gelistet (Souls sollen sehen können, woraus ein
+  -- Upload-Ordner komplett besteht — vorher unsichtbar, das verwirrte mehr als
+  -- es schützte), aber mit protected=true markiert: Frontend blendet dafür den
+  -- Lösch-Button aus, siehe DELETE-Zweig unten für den serverseitigen Schutz.
+  if method == "GET" and files_app_name and file_relpath == "" then
+    local dir = apps_dir .. "/" .. files_app_name
+    local handle = io.popen("find '" .. dir:gsub("'", "'\\''") .. "' -type f 2>/dev/null")
+    local list = {}
+    if handle then
+      for full in handle:lines() do
+        local rel = full:sub(#dir + 2)
+        if rel ~= "" then
+          local sf = io.open(full, "rb")
+          local size = 0
+          if sf then size = sf:seek("end"); sf:close() end
+          table.insert(list, { path = rel, size = size, protected = (rel == "manifest.json") })
+        end
+      end
+      handle:close()
+    end
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.say(cjson.encode({ ok = true, files = list }))
+    return
+  end
+
+  -- ── DELETE /api/vault/apps/{app_name}/files/{path} — einzelne Datei löschen ─
+  if method == "DELETE" and files_app_name and file_relpath ~= "" then
+    if ngx.ctx.via_webhook then
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"soul_cert_required"}')
+      return
+    end
+    local clean_path = file_relpath:gsub("^/+", "")
+    if clean_path == "" or clean_path:find("%.%.") then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"invalid_path"}')
+      return
+    end
+    -- manifest.json steuert Titel/Beschreibung/initialData des Tools (siehe
+    -- soul_apps.mjs) — anders als index.html/style.css/app.js bricht ihr
+    -- Fehlen die App nicht sichtbar, sondern fällt still auf Defaults zurück.
+    -- Löschen deshalb serverseitig blockiert, nicht nur im UI ausgeblendet.
+    if clean_path == "manifest.json" then
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"manifest_protected"}')
+      return
+    end
+    for seg in clean_path:gmatch("[^/]+") do
+      if not seg:match("^[A-Za-z0-9_%.%-]+$") then
+        ngx.status = 400
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"invalid_path_segment: ' .. seg .. '"}')
+        return
+      end
+    end
+    local full_path = apps_dir .. "/" .. files_app_name .. "/" .. clean_path
+    os.remove(full_path)
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"ok":true}')
+    return
+  end
+
+  -- ── POST /api/vault/apps — Browser-Upload (Ordner oder Einzeldateien) ──────
+  -- Soul-Cert only: Apps werden zu MCP-Tools, strenger als die übrigen
+  -- Vault-Schreiboperationen (die auch Service-Tokens erlauben).
+  if method == "POST" and uri == "/api/vault/apps" then
+    if ngx.ctx.via_webhook then
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"soul_cert_required"}')
+      return
+    end
+    ngx.req.read_body()
+    local raw = ngx.req.get_body_data() or "{}"
+    local ok, payload = pcall(cjson.decode, raw)
+    if not ok or type(payload) ~= "table" then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"invalid_json"}')
+      return
+    end
+    local up_name = payload.app_name
+    if type(up_name) ~= "string" or not up_name:match("^[a-z0-9_%-]+$") or #up_name > 64 then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"invalid_app_name"}')
+      return
+    end
+    local files = payload.files
+    if type(files) ~= "table" or #files == 0 or #files > 50 then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"files erforderlich (1-50 Dateien)"}')
+      return
+    end
+
+    local total = 0
+    local decoded = {}
+    for _, f in ipairs(files) do
+      if type(f) ~= "table" or type(f.path) ~= "string" or type(f.content_b64) ~= "string" then
+        ngx.status = 400
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"jede Datei braucht path und content_b64"}')
+        return
+      end
+      -- Pfad-Traversal ausschließen: kein "..", kein führender "/", nur
+      -- druckbare, dateisystemfreundliche Zeichen pro Segment.
+      local clean_path = f.path:gsub("^/+", "")
+      if clean_path == "" or clean_path:find("%.%.") or clean_path:find("^/") then
+        ngx.status = 400
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"invalid_path: ' .. clean_path .. '"}')
+        return
+      end
+      for seg in clean_path:gmatch("[^/]+") do
+        if not seg:match("^[A-Za-z0-9_%.%-]+$") then
+          ngx.status = 400
+          ngx.header["Content-Type"] = "application/json"
+          ngx.say('{"error":"invalid_path_segment: ' .. seg .. '"}')
+          return
+        end
+      end
+      local bin = ngx.decode_base64(f.content_b64)
+      if not bin then
+        ngx.status = 400
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"invalid_base64: ' .. clean_path .. '"}')
+        return
+      end
+      total = total + #bin
+      if total > 5 * 1024 * 1024 then
+        ngx.status = 400
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"Upload zu groß (max. 5 MB gesamt)"}')
+        return
+      end
+      table.insert(decoded, { path = clean_path, bin = bin })
+    end
+
+    local target_dir = apps_dir .. "/" .. up_name
+    os.execute("mkdir -p '" .. target_dir:gsub("'", "'\\''") .. "'")
+    for _, d in ipairs(decoded) do
+      local full_path = target_dir .. "/" .. d.path
+      local sub_dir = full_path:match("^(.*)/[^/]+$")
+      if sub_dir then os.execute("mkdir -p '" .. sub_dir:gsub("'", "'\\''") .. "'") end
+      local wf = io.open(full_path, "wb")
+      if not wf then
+        ngx.status = 500
+        ngx.header["Content-Type"] = "application/json"
+        ngx.say('{"error":"write_failed: ' .. d.path .. '"}')
+        return
+      end
+      wf:write(d.bin); wf:close()
+    end
+    os.execute("chown -R www-data:www-data '" .. target_dir:gsub("'", "'\\''") .. "' 2>/dev/null")
+    os.execute("chmod -R 666 '" .. target_dir:gsub("'", "'\\''") .. "'/*.* 2>/dev/null")
+
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say(cjson.encode({ ok = true, app_name = up_name, files = #decoded }))
+    return
+  end
+
+  -- ── DELETE /api/vault/apps/{app_name} — ganzen App-Ordner entfernen ────────
+  if method == "DELETE" then
+    if ngx.ctx.via_webhook then
+      ngx.status = 403
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"soul_cert_required"}')
+      return
+    end
+    if not app_name then
+      ngx.status = 400
+      ngx.header["Content-Type"] = "application/json"
+      ngx.say('{"error":"invalid_app_name"}')
+      return
+    end
+    local target_dir = apps_dir .. "/" .. app_name
+    os.execute("rm -rf '" .. target_dir:gsub("'", "'\\''") .. "'")
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"ok":true}')
+    return
+  end
+
+  if method ~= "GET" then
+    ngx.status = 405
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"Method not allowed"}')
+    return
+  end
+  if ngx.ctx.via_webhook and not perm.context_files then
+    ngx.status = 403
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"Access to apps not permitted"}')
+    return
+  end
+
+  local function read_manifest(dir)
+    local mf = io.open(dir .. "/manifest.json", "r")
+    if not mf then return {} end
+    local mraw = mf:read("*a"); mf:close()
+    local mok, m = pcall(cjson.decode, mraw)
+    return (mok and type(m) == "table") and m or {}
+  end
+
+  if uri == "/api/vault/apps" then
+    -- Liste aller App-Ordner mit index.html
+    local list = {}
+    local handle = io.popen("ls -1 '" .. apps_dir:gsub("'", "'\\''") .. "' 2>/dev/null")
+    if handle then
+      for name in handle:lines() do
+        if name:match("^[a-z0-9_%-]+$") then
+          local dir = apps_dir .. "/" .. name
+          local hf = io.open(dir .. "/index.html", "r")
+          if hf then
+            hf:close()
+            local m = read_manifest(dir)
+            table.insert(list, {
+              name        = name,
+              title       = type(m.title) == "string" and m.title or name,
+              description = type(m.description) == "string" and m.description or nil,
+            })
+          end
+        end
+      end
+      handle:close()
+    end
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.say(cjson.encode({ apps = list }))
+    return
+  end
+
+  -- Einzelne App: HTML-Inhalt + Metadaten
+  if not app_name then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_app_name"}')
+    return
+  end
+  local dir = apps_dir .. "/" .. app_name
+  local hf = io.open(dir .. "/index.html", "r")
+  if not hf then
+    ngx.status = 404
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"not_found"}')
+    return
+  end
+  local html = hf:read("*a"); hf:close()
+  if #html == 0 or #html > 2 * 1024 * 1024 then
+    ngx.status = 404
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"not_found"}')
+    return
+  end
+  local m = read_manifest(dir)
+  ngx.header["Content-Type"]  = "application/json"
+  ngx.header["Cache-Control"] = "no-store"
+  ngx.say(cjson.encode({
+    name        = app_name,
+    title       = type(m.title) == "string" and m.title or app_name,
+    description = type(m.description) == "string" and m.description or cjson.null,
+    html        = html,
+  }))
+  return
+end
+
 -- ── /api/vault/{type}[/{file}] ─────────────────────────────────────────────
 
 local TYPE_DIRS = {

@@ -66,5 +66,6 @@ const PATHS = {
   gatekeeper: 'M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Zm-3 9 2 2 4-4',
   wallet:   'M3 7a2 2 0 0 1 2-2h12l3 3v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm14 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z',
   agent:    'M12 2v3M8 8h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Zm1 5h.01M15 13h.01M9 17h6M4 12H2m20 0h-2',
+  apps:     'M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z',
 }
 </script>

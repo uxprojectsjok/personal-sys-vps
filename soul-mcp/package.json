@@ -9,6 +9,7 @@
     "dev": "node --watch server.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@napi-rs/canvas": "^1.0.2",
     "@x402/core": "^2.19.0",

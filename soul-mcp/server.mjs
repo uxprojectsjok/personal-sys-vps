@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import { readFile, readdir, mkdir, stat, writeFile } from 'fs/promises';
 import { randomUUID, randomBytes } from 'crypto';
+import path from 'node:path';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
@@ -23,7 +24,8 @@ const webpush  = _require('web-push');
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools } from './tools/index.mjs';
+import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerWiredApps } from './tools/index.mjs';
+import { registerSoulApps } from './tools/soul_apps.mjs';
 import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
 import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
 import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
@@ -367,6 +369,7 @@ async function handleMcp(req, res) {
 
     if (isSelfCert) {
       registerTools(server, token, peerSoulId);
+      await registerSoulApps(server, peerSoulId);
       await registerConnectionProxyTools(server, peerSoulId, token);
     } else {
       const trusted = await checkTrustedSoul(peerSoulId, peerCert, targetSoulId);
@@ -443,6 +446,7 @@ async function handleMcp(req, res) {
     }
     registerTools(server, token, ownerSoulId);
     if (ownerSoulId) {
+      await registerSoulApps(server, ownerSoulId);
       await registerConnectionProxyTools(server, ownerSoulId, token);
     }
   }
@@ -546,7 +550,11 @@ async function handleMcpDiscover(req, res) {
   // not just the wired-souls proxy, so it can actually reason over its own
   // configuration instead of being a dumb router.
   registerTools(server, token, gkSoulId);
+  await registerSoulApps(server, gkSoulId);
   const { wired, fed } = await registerConnectionProxyTools(server, gkSoulId, token);
+  if (Object.keys(wired).length > 0) {
+    await registerWiredApps(server, wired);
+  }
   if (Object.keys(wired).length > 0 || Object.keys(fed).length > 0) {
     registerWireSearch(server, gkSoulId, wired, fed);
   }
@@ -1645,6 +1653,193 @@ app.post('/mcp/connections/:local_soul_id/disconnect', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── MCP Apps: statische Assets (style.css, app.js, ...) ───────────────────────
+// index.html einer App wird als ui://-Resource ausgeliefert (siehe soul_apps.mjs),
+// referenziert CSS/JS aber über absolute URLs hierher, weil der Host die
+// ui://-Resource vermutlich ohne verlässliche relative-URL-Auflösung rendert.
+const APP_ASSET_MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.htm':  'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js':  'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+};
+
+// Directory-Index für Browser-Aufrufe ohne Dateinamen (z.B. Vault-Apps-Tab
+// "Öffnen"-Link → /apps/{soul_id}/{app_name}/): liefert eine SYS-Shell mit
+// Header (Marke + Zurück-Button) und die eigentliche App in einem iframe
+// (über die bestehende :filename-Route unten, unverändert) — sonst landet
+// man beim Testen einer App auf einer nackten Content-Seite ohne jede
+// Möglichkeit, zurück in den Vault zu kommen (Browser-Verlauf ist auf
+// Mobile beim direkten Öffnen aus der App oft leer).
+async function serveAppShell(req, res) {
+  const { soul_id, app_name } = req.params;
+  if (!/^[a-f0-9-]{36}$/i.test(soul_id)) return res.status(400).json({ error: 'invalid_soul_id' });
+  if (!/^[a-z0-9_-]{1,64}$/i.test(app_name)) return res.status(400).json({ error: 'invalid_app_name' });
+
+  const appDir   = path.resolve(`${SOULS_DIR}${soul_id}/vault_shared/apps/${app_name}`);
+  const filePath = path.resolve(appDir, 'index.html');
+  if (!filePath.startsWith(appDir + path.sep)) return res.status(400).json({ error: 'invalid_path' });
+
+  try {
+    await readFile(filePath, 'utf8'); // nur Existenzprüfung — Inhalt liefert das iframe selbst
+  } catch {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  // Bewusst generisch (kein hartcodierter Betreibername) — läuft identisch
+  // im öffentlichen Template-Repo. Hostname zeigt trotzdem eindeutig, auf
+  // welcher Node man gerade eine App testet.
+  const hostname = new URL(BASE_URL).hostname;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(`<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${app_name} — SYS</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f0f0f;color:#e8e8e8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+  .sys-app-header{position:fixed;top:0;left:0;right:0;height:52px;box-sizing:border-box;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 18px;border-bottom:1px solid #2a2a2a;background:rgba(15,15,15,.92);backdrop-filter:blur(8px)}
+  .sys-app-brand{display:flex;flex-direction:column;gap:3px;line-height:1.2;min-width:0}
+  .sys-app-brand-name{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;letter-spacing:.04em;color:#e8e8e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sys-app-brand-host{font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.05em;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sys-app-back{flex:none;display:flex;align-items:center;gap:6px;background:none;border:1px solid #333;border-radius:6px;color:#ccc;cursor:pointer;padding:7px 12px;font-family:ui-monospace,Menlo,monospace;font-size:12px;text-decoration:none}
+  .sys-app-back:hover{color:#fff;border-color:#6db89a}
+  .sys-app-frame-wrap{position:absolute;top:52px;left:0;right:0;bottom:0}
+  iframe{width:100%;height:100%;border:none;display:block;background:#fff}
+</style>
+</head>
+<body>
+  <div class="sys-app-header">
+    <div class="sys-app-brand">
+      <span class="sys-app-brand-name">SYS App — ${app_name}</span>
+      <span class="sys-app-brand-host">${hostname}</span>
+    </div>
+    <a href="/" class="sys-app-back" id="sysAppBack">← Zurück</a>
+  </div>
+  <div class="sys-app-frame-wrap">
+    <iframe src="./index.html" title="${app_name}" sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+  </div>
+  <script>
+    (function () {
+      var btn = document.getElementById('sysAppBack');
+      // history.back() bevorzugt (führt zurück zur bereits eingeloggten Vault-
+      // Ansicht statt eines neuen, ungegateten Seitenaufrufs) — Fallback auf "/"
+      // (nicht "/vault": das erzwingt bei fehlender Session einen Gate-
+      // Redirect-Roundtrip, der clientseitig hängen bleiben kann) nur wenn
+      // wirklich kein eigener Verlauf existiert (z.B. Direktlink ohne Vorseite).
+      if (window.history.length > 1) {
+        btn.addEventListener('click', function (e) { e.preventDefault(); window.history.back(); });
+      }
+    })();
+  </script>
+</body>
+</html>`);
+}
+// Client-seitiges MCP-Apps-SDK, gebündelt (app-with-deps.js, keine losen
+// Imports) — geteilt über alle Apps/Souls statt pro App dupliziert. Ohne
+// App.connect() bleibt das iframe beim Host UNSICHTBAR (dokumentiertes
+// SDK-Verhalten, siehe app.d.ts-Kommentar zu claude-ai-mcp#61/#149) — jede
+// App MUSS dieses SDK importieren und connect() aufrufen, sonst zeigt der
+// Host nur den Text-Fallback der Tool-Antwort. Vor den :soul_id-Routen
+// registriert, damit "_sdk" nicht als Soul-ID durchgereicht wird.
+app.get('/apps/_sdk/app.js', async (_req, res) => {
+  try {
+    const data = await readFile(path.resolve(import.meta.dirname, 'node_modules/@modelcontextprotocol/ext-apps/dist/src/app-with-deps.js'));
+    res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Dynamic-import()/type=module-Fetches unterliegen immer CORS, unabhängig
+    // von same-origin-Absicht — der Sandbox-Origin des Hosts (z.B.
+    // https://{hash}.claudemcpcontent.com) ist fremd zu uns, und ohne diesen
+    // Header schlägt das Laden mit "No 'Access-Control-Allow-Origin' header"
+    // fehl (live in Claude.ai-Konsole bestätigt). Unbedenklich als "*": rein
+    // öffentliches, unauthentifiziertes, identisches Bundle für alle.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Claudes Sandbox-Origin (*.claudemcpcontent.com, pro Konversation
+    // isoliert laut Spec) setzt vermutlich Cross-Origin-Embedder-Policy —
+    // dann verlangt der Browser CORP auf jeder fremdgeladenen Ressource,
+    // sonst wird das Laden verweigert (live beobachtet als
+    // net::ERR_HTTP2_PROTOCOL_ERROR trotz 200 OK und CORS-Header).
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(data);
+  } catch {
+    res.status(404).json({ error: 'not_found' });
+  }
+});
+
+app.get('/apps/:soul_id/:app_name', serveAppShell);
+app.get('/apps/:soul_id/:app_name/', serveAppShell);
+
+// Ganzer App-Ordner als ZIP — vor der generischen Wildcard-Route registriert,
+// damit dieser literale Pfad Vorrang hat (Express matcht in Registrierreihenfolge).
+app.get('/apps/:soul_id/:app_name/download.zip', (req, res) => {
+  const { soul_id, app_name } = req.params;
+  if (!/^[a-f0-9-]{36}$/i.test(soul_id)) return res.status(400).json({ error: 'invalid_soul_id' });
+  if (!/^[a-z0-9_-]{1,64}$/i.test(app_name)) return res.status(400).json({ error: 'invalid_app_name' });
+
+  const appDir = path.resolve(`${SOULS_DIR}${soul_id}/vault_shared/apps/${app_name}`);
+  const zip = spawn('zip', ['-r', '-q', '-', '.'], { cwd: appDir });
+  let started = false;
+  zip.stdout.once('data', () => {
+    started = true;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${app_name}.zip"`);
+  });
+  zip.stdout.pipe(res);
+  zip.on('error', () => { if (!res.headersSent) res.status(500).json({ error: 'zip_failed' }); });
+  zip.stderr.on('data', () => {}); // Puffer leeren, sonst blockiert der Child-Prozess
+  zip.on('close', code => {
+    if (!started && code !== 0 && !res.headersSent) res.status(404).json({ error: 'not_found' });
+  });
+});
+
+app.get('/apps/:soul_id/:app_name/*', async (req, res) => {
+  const { soul_id, app_name } = req.params;
+  const filename = req.params[0]; // Wildcard-Rest — erlaubt Unterordner (z.B. assets/logo.png)
+  if (!/^[a-f0-9-]{36}$/i.test(soul_id)) return res.status(400).json({ error: 'invalid_soul_id' });
+  if (!/^[a-z0-9_-]{1,64}$/i.test(app_name)) return res.status(400).json({ error: 'invalid_app_name' });
+  if (!filename || filename.includes('..')) return res.status(400).json({ error: 'invalid_filename' });
+  for (const seg of filename.split('/')) {
+    if (!/^[A-Za-z0-9_.-]{1,120}$/.test(seg)) return res.status(400).json({ error: 'invalid_filename' });
+  }
+
+  const appDir  = path.resolve(`${SOULS_DIR}${soul_id}/vault_shared/apps/${app_name}`);
+  const filePath = path.resolve(appDir, filename);
+  // Defense in depth über die Regex-Filter hinaus: aufgelöster Pfad muss
+  // tatsächlich innerhalb des App-Ordners liegen.
+  if (!filePath.startsWith(appDir + path.sep)) return res.status(400).json({ error: 'invalid_path' });
+
+  try {
+    const data = await readFile(filePath);
+    const ext  = path.extname(filename).toLowerCase();
+    res.setHeader('Content-Type', APP_ASSET_MIME[ext] || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    // Wie /apps/_sdk/app.js: App-Autoren referenzieren diese Route laut
+    // ursprünglichem Design bewusst über absolute URLs (siehe Kommentar oben
+    // in soul_apps.mjs) — Fetches/Modul-Importe von einem fremden
+    // Sandbox-Origin aus brauchen dafür CORS, sonst schlägt das Laden fehl.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Einzeldatei-Download (Vault-Apps-Tab) statt Inline-Rendering fürs iframe.
+    if (req.query.download !== undefined) {
+      res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filename)}"`);
+    }
+    res.send(data);
+  } catch {
+    res.status(404).json({ error: 'not_found' });
+  }
+});
+
+// Gesundheits-Check
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'soul-mcp', ts: new Date().toISOString() });
 });

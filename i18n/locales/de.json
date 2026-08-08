@@ -28,7 +28,8 @@
     "gatekeeper": "Gatekeeper",
     "wallet": "Wallet",
     "agent": "Agent",
-    "archivar": "Archivar"
+    "archivar": "Archivar",
+    "apps": "Apps"
   },
   "mobile_nav": {
     "start": "Start",
@@ -1396,6 +1397,34 @@
     "btn_request": "Verbindung anfragen",
     "list_title": "Verbindungen",
     "empty": "Noch keine Verbindungen."
+  },
+  "vault_apps": {
+    "soul_cert_required": "Nur mit direktem Soul-Zugang verfügbar.",
+    "intro": "Apps im Shared-Vault — werden als MCP-Tool angezeigt, sobald sie hier hochgeladen sind.",
+    "empty": "Noch keine Apps.",
+    "delete_aria": "{name} löschen",
+    "delete_title": "App löschen",
+    "delete_msg": "\"{name}\" wirklich löschen? Das entfernt den ganzen App-Ordner unwiderruflich.",
+    "delete_confirm": "Löschen",
+    "app_name_placeholder": "App-Name (a-z, 0-9, -, _)",
+    "pick_folder": "Ordner wählen…",
+    "pick_files": "Dateien wählen…",
+    "pending_count": "{n} Datei(en) ausgewählt",
+    "btn_upload": "Hochladen",
+    "uploading": "Lädt hoch…",
+    "upload_success": "{n} Datei(en) hochgeladen.",
+    "upload_error": "Upload fehlgeschlagen.",
+    "pick_empty": "Keine Dateien ausgewählt — zuerst einen Ordner oder Dateien wählen.",
+    "invalid_name": "Ungültiger App-Name — nur a-z, 0-9, - und _ erlaubt.",
+    "open": "In neuem Tab öffnen",
+    "download_zip": "Als ZIP herunterladen",
+    "download_file": "Datei herunterladen",
+    "loading_files": "Lädt Dateien…",
+    "no_files": "Keine Dateien.",
+    "add_files": "Datei(en) hinzufügen…",
+    "delete_file_title": "Datei löschen",
+    "delete_file_msg": "\"{name}\" wirklich löschen?",
+    "manifest_hint": "steuert Titel/Beschreibung"
   },
   "gatekeeper": {
     "eyebrow": "GATEKEEPER",
