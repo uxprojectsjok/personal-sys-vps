@@ -51,11 +51,14 @@ A SYS node is your personal endpoint on the internet — like an email address, 
 ```
 You  →  sys.md + Vault (your identity + context files)
      →  SYS node (your VPS, your domain)
-     →  AI systems (Claude, ChatGPT, any MCP-compatible client, …)
-     →  other SYS nodes (peer-to-peer)
+     →  AI systems (Claude, ChatGPT, any MCP-compatible client, …) — your gateway in
+     →  other SYS nodes (peer-to-peer, on-chain discovery)
+     →  Gatekeeper-wired souls, one hop further via Federation
 ```
 
 **sys.md** is the compact core — who you are, distilled and versioned by every session. The **Vault** is everything around it: audio, images, video, and structured `vault/context/` files (`health.md`, `mind.md`, `shopping.md`, and anything else you add) that AI systems fetch on demand via dedicated MCP tools (`context_list`, `context_get`) and inject into the conversation alongside sys.md — rather than everything being crammed into sys.md itself. In practice, your identity on a SYS node is sys.md and the Vault working together.
+
+What started as a personality layer and a human memory is now extending into a network. Gatekeeper wiring and one-hop Federation let a soul reach beyond its own vault into other, trusted souls; MCP Apps let any soul publish interactive UI straight out of its vault. Together, the AI chat client stops being a window onto one node and becomes a gateway into this wider ecosystem — one where the basic unit isn't the page or the document, but the context interaction. An App is not a special case in that model; it's just another form of context, retrieved the same way as a memory lookup or a peer message.
 
 - Local vault (File System Access API, no upload needed)
 - Server vault: images, audio, video, context files — encrypted upload
@@ -114,7 +117,10 @@ Full feature list, screenshots, and walkthroughs: [sys.uxprojects-jok.com](https
 A password gate and a stateless HMAC soul_cert (no cookies, no OAuth) protect the node; sys.md stays encrypted client-side. WebAuthn/Passkey unlock, per-soul master keys in Multi-Hoster mode, biometric identity verification (fingerprint, face, voice, optional wallet 2FA), and short-lived-token device pairing round out the model. Full spec: [docs/spec/verification-hub.md](docs/spec/verification-hub.md)
 
 **AI & Soul**
-Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation.
+Use your context — sys.md plus the Vault — with any preferred MCP-capable AI. The Soul-Archivar grows sys.md in the background as you talk, `mind.md` shapes how the AI behaves, and vision, voice, and web search extend the conversation. On top of raw sys.md reads, `soul_context_query` runs against **MINDIDX** — a persistent 3-dimensional index (category × relevance score × status/recency) crystallized from LONGMEM — for O(log n) filtered lookups instead of scanning the full document.
+
+**MCP Apps**
+Any soul can publish its own interactive UI, rendered as an embedded widget in the chat instead of plain text. Drop `index.html` (+ optional `style.css`/`app.js`/`manifest.json`) into `vault_shared/apps/{app-name}/` — an MCP tool and a `ui://` resource register automatically per app, no separate upload protocol needed.
 
 **Health & Body**
 Structured health context (Garmin/Apple Health/Oura sync, food log with nutrition ratings, voice/photo/motion capture) feeds `health.md` for the AI to reason over.
@@ -124,6 +130,9 @@ Standing and one-off tasks defined in `agent.md` run on a schedule with no manua
 
 **Peer Network (Social Sphere)**
 Trusted peers connect by soul_id, @mention routing sends messages into the Social Sphere, files attach via `vault/shared`, and Beme broadcasts short messages network-wide.
+
+**Gatekeeper & Federation**
+A soul can act as a Gatekeeper for other souls wired to it — e.g. a family or team sharing one AI access point. Wiring runs on a per-soul service token with granular scopes (`soul`, `audio`, `images`, `video`, `context_files`), reusing the same auth path the token owner would use themselves — no separate Gatekeeper-specific auth. Two Gatekeepers can federate with each other, extending a caller's reach one more hop through souls they don't wire directly. `wire_status`/`wire_search` list what's reachable; `wire_scanner` full-text-searches across it.
 
 **Networking**
 MCP server (OAuth 2.0 + PKCE), soul-cert peer whitelisting, declarable Soul Skills for agent discovery, and Web Push for background alerts.
@@ -218,13 +227,20 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 ├── soul-mcp/                MCP server (Node.js, OAuth 2.0 + PKCE)
 │   ├── server.mjs           Main server — OAuth flow, /internal/run-tool, X-Soul-Id routing
 │   ├── oauth.mjs            OAuth 2.0 + PKCE token management
-│   ├── tools/               65+ tools — soul_read/write, vault_manifest, health_check,
-│   │                        health_sync, food_log, mind_read/write, soul_discover,
-│   │                        soul_skills, beme_chat, verify_human,
+│   ├── tools/               70+ tool files (90+ registered tool names — some files
+│   │                        register several, see gatekeeper_proxy.mjs below) —
+│   │                        soul_read/write, vault_manifest, health_check, health_sync,
+│   │                        food_log, mind_read/write, soul_context_query (MINDIDX),
+│   │                        soul_discover, soul_skills, beme_chat, verify_human,
 │   │                        soul_earnings, soul_maturity, soul_cloud_push, soul_delete,
 │   │                        soul_paid_comment, shop_write_read,
 │   │                        audio/image/video list+get, context_get/list, profile_get/save,
-│   │                        soul_read_by_token, *_peer variants, …
+│   │                        soul_read_by_token, *_peer variants,
+│   │                        gatekeeper_proxy.mjs — wire_status/wire_search/wire_scanner
+│   │                        + wired_soul_read/write, wired_beme_chat, wired_shared_get,
+│   │                        wired_{audio,image,video,context}_list/get (Gatekeeper souls),
+│   │                        soul_apps.mjs / wired_apps.mjs — app_<name> / wired_app_<soul>_<name>,
+│   │                        registered per folder in vault_shared/apps/ (MCP Apps), …
 │   ├── lib/                 api.mjs, artwork_log.mjs, blockchain.mjs, eu_withdrawal_terms.mjs,
 │   │                        herz.mjs, soul_indexer.mjs, soul_parser.mjs, vault_fs.mjs,
 │   │                        x402_agent_wallet.mjs, x402_client.mjs
@@ -368,6 +384,12 @@ The Soul Archivar automatically distills conversations into a structured JSON bl
 
 The Archivar compresses `## section` content into LONGMEM facts after each crystallization, then clears the section. Both representations are maintained in parallel: LONGMEM for AI context, `## sections` for tool access.
 
+**MINDIDX — Index over LONGMEM:**
+
+A second, machine-oriented block (`<!-- SYS:MINDIDX:START/END -->`), persisted directly after LONGMEM. It's a 3-dimensional index over the same data — **Y** = category (`facts`/`learnings`, grouped by `cat`), **X** = relevance score (`facts`, pre-sorted descending), **Z** = status/recency (`ideas` by status, `memories` by date descending). `soul_context_query` intersects Y∩X∩Z into a set of indices, then resolves those back to readable bullet text — never raw JSON to the caller. This turns a linear scan of the full LONGMEM array into an O(log n) filtered lookup once a soul's memory grows large.
+
+The index is a fast path, not a dependency: if it's missing or stale (`based_on_updated` doesn't match LONGMEM's own `updated` timestamp), it's transparently rebuilt in memory for that query — a soul with gaps in its index still answers correctly, just without the shortcut.
+
 > [!WARNING]
 > Do not use `## ` headings inside `<!-- AGENT:START/END -->` or `<!-- SOCIAL:START/END -->` blocks. Use plain text or `###` subheadings. Top-level `## ` headings are parsed as independent sections and will be processed (and potentially removed) by the Archivar.
 
@@ -390,7 +412,7 @@ bearer = soul_id + "." + soul_cert
 
 `soul-mcp/` implements the [Model Context Protocol](https://modelcontextprotocol.io) with OAuth 2.0 + PKCE. MCP-compatible AI clients can connect and access sys.md and vault files with granular permissions.
 
-Key tools: `soul_read`, `soul_write`, `context_get`, `verify_identity`, `beme_chat`, `soul_discover`
+Key tools: `soul_read`, `soul_write`, `context_get`, `verify_identity`, `beme_chat`, `soul_discover`, `wire_status` (Gatekeeper), `app_<name>` (MCP Apps)
 
 ---
 
