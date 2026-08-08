@@ -4,15 +4,15 @@
  *
  * Setzt einen vorherigen Aufruf von show_withdrawal_terms voraus: terms_token
  * MUSS aus dessen Antwort stammen. Ein erfundener/ausgedachter terms_token wird
- * serverseitig abgelehnt (es muss ein zuvor tatsächlich erzeugtes Dokument unter
- * consent_docs/{terms_token}.pdf existieren) — das erzwingt den Erstaufruf
- * technisch, statt sich auf die Kooperation der aufrufenden KI zu verlassen.
+ * serverseitig abgelehnt (es muss ein zuvor tatsächlich erzeugter Kaufordner unter
+ * consent_docs/{terms_token}/vorabinformation.pdf existieren) — das erzwingt den
+ * Erstaufruf technisch, statt sich auf die Kooperation der aufrufenden KI zu verlassen.
  *
- * Die Vorabinformation aus show_withdrawal_terms bleibt unter terms_token.pdf
+ * Die Vorabinformation aus show_withdrawal_terms bleibt unter vorabinformation.pdf
  * unverändert bestehen (wird NICHT mehr überschrieben) — sie ist ein eigenes
  * Dokument mit eigenem rechtlichen Zweck (Art. 246a EGBGB, VOR Vertragsschluss),
- * getrennt von den drei hier neu erzeugten Dokumenten (jeweils eigene UUID,
- * eigener Link): Rechnung (§ 14 UStG), Widerrufsbelehrung inkl.
+ * getrennt von den drei hier neu erzeugten Dokumenten, aber im selben Kaufordner
+ * (consent_docs/{terms_token}/): Rechnung (§ 14 UStG), Widerrufsbelehrung inkl.
  * Muster-Widerrufsformular (Art. 246a EGBGB, als eigenständiges Nachschlage-
  * dokument) und Verzichtserklärung (§ 356 Abs. 5 BGB, der Einwilligungsnachweis).
  *
@@ -21,19 +21,18 @@
  * sondern in einem eigenen consent_docs/-Ordner, der von keinem
  * vault_shared_list/-get erreicht wird. Die Download-Links brauchen deshalb
  * keinen Zahlungs-Token (existiert an dieser Stelle im Flow noch nicht) — sie
- * sind stattdessen durch die Unratbarkeit der jeweiligen UUID gesichert (wie
- * ein Freigabe-Link bei Dropbox/Google Docs).
+ * sind stattdessen durch die Unratbarkeit der Ordner-UUID (= terms_token)
+ * gesichert (wie ein Freigabe-Link bei Dropbox/Google Docs).
  */
 
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
 import { writeFile, stat } from 'fs/promises';
-import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
+import { loadCtx } from '../lib/vault_fs.mjs';
 import {
   buildInvoicePdf, buildInvoiceTxt,
   buildWithdrawalNoticePdf, buildWithdrawalNoticeTxt,
   buildWaiverPdf, buildWaiverTxt,
-  nextInvoiceNumber,
+  nextInvoiceNumber, consentPurchaseDir,
 } from '../lib/eu_withdrawal_terms.mjs';
 import { computeDynamicUsdcPrice } from '../lib/dynamic_pricing.mjs';
 
@@ -108,11 +107,10 @@ export function register(server, soulId) {
         return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).\n\n${httpHint}` }], isError: true };
       }
 
-      const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
-      const docPath     = `${consentDir}/${terms_token}.pdf`;
-      const txtPath     = `${consentDir}/${terms_token}.txt`;
+      const purchaseDir = consentPurchaseDir(soulId, terms_token);
+      const previewPath = `${purchaseDir}/vorabinformation.pdf`;
       try {
-        await stat(docPath);
+        await stat(previewPath);
       } catch {
         return {
           content: [{
@@ -149,9 +147,11 @@ export function register(server, soulId) {
         // PayPal-Preise sind bewusst NIE dynamisch (siehe soul_preview.lua) — dort
         // bleibt der konfigurierte Festpreis immer korrekt.
         let price;
+        let basePrice = null;
+        const dynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
         if (payment_method === 'x402') {
-          const basePrice = Number(amort.price_usdc) || 0;
-          price = amort.dynamic_pricing === true
+          basePrice = Number(amort.price_usdc) || 0;
+          price = dynamicPricing
             ? (await computeDynamicUsdcPrice(soulId, basePrice)).toFixed(6)
             : (amort.price_usdc || '?');
         } else {
@@ -178,6 +178,8 @@ export function register(server, soulId) {
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
           price,
+          basePrice,
+          dynamicPricing,
           currency,
           target,
           wallet,
@@ -190,20 +192,15 @@ export function register(server, soulId) {
           traderEmail:    amort.trader_email || '',
           traderLegalForm: amort.trader_legal_form || '',
           traderVatNote:  amort.trader_vat_note || '',
+          traderLegalFooter: amort.trader_legal_footer || '',
           invoiceNumber,
           invoiceDate,
         };
 
-        // Drei eigene UUIDs statt terms_token als Dateiname — die Vorschau unter
-        // terms_token.pdf/.txt (aus show_withdrawal_terms) bleibt dadurch unangetastet
-        // als eigenständiges Vorab-Dokument bestehen, statt überschrieben zu werden.
-        // vault_consent_serve.lua verlangt einen reinen UUID-Dateinamen (kein Suffix),
-        // daher keine sprechenden Namen wie "{token}-rechnung.pdf" — jedes Dokument
-        // nennt seine Art stattdessen im eigenen Titel/Text.
-        const invoiceToken    = randomUUID();
-        const withdrawalToken = randomUUID();
-        const waiverToken     = randomUUID();
-
+        // Feste, sprechende Dateinamen statt weiterer Zufalls-UUIDs — landen im
+        // selben Ordner wie die Vorabinformation aus show_withdrawal_terms
+        // (purchaseDir = consent_docs/{terms_token}/), die dabei unangetastet
+        // bestehen bleibt (eigenständiges Vorab-Dokument, wird nicht überschrieben).
         const [invoicePdf, withdrawalPdf, waiverPdf] = await Promise.all([
           buildInvoicePdf(sharedFields),
           buildWithdrawalNoticePdf(sharedFields),
@@ -214,21 +211,21 @@ export function register(server, soulId) {
         const waiverTxtContent     = buildWaiverTxt(sharedFields);
 
         await Promise.all([
-          writeFile(`${consentDir}/${invoiceToken}.pdf`, invoicePdf),
-          writeFile(`${consentDir}/${invoiceToken}.txt`, invoiceTxtContent, 'utf8'),
-          writeFile(`${consentDir}/${withdrawalToken}.pdf`, withdrawalPdf),
-          writeFile(`${consentDir}/${withdrawalToken}.txt`, withdrawalTxtContent, 'utf8'),
-          writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
-          writeFile(`${consentDir}/${waiverToken}.txt`, waiverTxtContent, 'utf8'),
-          // Dokumenttyp-Sidecars fürs Vault-Explorer-Frontend (vault_consent_list.lua
-          // liest das mit) — rein informativ, damit "Rechnung"/"Widerrufsbelehrung"/
-          // "Verzichtserklärung" statt nur der UUID sichtbar wird. Rechnungsnummer nur
-          // bei Rechnung/Verzichtserklärung mitgegeben (Widerrufsbelehrung ist generisch,
-          // gehört zu keiner einzelnen Rechnung).
-          writeFile(`${consentDir}/${invoiceToken}.doctype.json`, JSON.stringify({ type: 'invoice', invoice_number: invoiceNumber }), 'utf8'),
-          writeFile(`${consentDir}/${withdrawalToken}.doctype.json`, JSON.stringify({ type: 'withdrawal_notice' }), 'utf8'),
-          writeFile(`${consentDir}/${waiverToken}.doctype.json`, JSON.stringify({ type: 'waiver', invoice_number: invoiceNumber }), 'utf8'),
+          writeFile(`${purchaseDir}/rechnung.pdf`, invoicePdf),
+          writeFile(`${purchaseDir}/rechnung.txt`, invoiceTxtContent, 'utf8'),
+          writeFile(`${purchaseDir}/widerrufsbelehrung.pdf`, withdrawalPdf),
+          writeFile(`${purchaseDir}/widerrufsbelehrung.txt`, withdrawalTxtContent, 'utf8'),
+          writeFile(`${purchaseDir}/verzichtserklaerung.pdf`, waiverPdf),
+          writeFile(`${purchaseDir}/verzichtserklaerung.txt`, waiverTxtContent, 'utf8'),
         ]);
+        // meta.json ergänzen (bereits von show_withdrawal_terms mit created_at/
+        // payment_method angelegt) — fürs Vault-Explorer-Frontend.
+        await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
+          created_at: new Date().toISOString(),
+          payment_method,
+          invoice_number: invoiceNumber,
+          accepted_at: timestampDisplay,
+        }), 'utf8');
 
         // Nur für x402: Metadaten für die Rechnungskorrektur nach echtem Settlement
         // hinterlegen (siehe /internal/x402-finalize-invoice in server.mjs, aufgerufen
@@ -239,17 +236,17 @@ export function register(server, soulId) {
         // dem TATSÄCHLICHEN Betrag zu überschreiben, statt sich auf die Quote zu verlassen.
         // PayPal braucht das nicht — dort ist der Preis nie dynamisch (siehe oben).
         if (payment_method === 'x402') {
-          await writeFile(`${consentDir}/${terms_token}.invoice_meta.json`, JSON.stringify({
-            invoiceToken, waiverToken, quotedPrice: price, ...sharedFields,
+          await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
+            quotedPrice: price, ...sharedFields,
           }), 'utf8');
         }
 
-        const invoiceUrl        = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.pdf`;
-        const invoiceUrlTxt     = `${BASE_URL}/api/vault/consent/${soulId}/${invoiceToken}.txt`;
-        const withdrawalUrl     = `${BASE_URL}/api/vault/consent/${soulId}/${withdrawalToken}.pdf`;
-        const withdrawalUrlTxt  = `${BASE_URL}/api/vault/consent/${soulId}/${withdrawalToken}.txt`;
-        const waiverUrl         = `${BASE_URL}/api/vault/consent/${soulId}/${waiverToken}.pdf`;
-        const waiverUrlTxt      = `${BASE_URL}/api/vault/consent/${soulId}/${waiverToken}.txt`;
+        const invoiceUrl        = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/rechnung.pdf`;
+        const invoiceUrlTxt     = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/rechnung.txt`;
+        const withdrawalUrl     = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/widerrufsbelehrung.pdf`;
+        const withdrawalUrlTxt  = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/widerrufsbelehrung.txt`;
+        const waiverUrl         = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.pdf`;
+        const waiverUrlTxt      = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.txt`;
 
         const paymentLines = payment_method === 'x402'
           ? [

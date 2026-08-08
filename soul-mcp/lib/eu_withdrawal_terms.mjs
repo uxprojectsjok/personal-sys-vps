@@ -29,6 +29,18 @@ const LOGO_PATH = fileURLToPath(new URL('../assets/logo.png', import.meta.url));
 // als PDF angezeigt — siehe vault_consent_list.lua (filtert ohnehin auf *.pdf).
 export const TXT_RETENTION_BUFFER_DAYS = 14;
 
+// Ein Kaufbeleg-Ordner pro Referenz-ID (= terms_token aus show_withdrawal_terms),
+// statt vier Dateien mit je eigener, zufälliger UUID — die Referenz-ID ist
+// bereits unratbar (v4-UUID), ein zusätzlicher Token pro Dokument brachte keinen
+// Sicherheitsgewinn, nur eine verwirrende 1-Kauf-4-IDs-Ansicht im Vault Explorer
+// (siehe vault_consent_list.lua/vault.vue). Feste, sprechende Dateinamen statt
+// weiterer UUIDs — vault_consent_serve.lua prüft doc_type gegen DOC_TYPES.
+export const DOC_TYPES = ['vorabinformation', 'rechnung', 'widerrufsbelehrung', 'verzichtserklaerung'];
+
+export function consentPurchaseDir(soulId, referenceId) {
+  return `${SOULS_DIR}${soulId}/consent_docs/${referenceId}`;
+}
+
 // Löscht abgelaufene .txt-Begleitdateien in consent_docs/{soulId} — nie .pdf.
 // Best-effort, nicht blockierend für den aufrufenden Kaufvorgang; wird
 // opportunistisch bei jedem neuen show_withdrawal_terms-Aufruf mitgetriggert
@@ -37,23 +49,30 @@ export const TXT_RETENTION_BUFFER_DAYS = 14;
 export async function sweepExpiredConsentTxt(soulId, tokenDurationDays = 1) {
   const maxAgeMs = ((Number(tokenDurationDays) || 1) + TXT_RETENTION_BUFFER_DAYS) * 86400_000;
   const dir = `${SOULS_DIR}${soulId}/consent_docs`;
-  let entries;
+  let purchaseFolders;
   try {
-    entries = await readdir(dir);
+    purchaseFolders = await readdir(dir, { withFileTypes: true });
   } catch { return; }
 
   const now = Date.now();
-  for (const entry of entries) {
-    if (!entry.endsWith('.txt')) continue;
-    const fpath = `${dir}/${entry}`;
+  for (const folder of purchaseFolders) {
+    if (!folder.isDirectory()) continue;
+    const folderPath = `${dir}/${folder.name}`;
+    let docs;
     try {
-      const st = await stat(fpath);
-      if (now - st.mtimeMs > maxAgeMs) await unlink(fpath);
-    } catch { /* Datei parallel schon weg o.ä. — ignorieren, nicht kritisch */ }
+      docs = await readdir(folderPath);
+    } catch { continue; }
+    for (const entry of docs) {
+      if (!entry.endsWith('.txt')) continue;
+      const fpath = `${folderPath}/${entry}`;
+      try {
+        const st = await stat(fpath);
+        if (now - st.mtimeMs > maxAgeMs) await unlink(fpath);
+      } catch { /* Datei parallel schon weg o.ä. — ignorieren, nicht kritisch */ }
+    }
   }
 }
 
-const BRAND_TEAL = '#4a8f74';   // gedeckter als das helle Website-Teal (#6db89a) — besser lesbar auf Papier/Druck
 const BRAND_DARK = '#1a1a1a';
 const BRAND_DIM  = '#666666';
 
@@ -117,6 +136,44 @@ async function nextInvoiceNumber(soulId, traderName, date = new Date()) {
 }
 
 export { nextInvoiceNumber };
+
+// Zusatz-Hinweis, wenn der gezeigte Preis dynamisch (Anker/Alter/Nachfrage-
+// Multiplikator, siehe dynamic_pricing.mjs) vom konfigurierten Basispreis
+// abweicht — ohne diesen Hinweis wirkt eine Zahl wie "0.81 USDC" willkürlich,
+// wenn der Betreiber "0.50 USDC" als Preis eingestellt hat. Nur bei
+// tatsächlicher Abweichung, sonst bräuchte ein Fixpreis-Anbieter ihn nie sehen.
+function dynamicPriceNote(price, currency, basePrice, dynamicPricing) {
+  if (!dynamicPricing || !basePrice) return '';
+  if (Number(basePrice).toFixed(6) === Number(price).toFixed(6)) return '';
+  return ` (Basis: ${basePrice} ${currency}, dynamisch angepasst)`;
+}
+
+// Rechtlicher Fußzeilen-Block (Impressum-Auszug o.ä.) — frei konfigurierbar über
+// amort.trader_legal_footer (Settings → Marketplace), erscheint auf allen vier
+// Dokumenten oberhalb der "Automatisch erzeugt"-Zeile. Mehrzeilig (\n-getrennt),
+// da Betreiber typischerweise mehrere Angaben bündeln (Anschrift, Telefon,
+// Antwortzeit, USt.-Hinweis, Klarstellung Node- vs. Protokoll-Domain — siehe
+// Anwendungsbeispiel in der Settings-UI). Rein informativ zusätzlich zu
+// trader_name/-address/-email/-legalForm/-vatNote oben, ersetzt sie nicht.
+function writeLegalFooter(doc, traderLegalFooter, { left, pageWidth } = {}) {
+  if (!traderLegalFooter) return;
+  const x = left ?? doc.page.margins.left;
+  const w = pageWidth ?? (doc.page.width - doc.page.margins.left - doc.page.margins.right);
+  doc.moveDown();
+  doc.save().strokeColor('#dddddd').lineWidth(1)
+    .moveTo(x, doc.y).lineTo(x + w, doc.y).stroke().restore();
+  doc.moveDown(0.5);
+  doc.font('Helvetica').fontSize(7.5).fillColor(BRAND_DIM);
+  for (const line of traderLegalFooter.split('\n')) {
+    doc.text(line, x, doc.y, { width: w });
+  }
+  doc.fillColor(BRAND_DARK);
+}
+
+function legalFooterTxtLines(traderLegalFooter) {
+  if (!traderLegalFooter) return [];
+  return ['', ...traderLegalFooter.split('\n')];
+}
 
 // Zahlungsmethoden-spezifische Texte — PayPal hat ein Notizfeld, in das der
 // Käufer selbst die Referenz-ID einträgt; x402 hat keins, dort läuft die
@@ -256,7 +313,7 @@ function withdrawalFormTxtLines(referenceId) {
 // eigenständiges Dokument (accept_digital_content_terms) verwendet — Text und
 // Formular sind in beiden Fällen identisch, nur der Rahmen (Titel,
 // Referenz-ID-Hinweis) unterscheidet sich leicht.
-export async function buildWithdrawalNoticePdf({ traderName, traderAddress, traderEmail, referenceId }) {
+export async function buildWithdrawalNoticePdf({ traderName, traderAddress, traderEmail, traderLegalFooter, referenceId }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -267,10 +324,10 @@ export async function buildWithdrawalNoticePdf({ traderName, traderAddress, trad
     drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
-    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DARK).text('.');
     doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9).text(traderName || 'SaveYourSoul');
     doc.moveDown(0.3);
-    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+    doc.save().strokeColor(BRAND_DARK).lineWidth(0.75)
       .moveTo(doc.page.margins.left, doc.y)
       .lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
     doc.moveDown(0.8);
@@ -289,11 +346,13 @@ export async function buildWithdrawalNoticePdf({ traderName, traderAddress, trad
     doc.moveDown();
     writeWithdrawalForm(doc, { traderName, traderAddress, traderEmail, referenceId });
 
+    writeLegalFooter(doc, traderLegalFooter);
+
     doc.end();
   });
 }
 
-export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmail, referenceId }) {
+export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmail, traderLegalFooter, referenceId }) {
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
     'Widerrufsbelehrung',
@@ -301,6 +360,7 @@ export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmai
     '',
     ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
     ...withdrawalFormTxtLines(referenceId),
+    ...legalFooterTxtLines(traderLegalFooter),
   ];
   return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
 }
@@ -308,7 +368,7 @@ export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmai
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
 // Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
 // voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
-export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
+export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
   const { default: PDFDocument } = await import('pdfkit');
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
   return new Promise((resolve, reject) => {
@@ -320,17 +380,17 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
-    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DARK).text('.');
     doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9).text(traderName || 'SaveYourSoul');
     doc.moveDown(0.3);
-    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+    doc.save().strokeColor(BRAND_DARK).lineWidth(0.75)
       .moveTo(doc.page.margins.left, doc.y)
       .lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
     doc.moveDown(0.8);
 
     doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND_DARK).text('Widerrufsbelehrung');
     doc.moveDown(0.5);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#8a5a1c').text(`Referenz-ID: ${termsToken}`);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(BRAND_DARK).text(`Referenz-ID: ${termsToken}`);
     doc.font('Helvetica').fontSize(9).fillColor(BRAND_DARK).text(pm.referenceNote);
     doc.fontSize(9).fillColor(BRAND_DIM).text(
       'Vorschau — noch keine Zustimmung erteilt. Dieses Dokument beschreibt dein ' +
@@ -338,7 +398,7 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     );
     doc.fillColor(BRAND_DARK).moveDown();
     doc.font('Helvetica').fontSize(10).text(`Soul: ${soulName} (${soulId})`);
-    doc.text(`Preis: ${price} ${currency}`);
+    doc.text(`Preis: ${price} ${currency}${dynamicPriceNote(price, currency, basePrice, dynamicPricing)}`);
     doc.text(`${pm.targetLabel}: ${pm.targetValue}`);
     doc.moveDown();
 
@@ -375,6 +435,8 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
     doc.moveDown();
     writeWithdrawalForm(doc, { traderName, traderAddress, traderEmail, referenceId: termsToken });
 
+    writeLegalFooter(doc, traderLegalFooter);
+
     doc.end();
   });
 }
@@ -383,7 +445,7 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
 // ohne Layout. Für zahlende Agenten, die keinen PDF-Parser einsetzen wollen/
 // können — liegt unter demselben Referenz-ID-Pfad wie die PDF (nur .txt statt
 // .pdf), Sicherheit also identisch (Unratbarkeit der UUID, siehe vault_consent_serve.lua).
-export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, tokenDurationDays }) {
+export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
@@ -393,7 +455,7 @@ export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, curr
     pm.referenceNote,
     '',
     `Soul: ${soulName} (${soulId})`,
-    `Preis: ${price} ${currency}`,
+    `Preis: ${price} ${currency}${dynamicPriceNote(price, currency, basePrice, dynamicPricing)}`,
     `${pm.targetLabel}: ${pm.targetValue}`,
     '',
     'ANBIETER',
@@ -411,6 +473,7 @@ export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, curr
     '',
     ...LEGAL_SECTIONS.flatMap(s => [s.title.toUpperCase(), s.text, '']),
     ...withdrawalFormTxtLines(termsToken),
+    ...legalFooterTxtLines(traderLegalFooter),
   ];
   return lines.filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
 }
@@ -421,8 +484,9 @@ export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, curr
 // unterschiedliche Rechnungsnummern für denselben Kauf bekommen — der Zähler
 // ist "lückenlos fortlaufend" (§ 14 Abs. 4 Nr. 4 UStG), ein zweiter Aufruf
 // hier hätte eine Nummer verbraucht, ohne dass ein zweiter Kauf stattfand.
-export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
+export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+  const priceNote = dynamicPriceNote(price, currency, basePrice, dynamicPricing);
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
     'Rechnung',
@@ -446,12 +510,14 @@ export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', tar
     '',
     'BESCHREIBUNG · BETRAG',
     `Digitaler Zugang — Soul „${soulName}" (${soulId.slice(0, 8)}) · ${price} ${currency}`,
-    `Gesamtbetrag: ${price} ${currency}`,
+    `Gesamtbetrag: ${price} ${currency}${priceNote}`,
     traderVatNote || '',
     '',
     `${pm.targetLabel.toUpperCase()}`,
     pm.targetValue,
     pm.provisionNote,
+    '',
+    ...legalFooterTxtLines(traderLegalFooter),
     '',
     `${invoiceNumber} · Automatisch erzeugt vom SYS-Protokoll`,
   ];
@@ -466,7 +532,7 @@ export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', tar
 // Invoice-Feature, das dafür die Leistungsbeschreibung an PayPal übermitteln
 // müsste — bewusst vermieden, siehe verify-identity-hq-plan.md, Abschnitt
 // Datensparsamkeit/Rechnungsstellung).
-export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR', target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, invoiceNumber, invoiceDate }) {
+export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
   const { default: PDFDocument } = await import('pdfkit');
   const pm = paymentMethodTexts(paymentMethod, { target, wallet });
 
@@ -483,11 +549,11 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
 
     // ── Briefkopf ──────────────────────────────────────────────────────────
     doc.fontSize(20).fillColor(BRAND_DARK).font('Helvetica-Bold').text('SYS', left, doc.y, { continued: true });
-    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DARK).text('.');
     doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9)
       .text(traderName || 'SaveYourSoul', { align: 'left' });
     doc.moveDown(0.3);
-    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+    doc.save().strokeColor(BRAND_DARK).lineWidth(0.75)
       .moveTo(left, doc.y).lineTo(left + pageWidth, doc.y).stroke().restore();
     doc.moveDown(0.8);
 
@@ -510,24 +576,13 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
     doc.x = left;
     doc.moveDown(1);
 
-    // ── Referenz-ID (Zahlungszuordnung) — bewusst hervorgehoben ─────────────
-    // Box-Höhe aus der tatsächlichen Textbreite messen statt eines festen Werts
-    // zu raten — die Notiz kann je nach Referenz-ID-Länge auf 1 oder 2 Zeilen
-    // umbrechen, ein fixer Wert hätte sonst zu Überlappung geführt.
-    const refBoxTop   = doc.y;
-    const refBoxPad   = 10;
-    const refTitleH   = doc.fontSize(10).heightOfString(`Referenz-ID: ${referenceId}`, { width: pageWidth - refBoxPad * 2 });
-    const refNoteText = pm.referenceNote;
-    const refNoteH    = doc.fontSize(8.5).heightOfString(refNoteText, { width: pageWidth - refBoxPad * 2 });
-    const refBoxH     = refBoxPad * 2 + refTitleH + 3 + refNoteH;
-
-    doc.rect(left, refBoxTop, pageWidth, refBoxH).fill('#fdf3e8');
-    doc.fillColor('#8a5a1c').font('Helvetica-Bold').fontSize(10)
-      .text(`Referenz-ID: ${referenceId}`, left + refBoxPad, refBoxTop + refBoxPad, { width: pageWidth - refBoxPad * 2 });
-    doc.font('Helvetica').fontSize(8.5)
-      .text(refNoteText, left + refBoxPad, doc.y + 3, { width: pageWidth - refBoxPad * 2 });
+    // ── Referenz-ID (Zahlungszuordnung) — bewusst hervorgehoben, aber schlicht
+    // fett statt farbiger Box (Dokumente sind einheitlich schwarz-weiß) ─────
+    doc.fillColor(BRAND_DARK).font('Helvetica-Bold').fontSize(10)
+      .text(`Referenz-ID: ${referenceId}`, left, doc.y, { width: pageWidth });
+    doc.font('Helvetica').fontSize(8.5).fillColor(BRAND_DIM)
+      .text(pm.referenceNote, left, doc.y + 3, { width: pageWidth });
     doc.fillColor(BRAND_DARK);
-    doc.y = refBoxTop + refBoxH;
     doc.x = left;
     doc.moveDown(1.2);
 
@@ -565,7 +620,7 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
     // ── Rechnungstabelle ──────────────────────────────────────────────────
     const tableTop = doc.y;
     const col1 = left, col2 = left + pageWidth * 0.72, colW2 = pageWidth * 0.28;
-    doc.rect(left, tableTop, pageWidth, 22).fill(BRAND_TEAL);
+    doc.rect(left, tableTop, pageWidth, 22).fill(BRAND_DARK);
     doc.fillColor('white').font('Helvetica-Bold').fontSize(9)
       .text('BESCHREIBUNG', col1 + 8, tableTop + 6)
       .text('BETRAG', col2, tableTop + 6, { width: colW2 - 8, align: 'right' });
@@ -580,12 +635,25 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
     doc.font('Helvetica-Bold').fontSize(11)
       .text('Gesamtbetrag', col1 + 8, totalTop, { width: pageWidth * 0.68 })
       .text(`${price} ${currency}`, col2, totalTop, { width: colW2 - 8, align: 'right' });
+    // Notizen (Dynamik-Hinweis, USt.-Hinweis) untereinander stapeln statt mit
+    // festem Abstand zu raten — je nachdem welche(r) vorhanden ist/sind, sonst
+    // Überlappung mit der folgenden Zahlungsziel-Sektion möglich.
+    let notesY = totalTop + 16;
+    const invoicePriceNote = dynamicPriceNote(price, currency, basePrice, dynamicPricing).trim();
+    if (invoicePriceNote) {
+      doc.font('Helvetica').fontSize(8).fillColor(BRAND_DIM)
+        .text(invoicePriceNote, col1 + 8, notesY, { width: pageWidth - 16 });
+      notesY = doc.y + 2;
+    }
     if (traderVatNote) {
       doc.font('Helvetica').fontSize(8).fillColor(BRAND_DIM)
-        .text(traderVatNote, col1 + 8, totalTop + 16, { width: pageWidth - 16 });
+        .text(traderVatNote, col1 + 8, notesY, { width: pageWidth - 16 });
+      notesY = doc.y;
     }
     doc.fillColor(BRAND_DARK);
-    doc.moveDown(2.5);
+    doc.y = Math.max(notesY, totalTop + 30);
+    doc.x = left;
+    doc.moveDown(1.5);
 
     // ── Zahlungsziel ──────────────────────────────────────────────────────
     doc.font('Helvetica-Bold').fontSize(9).fillColor(BRAND_DIM).text(pm.targetLabel.toUpperCase(), left, doc.y, { characterSpacing: 0.5 });
@@ -594,9 +662,15 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
 
     doc.font('Helvetica').fontSize(9).text(pm.provisionNote, left, doc.y, { width: pageWidth });
 
-    // ── Fußzeile ──────────────────────────────────────────────────────────
+    writeLegalFooter(doc, traderLegalFooter, { left, pageWidth });
+
+    // ── Fußzeile ── relative Position, NICHT am Seitenende fixiert: ein langer
+    // trader_legal_footer kann diese Seite über den unteren Rand hinaus füllen
+    // (PDFKit paginiert dann automatisch) — eine absolute Bottom-Position hätte
+    // sich in dem Fall mit dem Fußzeilentext überlappt.
+    doc.moveDown(0.8);
     doc.fontSize(8).fillColor(BRAND_DIM)
-      .text(`${invoiceNumber} · Automatisch erzeugt vom SYS-Protokoll`, left, doc.page.height - doc.page.margins.bottom - 12, { width: pageWidth, align: 'center' });
+      .text(`${invoiceNumber} · Automatisch erzeugt vom SYS-Protokoll`, left, doc.y, { width: pageWidth, align: 'center' });
 
     doc.end();
   });
@@ -607,7 +681,7 @@ export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR
 // (§ 356 Abs. 5 BGB), von der Rechnung und der Widerrufsbelehrung getrennt
 // (jeweils eigenes Dokument) statt wie früher in einem Abschnitt am Ende des
 // Kaufbelegs versteckt.
-export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, contactNote, invoiceNumber }) {
+export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, traderLegalFooter, contactNote, invoiceNumber }) {
   const { default: PDFDocument } = await import('pdfkit');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -618,17 +692,17 @@ export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR'
     drawLogo(doc);
 
     doc.font('Helvetica-Bold').fontSize(20).fillColor(BRAND_DARK).text('SYS', { continued: true });
-    doc.fillColor(BRAND_TEAL).text('.');
+    doc.fillColor(BRAND_DARK).text('.');
     doc.fillColor(BRAND_DIM).font('Helvetica').fontSize(9).text(traderName || 'SaveYourSoul');
     doc.moveDown(0.3);
-    doc.save().strokeColor(BRAND_TEAL).lineWidth(2)
+    doc.save().strokeColor(BRAND_DARK).lineWidth(0.75)
       .moveTo(doc.page.margins.left, doc.y)
       .lineTo(doc.page.width - doc.page.margins.right, doc.y).stroke().restore();
     doc.moveDown(0.8);
 
     doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND_DARK).text('Verzichtserklärung — digitale Inhalte');
     doc.moveDown(0.5);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#8a5a1c').text(`Referenz-ID: ${referenceId}`);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(BRAND_DARK).text(`Referenz-ID: ${referenceId}`);
     doc.font('Helvetica').fontSize(9).fillColor(BRAND_DIM).text(`Zugehörige Rechnung: ${invoiceNumber || '—'}`);
     doc.fillColor(BRAND_DARK).moveDown();
 
@@ -656,9 +730,12 @@ export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR'
     );
     doc.fillColor(BRAND_DARK);
 
+    writeLegalFooter(doc, traderLegalFooter);
+
+    doc.moveDown(0.8);
     doc.fontSize(8).fillColor(BRAND_DIM).text(
       `${referenceId} · Automatisch erzeugt vom SYS-Protokoll`,
-      doc.page.margins.left, doc.page.height - doc.page.margins.bottom - 12,
+      doc.page.margins.left, doc.y,
       { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'center' }
     );
 
@@ -666,7 +743,7 @@ export async function buildWaiverPdf({ soulName, soulId, price, currency = 'EUR'
   });
 }
 
-export function buildWaiverTxt({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, contactNote, invoiceNumber }) {
+export function buildWaiverTxt({ soulName, soulId, price, currency = 'EUR', timestamp, referenceId, traderName, traderLegalFooter, contactNote, invoiceNumber }) {
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
     'Verzichtserklärung — digitale Inhalte',
@@ -688,6 +765,8 @@ export function buildWaiverTxt({ soulName, soulId, price, currency = 'EUR', time
       'nachdem der Verbraucher ausdrücklich zugestimmt hat, dass der Unternehmer vor ' +
       'Ablauf der Widerrufsfrist mit der Vertragserfüllung beginnt, und seine Kenntnis ' +
       'davon bestätigt hat, dass er durch seine Zustimmung sein Widerrufsrecht verliert.',
+    '',
+    ...legalFooterTxtLines(traderLegalFooter),
     '',
     `${referenceId} · Automatisch erzeugt vom SYS-Protokoll`,
   ];

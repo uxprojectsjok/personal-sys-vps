@@ -172,6 +172,10 @@
                   <label class="field-label">{{ $t('marketplace.field_trader_vat_note') }}</label>
                   <input v-model="amort.trader_vat_note" type="text" class="input" placeholder="§19 UStG — keine USt." />
                 </div>
+                <div class="field span-2">
+                  <label class="field-label">{{ $t('marketplace.field_trader_legal_footer') }} <span class="field-hint">{{ $t('marketplace.field_trader_legal_footer_hint') }}</span></label>
+                  <textarea v-model="amort.trader_legal_footer" rows="6" class="input" style="resize:vertical;line-height:1.5" :placeholder="$t('marketplace.field_trader_legal_footer_placeholder')"></textarea>
+                </div>
                 <div class="field">
                   <label class="field-label">{{ $t('marketplace.field_token_validity') }} <span class="field-hint">{{ $t('marketplace.field_token_validity_hint') }}</span></label>
                   <input
@@ -444,6 +448,7 @@ const amort = reactive({
   trader_email:         '',
   trader_legal_form:    '',
   trader_vat_note:      '',
+  trader_legal_footer:  '',
 })
 
 // Unified peers: { soul_id, endpoint, label } — loaded for amort saves, not displayed here
@@ -576,6 +581,7 @@ async function persistMetaFields() {
         trader_email:        amort.trader_email,
         trader_legal_form:   amort.trader_legal_form,
         trader_vat_note:     amort.trader_vat_note,
+        trader_legal_footer: amort.trader_legal_footer,
         name:                preview.value.name || '',
         description:         preview.value.description || '',
         tags:                (preview.value.tags || '').split(',').map(t => t.trim()).filter(Boolean),
@@ -781,6 +787,7 @@ async function loadAmort() {
     amort.trader_email         = a.trader_email ?? ''
     amort.trader_legal_form    = a.trader_legal_form ?? ''
     amort.trader_vat_note      = a.trader_vat_note ?? ''
+    amort.trader_legal_footer  = a.trader_legal_footer ?? ''
     if (amort.dynamic_pricing) fetchLivePrice()
     const rawTrustedSouls = Array.isArray(a.trusted_souls)
       ? a.trusted_souls.filter(t => typeof t === 'string' || (typeof t === 'object' && t?.soul_id))
@@ -857,6 +864,7 @@ async function setMode(mode) {
           trader_email:         amort.trader_email,
           trader_legal_form:    amort.trader_legal_form,
           trader_vat_note:      amort.trader_vat_note,
+          trader_legal_footer:  amort.trader_legal_footer,
         }),
       })
       const d = await r.json()
@@ -900,6 +908,7 @@ async function saveAmort() {
         trader_email:         amort.trader_email,
         trader_legal_form:    amort.trader_legal_form,
         trader_vat_note:      amort.trader_vat_note,
+        trader_legal_footer:  amort.trader_legal_footer,
       }),
     })
     const d = await r.json()

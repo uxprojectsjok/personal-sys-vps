@@ -43,7 +43,7 @@ import {
   buildInvoicePdf, buildInvoiceTxt,
   buildWithdrawalNoticePdf, buildWithdrawalNoticeTxt,
   buildWaiverPdf, buildWaiverTxt,
-  legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt,
+  legalTextForChat, nextInvoiceNumber, sweepExpiredConsentTxt, consentPurchaseDir,
 } from './lib/eu_withdrawal_terms.mjs';
 import { computeDynamicUsdcPrice } from './lib/dynamic_pricing.mjs';
 import {
@@ -2647,8 +2647,8 @@ app.post('/internal/x402-finalize-invoice', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'invalid_usdc_amount' });
   }
 
-  const consentDir = `${SOULS_DIR}${soulId}/consent_docs`;
-  const metaPath    = `${consentDir}/${referenceId}.invoice_meta.json`;
+  const purchaseDir = consentPurchaseDir(soulId, referenceId);
+  const metaPath     = `${purchaseDir}/finalize_pending.json`;
   let meta;
   try {
     meta = JSON.parse(await readFile(metaPath, 'utf8'));
@@ -2666,13 +2666,13 @@ app.post('/internal/x402-finalize-invoice', async (req, res) => {
       buildWaiverPdf(correctedFields),
     ]);
     await Promise.all([
-      writeFile(`${consentDir}/${meta.invoiceToken}.pdf`, invoicePdf),
-      writeFile(`${consentDir}/${meta.invoiceToken}.txt`, buildInvoiceTxt(correctedFields), 'utf8'),
-      writeFile(`${consentDir}/${meta.waiverToken}.pdf`, waiverPdf),
-      writeFile(`${consentDir}/${meta.waiverToken}.txt`, buildWaiverTxt(correctedFields), 'utf8'),
+      writeFile(`${purchaseDir}/rechnung.pdf`, invoicePdf),
+      writeFile(`${purchaseDir}/rechnung.txt`, buildInvoiceTxt(correctedFields), 'utf8'),
+      writeFile(`${purchaseDir}/verzichtserklaerung.pdf`, waiverPdf),
+      writeFile(`${purchaseDir}/verzichtserklaerung.txt`, buildWaiverTxt(correctedFields), 'utf8'),
     ]);
     // Metadaten nicht mehr nötig nach erfolgreicher Korrektur — Aufräumen statt
-    // unbegrenzt in consent_docs/ anzusammeln (sweepExpiredConsentTxt kennt dieses
+    // unbegrenzt im Kaufordner anzusammeln (sweepExpiredConsentTxt kennt dieses
     // Dateiformat nicht, würde es also nie von selbst entfernen).
     await unlink(metaPath).catch(() => {});
     res.json({
@@ -3559,11 +3559,29 @@ app.post('/api/soul/terms/show', async (req, res) => {
 
     const termsToken = randomUUID();
     const tokenDurationDays = amort.token_duration_days || 1;
+    // Siehe /api/soul/terms/accept: für x402 den aktuellen dynamischen Preis
+    // zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
+    // zeigt die Vorabinformation einen anderen Betrag als tatsächlich
+    // abgebucht wird (derselbe Bug wie zuvor bei der Rechnung, hier nur an
+    // einer weiteren Stelle unkorrigiert geblieben).
+    let previewPrice;
+    let previewBasePrice = null;
+    const previewDynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
+    if (payment_method === 'x402') {
+      previewBasePrice = Number(amort.price_usdc) || 0;
+      previewPrice = previewDynamicPricing
+        ? (await computeDynamicUsdcPrice(soul_id, previewBasePrice)).toFixed(6)
+        : (amort.price_usdc || '?');
+    } else {
+      previewPrice = amort.price_eur || '?';
+    }
     const previewFields = {
       termsToken,
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
-      price:    payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?'),
+      price:    previewPrice,
+      basePrice: previewBasePrice,
+      dynamicPricing: previewDynamicPricing,
       currency: payment_method === 'x402' ? 'USDC' : 'EUR',
       target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
       wallet:   amort.wallet || '',
@@ -3573,24 +3591,28 @@ app.post('/api/soul/terms/show', async (req, res) => {
       traderEmail:     amort.trader_email || '',
       traderLegalForm: amort.trader_legal_form || '',
       traderVatNote:   amort.trader_vat_note || '',
+      traderLegalFooter: amort.trader_legal_footer || '',
       tokenDurationDays,
     };
     const previewPdf = await buildTermsPreviewPdf(previewFields);
     const previewTxt = buildTermsPreviewTxt(previewFields);
-    const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
-    await mkdir(consentDir, { recursive: true });
-    await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
-    await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
-    // Dokumenttyp-Sidecar fürs Vault-Explorer-Frontend, siehe show_withdrawal_terms.mjs.
-    await writeFile(`${consentDir}/${termsToken}.doctype.json`, JSON.stringify({ type: 'preview' }), 'utf8');
+    // Ein Ordner pro Kauf/Referenz-ID, siehe show_withdrawal_terms.mjs/consentPurchaseDir.
+    const purchaseDir = consentPurchaseDir(soul_id, termsToken);
+    await mkdir(purchaseDir, { recursive: true });
+    await writeFile(`${purchaseDir}/vorabinformation.pdf`, previewPdf);
+    await writeFile(`${purchaseDir}/vorabinformation.txt`, previewTxt, 'utf8');
+    await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
+      created_at: new Date().toISOString(),
+      payment_method,
+    }), 'utf8');
 
     sweepExpiredConsentTxt(soul_id, tokenDurationDays).catch(() => {});
 
     res.json({
       ok: true,
       terms_token: termsToken,
-      preview_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.pdf`,
-      preview_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}.txt`,
+      preview_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}/vorabinformation.pdf`,
+      preview_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${termsToken}/vorabinformation.txt`,
       terms_url:     `${BASE_URL}/agb`,
       terms_url_txt: `${BASE_URL}/agb.txt`,
       legal_text: legalTextForChat(),
@@ -3633,11 +3655,10 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' });
     }
 
-    const consentDir = `${SOULS_DIR}${soul_id}/consent_docs`;
-    const docPath     = `${consentDir}/${terms_token}.pdf`;
-    const txtPath     = `${consentDir}/${terms_token}.txt`;
+    const purchaseDir = consentPurchaseDir(soul_id, terms_token);
+    const previewPath = `${purchaseDir}/vorabinformation.pdf`;
     try {
-      await stat(docPath);
+      await stat(previewPath);
     } catch {
       return res.status(404).json({
         error: 'Ungültiger oder unbekannter terms_token. Zuerst /api/soul/terms/show aufrufen.',
@@ -3650,9 +3671,11 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     // Preis zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
     // zeigt die Rechnung einen anderen Betrag als tatsächlich abgebucht wird.
     let price;
+    let basePrice = null;
+    const dynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
     if (payment_method === 'x402') {
-      const basePrice = Number(amort.price_usdc) || 0;
-      price = amort.dynamic_pricing === true
+      basePrice = Number(amort.price_usdc) || 0;
+      price = dynamicPricing
         ? (await computeDynamicUsdcPrice(soul_id, basePrice)).toFixed(6)
         : (amort.price_usdc || '?');
     } else {
@@ -3676,6 +3699,8 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       soulName: ctx.name || soul_id.slice(0, 8),
       soulId: soul_id,
       price,
+      basePrice,
+      dynamicPricing,
       currency,
       target,
       wallet,
@@ -3688,58 +3713,57 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       traderEmail:     amort.trader_email || '',
       traderLegalForm: amort.trader_legal_form || '',
       traderVatNote:   amort.trader_vat_note || '',
+      traderLegalFooter: amort.trader_legal_footer || '',
       invoiceNumber,
       invoiceDate,
     };
 
-    // Drei eigene UUIDs statt terms_token als Dateiname — siehe
-    // accept_digital_content_terms.mjs für die ausführliche Begründung. Die
-    // Vorschau unter terms_token.pdf/.txt (aus /api/soul/terms/show) bleibt
-    // dadurch unangetastet als eigenständiges Vorab-Dokument bestehen.
-    const invoiceToken    = randomUUID();
-    const withdrawalToken = randomUUID();
-    const waiverToken     = randomUUID();
-
+    // Feste, sprechende Dateinamen statt weiterer Zufalls-UUIDs — siehe
+    // accept_digital_content_terms.mjs für die ausführliche Begründung. Landen
+    // im selben Ordner wie die Vorabinformation (purchaseDir), die dabei
+    // unangetastet bestehen bleibt (eigenständiges Vorab-Dokument).
     const [invoicePdf, withdrawalPdf, waiverPdf] = await Promise.all([
       buildInvoicePdf(sharedFields),
       buildWithdrawalNoticePdf(sharedFields),
       buildWaiverPdf(sharedFields),
     ]);
     await Promise.all([
-      writeFile(`${consentDir}/${invoiceToken}.pdf`, invoicePdf),
-      writeFile(`${consentDir}/${invoiceToken}.txt`, buildInvoiceTxt(sharedFields), 'utf8'),
-      writeFile(`${consentDir}/${withdrawalToken}.pdf`, withdrawalPdf),
-      writeFile(`${consentDir}/${withdrawalToken}.txt`, buildWithdrawalNoticeTxt(sharedFields), 'utf8'),
-      writeFile(`${consentDir}/${waiverToken}.pdf`, waiverPdf),
-      writeFile(`${consentDir}/${waiverToken}.txt`, buildWaiverTxt(sharedFields), 'utf8'),
-      // Dokumenttyp-Sidecars fürs Vault-Explorer-Frontend, siehe accept_digital_content_terms.mjs.
-      writeFile(`${consentDir}/${invoiceToken}.doctype.json`, JSON.stringify({ type: 'invoice', invoice_number: invoiceNumber }), 'utf8'),
-      writeFile(`${consentDir}/${withdrawalToken}.doctype.json`, JSON.stringify({ type: 'withdrawal_notice' }), 'utf8'),
-      writeFile(`${consentDir}/${waiverToken}.doctype.json`, JSON.stringify({ type: 'waiver', invoice_number: invoiceNumber }), 'utf8'),
+      writeFile(`${purchaseDir}/rechnung.pdf`, invoicePdf),
+      writeFile(`${purchaseDir}/rechnung.txt`, buildInvoiceTxt(sharedFields), 'utf8'),
+      writeFile(`${purchaseDir}/widerrufsbelehrung.pdf`, withdrawalPdf),
+      writeFile(`${purchaseDir}/widerrufsbelehrung.txt`, buildWithdrawalNoticeTxt(sharedFields), 'utf8'),
+      writeFile(`${purchaseDir}/verzichtserklaerung.pdf`, waiverPdf),
+      writeFile(`${purchaseDir}/verzichtserklaerung.txt`, buildWaiverTxt(sharedFields), 'utf8'),
     ]);
+    await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
+      created_at: new Date().toISOString(),
+      payment_method,
+      invoice_number: invoiceNumber,
+      accepted_at: timestampDisplay,
+    }), 'utf8');
 
     // Siehe accept_digital_content_terms.mjs: Metadaten für die Rechnungskorrektur
     // nach echtem x402-Settlement (/internal/x402-finalize-invoice, aufgerufen von
     // soul_pay_x402.lua). PayPal-Preise sind nie dynamisch, brauchen das nicht.
     if (payment_method === 'x402') {
-      await writeFile(`${consentDir}/${terms_token}.invoice_meta.json`, JSON.stringify({
-        invoiceToken, waiverToken, quotedPrice: price, ...sharedFields,
+      await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
+        quotedPrice: price, ...sharedFields,
       }), 'utf8');
     }
 
     res.json({
       ok: true,
       invoice: {
-        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${invoiceToken}.pdf`,
-        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${invoiceToken}.txt`,
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/rechnung.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/rechnung.txt`,
       },
       withdrawal_notice: {
-        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${withdrawalToken}.pdf`,
-        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${withdrawalToken}.txt`,
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/widerrufsbelehrung.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/widerrufsbelehrung.txt`,
       },
       waiver: {
-        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${waiverToken}.pdf`,
-        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${waiverToken}.txt`,
+        download_url:     `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/verzichtserklaerung.pdf`,
+        download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/verzichtserklaerung.txt`,
       },
       reference_id: terms_token,
       payment: payment_method === 'x402'

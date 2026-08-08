@@ -1801,6 +1801,24 @@ server {
     try_files $uri $uri.html /search/index.html /index.html;
   }
 
+  ################################
+  # Use Cases: öffentliche Protokoll-Beispielseite, kein Gate-Check — liest
+  # keine geschützten Endpunkte, nur statische Beispiel-Requests/-Responses.
+  ################################
+  location = /use-cases {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /use-cases/index.html /index.html;
+  }
+
+  location ^~ /use-cases/ {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    try_files $uri $uri.html /use-cases/index.html /index.html;
+  }
+
   # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   ################################
   # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus

@@ -18,8 +18,9 @@
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
-import { SOULS_DIR, loadCtx } from '../lib/vault_fs.mjs';
-import { legalTextForChat, buildTermsPreviewPdf, buildTermsPreviewTxt, sweepExpiredConsentTxt } from '../lib/eu_withdrawal_terms.mjs';
+import { loadCtx } from '../lib/vault_fs.mjs';
+import { legalTextForChat, buildTermsPreviewPdf, buildTermsPreviewTxt, sweepExpiredConsentTxt, consentPurchaseDir } from '../lib/eu_withdrawal_terms.mjs';
+import { computeDynamicUsdcPrice } from '../lib/dynamic_pricing.mjs';
 
 const BASE_URL = process.env.BASE_URL || '';
 
@@ -92,11 +93,29 @@ export function register(server, soulId) {
       try {
         const termsToken  = randomUUID();
         const tokenDurationDays = amort.token_duration_days || 1;
+        // Für x402 den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe
+        // Formel wie soul_pay_x402.lua beim Settlement) — siehe
+        // accept_digital_content_terms.mjs für die ausführliche Begründung. Sonst
+        // zeigt die Vorabinformation einen anderen Betrag als tatsächlich abgebucht
+        // wird (live gefunden, 2026-08-08: Vorabinformation zeigte 0.50 statt dynamisch).
+        let previewPrice;
+        let previewBasePrice = null;
+        const previewDynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
+        if (payment_method === 'x402') {
+          previewBasePrice = Number(amort.price_usdc) || 0;
+          previewPrice = previewDynamicPricing
+            ? (await computeDynamicUsdcPrice(soulId, previewBasePrice)).toFixed(6)
+            : (amort.price_usdc || '?');
+        } else {
+          previewPrice = amort.price_eur || '?';
+        }
         const previewFields = {
           termsToken,
           soulName: ctx.name || soulId.slice(0, 8),
           soulId,
-          price:    payment_method === 'x402' ? (amort.price_usdc || '?') : (amort.price_eur || '?'),
+          price:    previewPrice,
+          basePrice: previewBasePrice,
+          dynamicPricing: previewDynamicPricing,
           currency: payment_method === 'x402' ? 'USDC' : 'EUR',
           target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
           wallet:   amort.wallet || '',
@@ -106,20 +125,26 @@ export function register(server, soulId) {
           traderEmail:     amort.trader_email || '',
           traderLegalForm: amort.trader_legal_form || '',
           traderVatNote:   amort.trader_vat_note || '',
+          traderLegalFooter: amort.trader_legal_footer || '',
           tokenDurationDays,
         };
         const previewPdf  = await buildTermsPreviewPdf(previewFields);
         const previewTxt  = buildTermsPreviewTxt(previewFields);
-        const consentDir  = `${SOULS_DIR}${soulId}/consent_docs`;
-        await mkdir(consentDir, { recursive: true });
-        await writeFile(`${consentDir}/${termsToken}.pdf`, previewPdf);
-        await writeFile(`${consentDir}/${termsToken}.txt`, previewTxt, 'utf8');
-        // Dokumenttyp-Sidecar fürs Vault-Explorer-Frontend (vault_consent_list.lua liest
-        // das mit) — rein informativ, damit "Vorabinformation" statt nur der UUID sichtbar
-        // wird. Keine Sicherheitsrelevanz: die eigentliche Datei bleibt UUID-benannt.
-        await writeFile(`${consentDir}/${termsToken}.doctype.json`, JSON.stringify({ type: 'preview' }), 'utf8');
-        const previewUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.pdf`;
-        const previewUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}.txt`;
+        // Ein Ordner pro Kauf/Referenz-ID (statt einer Datei pro zufälliger UUID) —
+        // accept_digital_content_terms legt die drei weiteren Dokumente (Rechnung,
+        // Widerrufsbelehrung, Verzichtserklärung) später in denselben Ordner.
+        const purchaseDir = consentPurchaseDir(soulId, termsToken);
+        await mkdir(purchaseDir, { recursive: true });
+        await writeFile(`${purchaseDir}/vorabinformation.pdf`, previewPdf);
+        await writeFile(`${purchaseDir}/vorabinformation.txt`, previewTxt, 'utf8');
+        // meta.json fürs Vault-Explorer-Frontend (vault_consent_list.lua liest das) —
+        // wird von accept_digital_content_terms um invoice_number/accepted_at ergänzt.
+        await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
+          created_at: new Date().toISOString(),
+          payment_method,
+        }), 'utf8');
+        const previewUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}/vorabinformation.pdf`;
+        const previewUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}/vorabinformation.txt`;
 
         // Best-effort, nicht blockierend: abgelaufene .txt-Begleitdateien aus früheren
         // Käufen dieser Soul mit aufräumen (löscht nie .pdf, siehe eu_withdrawal_terms.mjs).

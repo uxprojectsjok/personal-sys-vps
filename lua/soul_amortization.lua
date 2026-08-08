@@ -55,6 +55,7 @@ local DEFAULTS = {
   trader_email     = "",
   trader_legal_form = "",
   trader_vat_note  = "",
+  trader_legal_footer = "",
 }
 
 -- ── GET ───────────────────────────────────────────────────────────────────────
@@ -212,6 +213,13 @@ if type(incoming.trader_legal_form) == "string" then
 end
 if type(incoming.trader_vat_note) == "string" then
   amort.trader_vat_note = incoming.trader_vat_note:match("^%s*(.-)%s*$"):sub(1, 300)
+end
+-- trader_legal_footer: mehrzeiliger Impressum-Block (Anschrift, Kontakt, Rechtsform,
+-- USt.-Hinweis, Node-Erklärung), wird unten auf jedem erzeugten Dokument angehängt —
+-- daher deutlich größeres Limit als die einzeiligen trader_*-Felder oben, und der
+-- Trim erhält interne \n (Lua-Pattern "." matcht auch Zeilenumbrüche).
+if type(incoming.trader_legal_footer) == "string" then
+  amort.trader_legal_footer = incoming.trader_legal_footer:match("^%s*(.-)%s*$"):sub(1, 3000)
 end
 
 -- agent_tools: Array von Strings (nur erlaubte Tools; muss mit AgentMarketplacePanel.AVAILABLE_TOOLS übereinstimmen)

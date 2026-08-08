@@ -142,7 +142,7 @@
               </div>
             </template>
 
-            <!-- ── Widerruf (EU-Consent) Tab ── -->
+            <!-- ── Widerruf (EU-Consent) Tab — ein Ordner pro Kauf, analog Apps-Tab ── -->
             <template v-if="tab === 'widerruf'">
               <div v-if="!soulToken" class="dt-empty">
                 <p class="dt-empty-text">{{ $t('files.no_soul_cert') }}</p>
@@ -153,7 +153,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
                 </svg>
               </div>
-              <div v-else-if="consentFiles.length === 0" class="dt-empty">
+              <div v-else-if="consentPurchases.length === 0" class="dt-empty">
                 <p class="dt-empty-text">{{ $t('files.no_consent_files') }}</p>
               </div>
               <div v-else class="dt-table" style="margin-top:14px">
@@ -161,33 +161,38 @@
                   <span class="dt-col-name">{{ $t('files.col_name') }}</span>
                   <span class="dt-col-actions"></span>
                 </div>
-                <div v-for="f in consentFiles" :key="f.reference_id"
-                  class="dt-row" :style="'grid-template-columns: 1fr 90px'"
-                  :class="{ busy: !!consentBusy[f.reference_id] }"
-                >
-                  <div class="dt-name-cell">
-                    <div class="dt-file-icon dt-icon-doc">
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
-                        <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
-                        <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
-                      </svg>
-                    </div>
-                    <div class="dt-name-info">
-                      <span class="dt-filename">{{ consentDocLabel(f) }}</span>
-                      <span class="dt-filetype">{{ $t('files.consent_ref') }}: {{ f.reference_id }} · {{ formatSharedSize(f.size) }} · {{ formatSharedDate(f.mtime) }}</span>
+                <template v-for="p in consentPurchases" :key="p.reference_id">
+                  <div class="dt-row" :style="'grid-template-columns: 1fr 90px'" :class="{ busy: !!consentBusy[p.reference_id] }">
+                    <button type="button" class="dt-name-cell" style="text-decoration:none;background:none;border:none;cursor:pointer;text-align:left;width:100%" @click="consentDocsOpen[p.reference_id] = !consentDocsOpen[p.reference_id]">
+                      <div class="dt-file-icon dt-icon-doc">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12">
+                          <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+                          <path stroke-linecap="round" d="M4 5h8M4 8h8M4 11h5"/>
+                        </svg>
+                      </div>
+                      <div class="dt-name-info">
+                        <span class="dt-filename">{{ consentPurchaseLabel(p) }}</span>
+                        <span class="dt-filetype">{{ $t('files.consent_ref') }}: {{ p.reference_id }} · {{ formatSharedDate(p.mtime) }}</span>
+                      </div>
+                    </button>
+                    <div class="dt-actions">
+                      <button class="dt-act-btn dt-act-del" @click="deleteConsentPurchase(p)" :disabled="!!consentBusy[p.reference_id]" :title="$t('files.delete')">
+                        <svg v-if="consentBusy[p.reference_id] === 'del'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/></svg>
+                        <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                      </button>
                     </div>
                   </div>
-                  <div class="dt-actions">
-                    <button class="dt-act-btn" @click="downloadConsentFile(f)" :disabled="!!consentBusy[f.reference_id]" :title="$t('files.download')">
-                      <svg v-if="consentBusy[f.reference_id] === 'down'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
-                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
-                    </button>
-                    <button class="dt-act-btn dt-act-del" @click="deleteConsentFile(f)" :disabled="!!consentBusy[f.reference_id]" :title="$t('files.delete')">
-                      <svg v-if="consentBusy[f.reference_id] === 'del'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/></svg>
-                      <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
-                    </button>
+                  <div v-if="consentDocsOpen[p.reference_id]" style="padding:8px 12px 14px 40px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:7px">
+                    <p v-if="!p.docs?.length" class="dt-filetype">{{ $t('files.no_consent_files') }}</p>
+                    <div v-for="docType in p.docs" :key="docType" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span class="dt-filetype">{{ consentDocLabel(docType) }}</span>
+                      <button class="dt-act-btn" @click="downloadConsentDoc(p, docType)" :disabled="!!consentBusy[p.reference_id + ':' + docType]" :title="$t('files.download')">
+                        <svg v-if="consentBusy[p.reference_id + ':' + docType] === 'down'" class="spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                        <svg v-else viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M8 2v8m0 0-3-3m3 3 3-3"/><path stroke-linecap="round" d="M2 13h12"/></svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </template>
               </div>
             </template>
 
@@ -348,10 +353,11 @@ const sharedLoading   = ref(false)
 const sharedUploading = ref(false)
 const sharedInput     = ref(null)
 
-const consentFiles    = ref([])
-const consentSoulId   = ref('')
-const consentBusy     = reactive({})
-const consentLoading  = ref(false)
+const consentPurchases = ref([])
+const consentSoulId    = ref('')
+const consentBusy      = reactive({})
+const consentLoading   = ref(false)
+const consentDocsOpen  = reactive({}) // { [reference_id]: boolean }
 
 const FILTERS = computed(() => [
   { key: 'all',   label: t('files.type_all')   },
@@ -561,20 +567,24 @@ async function deleteSharedFile(name) {
 }
 
 // ── Widerruf (EU-Consent) tab ────────────────────────────────────────────────
-// doc_type kommt aus der {reference_id}.doctype.json-Sidecar, die show_withdrawal_terms.mjs/
-// accept_digital_content_terms.mjs schreiben (siehe dortige Kommentare) — fehlt sie (ältere,
-// davor erzeugte Dokumente), fällt das Label auf die reine Referenz-ID zurück statt zu raten.
+// Ein Ordner pro Kauf (reference_id = terms_token), mit festen Dateinamen statt
+// weiterer Zufalls-UUIDs — siehe eu_withdrawal_terms.mjs (DOC_TYPES) und
+// vault_consent_list.lua. p.docs listet, welche der vier Dokumente in diesem
+// Kaufordner bereits existieren (Vorabinformation immer, die anderen drei erst
+// nach erteilter Zustimmung).
 const DOCTYPE_LABEL_KEYS = {
-  preview:            'files.doctype_preview',
-  invoice:            'files.doctype_invoice',
-  withdrawal_notice:  'files.doctype_withdrawal_notice',
-  waiver:             'files.doctype_waiver',
+  vorabinformation:    'files.doctype_preview',
+  rechnung:            'files.doctype_invoice',
+  widerrufsbelehrung:  'files.doctype_withdrawal_notice',
+  verzichtserklaerung: 'files.doctype_waiver',
 }
-function consentDocLabel(f) {
-  const key = DOCTYPE_LABEL_KEYS[f.doc_type]
-  if (!key) return `${t('files.consent_ref')}: ${f.reference_id}`
-  const label = t(key)
-  return f.invoice_number ? `${label} · ${f.invoice_number}` : label
+function consentDocLabel(docType) {
+  const key = DOCTYPE_LABEL_KEYS[docType]
+  return key ? t(key) : docType
+}
+function consentPurchaseLabel(p) {
+  const base = t('files.consent_purchase_label')
+  return p.invoice_number ? `${base} · ${p.invoice_number}` : base
 }
 async function loadConsentFiles() {
   if (!soulToken.value) return
@@ -582,8 +592,8 @@ async function loadConsentFiles() {
     const r = await fetch('/api/vault/consent-list', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
       const d = await r.json()
-      consentFiles.value  = d.files || []
-      consentSoulId.value = d.soul_id || ''
+      consentPurchases.value = d.purchases || []
+      consentSoulId.value    = d.soul_id || ''
     }
   } catch {}
 }
@@ -593,44 +603,45 @@ async function switchToConsent() {
   await loadConsentFiles()
   consentLoading.value = false
 }
-async function downloadConsentFile(f) {
+async function downloadConsentDoc(p, docType) {
   if (!consentSoulId.value) return
-  consentBusy[f.reference_id] = 'down'
+  const busyKey = `${p.reference_id}:${docType}`
+  consentBusy[busyKey] = 'down'
   try {
     // Öffentlicher, UUID-gesicherter Link — kein Bearer nötig (siehe vault_consent_serve.lua)
-    const res = await fetch(`/api/vault/consent/${encodeURIComponent(consentSoulId.value)}/${encodeURIComponent(f.name)}`)
+    const res = await fetch(`/api/vault/consent/${encodeURIComponent(consentSoulId.value)}/${encodeURIComponent(p.reference_id)}/${encodeURIComponent(docType)}.pdf`)
     if (!res.ok) { showToast(t('files.download_failed'), 'err'); return }
     const blob = await res.blob()
     if (!blob.size) { showToast(t('files.download_failed'), 'err'); return }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = f.name; a.style.display = 'none'
+    a.href = url; a.download = `${docType}.pdf`; a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 5000)
-    showToast(t('files.downloading', { name: f.name }))
+    showToast(t('files.downloading', { name: consentDocLabel(docType) }))
   } catch { showToast(t('files.download_failed'), 'err') }
-  finally { delete consentBusy[f.reference_id] }
+  finally { delete consentBusy[busyKey] }
 }
-async function deleteConsentFile(f) {
+async function deleteConsentPurchase(p) {
   if (!soulToken.value) return
   const ok = await confirmAsk({
     title:       t('files.confirm_delete_file'),
-    message:     t('files.confirm_delete_consent', { name: f.name }),
+    message:     t('files.confirm_delete_consent', { name: consentPurchaseLabel(p) }),
     confirmText: t('files.delete'),
     cancelText:  t('common.cancel'),
     danger:      true,
   })
   if (!ok) return
-  consentBusy[f.reference_id] = 'del'
+  consentBusy[p.reference_id] = 'del'
   try {
-    const res = await fetch(`/api/vault/consent-doc/${encodeURIComponent(f.reference_id)}`, {
+    const res = await fetch(`/api/vault/consent-doc/${encodeURIComponent(p.reference_id)}`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${soulToken.value}` }
     })
-    if (res.ok) { consentFiles.value = consentFiles.value.filter(x => x.reference_id !== f.reference_id); showToast(t('files.deleted_ok', { name: f.name })) }
+    if (res.ok) { consentPurchases.value = consentPurchases.value.filter(x => x.reference_id !== p.reference_id); showToast(t('files.deleted_ok', { name: consentPurchaseLabel(p) })) }
     else showToast(t('files.delete_failed'), 'err')
   } catch { showToast(t('files.delete_failed'), 'err') }
-  finally { delete consentBusy[f.reference_id] }
+  finally { delete consentBusy[p.reference_id] }
 }
 
 async function handleSharedUpload(e) {
