@@ -12,7 +12,7 @@
             <div class="tf-head">
               <div class="tf-eyebrow">EIGENTUM</div>
               <h1 class="tf-title">Transfer <em>Soul</em></h1>
-              <p class="tf-lede">Übertrage das On-Chain-Eigentum dieser Soul an eine neue Wallet — kostenlos oder als Verkauf. Der Empfänger muss seine Wallet-Kontrolle per Signatur bestätigen, bevor irgendetwas passiert.</p>
+              <p class="tf-lede">Verkaufe das On-Chain-Eigentum dieser Soul an eine neue Wallet. Der Empfänger muss seine Wallet-Kontrolle per Signatur bestätigen und den Preis zahlen, bevor die Übertragung ausgeführt wird. Für kostenlose Übertragungen ohne Käufer-Bestätigung siehe „Direkt übertragen" unten.</p>
             </div>
 
             <!-- ── Status-Karte ── -->
@@ -23,8 +23,11 @@
               </div>
               <div class="tf-status-row">
                 <span class="tf-label">Deine Wallet</span>
-                <span v-if="isConnected" class="tf-mono">{{ walletAddress }} <span class="tf-net">({{ currentNetwork }})</span></span>
-                <button v-else class="tf-btn tf-btn--primary" @click="connectWallet()">Wallet verbinden</button>
+                <template v-if="isConnected">
+                  <span class="tf-mono">{{ walletAddress }} <span class="tf-net">({{ currentNetwork }})</span></span>
+                  <button class="tf-btn tf-btn--primary" @click="disconnectWallet()">Wallet trennen</button>
+                </template>
+                <button v-else class="tf-btn tf-btn--primary" :disabled="isConnectingWallet" @click="connectWallet()">{{ isConnectingWallet ? 'Verbindung wird hergestellt…' : 'Wallet verbinden' }}</button>
               </div>
             </div>
 
@@ -36,8 +39,13 @@
                 <span class="tf-card-title">Laufende Übertragungs-Anfrage</span>
                 <span class="tf-badge" :class="`tf-badge--${challenge.status}`">{{ statusLabel(challenge.status) }}</span>
               </div>
+              <div v-if="challenge.status === 'pending' || challenge.status === 'signed'" class="tf-link-row">
+                <span class="tf-mono tf-link">{{ acceptUrl }}</span>
+                <button class="tf-btn tf-btn--primary" @click="copyAcceptUrl">{{ copyMsg || 'Link kopieren' }}</button>
+              </div>
+
               <div class="tf-kv"><span>Käufer-Wallet</span><span class="tf-mono">{{ challenge.buyer_wallet || 'noch nicht signiert' }}</span></div>
-              <div class="tf-kv"><span>Modus</span><span>{{ challenge.mode === 'sale' ? `Verkauf · ${challenge.price_usdc} USDC` : 'Kostenlos' }}</span></div>
+              <div class="tf-kv"><span>Preis</span><span>{{ challenge.price_usdc }} USDC</span></div>
               <div class="tf-kv"><span>Gültig bis</span><span>{{ formatDate(challenge.expires_at) }}</span></div>
               <div v-if="challenge.payment_tx_hash" class="tf-kv"><span>Zahlung</span><span class="tf-mono">{{ challenge.payment_tx_hash }}</span></div>
 
@@ -50,11 +58,11 @@
 
               <button
                 v-if="challenge.status === 'pending' || challenge.status === 'signed'"
-                class="tf-btn tf-btn--ghost"
+                class="tf-btn tf-btn--primary"
                 @click="cancelChallenge"
               >Anfrage abbrechen</button>
 
-              <p v-if="challenge.status === 'pending'" class="tf-hint">Warten auf Käufer-Signatur — teile den Link, den <code>/api/soul/transfer/challenge</code> zurückgibt (oder lass eine KI-Agentin des Käufers ihn selbst abrufen).</p>
+              <p v-if="challenge.status === 'pending'" class="tf-hint">Warten auf Käufer-Signatur — teile den Link oben (oder lass eine KI-Agentin des Käufers ihn selbst abrufen).</p>
               <p v-if="challenge.status === 'signed'" class="tf-hint">Signatur erhalten, warte auf Zahlung.</p>
             </div>
 
@@ -65,12 +73,7 @@
                 <span v-if="listing?.active" class="tf-badge tf-badge--ready">aktiv</span>
               </div>
 
-              <div class="tf-mode-toggle">
-                <button class="tf-mode-btn" :class="{ on: mode === 'free' }" @click="mode = 'free'">Kostenlos</button>
-                <button class="tf-mode-btn" :class="{ on: mode === 'sale' }" @click="mode = 'sale'">Verkaufen</button>
-              </div>
-
-              <div v-if="mode === 'sale'" class="tf-field">
+              <div class="tf-field">
                 <label>Preis (USDC)</label>
                 <input v-model="priceUsdc" type="text" inputmode="decimal" class="tf-input" placeholder="z.B. 250.00" />
               </div>
@@ -84,7 +87,10 @@
                 <button class="tf-btn tf-btn--primary" :disabled="savingListing" @click="saveListing">
                   {{ savingListing ? 'Speichert…' : (listing?.active ? 'Angebot aktualisieren' : 'Angebot erstellen') }}
                 </button>
-                <button v-if="listing?.active" class="tf-btn tf-btn--ghost" @click="disableListing">Angebot deaktivieren</button>
+                <button v-if="listing?.active" class="tf-btn tf-btn--primary" @click="disableListing">Angebot deaktivieren</button>
+                <button v-if="listing?.active && !challenge" class="tf-btn tf-btn--primary" :disabled="creatingChallenge" @click="createChallengeLink">
+                  {{ creatingChallenge ? 'Erstelle Link…' : 'Verkaufslink erstellen' }}
+                </button>
               </div>
               <p v-if="listingMsg" class="tf-hint">{{ listingMsg }}</p>
             </div>
@@ -112,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSoul } from '~/composables/useSoul.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
@@ -122,8 +128,8 @@ definePageMeta({ layout: false })
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, clear } = useSoul()
 const {
-  walletAddress, currentNetwork, isConnected, anchorError,
-  connectWallet, transferSoul,
+  walletAddress, currentNetwork, isConnected, isConnectingWallet, anchorError,
+  connectWallet, disconnectWallet, transferSoul,
 } = useChainAnchor()
 
 const drawerOpen       = ref(false)
@@ -134,7 +140,6 @@ const monetizationEnabled = ref(true)
 const onChainOwner = ref(null)
 const listing      = ref(null)
 const challenge     = ref(null)
-const mode          = ref('free')
 const priceUsdc     = ref('')
 const durationHours = ref(24)
 const savingListing = ref(false)
@@ -142,6 +147,13 @@ const listingMsg    = ref('')
 const finalizing    = ref(false)
 const directAddress = ref('')
 const directTransferring = ref(false)
+const creatingChallenge = ref(false)
+const copyMsg       = ref('')
+
+const acceptUrl = computed(() => {
+  if (!challenge.value || !soulMeta.value?.id || typeof window === 'undefined') return ''
+  return `${window.location.origin}/accept-transfer?soul_id=${soulMeta.value.id}&challenge_id=${challenge.value.challenge_id}`
+})
 
 function statusLabel(s) {
   return { pending: 'wartet auf Signatur', signed: 'signiert, wartet auf Zahlung', ready: 'bereit zum Abschluss', completed: 'abgeschlossen', expired: 'abgelaufen', cancelled: 'abgebrochen' }[s] || s
@@ -163,7 +175,6 @@ async function loadState() {
       challenge.value     = d.challenge
       onChainOwner.value  = d.on_chain_owner
       if (d.listing) {
-        mode.value = d.listing.mode
         priceUsdc.value = d.listing.price_usdc || ''
         durationHours.value = d.listing.duration_hours
       }
@@ -188,8 +199,8 @@ async function saveListing() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body: JSON.stringify({
         soul_id: soulMeta.value.id,
-        mode: mode.value,
-        price_usdc: mode.value === 'sale' ? priceUsdc.value : undefined,
+        mode: 'sale',
+        price_usdc: priceUsdc.value,
         duration_hours: durationHours.value,
       }),
     })
@@ -197,6 +208,9 @@ async function saveListing() {
     if (r.ok && d.ok) {
       listing.value = d.listing
       listingMsg.value = 'Gespeichert.'
+      setTimeout(() => { listingMsg.value = '' }, 4000)
+      if (!challenge.value) await createChallengeLink()
+      else await loadState()
     } else {
       listingMsg.value = d.error || 'Fehler beim Speichern.'
     }
@@ -205,6 +219,37 @@ async function saveListing() {
   } finally {
     savingListing.value = false
   }
+}
+
+async function createChallengeLink() {
+  if (!soulMeta.value?.id) return
+  creatingChallenge.value = true
+  try {
+    const r = await fetch('/api/soul/transfer/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soul_id: soulMeta.value.id }),
+    })
+    const d = await r.json()
+    if (r.ok && d.ok) {
+      await loadState()
+    } else {
+      listingMsg.value = d.error || d.message || 'Fehler beim Erstellen des Links.'
+    }
+  } catch (e) {
+    listingMsg.value = e.message
+  } finally {
+    creatingChallenge.value = false
+  }
+}
+
+async function copyAcceptUrl() {
+  if (!acceptUrl.value) return
+  try {
+    await navigator.clipboard.writeText(acceptUrl.value)
+    copyMsg.value = 'Kopiert!'
+    setTimeout(() => { copyMsg.value = '' }, 2000)
+  } catch {}
 }
 
 async function disableListing() {
@@ -327,10 +372,6 @@ function onNav(id) {
 .tf-badge--pending, .tf-badge--signed { background: rgba(210,172,110,0.15); color: #d2ac6e; opacity: 1; }
 .tf-badge--expired, .tf-badge--cancelled { background: rgba(223,144,144,0.15); color: var(--c-danger); opacity: 1; }
 
-.tf-mode-toggle { display: flex; gap: 8px; }
-.tf-mode-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); opacity: 0.7; font-family: var(--sans); font-size: 14px; cursor: pointer; transition: all 0.15s; }
-.tf-mode-btn.on { border-color: var(--accent); background: var(--accent-dim); color: var(--accent-bright); opacity: 1; }
-
 .tf-field { display: flex; flex-direction: column; gap: 6px; }
 .tf-field label { font-size: 15px; color: var(--fg); }
 .tf-input { width: 100%; padding: 10px 13px; background: var(--surface); border: 1px solid var(--line-2); color: var(--fg); font-family: var(--sans); font-size: 15px; border-radius: 10px; outline: none; }
@@ -341,8 +382,9 @@ function onNav(id) {
 .tf-btn--primary { background: var(--accent); color: var(--on-accent); }
 .tf-btn--primary:hover:not(:disabled) { background: var(--accent-bright); }
 .tf-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.tf-btn--ghost { background: transparent; border-color: var(--line-2); color: var(--fg); opacity: 0.8; }
-.tf-btn--ghost:hover { border-color: var(--accent); opacity: 1; }
+
+.tf-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-3); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 14px; }
+.tf-link { flex: 1; min-width: 0; word-break: break-all; }
 
 .tf-hint { font-size: 15px; color: var(--fg); line-height: 1.65; margin: 0; }
 .tf-hint code { font-family: var(--mono); background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }

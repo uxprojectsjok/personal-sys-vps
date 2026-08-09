@@ -15,8 +15,8 @@
 
 import 'dotenv/config';
 import { readFile, readdir, mkdir, stat, writeFile, unlink } from 'fs/promises';
-import { randomUUID, randomBytes } from 'crypto';
 import path from 'node:path';
+import { randomUUID, randomBytes } from 'crypto';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
 const _require = createRequire(import.meta.url);
@@ -24,16 +24,17 @@ const webpush  = _require('web-push');
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerWiredApps } from './tools/index.mjs';
+import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerGatekeeperTools, registerWiredApps, registerWireSearch } from './tools/index.mjs';
+import { loadWired, saveWired, checkOwnServiceToken, loadWiredTo, saveWiredTo, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
 import { registerSoulApps } from './tools/soul_apps.mjs';
-import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
-import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
 import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
-import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi, postApi } from './tools/gatekeeper_proxy.mjs';
+import { fetchApi, putApi, postApi } from './tools/gatekeeper_proxy.mjs';
+import { loadConnected, saveConnected, createConnectionToken, revokeConnectionToken } from './lib/connected_souls.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
 import { runSoulDraw, formatSoulDrawSummary } from './tools/soul_draw.mjs';
+import { runSoulGenerate, formatSoulGenerateSummary } from './tools/soul_generate.mjs';
 import { register as registerSoulDiscoverLocal } from './tools/soul_discover_local.mjs';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { VerifyError, SettleError } from '@x402/core/types';
@@ -251,11 +252,12 @@ const OWNER_INSTRUCTIONS = [
 ].join(' ');
 
 // Registriert die wired_*-Proxy-Tools (gatekeeper_proxy.mjs) für EINE Soul,
-// basierend auf connected_souls.json (direkte Soul-zu-Soul-Verbindungen) —
+// gemerged aus wired_souls.json (Gatekeeper-Rolle) UND connected_souls.json
+// (direkte Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) —
 // registerGatekeeperTools() vergibt feste Tool-Namen (wired_soul_read, ...)
 // und darf pro Verbindung nur EINMAL aufgerufen werden, sonst wirft die SDK
-// wegen doppeltem Tool-Namen. Jede Soul mit akzeptierten Verbindungen bekommt
-// automatisch Lesezugriff auf sie.
+// wegen doppeltem Tool-Namen. Gilt für JEDE Soul, nicht nur Gatekeeper — jede
+// Soul mit akzeptierten Verbindungen bekommt automatisch Lesezugriff auf sie.
 async function registerConnectionProxyTools(server, soulId, callerToken = null) {
   // Gatekeeper-Funktion global ausgeschaltet → bereits verdrahtete Souls
   // bleiben in wired_souls.json gespeichert, werden aber nicht mehr als
@@ -292,20 +294,21 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   const connected = Object.fromEntries(
     Object.entries(connectedAll)
       .filter(([, e]) => e.status === 'accepted')
-      // connected_souls.json nutzt "outbound_token" (das WIR präsentieren,
-      // wenn WIR die Gegenseite abfragen) — gatekeeper_proxy.mjs' lookup()
-      // erwartet einheitlich "token".
+      // wired_souls.json-Einträge nutzen "token", connected_souls.json nutzt
+      // "outbound_token" (das WIR präsentieren, wenn WIR die Gegenseite
+      // abfragen) — gatekeeper_proxy.mjs' lookup() erwartet einheitlich "token".
       .map(([remoteId, e]) => [remoteId, { ...e, token: e.outbound_token }])
   );
   // wired_souls.json (dieses Feature) und connected_souls.json (Stage-A
-  // Soul-zu-Soul-Verbindungen) sind zwei unabhängige Systeme, die für
-  // dieselbe soul_id gleichzeitig einen Eintrag haben können — ein blindes
-  // {...wired, ...connected} ließe "connected" immer gewinnen, unabhängig
-  // davon welche Verbindung tatsächlich neuer/aktiver ist (live so
-  // aufgetreten: ein wired_soul_write landete über die ältere connected-
-  // Verbindung auf dem falschen Node). Stattdessen: die jeweils zuletzt
-  // hergestellte/akzeptierte Verbindung gewinnt, gleiches Prinzip wie bei
-  // mehreren wired-Instanzen derselben soul_id.
+  // Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) sind zwei
+  // unabhängige Systeme, die für dieselbe soul_id gleichzeitig einen Eintrag
+  // haben können — ein blindes {...wired, ...connected} ließe "connected"
+  // immer gewinnen, unabhängig davon welche Verbindung tatsächlich neuer/
+  // aktiver ist (live so aufgetreten: ein wired_soul_write landete über die
+  // ältere connected-Verbindung auf dem falschen Node, obwohl gerade eine
+  // neuere wired-Verbindung angelegt worden war). Stattdessen: die jeweils
+  // zuletzt hergestellte/akzeptierte Verbindung gewinnt, gleiches Prinzip
+  // wie bei mehreren wired-Instanzen derselben soul_id.
   function mergeByRecency(wiredSource, connectedSource) {
     const out = { ...wiredSource };
     for (const [sid, entry] of Object.entries(connectedSource)) {
@@ -317,12 +320,13 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   }
   const merged    = mergeByRecency(wired, connected);
   const mergedRaw = mergeByRecency(acceptedRaw, connected);
-  // Föderierte Gatekeeper (federated_gatekeepers.json) erweitern die
-  // Reichweite der wired_*-Tools um deren eigene wired Souls (1 Hop, siehe
-  // resolveCandidates() in gatekeeper_proxy.mjs) — geladen für JEDE Soul,
-  // nicht nur "echte" Gatekeeper, exakt wie wired/connected oben; für Souls
-  // ohne eigene Föderationen ist die Datei einfach leer, keine
-  // Sonderbehandlung nötig.
+  // Föderierte Gatekeeper (federated_gatekeepers.json, siehe lib/
+  // federated_gatekeepers.mjs) erweitern die Reichweite der wired_*-Tools um
+  // deren eigene wired Souls (1 Hop, resolveCandidates() in
+  // gatekeeper_proxy.mjs) — geladen für JEDE Soul, nicht nur "echte"
+  // Gatekeeper, exakt wie wired/connected oben; für Souls ohne eigene
+  // Föderationen ist die Datei einfach leer (loadFederated() faengt das ab),
+  // keine Sonderbehandlung nötig.
   const fed = await loadFederated(soulId);
   // gkEnabled allein reicht schon: "ich bin Gatekeeper" ist eine bewusste
   // Einstellung dieser Soul, kein Live-Zustand, der davon abhängt, ob gerade
@@ -501,13 +505,16 @@ app.get('/mcp',    handleMcp);
 app.post('/mcp',   handleMcp);
 app.delete('/mcp', handleMcp);
 
-// Bundled connector endpoint: authenticates the caller (self-cert or service
-// token, same formats as /mcp) and registers soul_discover_local (node
-// directory) PLUS, if the caller is a Gatekeeper soul, its own full owner
-// toolset (soul_read/write, chat, mind, ...) PLUS the generic soul_id-
-// parametrised proxy tools for every soul wired/connected/federated to it —
-// a single connector (this endpoint + the caller's cert/OAuth token) for the
-// Gatekeeper's own tools, the node directory, and every soul it bundles.
+// Gatekeeper MCP entry point — requires the same Bearer auth as handleMcp()
+// above (self-cert "{soul_id}.{cert}" or a plain OAuth-issued service_token;
+// missing/invalid → 401 + WWW-Authenticate so OAuth-aware clients like
+// Claude.ai's connector UI trigger the /oauth/authorize login screen
+// automatically). Once authenticated as soul X, registers X's normal owner
+// toolset (soul_read/write, chat, mind, ...) PLUS soul_discover_local (node
+// directory) PLUS, if X has wired other souls to it (wired_souls.json
+// non-empty), the generic soul_id-parametrised proxy tools for exactly those
+// wired souls — a single connector (this endpoint + X's cert/OAuth token) for
+// X's own tools, the node directory, and every soul X has been wired to.
 const DISCOVER_RESOURCE_PATH = '/.well-known/oauth-protected-resource/mcp/discover';
 
 async function handleMcpDiscover(req, res) {
@@ -606,13 +613,12 @@ async function handleMcpDiscover(req, res) {
 app.get('/mcp/discover',  handleMcpDiscover);
 app.post('/mcp/discover', handleMcpDiscover);
 
-// ── Gatekeeper-Wiring (Soul → Gatekeeper, asymmetrisch, scope-begrenzt) ───────
+// ── Gatekeeper-Wiring ──────────────────────────────────────────────────────
 // Verknüpft eine Soul mit einer anderen (der faktischen Gatekeeper-Soul):
 // der Aufrufer beweist per eigenem Soul-Cert seine Identität und legt einen
 // selbst erzeugten Service-Token vor (Settings→Services) — beides zusammen
-// ist der Owner-Konsens. Funktioniert unabhängig vom Hosting-Modus dieses
-// Nodes — jede Soul kann sich bei einem (ggf. entfernten) Gatekeeper
-// einklinken, auch auf einem Single-Hoster-Node.
+// ist der Owner-Konsens. Kein neues Krypto-Primitiv: verifyPeerCert() und
+// authorized_services.json existieren beide bereits.
 function parseOwnCertBearer(req) {
   const token = extractToken(req);
   if (!token || !token.includes('.')) return null;
@@ -710,10 +716,10 @@ app.post('/mcp/discover/wire', async (req, res) => {
   }
 
   // Angezeigter Name: die tatsächliche soul_name der wirenden Soul, nicht der
-  // (oft zweckbeschreibende) Name ihres Service-Tokens — der Gatekeeper soll
-  // sehen WER sich verbindet, nicht WOFÜR die wirende Soul ihren Token
-  // benannt hat. cert ist an dieser Stelle bereits via verifyPeerCert
-  // geprüft, dieselbe Bearer-Form ist also legitim.
+  // (oft zweckbeschreibende, z.B. "Gatekeeper Agency") Name ihres Service-
+  // Tokens — der Gatekeeper soll sehen WER sich verbindet, nicht WOFÜR die
+  // wirende Soul ihren Token benannt hat. cert ist an dieser Stelle bereits
+  // via verifyPeerCert geprüft, dieselbe Bearer-Form ist also legitim.
   const realSoulName = await getCallerSoulName(callerSoulId, cert, callerNodeUrl);
 
   // Same-node: Owner kontrolliert ohnehin jede Soul auf dem eigenen Node
@@ -802,6 +808,8 @@ app.post('/mcp/discover/wire-out', async (req, res) => {
 });
 
 // Owner-Sicht auf die eigene wired_souls.json (Settings-UI "Wired Souls"-Tabelle).
+// Bearer = eigener Soul-Cert der (faktischen) Gatekeeper-Soul. Kein Token-Klartext
+// in der Antwort.
 app.get('/mcp/discover/wired', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -891,6 +899,7 @@ app.post('/mcp/discover/wire/confirm', async (req, res) => {
 });
 
 // Owner-Sicht auf die eigene wired_to.json (Settings-UI "Connected to"-Anzeige).
+// Bearer = eigener Soul-Cert dieser Soul (der Seite, die sich verdrahtet hat).
 app.get('/mcp/discover/wired-to', async (req, res) => {
   const parsed = parseOwnCertBearer(req);
   if (!parsed) return res.status(401).json({ error: 'soul_cert_required' });
@@ -1065,12 +1074,8 @@ app.post('/mcp/discover/wired-to/remove', async (req, res) => {
 // Zwei Gatekeeper-Souls, potenziell auf unterschiedlichen Nodes, verbinden sich
 // symmetrisch — anders als Wire (Soul→Gatekeeper, asymmetrisch, scope-begrenzt).
 // Kein neues Krypto-Primitiv: derselbe verifyPeerCert(..., node_url)-Cross-Node-
-// Nachweis wie beim Cross-Node-Wiring, nur jetzt in beide Richtungen zwischen
-// zwei Gatekeepern statt Soul→Gatekeeper. Beidseitige Zustimmung nötig
-// (pending_in/pending_out/accept) — strukturell vorsichtiger als Wire's
-// ursprüngliches Design (das inzwischen den gatekeeper_enabled-Schalter hat),
-// deshalb hier von Anfang an ohne zusätzliche Absicherung sicher genug für
-// das generische Template.
+// Nachweis wie beim Cross-Node-Wiring (Phase 1), nur jetzt in beide Richtungen
+// zwischen zwei Gatekeepern statt Soul→Gatekeeper.
 
 // Owner-initiiert: fragt bei einem fremden Gatekeeper eine Föderation an.
 app.post('/mcp/discover/federate', async (req, res) => {
@@ -1275,12 +1280,13 @@ app.post('/mcp/discover/federated/:local_soul_id/disconnect', async (req, res) =
   res.json({ ok: true });
 });
 
-// Suche über föderierte Gatekeeper — 1 Hop tief: liefert NUR die eigenen
-// wired Souls dieses Gatekeepers, keine Weiterleitung an dessen eigene
-// Föderationen — verhindert Anfrage-Explosion in einem Mesh ohne TTL. Auth
-// per inbound_token (beim Federate ausgetauscht) statt Cert — Suche ist ein
-// wiederkehrender Vorgang, kein einmaliger Owner-Vorgang, ein dauerhafter
-// Token passt besser als ein Cert-Roundtrip pro Anfrage.
+// Suche über föderierte Gatekeeper — 1 Hop tief (siehe Phase 4, project_sys_v2_vision
+// Memory): liefert NUR die eigenen wired Souls dieses Gatekeepers, keine
+// Weiterleitung an dessen eigene Föderationen — verhindert Anfrage-Explosion
+// in einem Mesh ohne TTL. Auth per inbound_token (beim Federate ausgetauscht,
+// siehe oben) statt Cert — Suche ist ein wiederkehrender Vorgang, kein
+// einmaliger Owner-Vorgang, ein dauerhafter Token passt besser als ein
+// Cert-Roundtrip pro Anfrage.
 app.get('/mcp/discover/search', async (req, res) => {
   const { gatekeeper_soul_id, q } = req.query;
   const token = extractToken(req);
@@ -1317,11 +1323,13 @@ app.get('/mcp/discover/search', async (req, res) => {
 // SEINEM gespeicherten Token aus und reicht nur das Ergebnis durch. 1 Hop,
 // keine Weiterleitung an dessen eigene Föderationen (wie /mcp/discover/search).
 //
-// Konsent-Modell: das bestehende Wire-Opt-in EINER Soul zu einem Gatekeeper
-// ist die einzige Zustimmung, die nötig ist — föderiert dieser Gatekeeper
-// später mit einem anderen, wird die Soul automatisch darüber miterreichbar,
-// ohne erneute Einzelzustimmung. Wer das nicht will, entwirtet sich
-// (unwireSoul) oder der Gatekeeper-Owner trennt die Föderation.
+// Konsent-Modell (explizit vom User bestätigt, 2026-08-02): das bestehende
+// Wire-Opt-in EINER Soul zu einem Gatekeeper ist die einzige Zustimmung, die
+// nötig ist — föderiert dieser Gatekeeper später mit einem anderen, wird die
+// Soul automatisch darüber miterreichbar, ohne erneute Einzelzustimmung. Wer
+// das nicht will, entwirtet sich (unwireSoul) oder der Gatekeeper-Owner trennt
+// die Föderation. Bewusst maximal offen ("erst Info-Austausch, dann bei Bedarf
+// einschränken"), kein zusätzliches Consent-Gate hier eingebaut.
 //
 // Auth identisch zu /mcp/discover/search: gatekeeper_soul_id (wessen wiredMap
 // + Föderationsliste wir befragen) + Bearer inbound_token, gegen die EIGENE
@@ -1338,7 +1346,7 @@ async function authenticateRelay(req, res) {
     res.status(401).json({ error: 'not_federated' });
     return null;
   }
-  const { wired } = await loadAcceptedWired(gatekeeperSoulId);
+  const { wired, wiredRaw } = await loadAcceptedWired(gatekeeperSoulId);
   const entry = wired[targetSoulId];
   if (!entry) {
     res.status(404).json({ error: 'target_not_wired' });
@@ -1458,8 +1466,10 @@ app.post('/mcp/discover/federated/relay/beme', async (req, res) => {
 });
 
 // ── Soul-zu-Soul-Verbindungen (gegenseitiges Einverständnis, cross-node) ──────
-// Jede Soul kann das nutzen, nicht nur Gatekeeper — direkte, symmetrische
-// Verbindung zwischen zwei beliebigen Souls, mit echten Vault-Permissions.
+// Strukturell identisch zur Gatekeeper-Föderation oben, nur zwischen beliebigen
+// Souls statt Gatekeeper-Souls, mit echten Vault-Permissions statt leerem
+// Such-Scope — jede Soul kann das nutzen, nicht nur Gatekeeper.
+
 const CONN_PERMS = { soul: true, audio: true, video: true, images: true, context_files: true, network: true };
 function sanitizePerms(input) {
   const perms = {};
@@ -2023,6 +2033,23 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
         const result = await runSoulDraw(soulId, null, { canvas_id, width, height, background, strokes, description });
         const text = formatSoulDrawSummary(canvas_id, strokes.length, result);
         return res.json({ content: [{ type: 'text', text }] });
+      }
+
+      // In-App-Chat-Gegenstück zum MCP-Tool soul_generate (siehe tools/soul_generate.mjs) —
+      // gleiches Muster wie soul_draw oben: teilt sich runSoulGenerate(), reine
+      // Textzusammenfassung statt Bild+Text (executeTool() liest nur content[0].text).
+      case 'soul_generate': {
+        const { canvas_id, decision, mode, prompt } = input;
+        if (!canvas_id || !decision || !mode || !prompt) {
+          return res.status(400).json({ error: 'canvas_id, decision, mode und prompt erforderlich' });
+        }
+        try {
+          const result = await runSoulGenerate(soulId, null, { canvas_id, decision, mode, prompt });
+          const text = formatSoulGenerateSummary(canvas_id, result);
+          return res.json({ content: [{ type: 'text', text }] });
+        } catch (err) {
+          return res.json({ content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true });
+        }
       }
 
       // In-App-Chat-Gegenstück zu vault_shared_list (siehe tools/vault_shared_list.mjs) —
@@ -3967,15 +3994,26 @@ app.post('/api/soul/transfer/challenge', async (req, res) => {
   }
 });
 
+async function getSoulReownProjectId(soulId) {
+  try {
+    const raw = await readFile(`${SOULS_DIR}${soulId}/config.json`, 'utf8');
+    const cfg = JSON.parse(raw);
+    return typeof cfg.reown_project_id === 'string' && cfg.reown_project_id ? cfg.reown_project_id : null;
+  } catch {
+    return null;
+  }
+}
+
 app.get('/api/soul/transfer/status', async (req, res) => {
   const { soul_id: soulId, challenge_id: challengeId } = req.query;
   if (!soulId || !challengeId) return res.status(400).json({ error: 'soul_id und challenge_id erforderlich' });
   try {
     const challenge = await getSoulTransferChallenge(soulId, challengeId);
     if (!challenge) return res.status(404).json({ error: 'challenge_not_found' });
-    const [sellerWallet, ctx] = await Promise.all([
+    const [sellerWallet, ctx, reownProjectId] = await Promise.all([
       getSoulTransferOnChainOwner(soulId).catch(() => null),
       loadCtx(soulId).catch(() => null),
+      getSoulReownProjectId(soulId),
     ]);
     res.json({
       ok: true,
@@ -3983,6 +4021,7 @@ app.get('/api/soul/transfer/status', async (req, res) => {
       confirmation_message: soulTransferConfirmationMessage(soulId, challengeId),
       seller_wallet: sellerWallet,
       soul_name: ctx?.name || soulId.slice(0, 8),
+      reown_project_id: reownProjectId,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

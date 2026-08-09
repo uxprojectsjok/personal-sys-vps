@@ -145,18 +145,27 @@ function parseContractError(e, context = "") {
   }
 
   // ④ CALL_EXCEPTION / missing revert data
-  // Polygon Amoy RPC gibt oft keine revert-data zurück → Custom-Error nicht dekodierbar.
-  // Häufigste Ursache auf Amoy: RPC-Instabilität des Testnets.
+  // Der RPC gibt manchmal keine revert-data zurück → Custom-Error nicht dekodierbar.
+  // Hinweise sind je nach Kontext unterschiedlich relevant (z. B. Rate-Limit
+  // gibt's nur beim Anchor, nicht bei einer reinen USDC-Zahlung).
   if (
     e.code === "CALL_EXCEPTION" ||
     /missing revert data/i.test(e.message ?? "")
   ) {
+    const hints = [`→ Wallet not actually on ${ACTIVE_NETWORK.name} — check the network shown in your wallet app`];
+    hints.push(
+      context === "payment"
+        ? "→ Not enough USDC, or not enough POL for gas"
+        : "→ Not enough POL (min. 0.5 POL + gas)",
+    );
+    if (context === "anchor") {
+      hints.push("→ Rate limit (24h) not yet expired — 'Verify identity' shows the anchor status");
+    }
     return (
-      "Polygon Amoy rejected the transaction without error details.\n" +
-      "Most likely cause: RPC instability of the testnet → wait 1–2 min and try again.\n" +
+      `${ACTIVE_NETWORK.name} rejected the transaction without error details.\n` +
+      "Most likely cause: temporary RPC instability → wait 1–2 min and try again.\n" +
       "Other possible causes:\n" +
-      "→ Not enough POL (min. 0.5 POL + gas)\n" +
-      "→ Rate limit (24h) not yet expired — 'Verify identity' shows the anchor status"
+      hints.join("\n")
     );
   }
 
@@ -282,6 +291,7 @@ function readNetwork() {
 const walletAddress = ref("");
 const currentNetwork = ref("");
 const isConnected = ref(false);
+const isConnectingWallet = ref(false);
 const isAnchoring = ref(false);
 const isTransferring = ref(false);
 const isPaying = ref(false);
@@ -326,12 +336,18 @@ export function useChainAnchor() {
 
   // ── Wallet ────────────────────────────────────────────────────────────────
 
+  // Wartezeit, bevor eine hängende Verbindung (z. B. WalletConnect-Relay
+  // beantwortet die Pairing-Anfrage nie) als fehlgeschlagen gemeldet wird —
+  // ohne das bliebe der Nutzer bei einem endlos drehenden Spinner ohne Fehler.
+  const CONNECT_TIMEOUT_MS = 30_000;
+
   // Öffnet das AppKit-Modal. State-Updates laufen über die persistenten
   // onMounted-Subscriptions – kein eigenes Warten / Promise nötig.
   async function connectWallet(authToken, knownProjectId) {
     if (typeof window === "undefined") return;
     if (isConnected.value) return;
     anchorError.value = "";
+    isConnectingWallet.value = true;
 
     // Project ID: direkt übergeben, oder API-Fetch, oder Runtime-Config
     let projectId = knownProjectId || "";
@@ -355,20 +371,50 @@ export function useChainAnchor() {
 
     if (!projectId) {
       anchorError.value = "No Reown Project ID configured. Please add it in settings (dashboard.reown.com).";
+      isConnectingWallet.value = false;
       return;
     }
     const kit = getOrInitAppKit(projectId);
     if (!kit) {
       anchorError.value = "AppKit could not be initialized.";
+      isConnectingWallet.value = false;
       return;
     }
-    try {
-      await kit.open();
-    } catch {
+    // open() NICHT awaiten — bei manchen Wallet-Apps (v. a. QR/Mobile-Pairing)
+    // löst sich das Promise erst nach Abschluss des Pairings auf oder nie, was
+    // unseren Timeout weiter unten sonst blockiert hätte, bevor er überhaupt
+    // zu laufen beginnt.
+    kit.open().catch(() => {
       // open() kann auf manchen Mobile-Browsern werfen – ignorieren
-    }
+    });
     // State sofort lesen — subscribeAccount feuert bei manchen Wallets leicht verzögert
     _syncFromAppKit();
+
+    // Bis zu CONNECT_TIMEOUT_MS auf isConnected warten (subscribeAccount feuert
+    // asynchron). Läuft die Zeit ab, ohne dass eine Adresse ankam — z. B. weil
+    // die Wallet-App beim Pairing hängen bleibt — meldet sich das als klarer
+    // Fehler statt eines endlosen Spinners. Die Subscription bleibt dabei aktiv:
+    // schließt der Nutzer später doch noch ab, verbindet sich die Wallet trotzdem.
+    if (!isConnected.value) {
+      const connected = await new Promise((resolve) => {
+        const startedAt = Date.now();
+        const iv = setInterval(() => {
+          if (isConnected.value) {
+            clearInterval(iv);
+            resolve(true);
+          } else if (Date.now() - startedAt > CONNECT_TIMEOUT_MS) {
+            clearInterval(iv);
+            resolve(false);
+          }
+        }, 400);
+      });
+      if (!connected) {
+        anchorError.value =
+          "Wallet-Verbindung wurde nicht abgeschlossen (Timeout nach 30s). " +
+          "Bitte in der Wallet-App erneut versuchen oder die Internetverbindung prüfen.";
+      }
+    }
+    isConnectingWallet.value = false;
   }
 
   // ── Wallet disconnect ─────────────────────────────────────────────────────
@@ -1290,6 +1336,7 @@ export function useChainAnchor() {
     walletAddress,
     currentNetwork,
     isConnected,
+    isConnectingWallet,
     isAnchoring,
     isTransferring,
     isProvingIdentity,

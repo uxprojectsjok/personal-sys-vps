@@ -40,7 +40,7 @@
 
           <!-- Step 1: connect + sign -->
           <template v-else-if="challenge.status === 'pending'">
-            <button v-if="!isConnected" class="at-btn at-btn--primary" @click="connectWallet()">Wallet verbinden</button>
+            <button v-if="!isConnected" class="at-btn at-btn--primary" :disabled="isConnectingWallet" @click="connectWallet(undefined, reownProjectId)">{{ isConnectingWallet ? 'Verbindung wird hergestellt…' : 'Wallet verbinden' }}</button>
             <template v-else>
               <p class="at-hint">Verbunden: <span class="at-mono">{{ walletAddress }}</span></p>
               <button class="at-btn at-btn--primary" :disabled="signing" @click="doSign">{{ signing ? 'Signiere…' : 'Annahme bestätigen (Signatur)' }}</button>
@@ -50,7 +50,7 @@
           <!-- Step 2 (sale only): pay -->
           <template v-else-if="challenge.status === 'signed'">
             <p class="at-hint">Signatur bestätigt. Jetzt {{ challenge.price_usdc }} USDC an <span class="at-mono">{{ sellerWallet }}</span> senden:</p>
-            <button v-if="!isConnected" class="at-btn at-btn--primary" @click="connectWallet()">Wallet verbinden</button>
+            <button v-if="!isConnected" class="at-btn at-btn--primary" :disabled="isConnectingWallet" @click="connectWallet(undefined, reownProjectId)">{{ isConnectingWallet ? 'Verbindung wird hergestellt…' : 'Wallet verbinden' }}</button>
             <button v-else class="at-btn at-btn--primary" :disabled="paying" @click="doPay">{{ paying ? 'Zahlung läuft…' : `${challenge.price_usdc} USDC senden` }}</button>
           </template>
 
@@ -76,7 +76,7 @@ const soulId      = route.query.soul_id
 const challengeId = route.query.challenge_id
 
 const {
-  walletAddress, isConnected, anchorError,
+  walletAddress, isConnected, isConnectingWallet, anchorError,
   connectWallet, signSimple, sendUsdcPayment,
 } = useChainAnchor()
 
@@ -85,6 +85,7 @@ const loadError  = ref('')
 const challenge  = ref(null)
 const soulName    = ref('')
 const sellerWallet = ref(null)
+const reownProjectId = ref('')
 const confirmationMessage = ref('')
 const signing    = ref(false)
 const paying     = ref(false)
@@ -115,6 +116,7 @@ async function loadStatus() {
     challenge.value = d.challenge
     soulName.value = d.soul_name
     sellerWallet.value = d.seller_wallet
+    reownProjectId.value = d.reown_project_id || ''
     confirmationMessage.value = d.confirmation_message
   } catch (e) {
     loadError.value = e.message
