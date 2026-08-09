@@ -8,7 +8,6 @@
           <div class="gate-sub">{{ config.public.nodeName }}</div>
           <h1>Save Your Soul<em>.</em></h1>
           <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
-          <ContextSearch />
           <div style="display:flex;flex-direction:column;gap:12px;width:100%">
             <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
               {{ $t('index.create_soul') }}
@@ -22,8 +21,7 @@
             <span class="live-dot" />
             {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
-          <NuxtLink to="/scanner" style="display:block;margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);text-decoration:none">{{ $t('landing.arch_link_scan') }} →</NuxtLink>
-          <LocaleToggle style="margin-top:12px;justify-content:center" />
+          <LocaleToggle style="margin-top:14px;justify-content:center" />
         </div>
       </div>
     </template>
@@ -309,7 +307,6 @@ import SoulUpload from '~/components/SoulUpload.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
-import ContextSearch from '~/components/ContextSearch.vue'
 import LocaleToggle from '~/components/LocaleToggle.vue'
 
 const config = useRuntimeConfig()
