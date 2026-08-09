@@ -3192,6 +3192,13 @@ async function pushSoulFieldLines(lines, s) {
   if (await isGatekeeperEnabled(s.soul_id)) {
     lines.push('- **Gatekeeper role:** wire_status, wire_search, wire_scanner, wired_soul_read, wired_soul_write, wired_beme_chat, wired_shared_get, wired_{audio,image,video,context}_list/get — available to an authenticated owner/peer/service-token session for this soul (not part of the anonymous paid-agent flow above).');
   }
+  const transferListing = await getSoulTransferListing(s.soul_id).catch(() => null);
+  if (transferListing?.active) {
+    const offer = transferListing.mode === 'sale'
+      ? `for sale, ${transferListing.price_usdc} USDC (price locked for ${transferListing.duration_hours}h per challenge)`
+      : 'free transfer';
+    lines.push(`- **Ownership transfer offered:** ${offer} — see "Soul Transfer" below, call POST ${BASE_URL}/api/soul/transfer/challenge with { "soul_id": "${s.soul_id}" } to start.`);
+  }
   await pushSoulNetworkLines(lines, s.soul_id);
 }
 
@@ -3256,6 +3263,37 @@ function pushAccessFlowLines(lines, soulIdExample) {
   lines.push(EU_CONSUMER_RIGHTS
     ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
     : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
+  lines.push('');
+  lines.push('## Soul Transfer (ownership, not access)');
+  lines.push('Separate from buying paid access above — this transfers on-chain OWNERSHIP of a soul');
+  lines.push('(SoulRegistry.soulOwner) to a new wallet, free or for a fixed USDC price. A soul with an');
+  lines.push('active offer shows "Ownership transfer offered" in its fields above. No MCP tool exists for');
+  lines.push('this (an anonymous agent has no session on this node anyway) — plain HTTP only, same reasoning');
+  lines.push('as the consent endpoints above.');
+  lines.push('');
+  lines.push('**1. Start a challenge**');
+  lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/transfer/challenge\nContent-Type: application/json\n\n{ "soul_id": "${sid}" }\n\`\`\``);
+  lines.push('Returns `{ challenge_id, mode, price_usdc, expires_at, confirmation_message, accept_url, seller_wallet }`.');
+  lines.push('`accept_url` is a ready-to-use web page — show it to the human you are acting for, they connect');
+  lines.push('their own wallet there and do the signing (and paying, if `mode` is "sale") themselves. Do not sign');
+  lines.push('or pay on their behalf; you have no wallet of your own here.');
+  lines.push('');
+  lines.push('**2. Poll status**');
+  lines.push(`\`\`\`\nGET ${BASE_URL}/api/soul/transfer/status?soul_id=${sid}&challenge_id={challenge_id}\n\`\`\``);
+  lines.push('`status` moves pending → signed (sale only) → ready → completed. "ready" means the human has done');
+  lines.push('everything required on their end — the CURRENT owner still has to execute the actual on-chain');
+  lines.push('transferSoul() themselves from their own wallet; this can take a while, keep polling or tell the');
+  lines.push('human to check back later rather than assuming it failed.');
+  lines.push('');
+  lines.push('**3. (Advanced — only if not using accept_url) Sign and pay directly**');
+  lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/transfer/sign\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "challenge_id": "{challenge_id}", "wallet": "0x...", "signature": "0x..." }\n\`\`\``);
+  lines.push('`signature` = the human\'s wallet signing the exact `confirmation_message` string from step 1 (e.g.');
+  lines.push('via personal_sign) — this is what proves they actually control that address, do not skip it or');
+  lines.push('accept a claimed address without it. For a sale, after signing:');
+  lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/transfer/pay\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "challenge_id": "{challenge_id}", "tx_hash": "0x..." }\n\`\`\``);
+  lines.push('`tx_hash` = a real USDC transfer the human already sent, from their `wallet` to `seller_wallet`');
+  lines.push('(from step 1), for at least `price_usdc`. This is verified against the actual chain, not taken');
+  lines.push('on trust — an unconfirmed or wrong-amount tx_hash is rejected.');
   lines.push('');
   lines.push('## More');
   lines.push('- Protocol info: https://sys.uxprojects-jok.com/llms.txt');
