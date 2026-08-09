@@ -225,13 +225,13 @@
             <!-- SKELETON -->
             <tbody v-else-if="loading">
               <tr v-for="i in 4" :key="i" class="skel-tr">
-                <td v-for="j in 16" :key="j"><span class="skel"></span></td>
+                <td v-for="j in 18" :key="j"><span class="skel"></span></td>
               </tr>
             </tbody>
 
             <!-- EMPTY -->
             <tbody v-else>
-              <tr><td colspan="15" class="empty-td">{{ t.empty }}</td></tr>
+              <tr><td colspan="18" class="empty-td">{{ t.empty }}</td></tr>
             </tbody>
           </table>
         </div>
