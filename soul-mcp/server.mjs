@@ -3456,6 +3456,13 @@ app.get('/api/soul/scan', async (req, res) => {
       } catch {}
     }
 
+    // Aktives Transfer-Angebot (falls vorhanden) — dieselbe Anreicherung wird
+    // beim Mergen mit Remote-Scans (Schritt 4 unten) automatisch netzwerkweit
+    // sichtbar, ganz ohne eigene Remote-Fetch-Logik, weil jeder Node schon
+    // seinen eigenen /api/soul/scan genauso anreichert (gleiches Prinzip wie
+    // paypal_enabled/price_eur oben).
+    const transferListing = s.soul_id ? await getSoulTransferListing(s.soul_id).catch(() => null) : null;
+
     // Effective live price (same formula as loadPaymentHint)
     const amort = s.amortization ?? {};
     const baseUsdc = parseFloat(amort.price_usdc) || 0;
@@ -3521,6 +3528,10 @@ app.get('/api/soul/scan', async (req, res) => {
       price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,
       price_note:          amort.paypal_enabled === true ? (amort.price_note || null) : null,
       consent_required:    EU_CONSUMER_RIGHTS,
+      transfer_offer:      transferListing?.active ? {
+        mode: transferListing.mode,
+        price_usdc: transferListing.mode === 'sale' ? transferListing.price_usdc : null,
+      } : null,
     };
   }));
 

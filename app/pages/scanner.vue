@@ -64,6 +64,7 @@
                 <th class="c-tags">{{ t.colTags }}</th>
                 <th class="c-tools">{{ t.colTools }}</th>
                 <th class="c-price">{{ t.colPrice }}</th>
+                <th class="c-transfer">{{ t.colTransfer }}</th>
                 <th class="c-token">{{ t.colToken }}</th>
                 <th class="c-sess">{{ t.colSessions }}</th>
                 <th class="c-anc">{{ t.colAnchors }}</th>
@@ -114,6 +115,14 @@
                       {{ soul.price_eur ?? '?' }}<span class="price-u"> EUR</span>
                     </span>
                   </div>
+                </td>
+
+                <td class="c-transfer">
+                  <span v-if="soul.transfer_offer?.mode === 'sale'" class="price transfer-price">
+                    {{ soul.transfer_offer.price_usdc }}<span class="price-u"> USDC</span>
+                  </span>
+                  <span v-else-if="soul.transfer_offer?.mode === 'free'" class="transfer-free-pill">{{ t.transferFree }}</span>
+                  <span class="dim" v-else>—</span>
                 </td>
 
                 <td class="c-token">
@@ -195,7 +204,7 @@
             <!-- SKELETON -->
             <tbody v-else-if="loading">
               <tr v-for="i in 4" :key="i" class="skel-tr">
-                <td v-for="j in 15" :key="j"><span class="skel"></span></td>
+                <td v-for="j in 16" :key="j"><span class="skel"></span></td>
               </tr>
             </tbody>
 
@@ -386,6 +395,8 @@ const de = {
   colTags:        'Tags',
   colTools:       'Werkzeuge',
   colPrice:       'USDC / Anfrage',
+  colTransfer:    'Eigentum',
+  transferFree:   'kostenlos',
   colToken:       'Token',
   colSessions:    'Sessions',
   colAnchors:     'Anchors',
@@ -481,6 +492,8 @@ const en = {
   colTags:        'Tags',
   colTools:       'Tools',
   colPrice:       'USDC / Request',
+  colTransfer:    'Ownership',
+  transferFree:   'free',
   colToken:       'Token',
   colSessions:    'Sessions',
   colAnchors:     'Anchors',
@@ -1163,6 +1176,8 @@ onUnmounted(() => {
 .price-stack { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .price { font-family: var(--mono); font-size: 13px; color: var(--teal); font-weight: 600; }
 .price-u { font-size: 10px; letter-spacing: 0.1em; opacity: 0.8; }
+.transfer-price { color: #d2ac6e; }
+.transfer-free-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #d2ac6e; border: 1px solid rgba(210,172,110,0.3); padding: 2px 6px; }
 .mono { font-family: var(--mono); font-size: 13px; color: var(--fg); }
 .c-methods { min-width: 90px; }
 .method-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--teal); border: 1px solid rgba(109,184,154,0.22); padding: 2px 6px; margin: 2px 2px 2px 0; }
