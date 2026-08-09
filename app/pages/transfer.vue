@@ -24,7 +24,7 @@
               <div class="tf-status-row">
                 <span class="tf-label">Deine Wallet</span>
                 <span v-if="isConnected" class="tf-mono">{{ walletAddress }} <span class="tf-net">({{ currentNetwork }})</span></span>
-                <button v-else class="tf-btn tf-btn--ghost" @click="connectWallet()">Wallet verbinden</button>
+                <button v-else class="tf-btn tf-btn--primary" @click="connectWallet()">Wallet verbinden</button>
               </div>
             </div>
 
@@ -97,7 +97,7 @@
                 <label>Ziel-Wallet-Adresse</label>
                 <input v-model="directAddress" type="text" class="tf-input tf-mono" placeholder="0x…" />
               </div>
-              <button class="tf-btn tf-btn--danger" :disabled="directTransferring || !directAddress" @click="doDirectTransfer">
+              <button class="tf-btn tf-btn--primary" :disabled="directTransferring || !directAddress" @click="doDirectTransfer">
                 {{ directTransferring ? 'Wird übertragen…' : 'Direkt übertragen' }}
               </button>
             </div>
@@ -343,9 +343,6 @@ function onNav(id) {
 .tf-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .tf-btn--ghost { background: transparent; border-color: var(--line-2); color: var(--fg); opacity: 0.8; }
 .tf-btn--ghost:hover { border-color: var(--accent); opacity: 1; }
-.tf-btn--danger { background: transparent; border-color: rgba(223,144,144,0.4); color: var(--c-danger); }
-.tf-btn--danger:hover:not(:disabled) { background: rgba(223,144,144,0.1); }
-.tf-btn--danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .tf-hint { font-size: 15px; color: var(--fg); line-height: 1.65; margin: 0; }
 .tf-hint code { font-family: var(--mono); background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }
