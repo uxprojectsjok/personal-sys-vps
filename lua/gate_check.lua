@@ -18,11 +18,6 @@
 -- getestet.)
 local request_path = (ngx.var.request_uri or ""):match("^([^?]*)")
 
-if request_path == "/" then
-  ngx.ctx.gate_done = true
-  return
-end
-
 -- Gate-Seite selbst ist immer zugänglich (inkl. /gate?next=...)
 if request_path == "/gate" or request_path:sub(1, 6) == "/gate/" then
   ngx.ctx.gate_done = true
