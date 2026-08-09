@@ -201,16 +201,16 @@ async function doPay() {
 .at-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); display: block; margin-bottom: 14px; }
 .at-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(28px,4.5vw,42px); line-height: 1.1; letter-spacing: -0.03em; color: #fff; margin: 0 0 16px; }
 .at-h1 em { font-style: italic; color: var(--teal); }
-.at-lede { font-size: 15.5px; line-height: 1.7; color: var(--fg-2); margin: 0; }
+.at-lede { font-size: 16px; line-height: 1.65; color: var(--fg); margin: 0; }
 
 .at-card { border: 1px solid var(--line); background: var(--surface-2); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
 .at-card--warn { border-color: rgba(223,144,144,0.35); color: #e06c75; }
 .at-card--ok { border-color: rgba(109,184,154,0.35); color: var(--teal-bright); }
 
-.at-kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px; }
-.at-kv > span:first-child { color: var(--fg-dim); flex: none; }
+.at-kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 15px; }
+.at-kv > span:first-child { color: var(--fg); flex: none; }
 .at-kv > span:last-child { text-align: right; min-width: 0; }
-.at-mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+.at-mono { font-family: var(--mono); font-size: 14px; color: var(--fg); word-break: break-all; }
 
 .at-badge { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); }
 .at-badge--ready, .at-badge--completed { background: rgba(109,184,154,0.15); color: var(--teal-bright); }
@@ -222,6 +222,6 @@ async function doPay() {
 .at-btn--primary:hover:not(:disabled) { background: var(--teal-bright); }
 .at-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.at-hint { font-size: 13.5px; color: var(--fg-dim); line-height: 1.6; margin: 0; }
+.at-hint { font-size: 15px; color: var(--fg); line-height: 1.65; margin: 0; }
 .at-error { color: #e06c75; font-size: 14px; margin: 0; }
 </style>
