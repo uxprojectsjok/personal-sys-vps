@@ -471,6 +471,7 @@ function lockGate() {
 
 function onNav(id) {
   if (id === 'anchor')   return
+  if (id === 'transfer') { router.push('/transfer'); return }
   if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }

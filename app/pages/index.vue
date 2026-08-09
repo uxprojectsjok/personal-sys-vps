@@ -692,6 +692,7 @@ function onNav(id) {
   if (id === 'chronik')  { navigateTo('/chronicle');    return }
   if (id === 'maturity') { navigateTo('/maturity');      return }
   if (id === 'health')   { navigateTo('/health'); return }
+  if (id === 'transfer') { navigateTo('/transfer'); return }
   if (id === 'files')    { navigateTo('/vault');    return }
   if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/connection'); return }

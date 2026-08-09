@@ -105,6 +105,7 @@ const nav = computed(() => [
   { group: t('nav.group_tools'), items: [
     { id: 'agent',    icon: 'agent',    label: t('nav.agent') },
     { id: 'anchor',   icon: 'anchor',   label: t('nav.anchor') },
+    { id: 'transfer', icon: 'wallet',   label: t('nav.transfer') },
     { id: 'export',   icon: 'export',   label: t('nav.export') },
     { id: 'apps',     icon: 'apps',     label: t('nav.apps') },
     { id: 'settings', icon: 'settings', label: t('nav.settings') },

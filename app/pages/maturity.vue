@@ -200,6 +200,7 @@ function onNav(id) {
   if (id === 'market')   { router.push('/marketplace'); return }
   if (id === 'earnings') { router.push('/earnings');   return }
   if (id === 'anchor')   { router.push('/anchor');    return }
+  if (id === 'transfer') { router.push('/transfer');   return }
   if (id === 'export')   { router.push('/export'); return }
   if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }

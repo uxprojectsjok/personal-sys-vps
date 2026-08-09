@@ -239,6 +239,100 @@ server {
     proxy_set_header Host $host;
   }
 
+  # ── Soul Transfer (Eigentumsübertragung) ─────────────────────────────────────
+  # /listing, /complete, /cancel: Owner-only (soul_cert-Prüfung in Node selbst,
+  # kein access_by_lua_file nötig). /challenge, /status, /sign, /pay: öffentlich,
+  # Käufer hat keine Session auf diesem Node — analog /api/soul/terms/show|accept.
+  location = /api/soul/transfer/listing {
+    limit_except GET PUT DELETE OPTIONS { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "GET, PUT, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/listing;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/complete {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/complete;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/cancel {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/cancel;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/challenge {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/challenge;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/status {
+    limit_except GET OPTIONS { deny all; }
+    limit_req zone=api burst=20 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/status;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/sign {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/sign;
+    proxy_set_header Host $host;
+  }
+
+  location = /api/soul/transfer/pay {
+    limit_except POST OPTIONS { deny all; }
+    limit_req zone=chat burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/pay;
+    proxy_set_header Host $host;
+  }
+
   # ── Gate-Status (öffentlich – gibt nur soul_registered zurück) ───────────────
   location = /api/gate-status {
     limit_req zone=api burst=20 nodelay;
@@ -1850,6 +1944,19 @@ server {
     add_header Pragma "no-cache" always;
     add_header Expires "0" always;
     try_files /lizenz/index.html /index.html;
+  }
+
+  ################################
+  # Accept Transfer: öffentliche Käufer-Seite für Soul-Transfer-Bestätigung
+  # (Wallet verbinden, signieren, ggf. zahlen) — kein Gate-Check, Käufer hat
+  # keine Session auf diesem Node, exakt wie bei /use-cases begründet.
+  ################################
+  location = /accept-transfer {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /accept-transfer/index.html /index.html;
   }
 
   # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────

@@ -66,6 +66,14 @@ const READ_RPCS = ACTIVE_NETWORK.chainId === 137n ? POLYGON_RPCS_MAIN : POLYGON_
 
 const ANCHOR_FEE_WEI = 500_000_000_000_000_000n;
 
+// USDC (Polygon PoS, native, 6 decimals) — für Soul-Transfer-Verkäufe
+// (soul_transfer.mjs verifiziert denselben Contract/Transfer-Event server-seitig).
+const USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
+const ERC20_ABI = [
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function decimals() view returns (uint8)",
+];
+
 const ABI = [
   "function anchor(bytes32 soulId, bytes32 contentHash, uint32 sessionCount) payable",
   "function transferSoul(bytes32 soulId, address newOwner)",
@@ -276,6 +284,7 @@ const currentNetwork = ref("");
 const isConnected = ref(false);
 const isAnchoring = ref(false);
 const isTransferring = ref(false);
+const isPaying = ref(false);
 const isProvingIdentity = ref(false);
 const anchorError = ref("");
 const verifyError = ref("");
@@ -981,6 +990,46 @@ export function useChainAnchor() {
     }
   }
 
+  // Sendet eine normale USDC-Überweisung (kein x402/EIP-3009 — eigenes Gas,
+  // eigene Wallet-Bestätigung) an eine beliebige Adresse. Für Soul-Transfer-
+  // Käufe: der Server verifiziert den resultierenden tx_hash gegen die Chain
+  // (from/to/amount), siehe lib/soul_transfer.mjs submitPayment().
+  async function sendUsdcPayment(toAddress, amountUsdc) {
+    if (!isConnected.value) {
+      anchorError.value = "Please connect your wallet first.";
+      return null;
+    }
+    isPaying.value = true;
+    anchorError.value = "";
+    try {
+      const provider = await ensureCorrectNetwork(getSignerProvider());
+      const signer = await withSigner(provider);
+      const contract = new Contract(USDC_ADDRESS, ERC20_ABI, signer);
+      const amountWei = BigInt(Math.round(Number(amountUsdc) * 1_000_000)); // 6 decimals
+      const tx = await contract.transfer(toAddress, amountWei);
+      const isMobilePay = typeof navigator !== "undefined" &&
+        /iPhone|iPad|Android/i.test(navigator.userAgent);
+      try {
+        await Promise.race([
+          tx.wait(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("WAIT_TIMEOUT")), isMobilePay ? 10_000 : 30_000)
+          ),
+        ]);
+      } catch (waitErr) {
+        if (waitErr.message === "WAIT_TIMEOUT" || waitErr.code === "NETWORK_ERROR") {
+          await pollTxReceipt(tx.hash);
+        }
+      }
+      return tx.hash;
+    } catch (e) {
+      anchorError.value = parseContractError(e, "payment");
+      return null;
+    } finally {
+      isPaying.value = false;
+    }
+  }
+
   // ── Identity Proof ────────────────────────────────────────────────────────
 
   // Einfache Nachricht signieren — ohne Soul-ID / on-chain-Verifikation
@@ -1260,6 +1309,8 @@ export function useChainAnchor() {
     appendGrowthEntry,
     anchorSoul,
     transferSoul,
+    sendUsdcPayment,
+    isPaying,
     getSoulOwner,
     verifySoul,
     verifyCurrent,

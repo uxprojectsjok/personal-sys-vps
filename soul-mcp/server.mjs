@@ -47,6 +47,20 @@ import {
 } from './lib/eu_withdrawal_terms.mjs';
 import { computeDynamicUsdcPrice } from './lib/dynamic_pricing.mjs';
 import {
+  getListing as getSoulTransferListing,
+  setListing as setSoulTransferListing,
+  deactivateListing as deactivateSoulTransferListing,
+  getActiveChallenge as getSoulTransferActiveChallenge,
+  getChallenge as getSoulTransferChallenge,
+  createChallenge as createSoulTransferChallenge,
+  confirmationMessage as soulTransferConfirmationMessage,
+  submitSignature as submitSoulTransferSignature,
+  submitPayment as submitSoulTransferPayment,
+  markCompleted as markSoulTransferCompleted,
+  cancelChallenge as cancelSoulTransferChallenge,
+  getOnChainOwner as getSoulTransferOnChainOwner,
+} from './lib/soul_transfer.mjs';
+import {
   getStatus as getX402AgentStatus,
   savePrivateKey as saveX402AgentKey,
   loadAccount as loadX402AgentAccount,
@@ -3775,6 +3789,180 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Soul Transfer (Eigentumsübertragung, kostenlos oder Verkauf) ────────────
+// Siehe lib/soul_transfer.mjs für die volle Begründung. Owner-Endpoints
+// (Listing verwalten, Übertragung abschließen) per Bearer soul_cert — dieselbe
+// Selbst-Cert-Prüfung wie im /mcp-Handler (verifyPeerCert), kein Umweg über
+// Lua nötig, da hier ohnehin schon alles in Node läuft (ethers-Signatur- und
+// Zahlungsprüfung). Käufer-Endpoints bewusst öffentlich, ohne Session — exakt
+// dasselbe Prinzip wie /api/soul/terms/show|accept: ein fremder Agent kennt
+// keine Session auf diesem Node.
+
+async function requireSoulOwner(req, res, expectedSoulId) {
+  const token = extractToken(req);
+  if (!token || !token.includes('.')) {
+    res.status(401).json({ error: 'soul_cert erforderlich' });
+    return false;
+  }
+  const [soulId, cert] = token.split('.');
+  if (soulId !== expectedSoulId) {
+    res.status(403).json({ error: 'soul_cert gehört zu einer anderen Soul' });
+    return false;
+  }
+  const ok = await verifyPeerCert(soulId, cert, null);
+  if (!ok) {
+    res.status(401).json({ error: 'Ungültiger soul_cert' });
+    return false;
+  }
+  return true;
+}
+
+app.get('/api/soul/transfer/listing', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  if (!(await requireSoulOwner(req, res, soulId))) return;
+  try {
+    const [listing, challenge, onChainOwner] = await Promise.all([
+      getSoulTransferListing(soulId),
+      getSoulTransferActiveChallenge(soulId),
+      getSoulTransferOnChainOwner(soulId).catch(() => null),
+    ]);
+    res.json({ ok: true, listing, challenge, on_chain_owner: onChainOwner });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/soul/transfer/listing', async (req, res) => {
+  const soulId = req.body?.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  if (!(await requireSoulOwner(req, res, soulId))) return;
+  try {
+    const { mode, price_usdc, duration_hours } = req.body || {};
+    const listing = await setSoulTransferListing(soulId, {
+      mode, priceUsdc: price_usdc, durationHours: duration_hours,
+    });
+    res.json({ ok: true, listing });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/soul/transfer/listing', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  if (!(await requireSoulOwner(req, res, soulId))) return;
+  try {
+    const listing = await deactivateSoulTransferListing(soulId);
+    res.json({ ok: true, listing });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/soul/transfer/complete', async (req, res) => {
+  const soulId = req.body?.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  if (!(await requireSoulOwner(req, res, soulId))) return;
+  try {
+    const { challenge_id, transfer_tx_hash } = req.body || {};
+    if (!challenge_id) return res.status(400).json({ error: 'challenge_id erforderlich' });
+    const challenge = await markSoulTransferCompleted(soulId, challenge_id, transfer_tx_hash);
+    res.json({ ok: true, challenge });
+  } catch (err) {
+    res.status(400).json({ error: err.message, code: err.code });
+  }
+});
+
+app.post('/api/soul/transfer/cancel', async (req, res) => {
+  const soulId = req.body?.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  if (!(await requireSoulOwner(req, res, soulId))) return;
+  try {
+    const challenge = await cancelSoulTransferChallenge(soulId, req.body?.challenge_id);
+    res.json({ ok: true, challenge });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Käufer-seitig, öffentlich (kein Soul-Cert nötig) ────────────────────────
+
+app.post('/api/soul/transfer/challenge', async (req, res) => {
+  const soulId = req.body?.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  try {
+    const [challenge, listing] = await Promise.all([
+      createSoulTransferChallenge(soulId),
+      getSoulTransferListing(soulId),
+    ]);
+    res.json({
+      ok: true,
+      challenge_id: challenge.challenge_id,
+      mode: challenge.mode,
+      price_usdc: challenge.price_usdc,
+      expires_at: challenge.expires_at,
+      status: challenge.status,
+      confirmation_message: soulTransferConfirmationMessage(soulId, challenge.challenge_id),
+      accept_url: `${BASE_URL}/accept-transfer?soul_id=${soulId}&challenge_id=${challenge.challenge_id}`,
+      seller_wallet: listing?.active ? await getSoulTransferOnChainOwner(soulId).catch(() => null) : null,
+    });
+  } catch (err) {
+    if (err.code === 'no_active_listing') {
+      return res.status(404).json({ error: 'no_active_listing', message: 'Diese Soul hat aktuell kein aktives Transfer-Angebot.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/soul/transfer/status', async (req, res) => {
+  const { soul_id: soulId, challenge_id: challengeId } = req.query;
+  if (!soulId || !challengeId) return res.status(400).json({ error: 'soul_id und challenge_id erforderlich' });
+  try {
+    const challenge = await getSoulTransferChallenge(soulId, challengeId);
+    if (!challenge) return res.status(404).json({ error: 'challenge_not_found' });
+    const [sellerWallet, ctx] = await Promise.all([
+      getSoulTransferOnChainOwner(soulId).catch(() => null),
+      loadCtx(soulId).catch(() => null),
+    ]);
+    res.json({
+      ok: true,
+      challenge,
+      confirmation_message: soulTransferConfirmationMessage(soulId, challengeId),
+      seller_wallet: sellerWallet,
+      soul_name: ctx?.name || soulId.slice(0, 8),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/soul/transfer/sign', async (req, res) => {
+  const { soul_id: soulId, challenge_id: challengeId, wallet, signature } = req.body || {};
+  if (!soulId || !challengeId || !wallet || !signature) {
+    return res.status(400).json({ error: 'soul_id, challenge_id, wallet und signature erforderlich' });
+  }
+  try {
+    const challenge = await submitSoulTransferSignature(soulId, challengeId, wallet, signature);
+    res.json({ ok: true, challenge });
+  } catch (err) {
+    res.status(400).json({ error: err.message, code: err.code });
+  }
+});
+
+app.post('/api/soul/transfer/pay', async (req, res) => {
+  const { soul_id: soulId, challenge_id: challengeId, tx_hash: txHash } = req.body || {};
+  if (!soulId || !challengeId || !txHash) {
+    return res.status(400).json({ error: 'soul_id, challenge_id und tx_hash erforderlich' });
+  }
+  try {
+    const challenge = await submitSoulTransferPayment(soulId, challengeId, txHash);
+    res.json({ ok: true, challenge });
+  } catch (err) {
+    res.status(400).json({ error: err.message, code: err.code });
   }
 });
 
