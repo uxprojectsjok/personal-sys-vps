@@ -5,7 +5,7 @@
       <!-- NAV -->
       <nav class="l-nav">
         <div class="lockup">
-          <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS." class="nav-logo-img" /></NuxtLink>
+          <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink>
         </div>
         <div class="nav-end">
           <LangToggle />
@@ -65,6 +65,8 @@
                 <th class="c-tools">{{ t.colTools }}</th>
                 <th class="c-price">{{ t.colPrice }}</th>
                 <th class="c-transfer">{{ t.colTransfer }}</th>
+                <th class="c-owner">{{ t.colOwner }}</th>
+                <th class="c-genesis">{{ t.colGenesis }}</th>
                 <th class="c-token">{{ t.colToken }}</th>
                 <th class="c-sess">{{ t.colSessions }}</th>
                 <th class="c-anc">{{ t.colAnchors }}</th>
@@ -122,6 +124,25 @@
                     {{ soul.transfer_offer.price_usdc }}<span class="price-u"> USDC</span>
                   </span>
                   <span v-else-if="soul.transfer_offer?.mode === 'free'" class="transfer-free-pill">{{ t.transferFree }}</span>
+                  <span class="dim" v-else>—</span>
+                </td>
+
+                <td class="c-owner">
+                  <a
+                    v-if="soul.on_chain_owner && soul.on_chain_owner !== 'error' && soul.on_chain_owner !== 'none'"
+                    :href="`https://polygonscan.com/address/${soul.on_chain_owner}`"
+                    target="_blank" rel="noopener" class="mono owner-link" :title="soul.on_chain_owner"
+                  >{{ shortAddr(soul.on_chain_owner) }}</a>
+                  <span v-else-if="soul.on_chain_owner === 'error'" class="dim" :title="t.ownerError">?</span>
+                  <span v-else-if="soul.on_chain_owner === 'none'" class="dim" :title="t.ownerNone">—</span>
+                  <span class="dim" v-else>…</span>
+                </td>
+
+                <td class="c-genesis">
+                  <div class="genesis-stack" v-if="soul.chain_metrics?.anchor_count > 0">
+                    <span class="genesis-since">{{ t.genesisSince }} {{ formatGenesisDate(soul.chain_metrics.genesis_ts) }}</span>
+                    <span class="genesis-sub">~{{ soul.chain_metrics.chain_age_human }} · {{ soul.chain_metrics.knowledge_blocks?.toLocaleString() }} KB+</span>
+                  </div>
                   <span class="dim" v-else>—</span>
                 </td>
 
@@ -378,6 +399,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { keccak256, toUtf8Bytes } from 'ethers'
 
 const { lang } = useLang()
 
@@ -397,6 +419,11 @@ const de = {
   colPrice:       'USDC / Anfrage',
   colTransfer:    'Eigentum',
   transferFree:   'kostenlos',
+  colOwner:       'Eigentümer',
+  ownerNone:      'nicht on-chain registriert',
+  ownerError:     'RPC-Fehler beim Laden',
+  colGenesis:     'Genesis',
+  genesisSince:   'seit',
   colToken:       'Token',
   colSessions:    'Sessions',
   colAnchors:     'Anchors',
@@ -494,6 +521,11 @@ const en = {
   colPrice:       'USDC / Request',
   colTransfer:    'Ownership',
   transferFree:   'free',
+  colOwner:       'Owner',
+  ownerNone:      'not registered on-chain',
+  ownerError:     'RPC error while loading',
+  colGenesis:     'Genesis',
+  genesisSince:   'since',
   colToken:       'Token',
   colSessions:    'Sessions',
   colAnchors:     'Anchors',
@@ -609,7 +641,11 @@ async function discoverNodesFromChain(apiKey) {
     // Discovery degradieren — bis zu 3 Versuche mit wachsender Pause, bevor
     // aufgegeben wird. Auf einem frisch besuchten Node (kein localStorage-
     // Cache aus vorherigen Besuchen) macht sonst schon ein einzelner
-    // flüchtiger Fehlschlag die Seite fälschlich leer.
+    // flüchtiger Fehlschlag die Seite fälschlich leer. Server-seitig war der
+    // exakte Call in wiederholten Tests immer sofort erfolgreich (~0.4s) —
+    // das deutet auf clientseitige Netzwerk-Latenz/Jitter als Ursache hin,
+    // nicht auf einen dauerhaften Ausfall, daher mehrere Versuche statt nur
+    // einem Retry.
     let json = null
     for (const delayMs of [0, 1500, 3500]) {
       if (delayMs) await new Promise(r => setTimeout(r, delayMs))
@@ -741,6 +777,87 @@ async function verifyTx(txHash, soulId) {
     console.warn(`[scan] verifyTx: Netzwerkfehler für soul_id=${soulId}:`, e.message)
     degraded.value.rpc = true
     return 'error'
+  }
+}
+
+// ── On-chain Eigentümer ───────────────────────────────────────────────────────
+// Der "Eigentum"-Spalte (transfer_offer) meldet jeder Node über sein eigenes
+// /api/soul/scan selbst — das ist Trust-on-first-use, ein Node könnte hier
+// lügen. Der tatsächliche Owner kommt daher NICHT von dort, sondern per
+// direktem eth_call auf soulOwner(bytes32) im SoulRegistry-Contract — das ist
+// die einzige Quelle, die sich nicht fälschen lässt. Selbe soulId→bytes32-
+// Umrechnung wie useChainAnchor.js (keccak256 der UTF-8-Bytes der UUID).
+const SOUL_OWNER_SELECTOR = '0x139cbc20' // keccak256("soulOwner(bytes32)").slice(0,10)
+
+function soulIdToBytes32(uuid) {
+  return keccak256(toUtf8Bytes(uuid))
+}
+
+function shortAddr(addr) {
+  if (!addr) return ''
+  return addr.slice(0, 6) + '…' + addr.slice(-4)
+}
+
+// Batched eth_call (JSON-RPC-Batch, wie discoverNodesFromChain) statt ein
+// fetch() pro Soul — spart Round-Trips und schont die Public-RPC-Rate-Limits.
+async function fetchOnChainOwners(soulIds) {
+  const owners = new Map()
+  for (let i = 0; i < soulIds.length; i += 20) {
+    const slice = soulIds.slice(i, i + 20)
+    const batch = slice.map((id, idx) => ({
+      jsonrpc: '2.0',
+      method:  'eth_call',
+      params:  [{ to: SYS_CONTRACT, data: SOUL_OWNER_SELECTOR + soulIdToBytes32(id).slice(2) }, 'latest'],
+      id:      idx,
+    }))
+    try {
+      const results = await fetch(RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batch),
+        signal: AbortSignal.timeout(10000),
+      }).then(r => r.json())
+      for (const res of (Array.isArray(results) ? results : [results])) {
+        const soulId = slice[res.id]
+        if (res.error || !res.result) { owners.set(soulId, 'error'); continue }
+        const hex = res.result
+        if (!hex || hex === '0x' || /^0x0+$/.test(hex)) { owners.set(soulId, 'none'); continue }
+        owners.set(soulId, '0x' + hex.slice(-40))
+      }
+    } catch (e) {
+      console.warn('[scan] fetchOnChainOwners: RPC-Batch fehlgeschlagen:', e.message)
+      degraded.value.rpc = true
+      for (const id of slice) if (!owners.has(id)) owners.set(id, 'error')
+    }
+  }
+  return owners
+}
+
+function formatGenesisDate(ts) {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleDateString(lang.value === 'de' ? 'de-DE' : 'en-US', {
+    day: 'numeric', month: 'numeric', year: 'numeric',
+  })
+}
+
+// Chain-Metrics (Genesis-Datum, Chain-Alter, Wissensgröße) kommen — anders als
+// der Owner — nicht per direktem eth_call, sondern über /api/soul/chain-metrics
+// des jeweiligen Souls eigenen Node (der Endpoint liest die Vault-Größe lokal
+// dazu, die auf einem fremden Node nicht verfügbar wäre). Öffentlich, kein Auth
+// nötig — siehe soul_chain_metrics.lua.
+async function fetchSoulChainMetrics(soul) {
+  if (!soul.mcp_endpoint) return null
+  try {
+    const origin = new URL(soul.mcp_endpoint).origin
+    const r = await fetch(`${origin}/api/soul/chain-metrics?soul_id=${encodeURIComponent(soul.soul_id)}`, {
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!r.ok) return null
+    const d = await r.json()
+    return d?.error ? null : d
+  } catch (e) {
+    console.debug(`[scan] chain-metrics für ${soul.soul_id} fehlgeschlagen:`, e.message)
+    return null
   }
 }
 
@@ -987,18 +1104,52 @@ async function runScan() {
   const chunks = []
   for (let i = 0; i < allSouls.length; i += 4) chunks.push(allSouls.slice(i, i + 4))
 
-  for (const chunk of chunks) {
-    await Promise.all(chunk.map(async soul => {
-      const ok = await verifyTx(soul.tx_hash, soul.soul_id)
-      const entry = soulMap.get(soul.soul_id)
+  const verifyPromise = (async () => {
+    for (const chunk of chunks) {
+      await Promise.all(chunk.map(async soul => {
+        const ok = await verifyTx(soul.tx_hash, soul.soul_id)
+        const entry = soulMap.get(soul.soul_id)
+        if (entry) {
+          entry.chain_verified = ok
+          soulMap.set(soul.soul_id, { ...entry })
+        }
+        verifying.value = Math.max(0, verifying.value - 1)
+        updateTable(soulMap)
+      }))
+    }
+  })()
+
+  // On-chain Eigentümer unabhängig davon laden (eigener eth_call, muss nicht
+  // auf die TX-Verifikation warten) — siehe fetchOnChainOwners oben.
+  const ownerPromise = fetchOnChainOwners(allSouls.map(s => s.soul_id)).then(owners => {
+    for (const [soulId, owner] of owners) {
+      const entry = soulMap.get(soulId)
       if (entry) {
-        entry.chain_verified = ok
-        soulMap.set(soul.soul_id, { ...entry })
+        entry.on_chain_owner = owner
+        soulMap.set(soulId, { ...entry })
       }
-      verifying.value = Math.max(0, verifying.value - 1)
-      updateTable(soulMap)
-    }))
-  }
+    }
+    updateTable(soulMap)
+  })
+
+  // Genesis-Chain-Metriken (Datum, Alter, Wissensgröße) — pro Soul beim eigenen
+  // Node abgefragt, daher wie verifyTx in Chunks statt als einzelner RPC-Batch.
+  const metricsPromise = (async () => {
+    for (const chunk of chunks) {
+      await Promise.all(chunk.map(async soul => {
+        const metrics = await fetchSoulChainMetrics(soul)
+        if (!metrics) return
+        const entry = soulMap.get(soul.soul_id)
+        if (entry) {
+          entry.chain_metrics = metrics
+          soulMap.set(soul.soul_id, { ...entry })
+        }
+        updateTable(soulMap)
+      }))
+    }
+  })()
+
+  await Promise.all([verifyPromise, ownerPromise, metricsPromise])
 }
 
 function updateTable(soulMap) {
@@ -1169,18 +1320,23 @@ onUnmounted(() => {
 .c-name { min-width: 100px; max-width: 160px; }
 .sname { display: block; font-family: var(--serif); font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-tags { min-width: 120px; }
-.tag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--teal); border: 1px solid rgba(109,184,154,0.22); padding: 2px 6px; margin: 2px 2px 2px 0; }
+.tag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg); border: 1px solid var(--line); padding: 2px 6px; margin: 2px 2px 2px 0; }
 .c-tools { min-width: 110px; }
 .tool-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--fg); border: 1px solid var(--line); padding: 2px 6px; margin: 2px 2px 2px 0; }
 .dim { color: var(--fg); font-family: var(--mono); font-size: 12px; }
 .price-stack { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
-.price { font-family: var(--mono); font-size: 13px; color: var(--teal); font-weight: 600; }
+.genesis-stack { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; white-space: nowrap; }
+.genesis-since { font-family: var(--mono); font-size: 12px; color: var(--fg); }
+.genesis-sub { font-family: var(--mono); font-size: 11px; color: var(--fg); }
+.price { font-family: var(--mono); font-size: 13px; color: var(--fg); font-weight: 600; }
 .price-u { font-size: 10px; letter-spacing: 0.1em; opacity: 0.8; }
 .transfer-price { color: #d2ac6e; }
 .transfer-free-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #d2ac6e; border: 1px solid rgba(210,172,110,0.3); padding: 2px 6px; }
 .mono { font-family: var(--mono); font-size: 13px; color: var(--fg); }
+.owner-link { font-family: var(--mono); font-size: 13px; color: var(--fg); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
+.owner-link:hover { text-decoration-color: var(--fg); }
 .c-methods { min-width: 90px; }
-.method-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--teal); border: 1px solid rgba(109,184,154,0.22); padding: 2px 6px; margin: 2px 2px 2px 0; }
+.method-pill { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg); border: 1px solid var(--line); padding: 2px 6px; margin: 2px 2px 2px 0; }
 .c-chain { width: 90px; text-align: left; white-space: nowrap; }
 .chain-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .chain-text { font-family: var(--mono); font-size: 11px; color: var(--fg); vertical-align: middle; }
@@ -1193,21 +1349,21 @@ onUnmounted(() => {
 .c-online { white-space: nowrap; }
 .c-llms   { white-space: nowrap; }
 .c-access { white-space: nowrap; }
-.access-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); text-decoration: none; border: 1px solid rgba(109,184,154,0.28); padding: 6px 12px; transition: all 0.15s; background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-.access-btn:hover { background: rgba(109,184,154,0.07); border-color: var(--teal); }
+.access-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); text-decoration: none; border: 1px solid var(--line); padding: 6px 12px; transition: all 0.15s; background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.access-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--fg); }
 .access-btn--warn { color: rgba(230,140,80,0.9); border-color: rgba(230,140,80,0.35); }
 .access-btn--warn:hover { background: rgba(230,140,80,0.08); border-color: rgba(230,140,80,0.6); }
-.llms-link { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); text-decoration: none; border: 1px solid rgba(109,184,154,0.28); padding: 6px 12px; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-.llms-link:hover { background: rgba(109,184,154,0.07); border-color: var(--teal); }
+.llms-link { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); text-decoration: none; border: 1px solid var(--line); padding: 6px 12px; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.llms-link:hover { background: rgba(255,255,255,0.06); border-color: var(--fg); }
 .node-status  { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
-.node-online  { color: #4caf7d; }
+.node-online  { color: var(--fg); }
 .node-offline { color: #e05252; }
 
 .vis-pill {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.10em;
   text-transform: lowercase; white-space: nowrap;
   padding: 3px 8px; border-radius: 99px; flex: none;
-  color: var(--teal); background: rgba(109,184,154,0.10); border: 1px solid rgba(109,184,154,0.28);
+  color: var(--fg); background: rgba(255,255,255,0.04); border: 1px solid var(--line);
 }
 .vis-pill--fading    { color: #d4af37; background: rgba(212,175,55,0.10); border-color: rgba(212,175,55,0.28); }
 .vis-pill--invisible { color: #e06c75; background: rgba(224,108,117,0.10); border-color: rgba(224,108,117,0.28); animation: vis-pulse 1.8s ease-in-out infinite; }
