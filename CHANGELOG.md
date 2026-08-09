@@ -8,6 +8,15 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.4.1] — 2026-08-09
+
+**Fixed: `gate_check.lua` bypassed the password gate entirely for `/` — every visitor reached the SPA root unauthenticated.**
+
+**Root cause:** The `/connect`/`/link/*` whitelist fix in `4c6a109` (v1.4.0) added a new early-return for `request_path == "/"` before the cookie check runs, based on an incorrect claim in that commit's own message that this case was "already used correctly" before — it wasn't; no `"/"` special case existed prior to that commit. In effect, the SPA root became fully public regardless of `sys_gate` cookie state: unauthenticated visitors landed directly in the client-side app (which then showed its own "Login with Soul" screen) instead of being redirected to `/gate`.
+
+**Fixed**
+- `lua/gate_check.lua`: removed the `"/"` early-return; root now falls through to the same cookie/session check every other protected route goes through. Verified live: `curl` without a cookie against `/` now `302`s to `/gate?next=%2F` again instead of returning `200`.
+
 ## [1.4.0] — 2026-08-08
 
 **Added: MCP Apps — souls can publish interactive UIs that render inline in the chat, not just text.** Previously private-only; ported here now that the rendering issues below are resolved. A soul drops `index.html` (+ optional `style.css`/`app.js`/`manifest.json`) into `vault_shared/apps/{app-name}/`, and `soul-mcp` registers it as an MCP Apps tool + `ui://` resource per connection (`soul-mcp/tools/soul_apps.mjs`) — same mechanism for apps of wired/gatekeeper-connected souls (`soul-mcp/tools/wired_apps.mjs`). New standalone **Apps** page (`app/pages/apps.vue`, sidebar entry) to upload, browse, and manage app folders; `manifest.json` is listed but delete-protected (client + server, `403 manifest_protected`) since losing it silently resets the tool's title/description without anything visibly breaking. Two read-only reference apps ship in `shared/apps/` (Social Sphere / Agent Sandbox chat windows) and get installed once per soul on `update.sh` runs, never overwritten afterward.
