@@ -5,7 +5,7 @@
       <!-- NAV -->
       <nav class="l-nav">
         <div class="lockup">
-          <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS." class="nav-logo-img" /></NuxtLink>
+          <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink>
         </div>
         <div class="nav-end">
           <LangToggle />
@@ -538,7 +538,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
   color: var(--teal-bright); border: 1px solid rgba(109,184,154,0.35); padding: 4px 10px; margin-bottom: 16px;
 }
 .case-title { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: #fff; margin: 0 0 12px; letter-spacing: -0.01em; }
-.case-sub { font-size: 15.5px; color: var(--fg-2); line-height: 1.7; max-width: 62ch; }
+.case-sub { font-size: var(--text); color: var(--fg); line-height: 1.7; max-width: 62ch; }
 
 .uc-step { display: flex; gap: 20px; margin-bottom: 30px; align-items: flex-start; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
 .uc-step:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -559,7 +559,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .copy-btn:hover { background: rgba(109,184,154,0.1); color: var(--teal-bright); }
 
 .uc-example {
-  font-family: var(--mono); font-size: 13px; line-height: 1.7; color: var(--fg-2);
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.7; color: var(--fg);
   background: rgba(0,0,0,0.35); border: 1px solid var(--line-2); padding: 16px 18px;
   overflow-x: auto; margin: 0; white-space: pre;
 }
