@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.4.2] — 2026-08-10
+
+**Fixed: soul-mcp crash-looped continuously after pulling v1.4.0 — two independent bugs stacked into a full outage, found live on `fab.uxprojects-jok.com`.**
+
+**Bug 1 — bad import revert in `soul-mcp/server.mjs`.** Commit `bbfe243` ("Simplify Transfer Soul to sale-only, fix wallet connect reliability") touched unrelated code in `server.mjs`'s import block — the signature of a stale-branch merge clobbering recent work. It reintroduced an import of `./tools/soul_generate.mjs` (deleted on purpose in `8b29ae2`, "remove WaveSpeed AI and Emergency Protocol") and moved `registerGatekeeperTools`/`registerWireSearch` to import from `./tools/index.mjs`, which never exported them — both actually live in `./tools/gatekeeper_proxy.mjs`. Either import alone crashes the ESM loader at startup.
+
+**Bug 2 — `update.sh` never installed new soul-mcp dependencies.** `npm install` for `soul-mcp` only ever ran once, at install time, in `init.sh` — same class of bug as the `vhost.conf`/`sys-agent-run.sh` gaps fixed in v1.2.27/v1.3.14. `update.sh` refreshed soul-mcp's `.mjs`/`lib`/`tools`/`prompts` on every run but never re-ran `npm install` against `package.json`, so a dependency added after a node's install day silently never reached it. v1.4.0 added `@modelcontextprotocol/ext-apps` for MCP Apps — soul-mcp crash-looped on `ERR_MODULE_NOT_FOUND` for it immediately after Bug 1 was fixed, confirming this independently.
+
+**Fixed**
+- `soul-mcp/server.mjs`: restored the correct import set, removed the dead `soul_generate` `/internal/run-tool` case that went with the stray import.
+- `update.sh`: now runs `npm install --omit=dev` in soul-mcp's actual working directory on every run; legacy `/opt/sys/soul-mcp` installs also get `package.json`/`package-lock.json` synced (previously only `.mjs`/`lib`/`tools`/`prompts` were copied).
+
+**Migration required:** none — `update.sh` self-heals this on the next run. Nodes currently crash-looping should re-run `update.sh` (or manually `cd soul-mcp && npm install --omit=dev && systemctl restart soul-mcp`) once to pick this up immediately.
+
 ## [1.4.1] — 2026-08-09
 
 **Fixed: `gate_check.lua` bypassed the password gate entirely for `/` — every visitor reached the SPA root unauthenticated.**
