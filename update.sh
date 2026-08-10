@@ -264,14 +264,40 @@ _MCP_WD=$(systemctl show soul-mcp --property=WorkingDirectory --value 2>/dev/nul
 if [ -d "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" = "/opt/sys/soul-mcp" ] && [ "$_MCP_WD" != "$SCRIPT_DIR/soul-mcp" ]; then
   info "Syncing soul-mcp to /opt/sys/soul-mcp/ ..."
   cp "$SCRIPT_DIR"/soul-mcp/*.mjs        /opt/sys/soul-mcp/
+  cp "$SCRIPT_DIR/soul-mcp/package.json" /opt/sys/soul-mcp/package.json
+  cp "$SCRIPT_DIR/soul-mcp/package-lock.json" /opt/sys/soul-mcp/package-lock.json
   cp -r "$SCRIPT_DIR/soul-mcp/lib/"      /opt/sys/soul-mcp/lib/
   cp -r "$SCRIPT_DIR/soul-mcp/tools/"    /opt/sys/soul-mcp/tools/
   cp -r "$SCRIPT_DIR/soul-mcp/prompts/"  /opt/sys/soul-mcp/prompts/
-  chown -R www-data:www-data /opt/sys/soul-mcp/*.mjs /opt/sys/soul-mcp/lib/ /opt/sys/soul-mcp/tools/ /opt/sys/soul-mcp/prompts/
+  chown -R www-data:www-data /opt/sys/soul-mcp/*.mjs /opt/sys/soul-mcp/package.json /opt/sys/soul-mcp/package-lock.json /opt/sys/soul-mcp/lib/ /opt/sys/soul-mcp/tools/ /opt/sys/soul-mcp/prompts/
 elif [ -d "$SCRIPT_DIR/soul-mcp" ]; then
   # Modern init: git pull (running as root) just wrote these files as
   # root:root — restore www-data ownership so the service user keeps access.
   chown -R www-data:www-data "$SCRIPT_DIR"/soul-mcp/*.mjs "$SCRIPT_DIR/soul-mcp/lib/" "$SCRIPT_DIR/soul-mcp/tools/" "$SCRIPT_DIR/soul-mcp/prompts/" 2>/dev/null || true
+fi
+
+# npm install for soul-mcp was, until now, only ever run once by init.sh at
+# install time (same class of bug as the vhost-config/sys-agent-run.sh gaps
+# fixed in v1.2.27/v1.3.14) — a dependency added to soul-mcp/package.json
+# after a node's install day (e.g. @modelcontextprotocol/ext-apps for MCP
+# Apps, v1.4.0) silently never reached already-running nodes, no matter how
+# many times they updated: git pull refreshes package.json/package-lock.json,
+# but nothing ever re-ran npm install against them. Found live on
+# fab.uxprojects-jok.com — soul-mcp crash-looped on ERR_MODULE_NOT_FOUND for
+# ext-apps right after this exact update pulled the MCP Apps feature in.
+_MCP_DIR="$SCRIPT_DIR/soul-mcp"
+[ "$_MCP_WD" = "/opt/sys/soul-mcp" ] && _MCP_DIR="/opt/sys/soul-mcp"
+if [ -f "$_MCP_DIR/package.json" ]; then
+  if ! command -v npm &>/dev/null; then
+    warn "npm not found — soul-mcp dependencies not installed/updated."
+  else
+    info "Installing soul-mcp dependencies..."
+    if ( cd "$_MCP_DIR" && npm install --omit=dev --silent ); then
+      chown -R www-data:www-data "$_MCP_DIR/node_modules" 2>/dev/null || true
+    else
+      warn "npm install for soul-mcp failed — see output above. soul-mcp may fail to start."
+    fi
+  fi
 fi
 
 # ── 8. EU_CONSUMER_RIGHTS backward-compat ─────────────────────────────────────
