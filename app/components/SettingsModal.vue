@@ -94,6 +94,29 @@
                 </div>
               </div>
 
+              <!-- WaveSpeed Key (Bild-/Video-Generierung, intern — siehe kro-airtist-konzept.md) -->
+              <div class="sys-field" style="gap:12px;margin-bottom:24px">
+                <label class="sys-field-label">{{ $t('settings.wavespeed_key') }}</label>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="wavespeedKey"
+                    type="password"
+                    class="sys-input sys-input--mono"
+                    style="flex:1;border-radius:var(--r-xs)"
+                    :style="wavespeedKeySet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="wavespeedKeySet ? $t('common.overwrite_placeholder') : $t('settings.wavespeed_key') + '…'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @input="wavespeedDirty = true"
+                    @keyup.enter="saveConfig"
+                  />
+                </div>
+                <div v-if="wavespeedKeySet" style="display:flex;align-items:center;gap:8px">
+                  <span class="sm-key-ok">{{ wavespeedPreview }}</span>
+                  <button @click="deleteKey('wavespeed_key')" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
+                </div>
+              </div>
+
               <!-- ElevenLabs Agent-URL (Klartext-URL, kein eye) -->
               <div class="sys-field" style="gap:12px">
                 <label class="sys-field-label">
@@ -194,6 +217,23 @@
                     :style="pinataFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
                     {{ pinataFeedback.message }}
                   </span>
+                </div>
+              </div>
+
+              <!-- Build-Time-Keys: NUXT_PUBLIC_* aus .env, beim npm-run-generate ins Bundle
+                   eingefroren — kein API-Endpoint dahinter, hier also reine Statusanzeige aus
+                   dem bereits geladenen Runtime-Config, kein Editieren möglich (dafür müsste
+                   .env angepasst und neu gebaut werden). Fehlt genau dieser Hinweis, bleibt so
+                   ein leerer Key unbemerkt, bis die abhängige Funktion (z.B. /scanner) einfach
+                   nur degradiert — live so aufgetreten mit NUXT_PUBLIC_ETHERSCAN_API_KEY, das
+                   weder in .env.example noch in init.sh je vorkam. -->
+              <div class="sys-field" style="gap:10px;margin-top:8px;padding-top:16px;border-top:1px solid var(--sys-rule)">
+                <label class="sys-field-label">{{ $t('settings.build_keys_title') }}</label>
+                <p style="font-size:12px;color:var(--fg-3);margin:0 0 4px">{{ $t('settings.build_keys_hint') }}</p>
+                <div v-for="k in buildTimeKeys" :key="k.name" style="display:flex;align-items:center;justify-content:space-between;padding:5px 0">
+                  <span style="font-size:13px;color:var(--fg)">{{ k.label }}</span>
+                  <span class="sm-key-ok" v-if="k.set">{{ $t('settings.build_key_ok') }}</span>
+                  <span v-else style="font-size:12px;font-family:var(--sys-mono);color:var(--sys-warn)">{{ $t('settings.build_key_missing') }}</span>
                 </div>
               </div>
 
@@ -565,8 +605,14 @@
                 </div>
               </template>
 
-              <!-- Cloud-Vault löschen (Node-Owner; in Multi-Hoster nur wenn keine weitere Soul existiert) -->
-              <template v-if="isNodeOwner && (!isMultiHoster || soulCount <= 1)">
+              <!-- Eigene Soul löschen — jede Soul darf sich selbst löschen (DELETE /api/vault
+              scoped auf ngx.ctx.soul_id, das eigene Cert). Einzige Ausnahme (siehe
+              vault_delete.lua): die Multi-Hoster-Node-Owner-Soul (first_soul_id), solange
+              noch andere Souls existieren — deren Löschung würde die anderen Souls ohne
+              Node-Owner zurücklassen. Vorher fälschlich an isNodeOwner geknüpft, wodurch
+              JEDE Nicht-Owner-Soul auf einem Multi-Hoster-Node den Button nie sah, obwohl
+              das Backend ihr das Selbstlöschen längst erlaubt hätte. -->
+              <template v-if="!(isMultiHoster && isNodeOwner && soulCount > 1)">
                 <div style="padding-top:20px;border-top:1px solid var(--sys-rule)">
                   <button
                     @click="handleDeleteVaultOwner"
@@ -923,10 +969,25 @@ const discoverableFeedback = ref(null)
 const keySource  = ref('none')   // 'soul' | 'master' | 'env' | 'none'
 const keyPreview = ref('')
 
+// Build-Time-Keys (NUXT_PUBLIC_*): kein API-Call nötig, stehen schon im geladenen
+// Runtime-Config — beim Build eingefroren, hier nur zur Statusanzeige. Nur Keys
+// hinter tatsächlich noch aktiven Features listen — Spotify/YouTube waren mal
+// hier, sind aber laut User "seit Ewigkeiten raus aus dem Projekt" (keine
+// Connect-UI mehr, nur noch tote Composables) und wurden bewusst nicht wieder
+// aufgenommen, um nicht denselben Fehler nochmal zu machen.
+const runtimeConfigPublic = useRuntimeConfig().public
+const buildTimeKeys = computed(() => [
+  { name: 'etherscan', label: 'Etherscan API Key', set: !!runtimeConfigPublic.etherscanApiKey },
+])
+
 const elevenlabsKey     = ref('')
 const elevenlabsKeySet  = ref(false)
 const elevenlabsPreview = ref('')
 const elevenlabsDirty   = ref(false)
+const wavespeedKey      = ref('')
+const wavespeedKeySet   = ref(false)
+const wavespeedPreview  = ref('')
+const wavespeedDirty    = ref(false)
 
 const reownProjectId = ref('')
 const reownSet       = ref(false)
@@ -970,6 +1031,8 @@ async function loadStatus() {
     keyPreview.value      = d.key_preview || ''
     elevenlabsKeySet.value  = !!d.elevenlabs_key_set
     elevenlabsPreview.value = d.elevenlabs_preview || ''
+    wavespeedKeySet.value  = !!d.wavespeed_key_set
+    wavespeedPreview.value = d.wavespeed_preview || ''
     agentUrlSet.value = !!d.elevenlabs_agent_url
     agentUrl.value    = d.elevenlabs_agent_url || ''
     mcpUrlSet.value  = !!d.mcp_url_set
@@ -1303,6 +1366,7 @@ async function deleteKey(field) {
     })
     if (field === 'anthropic_key')    { keySource.value = 'none'; keyPreview.value = '' }
     if (field === 'elevenlabs_key')   { elevenlabsKeySet.value = false; elevenlabsPreview.value = '' }
+    if (field === 'wavespeed_key')    { wavespeedKeySet.value = false; wavespeedPreview.value = '' }
     if (field === 'reown_project_id') { reownSet.value = false; reownPreview.value = '' }
     if (field === 'mcp_url')          { mcpUrlSet.value = false; mcpPreview.value = ''; clearMcpCache() }
     await loadStatus()
@@ -1377,6 +1441,7 @@ async function saveConfig() {
     if (apiKey.value) body.anthropic_key = sanitizeKey(apiKey.value)
     if (model.value) body.model = model.value
     if (elevenlabsDirty.value) body.elevenlabs_key = sanitizeKey(elevenlabsKey.value)
+    if (wavespeedDirty.value) body.wavespeed_key = sanitizeKey(wavespeedKey.value)
     if (mcpDirty.value) body.mcp_url = sanitizeKey(mcpUrl.value)
     if (reownDirty.value) body.reown_project_id = reownProjectId.value.trim()
     const res = await fetch('/api/set-config', {
@@ -1394,6 +1459,8 @@ async function saveConfig() {
       apiKey.value        = ''
       elevenlabsKey.value  = ''
       elevenlabsDirty.value = false
+      wavespeedKey.value  = ''
+      wavespeedDirty.value = false
       mcpUrl.value  = ''
       mcpDirty.value = false
       reownProjectId.value = ''
@@ -1882,6 +1949,7 @@ async function copyInviteToken() {
   } catch { /* silent */ }
 }
 
+
 // ── Beim Öffnen laden ─────────────────────────────────────────────────────────
 async function initSettings() {
   await loadNodeStatus()
@@ -1891,6 +1959,8 @@ async function initSettings() {
   tab.value            = 'dienste'
   elevenlabsKey.value  = ''
   elevenlabsDirty.value = false
+  wavespeedKey.value  = ''
+  wavespeedDirty.value = false
 }
 
 watch(() => props.open, (val) => { if (val) initSettings() })
