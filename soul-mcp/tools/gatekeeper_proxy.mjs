@@ -16,6 +16,7 @@ import { updateSection, checkMessageProtocolViolation } from './soul_write.mjs';
 import { parseSocialMessages, appendToBlock, buildMsgEntry, SOCIAL_START, SOCIAL_END, AGENT_START, AGENT_END } from '../lib/peer_messages.mjs';
 import { loadCtx } from '../lib/vault_fs.mjs';
 import { loadFederated } from '../lib/federated_gatekeepers.mjs';
+import { withWriteLock, writeLockKey } from '../lib/write_lock.mjs';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -240,17 +241,13 @@ function withNodeInfo(nodeUrl, ...blocks) {
   return { content: [{ type: 'text', text: `[node_url: ${nodeUrl}]` }, ...blocks] };
 }
 
-// Pro verdrahteter Instanz serialisiert (soul_id@node_url) — verhindert
-// Race Conditions bei parallelen wired_soul_write-Aufrufen auf dieselbe
-// Verbindung, gleiches Prinzip wie soul_write.mjs' withSoulLock.
-const _writeQueues = new Map();
-async function withWriteLock(key, fn) {
-  const prev = _writeQueues.get(key) ?? Promise.resolve();
-  let resolveCurrent;
-  const current = new Promise(r => { resolveCurrent = r; });
-  _writeQueues.set(key, prev.then(() => current));
-  await prev;
-  try { return await fn(); } finally { resolveCurrent(); }
+// Gemeinsamer Schreib-Lock (lib/write_lock.mjs) — derselbe wie peer_send.mjs,
+// soul_write.mjs, mind_write.mjs, context_write.mjs nutzen, damit Writes auf
+// dieselbe Soul sich tatsächlich gegenseitig serialisieren, egal über
+// welches Tool sie kommen (siehe Kommentar dort für den Live-Bug, der das
+// nötig gemacht hat).
+function writeLockKeyFor(soulId, c) {
+  return c.relay ? `${soulId}@${c.relay.gatekeeperSoulId}` : writeLockKey(soulId, c.resolvedNodeUrl);
 }
 
 // "wired_"-Präfix ist bewusst: /mcp/discover registriert für den Gatekeeper-Owner
@@ -423,8 +420,7 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
       const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
       try {
         return await tryCandidates(candidates, async (c) => {
-          const lockKey = c.relay ? `${soul_id}@${c.relay.gatekeeperSoulId}` : `${soul_id}@${c.resolvedNodeUrl}`;
-          return await withWriteLock(lockKey, async () => {
+          return await withWriteLock(writeLockKeyFor(soul_id, c), async () => {
             const current = await (await fetchApi(soulPath(c.relay), c.token, c.nodeUrl)).text();
             const updated = updateSection(current, section, content, mode);
             await writeSoulContent(c, updated);
@@ -501,7 +497,7 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
       const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
       try {
         return await tryCandidates(candidates, async (c) => {
-          return await withWriteLock(`peer_send:${soul_id}@${c.resolvedNodeUrl}`, async () => {
+          return await withWriteLock(writeLockKeyFor(soul_id, c), async () => {
             const toNorm = to.trim().toLowerCase();
             let toField;
             if (['alle', 'all', 'peer', 'peers'].includes(toNorm)) {

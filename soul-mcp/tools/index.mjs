@@ -92,7 +92,7 @@ import { register as requestTrustStatus }    from './request_trust_status.mjs';
  */
 export function registerTools(server, token, soulId = null) {
   soulRead(server, token);
-  soulWrite(server, token);
+  soulWrite(server, token, soulId);
   soulDelete(server, token);
   bemeChat(server, token);
   bemeChatPaid(server, token); // Owner-Test-Zugang — immer verfügbar, unabhängig von amortization

@@ -1,17 +1,6 @@
 import { z } from 'zod';
 import { getText, putJson } from '../lib/api.mjs';
-
-// Per-soul write serializer — verhindert Race Conditions bei parallelen soul_write-Calls
-const _queues = new Map();
-async function withSoulLock(token, fn) {
-  const key = token.slice(0, 16);
-  const prev = _queues.get(key) ?? Promise.resolve();
-  let resolveCurrent;
-  const current = new Promise(r => { resolveCurrent = r; });
-  _queues.set(key, prev.then(() => current));
-  await prev;
-  try { return await fn(); } finally { resolveCurrent(); }
-}
+import { withWriteLock, writeLockKey } from '../lib/write_lock.mjs';
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,7 +105,11 @@ export function checkMessageProtocolViolation(section, content) {
   return null;
 }
 
-export function register(server, token) {
+export function register(server, token, soulId = null) {
+  // Gemeinsamer Schreib-Lock (lib/write_lock.mjs) — siehe Kommentar dort für
+  // den Live-Bug (Lost-Update zwischen soul_write/peer_send/wired_*), der
+  // das nötig gemacht hat.
+  const lockSoulId = soulId || token.split('.')[0] || token.slice(0, 16);
   server.tool(
     'soul_write',
     [
@@ -160,7 +153,7 @@ export function register(server, token) {
         return { content: [{ type: 'text', text: violation }], isError: true };
       }
       try {
-        return await withSoulLock(token, async () => {
+        return await withWriteLock(writeLockKey(lockSoulId), async () => {
         // 1. Aktuelle sys.md lesen (Server entschlüsselt; beim Schreiben re-verschlüsselt der Server automatisch)
         const current = await getText('/api/soul', token);
 
@@ -189,7 +182,7 @@ export function register(server, token) {
             }, null, 2),
           }],
         };
-        }); // withSoulLock
+        }); // withWriteLock
       } catch (err) {
         let msg = err.message;
         try {

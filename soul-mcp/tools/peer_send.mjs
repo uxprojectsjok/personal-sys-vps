@@ -16,19 +16,14 @@ import { z } from 'zod';
 import { getText, putJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { resolveGatekeeperPeers } from '../lib/gatekeeper_peers.mjs';
 import { SOCIAL_START, SOCIAL_END, AGENT_START, AGENT_END, appendToBlock } from '../lib/peer_messages.mjs';
-
-const _queues = new Map();
-async function withSoulLock(token, fn) {
-  const key = token.slice(0, 16);
-  const prev = _queues.get(key) ?? Promise.resolve();
-  let resolveCurrent;
-  const current = new Promise(r => { resolveCurrent = r; });
-  _queues.set(key, prev.then(() => current));
-  await prev;
-  try { return await fn(); } finally { resolveCurrent(); }
-}
+import { withWriteLock, writeLockKey } from '../lib/write_lock.mjs';
 
 export function register(server, token, soulId = null) {
+  // Gemeinsamer Schreib-Lock (lib/write_lock.mjs), keyed nach Ziel-soul_id —
+  // nicht nach Token wie vorher, sonst serialisiert dieses Tool nur gegen
+  // sich selbst, nicht gegen wired_soul_write/wired_peer_send & Co., die
+  // dieselbe Soul treffen könnten (siehe Kommentar in lib/write_lock.mjs).
+  const lockSoulId = soulId || token.split('.')[0] || token.slice(0, 16);
   server.tool(
     'peer_send',
     [
@@ -44,7 +39,7 @@ export function register(server, token, soulId = null) {
     },
     async ({ to, message }) => {
       try {
-        return await withSoulLock(token, async () => {
+        return await withWriteLock(writeLockKey(lockSoulId), async () => {
           const toNorm = to.trim().toLowerCase();
           let toField;
 

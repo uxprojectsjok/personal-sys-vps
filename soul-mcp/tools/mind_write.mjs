@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { z } from 'zod';
 import { putJson } from '../lib/api.mjs';
 import { SOULS_DIR, decryptIfNeeded, encryptBuf, loadVaultMeta } from '../lib/vault_fs.mjs';
+import { withWriteLock } from '../lib/write_lock.mjs';
 
 const WRITE_PROTECTED = new Set(['Identität', 'Grenzen', 'Identity', 'Boundaries']);
 
@@ -77,6 +78,12 @@ export function register(server, token, soulId = null) {
 
       try {
         if (soulId) {
+          // Eigener Lock-Namespace ("mind:") — mind.md ist eine andere Datei
+          // als sys.md, muss also nicht gegen sys.md-Writes serialisieren,
+          // aber sehr wohl gegen andere gleichzeitige mind_write-Aufrufe für
+          // dieselbe Soul (sonst genau das Lost-Update-Muster, siehe
+          // lib/write_lock.mjs).
+          return await withWriteLock(`mind:${soulId}`, async () => {
           const mindPath = `${SOULS_DIR}${soulId}/vault/context/mind.md`;
           const { vaultKeyHex, cipherMode } = await loadVaultMeta(soulId);
           let md;
@@ -132,6 +139,7 @@ export function register(server, token, soulId = null) {
               }, null, 2),
             }],
           };
+          }); // withWriteLock
         }
 
         // Fallback: API (only when soulId is unknown)

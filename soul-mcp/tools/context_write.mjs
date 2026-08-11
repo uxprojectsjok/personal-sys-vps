@@ -6,6 +6,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { z } from 'zod';
 import { SOULS_DIR, encryptBuf, loadVaultMeta } from '../lib/vault_fs.mjs';
+import { withWriteLock } from '../lib/write_lock.mjs';
 
 async function ensureContextRegistered(soulId, filename) {
   const ctxPath = `${SOULS_DIR}${soulId}/api_context.json`;
@@ -39,6 +40,12 @@ export function register(server, soulId) {
         };
       }
       try {
+        // Per-Soul-Lock (nicht nur per-Datei): ensureContextRegistered()
+        // unten schreibt api_context.json, eine gemeinsame Datei über ALLE
+        // context_write-Aufrufe dieser Soul hinweg — zwei verschiedene
+        // Dateinamen gleichzeitig geschrieben würden sich sonst dort
+        // trotzdem ins Gehege kommen (Lost-Update, siehe lib/write_lock.mjs).
+        return await withWriteLock(`context:${soulId}`, async () => {
         const dir      = `${SOULS_DIR}${soulId}/vault/context`;
         const filePath = `${dir}/${filename}`;
         await mkdir(dir, { recursive: true });
@@ -53,6 +60,7 @@ export function register(server, soulId) {
 
         const action = existed ? 'Aktualisiert' : 'Angelegt';
         return { content: [{ type: 'text', text: `${action}: ${filename} (${content.length} Zeichen)` }] };
+        }); // withWriteLock
       } catch (err) {
         return { content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true };
       }
