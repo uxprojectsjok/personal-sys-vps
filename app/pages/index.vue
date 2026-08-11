@@ -15,11 +15,6 @@
             </div>
             <nav class="lp-nav" aria-label="Primary">
               <NuxtLink to="/use-cases">{{ $t('landing.nav_use_cases') }}</NuxtLink>
-              <a href="#">{{ $t('landing.nav_docs') }}</a>
-              <a href="#">{{ $t('landing.nav_community') }}</a>
-              <a href="#">{{ $t('landing.nav_pricing') }}</a>
-              <NuxtLink to="/scanner">{{ $t('landing.nav_scanner') }}</NuxtLink>
-              <NuxtLink to="/search">{{ $t('landing.nav_search') }}</NuxtLink>
             </nav>
             <div class="lp-header-actions">
               <LocaleToggle />
@@ -38,11 +33,6 @@
           <Transition name="lp-mobile-nav">
             <nav v-if="mobileNavOpen" class="lp-mobile-nav" aria-label="Primary mobile">
               <NuxtLink to="/use-cases" @click="mobileNavOpen = false">{{ $t('landing.nav_use_cases') }}</NuxtLink>
-              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_docs') }}</a>
-              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_community') }}</a>
-              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_pricing') }}</a>
-              <NuxtLink to="/scanner" @click="mobileNavOpen = false">{{ $t('landing.nav_scanner') }}</NuxtLink>
-              <NuxtLink to="/search" @click="mobileNavOpen = false">{{ $t('landing.nav_search') }}</NuxtLink>
               <NuxtLink to="/gate?login=1" class="lp-mobile-nav-login" @click="mobileNavOpen = false">{{ $t('landing.sign_in') }}</NuxtLink>
             </nav>
           </Transition>
@@ -83,7 +73,6 @@
           </div>
           <div class="lp-arch-links">
             <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="lp-arch-link">{{ $t('landing.arch_link_protocol') }} →</a>
-            <NuxtLink to="/scanner" class="lp-arch-link">{{ $t('landing.arch_link_scan') }} →</NuxtLink>
           </div>
         </section>
 
