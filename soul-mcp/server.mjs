@@ -27,8 +27,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerWiredApps } from './tools/index.mjs';
 import { registerSoulApps } from './tools/soul_apps.mjs';
 import { loadConnected } from './lib/connected_souls.mjs';
-import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired } from './lib/wired_souls.mjs';
+import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired, getSelfToken, setSelfToken } from './lib/wired_souls.mjs';
 import { parseSocialMessages } from './lib/peer_messages.mjs';
+import { createServiceToken, verifyServiceToken } from './lib/api.mjs';
 import { resolveGatekeeperPeers } from './lib/gatekeeper_peers.mjs';
 import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
 import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi, postApi } from './tools/gatekeeper_proxy.mjs';
@@ -922,7 +923,95 @@ app.post('/mcp/discover/gatekeeper/peer-inbox-relay', async (req, res) => {
     } catch { /* eine unerreichbare Geschwister-Spoke darf die anderen nie blockieren */ }
   }));
 
+  // Eigene Broadcasts der Gatekeeper-Soul selbst (peer_send in ihre EIGENE
+  // sys.md geschrieben) — via Self-Token, siehe getSelfToken()-Kommentar.
+  if (gatekeeperSoulId !== callerSoulId) {
+    try {
+      const selfToken = await getSelfToken(gatekeeperSoulId);
+      if (selfToken) {
+        const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);
+        const md = await upstream.text();
+        const gkCtx = await loadCtx(gatekeeperSoulId).catch(() => null);
+        for (const m of parseSocialMessages(md)) {
+          if (m.from === 'me' && (m.to === 'peer' || m.to === callerSoulId)) {
+            messages.push({
+              ...m,
+              from_soul_id: gatekeeperSoulId,
+              from_label: gkCtx?.name || gatekeeperSoulId.slice(0, 8),
+              node_url: BASE_URL,
+              is_gatekeeper: true,
+            });
+          }
+        }
+      }
+    } catch { /* Self-Token fehlt oder Gatekeeper-eigene sys.md nicht lesbar — Rest trotzdem ausliefern */ }
+  }
+
+  // Föderierte Gatekeeper (1 Hop) — fragt bei jedem akzeptierten Föderations-
+  // Partner dessen eigene Broadcasts ab (neuer Relay, siehe /mcp/discover/
+  // federated/relay/peer-outbox unten), candidate_ids = alle hier verdrahteten
+  // soul_ids + der Aufrufer selbst, damit individuell adressierte Nachrichten
+  // (peer_send an eine konkrete soul_id, nicht nur "alle") über die Föderation
+  // hinweg ankommen, ohne dass der föderierte Partner die volle Wired-Liste
+  // kennen muss.
+  const fed = await loadFederated(gatekeeperSoulId);
+  const federatedAccepted = Object.entries(fed).filter(([, e]) => e.status === 'accepted');
+  if (federatedAccepted.length) {
+    const candidateIds = [...new Set([callerSoulId, ...Object.values(wired).map(e => e.soul_id)])];
+    await Promise.all(federatedAccepted.map(async ([fedSoulId, entry]) => {
+      try {
+        const url = `${entry.node_url}/mcp/discover/federated/relay/peer-outbox?gatekeeper_soul_id=${encodeURIComponent(fedSoulId)}&candidate_ids=${encodeURIComponent(candidateIds.join(','))}`;
+        const res2 = await fetch(url, { headers: { Authorization: `Bearer ${entry.outbound_token}` }, signal: AbortSignal.timeout(8000) });
+        const data = await res2.json().catch(() => null);
+        if (data?.ok) messages.push(...data.messages);
+      } catch { /* ein unerreichbarer föderierter Partner darf die anderen Quellen nie blockieren */ }
+    }));
+  }
+
   res.json({ ok: true, messages });
+});
+
+// Föderiertes Gegenstück zu /mcp/discover/gatekeeper/peer-inbox-relay oben:
+// liefert die EIGENEN Broadcasts der hier lokal gehosteten Gatekeeper-Soul
+// (Self-Token) an einen föderierten Partner-Gatekeeper, der im Auftrag EINER
+// seiner eigenen verdrahteten Souls anfragt. Gibt NIE den Self-Token selbst
+// oder rohen sys.md-Inhalt heraus, nur die geparsten @peer-Nachrichten.
+app.get('/mcp/discover/federated/relay/peer-outbox', async (req, res) => {
+  const gatekeeperSoulId = req.query.gatekeeper_soul_id;
+  const token = extractToken(req);
+  if (!gatekeeperSoulId || !token) {
+    return res.status(400).json({ error: 'gatekeeper_soul_id (query) und Bearer-Token erforderlich' });
+  }
+  if (!(await authenticateFederatedCaller(gatekeeperSoulId, token))) {
+    return res.status(401).json({ error: 'not_federated' });
+  }
+  const candidateIds = typeof req.query.candidate_ids === 'string'
+    ? req.query.candidate_ids.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const selfToken = await getSelfToken(gatekeeperSoulId);
+  if (!selfToken) return res.json({ ok: true, messages: [] });
+
+  try {
+    const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);
+    const md = await upstream.text();
+    const gkCtx = await loadCtx(gatekeeperSoulId).catch(() => null);
+    const messages = [];
+    for (const m of parseSocialMessages(md)) {
+      if (m.from === 'me' && (m.to === 'peer' || candidateIds.includes(m.to))) {
+        messages.push({
+          ...m,
+          from_soul_id: gatekeeperSoulId,
+          from_label: gkCtx?.name || gatekeeperSoulId.slice(0, 8),
+          node_url: BASE_URL,
+          is_gatekeeper: true,
+        });
+      }
+    }
+    res.json({ ok: true, messages });
+  } catch (err) {
+    res.status(502).json({ error: 'upstream_failed', message: err.message });
+  }
 });
 
 // Eigene Sicht: alle über Gatekeeper-Wiring erreichbaren Peers, gebündelt über
@@ -1066,6 +1155,25 @@ app.post('/mcp/discover/gatekeeper-config', async (req, res) => {
       await notifyWiredToRemoval(parsed.soulId, parsed.cert, wiredSoulId, entry?.node_url || null);
     }
     await saveWired(parsed.soulId, {});
+  }
+
+  // Self-Token einmalig minten, damit die eigenen @peer-Broadcasts dieser
+  // Soul über den peer-inbox-relay (lokal UND föderiert) lesbar sind — siehe
+  // getSelfToken()-Kommentar in wired_souls.mjs. Kein zusätzlicher Consent:
+  // dasselbe Einschalten, das den Gatekeeper-Schalter selbst bestätigt.
+  if (enabled && !(await getSelfToken(parsed.soulId))) {
+    try {
+      const gkCtx = await loadCtx(parsed.soulId).catch(() => null);
+      const data = await createServiceToken(parsed.cert, `${gkCtx?.name || parsed.soulId} (self)`, { soul: true }, '3650d');
+      if (data?.token) {
+        // Frische Tokens brauchen eine einmalige Verifizierung, bevor sie
+        // /api/soul lesen dürfen — siehe verifyServiceToken()-Kommentar.
+        // Ohne das würde jeder Relay-Aufruf mit diesem Token bis zum ersten
+        // manuellen "Verify" in Settings ins Leere laufen.
+        await verifyServiceToken(parsed.cert, data.token).catch(() => null);
+        await setSelfToken(parsed.soulId, data.token);
+      }
+    } catch { /* Self-Token ist ein Komfort-Feature für @peer-Broadcasts, kein Blocker für den Schalter selbst */ }
   }
 
   await setGatekeeperEnabled(parsed.soulId, enabled);

@@ -23,19 +23,51 @@ function gatekeeperConfigPath(soulId) {
   return `${SOULS_DIR}${soulId}/gatekeeper_config.json`;
 }
 
-export async function isGatekeeperEnabled(soulId) {
+async function loadGatekeeperConfig(soulId) {
   try {
     const raw = await readFile(gatekeeperConfigPath(soulId), 'utf8');
     const data = JSON.parse(raw);
-    return data?.enabled === true;
+    return (data && typeof data === 'object') ? data : {};
   } catch {
-    return false;
+    return {};
   }
 }
 
-export async function setGatekeeperEnabled(soulId, enabled) {
+async function saveGatekeeperConfig(soulId, cfg) {
   await mkdir(`${SOULS_DIR}${soulId}`, { recursive: true });
-  await writeFile(gatekeeperConfigPath(soulId), JSON.stringify({ enabled: !!enabled }), 'utf8');
+  await writeFile(gatekeeperConfigPath(soulId), JSON.stringify(cfg), 'utf8');
+}
+
+export async function isGatekeeperEnabled(soulId) {
+  const cfg = await loadGatekeeperConfig(soulId);
+  return cfg.enabled === true;
+}
+
+export async function setGatekeeperEnabled(soulId, enabled) {
+  const cfg = await loadGatekeeperConfig(soulId);
+  cfg.enabled = !!enabled;
+  await saveGatekeeperConfig(soulId, cfg);
+}
+
+// self_token: ein vault-service-token (soul-Scope), den die Gatekeeper-Soul
+// für sich SELBST hält, damit ihre eigenen @peer-Broadcasts (peer_send auf
+// "alle"/individuelle soul_id, geschrieben in die eigene sys.md) über den
+// peer-inbox-relay (lokal UND föderiert) genauso lesbar sind wie die ihrer
+// verdrahteten Souls — sonst gäbe es für "die Gatekeeper-Soul liest ihr
+// eigenes /api/soul" nirgends einen gültigen Bearer, nicht mal same-node
+// (soul-mcp hält keinen SOUL_MASTER_KEY, siehe x402_agent_wallet.mjs).
+// Wird einmalig beim ersten Einschalten des Gatekeeper-Schalters gemintet
+// (server.mjs POST /mcp/discover/gatekeeper-config) — kein zusätzlicher
+// Consent-Schritt für die Soul, dieselbe Zustimmung wie der Schalter selbst.
+export async function getSelfToken(soulId) {
+  const cfg = await loadGatekeeperConfig(soulId);
+  return cfg.self_token || null;
+}
+
+export async function setSelfToken(soulId, token) {
+  const cfg = await loadGatekeeperConfig(soulId);
+  cfg.self_token = token;
+  await saveGatekeeperConfig(soulId, cfg);
 }
 
 function wiredPath(soulId) {

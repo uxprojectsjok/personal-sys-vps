@@ -93,6 +93,19 @@ export async function createServiceToken(soulCert, name, permissions, expires = 
   return postJson('/api/vault/services', soulCert, { name, permissions, expires, resource });
 }
 
+/**
+ * Frische Service-Tokens verlangen einmalig eine Verifizierung, bevor sie
+ * echten API-Zugriff bekommen (vault_auth.lua: 403 "verification_required",
+ * siehe verificationRequiredMsg oben). Für Tokens, die eine Soul für sich
+ * SELBST erstellt (z.B. Gatekeeper-Self-Token, siehe getSelfToken() in
+ * wired_souls.mjs), ersetzt der eigene Soul-Cert die sonst nötige
+ * biometrische verify_identity-Challenge — exakt dieselbe "leichte
+ * Selbst-Verifizierung" wie useVaultServices.js' verifyServiceLight().
+ */
+export async function verifyServiceToken(soulCert, serviceToken) {
+  return postJson(`/api/vault/services/${serviceToken}/verify`, soulCert, {});
+}
+
 /** Gibt die URL einer Vault-Datei mit eingebettetem Token zurück */
 export function fileUrl(type, filename, token) {
   return `${BASE()}/api/vault/${type}/${encodeURIComponent(filename)}?token=${token}`;
