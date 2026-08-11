@@ -3,34 +3,63 @@
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
       <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
+        <!-- Blanke Landing per Default, gleiches Muster wie gate.vue: nur Logo +
+             dezenter Pfeil, bis der Betreiber ihn gezielt anklickt. Diese Seite
+             ist mit gültigem sys_gate-Cookie erreichbar (Netzwerk-Gate schon
+             bestanden), aber noch ohne lokal geladene Soul — soll trotzdem nicht
+             ungefragt Node-Name/Tagline/Login-Optionen/Legal-Links preisgeben. -->
+        <button
+          v-if="!revealed"
+          class="gate-reveal-trigger"
+          @click="revealed = true"
+          :aria-label="$t('gate.owner_login_aria')"
+          :title="$t('gate.owner_login_aria')"
+        >
+          <SysIcon name="arrow" style="width:14px;height:14px" />
+        </button>
+        <button
+          v-if="revealed"
+          class="gate-close-trigger"
+          @click="revealed = false"
+          :aria-label="$t('gate.close_aria')"
+          :title="$t('gate.close_aria')"
+        >
+          <SysIcon name="close" style="width:16px;height:16px" />
+        </button>
+
         <div class="gate-card">
           <SysMark />
-          <div class="gate-sub">{{ config.public.nodeName }}</div>
-          <h1>Save Your Soul<em>.</em></h1>
-          <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
-          <div style="display:flex;flex-direction:column;gap:12px;width:100%">
-            <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
-              {{ $t('index.create_soul') }}
-              <SysIcon name="arrow" style="width:18px;height:18px" />
-            </button>
-            <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
-              {{ $t('index.login_with_soul') }}
-            </button>
-          </div>
-          <div class="gate-foot">
-            <span class="live-dot" />
-            {{ $t('index.private_node', { name: config.public.nodeName }) }}
-          </div>
-          <div class="landing-legal-links">
-            <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
-            <span class="landing-legal-sep">·</span>
-            <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
-            <span class="landing-legal-sep">·</span>
-            <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
-            <span class="landing-legal-sep">·</span>
-            <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
-          </div>
-          <LocaleToggle style="margin-top:14px;justify-content:center" />
+
+          <Transition name="gate-reveal">
+            <div v-if="revealed" class="gate-panel">
+              <div class="gate-sub">{{ config.public.nodeName }}</div>
+              <h1>Save Your Soul<em>.</em></h1>
+              <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
+              <div style="display:flex;flex-direction:column;gap:12px;width:100%">
+                <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
+                  {{ $t('index.create_soul') }}
+                  <SysIcon name="arrow" style="width:18px;height:18px" />
+                </button>
+                <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
+                  {{ $t('index.login_with_soul') }}
+                </button>
+              </div>
+              <div class="gate-foot">
+                <span class="live-dot" />
+                {{ $t('index.private_node', { name: config.public.nodeName }) }}
+              </div>
+              <div class="landing-legal-links">
+                <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+                <span class="landing-legal-sep">·</span>
+                <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+                <span class="landing-legal-sep">·</span>
+                <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
+                <span class="landing-legal-sep">·</span>
+                <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
+              </div>
+              <LocaleToggle style="margin-top:14px;justify-content:center" />
+            </div>
+          </Transition>
         </div>
       </div>
     </template>
@@ -353,6 +382,7 @@ watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate:
 // still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
 const gateRedirectChecked  = ref(false)
 const selfRegistrationOpen = ref(true)
+const revealed              = ref(false)   // true after the discreet top-right button is clicked (see gate.vue)
 
 onMounted(async () => {
   fetchNodeStatus()
@@ -753,6 +783,30 @@ onMounted(() => {
 
 <style scoped>
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
+
+/* Dezenter Reveal-Trigger, gleiches Muster wie gate.vue's .gate-reveal-trigger. */
+.gate-reveal-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.gate-reveal-trigger:hover, .gate-reveal-trigger:focus-visible {
+  background: var(--surface-2); color: var(--accent-bright);
+}
+.gate-close-trigger {
+  position: fixed; top: 20px; right: 20px; z-index: 20;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--fg-3); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.gate-close-trigger:hover, .gate-close-trigger:focus-visible {
+  background: var(--surface-2); color: var(--fg);
+}
+.gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
+.gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
 
 .landing-legal-links {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
