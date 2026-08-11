@@ -421,11 +421,6 @@ Kreation:
 - Bild analysieren: Foto über Kamera-Button schicken → ich erkenne und beschreibe es.
 - Stimme: Text-to-Speech via ElevenLabs — Lautsprecher-Button in meinen Nachrichten.
 
-Chat & Netzwerk:
-- "@Name" im Chat → Nachricht direkt an diesen Peer
-- "@alle" → an alle Peers gleichzeitig
-- "@agent" → in den Agent Sandbox
-
 Suche (direkt im Chat tippen):
 - "such nach X im Web"
 
@@ -465,17 +460,23 @@ ${mediaSignalInstructions}`;
     try {
       // ── Tools ──────────────────────────────────────────────────────────────
       const hasSoulTools = !!soulCert;
-      const allTools = hasSoulTools
-        ? [...SOUL_TOOLS, ...externalTools]
-        : [];
+      let allTools, baseBody;
+      try {
+        allTools = hasSoulTools
+          ? [...SOUL_TOOLS, ...externalTools]
+          : [];
 
-      const baseBody = {
-        model,
-        max_tokens: 4096,
-        stream: true,
-        system: systemPrompt,
-      };
-      if (hasSoulTools) baseBody.tools = allTools;
+        baseBody = {
+          model,
+          max_tokens: 4096,
+          stream: true,
+          system: systemPrompt,
+        };
+        if (hasSoulTools) baseBody.tools = allTools;
+      } catch (err) {
+        console.error("[useClaude] tools/baseBody setup failed:", err, { hasSoulTools, externalToolsType: typeof externalTools, isArray: Array.isArray(externalTools) });
+        throw err;
+      }
 
       let fullText = "";
 
@@ -599,51 +600,79 @@ ${mediaSignalInstructions}`;
       }
 
       // ── Haupt-Loop: max. 3 Runden (Tool → Ergebnis → Antwort) ────────────
-      let currentMsgs = buildApiMessages(
-        messages,
-        fullSoul && role === "soul" ? profileImageBase64 : null,
-        fullSoul && role === "soul" ? networkPdfBlocks : null,
-        fullSoul && role === "soul" ? networkImageBlocks : null
-      );
+      let currentMsgs, forceToolChoice;
+      try {
+        currentMsgs = buildApiMessages(
+          messages,
+          fullSoul && role === "soul" ? profileImageBase64 : null,
+          fullSoul && role === "soul" ? networkPdfBlocks : null,
+          fullSoul && role === "soul" ? networkImageBlocks : null
+        );
 
-      // Bild in letzter User-Nachricht oder explizites forceTool? → Tool in Runde 0 erzwingen
-      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-      const lastMsgHasImage = Array.isArray(lastUserMsg?.content) &&
-        lastUserMsg.content.some(b => b.type === "image");
-      const forceToolChoice = forceTool
-        ? { type: "tool", name: forceTool }
-        : (hasSoulTools && lastMsgHasImage ? { type: "tool", name: "food_log" } : null);
+        // Bild in letzter User-Nachricht oder explizites forceTool? → Tool in Runde 0 erzwingen
+        const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+        const lastMsgHasImage = Array.isArray(lastUserMsg?.content) &&
+          lastUserMsg.content.some(b => b.type === "image");
+        forceToolChoice = forceTool
+          ? { type: "tool", name: forceTool }
+          : (hasSoulTools && lastMsgHasImage ? { type: "tool", name: "food_log" } : null);
+      } catch (err) {
+        console.error("[useClaude] pre-loop setup failed (buildApiMessages/forceToolChoice):", err, { messagesLen: messages?.length, hasSoulTools, externalToolsLen: externalTools?.length });
+        throw err;
+      }
 
       for (let round = 0; round < 4; round++) {
         // Letzte Runde ohne Tools – verhindert endlosen Tool-Loop
-        const result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0 ? forceToolChoice : null);
+        let result;
+        try {
+          result = await streamRound(currentMsgs, round < 3 && hasSoulTools, round === 0 ? forceToolChoice : null);
+        } catch (err) {
+          console.error(`[useClaude] streamRound failed (round ${round}):`, err);
+          throw err;
+        }
         if (!result) return null; // Cert-Fehler bereits gesetzt
 
         const { allBlocks, stopReason } = result;
+        if (!Array.isArray(allBlocks)) {
+          console.error(`[useClaude] streamRound returned non-array allBlocks (round ${round}):`, allBlocks);
+          throw new Error(`streamRound: allBlocks is not an array (${typeof allBlocks})`);
+        }
 
         if (stopReason !== "tool_use" || !hasSoulTools) break;
 
         // Assistenten-Turn aus den Content-Blöcken bauen
-        const assistantContent = allBlocks.map(b => {
-          if (b.type === "text") return { type: "text", text: b.text };
-          if (b.type === "tool_use") {
-            let input = {};
-            try { input = JSON.parse(b.inputJson || "{}"); } catch {}
-            return { type: "tool_use", id: b.id, name: b.name, input };
-          }
-          return null;
-        }).filter(Boolean);
+        let assistantContent;
+        try {
+          assistantContent = allBlocks.map(b => {
+            if (b.type === "text") return { type: "text", text: b.text };
+            if (b.type === "tool_use") {
+              let input = {};
+              try { input = JSON.parse(b.inputJson || "{}"); } catch {}
+              return { type: "tool_use", id: b.id, name: b.name, input };
+            }
+            return null;
+          }).filter(Boolean);
+        } catch (err) {
+          console.error(`[useClaude] assistantContent build failed (round ${round}), allBlocks:`, allBlocks, err);
+          throw err;
+        }
 
         // Tool-Calls ausführen
-        const toolUseBlocks = allBlocks.filter(b => b.type === "tool_use");
-        const toolResultContent = await Promise.all(
-          toolUseBlocks.map(async tb => {
-            let input = {};
-            try { input = JSON.parse(tb.inputJson || "{}"); } catch {}
-            const content = await executeTool(tb.name, input);
-            return { type: "tool_result", tool_use_id: tb.id, content };
-          })
-        );
+        let toolResultContent;
+        try {
+          const toolUseBlocks = allBlocks.filter(b => b.type === "tool_use");
+          toolResultContent = await Promise.all(
+            toolUseBlocks.map(async tb => {
+              let input = {};
+              try { input = JSON.parse(tb.inputJson || "{}"); } catch {}
+              const content = await executeTool(tb.name, input);
+              return { type: "tool_result", tool_use_id: tb.id, content };
+            })
+          );
+        } catch (err) {
+          console.error(`[useClaude] tool execution failed (round ${round}):`, err);
+          throw err;
+        }
 
         // Konversation um Assistenten-Turn + Tool-Ergebnisse erweitern
         currentMsgs = [
