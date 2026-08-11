@@ -197,7 +197,9 @@
         >
           <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="loginOpen = false" />
           <div class="login-sheet">
-            <button class="login-close" @click="loginOpen = false" :aria-label="$t('index.close')">✕</button>
+            <button class="login-close" @click="loginOpen = false" :aria-label="$t('index.close')">
+              <SysIcon name="close" style="width:16px;height:16px" />
+            </button>
             <div class="login-kicker">{{ $t('index.login_modal_kicker') }}</div>
             <h2 class="login-title">{{ $t('index.login_modal_title') }}</h2>
             <p class="login-sub">
@@ -220,12 +222,12 @@
             <button class="login-alt" @click="openDecryptFromLogin">
               <span>{{ $t('index.load_encrypted_vault') }}</span>
               <span class="login-alt-sub">{{ $t('index.load_encrypted_sub') }}</span>
-              <span class="login-arr">→</span>
+              <SysIcon name="arrow" class="login-arr" style="width:16px;height:16px" />
             </button>
             <button class="login-alt" @click="loginOpen = false; createSoulOpen = true">
               <span>{{ $t('index.create_soul_alt') }}</span>
               <span class="login-alt-sub">{{ $t('index.create_soul_alt_sub') }}</span>
-              <span class="login-arr">→</span>
+              <SysIcon name="arrow" class="login-arr" style="width:16px;height:16px" />
             </button>
           </div>
         </div>
@@ -772,23 +774,23 @@ onMounted(() => {
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: 26px; letter-spacing: -0.025em; margin: 0 0 8px; color: var(--fg); line-height: 1.15; }
 .login-title em { font-style: italic; color: var(--accent); }
-.login-sub { font-size: 15px; color: var(--fg-2); line-height: 1.5; margin: 0 0 24px; }
+.login-sub { font-size: 15px; color: var(--fg); line-height: 1.5; margin: 0 0 24px; }
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.login-divider span { font-size: 13px; color: var(--fg-4); }
+.login-divider span { font-size: 13px; color: var(--fg); }
 .login-alt { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 16px 18px; background: transparent; border: 1px solid var(--line); color: var(--fg); cursor: pointer; text-align: left; font: inherit; transition: all 0.15s; box-sizing: border-box; border-radius: var(--r-sm); }
 .login-alt:hover { border-color: var(--accent); background: var(--accent-dim); }
 .login-alt span { font-size: 15px; font-weight: 500; letter-spacing: 0; min-width: 0; }
-.login-alt-sub { font-size: 13px; color: var(--fg-3); flex: 1; display: none; }
+.login-alt-sub { font-size: 13px; color: var(--fg); flex: 1; display: none; }
 @media (min-width: 400px) { .login-alt-sub { display: block; } }
 .login-alt + .login-alt { margin-top: 10px; }
-.login-arr { font-size: 16px; color: var(--fg-3); }
+.login-arr { width: 16px; height: 16px; flex: none; color: var(--fg-3); }
 .login-sheet-enter-active, .login-sheet-leave-active { transition: opacity 0.2s ease; }
 .login-sheet-enter-active .login-sheet, .login-sheet-leave-active .login-sheet { transition: transform 0.25s ease, opacity 0.2s; }
 .login-sheet-enter-from, .login-sheet-leave-to { opacity: 0; }
 .login-sheet-enter-from .login-sheet, .login-sheet-leave-to .login-sheet { transform: translateY(16px) scale(0.98); opacity: 0; }
 .login-recovery { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(223,144,144,0.35); background: rgba(223,144,144,0.06); border-radius: var(--r-sm); }
-.login-recovery-msg { font-size: 14px; color: var(--fg-2); line-height: 1.5; margin: 0 0 12px; }
+.login-recovery-msg { font-size: 14px; color: var(--fg); line-height: 1.5; margin: 0 0 12px; }
 .login-recovery-btn { width: 100%; padding: 11px 16px; background: transparent; border: 1px solid rgba(223,144,144,0.5); color: var(--c-danger); font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: var(--r-sm); transition: all 0.15s; }
 .login-recovery-btn:hover:not(:disabled) { background: rgba(223,144,144,0.12); }
 .login-recovery-btn:disabled { opacity: 0.5; cursor: not-allowed; }
