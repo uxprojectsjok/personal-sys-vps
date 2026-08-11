@@ -965,32 +965,62 @@ app.get('/mcp/discover/federated/relay/peer-outbox', async (req, res) => {
     ? req.query.candidate_ids.split(',').map(s => s.trim()).filter(Boolean)
     : [];
 
-  const selfToken = await getSelfToken(gatekeeperSoulId);
-  if (!selfToken) {
-    console.log(`[peer-outbox] ${gatekeeperSoulId} hat noch keinen self_token — leere Antwort.`);
-    return res.json({ ok: true, messages: [] });
+  const messages = [];
+
+  // Geschwister-Souls von gatekeeperSoulId (z.B. KRO, wired_peer_send in
+  // deren EIGENE sys.md geschrieben) — dieselbe Quelle, die der lokale
+  // peer-inbox-relay oben schon nutzt. Ohne das sah ein föderierter Partner
+  // NIE Nachrichten einer gewirteten Soul, nur Broadcasts der Gatekeeper-
+  // Soul selbst (live so gefunden: KROs Nachricht an eine föderiert
+  // erreichbare Soul kam nie an, weil hier nur der Self-Token gelesen wurde).
+  try {
+    const { wired } = await loadAcceptedWired(gatekeeperSoulId);
+    await Promise.all(Object.values(wired).map(async (entry) => {
+      if (!entry.permissions?.soul) return;
+      try {
+        const upstream = await fetchApi('/api/soul', entry.token, entry.node_url);
+        const md = await upstream.text();
+        for (const m of parseSocialMessages(md)) {
+          if (m.to === 'peer' || candidateIds.includes(m.to)) {
+            messages.push({
+              ...m,
+              from_soul_id: entry.soul_id,
+              from_label: entry.name || entry.soul_id.slice(0, 8),
+              node_url: entry.node_url || BASE_URL,
+            });
+          }
+        }
+      } catch { /* eine unerreichbare Geschwister-Spoke darf die anderen nie blockieren */ }
+    }));
+  } catch (err) {
+    console.warn(`[peer-outbox] Geschwister-Souls von ${gatekeeperSoulId} nicht lesbar: ${err.message}`);
   }
 
-  try {
-    const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);
-    const md = await upstream.text();
-    const gkCtx = await loadCtx(gatekeeperSoulId).catch(() => null);
-    const messages = [];
-    for (const m of parseSocialMessages(md)) {
-      if (m.from === 'me' && (m.to === 'peer' || candidateIds.includes(m.to))) {
-        messages.push({
-          ...m,
-          from_soul_id: gatekeeperSoulId,
-          from_label: gkCtx?.name || gatekeeperSoulId.slice(0, 8),
-          node_url: BASE_URL,
-          is_gatekeeper: true,
-        });
+  const selfToken = await getSelfToken(gatekeeperSoulId);
+  if (selfToken) {
+    try {
+      const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);
+      const md = await upstream.text();
+      const gkCtx = await loadCtx(gatekeeperSoulId).catch(() => null);
+      for (const m of parseSocialMessages(md)) {
+        if (m.from === 'me' && (m.to === 'peer' || candidateIds.includes(m.to))) {
+          messages.push({
+            ...m,
+            from_soul_id: gatekeeperSoulId,
+            from_label: gkCtx?.name || gatekeeperSoulId.slice(0, 8),
+            node_url: BASE_URL,
+            is_gatekeeper: true,
+          });
+        }
       }
+    } catch (err) {
+      console.warn(`[peer-outbox] Self-Token-sys.md von ${gatekeeperSoulId} nicht lesbar: ${err.message}`);
     }
-    res.json({ ok: true, messages });
-  } catch (err) {
-    res.status(502).json({ error: 'upstream_failed', message: err.message });
+  } else {
+    console.log(`[peer-outbox] ${gatekeeperSoulId} hat noch keinen self_token — nur Geschwister-Souls (falls vorhanden) geliefert.`);
   }
+
+  res.json({ ok: true, messages });
 });
 
 // Eigene Sicht: alle über Gatekeeper-Wiring erreichbaren Peers, gebündelt über
