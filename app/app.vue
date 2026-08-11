@@ -3,6 +3,11 @@
     <NuxtPage />
   </NuxtLayout>
   <SysMobileNav v-if="hasSoul" />
+  <ConsentBanner
+    :is-visible="true"
+    @show-privacy="openCentralPrivacy"
+    @show-privacy-faq="openCentralPrivacy"
+  />
   <div id="teleports"></div>
 </template>
 
@@ -10,6 +15,17 @@
 import { onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul'
+import ConsentBanner from '~/components/ConsentBanner.vue'
+
+// Diese Node hat keine eigene Datenschutzerklärung (privater, nicht-
+// gewerblicher Node) — die anonyme Reichweitenmessung läuft aber über die
+// zentrale, geteilte Plausible-Property "uxprojects-jok.com", deren
+// Datenschutzerklärung dort zentral gepflegt wird. Beide Banner-Links
+// (Datenschutzerklärung + FAQ-Kurzfassung) zeigen bis auf Weiteres auf
+// dieselbe zentrale Seite — es gibt aktuell keine separate FAQ-URL.
+function openCentralPrivacy() {
+  window.open('https://uxprojects-jok.com/datenschutz', '_blank', 'noopener')
+}
 
 const { setLocale } = useI18n()
 const { soulToken, hasSoul } = useSoul()

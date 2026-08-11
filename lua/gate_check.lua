@@ -42,6 +42,22 @@ if request_path:sub(1, 6) == "/link/" then
   return
 end
 
+-- Impressum/Datenschutz/Lizenz: haben in vhost.conf.template bereits einen
+-- eigenen nginx-Bypass-Block (location = /impressum etc., kein
+-- access_by_lua_file) — der greift aber nur, wenn die Datei tatsächlich
+-- existiert (operator hat eine eigene impressum.vue etc. angelegt). Fehlt
+-- sie (Template-Default: nur agb.vue), fällt try_files auf /index.html
+-- zurück — ein interner Redirect, der erneut durch location / (und damit
+-- gate_check.lua) läuft, request_path ist dabei weiterhin "/impressum" (s.o.).
+-- Ohne diesen Whitelist-Eintrag landete man dann trotz des eigentlich schon
+-- vorhandenen nginx-Bypasses im Gate-Redirect — live so auf einem Node ohne
+-- eigene Legal-Seiten aufgetreten. Zeigt bei fehlender Seite die generische
+-- SPA-404 statt Login-Zwang.
+if request_path == "/impressum" or request_path == "/datenschutz" or request_path == "/lizenz" then
+  ngx.ctx.gate_done = true
+  return
+end
+
 -- Biometrie-Verify: QR-Scan-Flow — gültige verify_token im ?vt= Param bypassen Gate
 if request_path == "/verify" then
   local args = ngx.req.get_uri_args()
