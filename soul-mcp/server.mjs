@@ -26,7 +26,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { registerTools, registerPaidTools, registerPeerTools, registerTrustRequestTools, registerWiredApps } from './tools/index.mjs';
 import { registerSoulApps } from './tools/soul_apps.mjs';
-import { loadConnected } from './lib/connected_souls.mjs';
 import { loadWired, saveWired, loadWiredTo, saveWiredTo, checkOwnServiceToken, isGatekeeperEnabled, setGatekeeperEnabled, wireKey, loadAcceptedWired, getSelfToken, setSelfToken } from './lib/wired_souls.mjs';
 import { parseSocialMessages } from './lib/peer_messages.mjs';
 import { createServiceToken, verifyServiceToken } from './lib/api.mjs';
@@ -254,17 +253,19 @@ const OWNER_INSTRUCTIONS = [
 ].join(' ');
 
 // Registriert die wired_*-Proxy-Tools (gatekeeper_proxy.mjs) für EINE Soul,
-// gemerged aus wired_souls.json (Gatekeeper-Rolle) UND connected_souls.json
-// (direkte Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) —
-// registerGatekeeperTools() vergibt feste Tool-Namen (wired_soul_read, ...)
-// und darf pro Verbindung nur EINMAL aufgerufen werden, sonst wirft die SDK
-// wegen doppeltem Tool-Namen. Gilt für JEDE Soul, nicht nur Gatekeeper — jede
-// Soul mit akzeptierten Verbindungen bekommt automatisch Lesezugriff auf sie.
+// aus wired_souls.json (Gatekeeper-Rolle) — registerGatekeeperTools() vergibt
+// feste Tool-Namen (wired_soul_read, ...) und darf pro Verbindung nur EINMAL
+// aufgerufen werden, sonst wirft die SDK wegen doppeltem Tool-Namen.
+//
+// Die alte connected_souls.json-1:1-Connections-Funktion (Stage-A
+// Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) ist entfernt
+// — ihr Erstellungs-Pfad war ohnehin tot (kein laufender Endpoint hat je
+// einen Eintrag angelegt), Gatekeeper/Wiring ist jetzt der einzige Weg,
+// Souls für die wired_*-Tools und @peer erreichbar zu machen.
 async function registerConnectionProxyTools(server, soulId, callerToken = null) {
   // Gatekeeper-Funktion global ausgeschaltet → bereits verdrahtete Souls
   // bleiben in wired_souls.json gespeichert, werden aber nicht mehr als
-  // Tools angeboten. connected_souls.json (direkte Soul-Verbindungen) ist
-  // ein separates Feature und bleibt vom Schalter unberührt.
+  // Tools angeboten.
   const gkEnabled = await isGatekeeperEnabled(soulId);
   // wired_souls.json kann pro soul_id mehrere Einträge haben (verschiedene
   // physische Node-Instanzen derselben Identität, siehe wireKey()) — die
@@ -292,55 +293,23 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
     acceptedRaw[key] = normalized;
     if (!wired[sid] || entry.wired_at > wired[sid].wired_at) wired[sid] = normalized;
   }
-  const connectedAll = await loadConnected(soulId);
-  const connected = Object.fromEntries(
-    Object.entries(connectedAll)
-      .filter(([, e]) => e.status === 'accepted')
-      // wired_souls.json-Einträge nutzen "token", connected_souls.json nutzt
-      // "outbound_token" (das WIR präsentieren, wenn WIR die Gegenseite
-      // abfragen) — gatekeeper_proxy.mjs' lookup() erwartet einheitlich "token".
-      .map(([remoteId, e]) => [remoteId, { ...e, token: e.outbound_token }])
-  );
-  // wired_souls.json (dieses Feature) und connected_souls.json (Stage-A
-  // Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) sind zwei
-  // unabhängige Systeme, die für dieselbe soul_id gleichzeitig einen Eintrag
-  // haben können — ein blindes {...wired, ...connected} ließe "connected"
-  // immer gewinnen, unabhängig davon welche Verbindung tatsächlich neuer/
-  // aktiver ist (live so aufgetreten: ein wired_soul_write landete über die
-  // ältere connected-Verbindung auf dem falschen Node, obwohl gerade eine
-  // neuere wired-Verbindung angelegt worden war). Stattdessen: die jeweils
-  // zuletzt hergestellte/akzeptierte Verbindung gewinnt, gleiches Prinzip
-  // wie bei mehreren wired-Instanzen derselben soul_id.
-  function mergeByRecency(wiredSource, connectedSource) {
-    const out = { ...wiredSource };
-    for (const [sid, entry] of Object.entries(connectedSource)) {
-      const existingTs = out[sid]?.wired_at || out[sid]?.accepted_at || 0;
-      const newTs       = entry.accepted_at || entry.requested_at || 0;
-      if (!out[sid] || newTs > existingTs) out[sid] = entry;
-    }
-    return out;
-  }
-  const merged    = mergeByRecency(wired, connected);
-  const mergedRaw = mergeByRecency(acceptedRaw, connected);
   // Föderierte Gatekeeper (federated_gatekeepers.json, siehe lib/
   // federated_gatekeepers.mjs) erweitern die Reichweite der wired_*-Tools um
   // deren eigene wired Souls (1 Hop, resolveCandidates() in
   // gatekeeper_proxy.mjs) — geladen für JEDE Soul, nicht nur "echte"
-  // Gatekeeper, exakt wie wired/connected oben; für Souls ohne eigene
-  // Föderationen ist die Datei einfach leer (loadFederated() faengt das ab),
-  // keine Sonderbehandlung nötig.
+  // Gatekeeper; für Souls ohne eigene Föderationen ist die Datei einfach leer
+  // (loadFederated() faengt das ab), keine Sonderbehandlung nötig.
   const fed = await loadFederated(soulId);
   // gkEnabled allein reicht schon: "ich bin Gatekeeper" ist eine bewusste
   // Einstellung dieser Soul, kein Live-Zustand, der davon abhängt, ob gerade
   // irgendwer verdrahtet ist — die Tools (wire_status etc.) müssen sichtbar
   // sein, sobald der Schalter an ist, auch mit leerer wired_souls.json (z.B.
   // direkt nach dem ersten Einschalten, oder nachdem Aus die letzte
-  // Verbindung beendet hat). connected_souls.json bleibt zusätzlich sein
-  // eigenes, vom Schalter unabhängiges Feature (siehe Kommentar oben).
-  if (gkEnabled || Object.keys(merged).length > 0 || Object.keys(fed).length > 0) {
-    registerGatekeeperTools(server, merged, callerToken, mergedRaw, fed, soulId);
+  // Verbindung beendet hat).
+  if (gkEnabled || Object.keys(wired).length > 0 || Object.keys(fed).length > 0) {
+    registerGatekeeperTools(server, wired, callerToken, acceptedRaw, fed, soulId);
   }
-  return { wired, connected, fed };
+  return { wired, fed };
 }
 
 async function handleMcp(req, res) {
@@ -3152,19 +3121,6 @@ async function pushSoulNetworkLines(lines, soulId) {
     for (const { gkSoulId, e, idx } of wiredToPublic) {
       const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
       lines.push(`  - Gatekeeper: ${idx.name || gkSoulId} (\`${gkSoulId}\`)${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, gkSoulId)}`);
-    }
-  }
-
-  const connected = await loadConnected(soulId);
-  const connectedPublic = Object.entries(connected)
-    .filter(([, e]) => e.status === 'accepted')
-    .map(([peerSoulId, e]) => ({ peerSoulId, e, idx: publicOf(peerSoulId) }))
-    .filter(({ idx }) => idx);
-  if (connectedPublic.length) {
-    lines.push(`- **Connected to:** ${connectedPublic.length} soul(s) directly (symmetric, no Gatekeeper in between).`);
-    for (const { peerSoulId, e, idx } of connectedPublic) {
-      const tags = idx.tags?.length ? ` — Tags: ${idx.tags.map(t => `#${t}`).join(' ')}` : '';
-      lines.push(`  - ${idx.name || e.alias || peerSoulId} (\`${peerSoulId}\`)${tags}${activitySuffix(idx)} — ${llmsTxtLink(e.node_url, peerSoulId)}`);
     }
   }
 }

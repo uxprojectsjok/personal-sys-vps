@@ -2,31 +2,26 @@
  * peer_inbox — Liest Textnachrichten von verbundenen Peers. Bewusst text-only
  * (siehe peer_send.mjs) — keine Anhang-Auflösung/Bild-Rendering mehr.
  *
- * Zwei Datenquellen: connected_souls.json (alte direkte Soul-zu-Soul-
- * Verbindungen, siehe project_sys_v2_vision Memory) — für jede "accepted"-
- * Verbindung wird deren sys.md per fetchApi() (node_url-bewusst, funktioniert
- * cross-node) gelesen und der SOCIAL-Block geparst — UND jeder Gatekeeper, bei
- * dem diese Soul gewired ist: dessen Geschwister-Spokes werden über den
- * Gatekeeper-Relay abgefragt (server.mjs POST /mcp/discover/gatekeeper/
- * peer-inbox-relay), da eine Spoke die Tokens ihrer Geschwister nie direkt
- * bekommt — siehe lib/gatekeeper_peers.mjs. Beide Quellen liefern exakt
- * dasselbe Nachrichtenformat (<!-- @msg ts from to text -->).
+ * Zwei Quellen: die eigene sys.md (eigene gesendete Nachrichten) UND jeder
+ * Gatekeeper, bei dem diese Soul gewired ist — dessen Geschwister-Spokes
+ * werden über den Gatekeeper-Relay abgefragt (server.mjs POST /mcp/discover/
+ * gatekeeper/peer-inbox-relay, das intern auch föderierte Partner mit
+ * einschließt), da eine Spoke die Tokens ihrer Geschwister nie direkt
+ * bekommt — siehe lib/gatekeeper_peers.mjs. Die alte connected_souls.json-
+ * 1:1-Connections-Quelle ist entfernt (Erstellungs-Pfad war ohnehin tot).
  */
 
 import { z } from 'zod';
 import { getText } from '../lib/api.mjs';
-import { loadConnected } from '../lib/connected_souls.mjs';
-import { fetchApi } from './gatekeeper_proxy.mjs';
 import { parseSocialMessages } from '../lib/peer_messages.mjs';
 import { fetchGatekeeperInboxMessages } from '../lib/gatekeeper_peers.mjs';
 
 const DAY_MS = 86400000;
 
-// Sammelt Nachrichten aus der eigenen sys.md (eigene gesendete), aus jeder
-// "accepted" verbundenen Soul (an mich oder an "alle" adressiert) UND aus
+// Sammelt Nachrichten aus der eigenen sys.md (eigene gesendete) UND aus
 // jedem Gatekeeper-Netzwerk, in dem diese Soul gewired ist. Eine nicht
-// erreichbare/kaputte Quelle darf die anderen nie blockieren.
-async function collectMessages(soulId, token, connectedMap) {
+// erreichbare/kaputte Quelle darf die andere nie blockieren.
+async function collectMessages(soulId, token) {
   const results = [];
 
   try {
@@ -38,20 +33,6 @@ async function collectMessages(soulId, token, connectedMap) {
     }
   } catch { /* eigenes sys.md nicht lesbar — ignorieren */ }
 
-  await Promise.all(Object.entries(connectedMap).map(async ([remoteId, entry]) => {
-    if (entry.status !== 'accepted' || !entry.permissions?.soul) return;
-    try {
-      const res = await fetchApi('/api/soul', entry.outbound_token, entry.node_url);
-      const md  = await res.text();
-      const label = entry.alias || remoteId.slice(0, 8);
-      for (const m of parseSocialMessages(md)) {
-        if (m.to === 'peer' || m.to === soulId) {
-          results.push({ ...m, outgoing: false, peer: label, from_label: label, soulId: remoteId });
-        }
-      }
-    } catch { /* Soul nicht erreichbar — andere Verbindungen trotzdem auswerten */ }
-  }));
-
   try {
     const gkMsgs = await fetchGatekeeperInboxMessages(soulId, token);
     for (const m of gkMsgs) {
@@ -60,7 +41,7 @@ async function collectMessages(soulId, token, connectedMap) {
         outgoing: false, peer: m.from_label, from_label: m.from_label, soulId: m.from_soul_id,
       });
     }
-  } catch { /* kein Gatekeeper-Netzwerk erreichbar — Connections-Ergebnisse trotzdem verwenden */ }
+  } catch { /* kein Gatekeeper-Netzwerk erreichbar */ }
 
   results.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   return results;
@@ -92,8 +73,7 @@ export function register(server, token, soulId = null) {
         return { content: [{ type: 'text', text: 'peer_inbox nicht verfügbar (kein soulId).' }], isError: true };
       }
       try {
-        const connectedMap = await loadConnected(soulId);
-        const allMsgs = await collectMessages(soulId, token, connectedMap);
+        const allMsgs = await collectMessages(soulId, token);
 
         const cutoff = Date.now() - days * DAY_MS;
         let msgs = allMsgs.filter(m => new Date(m.ts).getTime() >= cutoff);

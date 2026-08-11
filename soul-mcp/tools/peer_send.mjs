@@ -4,15 +4,16 @@
  * Datei-/Bild-Anhänge deckt SYS strukturell nicht besser ab als bestehende
  * Messenger, deshalb entfernt (siehe vorheriger vault_filename/data_b64-Anhang-
  * Code, git history).
- * Namensauflösung über zwei Quellen: connected_souls.json (alte direkte
- * Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) UND jede
- * Soul, die über einen gemeinsamen Gatekeeper erreichbar ist — siehe
- * lib/gatekeeper_peers.mjs.
+ * Namensauflösung: jede Soul, die über einen gemeinsamen Gatekeeper (direkt
+ * oder föderiert) erreichbar ist — siehe lib/gatekeeper_peers.mjs. Die alte
+ * connected_souls.json-1:1-Connections-Funktion ist entfernt (Erstellungs-
+ * Pfad war ohnehin tot, kein laufender Endpoint hat je einen Eintrag
+ * angelegt) — Gatekeeper/Wiring ist jetzt der einzige Weg, eine andere Soul
+ * als @peer zu erreichen.
  */
 
 import { z } from 'zod';
 import { getText, putJson, verificationRequiredMsg } from '../lib/api.mjs';
-import { loadConnected } from '../lib/connected_souls.mjs';
 import { resolveGatekeeperPeers } from '../lib/gatekeeper_peers.mjs';
 import { SOCIAL_START, SOCIAL_END, AGENT_START, AGENT_END, appendToBlock } from '../lib/peer_messages.mjs';
 
@@ -57,15 +58,11 @@ export function register(server, token, soulId = null) {
             if (!soulId) {
               return { content: [{ type: 'text', text: 'Peer-Auflösung nicht verfügbar (kein soulId).' }], isError: true };
             }
-            // Zwei unabhängige Quellen: die alten 1:1-Connections UND jede Soul,
-            // die über einen gemeinsamen Gatekeeper erreichbar ist (Geschwister-
-            // Spokes + der Gatekeeper selbst, siehe gatekeeper_peers.mjs).
-            const connected = await loadConnected(soulId);
-            const candidates = Object.entries(connected)
-              .filter(([, e]) => e.status === 'accepted')
-              .map(([id, e]) => ({ id, alias: e.alias }));
+            // Jede Soul, die über einen gemeinsamen Gatekeeper erreichbar ist
+            // (Geschwister-Spokes + der Gatekeeper selbst, direkt oder
+            // föderiert — siehe gatekeeper_peers.mjs).
             const gkPeers = await resolveGatekeeperPeers(soulId, token).catch(() => []);
-            for (const p of gkPeers) candidates.push({ id: p.soul_id, alias: p.name });
+            const candidates = gkPeers.map(p => ({ id: p.soul_id, alias: p.name }));
 
             const match = candidates.find(({ id, alias }) =>
               (alias || '').toLowerCase() === toNorm ||
