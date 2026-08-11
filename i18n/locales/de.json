@@ -283,12 +283,6 @@
     "cmd_speak_desc": "Sprachaufnahme starten",
     "cmd_abort_desc": "Aktion abbrechen & zurücksetzen",
     "cmd_session_end_desc": "Session jetzt analysieren & eintragen",
-    "cmd_all_desc": "Nachricht an alle Peers",
-    "cmd_all_hint": "Nachricht …",
-    "cmd_peer_desc": "Direkt an Peer (explizit)",
-    "cmd_peer_hint": "Name Nachricht …",
-    "cmd_agent_desc": "Agent Sandbox",
-    "cmd_agent_hint": "Frage an den Agent …",
     "agent_creating": "Agent wird erstellt…",
     "agent_created": "Agent **{name}** erstellt.",
     "agent_no_voice_clone": "Kein Stimm-Clone — kein Audio im Vault oder Vault war beim Erstellen gesperrt. Vault entsperren und `{'@'}create-agent` erneut ausführen.",
@@ -308,7 +302,6 @@
     "contact_added": "Peer **{label}** hinzugefügt ✓\n\nSoul-ID: `{id}`",
     "contact_added_endpoint": "Endpoint: `{endpoint}`",
     "contact_reachable": "Ab jetzt mit `{'@'}{label}` erreichbar.",
-    "peer_ambiguous": "Mehrdeutig: {names} — bitte den vollständigen Namen verwenden.",
     "pin_checking": "Wird geprüft…",
     "pin_publishing": "Soul wird auf IPFS veröffentlicht…",
     "pin_published": "Soul veröffentlicht ✓",
@@ -372,7 +365,6 @@
     "cmd_speak_label": "sprechen",
     "cmd_abort_label": "abbruch",
     "cmd_search_label": "suche",
-    "cmd_all_label": "alle",
     "search_no_query": "Bitte eine Suchanfrage angeben: `{'@'}suche Was ist …`"
   },
   "session_page": {

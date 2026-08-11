@@ -283,12 +283,6 @@
     "cmd_speak_desc": "Start voice recording",
     "cmd_abort_desc": "Cancel & reset action",
     "cmd_session_end_desc": "Analyse & log session now",
-    "cmd_all_desc": "Message to all peers",
-    "cmd_all_hint": "Message …",
-    "cmd_peer_desc": "Direct to peer (explicit)",
-    "cmd_peer_hint": "Name Message …",
-    "cmd_agent_desc": "Agent sandbox",
-    "cmd_agent_hint": "Question for the agent …",
     "agent_creating": "Creating agent…",
     "agent_created": "Agent **{name}** created.",
     "agent_no_voice_clone": "No voice clone — no audio in vault or vault was locked during creation. Unlock vault and run `{'@'}create-agent` again.",
@@ -308,7 +302,6 @@
     "contact_added": "Peer **{label}** added ✓\n\nSoul-ID: `{id}`",
     "contact_added_endpoint": "Endpoint: `{endpoint}`",
     "contact_reachable": "Now reachable as `{'@'}{label}`.",
-    "peer_ambiguous": "Ambiguous: {names} — please use the full name.",
     "pin_checking": "Checking…",
     "pin_publishing": "Publishing soul to IPFS…",
     "pin_published": "Soul published ✓",
@@ -372,7 +365,6 @@
     "cmd_speak_label": "speak",
     "cmd_abort_label": "abort",
     "cmd_search_label": "search",
-    "cmd_all_label": "all",
     "search_no_query": "Please enter a search query: `{'@'}search What is …`"
   },
   "session_page": {

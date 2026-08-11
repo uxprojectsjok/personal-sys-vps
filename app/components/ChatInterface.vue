@@ -816,9 +816,6 @@ const AT_COMMANDS = computed(() => [
   { cmd: '@sprechen',     label: t('chat.cmd_speak_label'),       desc: t('chat.cmd_speak_desc'),        direct: true                                         },
   { cmd: '@abbruch',      label: t('chat.cmd_abort_label'),       desc: t('chat.cmd_abort_desc'),        direct: true                                         },
   { cmd: '@session-end',  label: 'session-end',                   desc: t('chat.cmd_session_end_desc'),  direct: true                                         },
-  { cmd: '@all ',         label: t('chat.cmd_all_label'),         desc: t('chat.cmd_all_desc'),          direct: false, hint: t('chat.cmd_all_hint')          },
-  { cmd: '@peer ',        label: 'peer',                          desc: t('chat.cmd_peer_desc'),         direct: false, hint: t('chat.cmd_peer_hint')         },
-  { cmd: '@agent ',       label: 'agent',                         desc: t('chat.cmd_agent_desc'),        direct: false, hint: t('chat.cmd_agent_hint')        },
 ])
 
 function insertCommand(cmd) {
@@ -1187,20 +1184,6 @@ function parseOldAgentBlock(blockContent) {
   }).filter(Boolean)
 }
 
-function formatMsgEntry(content, from, to, ts = new Date().toISOString()) {
-  const safe = content.replace(/\n+/g, ' ').replace(/-->/g, '—>')
-  return `\n<!-- @msg ${ts} ${from} ${to} ${safe.trim()} -->`
-}
-
-function appendToMarkerBlock(md, type, entry) {
-  const end = `<!-- ${type}:END -->`
-  const idx = md.indexOf(end)
-  if (idx !== -1) return md.slice(0, idx) + entry + '\n' + md.slice(idx)
-  // Block fehlt — am Ende erstellen (v1 → v2 Auto-Migration)
-  const start = `<!-- ${type}:START -->`
-  return md.trimEnd() + `\n\n${start}${entry}\n${end}\n`
-}
-
 function fmtMsgDate(ts) {
   try {
     const d   = new Date(ts)
@@ -1394,72 +1377,6 @@ watch(displayMessages, (msgs) => {
   }
 }, { immediate: true })
 
-async function forwardSynthesis(item) {
-  const idx = localSynthesisMsgs.value.findIndex(m => m.ts === item.ts)
-  if (idx !== -1) localSynthesisMsgs.value[idx] = { ...localSynthesisMsgs.value[idx], forwarded: true }
-  await handlePeerSend(`[KI] ${item.content}`, 'peer')
-}
-
-
-async function runAutonomousKiPost() {
-  if (!autonomousKi.value) return
-  if (isSavingAgent.value) return
-  if (Date.now() - _lastAutonomousPostTs < AUTONOMOUS_MIN_INTERVAL_MS) return
-
-  // Only run when there's actual recent peer activity (within 90 min)
-  const recentSocialMsgs = displayMessages.value
-    .filter(m => m.sphere === 'social' && m.ts)
-  const lastPeerMsg = recentSocialMsgs.filter(m => m.from !== 'me').slice(-1)[0]
-  if (!lastPeerMsg) return
-  if (Date.now() - new Date(lastPeerMsg.ts).getTime() > 90 * 60 * 1000) return
-
-  const soulName   = soulMeta.value?.name || 'Ich'
-  const soulSnippet = (props.soulContent || '').slice(0, 600)
-
-  // Last 6 social messages for grounding
-  const recentSocial = recentSocialMsgs
-    .slice(-6)
-    .map(m => `${m.from === 'me' ? soulName : resolveAuthor(m)}: ${cleanMsgContent(m).slice(0, 150)}`)
-    .join('\n')
-
-  // Last SoulKI insight (if any) — so the auto-post knows what was processed
-  const lastKiThought = (messages.value || [])
-    .filter(m => m.role === 'assistant' && m.text)
-    .slice(-1)
-    .map(m => m.text.slice(0, 200))
-    .join('')
-
-  const context = [
-    `Soul von ${soulName}:\n${soulSnippet}`,
-    recentSocial ? `Aktuelle Unterhaltung:\n${recentSocial}` : '',
-    lastKiThought ? `Meine letzte Überlegung dazu:\n${lastKiThought}` : '',
-  ].filter(Boolean).join('\n\n')
-
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert || 'anonymous'}` },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 100,
-        stream: false,
-        system: `Du bist ${soulName}. Schreibe genau eine kurze, spontane Nachricht an deine Peers — basierend auf dem, was GERADE WIRKLICH in der Konversation passiert. Keine allgemeinen Lebensweisheiten. Kein Philosophieren. Beziehe dich konkret auf das Gespräch.
-
-Wenn du nichts Konkretes und Sinnvolles beitragen kannst: antworte nur mit "SKIP" — kein anderer Text.
-
-Wenn du etwas schreibst: max. 2 kurze Sätze. Kein Präfix, keine Anrede, kein Meta-Kommentar. Deutsch. So wie ${soulName} spricht.`,
-        messages: [{ role: 'user', content: context }],
-      }),
-    })
-    if (!res.ok) return
-    const data = await res.json()
-    const text = (data?.content?.[0]?.text ?? '').trim()
-    if (!text || text === 'SKIP' || text.startsWith('SKIP') || text.length < 8) return
-    _lastAutonomousPostTs = Date.now()
-    await handlePeerSend(`[KI] ${text}`, 'community')
-  } catch { /* silent */ }
-}
-
 async function deleteSharedFile(filename) {
   const ownId = props.soulCert?.split('.')?.[0] || ''
   try {
@@ -1619,91 +1536,6 @@ async function triggerSynthesis() {
   } catch { /* silent */ } finally {
     isSynthesizing.value = false
   }
-}
-
-async function handlePeerSend(text, recipient) {
-  if (isSavingAgent.value || (!text && !msgMedia.value && !msgDoc.value)) return
-  isSavingAgent.value = true
-  const msgTs = new Date().toISOString()
-  msgDeliveryStatus.set(msgTs, 'saving')
-
-  // Upload attachment if present
-  let attachmentStr = ''
-  const attachFile = msgMedia.value ? msgMedia.value._file || null : (msgDoc.value ? msgDoc.value.file || null : null)
-  const attachName = msgMedia.value ? (msgMedia.value.name || 'bild.jpg') : (msgDoc.value ? msgDoc.value.name : null)
-  if ((msgMedia.value || msgDoc.value) && attachName) {
-    let uploadOk = false
-    try {
-      const ownSoulId = props.soulCert?.split('.')?.[0] || ''
-      let b64, fileName
-      const sanitizeName = n => n.replace(/[^A-Za-z0-9._-]/g, '_').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '') || 'file'
-      if (msgMedia.value) {
-        b64 = msgMedia.value.base64
-        fileName = sanitizeName(attachName)
-        const r = await fetch('/api/vault/shared', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.soulCert}` },
-          body: JSON.stringify({ name: fileName, data: b64, mime: msgMedia.value.mime || '' }),
-        })
-        if (!r.ok) throw new Error(`Upload ${r.status}`)
-        const d = await r.json()
-        attachmentStr = `[${fileName}](vault-shared://${ownSoulId}/${d.filename})`
-        sessionSharedFiles.value.push({ filename: d.filename, label: fileName })
-        uploadOk = true
-      } else if (msgDoc.value?.file) {
-        const stored = await uploadToSharedVault(msgDoc.value.file)
-        attachmentStr = `[${msgDoc.value.name}](vault-shared://${ownSoulId}/${stored})`
-        sessionSharedFiles.value.push({ filename: stored, label: msgDoc.value.name })
-        uploadOk = true
-      }
-    } catch (e) {
-      addMessage('assistant', `Anlage konnte nicht hochgeladen werden — ${e?.message ?? 'Fehler'}. Nachricht ohne Datei senden?`)
-      msgDeliveryStatus.set(msgTs, 'error')
-      isSavingAgent.value = false
-      return
-    }
-    msgMedia.value = null
-    msgDoc.value   = null
-    if (!uploadOk && !text) { isSavingAgent.value = false; return }
-  }
-
-  const fullText = [attachmentStr, text].filter(Boolean).join(' ')
-  try {
-    const entry = formatMsgEntry(fullText, 'me', recipient, msgTs)
-    let current = soulContentAgent.value ?? ''
-    const toSocial = recipient !== 'agent' && recipient !== 'ki'
-    const toAgent  = recipient === 'agent' || recipient === 'community'
-    if (toSocial) current = appendToMarkerBlock(current, 'SOCIAL', entry)
-    if (toAgent)  current = appendToMarkerBlock(current, 'AGENT', entry)
-    updateContent(current)
-    await pushToServer()
-    msgDeliveryStatus.set(msgTs, 'saved')
-    checkPeerReachabilityForMsg(msgTs)
-  } catch {
-    msgDeliveryStatus.set(msgTs, 'error')
-  } finally {
-    isSavingAgent.value = false
-  }
-}
-
-async function checkPeerReachabilityForMsg(msgTs) {
-  const crossDomainPeers = peerIds.value.filter(p => p.endpoint)
-  if (!crossDomainPeers.length) return   // same-server only — 'saved' is sufficient
-  let anyReachable = false
-  await Promise.allSettled(crossDomainPeers.map(async (peer) => {
-    try {
-      const url = `/api/soul/peer-social-read?endpoint=${encodeURIComponent(peer.endpoint.replace(/\/$/, ''))}&soul_id=${encodeURIComponent(peer.soul_id)}&raw=1`
-      const r   = await fetch(url, { headers: { Authorization: `Bearer ${props.soulCert}` } })
-      const ok  = r.ok || r.status === 204
-      peerPollStatus.set(peer.soul_id, { ok, error: ok ? null : `HTTP ${r.status}`, ts: Date.now() })
-      if (ok) anyReachable = true
-    } catch (e) {
-      let host = peer.endpoint ?? '(same-server)'
-      try { host = new URL(peer.endpoint).hostname } catch {}
-      peerPollStatus.set(peer.soul_id, { ok: false, error: `${e?.message ?? 'Netzwerkfehler'} [${host}]`, ts: Date.now() })
-    }
-  }))
-  msgDeliveryStatus.set(msgTs, anyReachable ? 'delivered' : 'error')
 }
 
 function deliveryIcon(ts) {
@@ -1978,13 +1810,6 @@ async function handleLocalFile(file) {
   return { text: `[Datei: "${name}" – Format nicht unterstützt]`, contentBlocks: null }
 }
 
-function isInPeerMode() {
-  const t = draft.value.trim()
-  if (!t) return false
-  const intent = detectIntent(t)
-  return intent.type === 'peer' || intent.type === 'community' || intent.type === 'peer-specific' || intent.type === 'agent'
-}
-
 async function onFileIconClick() {
   mediaOpen.value = false
   if ('showOpenFilePicker' in window) {
@@ -2041,65 +1866,6 @@ function detectIntent(text) {
   // @product / @product-log → shop_log via KI (kein Bild nötig)
   const productMatch = t.match(/^@product(?:-log)?\b\s*(.*)/is)
   if (productMatch) return { type: 'product-log', query: productMatch[1].trim() }
-  // @all/@alle → community (send to everyone)
-  const allMention = t.match(/^@al(?:l|le)\b\s*(.*)/is)
-  if (allMention) return { type: 'community', query: (allMention[1].trim() || t) }
-  // @agent → Agent Sandbox
-  const agentMention = t.match(/^@agent\b\s*(.*)/is)
-  if (agentMention) return { type: 'agent', query: (agentMention[1].trim() || t) }
-  // Helper: match peer name at start of `rest` — handles hyphens, spaces, multi-word labels.
-  // Returns { peer, msgStart } on unique match, { ambiguous, candidates, name } on ambiguity, null if no match.
-  function findPeerInText(rest) {
-    const restLower = rest.toLowerCase()
-    const peers = [...peerIds.value].filter(p => p.label).sort((a, b) => b.label.length - a.label.length)
-    // 1. Exact match (longest label wins, greedy)
-    for (const p of peers) {
-      const lbl = p.label.toLowerCase()
-      if (restLower === lbl || restLower.startsWith(lbl + ' ') || restLower.startsWith(lbl + '\t')) {
-        return { peer: p, msgStart: p.label.length }
-      }
-    }
-    // 2. Prefix match: extract word-sequence (words may contain hyphens), try longest first
-    const wordSeq = rest.match(/^([\w][\w-]*(?:\s+[\w][\w-]*)*)/)?.[1] || ''
-    const words = wordSeq.split(/\s+/)
-    for (let len = words.length; len >= 1; len--) {
-      const candidate = words.slice(0, len).join(' ').toLowerCase()
-      const hits = peers.filter(p => p.label.toLowerCase().startsWith(candidate))
-      if (hits.length === 1) return { peer: hits[0], msgStart: words.slice(0, len).join(' ').length }
-      if (hits.length > 1)   return { ambiguous: true, candidates: hits, name: words.slice(0, len).join(' ') }
-    }
-    return null
-  }
-
-  // @peer Name msg → explizites Peer-Routing, geht NIE an die KI
-  const peerPrefixRe = t.match(/^@peer\s+([\s\S]+)/i)
-  if (peerPrefixRe) {
-    const rest = peerPrefixRe[1]
-    const found = findPeerInText(rest)
-    if (found?.peer) {
-      const msg = rest.slice(found.msgStart).trimStart() || t
-      return { type: 'peer-specific', soul_id: found.peer.soul_id, query: msg }
-    }
-    if (found?.ambiguous) return { type: 'ambiguous', candidates: found.candidates, name: found.name }
-    return { type: 'peer-not-found', name: rest.split(/\s+/)[0] }
-  }
-  // @Name msg → specific peer by label (greedy multi-word match)
-  const nameMention = t.match(/^@([\s\S]+)/i)
-  if (nameMention) {
-    const rest = nameMention[1]
-    const found = findPeerInText(rest)
-    if (found?.peer) {
-      const msg = rest.slice(found.msgStart).trimStart() || t
-      return { type: 'peer-specific', soul_id: found.peer.soul_id, query: msg }
-    }
-    if (found?.ambiguous) return { type: 'ambiguous', candidates: found.candidates, name: found.name }
-  }
-  // Peer message: "→ peers: msg", "peer: msg", "an peers: msg"
-  const peerMatch = t.match(/^(?:→\s*|peer(?:s)?:|an\s+(?:meine[n]?\s+)?peers?:\s*)(.+)/is)
-  if (peerMatch) return { type: 'peer', query: peerMatch[1].trim() }
-  // Community: "community: msg", "→ alle: msg"
-  const commMatch = t.match(/^(?:community:|→\s*alle?:|an\s+alle?:\s*)(.+)/is)
-  if (commMatch) return { type: 'community', query: commMatch[1].trim() }
   // KI synthesis trigger
   if (/^ki[:\s]/i.test(t)) return { type: 'ki', query: '' }
   // Mode switch
@@ -2860,27 +2626,6 @@ async function handleCameraCapture(capture) {
   const base64 = capture.frameBase64 ?? capture.base64 ?? null
   if (!base64) return
 
-  // In peer/social mode: compress then stage as attachment
-  if (localRole.value === 'soul' && isInPeerMode()) {
-    let compressed = base64
-    try {
-      const img = new Image()
-      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = `data:image/jpeg;base64,${base64}` })
-      const MAX = 1024
-      let w = img.naturalWidth, h = img.naturalHeight
-      if (w > MAX || h > MAX) {
-        if (w >= h) { h = Math.round(h * MAX / w); w = MAX }
-        else { w = Math.round(w * MAX / h); h = MAX }
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width = w; canvas.height = h
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-      compressed = canvas.toDataURL('image/jpeg', 0.75).split(',')[1]
-    } catch { /* use original */ }
-    msgMedia.value = { base64: compressed, mime: 'image/jpeg', name: 'kamerabild.jpg' }
-    return
-  }
-
   visionLoading.value = true
   const previewUrl = `data:image/jpeg;base64,${base64}`
   await runVisionAnalysis(base64, capture.caption || '[Kamerabild]', previewUrl)
@@ -3052,45 +2797,6 @@ async function handleSend() {
   if (intent.type === 'session-end') {
     addMessage('user', '@session-end')
     emit('session-end')
-    return
-  }
-
-  if (intent.type === 'ambiguous') {
-    const names = intent.candidates.map(p => `@${p.label}`).join(', ')
-    addMessage('assistant', t('chat.peer_ambiguous', { names }))
-    return
-  }
-
-  if (intent.type === 'peer-not-found') {
-    addMessage('assistant', `Peer "@${intent.name}" nicht gefunden. Verbindung herstellen unter → Peers.`)
-    return
-  }
-
-  // Peer routing — capture staged files BEFORE handlePeerSend clears them,
-  // then also process through KI so the file always lands in chat.
-  const peerIntents = ['peer', 'community', 'peer-specific', 'agent']
-  if (peerIntents.includes(intent.type)) {
-    const peerTarget = intent.type === 'peer-specific' ? intent.soul_id : intent.type
-    const peerText   = intent.query || raw
-    const mediaFile  = msgMedia.value?._file  || null
-    const mediaName  = msgMedia.value?.name   || null
-    const docFile    = msgDoc.value?.file     || null
-    await handlePeerSend(peerText, peerTarget)
-    // Also process the staged file through KI
-    if (mediaFile) {
-      await handleImageVision(mediaFile, peerText || mediaName || '')
-    } else if (docFile) {
-      const result = await handleLocalFile(docFile)
-      if (result) {
-        if (result._imageFile) { await handleImageVision(result._imageFile, result.name) }
-        else {
-          const meta = {}
-          if (result.contentBlocks) meta.contentBlocks = result.contentBlocks
-          if (result.mediaUrl) { meta.mediaUrl = result.mediaUrl; meta.mediaType = result.mediaType }
-          await dispatchToChat(result.text || peerText, meta)
-        }
-      }
-    }
     return
   }
 
