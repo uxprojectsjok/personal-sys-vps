@@ -2,81 +2,25 @@
   <ClientOnly>
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
-      <div class="lp-page">
-
-        <!-- Header / Nav -->
-        <header class="lp-header">
-          <div class="lp-header-inner">
-            <div class="lp-brand">
-              <div class="lp-brand-text">
-                <span class="lp-brand-name">SYS - Agency</span>
-                <span class="lp-brand-operator">UX-Projects Jan-Oliver Karo</span>
-              </div>
-            </div>
-            <nav class="lp-nav" aria-label="Primary">
-              <NuxtLink to="/use-cases">{{ $t('landing.nav_use_cases') }}</NuxtLink>
-            </nav>
-            <div class="lp-header-actions">
-              <LocaleToggle />
-              <NuxtLink to="/gate?login=1" class="lp-signin">{{ $t('landing.sign_in') }}</NuxtLink>
-            </div>
-            <button
-              class="lp-burger"
-              :class="{ on: mobileNavOpen }"
-              @click="mobileNavOpen = !mobileNavOpen"
-              :aria-expanded="mobileNavOpen"
-              :aria-label="$t('landing.nav_toggle')"
-            >
-              <span /><span /><span />
+      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
+        <div class="gate-card">
+          <SysMark />
+          <div class="gate-sub">{{ config.public.nodeName }}</div>
+          <h1>Save Your Soul<em>.</em></h1>
+          <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
+          <div style="display:flex;flex-direction:column;gap:12px;width:100%">
+            <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
+              {{ $t('index.create_soul') }}
+              <SysIcon name="arrow" style="width:18px;height:18px" />
+            </button>
+            <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
+              {{ $t('index.login_with_soul') }}
             </button>
           </div>
-          <Transition name="lp-mobile-nav">
-            <nav v-if="mobileNavOpen" class="lp-mobile-nav" aria-label="Primary mobile">
-              <NuxtLink to="/use-cases" @click="mobileNavOpen = false">{{ $t('landing.nav_use_cases') }}</NuxtLink>
-              <NuxtLink to="/gate?login=1" class="lp-mobile-nav-login" @click="mobileNavOpen = false">{{ $t('landing.sign_in') }}</NuxtLink>
-            </nav>
-          </Transition>
-        </header>
-
-        <!-- Hero -->
-        <main class="lp-hero">
-          <div class="lp-hero-brand">
-            <SysMark size="260px" operator="UX-Projects Jan-Oliver Karo" />
+          <div class="gate-foot">
+            <span class="live-dot" />
+            {{ $t('index.private_node', { name: config.public.nodeName }) }}
           </div>
-          <div class="lp-hero-content">
-            <h1 class="lp-hero-title">{{ $t('landing.hero_title') }}</h1>
-            <p class="lp-hero-sub">{{ $t('landing.hero_sub') }}</p>
-            <div v-if="canCreateSoul" class="lp-hero-actions">
-              <button class="btn btn-primary btn-lg" @click="createSoulOpen = true">
-                {{ $t('landing.cta_primary') }}
-                <SysIcon name="arrow" style="width:18px;height:18px" />
-              </button>
-            </div>
-          </div>
-        </main>
-
-        <!-- Architektur -->
-        <section class="lp-arch">
-          <div class="lp-arch-frame">
-            <img src="/sys_architecture.png" alt="SYS System Architecture" class="lp-arch-img" />
-          </div>
-          <div class="lp-arch-caption">
-            <span class="lp-arch-layer">POLYGON BLOCKCHAIN</span>
-            <span class="lp-arch-layer">→ PRIVATE VPS LAYER</span>
-            <span class="lp-arch-layer">→ MCP API</span>
-            <span class="lp-arch-layer">→ SERVICES LAYER</span>
-          </div>
-          <div class="lp-arch-contract">
-            <span class="lp-arch-contract-label">{{ $t('landing.arch_contract_label') }}</span>
-            <code class="lp-arch-contract-addr">0xE80B92edFE2286a5a941D10123AbF5E11F76342B</code>
-            <span class="lp-arch-contract-net">Polygon Mainnet</span>
-          </div>
-          <div class="lp-arch-links">
-            <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="lp-arch-link">{{ $t('landing.arch_link_protocol') }} →</a>
-          </div>
-        </section>
-
-        <footer class="lp-footer">
           <div class="landing-legal-links">
             <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
             <span class="landing-legal-sep">·</span>
@@ -86,7 +30,8 @@
             <span class="landing-legal-sep">·</span>
             <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
           </div>
-        </footer>
+          <LocaleToggle style="margin-top:14px;justify-content:center" />
+        </div>
       </div>
     </template>
 
@@ -408,30 +353,24 @@ watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate:
 // still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
 const gateRedirectChecked  = ref(false)
 const selfRegistrationOpen = ref(true)
-const mobileNavOpen        = ref(false)
 
 onMounted(async () => {
   fetchNodeStatus()
 
   if (!hasSoul.value) {
     try {
-      // Auto-redirect zu /gate bewusst entfernt (2026-07-29, Betreiber-Entscheidung
-      // für dieses Deployment): "/" muss immer als Homepage erreichbar bleiben,
-      // auch auf einem gesperrten Single-Hoster-Node. Der "Sign in"-Link im
-      // Header (/gate?login=1) bleibt der reguläre Login-Weg.
       const status = await $fetch('/api/gate-status')
       selfRegistrationOpen.value = status?.self_registration !== false
     } catch { /* Status unbekannt — im Zweifel Landing zeigen statt aussperren */ }
   }
   gateRedirectChecked.value = true
 
-  // Kein öffentlicher "Login with Soul"-Button auf der Landing (siehe lp-hero
-  // oben) — dieser Node ist kein öffentliches "jeder kann beitreten"-Angebot.
-  // Stattdessen setzt gate.vue nach erfolgreichem Invite-Login (Passwort +
-  // Invite-Token, noch keine lokale Soul gebunden) dieses Flag; das Sheet
-  // öffnet sich hier automatisch, sobald man von /gate hierher umgeleitet
-  // wurde. Bleibt gesetzt bis handleLoginUpload es nach abgeschlossenem
-  // Setup entfernt — ein Reload zeigt das Sheet also wieder, absichtlich.
+  // gate.vue setzt dieses Flag nach erfolgreichem Invite-Login (Passwort +
+  // Invite-Token, noch keine lokale Soul gebunden) — das Login-Sheet öffnet
+  // sich hier automatisch, sobald man von /gate hierher umgeleitet wurde,
+  // statt dass der Nutzer nochmal selbst auf "Login with Soul" klicken muss.
+  // Bleibt gesetzt bis handleLoginUpload es nach abgeschlossenem Setup
+  // entfernt — ein Reload zeigt das Sheet also wieder, absichtlich.
   if (!hasSoul.value && sessionStorage.getItem('sys.invite_login') === '1') {
     loginOpen.value = true
   }
@@ -813,96 +752,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ── Landing: header/nav + hero, replaces the old centered gate-card ──── */
-.lp-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%); overflow-x: hidden; }
-
-.lp-header { border-bottom: 1px solid var(--line-2); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; background: rgba(15,15,15,0.6); }
-.lp-header-inner { max-width: 1200px; margin: 0 auto; padding: 20px 4px; display: flex; align-items: center; gap: 48px; }
-
-.lp-brand { display: flex; align-items: center; gap: 10px; flex: none; }
-.lp-brand-text { display: flex; flex-direction: column; gap: 6px; line-height: 1.2; }
-.lp-brand-name { font-family: var(--mono); font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: var(--fg); }
-.lp-brand-operator { font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; color: var(--fg-3); }
-
-.lp-nav { display: flex; align-items: center; gap: 28px; flex: 1; }
-.lp-nav a { display: inline-flex; align-items: center; line-height: 1; font-size: 14px; color: var(--fg-2); text-decoration: none; white-space: nowrap; }
-.lp-nav a:hover { color: var(--fg); }
-
-.lp-header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
-.lp-signin { display: inline-flex; align-items: center; line-height: 1; background: none; border: none; color: var(--fg-2); font-size: 14px; text-decoration: none; cursor: pointer; padding: 0 10px; }
-.lp-signin:hover { color: var(--fg); }
-
-/* Burger: hidden on desktop, shown once .lp-nav itself hides (same 900px breakpoint) */
-.lp-burger {
-  display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
-  width: 36px; height: 36px; flex: none; background: none; border: none; cursor: pointer; padding: 0;
-}
-.lp-burger span { width: 20px; height: 2px; background: var(--fg-2); border-radius: 2px; transition: transform .2s, opacity .2s, background .2s; }
-.lp-burger:hover span { background: var(--fg); }
-.lp-burger.on span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-.lp-burger.on span:nth-child(2) { opacity: 0; }
-.lp-burger.on span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-.lp-mobile-nav {
-  display: flex; flex-direction: column; border-top: 1px solid var(--line-2);
-  padding: 8px 16px 16px;
-}
-.lp-mobile-nav a {
-  padding: 12px 4px; font-size: 15px; color: var(--fg-2); text-decoration: none;
-  border-bottom: 1px solid var(--line-2);
-}
-.lp-mobile-nav a:last-child { border-bottom: none; }
-.lp-mobile-nav a:hover { color: var(--fg); }
-.lp-mobile-nav-login { font-weight: 600; color: var(--fg) !important; }
-
-.lp-mobile-nav-enter-active, .lp-mobile-nav-leave-active { transition: opacity .18s ease, max-height .18s ease; overflow: hidden; }
-.lp-mobile-nav-enter-from, .lp-mobile-nav-leave-to { opacity: 0; max-height: 0; }
-.lp-mobile-nav-enter-to, .lp-mobile-nav-leave-from { opacity: 1; max-height: 320px; }
-
-.lp-hero { flex: 1; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 56px; padding: 64px 24px; max-width: 1040px; margin: 0 auto; }
-.lp-hero-brand { flex: none; }
-.lp-hero-content { text-align: left; }
-.lp-hero-title { font-size: clamp(32px, 5vw, 52px); font-weight: 700; line-height: 1.12; letter-spacing: -0.01em; color: var(--fg); margin: 0 0 20px; }
-.lp-hero-sub { font-size: 18px; line-height: 1.6; color: var(--fg-2); max-width: 560px; margin: 0 0 32px; }
-.lp-hero-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-start; min-height: 8px; }
-
-/* ── Architektur-Sektion ──────────────────────────────────────────────── */
-.lp-arch { max-width: 1040px; margin: 0 auto; padding: 0 24px 40px; }
-.lp-arch-frame { display: flex; justify-content: center; padding: clamp(24px,4vw,48px) 0; }
-.lp-arch-img { width: 100%; max-width: 560px; height: auto; display: block; border-radius: 6px; }
-.lp-arch-caption { display: flex; overflow-x: auto; flex-wrap: wrap; gap: 4px 16px; padding: 4px 0 12px; border-top: 1px solid var(--line); padding-top: 16px; }
-.lp-arch-layer { font-family: var(--sans); font-size: 13px; letter-spacing: 0.01em; color: var(--fg-2); white-space: nowrap; }
-.lp-arch-contract { display: flex; align-items: baseline; gap: 12px; padding: 8px 0 12px; flex-wrap: wrap; }
-.lp-arch-contract-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); flex: none; }
-.lp-arch-contract-addr { font-family: var(--mono); font-size: 13px; color: var(--fg); word-break: break-all; overflow-wrap: anywhere; min-width: 0; }
-.lp-arch-contract-net { font-family: var(--mono); font-size: 13px; color: var(--fg); flex: none; }
-.lp-arch-links { display: flex; gap: 20px; padding-top: 4px; }
-.lp-arch-link { font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); text-decoration: none; transition: opacity 0.15s; }
-.lp-arch-link:hover { opacity: 0.7; }
-
-.lp-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 24px 32px; }
-
-@media (max-width: 900px) {
-  .lp-nav { display: none; }
-  /* .lp-nav's flex:1 normally pushes everything after it to the right edge —
-     gone once nav is hidden, so .lp-header-actions needs its own push here or
-     it (LocaleToggle) sits directly against the brand text instead of at the
-     right edge; margin-left:auto on it also carries the burger along with it. */
-  .lp-header-actions { margin-left: auto; }
-  .lp-burger { display: flex; }
-  /* Login moves into the burger menu at this breakpoint too — showing it here
-     alongside brand text + burger button is what overflowed the header on
-     mobile in the first place. */
-  .lp-signin { display: none; }
-}
-@media (max-width: 640px) {
-  .lp-header-inner { padding: 18px 16px; gap: 12px; }
-  .lp-hero { padding: 48px 20px; flex-direction: column; text-align: center; }
-  .lp-hero-content { text-align: center; }
-  .lp-hero-sub { max-width: none; }
-  .lp-hero-actions { flex-direction: column; width: 100%; justify-content: center; }
-  .lp-hero-actions .btn { width: 100%; justify-content: center; }
-}
+.gate h1 em { font-style: italic; color: var(--accent-bright); }
 
 .landing-legal-links {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
