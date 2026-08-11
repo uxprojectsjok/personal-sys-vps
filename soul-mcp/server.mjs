@@ -338,7 +338,7 @@ async function registerConnectionProxyTools(server, soulId, callerToken = null) 
   // Verbindung beendet hat). connected_souls.json bleibt zusätzlich sein
   // eigenes, vom Schalter unabhängiges Feature (siehe Kommentar oben).
   if (gkEnabled || Object.keys(merged).length > 0 || Object.keys(fed).length > 0) {
-    registerGatekeeperTools(server, merged, callerToken, mergedRaw, fed);
+    registerGatekeeperTools(server, merged, callerToken, mergedRaw, fed, soulId);
   }
   return { wired, connected, fed };
 }
@@ -944,7 +944,9 @@ app.post('/mcp/discover/gatekeeper/peer-inbox-relay', async (req, res) => {
           }
         }
       }
-    } catch { /* Self-Token fehlt oder Gatekeeper-eigene sys.md nicht lesbar — Rest trotzdem ausliefern */ }
+    } catch (err) {
+      console.warn(`[peer-inbox-relay] self-broadcast für ${gatekeeperSoulId} fehlgeschlagen: ${err.message}`);
+    }
   }
 
   // Föderierte Gatekeeper (1 Hop) — fragt bei jedem akzeptierten Föderations-
@@ -956,6 +958,7 @@ app.post('/mcp/discover/gatekeeper/peer-inbox-relay', async (req, res) => {
   // kennen muss.
   const fed = await loadFederated(gatekeeperSoulId);
   const federatedAccepted = Object.entries(fed).filter(([, e]) => e.status === 'accepted');
+  console.log(`[peer-inbox-relay] ${gatekeeperSoulId}: ${federatedAccepted.length} akzeptierte Föderation(en) — ${federatedAccepted.map(([id]) => id).join(', ') || '(keine)'}`);
   if (federatedAccepted.length) {
     const candidateIds = [...new Set([callerSoulId, ...Object.values(wired).map(e => e.soul_id)])];
     await Promise.all(federatedAccepted.map(async ([fedSoulId, entry]) => {
@@ -963,8 +966,11 @@ app.post('/mcp/discover/gatekeeper/peer-inbox-relay', async (req, res) => {
         const url = `${entry.node_url}/mcp/discover/federated/relay/peer-outbox?gatekeeper_soul_id=${encodeURIComponent(fedSoulId)}&candidate_ids=${encodeURIComponent(candidateIds.join(','))}`;
         const res2 = await fetch(url, { headers: { Authorization: `Bearer ${entry.outbound_token}` }, signal: AbortSignal.timeout(8000) });
         const data = await res2.json().catch(() => null);
+        console.log(`[peer-inbox-relay] federiert ${fedSoulId} @ ${entry.node_url}: ok=${data?.ok} messages=${data?.messages?.length ?? 'n/a'} http=${res2.status}`);
         if (data?.ok) messages.push(...data.messages);
-      } catch { /* ein unerreichbarer föderierter Partner darf die anderen Quellen nie blockieren */ }
+      } catch (err) {
+        console.warn(`[peer-inbox-relay] federierter Partner ${fedSoulId} @ ${entry.node_url} nicht erreichbar: ${err.message}`);
+      }
     }));
   }
 
@@ -983,6 +989,7 @@ app.get('/mcp/discover/federated/relay/peer-outbox', async (req, res) => {
     return res.status(400).json({ error: 'gatekeeper_soul_id (query) und Bearer-Token erforderlich' });
   }
   if (!(await authenticateFederatedCaller(gatekeeperSoulId, token))) {
+    console.warn(`[peer-outbox] Auth fehlgeschlagen für gatekeeper_soul_id=${gatekeeperSoulId} — Token stimmt mit keinem accepted inbound_token überein.`);
     return res.status(401).json({ error: 'not_federated' });
   }
   const candidateIds = typeof req.query.candidate_ids === 'string'
@@ -990,7 +997,10 @@ app.get('/mcp/discover/federated/relay/peer-outbox', async (req, res) => {
     : [];
 
   const selfToken = await getSelfToken(gatekeeperSoulId);
-  if (!selfToken) return res.json({ ok: true, messages: [] });
+  if (!selfToken) {
+    console.log(`[peer-outbox] ${gatekeeperSoulId} hat noch keinen self_token — leere Antwort.`);
+    return res.json({ ok: true, messages: [] });
+  }
 
   try {
     const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);

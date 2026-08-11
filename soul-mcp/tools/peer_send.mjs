@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { getText, putJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { loadConnected } from '../lib/connected_souls.mjs';
 import { resolveGatekeeperPeers } from '../lib/gatekeeper_peers.mjs';
+import { SOCIAL_START, SOCIAL_END, AGENT_START, AGENT_END, appendToBlock } from '../lib/peer_messages.mjs';
 
 const _queues = new Map();
 async function withSoulLock(token, fn) {
@@ -24,20 +25,6 @@ async function withSoulLock(token, fn) {
   _queues.set(key, prev.then(() => current));
   await prev;
   try { return await fn(); } finally { resolveCurrent(); }
-}
-
-const SOCIAL_START = '<!-- SOCIAL:START -->';
-const SOCIAL_END   = '<!-- SOCIAL:END -->';
-const AGENT_START  = '<!-- AGENT:START -->';
-const AGENT_END    = '<!-- AGENT:END -->';
-
-function appendToBlock(md, startMarker, endMarker, entry) {
-  const s = md.indexOf(startMarker);
-  const e = md.indexOf(endMarker);
-  if (s !== -1 && e !== -1 && e > s) {
-    return md.slice(0, e) + entry + '\n' + md.slice(e);
-  }
-  return md.trimEnd() + '\n\n' + startMarker + entry + '\n' + endMarker + '\n';
 }
 
 export function register(server, token, soulId = null) {

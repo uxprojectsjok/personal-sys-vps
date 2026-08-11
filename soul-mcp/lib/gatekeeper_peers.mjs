@@ -58,7 +58,9 @@ export async function resolveGatekeeperPeers(soulId, token) {
       for (const p of results) peers.push({ soul_id: p.soul_id, name: p.name, node_url: p.node_url || entry.node_url, gatekeeper_soul_id: fedSoulId, federated: true });
       const fedGkCtx = await loadCtx(fedSoulId).catch(() => null);
       peers.push({ soul_id: fedSoulId, name: fedGkCtx?.name || fedSoulId, node_url: entry.node_url, gatekeeper_soul_id: fedSoulId, is_gatekeeper: true, federated: true });
-    } catch { /* föderierter Partner nicht erreichbar — andere Quellen trotzdem versuchen */ }
+    } catch (err) {
+      console.warn(`[resolveGatekeeperPeers] föderierter Partner ${fedSoulId} @ ${entry.node_url} nicht erreichbar: ${err.message}`);
+    }
   }));
 
   return peers;

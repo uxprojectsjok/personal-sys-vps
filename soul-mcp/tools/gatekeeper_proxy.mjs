@@ -11,8 +11,11 @@
  */
 
 import { z } from 'zod';
-import { wireKey } from '../lib/wired_souls.mjs';
+import { wireKey, getSelfToken } from '../lib/wired_souls.mjs';
 import { updateSection, checkMessageProtocolViolation } from './soul_write.mjs';
+import { parseSocialMessages, appendToBlock, buildMsgEntry, SOCIAL_START, SOCIAL_END, AGENT_START, AGENT_END } from '../lib/peer_messages.mjs';
+import { loadCtx } from '../lib/vault_fs.mjs';
+import { loadFederated } from '../lib/federated_gatekeepers.mjs';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -301,7 +304,34 @@ function registerVaultTools(server, wiredMap, wiredRaw, fed, kind, permKey, apiS
   );
 }
 
-export function registerGatekeeperTools(server, wiredMap, callerToken = null, wiredRaw = wiredMap, fed = {}) {
+// Löst @peer-Empfänger im Gatekeeper-Kontext auf: alle anderen hier
+// verdrahteten Souls (Geschwister) PLUS jede Soul, die über einen
+// akzeptierten föderierten Partner erreichbar ist — dieselbe Reichweite wie
+// wire_search/resolveGatekeeperPeers, hier für Nachrichtenversand statt
+// Auflistung. excludeSoulId ist die Soul, die selbst gerade sendet (soll
+// sich nicht selbst als Empfänger vorschlagen).
+async function resolveGatekeeperRecipients(wiredMap, fed, excludeSoulId) {
+  const candidates = Object.values(wiredMap)
+    .filter(e => e.soul_id !== excludeSoulId)
+    .map(e => ({ soul_id: e.soul_id, alias: e.name }));
+
+  const federated = Object.entries(fed || {}).filter(([, e]) => e.status === 'accepted');
+  await Promise.all(federated.map(async ([fedSoulId, entry]) => {
+    try {
+      const url = `${entry.node_url}/mcp/discover/search?gatekeeper_soul_id=${encodeURIComponent(fedSoulId)}&q=`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${entry.outbound_token}` }, signal: AbortSignal.timeout(8000) });
+      const data = await res.json().catch(() => null);
+      const results = Array.isArray(data?.results) ? data.results : [];
+      for (const p of results) {
+        if (p.soul_id !== excludeSoulId) candidates.push({ soul_id: p.soul_id, alias: p.name });
+      }
+    } catch { /* föderierter Partner nicht erreichbar — andere Kandidaten trotzdem nutzbar */ }
+  }));
+
+  return candidates;
+}
+
+export function registerGatekeeperTools(server, wiredMap, callerToken = null, wiredRaw = wiredMap, fed = {}, gatekeeperSoulId = null) {
   server.tool(
     'wired_shared_get',
     'Lädt eine Datei aus vault_shared einer verdrahteten/verbundenen Soul (z.B. ein Dateianhang aus peer_send/peer_inbox).',
@@ -447,6 +477,198 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
         });
       } catch (err) {
         return errResult(`wired_beme_chat fehlgeschlagen: ${err.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    'wired_peer_send',
+    [
+      'Sendet eine @peer-Textnachricht im Namen EINER VERDRAHTETEN Soul, nicht',
+      'im eigenen Namen des Gatekeepers — für den Bündel-Betrieb, bei dem',
+      'mehrere Souls über einen einzigen Gatekeeper-Connector laufen und eine',
+      'davon als Absender auftreten soll, nicht der Gatekeeper selbst.',
+      'Beispiel: "sende von KRO eine Nachricht an Medienkommunikator: Hallo" →',
+      'soul_id=<KROs soul_id>, to="Medienkommunikator", message="Hallo".',
+    ].join('\n'),
+    {
+      soul_id: z.string().describe('soul_id der verdrahteten Soul, die als Absender auftritt'),
+      to: z.string().min(1).max(200).describe('Empfänger: Peer-Name oder soul_id, "alle" für alle Peers, "community", "agent"'),
+      message: z.string().min(1).max(5000).describe('Nachrichtentext'),
+      node_url: NODE_URL_PARAM,
+    },
+    async ({ soul_id, to, message, node_url }) => {
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
+      try {
+        return await tryCandidates(candidates, async (c) => {
+          return await withWriteLock(`peer_send:${soul_id}@${c.resolvedNodeUrl}`, async () => {
+            const toNorm = to.trim().toLowerCase();
+            let toField;
+            if (['alle', 'all', 'peer', 'peers'].includes(toNorm)) {
+              toField = 'peer';
+            } else if (toNorm === 'community') {
+              toField = 'community';
+            } else if (toNorm === 'agent') {
+              toField = 'agent';
+            } else {
+              const recipCandidates = await resolveGatekeeperRecipients(wiredMap, fed, soul_id);
+              const match = recipCandidates.find(({ soul_id: id, alias }) =>
+                (alias || '').toLowerCase() === toNorm ||
+                (alias || '').toLowerCase().startsWith(toNorm) ||
+                id.toLowerCase().startsWith(toNorm)
+              );
+              if (!match) {
+                const available = recipCandidates.map(x => x.alias).filter(Boolean).join(', ') || '(keine)';
+                return errResult(`Peer "${to}" nicht gefunden.\nVerfügbare Peers: ${available}`);
+              }
+              toField = match.soul_id;
+            }
+
+            const fullMsg = message.trim();
+            if (!fullMsg) return errResult('Leere Nachricht.');
+            const ts = new Date().toISOString();
+            const entryStr = buildMsgEntry(ts, 'me', toField, fullMsg);
+
+            const current = await (await fetchApi(soulPath(c.relay), c.token, c.nodeUrl)).text();
+            let updated = appendToBlock(current, SOCIAL_START, SOCIAL_END, entryStr);
+            if (toField === 'agent' || toField === 'community') {
+              updated = appendToBlock(updated, AGENT_START, AGENT_END, entryStr);
+            }
+            await writeSoulContent(c, updated);
+
+            const recipientLabel =
+              toField === 'peer'        ? 'alle Peers'
+              : toField === 'community' ? 'Community'
+              : toField === 'agent'     ? 'Agent-Sandbox'
+              : `Peer ${to} (soul_id: ${toField})`;
+            return { content: [{ type: 'text', text: `Gesendet von ${soul_id} an ${recipientLabel}.\n[${ts}] ${soul_id} → ${recipientLabel}\n${fullMsg}` }] };
+          });
+        });
+      } catch (err) {
+        return errResult(`wired_peer_send fehlgeschlagen: ${err.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    'wired_peer_inbox',
+    [
+      'Liest @peer-Textnachrichten im Namen EINER VERDRAHTETEN Soul, nicht des',
+      'Gatekeepers selbst — das Gegenstück zu wired_peer_send für den',
+      'gebündelten Mehrere-Souls-Betrieb.',
+    ].join('\n'),
+    {
+      soul_id: z.string().describe('soul_id der verdrahteten Soul, deren Inbox gelesen wird'),
+      days:   z.number().int().min(1).max(30).default(1).optional().describe('Nachrichten der letzten N Tage (default 1, max 30)'),
+      from:   z.string().max(100).optional().describe('Nur Nachrichten von diesem Peer'),
+      search: z.string().max(200).optional().describe('Volltextsuche im Nachrichteninhalt'),
+      limit:  z.number().int().min(1).max(100).default(50).optional().describe('Maximale Anzahl Nachrichten (default 50)'),
+      node_url: NODE_URL_PARAM,
+    },
+    async ({ soul_id, days = 1, from, search, limit = 50, node_url }) => {
+      const candidates = resolveCandidates(wiredMap, wiredRaw, fed, soul_id, 'soul', node_url);
+      try {
+        return await tryCandidates(candidates, async (c) => {
+          const allMsgs = [];
+
+          // Eigene ausgehende Nachrichten dieser verdrahteten Soul.
+          try {
+            const ownMd = await (await fetchApi(soulPath(c.relay), c.token, c.nodeUrl)).text();
+            for (const m of parseSocialMessages(ownMd)) {
+              if (m.from === 'me') allMsgs.push({ ...m, outgoing: true, peer: null, from_label: null });
+            }
+          } catch { /* eigene sys.md nicht lesbar — Rest trotzdem versuchen */ }
+
+          // Geschwister-Souls + Gatekeeper-eigene Broadcasts + föderierte
+          // Partner — nur sinnvoll, wenn soul_id LOKAL bei diesem Gatekeeper
+          // verdrahtet ist (c.relay gesetzt hieße: soul_id ist selbst nur
+          // über Föderation erreicht, dann hat dieser Aufruf keine Tokens
+          // für DEREN Netzwerk, nur für die Ziel-Soul selbst).
+          if (!c.relay) {
+            const candidateIds = [soul_id];
+            await Promise.all(Object.values(wiredMap).map(async (entry) => {
+              if (entry.soul_id === soul_id || !entry.permissions?.soul) return;
+              try {
+                const upstream = await fetchApi('/api/soul', entry.token, entry.node_url);
+                const md = await upstream.text();
+                const label = entry.name || entry.soul_id.slice(0, 8);
+                for (const m of parseSocialMessages(md)) {
+                  if (m.to === 'peer' || m.to === soul_id) {
+                    allMsgs.push({ ...m, outgoing: false, peer: label, from_label: label });
+                  }
+                }
+              } catch { /* Geschwister-Spoke nicht erreichbar — andere trotzdem versuchen */ }
+            }));
+
+            if (gatekeeperSoulId && gatekeeperSoulId !== soul_id) {
+              try {
+                const selfToken = await getSelfToken(gatekeeperSoulId);
+                if (selfToken) {
+                  const upstream = await fetchApi('/api/soul', selfToken, BASE_URL);
+                  const md = await upstream.text();
+                  const gkCtx = await loadCtx(gatekeeperSoulId).catch(() => null);
+                  const label = gkCtx?.name || gatekeeperSoulId.slice(0, 8);
+                  for (const m of parseSocialMessages(md)) {
+                    if (m.from === 'me' && (m.to === 'peer' || m.to === soul_id)) {
+                      allMsgs.push({ ...m, outgoing: false, peer: label, from_label: label });
+                    }
+                  }
+                }
+              } catch { /* Self-Token fehlt oder Gatekeeper-eigene sys.md nicht lesbar */ }
+
+              const fedList = Object.entries(await loadFederated(gatekeeperSoulId)).filter(([, e]) => e.status === 'accepted');
+              await Promise.all(fedList.map(async ([fedSoulId, entry]) => {
+                try {
+                  const url = `${entry.node_url}/mcp/discover/federated/relay/peer-outbox?gatekeeper_soul_id=${encodeURIComponent(fedSoulId)}&candidate_ids=${encodeURIComponent(candidateIds.join(','))}`;
+                  const res = await fetch(url, { headers: { Authorization: `Bearer ${entry.outbound_token}` }, signal: AbortSignal.timeout(8000) });
+                  const data = await res.json().catch(() => null);
+                  if (data?.ok) {
+                    for (const m of data.messages) {
+                      allMsgs.push({ ...m, outgoing: false, peer: m.from_label, from_label: m.from_label });
+                    }
+                  }
+                } catch { /* föderierter Partner nicht erreichbar — andere Quellen trotzdem versuchen */ }
+              }));
+            }
+          }
+
+          allMsgs.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
+          const DAY_MS = 86400000;
+          const cutoff = Date.now() - days * DAY_MS;
+          let msgs = allMsgs.filter(m => new Date(m.ts).getTime() >= cutoff);
+          const peerList = [...new Set(allMsgs.map(m => m.peer).filter(Boolean))].join(', ') || '(keine)';
+
+          if (!msgs.length) {
+            return { content: [{ type: 'text', text: `Keine Nachrichten der letzten ${days} Tag(e) für ${soul_id}.\nPeers: ${peerList}` }] };
+          }
+          if (from) {
+            const q = from.toLowerCase();
+            msgs = msgs.filter(m => m.peer?.toLowerCase().includes(q) || m.from_label?.toLowerCase().includes(q));
+          }
+          if (search) {
+            const q = search.toLowerCase();
+            msgs = msgs.filter(m => m.content?.toLowerCase().includes(q));
+          }
+          if (msgs.length > limit) msgs = msgs.slice(-limit);
+          if (!msgs.length) {
+            const desc = [from && `von "${from}"`, search && `mit "${search}"`].filter(Boolean).join(' ');
+            return { content: [{ type: 'text', text: `Keine Nachrichten ${desc} (letzte ${days} Tage) für ${soul_id}.\nPeers: ${peerList}` }] };
+          }
+
+          const filterParts = [`letzte ${days} Tag(e)`, from && `von "${from}"`, search && `Suche: "${search}"`].filter(Boolean).join(' · ');
+          const lines = [`${msgs.length} Nachricht(en) für ${soul_id} · ${filterParts}`, `Peers: ${peerList}`, ''];
+          for (const m of msgs) {
+            const date = m.ts ? m.ts.replace('T', ' ').slice(0, 16) + ' UTC' : '???';
+            const direction = m.outgoing
+              ? `${soul_id} → ${m.to === 'peer' ? 'alle' : m.to === 'community' ? 'Community' : m.to === 'agent' ? 'Agent' : (m.to ?? '').slice(0, 8)}`
+              : (m.from_label || m.peer || '?');
+            lines.push(`[${date}] ${direction}`, m.content ?? '', '');
+          }
+          return withNodeInfo(c.resolvedNodeUrl, { type: 'text', text: lines.join('\n') });
+        });
+      } catch (err) {
+        return errResult(`wired_peer_inbox fehlgeschlagen: ${err.message}`);
       }
     }
   );
