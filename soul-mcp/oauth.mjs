@@ -82,7 +82,7 @@ const SCOPE_LABELS = {
   images:   'Bilder anzeigen (Fotos, Gesicht)',
   video:    'Videos abspielen (Bewegung, Aufnahmen)',
   context:  'Text-Dokumente lesen (Notizen, Wissen)',
-  network:  'Soul-Netzwerk einsehen (Verbundene Souls)',
+  network:  'Gatekeeper-Netzwerk einsehen (Souls, die über deinen Gatekeeper verbunden sind)',
 };
 
 function scopesToPermissions(scopes = []) {
@@ -297,25 +297,25 @@ function consentHtml({ client_id, redirect_uri, state, response_type, scope, cod
   <title>SaveYourSoul – Claude verbinden</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#000;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+    body{background:#000;color:#ececec;font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
     .card{background:#0a0a0a;border:1px solid rgba(255,255,255,.08);border-radius:1.25rem;padding:2rem;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.6)}
     .logo{display:flex;align-items:center;gap:.625rem;margin-bottom:1.75rem}
     .dot{width:8px;height:8px;background:#6db89a;border-radius:50%;box-shadow:0 0 6px #6db89a}
-    .logo-text{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);font-weight:500}
-    h1{font-size:1.125rem;font-weight:700;margin-bottom:.375rem;letter-spacing:-.01em}
-    .sub{color:rgba(255,255,255,.4);font-size:.8125rem;margin-bottom:1.5rem;line-height:1.5}
+    .logo-text{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:#8ad0b3;font-weight:600}
+    h1{font-size:1.375rem;font-weight:700;margin-bottom:.5rem;letter-spacing:-.01em;color:#ececec}
+    .sub{color:#ececec;font-size:.9375rem;margin-bottom:1.5rem;line-height:1.55}
     .scopes{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:.75rem;padding:.875rem 1rem;margin-bottom:1.5rem}
-    .scope{font-size:.8125rem;color:rgba(255,255,255,.6);padding:.2rem 0;display:flex;align-items:center;gap:.5rem}
-    .scope::before{content:'✓';color:#0c1410;font-size:.625rem;background:#6db89a;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex-none;font-weight:700}
-    label{display:block;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:.5rem;font-weight:500}
-    input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.75rem 1rem;color:#e2e8f0;font-size:.8125rem;font-family:monospace;margin-bottom:1.25rem;transition:border-color .15s}
+    .scope{font-size:.875rem;color:#ececec;padding:.35rem 0;display:flex;align-items:center;gap:.625rem;line-height:1.4}
+    .scope::before{content:'✓';color:#fff;font-size:.625rem;background:#6db89a;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+    label{display:block;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:#8ad0b3;margin-bottom:.5rem;font-weight:600}
+    input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.75rem 1rem;color:#ececec;font-size:.875rem;font-family:monospace;margin-bottom:1.25rem;transition:border-color .15s}
     input:focus{outline:none;border-color:rgba(109,184,154,.6);background:rgba(255,255,255,.06)}
-    .btn-connect{width:100%;background:#6db89a;color:#0c1410;border:none;border-radius:3rem;padding:.875rem 1.5rem;font-size:.9375rem;font-weight:700;cursor:pointer;margin-bottom:.875rem;letter-spacing:.01em;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+    .btn-connect{width:100%;background:#6db89a;color:#fff;border:none;border-radius:3rem;padding:.875rem 1.5rem;font-size:.9375rem;font-weight:700;cursor:pointer;margin-bottom:.875rem;letter-spacing:.01em;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:.5rem}
     .btn-connect:hover{background:#8ad0b3;transform:translateY(-1px)}
     .btn-connect:active{transform:translateY(0)}
-    .cancel{display:block;text-align:center;color:rgba(255,255,255,.3);font-size:.8125rem;text-decoration:none;padding:.5rem;transition:color .15s}
-    .cancel:hover{color:rgba(255,255,255,.6)}
-    .error{background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);border-radius:.625rem;padding:.75rem 1rem;font-size:.8125rem;color:#fca5a5;margin-bottom:1rem;line-height:1.5}
+    .cancel{display:block;text-align:center;color:#ececec;font-size:.875rem;text-decoration:none;padding:.5rem;opacity:.65;transition:opacity .15s}
+    .cancel:hover{opacity:1}
+    .error{background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);border-radius:.625rem;padding:.75rem 1rem;font-size:.875rem;color:#fca5a5;margin-bottom:1rem;line-height:1.5}
   </style>
 </head>
 <body>
