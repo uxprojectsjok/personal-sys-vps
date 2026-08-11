@@ -284,7 +284,16 @@ async function submit() {
       currentSoulId.value = gateRes.soul_id
       creds.initForSoul(gateRes.soul_id)
     }
-    if (gateRes?.invite_login) sessionStorage.setItem('sys.invite_login', '1')
+    // Was invite_login-only: after a *returning* soul's cert login (gateRes.soul_id
+    // set, invite_login not), doRedirect()/Skip below sent the browser back to "/"
+    // with nothing to do there — index.vue only auto-opens the Login-with-Soul sheet
+    // for this exact flag, and this page's own blank splash has no other action on
+    // it, so the visitor just landed back at the logo+arrow with no way forward. The
+    // gate only proves the password/cert was valid; it never hands back sys.md itself
+    // (client-side-only by design), so *any* successful login — invite or returning —
+    // needs that sheet to actually load the soul. Set for every gateRes.ok, not just
+    // the invite branch.
+    if (gateRes?.ok) sessionStorage.setItem('sys.invite_login', '1')
 
     // Biometrics ist an eine soul_id gebunden (creds.initForSoul/authenticateOrRegister
     // brauchen currentSoulId) — ohne gebundene Soul (Invite-Login auf einem frischen
