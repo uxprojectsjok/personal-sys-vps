@@ -122,7 +122,10 @@ const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
 const hasSavedCreds  = ref(false)
 const ready          = ref(false)   // true after gate-status known (prevents flicker)
-const revealed       = ref(false)   // true after the discreet top-right button is clicked
+// true after the discreet top-right button is clicked — or immediately when
+// linked in from index.vue's own arrow (?login=1), which already served as
+// that first click, no need to make the visitor click twice in a row.
+const revealed       = ref(useRoute().query.login === '1')
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 

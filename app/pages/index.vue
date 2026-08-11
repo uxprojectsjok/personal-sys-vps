@@ -3,63 +3,27 @@
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
       <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
-        <!-- Blanke Landing per Default, gleiches Muster wie gate.vue: nur Logo +
-             dezenter Pfeil, bis der Betreiber ihn gezielt anklickt. Diese Seite
-             ist mit gültigem sys_gate-Cookie erreichbar (Netzwerk-Gate schon
-             bestanden), aber noch ohne lokal geladene Soul — soll trotzdem nicht
-             ungefragt Node-Name/Tagline/Login-Optionen/Legal-Links preisgeben. -->
-        <button
-          v-if="!revealed"
+        <!-- Blanke Landing, gleiches Muster wie gate.vue: nur Logo + dezenter
+             Pfeil. Diese Seite ist mit gültigem sys_gate-Cookie erreichbar
+             (Netzwerk-Gate schon bestanden), aber noch ohne lokal geladene
+             Soul — der Pfeil führt zurück zu /gate für den eigentlichen
+             Login (Passwort + Cert/Invite-Code); ?login=1 überspringt dort
+             den redundanten zweiten Reveal-Klick. Nach erfolgreichem Login
+             öffnet gate.vue automatisch das Login-with-Soul-Sheet hier
+             (sessionStorage 'sys.invite_login', siehe onMounted unten) —
+             diese Seite selbst zeigt bewusst keine Node-Infos/Buttons/
+             Legal-Links, um auf einem privaten Node nichts preiszugeben. -->
+        <NuxtLink
+          to="/gate?login=1"
           class="gate-reveal-trigger"
-          @click="revealed = true"
           :aria-label="$t('gate.owner_login_aria')"
           :title="$t('gate.owner_login_aria')"
         >
           <SysIcon name="arrow" style="width:14px;height:14px" />
-        </button>
-        <button
-          v-if="revealed"
-          class="gate-close-trigger"
-          @click="revealed = false"
-          :aria-label="$t('gate.close_aria')"
-          :title="$t('gate.close_aria')"
-        >
-          <SysIcon name="close" style="width:16px;height:16px" />
-        </button>
+        </NuxtLink>
 
         <div class="gate-card">
-          <SysMark />
-
-          <Transition name="gate-reveal">
-            <div v-if="revealed" class="gate-panel">
-              <div class="gate-sub">{{ config.public.nodeName }}</div>
-              <h1>Save Your Soul<em>.</em></h1>
-              <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
-              <div style="display:flex;flex-direction:column;gap:12px;width:100%">
-                <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
-                  {{ $t('index.create_soul') }}
-                  <SysIcon name="arrow" style="width:18px;height:18px" />
-                </button>
-                <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
-                  {{ $t('index.login_with_soul') }}
-                </button>
-              </div>
-              <div class="gate-foot">
-                <span class="live-dot" />
-                {{ $t('index.private_node', { name: config.public.nodeName }) }}
-              </div>
-              <div class="landing-legal-links">
-                <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
-                <span class="landing-legal-sep">·</span>
-                <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
-                <span class="landing-legal-sep">·</span>
-                <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
-                <span class="landing-legal-sep">·</span>
-                <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
-              </div>
-              <LocaleToggle style="margin-top:14px;justify-content:center" />
-            </div>
-          </Transition>
+          <SysMark size="220px" />
         </div>
       </div>
     </template>
@@ -348,9 +312,7 @@ import ModalCreateSoul from '~/components/ModalCreateSoul.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
-import LocaleToggle from '~/components/LocaleToggle.vue'
 
-const config = useRuntimeConfig()
 const { t } = useI18n()
 const { ask: confirmAsk } = useConfirm()
 const { hasSoul, soulContent, soulToken, soulMeta, importFromText, importAndSetup, createNew, pushToServer, exportAsBlob, clear: _clear, firstSetupToken, refreshCert, soulFilename, setSoulFilename } = useSoul()
@@ -373,26 +335,12 @@ function fetchChainMetricsForSoul(id) {
 
 watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate: true })
 
-// Ein gesperrter Single-Hoster-Node (eine Soul, ein Besitzer) hat keinen
-// legitimen Grund, die öffentliche Marketing-Landing + "Login with Soul"-
-// Datei-Upload zu zeigen — die gehört zum Multi-Hoster-/"jeder kann
-// beitreten"-Fall (dort ist /join der richtige Weg). Bei direktem Aufruf von
-// "/" ohne aktive Session (kein hasSoul) auf so einem Node landet man sonst
-// immer auf dieser Seite, obwohl der Node explizit einem Besitzer gehört —
-// still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
+// Erst nach dem Mount rendern (verhindert einen Flackerer zwischen SSR/erstem
+// Client-Render und dem tatsächlichen hasSoul-Zustand).
 const gateRedirectChecked  = ref(false)
-const selfRegistrationOpen = ref(true)
-const revealed              = ref(false)   // true after the discreet top-right button is clicked (see gate.vue)
 
 onMounted(async () => {
   fetchNodeStatus()
-
-  if (!hasSoul.value) {
-    try {
-      const status = await $fetch('/api/gate-status')
-      selfRegistrationOpen.value = status?.self_registration !== false
-    } catch { /* Status unbekannt — im Zweifel Landing zeigen statt aussperren */ }
-  }
   gateRedirectChecked.value = true
 
   // gate.vue setzt dieses Flag nach erfolgreichem Invite-Login (Passwort +
@@ -405,12 +353,6 @@ onMounted(async () => {
     loginOpen.value = true
   }
 })
-
-// Node-Lock (allowCreateSoul) und Self-Registration sind zwei unabhängige Sperren —
-// ein Multi-Hoster-Node ist nie node-locked, kann Neuregistrierung aber trotzdem
-// über self_registration hart deaktiviert haben (reiner Access-Point für Souls, die
-// der Betreiber selbst extern anlegt, kein öffentliches Self-Service-Signup).
-const canCreateSoul = computed(() => allowCreateSoul.value && selfRegistrationOpen.value)
 
 // sys-v2.css sets body { overflow: hidden } globally for the authenticated app
 // shell (fixed-viewport layout, only its own internal .scroll regions scroll).
@@ -794,38 +736,6 @@ onMounted(() => {
 }
 .gate-reveal-trigger:hover, .gate-reveal-trigger:focus-visible {
   background: var(--surface-2); color: var(--accent-bright);
-}
-.gate-close-trigger {
-  position: fixed; top: 20px; right: 20px; z-index: 20;
-  width: 36px; height: 36px; display: grid; place-items: center;
-  background: none; border: none; border-radius: 50%;
-  color: var(--fg-3); cursor: pointer;
-  transition: background .2s, color .2s;
-}
-.gate-close-trigger:hover, .gate-close-trigger:focus-visible {
-  background: var(--surface-2); color: var(--fg);
-}
-.gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
-.gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
-
-.landing-legal-links {
-  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
-  font-family: var(--mono); font-size: 15px; letter-spacing: 0.04em;
-  margin-top: 12px;
-  max-width: 100%; overflow-x: auto; white-space: nowrap;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none;
-}
-.landing-legal-links::-webkit-scrollbar { display: none; }
-.landing-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
-.landing-legal-links a:hover { color: var(--fg); text-decoration: underline; }
-.landing-legal-sep { color: var(--line-2); }
-
-@media (max-width: 640px) {
-  .landing-legal-links {
-    flex-direction: column; gap: 6px;
-    max-width: 100%; overflow-x: visible; white-space: normal;
-  }
-  .landing-legal-sep { display: none; }
 }
 
 /* ── Inline page layouts ─────────────────────────────────────────────── */
