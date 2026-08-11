@@ -74,7 +74,7 @@ if (import.meta.client) {
   --accent-deep:  #4f9a7e;
   --accent-dim:   rgba(109,184,154,0.14);
   --accent-glow:  rgba(109,184,154,0.28);
-  --on-accent:    #0c1410;
+  --on-accent:    #ffffff;
   --scrim:        rgba(10,10,10,0.66);
   --r:    13px; --r-sm: 10px; --r-xs: 7px;
   --serif: 'Noto Serif', Georgia, serif;

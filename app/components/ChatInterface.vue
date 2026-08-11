@@ -3335,7 +3335,7 @@ defineExpose({
   --accent:  #6db89a;
   --accent-bright: #8ad0b3;
   --accent-dim:    rgba(109,184,154,0.14);
-  --on-accent: #0c1410;
+  --on-accent: #ffffff;
   --paper-3: #171717;
   --serif:   'Noto Serif', Georgia, serif;
   --mono:    'JetBrains Mono', ui-monospace, monospace;

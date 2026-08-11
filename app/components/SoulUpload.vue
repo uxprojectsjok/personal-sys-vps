@@ -82,7 +82,8 @@ function handleDrop(e) {
   gap: 16px;
   min-height: 52px;
   padding: 0 16px;
-  border: 1px solid var(--sys-rule-strong, rgba(226,220,240,0.20));
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   background: transparent;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -92,44 +93,44 @@ function handleDrop(e) {
 
 .soul-upload-zone:hover,
 .soul-upload-zone.is-drag {
-  background: rgba(255,255,255,0.03);
-  border-color: var(--sys-fg-dim, rgba(226,220,240,0.48));
+  background: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 .soul-upload-label {
-  font-family: var(--sys-mono, 'JetBrains Mono', monospace);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sys-fg-muted, rgba(226,220,240,0.72));
+  color: var(--fg);
   transition: color 0.15s;
 }
 
 .soul-upload-zone:hover .soul-upload-label,
 .soul-upload-zone.is-drag .soul-upload-label {
-  color: var(--sys-fg, #ece7f5);
+  color: var(--accent-bright);
 }
 
 .soul-upload-icon {
   width: 16px;
   height: 16px;
-  color: var(--sys-fg-dim, rgba(226,220,240,0.48));
+  color: var(--fg-3);
   flex: none;
   transition: color 0.15s;
 }
 
 .soul-upload-zone:hover .soul-upload-icon,
 .soul-upload-zone.is-drag .soul-upload-icon {
-  color: var(--sys-fg-muted, rgba(226,220,240,0.72));
+  color: var(--accent-bright);
 }
 
 .soul-upload-input { display: none; }
 
 .soul-upload-error {
-  font-family: var(--sys-mono, 'JetBrains Mono', monospace);
+  font-family: var(--mono);
   font-size: 12px;
-  color: var(--sys-err, #f0a3a3);
-  border-left: 2px solid var(--sys-err, #f0a3a3);
+  color: var(--c-danger);
+  border-left: 2px solid var(--c-danger);
   padding-left: 10px;
   margin: 8px 0 0;
 }

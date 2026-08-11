@@ -160,7 +160,7 @@ function onNav(id) {
   --accent-2:    rgba(109,184,154,0.12);
   --accent-bright: #8ad0b3;
   --accent-deep: #4a9e82;
-  --on-accent:   #0e1a16;
+  --on-accent:   #ffffff;
   --ok:          #6db89a;
   --warn:        #8ad0b3;
   --err:         #e06c75;
