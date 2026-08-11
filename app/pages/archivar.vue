@@ -51,7 +51,7 @@
                   @click="triggerCrystallize"
                 ><span v-if="crystallizeBusy" class="dots-running">{{ $t('settings.cleanup_running') }}</span><template v-else>{{ $t('settings.cleanup_now') }}</template></button>
                 <Transition name="sys-modal-fade">
-                  <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                  <div v-if="archivFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:11px"
                     :style="archivFeedback.ok
                       ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                       : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -193,9 +193,9 @@ async function triggerCrystallize() {
   color: var(--fg-4); letter-spacing: 0.06em;
 }
 .archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
-.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 12px; }
+.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 14px; }
 .archivar-lm-row:last-child { border-bottom: none; }
-.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
 .archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-dim  { color: var(--fg); }

@@ -490,7 +490,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .mob-tab.active { color: #6db89a; }
   .mob-tab-icon { width: 22px; height: 22px; stroke-width: 1.6; }
   .mob-tab-label {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-family: var(--mono);
     font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
   }
 }

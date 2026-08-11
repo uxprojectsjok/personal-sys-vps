@@ -208,7 +208,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 .lp-icon svg { width: 16px; height: 16px; }
 
 .lp-title {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 18px;
   font-weight: 400;
   letter-spacing: -0.015em;
@@ -225,7 +225,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 }
 
 .lp-consent-desc {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 15px;
   line-height: 1.6;
   color: var(--sys-fg-muted);
@@ -248,7 +248,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 .lp-checkbox-box svg { width: 10px; height: 10px; color: var(--sys-on-accent, #0a0810); }
 
 .lp-checkbox-label {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.1em;
   line-height: 1.65;
@@ -256,7 +256,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
 }
 
 .lp-dsgvo {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -277,7 +277,7 @@ const isCameraMode = computed(() => consentGiven.value && activeTab.value !== "s
   border: 0; border-right: 1px solid var(--sys-rule);
   background: transparent; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-  font-family: var(--sys-mono); font-size: 12px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--sys-fg-dim);
   position: relative; transition: color 0.12s, background 0.12s;
 }

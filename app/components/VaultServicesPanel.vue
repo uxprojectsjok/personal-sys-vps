@@ -59,28 +59,30 @@
             class="px-5 py-3 flex items-start justify-between gap-3"
           >
             <div class="flex-1 min-w-0">
-              <p class="text-sm text-[var(--sys-fg)] truncate">{{ svc.name }}</p>
+              <p style="font-size:15px;color:var(--fg);margin:0" class="truncate">{{ svc.name }}</p>
               <div class="flex flex-wrap gap-1 mt-1">
                 <span
                   v-for="key in (Array.isArray(svc.permissions) ? svc.permissions : Object.keys(svc.permissions).filter(k => svc.permissions[k]))"
                   :key="key"
-                  class="text-sm px-1.5 py-0.5 rounded bg-white/5 text-white border border-white/8"
+                  style="font-size:12px;padding:1px 7px;border-radius:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:var(--fg)"
                 >{{ allPermissions.find(o => o.value === key)?.label || key }}</span>
               </div>
-              <p class="text-sm text-[var(--sys-fg-muted)] mt-1 font-mono">
+              <p style="font-size:13px;color:var(--fg-3);margin-top:4px;font-family:var(--mono)">
                 {{ $t('services.expires_at', { date: formatExpiry(svc.expires_at, $t('services.no_expiry')) }) }}
               </p>
             </div>
             <div class="flex flex-col items-end gap-2 flex-none">
               <button
-                class="text-sm px-2 py-1 rounded border border-[rgba(255,255,255,0.1)] text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.25)] transition-colors min-h-[28px]"
+                style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);color:var(--fg-3);min-height:28px"
+                class="hover:text-[var(--sys-fg)] hover:border-[rgba(255,255,255,0.25)] transition-colors"
                 @click="tokenModal = svc"
                 :aria-label="$t('services.show_token_aria', { name: svc.name })"
               >
                 {{ $t('services.btn_token') }}
               </button>
               <button
-                class="text-sm px-2 py-1 rounded border border-[rgba(239,68,68,0.2)] text-red-400 hover:bg-[rgba(239,68,68,0.1)] transition-colors min-h-[28px]"
+                style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid rgba(239,68,68,0.2);color:#f87171;min-height:28px"
+                class="hover:bg-[rgba(239,68,68,0.1)] transition-colors"
                 @click="handleRevoke(svc.token, svc.name)"
                 :aria-label="$t('services.revoke_aria', { name: svc.name })"
               >
@@ -227,10 +229,10 @@
             <p v-if="testResult === 'error' && testErrorCode === 'vault_locked'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">
               {{ $t('services.err_vault_locked_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" class="text-sm text-white leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'key_wrong'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">
               {{ $t('services.err_key_wrong_hint') }}
             </p>
-            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" class="text-sm text-white leading-relaxed">
+            <p v-if="testResult === 'error' && testErrorCode === 'no_sync'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">
               {{ $t('services.err_no_sync_hint') }}
             </p>
             <p v-if="testResult === 'error' && testErrorCode === 'verification_required'" style="font-size:15px;color:var(--fg-3);line-height:1.6;margin:0">

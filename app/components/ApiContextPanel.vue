@@ -165,7 +165,7 @@ async function onSave() {
 .api-panel-toggle:hover { background: rgba(255,255,255,0.02); }
 
 .api-panel-title {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -173,7 +173,7 @@ async function onSave() {
 }
 
 .api-panel-badge {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -214,7 +214,7 @@ async function onSave() {
   padding-top: 14px;
 }
 .api-panel-row-label {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   letter-spacing: 0.1em;
   color: var(--fg);
@@ -275,7 +275,7 @@ async function onSave() {
 }
 
 .api-panel-error {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   color: var(--sys-err);
   padding-left: 10px;

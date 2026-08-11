@@ -86,11 +86,11 @@
                 !autonomousAgentEnabled ? 'opacity:0.45' : '',
               ]">
               <div>
-                <div style="font-family:var(--sys-mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg)"
+                <div style="font-family:var(--mono);font-size:14px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg)"
                   :style="agentEnabled ? 'color:var(--sys-ok)' : ''">
                   {{ agentEnabled ? $t('settings.agent_enabled') : $t('settings.agent_disabled') }}
                 </div>
-                <div style="font-family:var(--sys-mono);font-size:11px;color:var(--fg-4);margin-top:3px;letter-spacing:0.04em">
+                <div style="font-family:var(--mono);font-size:12px;color:var(--fg-4);margin-top:3px;letter-spacing:0.04em">
                   {{ agentInterval === 'daily' ? $t('settings.agent_interval_daily') : $t('settings.agent_interval_hourly') }}
                 </div>
               </div>
@@ -144,13 +144,13 @@
             <!-- Queue editor -->
             <div class="sys-field" style="gap:10px">
               <label class="sys-field-label">{{ $t('settings.agent_queue_title') }}</label>
-              <p style="font-size:13px;line-height:1.55;color:var(--fg-2);margin:0 0 8px">{{ $t('settings.agent_queue_desc') }}</p>
+              <p style="font-size:15px;line-height:1.55;color:var(--fg);margin:0 0 8px">{{ $t('settings.agent_queue_desc') }}</p>
               <textarea
                 v-model="agentQueueText"
                 class="sys-input"
-                rows="6"
+                rows="14"
                 :placeholder="$t('settings.agent_queue_placeholder')"
-                style="font-family:var(--sys-mono);font-size:12px;resize:vertical;line-height:1.6"
+                style="font-family:var(--mono);font-size:14px;resize:vertical;line-height:1.65"
                 spellcheck="false"
               ></textarea>
               <button
@@ -163,7 +163,7 @@
 
             <!-- Feedback -->
             <Transition name="sys-modal-fade">
-              <div v-if="agentFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+              <div v-if="agentFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:11px"
                 :style="agentFeedback.ok
                   ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                   : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -521,20 +521,20 @@ async function saveAgentQueue() {
 .ag-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 .api-panel-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-top: 0; }
-.api-panel-row-label { font-family: var(--sys-mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }
+.api-panel-row-label { font-family: var(--mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }
 .api-panel-row:hover .api-panel-row-label { color: var(--sys-fg); }
 .api-toggle { position: relative; width: 36px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; flex-shrink: 0; transition: background 0.2s; }
 .api-toggle.is-on { background: var(--sys-ok); }
 .api-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s; }
 .api-toggle-thumb.is-on { transform: translateX(16px); }
 
-.sm-desc { font-family: var(--mono); font-size: 12px; color: var(--fg-2); letter-spacing: 0.04em; margin: 0; line-height: 1.55; }
-.sm-infoblock { padding: 10px 14px; margin-bottom: 20px; border-left: 2px solid var(--line-2); background: var(--surface-2); font-size: 13px; line-height: 1.55; color: var(--fg-2); }
+.sm-desc { font-family: var(--mono); font-size: 13px; color: var(--fg-2); letter-spacing: 0.04em; margin: 0; line-height: 1.55; }
+.sm-infoblock { padding: 10px 14px; margin-bottom: 20px; border-left: 2px solid var(--line-2); background: var(--surface-2); font-size: 14px; line-height: 1.55; color: var(--fg-2); }
 
 .archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
-.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 12px; }
+.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 14px; }
 .archivar-lm-row:last-child { border-bottom: none; }
-.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
 .archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-dim  { color: var(--fg); }
@@ -544,6 +544,6 @@ async function saveAgentQueue() {
 .agent-toggle:disabled { opacity: 0.45; cursor: not-allowed; }
 .agent-toggle-knob { position: absolute; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
 .agent-toggle--on .agent-toggle-knob { transform: translateX(20px); }
-.agent-status-running { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-family: var(--sys-mono); font-size: 11px; letter-spacing: 0.05em; color: var(--sys-ok); }
+.agent-status-running { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; color: var(--sys-ok); }
 .agent-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--sys-ok); box-shadow: 0 0 6px var(--sys-ok); animation: soul-pulse 1.4s ease-in-out infinite; }
 </style>

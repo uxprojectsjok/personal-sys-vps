@@ -147,7 +147,7 @@ function onNav(id) {
   --sys-bg-surface:    var(--surface-2);
   --sys-ok:            var(--accent);
   --sys-err:           #e06c75;
-  --sys-mono:          var(--mono);
+  --mono:          var(--mono);
   --sys-accent-bright: var(--accent-bright);
 }
 

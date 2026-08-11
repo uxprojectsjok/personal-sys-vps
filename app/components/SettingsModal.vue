@@ -229,17 +229,17 @@
                    weder in .env.example noch in init.sh je vorkam. -->
               <div class="sys-field" style="gap:10px;margin-top:8px;padding-top:16px;border-top:1px solid var(--sys-rule)">
                 <label class="sys-field-label">{{ $t('settings.build_keys_title') }}</label>
-                <p style="font-size:12px;color:var(--fg-3);margin:0 0 4px">{{ $t('settings.build_keys_hint') }}</p>
+                <p style="font-size:14px;color:var(--fg-3);margin:0 0 4px">{{ $t('settings.build_keys_hint') }}</p>
                 <div v-for="k in buildTimeKeys" :key="k.name" style="display:flex;align-items:center;justify-content:space-between;padding:5px 0">
-                  <span style="font-size:13px;color:var(--fg)">{{ k.label }}</span>
+                  <span style="font-size:14px;color:var(--fg)">{{ k.label }}</span>
                   <span class="sm-key-ok" v-if="k.set">{{ $t('settings.build_key_ok') }}</span>
-                  <span v-else style="font-size:12px;font-family:var(--sys-mono);color:var(--sys-warn)">{{ $t('settings.build_key_missing') }}</span>
+                  <span v-else style="font-size:13px;font-family:var(--mono);color:var(--sys-warn)">{{ $t('settings.build_key_missing') }}</span>
                 </div>
               </div>
 
               <!-- Feedback -->
               <Transition name="sys-modal-fade">
-                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                <div v-if="feedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
                   :style="feedback.ok
                     ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                     : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -313,7 +313,7 @@
                 <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.soul_cert') }}</div>
                 <div v-if="soulToken" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:flex-start;gap:8px">
-                    <code style="flex:1;font-family:var(--sys-mono);font-size:13px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ soulToken }}</code>
+                    <code style="flex:1;font-family:var(--mono);font-size:14px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ soulToken }}</code>
                     <button @click="copyCurrentCert" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="certCurrentCopied ? 'color:var(--accent)' : 'color:var(--fg-4)'">
                         <path v-if="certCurrentCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
@@ -330,17 +330,17 @@
                 >{{ certRotateBusy ? $t('settings.cert_rotating') : $t('settings.cert_rotate') }}</button>
                 <Transition name="sys-modal-fade">
                   <div v-if="certRotationResult" style="margin-top:10px;padding:12px 14px;border:1px solid var(--sys-rule-strong)">
-                    <div v-if="certRotationResult.error" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">
+                    <div v-if="certRotationResult.error" style="font-family:var(--mono);font-size:13px;color:var(--sys-err)">
                       {{ $t('settings.cert_rotation_failed') }}
                     </div>
                     <template v-else>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                      <span style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright)">{{ $t('settings.cert_rotated', { version: certRotationResult.cert_version }) }}</span>
+                      <span style="font-family:var(--mono);font-size:13px;color:var(--sys-accent-bright)">{{ $t('settings.cert_rotated', { version: certRotationResult.cert_version }) }}</span>
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
                     </div>
                     <div class="sm-sec-head" style="margin-bottom:4px">{{ $t('settings.bearer_token') }}</div>
                     <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
-                      <code style="flex:1;font-family:var(--sys-mono);font-size:11px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
+                      <code style="flex:1;font-family:var(--mono);font-size:13px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
                       <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                           :style="certCopied ? 'color:var(--sys-ok)' : 'color:var(--sys-fg-dim)'">
@@ -370,7 +370,7 @@
 
                 <div v-if="vaultKeyStatus?.vault_key_hex" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:flex-start;gap:8px">
-                    <code style="flex:1;font-family:var(--sys-mono);font-size:13px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ vaultKeyStatus.vault_key_hex }}</code>
+                    <code style="flex:1;font-family:var(--mono);font-size:14px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ vaultKeyStatus.vault_key_hex }}</code>
                     <button @click="copyVaultKey" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="vaultKeyCopied ? 'color:var(--accent)' : 'color:var(--fg-4)'">
                         <path v-if="vaultKeyCopied" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
@@ -383,26 +383,26 @@
                 <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:center;gap:8px">
                     <template v-if="vaultKeyStatus.checked === 0">
-                      <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_not_encrypted') }}</span>
+                      <span style="color:var(--fg-4);font-size:13px">{{ $t('settings.vault_key_not_encrypted') }}</span>
                     </template>
                     <template v-else-if="!vaultKeyStatus.has_key">
                       <!-- Kein Schlüssel hinterlegt (z.B. gerade gelockt) ist ein normaler,
                            erwarteter Zustand — sähe mit der Mismatch-Logik unten sonst wie
                            ein echter Fehler aus (alle Dateien "mismatched", weil kein Schlüssel
                            zum Prüfen da ist), ist aber keiner. -->
-                      <span style="color:var(--fg-4);font-size:12px">{{ $t('settings.vault_key_locked') }}</span>
+                      <span style="color:var(--fg-4);font-size:13px">{{ $t('settings.vault_key_locked') }}</span>
                     </template>
                     <template v-else-if="vaultKeyStatus.all_ok">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-ok);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                      <span style="color:var(--sys-ok);font-size:12px">{{ $t('settings.vault_key_ok', { n: vaultKeyStatus.checked }) }}</span>
+                      <span style="color:var(--sys-ok);font-size:13px">{{ $t('settings.vault_key_ok', { n: vaultKeyStatus.checked }) }}</span>
                     </template>
                     <template v-else>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sys-err);flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                      <span style="color:var(--sys-err);font-size:12px">{{ $t('settings.vault_key_mismatch', { n: vaultKeyStatus.mismatched.length, total: vaultKeyStatus.checked }) }}</span>
+                      <span style="color:var(--sys-err);font-size:13px">{{ $t('settings.vault_key_mismatch', { n: vaultKeyStatus.mismatched.length, total: vaultKeyStatus.checked }) }}</span>
                     </template>
                   </div>
                   <ul v-if="vaultKeyStatus.has_key && !vaultKeyStatus.all_ok && vaultKeyStatus.mismatched?.length" style="margin:8px 0 0;padding-left:18px">
-                    <li v-for="f in vaultKeyStatus.mismatched" :key="f" style="font-family:var(--sys-mono);font-size:11px;color:var(--sys-err)">{{ f }}</li>
+                    <li v-for="f in vaultKeyStatus.mismatched" :key="f" style="font-family:var(--mono);font-size:12px;color:var(--sys-err)">{{ f }}</li>
                   </ul>
                 </div>
 
@@ -418,7 +418,7 @@
 
                 <!-- Aktuelle Methode -->
                 <div v-if="vaultKeyStatus?.vault_key_method" style="margin-top:10px;padding:8px 12px;background:rgba(0,0,0,0.12);border-radius:var(--r-xs)">
-                  <span style="font-size:12px;color:var(--fg-3)">
+                  <span style="font-size:13px;color:var(--fg-3)">
                     {{ $t('settings.vault_key_method_current', { method: vaultKeyStatus.vault_key_method === 'mnemonic' ? $t('vault_session.method_label_mnemonic') : (vaultKeyStatus.vault_key_method === 'passkey' ? $t('vault_session.method_label_passkey') : vaultKeyStatus.vault_key_method) }) }}
                     <template v-if="vaultKeyStatus.vault_key_set_at">{{ $t('settings.vault_key_set_at', { date: formatVaultKeyDate(vaultKeyStatus.vault_key_set_at) }) }}</template>
                   </span>
@@ -456,7 +456,7 @@
                         >{{ opt.label }}</button>
                       </div>
 
-                      <p style="font-size:13px;color:var(--fg-4);margin:0 0 10px">
+                      <p style="font-size:14px;color:var(--fg-4);margin:0 0 10px">
                         {{ newVaultKeyMethod === 'mnemonic' ? $t('vault_session.mnemonic_tradeoff') : $t('vault_session.passkey_tradeoff') }}
                       </p>
 
@@ -469,11 +469,11 @@
                         >{{ $t('settings.vault_key_change_mnemonic_generate') }}</button>
 
                         <template v-else>
-                          <div style="background:rgba(0,0,0,0.3);padding:10px 12px;margin-bottom:8px;font-family:var(--sys-mono);font-size:13px;color:var(--sys-accent-bright);line-height:1.8;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px">
+                          <div style="background:rgba(0,0,0,0.3);padding:10px 12px;margin-bottom:8px;font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);line-height:1.8;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px">
                             <span v-for="(w, i) in newMnemonicWords" :key="i">{{ i + 1 }}. {{ w }}</span>
                           </div>
                           <p class="sm-desc" style="margin-bottom:8px">{{ $t('settings.vault_key_change_words_title') }}</p>
-                          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg-2);margin-bottom:10px;cursor:pointer">
+                          <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-2);margin-bottom:10px;cursor:pointer">
                             <input type="checkbox" v-model="newMnemonicSavedConfirm" />
                             {{ $t('settings.vault_key_change_mnemonic_saved_confirm') }}
                           </label>
@@ -551,7 +551,7 @@
                     {{ connectingAdmin ? $t('common.checking') : $t('settings.connect_btn') }}
                   </button>
                   <Transition name="sys-modal-fade">
-                    <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                    <div v-if="connectFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
                       :style="connectFeedback.ok
                         ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                         : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -596,7 +596,7 @@
                     </button>
                   </div>
                   <Transition name="sys-modal-fade">
-                    <div v-if="adminFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                    <div v-if="adminFeedback" style="margin-top:12px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
                       :style="adminFeedback.ok
                         ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                         : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -641,7 +641,7 @@
               </div>
 
               <Transition name="sys-modal-fade">
-                <div v-if="healthMsg" style="margin-top:4px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+                <div v-if="healthMsg" style="margin-top:4px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
                   :style="healthMsgError
                     ? 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'
                     : 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'"
@@ -657,7 +657,7 @@
               <div class="sys-field" style="margin-bottom:20px">
                 <label class="sys-field-label">{{ $t('settings.invite_token_label') }}</label>
                 <div style="display:flex;gap:8px;align-items:center">
-                  <code style="flex:1;padding:10px 14px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);font-family:var(--sys-mono);font-size:13px;color:var(--sys-accent-bright);word-break:break-all;user-select:all;border:1px solid var(--sys-rule)">
+                  <code style="flex:1;padding:10px 14px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);word-break:break-all;user-select:all;border:1px solid var(--sys-rule)">
                     {{ inviteToken || $t('settings.invite_not_generated') }}
                   </code>
                   <button v-if="inviteToken" class="sys-btn-ed" @click="copyInviteToken" style="flex-shrink:0">
@@ -710,7 +710,7 @@
                     maxlength="8"
                     placeholder="MFA-Code (SMS)"
                     class="sys-input"
-                    style="width:140px;font-family:var(--sys-mono);letter-spacing:0.15em"
+                    style="width:140px;font-family:var(--mono);letter-spacing:0.15em"
                     @keyup.enter="submitMfa"
                   />
                   <button class="sys-btn-ed sys-btn-ed--primary" @click="submitMfa" :disabled="healthLoginBusy || !healthMfaCode">
@@ -721,7 +721,7 @@
                   <button class="sys-btn-ed sys-btn-ed--primary" @click="garminLogin" :disabled="healthLoginBusy">
                     {{ healthLoginBusy ? '…' : 'Garmin Login' }}
                   </button>
-                  <span v-if="healthGarminConnected" style="font-size:11px;font-family:var(--sys-mono);color:var(--sys-ok);padding:0 6px;align-self:center">Garmin verbunden ✓</span>
+                  <span v-if="healthGarminConnected" style="font-size:12px;font-family:var(--mono);color:var(--sys-ok);padding:0 6px;align-self:center">Garmin verbunden ✓</span>
                 </template>
               </template>
             </div>
@@ -1974,7 +1974,7 @@ onMounted(() => { if (props.inline) initSettings() })
 /* ── Toggle switch (Datenschutz/Discoverable) — Muster wie ApiContextPanel.vue,
    dort aber scoped, deshalb hier dupliziert ── */
 .api-panel-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-top: 0; }
-.api-panel-row-label { font-family: var(--sys-mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }
+.api-panel-row-label { font-family: var(--mono); font-size: 14px; letter-spacing: 0.1em; color: var(--fg); transition: color 0.15s; }
 .api-panel-row:hover .api-panel-row-label { color: var(--sys-fg); }
 .api-toggle { position: relative; width: 36px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; flex-shrink: 0; transition: background 0.2s; }
 .api-toggle.is-on { background: var(--sys-ok); }
@@ -1985,30 +1985,30 @@ onMounted(() => { if (props.inline) initSettings() })
 /* Small action button (Test / Save inline) */
 .sm-test-btn {
   height: 32px; padding: 0 12px;
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
 }
 /* Key-set preview badge (shown inline in label) */
 .sm-key-ok {
-  font-family: var(--mono); font-size: 12px; color: var(--accent);
+  font-family: var(--mono); font-size: 13px; color: var(--accent);
   text-transform: none; letter-spacing: 0; margin-left: 8px; font-weight: 400;
 }
 /* Description / info paragraphs below inputs */
 .sm-desc {
-  font-family: var(--mono); font-size: 12px; color: var(--fg-2);
+  font-family: var(--mono); font-size: 13px; color: var(--fg-2);
   letter-spacing: 0.04em; margin: 0; line-height: 1.55;
 }
 /* Uppercase section mini-head */
 .sm-sec-head {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--fg-4); margin-bottom: 10px;
 }
 /* Inline result feedback (ok/err toggled via :style) */
 .sm-feedback {
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em;
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em;
 }
 /* Accent-colored label chips (grace period, cert version etc.) */
 .sm-accent-label {
-  font-family: var(--mono); font-size: 12px; color: var(--accent-bright);
+  font-family: var(--mono); font-size: 13px; color: var(--accent-bright);
   letter-spacing: 0.06em;
 }
 /* Warning / info block with left border */
@@ -2016,7 +2016,7 @@ onMounted(() => { if (props.inline) initSettings() })
   padding: 10px 14px; margin-bottom: 20px;
   border-left: 2px solid var(--line-2);
   background: var(--surface-2);
-  font-size: 13px; line-height: 1.55;
+  font-size: 14px; line-height: 1.55;
   color: var(--fg-2);
 }
 .sm-infoblock--warn {

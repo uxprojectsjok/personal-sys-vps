@@ -187,8 +187,7 @@ async function doPay() {
 .at-page {
   --bg: #0f0f0f; --surface-2: #171717; --line: rgba(255,255,255,0.07); --line-2: rgba(255,255,255,0.11);
   --teal: #6db89a; --teal-bright: #8ad0b3;
-  --fg: #f0f0f0; --fg-2: rgba(240,240,240,0.78); --fg-dim: rgba(240,240,240,0.52);
-  --serif: 'Noto Serif', Georgia, serif; --sans: 'Inter', system-ui, sans-serif; --mono: 'JetBrains Mono', 'Oxanium', ui-monospace, monospace;
+  /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
 }
 .l-nav { display: flex; align-items: center; padding: 0 clamp(20px,4vw,52px); height: 64px; border-bottom: 1px solid var(--line); }
@@ -196,7 +195,7 @@ async function doPay() {
 .nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
 
 .at-wrap { max-width: 560px; margin: 0 auto; padding: clamp(32px,5vw,56px) clamp(20px,4vw,52px) 80px; display: flex; flex-direction: column; gap: 20px; }
-.at-empty { padding: 60px 0; text-align: center; color: var(--fg-dim); font-family: var(--mono); font-size: 14px; }
+.at-empty { padding: 60px 0; text-align: center; color: var(--fg); font-family: var(--mono); font-size: 14px; }
 .at-empty--err { color: #e06c75; }
 
 .at-hero { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }

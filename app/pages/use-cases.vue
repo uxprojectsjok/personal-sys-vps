@@ -496,12 +496,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
   --line-2: rgba(255,255,255,0.11);
   --teal:   #6db89a;
   --teal-bright: #8ad0b3;
-  --fg:     #f0f0f0;
-  --fg-2:   rgba(240,240,240,0.78);
-  --fg-dim: rgba(240,240,240,0.52);
-  --serif:  'Noto Serif', Georgia, serif;
-  --sans:   'Inter', system-ui, sans-serif;
-  --mono:   'JetBrains Mono', 'Oxanium', ui-monospace, monospace;
+  /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   --text:   17px;
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
 }
@@ -526,7 +521,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .uc-hero { padding-bottom: clamp(32px,5vw,48px); margin-bottom: clamp(40px,6vw,64px); border-bottom: 1px solid var(--line); }
 .uc-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px,5.5vw,56px); line-height: 1.05; letter-spacing: -0.03em; color: #fff; margin: 0 0 22px; }
 .uc-h1 :deep(em) { font-style: italic; color: var(--teal); }
-.uc-intro { font-size: 17px; line-height: 1.75; color: var(--fg-2); max-width: 62ch; }
+.uc-intro { font-size: 17px; line-height: 1.75; color: var(--fg); max-width: 62ch; }
 
 /* ── CASE STUDY ───────────────────────────────────────────────────── */
 .uc-case { border: 1px solid var(--line); background: rgba(255,255,255,0.015); padding: clamp(24px,4vw,40px); margin-bottom: 40px; }
@@ -550,12 +545,12 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .step-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1; }
 .step-label { font-size: var(--text); color: var(--fg); line-height: 1.65; }
 .step-label :deep(strong) { color: var(--teal-bright); font-weight: 600; }
-.step-sub { font-size: 15px; color: var(--fg-2); line-height: 1.7; }
+.step-sub { font-size: 15px; color: var(--fg); line-height: 1.7; }
 .i-code, :deep(.i-code) { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(109,184,154,0.14); padding: 1px 6px; }
 
 .copy-block { display: flex; align-items: stretch; border: 1px solid var(--line-2); background: rgba(255,255,255,0.03); }
 .copy-code { font-family: var(--mono); font-size: 13.5px; color: var(--fg); padding: 10px 12px; flex: 1; word-break: break-all; min-width: 0; display: block; }
-.copy-btn { font-family: var(--sans); font-size: 12px; background: none; border: none; border-left: 1px solid var(--line-2); color: var(--fg-2); padding: 0 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.copy-btn { font-family: var(--sans); font-size: 12px; background: none; border: none; border-left: 1px solid var(--line-2); color: var(--fg); padding: 0 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
 .copy-btn:hover { background: rgba(109,184,154,0.1); color: var(--teal-bright); }
 
 .uc-example {
@@ -579,11 +574,11 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 @media (max-width: 760px) { .guarantee-grid { grid-template-columns: 1fr; } }
 .guarantee-card { border: 1px solid var(--line); padding: 22px; }
 .guarantee-title { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--teal-bright); margin-bottom: 12px; }
-.guarantee-body { font-size: 15px; line-height: 1.7; color: var(--fg-2); margin: 0; }
+.guarantee-body { font-size: 15px; line-height: 1.7; color: var(--fg); margin: 0; }
 
 /* ── MORE ─────────────────────────────────────────────────────────── */
 .uc-more { padding-bottom: 56px; }
-.uc-more p { font-size: 15px; color: var(--fg-2); line-height: 1.75; font-style: italic; }
+.uc-more p { font-size: 15px; color: var(--fg); line-height: 1.75; font-style: italic; }
 
 /* ── FOOTER ───────────────────────────────────────────────────────── */
 .colophon { border-top: 1px solid var(--line); padding: clamp(32px,5vw,64px) clamp(20px,4vw,52px); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; max-width: 1100px; margin: 0 auto; }
@@ -591,8 +586,8 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .col-brand { display: flex; flex-direction: column; gap: 12px; }
 .col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
 .col-name em { font-style: italic; color: var(--teal); }
-.uc-fr-tag { font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
-.col-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 14px; }
+.uc-fr-tag { font-family: var(--mono); font-size: 11px; color: var(--fg); }
+.col-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg); margin-bottom: 14px; }
 .colophon ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .colophon a { font-size: 15px; color: var(--fg); text-decoration: none; transition: color 0.15s; }
 .colophon a:hover { color: var(--teal); }

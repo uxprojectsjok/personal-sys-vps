@@ -24,7 +24,7 @@
               </div>
               <div v-if="x402Address" class="archivar-lm-row" style="gap:16px">
                 <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_address_label') }}</span>
-                <code class="archivar-lm-val archivar-lm-dim" style="font-size:13px;word-break:break-all;text-align:right">{{ x402Address }}</code>
+                <code class="archivar-lm-val archivar-lm-dim" style="font-size:14px;word-break:break-all;text-align:right">{{ x402Address }}</code>
               </div>
               <div v-if="x402Balances" class="archivar-lm-row" style="gap:16px">
                 <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_balance_label') }}</span>
@@ -66,13 +66,13 @@
               <p style="font-size:15px;line-height:1.65;color:var(--fg-4);margin:0">{{ $t('settings.x402_test_pay_hint') }}</p>
 
               <div v-if="x402PayResult" class="sm-infoblock" style="margin-top:8px">
-                <pre style="white-space:pre-wrap;word-break:break-all;margin:0;font-family:var(--sys-mono);font-size:11px">{{ x402PayResult }}</pre>
+                <pre style="white-space:pre-wrap;word-break:break-all;margin:0;font-family:var(--mono);font-size:13px">{{ x402PayResult }}</pre>
               </div>
             </div>
 
             <!-- Feedback -->
             <Transition name="sys-modal-fade">
-              <div v-if="x402Feedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--sys-mono);font-size:11px"
+              <div v-if="x402Feedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
                 :style="x402Feedback.ok
                   ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
                   : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
@@ -224,9 +224,9 @@ async function x402SendTestPayment() {
 .wa-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
 
 .archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
-.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 12px; }
+.archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 14px; }
 .archivar-lm-row:last-child { border-bottom: none; }
-.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
 .archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-dim  { color: var(--fg); }

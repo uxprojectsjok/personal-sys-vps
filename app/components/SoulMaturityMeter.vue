@@ -124,7 +124,7 @@ const levelColor = computed(() => {
 
 .soul-meter-label {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@ const levelColor = computed(() => {
 .soul-meter-chevron.is-open { transform: rotate(180deg); }
 
 .soul-meter-level {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 13px;
   letter-spacing: 0.04em;
   transition: color 0.7s;
@@ -170,19 +170,19 @@ const levelColor = computed(() => {
 
 .soul-meter-score { display: flex; align-items: center; justify-content: space-between; }
 .soul-meter-score-val {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-fg-muted);
   tabular-nums: all;
 }
 .soul-meter-ready {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-ok);
   letter-spacing: 0.06em;
 }
 .soul-meter-hint {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-fg-muted);
 }
@@ -197,7 +197,7 @@ const levelColor = computed(() => {
 
 .soul-meter-pillar { display: flex; align-items: center; gap: 10px; }
 .soul-meter-pillar-label {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   width: 64px;
   flex-shrink: 0;
@@ -213,7 +213,7 @@ const levelColor = computed(() => {
   transition: width 0.5s;
 }
 .soul-meter-pillar-val {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   width: 32px;
   text-align: right;
@@ -225,25 +225,25 @@ const levelColor = computed(() => {
   border-top: 1px solid var(--sys-rule);
 }
 .soul-meter-skills-ok {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-ok);
   letter-spacing: 0.06em;
 }
 .soul-meter-skills-hints {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-fg-muted);
   line-height: 1.6;
 }
 .soul-meter-skills-suffix {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-fg-muted);
   margin-left: 4px;
 }
 .soul-meter-skills-empty {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 13px;
   color: var(--sys-fg-muted);
   line-height: 1.5;

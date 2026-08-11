@@ -979,7 +979,7 @@ async function register() {
 .sys-amm-overlay {
   --ink:#08070c; --paper:#171717; --paper-2:#1a1726; --paper-3:#0d0b14;
   --rule:rgba(226,220,240,0.10); --rule-2:rgba(226,220,240,0.20);
-  --fg:#ece7f5; --fg-2:rgba(236,231,245,0.88); --fg-3:rgba(236,231,245,0.70); --fg-4:rgba(236,231,245,0.55);
+  --fg:#ece7f5; --fg-2:#ece7f5; --fg-3:#ece7f5; --fg-4:#ece7f5;
   --accent:#8b5cf6; --accent-2:rgba(139,92,246,0.14); --accent-bright:#a78bfa; --accent-deep:#6d28d9; --on-accent:#0a0810;
   --ok:#b8dcc4; --warn:#a78bfa; --err:#f0a3a3;
   --serif:'Noto Serif', Georgia, serif;

@@ -22,16 +22,16 @@
           <!-- Meta bar (rail slot) -->
           <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--sys-rule);background:var(--sys-paper-3)">
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px;border-right:1px solid var(--sys-rule)">
-              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ $t('sync.this_device') }}</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ localLastSession || '—' }}</span>
-              <span v-if="newerSide === 'local'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
+              <span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">L</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted)">{{ $t('sync.this_device') }}</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted)">{{ localLastSession || '—' }}</span>
+              <span v-if="newerSide === 'local'" style="font-family:var(--mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 20px">
-              <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">Server</span>
-              <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted)">{{ serverLastSession || '—' }}</span>
-              <span v-if="newerSide === 'server'" style="font-family:var(--sys-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
+              <span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted)">Server</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted)">{{ serverLastSession || '—' }}</span>
+              <span v-if="newerSide === 'server'" style="font-family:var(--mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--sys-rule-strong);color:var(--sys-fg-muted)">{{ $t('sync.newer_badge') }}</span>
             </div>
           </div>
 
@@ -46,9 +46,9 @@
                 style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:none;border:none;cursor:pointer;padding:0;min-height:unset;border-radius:0;text-align:left;font-family:inherit"
                 @click="openSections[s.name] = !openSections[s.name]"
               >
-                <span style="font-family:var(--sys-serif);font-size:14px;color:var(--sys-fg-muted)">{{ s.name }}</span>
+                <span style="font-family:var(--serif);font-size:14px;color:var(--sys-fg-muted)">{{ s.name }}</span>
                 <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-                  <span style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-dim)">
+                  <span style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-dim)">
                     <b>L</b> {{ s.localLen }}
                     <span style="opacity:.4;margin:0 4px">/</span>
                     <b>S</b> {{ s.serverLen }}
@@ -65,20 +65,20 @@
               <div v-if="openSections[s.name]" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
                 <div class="sys-card-ed" style="margin-bottom:0">
                   <div class="sys-card-head">
-                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">{{ $t('sync.col_local') }}</span>
+                    <span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">{{ $t('sync.col_local') }}</span>
                   </div>
                   <div class="sys-card-body">
-                    <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.localSnippet }}</p>
-                    <p v-if="s.localLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.localLen - 200 }) }}</p>
+                    <p style="font-family:var(--serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.localSnippet }}</p>
+                    <p v-if="s.localLen > 200" style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.localLen - 200 }) }}</p>
                   </div>
                 </div>
                 <div class="sys-card-ed" style="margin-bottom:0">
                   <div class="sys-card-head">
-                    <span style="font-family:var(--sys-mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S – Server</span>
+                    <span style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.2em;color:var(--sys-fg-muted)">S – Server</span>
                   </div>
                   <div class="sys-card-body">
-                    <p style="font-family:var(--sys-serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.serverSnippet }}</p>
-                    <p v-if="s.serverLen > 200" style="font-family:var(--sys-mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.serverLen - 200 }) }}</p>
+                    <p style="font-family:var(--serif);font-size:13px;color:var(--sys-fg-muted);line-height:1.5;white-space:pre-wrap;word-break:break-words;margin:0">{{ s.serverSnippet }}</p>
+                    <p v-if="s.serverLen > 200" style="font-family:var(--mono);font-size:10px;color:var(--sys-fg-muted);opacity:.6;margin:6px 0 0">{{ $t('sync.chars_more', { n: s.serverLen - 200 }) }}</p>
                   </div>
                 </div>
               </div>

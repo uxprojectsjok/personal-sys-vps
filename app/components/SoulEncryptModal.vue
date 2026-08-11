@@ -377,9 +377,9 @@ function handleClose() {
   --rule:         rgba(226,220,240,0.10);
   --rule-2:       rgba(226,220,240,0.20);
   --fg:           #ece7f5;
-  --fg-2:         rgba(236,231,245,0.88);
-  --fg-3:         rgba(236,231,245,0.70);
-  --fg-4:         rgba(236,231,245,0.55);
+  --fg-2:         #ece7f5;
+  --fg-3:         #ece7f5;
+  --fg-4:         #ece7f5;
   --accent:       #8b5cf6;
   --accent-2:     rgba(139,92,246,0.14);
   --accent-bright:#a78bfa;

@@ -226,7 +226,7 @@ async function handleFile(e) {
   display: inline-flex; align-items: center; gap: 6px;
   background: transparent; border: 1px solid var(--sys-rule-strong);
   color: var(--sys-fg-muted); padding: 6px 10px;
-  font-family: var(--sys-mono); font-size: 12px;
+  font-family: var(--mono); font-size: 12px;
   letter-spacing: 0.18em; text-transform: uppercase;
   cursor: pointer; transition: all 0.15s;
   min-height: unset; border-radius: 0;
@@ -235,7 +235,7 @@ async function handleFile(e) {
 .token-copy.copied { color: var(--sys-ok); border-color: rgba(184,220,196,0.4); }
 .token-copy i { font-size: 13px; }
 .token-value {
-  display: block; font-family: var(--sys-mono); font-size: 13px;
+  display: block; font-family: var(--mono); font-size: 13px;
   line-height: 1.6; color: var(--sys-violet); word-break: break-all;
   user-select: all; padding-top: 8px; border-top: 1px solid var(--sys-rule);
 }
@@ -247,12 +247,12 @@ async function handleFile(e) {
   background: rgba(240,163,163,0.04); margin-bottom: 18px;
 }
 .warn-icon { font-size: 18px; color: var(--sys-err); line-height: 1.2; }
-.warn-row p { font-family: var(--sys-serif); font-size: 14px; line-height: 1.5; color: var(--sys-fg-muted); margin: 0; }
+.warn-row p { font-family: var(--serif); font-size: 14px; line-height: 1.5; color: var(--sys-fg-muted); margin: 0; }
 
 .confirm-row {
   display: flex; align-items: center; gap: 12px; padding: 12px 0;
   cursor: pointer; user-select: none;
-  font-family: var(--sys-serif); font-size: 15px; color: var(--sys-fg-muted); min-height: unset;
+  font-family: var(--serif); font-size: 15px; color: var(--sys-fg-muted); min-height: unset;
 }
 .confirm-row:hover { color: var(--sys-fg); }
 .confirm-cbx {
@@ -266,7 +266,7 @@ async function handleFile(e) {
 .confirm-cbx:checked::after {
   content: "✓"; position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--sys-serif); font-size: 14px;
+  font-family: var(--serif); font-size: 14px;
   color: var(--sys-on-accent, #0a0810); font-weight: bold;
 }
 
@@ -287,26 +287,26 @@ async function handleFile(e) {
 }
 .action-text { flex: 1; }
 .action-text strong {
-  display: block; font-family: var(--sys-mono); font-size: 12px;
+  display: block; font-family: var(--mono); font-size: 12px;
   letter-spacing: 0.12em; text-transform: uppercase; color: var(--sys-fg);
   margin-bottom: 4px;
 }
-.action-text span { font-family: var(--sys-serif); font-size: 13px; color: var(--sys-fg-muted); }
+.action-text span { font-family: var(--serif); font-size: 13px; color: var(--sys-fg-muted); }
 .action-arr { color: var(--sys-fg-dim); font-size: 18px; flex: none; }
 
 .sep-or {
-  text-align: center; font-family: var(--sys-mono); font-size: 10px;
+  text-align: center; font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--sys-fg-dim); margin: 14px 0;
 }
 
-.import-error { font-family: var(--sys-mono); font-size: 11px; color: var(--sys-err); margin: 10px 0 0; }
-.import-status { font-family: var(--sys-mono); font-size: 11px; color: var(--sys-fg-muted); margin: 10px 0 0; }
+.import-error { font-family: var(--mono); font-size: 11px; color: var(--sys-err); margin: 10px 0 0; }
+.import-status { font-family: var(--mono); font-size: 11px; color: var(--sys-fg-muted); margin: 10px 0 0; }
 
 .skip-link {
   display: block; width: 100%; margin-top: 20px;
   background: transparent; border: none;
-  font-family: var(--sys-mono); font-size: 10px;
+  font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--sys-fg-dim); cursor: pointer; text-align: center;
   padding: 8px; transition: color 0.15s;

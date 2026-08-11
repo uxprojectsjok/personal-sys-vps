@@ -47,7 +47,7 @@ defineProps({
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: var(--sys-sans, 'Oxanium', system-ui, sans-serif);
+  font-family: var(--sans);
   font-weight: 600;
   letter-spacing: 0.01em;
   border: 1px solid transparent;
@@ -143,7 +143,7 @@ defineProps({
   border-radius: 0;
   height: auto;
   min-height: unset;
-  font-family: var(--sys-mono, 'JetBrains Mono', monospace);
+  font-family: var(--mono, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;

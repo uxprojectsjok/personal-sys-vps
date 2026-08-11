@@ -20,10 +20,7 @@
   --sys-accent-deep: #6d28d9;
   --sys-ok:          #b8dcc4;
   --sys-err:         #f0a3a3;
-
-  --sys-serif: 'Noto Serif', Georgia, serif;
-  --sys-sans:  'Inter', system-ui, -apple-system, sans-serif;
-  --sys-mono:  'JetBrains Mono', ui-monospace, monospace;
+  /* --serif/--sans/--mono come from sys-v2.css's :root — no local alias, one definition. */
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -38,7 +35,7 @@
   -webkit-backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   color: var(--sys-fg);
 }
 
@@ -114,7 +111,7 @@
 /* ── Head typography ─────────────────────────────────────────────────── */
 
 .sys-kicker {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -127,7 +124,7 @@
 }
 
 .sys-display {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-weight: 400;
   font-size: clamp(28px, 4vw, 40px);
   line-height: 0.98;
@@ -142,7 +139,7 @@
 }
 
 .sys-lede {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 15px;
   line-height: 1.55;
   color: var(--sys-fg-muted);
@@ -150,7 +147,7 @@
   max-width: 60ch;
 }
 .sys-lede code {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-accent-bright);
   background: var(--sys-violet-dim);
@@ -207,7 +204,7 @@
   min-width: 0;
 }
 .sys-rail-t {
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   font-size: 16px;
   letter-spacing: -0.01em;
 }
@@ -238,14 +235,14 @@
   flex-wrap: wrap;
 }
 .sys-step-n {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.12em;
   color: var(--sys-violet);
   text-transform: uppercase;
 }
 .sys-step-title {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-weight: 400;
   font-size: clamp(22px, 3vw, 28px);
   letter-spacing: -0.02em;
@@ -259,7 +256,7 @@
 }
 
 .sys-step-link {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -279,13 +276,13 @@
   border-color: var(--sys-violet);
 }
 .sys-step-link .arr {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   margin-left: 4px;
 }
 
 /* ── Prose ───────────────────────────────────────────────────────────── */
 .sys-prose {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 15px;
   line-height: 1.6;
   color: var(--sys-fg-muted);
@@ -307,14 +304,14 @@
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px dashed var(--sys-rule);
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 15px;
   color: var(--sys-fg-muted);
   align-items: baseline;
 }
 .sys-how li:last-child { border-bottom: 0; }
 .sys-how-n {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.10em;
   color: var(--sys-violet);
@@ -337,7 +334,7 @@
   margin-bottom: 16px;
 }
 .sys-field-label {
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0;
@@ -345,7 +342,7 @@
   color: var(--sys-fg-muted);
 }
 .sys-field-hint {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 13px;
   color: var(--sys-fg-dim);
   text-transform: none;
@@ -359,7 +356,7 @@
   background: var(--sys-paper-2);
   border: 1px solid var(--sys-rule-strong);
   color: var(--sys-fg);
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   font-size: 16px;
   outline: 0;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -369,7 +366,7 @@
   appearance: none;
 }
 .sys-input--mono {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   letter-spacing: 0.01em;
 }
@@ -380,7 +377,7 @@
 .sys-input::placeholder { color: var(--sys-fg-dim); }
 
 .sys-field-error {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   color: var(--sys-err);
   margin: 0;
@@ -388,7 +385,7 @@
   border-left: 2px solid var(--sys-err);
 }
 .sys-field-ok {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 14px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -426,7 +423,7 @@
 }
 .sys-state-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sys-state-label {
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
@@ -435,7 +432,7 @@
 }
 .sys-state--ok .sys-state-label { color: var(--sys-ok); }
 .sys-state-value {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-fg-muted);
   overflow: hidden;
@@ -457,7 +454,7 @@
   align-items: center;
 }
 .sys-foot-meta {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -472,7 +469,7 @@
 .sys-foot-help {
   grid-column: 1 / -1;
   margin: 0;
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -505,7 +502,7 @@
   height: 44px;
   min-height: 44px;
   padding: 0 20px;
-  font-family: var(--sys-sans);
+  font-family: var(--sans);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -575,7 +572,7 @@
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px;
   cursor: pointer;
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -611,7 +608,7 @@
   gap: 14px;
 }
 .sys-flow-list h4 {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-weight: 400;
   font-size: 16px;
   letter-spacing: -0.01em;
@@ -619,14 +616,14 @@
   color: var(--sys-fg);
 }
 .sys-flow-list p {
-  font-family: var(--sys-serif);
+  font-family: var(--serif);
   font-size: 14px;
   line-height: 1.5;
   color: var(--sys-fg-muted);
   margin: 0;
 }
 .sys-flow-list code {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--sys-accent-bright);
   background: rgba(139,92,246,0.08);
@@ -634,7 +631,7 @@
 }
 
 .sys-code-block {
-  font-family: var(--sys-mono);
+  font-family: var(--mono);
   font-size: 12px;
   line-height: 1.6;
   color: var(--sys-fg-muted);

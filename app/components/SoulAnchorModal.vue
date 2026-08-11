@@ -367,9 +367,9 @@ function copyProof() {
   --rule:   rgba(226,220,240,0.10);
   --rule-2: rgba(226,220,240,0.20);
   --fg:     #ece7f5;
-  --fg-2:   rgba(236,231,245,0.88);
-  --fg-3:   rgba(236,231,245,0.70);
-  --fg-4:   rgba(236,231,245,0.55);
+  --fg-2:   #ece7f5;
+  --fg-3:   #ece7f5;
+  --fg-4:   #ece7f5;
   --accent: #8b5cf6;
   --accent-bright: #a78bfa;
   --accent-dim:    rgba(139,92,246,0.12);
@@ -564,17 +564,17 @@ function copyProof() {
 
 /* ── Tags ──────────────────────────────────────────────── */
 .anc-tags-wrap { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 8px; }
-.anc-tags-hint { font-family: var(--sys-mono); font-size: 12px; color: var(--sys-fg-dim); letter-spacing: 0.06em; margin: 0; }
+.anc-tags-hint { font-family: var(--mono); font-size: 12px; color: var(--sys-fg-dim); letter-spacing: 0.06em; margin: 0; }
 .anc-tags-input {
   width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--sys-rule);
-  color: var(--sys-fg); font-family: var(--sys-mono); font-size: 12px;
+  color: var(--sys-fg); font-family: var(--mono); font-size: 12px;
   padding: 8px 10px; outline: none; box-sizing: border-box;
 }
 .anc-tags-input:focus { border-color: var(--sys-violet); }
 .anc-tags-input:disabled { opacity: 0.4; }
 .anc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .anc-chip {
-  font-family: var(--sys-mono); font-size: 12px; letter-spacing: 0.1em;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
   padding: 3px 8px; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
   color: var(--sys-accent-bright);
 }

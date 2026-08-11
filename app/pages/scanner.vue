@@ -1236,11 +1236,7 @@ onUnmounted(() => {
   --bg-2:   #161616;
   --line:   rgba(255,255,255,0.07);
   --teal:   #6db89a;
-  --fg:     #f0f0f0;
-  --fg-dim: rgba(240,240,240,0.50);
-  --serif:  'Noto Serif', Georgia, serif;
-  --sans:   'Inter', system-ui, sans-serif;
-  --mono:   'JetBrains Mono', 'Oxanium', ui-monospace, monospace;
+  /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   --text:   17px;
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
 }
@@ -1427,7 +1423,7 @@ onUnmounted(() => {
 }
 .modal-brand em { color: var(--teal); font-style: italic; }
 .modal-close {
-  background: none; border: 1px solid var(--line); color: var(--fg-dim);
+  background: none; border: 1px solid var(--line); color: var(--fg);
   width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; font-size: 12px; transition: all 0.15s;
 }

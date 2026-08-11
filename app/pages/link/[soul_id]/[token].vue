@@ -223,7 +223,7 @@ onMounted(async () => {
   background: rgba(255,255,255,0.03);
 }
 .link-body :deep(code) {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--mono);
   font-size: 0.85em; background: rgba(255,255,255,0.07);
   padding: 0.15em 0.4em; border-radius: 4px; color: #a5f3c0;
 }

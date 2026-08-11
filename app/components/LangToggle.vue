@@ -16,7 +16,7 @@ const { lang, toggle } = useLang()
 
 <style scoped>
 .lang-toggle {
-  font-family: var(--mono, 'Oxanium', monospace);
+  font-family: var(--mono);
   font-size: 17px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
