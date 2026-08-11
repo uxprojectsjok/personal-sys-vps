@@ -101,7 +101,7 @@ if method == "GET" then
       }
     end
   end
-  ngx.say(cjson.encode({ ok = true, links = active }))
+  ngx.say(cjson.encode({ ok = true, links = (#active > 0) and active or cjson.empty_array }))
   return
 end
 

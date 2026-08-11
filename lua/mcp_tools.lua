@@ -94,4 +94,8 @@ for _, t in ipairs(raw_tools) do
   end
 end
 
-ngx.say(cjson.encode({ tools = tools }))
+-- cjson kann ein leeres Lua-Table nicht von einem leeren Objekt
+-- unterscheiden und kodiert {} sonst als JSON-Objekt statt Array — bricht
+-- den Client, der tools per [...tools] spreadet ("X is not iterable").
+-- Gleiches Muster wie soul_connections.lua's save_data().
+ngx.say(cjson.encode({ tools = (#tools > 0) and tools or cjson.empty_array }))

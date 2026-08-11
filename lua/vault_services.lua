@@ -61,7 +61,7 @@ if method == "GET" then
   table.sort(list, function(a, b)
     return (a.created_at or 0) > (b.created_at or 0)
   end)
-  ngx.say(cjson.encode({ services = list }))
+  ngx.say(cjson.encode({ services = (#list > 0) and list or cjson.empty_array }))
   return
 end
 

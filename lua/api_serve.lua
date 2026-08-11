@@ -226,7 +226,7 @@ if uri == "/api/vault/apps" or uri:match("^/api/vault/apps/") then
     end
     ngx.header["Content-Type"]  = "application/json"
     ngx.header["Cache-Control"] = "no-store"
-    ngx.say(cjson.encode({ ok = true, files = list }))
+    ngx.say(cjson.encode({ ok = true, files = (#list > 0) and list or cjson.empty_array }))
     return
   end
 

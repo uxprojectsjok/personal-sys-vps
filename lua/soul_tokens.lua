@@ -50,7 +50,7 @@ end
 
 local p = io.popen("ls " .. TOKEN_DIR .. " 2>/dev/null")
 if not p then
-  ngx.say(cjson.encode({ tokens = {}, count = 0 })); return
+  ngx.say(cjson.encode({ tokens = cjson.empty_array, count = 0 })); return
 end
 
 local tokens = {}
@@ -101,4 +101,4 @@ p:close()
 -- Nach issued_at sortieren (neueste zuerst)
 table.sort(tokens, function(a, b) return (a.issued_at or "") > (b.issued_at or "") end)
 
-ngx.say(cjson.encode({ tokens = tokens, count = #tokens }))
+ngx.say(cjson.encode({ tokens = (#tokens > 0) and tokens or cjson.empty_array, count = #tokens }))

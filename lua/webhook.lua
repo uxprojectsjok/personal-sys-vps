@@ -151,7 +151,7 @@ if perm.audio then
       active         = is_active(name, actives.audio)
     })
   end
-  response.audio_files  = list
+  response.audio_files  = (#list > 0) and list or cjson.empty_array
   response.audio_active = active_url_with_token("audio", actives.audio)
 end
 
@@ -170,7 +170,7 @@ if perm.video then
       active         = is_active(name, actives.video)
     })
   end
-  response.video_files  = list
+  response.video_files  = (#list > 0) and list or cjson.empty_array
   response.video_active = active_url_with_token("video", actives.video)
 end
 
@@ -189,7 +189,7 @@ if perm.images then
       active         = is_active(name, actives.images)
     })
   end
-  response.image_files   = list
+  response.image_files   = (#list > 0) and list or cjson.empty_array
   response.images_active = active_url_with_token("images", actives.images)
 end
 
@@ -208,7 +208,7 @@ if perm.context_files then
       active         = is_active(name, actives.context)
     })
   end
-  response.context_files   = list
+  response.context_files   = (#list > 0) and list or cjson.empty_array
   response.context_active  = active_url_with_token("context", actives.context)
 end
 

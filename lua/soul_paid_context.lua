@@ -91,7 +91,7 @@ end
 
 ngx.say(cjson.encode({
   type  = "context",
-  files = list,
+  files = (#list > 0) and list or cjson.empty_array,
   count = #list,
   note  = "Datei-Inhalte per context_get(name, access_token) abrufbar.",
 }))

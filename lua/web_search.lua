@@ -121,5 +121,5 @@ end
 
 ngx.say(cjson.encode({
   answer  = table.concat(answer_parts, "\n"),
-  sources = sources,
+  sources = (#sources > 0) and sources or cjson.empty_array,
 }))
