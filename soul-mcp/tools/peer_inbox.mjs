@@ -2,40 +2,30 @@
  * peer_inbox — Liest Textnachrichten von verbundenen Peers. Bewusst text-only
  * (siehe peer_send.mjs) — keine Anhang-Auflösung/Bild-Rendering mehr.
  *
- * Datenquelle: connected_souls.json (direkte Soul-zu-Soul-Verbindungen,
- * siehe project_sys_v2_vision Memory) — für jede "accepted"-Verbindung wird
- * deren sys.md per fetchApi() (node_url-bewusst, funktioniert cross-node)
- * gelesen und der SOCIAL-Block geparst, exakt dasselbe Nachrichtenformat wie
- * bisher (<!-- @msg ts from to text -->).
+ * Zwei Datenquellen: connected_souls.json (alte direkte Soul-zu-Soul-
+ * Verbindungen, siehe project_sys_v2_vision Memory) — für jede "accepted"-
+ * Verbindung wird deren sys.md per fetchApi() (node_url-bewusst, funktioniert
+ * cross-node) gelesen und der SOCIAL-Block geparst — UND jeder Gatekeeper, bei
+ * dem diese Soul gewired ist: dessen Geschwister-Spokes werden über den
+ * Gatekeeper-Relay abgefragt (server.mjs POST /mcp/discover/gatekeeper/
+ * peer-inbox-relay), da eine Spoke die Tokens ihrer Geschwister nie direkt
+ * bekommt — siehe lib/gatekeeper_peers.mjs. Beide Quellen liefern exakt
+ * dasselbe Nachrichtenformat (<!-- @msg ts from to text -->).
  */
 
 import { z } from 'zod';
 import { getText } from '../lib/api.mjs';
 import { loadConnected } from '../lib/connected_souls.mjs';
 import { fetchApi } from './gatekeeper_proxy.mjs';
+import { parseSocialMessages } from '../lib/peer_messages.mjs';
+import { fetchGatekeeperInboxMessages } from '../lib/gatekeeper_peers.mjs';
 
-const SOCIAL_START = '<!-- SOCIAL:START -->';
-const SOCIAL_END   = '<!-- SOCIAL:END -->';
-const MSG_RE_G      = () => /<!--\s*@msg\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]*?)-->/g;
-const DAY_MS         = 86400000;
+const DAY_MS = 86400000;
 
-function parseSocialMessages(md) {
-  const si = md.indexOf(SOCIAL_START);
-  const ei = md.indexOf(SOCIAL_END);
-  if (si === -1 || ei === -1 || ei <= si) return [];
-  const block = md.slice(si + SOCIAL_START.length, ei);
-  const msgs = [];
-  const re = MSG_RE_G();
-  let m;
-  while ((m = re.exec(block)) !== null) {
-    msgs.push({ ts: m[1], from: m[2], to: m[3], content: m[4].trim() });
-  }
-  return msgs;
-}
-
-// Sammelt Nachrichten aus der eigenen sys.md (eigene gesendete) UND aus jeder
-// "accepted" verbundenen Soul (an mich oder an "alle" adressiert). Eine nicht
-// erreichbare/kaputte Verbindung darf die anderen nie blockieren.
+// Sammelt Nachrichten aus der eigenen sys.md (eigene gesendete), aus jeder
+// "accepted" verbundenen Soul (an mich oder an "alle" adressiert) UND aus
+// jedem Gatekeeper-Netzwerk, in dem diese Soul gewired ist. Eine nicht
+// erreichbare/kaputte Quelle darf die anderen nie blockieren.
 async function collectMessages(soulId, token, connectedMap) {
   const results = [];
 
@@ -61,6 +51,16 @@ async function collectMessages(soulId, token, connectedMap) {
       }
     } catch { /* Soul nicht erreichbar — andere Verbindungen trotzdem auswerten */ }
   }));
+
+  try {
+    const gkMsgs = await fetchGatekeeperInboxMessages(soulId, token);
+    for (const m of gkMsgs) {
+      results.push({
+        ts: m.ts, from: m.from, to: m.to, content: m.content,
+        outgoing: false, peer: m.from_label, from_label: m.from_label, soulId: m.from_soul_id,
+      });
+    }
+  } catch { /* kein Gatekeeper-Netzwerk erreichbar — Connections-Ergebnisse trotzdem verwenden */ }
 
   results.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   return results;

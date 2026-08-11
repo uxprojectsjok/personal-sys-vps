@@ -2,27 +2,102 @@
   <ClientOnly>
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
-      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
-        <div class="gate-card">
-          <SysMark />
-          <div class="gate-sub">{{ config.public.nodeName }}</div>
-          <h1>Save Your Soul<em>.</em></h1>
-          <p class="welcome">{{ config.public.nodeTagline || $t('index.landing_sub') }}</p>
-          <div style="display:flex;flex-direction:column;gap:12px;width:100%">
-            <button v-if="canCreateSoul" class="btn btn-primary btn-lg" @click="createSoulOpen = true">
-              {{ $t('index.create_soul') }}
-              <SysIcon name="arrow" style="width:18px;height:18px" />
-            </button>
-            <button class="btn btn-ghost btn-lg" @click="loginOpen = true">
-              {{ $t('index.login_with_soul') }}
+      <div class="lp-page">
+
+        <!-- Header / Nav -->
+        <header class="lp-header">
+          <div class="lp-header-inner">
+            <div class="lp-brand">
+              <div class="lp-brand-text">
+                <span class="lp-brand-name">SYS - Agency</span>
+                <span class="lp-brand-operator">UX-Projects Jan-Oliver Karo</span>
+              </div>
+            </div>
+            <nav class="lp-nav" aria-label="Primary">
+              <NuxtLink to="/use-cases">{{ $t('landing.nav_use_cases') }}</NuxtLink>
+              <a href="#">{{ $t('landing.nav_docs') }}</a>
+              <a href="#">{{ $t('landing.nav_community') }}</a>
+              <a href="#">{{ $t('landing.nav_pricing') }}</a>
+              <NuxtLink to="/scanner">{{ $t('landing.nav_scanner') }}</NuxtLink>
+              <NuxtLink to="/search">{{ $t('landing.nav_search') }}</NuxtLink>
+            </nav>
+            <div class="lp-header-actions">
+              <LocaleToggle />
+              <NuxtLink to="/gate?login=1" class="lp-signin">{{ $t('landing.sign_in') }}</NuxtLink>
+            </div>
+            <button
+              class="lp-burger"
+              :class="{ on: mobileNavOpen }"
+              @click="mobileNavOpen = !mobileNavOpen"
+              :aria-expanded="mobileNavOpen"
+              :aria-label="$t('landing.nav_toggle')"
+            >
+              <span /><span /><span />
             </button>
           </div>
-          <div class="gate-foot">
-            <span class="live-dot" />
-            {{ $t('index.private_node', { name: config.public.nodeName }) }}
+          <Transition name="lp-mobile-nav">
+            <nav v-if="mobileNavOpen" class="lp-mobile-nav" aria-label="Primary mobile">
+              <NuxtLink to="/use-cases" @click="mobileNavOpen = false">{{ $t('landing.nav_use_cases') }}</NuxtLink>
+              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_docs') }}</a>
+              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_community') }}</a>
+              <a href="#" @click="mobileNavOpen = false">{{ $t('landing.nav_pricing') }}</a>
+              <NuxtLink to="/scanner" @click="mobileNavOpen = false">{{ $t('landing.nav_scanner') }}</NuxtLink>
+              <NuxtLink to="/search" @click="mobileNavOpen = false">{{ $t('landing.nav_search') }}</NuxtLink>
+              <NuxtLink to="/gate?login=1" class="lp-mobile-nav-login" @click="mobileNavOpen = false">{{ $t('landing.sign_in') }}</NuxtLink>
+            </nav>
+          </Transition>
+        </header>
+
+        <!-- Hero -->
+        <main class="lp-hero">
+          <div class="lp-hero-brand">
+            <SysMark size="260px" operator="UX-Projects Jan-Oliver Karo" />
           </div>
-          <LocaleToggle style="margin-top:14px;justify-content:center" />
-        </div>
+          <div class="lp-hero-content">
+            <h1 class="lp-hero-title">{{ $t('landing.hero_title') }}</h1>
+            <p class="lp-hero-sub">{{ $t('landing.hero_sub') }}</p>
+            <div v-if="canCreateSoul" class="lp-hero-actions">
+              <button class="btn btn-primary btn-lg" @click="createSoulOpen = true">
+                {{ $t('landing.cta_primary') }}
+                <SysIcon name="arrow" style="width:18px;height:18px" />
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <!-- Architektur -->
+        <section class="lp-arch">
+          <div class="lp-arch-frame">
+            <img src="/sys_architecture.png" alt="SYS System Architecture" class="lp-arch-img" />
+          </div>
+          <div class="lp-arch-caption">
+            <span class="lp-arch-layer">POLYGON BLOCKCHAIN</span>
+            <span class="lp-arch-layer">→ PRIVATE VPS LAYER</span>
+            <span class="lp-arch-layer">→ MCP API</span>
+            <span class="lp-arch-layer">→ SERVICES LAYER</span>
+          </div>
+          <div class="lp-arch-contract">
+            <span class="lp-arch-contract-label">{{ $t('landing.arch_contract_label') }}</span>
+            <code class="lp-arch-contract-addr">0xE80B92edFE2286a5a941D10123AbF5E11F76342B</code>
+            <span class="lp-arch-contract-net">Polygon Mainnet</span>
+          </div>
+          <div class="lp-arch-links">
+            <a href="https://sys.uxprojects-jok.com/" target="_blank" rel="noopener" class="lp-arch-link">{{ $t('landing.arch_link_protocol') }} →</a>
+            <NuxtLink to="/scanner" class="lp-arch-link">{{ $t('landing.arch_link_scan') }} →</NuxtLink>
+          </div>
+        </section>
+
+        <footer class="lp-footer">
+          <div class="landing-legal-links">
+            <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+            <span class="landing-legal-sep">·</span>
+            <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+            <span class="landing-legal-sep">·</span>
+            <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
+            <span class="landing-legal-sep">·</span>
+            <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
+          </div>
+        </footer>
       </div>
     </template>
 
@@ -200,9 +275,7 @@
             <h2 class="login-title">{{ $t('index.login_modal_title') }}</h2>
             <p class="login-sub">
               {{ $t('index.login_modal_sub') }}
-              <template v-if="canCreateSoul">
-                <br><em>{{ $t('index.login_modal_sub_import') }}</em>
-              </template>
+              <br><em>{{ $t('index.login_modal_sub_import') }}</em>
             </p>
             <div class="sys-field" style="margin-bottom:0">
               <span class="sys-field-label">{{ $t('index.soul_file_label') }}</span>
@@ -220,6 +293,11 @@
             <button class="login-alt" @click="openDecryptFromLogin">
               <span>{{ $t('index.load_encrypted_vault') }}</span>
               <span class="login-alt-sub">{{ $t('index.load_encrypted_sub') }}</span>
+              <span class="login-arr">→</span>
+            </button>
+            <button class="login-alt" @click="loginOpen = false; createSoulOpen = true">
+              <span>{{ $t('index.create_soul_alt') }}</span>
+              <span class="login-alt-sub">{{ $t('index.create_soul_alt_sub') }}</span>
               <span class="login-arr">→</span>
             </button>
           </div>
@@ -298,12 +376,12 @@ import { useProfile } from '~/composables/useProfile.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 import { parseSoul } from '#shared/utils/soulParser.js'
 import ConfirmModal from '~/components/ConfirmModal.vue'
-import ModalCreateSoul from '~/components/ModalCreateSoul.vue'
 import SoulEncryptModal from '~/components/SoulEncryptModal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
 import AgentMarketplacePanel from '~/components/AgentMarketplacePanel.vue'
 import SoulDecryptModal from '~/components/SoulDecryptModal.vue'
 import SoulUpload from '~/components/SoulUpload.vue'
+import ModalCreateSoul from '~/components/ModalCreateSoul.vue'
 import SoulSetupWizard from '~/components/SoulSetupWizard.vue'
 import FirstSetupModal from '~/components/FirstSetupModal.vue'
 import SettingsModal from '~/components/SettingsModal.vue'
@@ -341,21 +419,33 @@ watch(() => soulMeta.value?.id, id => fetchChainMetricsForSoul(id), { immediate:
 // still auf /gate umleiten, bevor die Landing überhaupt gerendert wird.
 const gateRedirectChecked  = ref(false)
 const selfRegistrationOpen = ref(true)
+const mobileNavOpen        = ref(false)
 
 onMounted(async () => {
   fetchNodeStatus()
 
   if (!hasSoul.value) {
     try {
+      // Auto-redirect zu /gate bewusst entfernt (2026-07-29, Betreiber-Entscheidung
+      // für dieses Deployment): "/" muss immer als Homepage erreichbar bleiben,
+      // auch auf einem gesperrten Single-Hoster-Node. Der "Sign in"-Link im
+      // Header (/gate?login=1) bleibt der reguläre Login-Weg.
       const status = await $fetch('/api/gate-status')
       selfRegistrationOpen.value = status?.self_registration !== false
-      if (status?.soul_registered && !status?.multi_hoster) {
-        window.location.replace('/gate')
-        return
-      }
     } catch { /* Status unbekannt — im Zweifel Landing zeigen statt aussperren */ }
   }
   gateRedirectChecked.value = true
+
+  // Kein öffentlicher "Login with Soul"-Button auf der Landing (siehe lp-hero
+  // oben) — dieser Node ist kein öffentliches "jeder kann beitreten"-Angebot.
+  // Stattdessen setzt gate.vue nach erfolgreichem Invite-Login (Passwort +
+  // Invite-Token, noch keine lokale Soul gebunden) dieses Flag; das Sheet
+  // öffnet sich hier automatisch, sobald man von /gate hierher umgeleitet
+  // wurde. Bleibt gesetzt bis handleLoginUpload es nach abgeschlossenem
+  // Setup entfernt — ein Reload zeigt das Sheet also wieder, absichtlich.
+  if (!hasSoul.value && sessionStorage.getItem('sys.invite_login') === '1') {
+    loginOpen.value = true
+  }
 })
 
 // Node-Lock (allowCreateSoul) und Self-Registration sind zwei unabhängige Sperren —
@@ -363,6 +453,17 @@ onMounted(async () => {
 // über self_registration hart deaktiviert haben (reiner Access-Point für Souls, die
 // der Betreiber selbst extern anlegt, kein öffentliches Self-Service-Signup).
 const canCreateSoul = computed(() => allowCreateSoul.value && selfRegistrationOpen.value)
+
+// sys-v2.css sets body { overflow: hidden } globally for the authenticated app
+// shell (fixed-viewport layout, only its own internal .scroll regions scroll).
+// The public landing page isn't an app shell — it's regular page content that
+// should grow downward and scroll normally, especially once more sections get
+// added below the hero on mobile. Toggle it explicitly rather than fighting the
+// global rule with a scoped selector that can't reach <body>.
+watch([gateRedirectChecked, hasSoul], ([checked, soul]) => {
+  if (!import.meta.client) return
+  document.body.style.overflowY = (checked && !soul) ? 'auto' : ''
+}, { immediate: true })
 
 // ── Modal-State ───────────────────────────────────────────────────────────
 const createSoulOpen    = ref(false)
@@ -454,20 +555,6 @@ async function confirmReset() {
   if (ok) lockGate()
 }
 
-async function handleSoulCreate({ name, idea }) {
-  await createNew(name, idea)
-  const pushed = await pushToServer()
-  await exportAsBlob()
-  createSoulOpen.value = false
-  fetchNodeStatus()
-  // Fresh souls default to cipher_mode "ciphered" server-side with no vault key
-  // yet -- pushToServer() silently returns false (api_context.lua correctly
-  // refuses to store sys.md unencrypted). Route into the setup wizard so the
-  // user actually sets up a vault key (Vault step) instead of hitting a silent
-  // dead end; they can Sync again afterward (Vault Explorer).
-  if (!pushed) setupOpen.value = true
-}
-
 async function onSetupDownload() {
   await exportAsBlob()
   if (firstSetupToken.value === '__single__') {
@@ -502,6 +589,20 @@ async function onSetupImport(markdown) {
   }
   firstSetupToken.value = null
   setupOpen.value = true
+}
+
+async function handleSoulCreate({ name, idea }) {
+  await createNew(name, idea)
+  const pushed = await pushToServer()
+  await exportAsBlob()
+  createSoulOpen.value = false
+  fetchNodeStatus()
+  // Fresh souls default to cipher_mode "ciphered" server-side with no vault key
+  // yet -- pushToServer() silently returns false (api_context.lua correctly
+  // refuses to store sys.md unencrypted). Route into the setup wizard so the
+  // user actually sets up a vault key (Vault step) instead of hitting a silent
+  // dead end; they can Sync again afterward (Vault Explorer).
+  if (!pushed) setupOpen.value = true
 }
 
 const pendingResetText   = ref('')
@@ -691,14 +792,16 @@ function onNav(id) {
   if (id === 'health')   { navigateTo('/health'); return }
   if (id === 'transfer') { navigateTo('/transfer'); return }
   if (id === 'files')    { navigateTo('/vault');    return }
-  if (id === 'peers')    { navigateTo('/peers');      return }
   if (id === 'connect')  { navigateTo('/connection'); return }
   if (id === 'earnings') { navigateTo('/earnings');  return }
   if (id === 'archivar')    { navigateTo('/archivar');    return }
-  if (id === 'connections') { navigateTo('/connections'); return }
   if (id === 'gatekeeper')  { navigateTo('/gatekeeper');  return }
   if (id === 'wallet')      { navigateTo('/wallet');      return }
   if (id === 'agent')       { navigateTo('/agent');       return }
+  if (id === 'impressum')   { navigateTo('/impressum');   return }
+  if (id === 'datenschutz') { navigateTo('/datenschutz'); return }
+  if (id === 'lizenz')      { navigateTo('/lizenz');      return }
+  if (id === 'apps')        { navigateTo('/apps');        return }
   const modalFn = MODAL_MAP[id]
   if (modalFn) { modalFn(); return }
   route.value     = id
@@ -707,7 +810,7 @@ function onNav(id) {
 
 const navLabels = computed(() => ({
   home: t('nav.home'), chat: t('nav.session'), soul: 'sys.md', chronik: t('nav.chronik'), maturity: t('nav.maturity'),
-  files: t('nav.files'), peers: t('nav.peers'), connect: t('nav.connect'),
+  files: t('nav.files'), connect: t('nav.connect'),
   market: t('nav.marketplace'), anchor: t('nav.anchor'), export: t('nav.export'), settings: t('nav.settings'),
 }))
 const crumbs = computed(() => ['SYS', navLabels.value[route.value] || t('nav.home')])
@@ -721,8 +824,116 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* ── Landing card uses gate CSS from sys-v2.css ─────────────────────── */
-.gate h1 em { font-style: italic; color: var(--accent-bright); }
+/* ── Landing: header/nav + hero, replaces the old centered gate-card ──── */
+.lp-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%); overflow-x: hidden; }
+
+.lp-header { border-bottom: 1px solid var(--line-2); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; background: rgba(15,15,15,0.6); }
+.lp-header-inner { max-width: 1200px; margin: 0 auto; padding: 20px 4px; display: flex; align-items: center; gap: 48px; }
+
+.lp-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.lp-brand-text { display: flex; flex-direction: column; gap: 6px; line-height: 1.2; }
+.lp-brand-name { font-family: var(--mono); font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: var(--fg); }
+.lp-brand-operator { font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; color: var(--fg-3); }
+
+.lp-nav { display: flex; align-items: center; gap: 28px; flex: 1; }
+.lp-nav a { display: inline-flex; align-items: center; line-height: 1; font-size: 14px; color: var(--fg-2); text-decoration: none; white-space: nowrap; }
+.lp-nav a:hover { color: var(--fg); }
+
+.lp-header-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.lp-signin { display: inline-flex; align-items: center; line-height: 1; background: none; border: none; color: var(--fg-2); font-size: 14px; text-decoration: none; cursor: pointer; padding: 0 10px; }
+.lp-signin:hover { color: var(--fg); }
+
+/* Burger: hidden on desktop, shown once .lp-nav itself hides (same 900px breakpoint) */
+.lp-burger {
+  display: none; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
+  width: 36px; height: 36px; flex: none; background: none; border: none; cursor: pointer; padding: 0;
+}
+.lp-burger span { width: 20px; height: 2px; background: var(--fg-2); border-radius: 2px; transition: transform .2s, opacity .2s, background .2s; }
+.lp-burger:hover span { background: var(--fg); }
+.lp-burger.on span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.lp-burger.on span:nth-child(2) { opacity: 0; }
+.lp-burger.on span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.lp-mobile-nav {
+  display: flex; flex-direction: column; border-top: 1px solid var(--line-2);
+  padding: 8px 16px 16px;
+}
+.lp-mobile-nav a {
+  padding: 12px 4px; font-size: 15px; color: var(--fg-2); text-decoration: none;
+  border-bottom: 1px solid var(--line-2);
+}
+.lp-mobile-nav a:last-child { border-bottom: none; }
+.lp-mobile-nav a:hover { color: var(--fg); }
+.lp-mobile-nav-login { font-weight: 600; color: var(--fg) !important; }
+
+.lp-mobile-nav-enter-active, .lp-mobile-nav-leave-active { transition: opacity .18s ease, max-height .18s ease; overflow: hidden; }
+.lp-mobile-nav-enter-from, .lp-mobile-nav-leave-to { opacity: 0; max-height: 0; }
+.lp-mobile-nav-enter-to, .lp-mobile-nav-leave-from { opacity: 1; max-height: 320px; }
+
+.lp-hero { flex: 1; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 56px; padding: 64px 24px; max-width: 1040px; margin: 0 auto; }
+.lp-hero-brand { flex: none; }
+.lp-hero-content { text-align: left; }
+.lp-hero-title { font-size: clamp(32px, 5vw, 52px); font-weight: 700; line-height: 1.12; letter-spacing: -0.01em; color: var(--fg); margin: 0 0 20px; }
+.lp-hero-sub { font-size: 18px; line-height: 1.6; color: var(--fg-2); max-width: 560px; margin: 0 0 32px; }
+.lp-hero-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-start; min-height: 8px; }
+
+/* ── Architektur-Sektion ──────────────────────────────────────────────── */
+.lp-arch { max-width: 1040px; margin: 0 auto; padding: 0 24px 40px; }
+.lp-arch-frame { display: flex; justify-content: center; padding: clamp(24px,4vw,48px) 0; }
+.lp-arch-img { width: 100%; max-width: 560px; height: auto; display: block; border-radius: 6px; }
+.lp-arch-caption { display: flex; overflow-x: auto; flex-wrap: wrap; gap: 4px 16px; padding: 4px 0 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.lp-arch-layer { font-family: var(--sans); font-size: 13px; letter-spacing: 0.01em; color: var(--fg-2); white-space: nowrap; }
+.lp-arch-contract { display: flex; align-items: baseline; gap: 12px; padding: 8px 0 12px; flex-wrap: wrap; }
+.lp-arch-contract-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); flex: none; }
+.lp-arch-contract-addr { font-family: var(--mono); font-size: 13px; color: var(--fg); word-break: break-all; overflow-wrap: anywhere; min-width: 0; }
+.lp-arch-contract-net { font-family: var(--mono); font-size: 13px; color: var(--fg); flex: none; }
+.lp-arch-links { display: flex; gap: 20px; padding-top: 4px; }
+.lp-arch-link { font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); text-decoration: none; transition: opacity 0.15s; }
+.lp-arch-link:hover { opacity: 0.7; }
+
+.lp-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 24px 32px; }
+
+@media (max-width: 900px) {
+  .lp-nav { display: none; }
+  /* .lp-nav's flex:1 normally pushes everything after it to the right edge —
+     gone once nav is hidden, so .lp-header-actions needs its own push here or
+     it (LocaleToggle) sits directly against the brand text instead of at the
+     right edge; margin-left:auto on it also carries the burger along with it. */
+  .lp-header-actions { margin-left: auto; }
+  .lp-burger { display: flex; }
+  /* Login moves into the burger menu at this breakpoint too — showing it here
+     alongside brand text + burger button is what overflowed the header on
+     mobile in the first place. */
+  .lp-signin { display: none; }
+}
+@media (max-width: 640px) {
+  .lp-header-inner { padding: 18px 16px; gap: 12px; }
+  .lp-hero { padding: 48px 20px; flex-direction: column; text-align: center; }
+  .lp-hero-content { text-align: center; }
+  .lp-hero-sub { max-width: none; }
+  .lp-hero-actions { flex-direction: column; width: 100%; justify-content: center; }
+  .lp-hero-actions .btn { width: 100%; justify-content: center; }
+}
+
+.landing-legal-links {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.04em;
+  margin-top: 12px;
+  max-width: 100%; overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.landing-legal-links::-webkit-scrollbar { display: none; }
+.landing-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
+.landing-legal-links a:hover { color: var(--fg); text-decoration: underline; }
+.landing-legal-sep { color: var(--line-2); }
+
+@media (max-width: 640px) {
+  .landing-legal-links {
+    flex-direction: column; gap: 6px;
+    max-width: 100%; overflow-x: visible; white-space: normal;
+  }
+  .landing-legal-sep { display: none; }
+}
 
 /* ── Inline page layouts ─────────────────────────────────────────────── */
 .page-hero { display: flex; align-items: baseline; gap: 16px; padding: 20px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
@@ -752,7 +963,9 @@ onMounted(() => {
 .login-close:hover { background: var(--surface-2); color: var(--fg); }
 /* Nur drei Text-Stimmen in dieser Karte: Serif ausschließlich für den
    Titel, ruhiges Sans für Fließtext/Labels/Buttons, Uppercase-Mono nur für
-   den Kicker ganz oben. */
+   den Kicker ganz oben — vorher konkurrierten hier vier verschiedene
+   Uppercase-Mono-Stellen (Kicker, Divider, Alt-Sub, Feldlabel) plus zwei
+   Serif-Größen miteinander. */
 .login-kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
 .login-title { font-family: var(--serif); font-weight: 400; font-size: 26px; letter-spacing: -0.025em; margin: 0 0 8px; color: var(--fg); line-height: 1.15; }
 .login-title em { font-style: italic; color: var(--accent); }

@@ -45,6 +45,29 @@
       </div>
     </div>
 
+    <!-- Erreichbare Peers (über Gatekeeper-Wiring, inkl. Geschwister-Spokes) -->
+    <div v-if="myPeers.length">
+      <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0 0 4px">{{ $t('gatekeeper.peers_title') }}</p>
+      <p style="font-size:13px;color:var(--fg-3);line-height:1.6;margin:0 0 14px">{{ $t('gatekeeper.peers_hint') }}</p>
+
+      <div style="display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden">
+        <div
+          v-for="p in myPeers"
+          :key="p.soul_id + '@' + (p.node_url || '')"
+          style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2)"
+        >
+          <div style="min-width:0">
+            <p style="font-size:14px;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              {{ p.name || p.soul_id.slice(0, 8) }}
+              <span v-if="p.is_gatekeeper" style="font-size:11px;padding:1px 6px;border-radius:3px;background:rgba(109,184,154,0.12);border:1px solid rgba(109,184,154,0.3);color:var(--sys-ok);margin-left:6px">{{ $t('gatekeeper.peers_gatekeeper_badge') }}</span>
+            </p>
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ p.soul_id }}</p>
+            <p style="font-size:12px;font-family:var(--mono);color:var(--fg-3);margin:2px 0 0">{{ p.node_url }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Mit Gatekeeper verbinden -->
     <div>
       <p style="font-size:15px;font-weight:500;color:var(--fg);margin:0 0 4px">{{ $t('gatekeeper.connect_title') }}</p>
@@ -211,10 +234,11 @@ const { ask } = useConfirm()
 
 const { services, fetchServices } = useVaultServices()
 const {
-  wired, wiredTo, federated, error: wireError,
+  wired, wiredTo, federated, myPeers, error: wireError,
   gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
   fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, acceptWire, disconnectFromGatekeeper,
   fetchFederated, requestFederation, acceptFederation, removeFederation,
+  fetchMyPeers,
   formatDate,
 } = useGatekeeper()
 
@@ -233,7 +257,7 @@ const pendingIn      = computed(() => federated.value.filter(f => f.status === '
 const otherFederated = computed(() => federated.value.filter(f => f.status !== 'pending_in'))
 
 onMounted(async () => {
-  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo(), fetchFederated(), fetchGatekeeperEnabled()])
+  await Promise.all([fetchServices(), fetchWired(), fetchWiredTo(), fetchFederated(), fetchGatekeeperEnabled(), fetchMyPeers()])
 })
 
 async function handleToggleGatekeeper() {

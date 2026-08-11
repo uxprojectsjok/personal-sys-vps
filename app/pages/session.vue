@@ -106,6 +106,7 @@
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" @master-rotated="handleMasterRotated" />
     <FirstSetupModal :token="firstSetupToken" @dismiss="firstSetupToken = null; settingsOpen = true" @download-soul="onSetupDownload" @import-soul="onSetupImport" />
     <ConfirmModal />
+    <EmergencyModal v-if="emergencyOpen" :soul-cert="soulToken" @close="emergencyOpen = false" @status-change="handleEmergencyChange" />
   </ClientOnly>
 </template>
 
@@ -127,6 +128,7 @@ import { useChainAnchor } from '~/composables/useChainAnchor.js'
 import { useCamera } from '~/composables/useCamera.js'
 import { validateSoul } from '#shared/utils/soulParser.js'
 import ChatInterface from '~/components/ChatInterface.vue'
+import EmergencyModal from '~/components/EmergencyModal.vue'
 import Modal from '~/components/ui/Modal.vue'
 import SoulAnchorModal from '~/components/SoulAnchorModal.vue'
 import ConfirmModal from '~/components/ConfirmModal.vue'
@@ -145,6 +147,13 @@ const { vaultKey } = useVaultSession()
 
 const certValidating = ref(true)
 const vaultScanning = ref(false)
+const emergencyOpen   = ref(false)
+const emergencyLevel  = ref(0)
+const emergencyActive = computed(() => emergencyLevel.value > 0)
+
+function handleEmergencyChange({ active, level }) {
+  emergencyLevel.value = active ? level : 0
+}
 const vaultStatus = ref(null)
 const mobileView = ref('chat')
 const anchorModalOpen = ref(false)
@@ -273,6 +282,8 @@ onMounted(async () => {
   if (!hasSoul.value) { certValidating.value = false; router.replace('/'); return }
   fetchNodeStatus()
   fetch('/api/node-status').then(r => r.json()).then(d => { isMultiHoster.value = !!d.multi_hoster }).catch(() => {})
+  fetch('/api/emergency/status', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    .then(r => r.json()).then(d => { if (d.active) emergencyLevel.value = d.level || 1 }).catch(() => {})
 
   // Initial AI greeting — nur beim ersten Laden, nicht bei Rückkehr
   if (!isReturn) addMessage('assistant', 'Hallo, was wollen wir heute tun?')
@@ -444,15 +455,17 @@ function onNav(id) {
   if (id === 'anchor')   { router.push('/anchor');    return }
   if (id === 'transfer') { router.push('/transfer');   return }
   if (id === 'export')   { router.push('/export'); return }
-  if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'maturity') { router.push('/maturity');       return }
   if (id === 'health')   { router.push('/health'); return }
   if (id === 'archivar')    { router.push('/archivar');    return }
-  if (id === 'connections') { router.push('/connections'); return }
   if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
   if (id === 'wallet')      { router.push('/wallet');      return }
   if (id === 'agent')       { router.push('/agent');       return }
+  if (id === 'impressum')   { router.push('/impressum');   return }
+  if (id === 'datenschutz') { router.push('/datenschutz'); return }
+  if (id === 'lizenz')      { router.push('/lizenz');      return }
+  if (id === 'apps')        { router.push('/apps');        return }
   drawerOpen.value = false
   router.push('/')
 }

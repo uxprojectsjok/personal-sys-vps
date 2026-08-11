@@ -8,6 +8,7 @@ import { useSoul } from './useSoul.js'
 const wired            = ref([])
 const wiredTo          = ref([])
 const federated        = ref([])
+const myPeers          = ref([])
 const loading          = ref(false)
 const error            = ref(null)
 // Server-Default ist seit der 2026-07-28-Konsolidierung false (kein impliziter
@@ -79,6 +80,24 @@ export function useGatekeeper() {
       if (!res.ok) { error.value = `HTTP ${res.status}`; return }
       const data = await res.json()
       wiredTo.value = data.wired_to || []
+    } catch (e) {
+      error.value = e.message
+    }
+  }
+
+  // Wer über Gatekeeper-Wiring als @peer erreichbar ist — Geschwister-Spokes
+  // jedes Gatekeepers, bei dem diese Soul gewired ist, plus die Gatekeeper
+  // selbst. Server-seitig aufgelöst (auch cross-node), siehe server.mjs
+  // GET /mcp/discover/my-peers.
+  async function fetchMyPeers() {
+    if (!soulToken.value || soulToken.value === 'anonymous') return
+    try {
+      const res = await fetch('/mcp/discover/my-peers', {
+        headers: { Authorization: `Bearer ${soulToken.value}` }
+      })
+      if (!res.ok) { error.value = `HTTP ${res.status}`; return }
+      const data = await res.json()
+      myPeers.value = data.peers || []
     } catch (e) {
       error.value = e.message
     }
@@ -244,10 +263,11 @@ export function useGatekeeper() {
   }
 
   return {
-    wired, wiredTo, federated, loading, error,
+    wired, wiredTo, federated, myPeers, loading, error,
     gatekeeperEnabled, fetchGatekeeperEnabled, setGatekeeperEnabled,
     fetchWired, fetchWiredTo, wireToGatekeeper, unwireSoul, acceptWire, disconnectFromGatekeeper,
     fetchFederated, requestFederation, acceptFederation, removeFederation,
+    fetchMyPeers,
     formatDate,
   }
 }

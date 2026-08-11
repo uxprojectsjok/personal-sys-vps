@@ -132,10 +132,10 @@ import { ref, computed, h, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
-import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useVault } from '~/composables/useVault.js'
 import { computeMaturity } from '#shared/utils/soulMaturity.js'
 import { useChainAnchor } from '~/composables/useChainAnchor.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -202,14 +202,16 @@ function onNav(id) {
   if (id === 'anchor')   { router.push('/anchor');    return }
   if (id === 'transfer') { router.push('/transfer');   return }
   if (id === 'export')   { router.push('/export'); return }
-  if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'settings') { router.push('/settings'); return }
   if (id === 'archivar')    { router.push('/archivar');    return }
-  if (id === 'connections') { router.push('/connections'); return }
   if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
   if (id === 'wallet')      { router.push('/wallet');      return }
   if (id === 'agent')       { router.push('/agent');       return }
+  if (id === 'impressum')   { router.push('/impressum');   return }
+  if (id === 'datenschutz') { router.push('/datenschutz'); return }
+  if (id === 'lizenz')      { router.push('/lizenz');      return }
+  if (id === 'apps')        { router.push('/apps');        return }
   router.push('/')
 }
 

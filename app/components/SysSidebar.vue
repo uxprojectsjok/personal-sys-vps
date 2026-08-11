@@ -62,8 +62,11 @@ const props = defineProps({
 
 defineEmits(['collapse', 'lock', 'go'])
 
-// Gatekeeper-Status entscheidet ausschließlich der Toggle (gatekeeper_config.json
-// / gatekeeperEnabled, siehe wired_souls.mjs) -- kein sys.md-Frontmatter-Feld.
+// Seit der 2026-07-28-Konsolidierung entscheidet AUSSCHLIESSLICH der Toggle
+// (gatekeeper_config.json / gatekeeperEnabled) ob eine Soul Gatekeeper ist,
+// siehe wired_souls.mjs. Das frühere sys.md-Frontmatter-Feld is_gatekeeper
+// (nur bei Soul-Erstellung gesetzt, per ModalCreateSoul.vue-Checkbox) ist
+// mittlerweile komplett entfernt -- der Toggle allein ist die einzige Quelle.
 const { gatekeeperEnabled, fetchGatekeeperEnabled } = useGatekeeper()
 onMounted(() => { fetchGatekeeperEnabled() })
 const showGatekeeperBadge = computed(() => gatekeeperEnabled.value)
@@ -89,9 +92,7 @@ const nav = computed(() => [
     { id: 'files',    icon: 'files',    label: t('nav.files') },
   ]},
   { group: t('nav.group_network'), items: [
-    { id: 'peers',       icon: 'peers',      label: t('nav.peers') },
     { id: 'connect',     icon: 'qr',         label: t('nav.connect') },
-    { id: 'connections', icon: 'peers',      label: t('nav.connections') },
     { id: 'gatekeeper',  icon: 'gatekeeper', label: t('nav.gatekeeper') },
     { id: 'wallet',      icon: 'wallet',     label: t('nav.wallet') },
     // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
@@ -109,6 +110,11 @@ const nav = computed(() => [
     { id: 'export',   icon: 'export',   label: t('nav.export') },
     { id: 'apps',     icon: 'apps',     label: t('nav.apps') },
     { id: 'settings', icon: 'settings', label: t('nav.settings') },
+  ]},
+  { group: t('nav.legal'), items: [
+    { id: 'impressum',   icon: 'globe',  label: t('impressum.pageTitle') },
+    { id: 'datenschutz', icon: 'lock',   label: t('datenschutz.pageTitle') },
+    { id: 'lizenz',      icon: 'scales', label: t('lizenz.pageTitle') },
   ]},
 ])
 </script>

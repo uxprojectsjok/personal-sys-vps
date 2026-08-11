@@ -316,7 +316,7 @@ onUnmounted(() => {
 // ── Navigation ────────────────────────────────────────────────────────────────
 function lockGate() { clear(); document.cookie='sys_gate=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax'; window.location.href='/' }
 function onNav(id) {
-  const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', health:'/health', anchor:'/anchor', transfer:'/transfer', export:'/export', peers:'/peers', market:'/marketplace', earnings:'/earnings', settings:'/settings', archivar:'/archivar', connections:'/connections', gatekeeper:'/gatekeeper', wallet:'/wallet', agent:'/agent' }
+  const routes = { chat:'/session', setup:'/setup', soul:'/soul', chronik:'/chronicle', files:'/vault', maturity:'/maturity', health:'/health', anchor:'/anchor', transfer:'/transfer', export:'/export', market:'/marketplace', earnings:'/earnings', settings:'/settings', archivar:'/archivar', gatekeeper:'/gatekeeper', wallet:'/wallet', agent:'/agent', impressum:'/impressum', datenschutz:'/datenschutz', lizenz:'/lizenz', apps:'/apps' }
   if (id === 'connect') return
   if (routes[id]) { router.push(routes[id]); return }
   drawerOpen.value = false; router.push('/')

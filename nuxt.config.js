@@ -17,6 +17,11 @@ export default defineNuxtConfig({
     lazy: true,
     langDir: "locales/",
     detectBrowserLanguage: false,
+    // Impressum/Datenschutz/Lizenz brauchen echtes HTML (Absätze, Links) in
+    // den Übersetzungen — der Default (strictMessage: true) macht daraus
+    // sonst einen harten Build-Fehler statt nur der beabsichtigten
+    // XSS-Warnung. Die Strings hier sind Entwickler-Content, kein User-Input.
+    compilation: { strictMessage: false },
   },
 
   runtimeConfig: {

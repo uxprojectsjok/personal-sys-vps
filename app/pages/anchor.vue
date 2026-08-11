@@ -473,7 +473,6 @@ function onNav(id) {
   if (id === 'anchor')   return
   if (id === 'transfer') { router.push('/transfer'); return }
   if (id === 'export')   { router.push('/export'); return }
-  if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'chat')     { router.push('/session');     return }
   if (id === 'setup')    { router.push('/setup');  return }
@@ -486,10 +485,13 @@ function onNav(id) {
   if (id === 'health')   { router.push('/health'); return }
   if (id === 'settings') { router.push('/settings'); return }
   if (id === 'archivar')    { router.push('/archivar');    return }
-  if (id === 'connections') { router.push('/connections'); return }
   if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
   if (id === 'wallet')      { router.push('/wallet');      return }
   if (id === 'agent')       { router.push('/agent');       return }
+  if (id === 'impressum')   { router.push('/impressum');   return }
+  if (id === 'datenschutz') { router.push('/datenschutz'); return }
+  if (id === 'lizenz')      { router.push('/lizenz');      return }
+  if (id === 'apps')        { router.push('/apps');        return }
   drawerOpen.value = false
   router.push('/')
 }

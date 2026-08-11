@@ -4,13 +4,16 @@
  * Datei-/Bild-Anhänge deckt SYS strukturell nicht besser ab als bestehende
  * Messenger, deshalb entfernt (siehe vorheriger vault_filename/data_b64-Anhang-
  * Code, git history).
- * Namensauflösung über connected_souls.json (direkte Soul-zu-Soul-Verbindungen,
- * siehe project_sys_v2_vision Memory).
+ * Namensauflösung über zwei Quellen: connected_souls.json (alte direkte
+ * Soul-zu-Soul-Verbindungen, siehe project_sys_v2_vision Memory) UND jede
+ * Soul, die über einen gemeinsamen Gatekeeper erreichbar ist — siehe
+ * lib/gatekeeper_peers.mjs.
  */
 
 import { z } from 'zod';
 import { getText, putJson, verificationRequiredMsg } from '../lib/api.mjs';
 import { loadConnected } from '../lib/connected_souls.mjs';
+import { resolveGatekeeperPeers } from '../lib/gatekeeper_peers.mjs';
 
 const _queues = new Map();
 async function withSoulLock(token, fn) {
@@ -67,21 +70,29 @@ export function register(server, token, soulId = null) {
             if (!soulId) {
               return { content: [{ type: 'text', text: 'Peer-Auflösung nicht verfügbar (kein soulId).' }], isError: true };
             }
+            // Zwei unabhängige Quellen: die alten 1:1-Connections UND jede Soul,
+            // die über einen gemeinsamen Gatekeeper erreichbar ist (Geschwister-
+            // Spokes + der Gatekeeper selbst, siehe gatekeeper_peers.mjs).
             const connected = await loadConnected(soulId);
-            const accepted  = Object.entries(connected).filter(([, e]) => e.status === 'accepted');
-            const match = accepted.find(([id, e]) =>
-              (e.alias || '').toLowerCase() === toNorm ||
-              (e.alias || '').toLowerCase().startsWith(toNorm) ||
+            const candidates = Object.entries(connected)
+              .filter(([, e]) => e.status === 'accepted')
+              .map(([id, e]) => ({ id, alias: e.alias }));
+            const gkPeers = await resolveGatekeeperPeers(soulId, token).catch(() => []);
+            for (const p of gkPeers) candidates.push({ id: p.soul_id, alias: p.name });
+
+            const match = candidates.find(({ id, alias }) =>
+              (alias || '').toLowerCase() === toNorm ||
+              (alias || '').toLowerCase().startsWith(toNorm) ||
               id.toLowerCase().startsWith(toNorm)
             );
             if (!match) {
-              const available = accepted.map(([, e]) => e.alias).filter(Boolean).join(', ') || '(keine)';
+              const available = candidates.map(c => c.alias).filter(Boolean).join(', ') || '(keine)';
               return {
                 content: [{ type: 'text', text: `Peer "${to}" nicht gefunden.\nVerfügbare Peers: ${available}` }],
                 isError: true,
               };
             }
-            toField = match[0];
+            toField = match.id;
           }
 
           const ts = new Date().toISOString();

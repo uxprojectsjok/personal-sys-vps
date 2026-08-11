@@ -300,12 +300,12 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { ref, computed, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
-import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useVault } from '~/composables/useVault.js'
+import { useNodeStatus } from '~/composables/useNodeStatus.js'
 import { useApiContext } from '~/composables/useApiContext.js'
 import { useVaultSession } from '~/composables/useVaultSession.js'
 import { useConfirm } from '~/composables/useConfirm.js'
@@ -850,14 +850,16 @@ function onNav(id) {
   if (id === 'anchor')   { router.push('/anchor');    return }
   if (id === 'transfer') { router.push('/transfer');   return }
   if (id === 'export')   { router.push('/export'); return }
-  if (id === 'peers')    { router.push('/peers');       return }
   if (id === 'connect')  { router.push('/connection');  return }
   if (id === 'settings') { router.push('/settings'); return }
   if (id === 'archivar')    { router.push('/archivar');    return }
-  if (id === 'connections') { router.push('/connections'); return }
   if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
   if (id === 'wallet')      { router.push('/wallet');      return }
   if (id === 'agent')       { router.push('/agent');       return }
+  if (id === 'impressum')   { router.push('/impressum');   return }
+  if (id === 'datenschutz') { router.push('/datenschutz'); return }
+  if (id === 'lizenz')      { router.push('/lizenz');      return }
+  if (id === 'apps')        { router.push('/apps');        return }
   drawerOpen.value = false
   router.push('/')
 }
@@ -916,11 +918,10 @@ onMounted(() => {
 
 /* ── Tabs ── */
 .dt-tabs-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-/* overflow-x statt hidden: bei mehreren Tabs (z.B. mit "Widerruf" aktiviert)
-   passt die Leiste auf schmalen Mobile-Viewports oft nicht mehr rein — mit
-   "hidden" wurden rechte Tabs einfach abgeschnitten und waren unerreichbar.
-   onTabWheel oben (Desktop-Mausrad) braucht ein echtes Scroll-Overflow, um
-   zu wirken. */
+/* overflow-x statt hidden: mit 5 Tabs passt die Leiste auf schmalen Mobile-
+   Viewports oft nicht mehr rein — mit "hidden" wurden rechte Tabs (z.B.
+   "Apps") einfach abgeschnitten und waren unerreichbar. onTabWheel oben
+   (Desktop-Mausrad) braucht ein echtes Scroll-Overflow, um zu wirken. */
 .dt-tabs { display: flex; border: 1px solid var(--line); border-radius: var(--r-xs); overflow-x: auto; overflow-y: hidden; flex: none; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .dt-tabs::-webkit-scrollbar { display: none; }
 .dt-tab { display: flex; align-items: center; gap: 6px; padding: 7px 16px; font-family: var(--sans); font-size: 16px; color: var(--fg); background: transparent; border: none; border-right: 1px solid var(--line); cursor: pointer; transition: all 0.15s; box-shadow: inset 0 -2px 0 0 transparent; flex: none; white-space: nowrap; }
