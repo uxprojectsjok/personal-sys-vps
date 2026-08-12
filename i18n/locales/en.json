@@ -383,6 +383,7 @@
     "vault_encrypted": "Soul encrypted on server · unlock Vault with key phrases"
   },
   "common": {
+    "skip_to_content": "Skip to content",
     "cancel": "Cancel",
     "close": "Close",
     "copy": "Copy",

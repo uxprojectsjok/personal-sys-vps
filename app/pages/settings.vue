@@ -1,11 +1,12 @@
 <template>
   <ClientOnly>
     <div class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
       <SysSidebar route="settings" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[t('settings.title')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
-        <div class="scroll">
+        <div id="main-content" class="scroll">
           <div class="page es-page">
             <div class="es-header">
               <h2 class="es-title">{{ $t('settings.title') }}</h2>

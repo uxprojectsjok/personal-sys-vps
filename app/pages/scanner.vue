@@ -2,6 +2,8 @@
   <ClientOnly>
     <div class="sys-page">
 
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
+
       <!-- NAV -->
       <nav class="l-nav">
         <div class="lockup">
@@ -28,7 +30,7 @@
       </div>
 
       <!-- DESKTOP -->
-      <div class="scan-wrap">
+      <div id="main-content" class="scan-wrap">
 
         <!-- TOPBAR -->
         <div class="topbar">

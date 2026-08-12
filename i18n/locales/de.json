@@ -383,6 +383,7 @@
     "vault_encrypted": "Soul am Server verschlüsselt · Vault mit Schlüsselwörtern entsperren"
   },
   "common": {
+    "skip_to_content": "Zum Inhalt springen",
     "cancel": "Abbrechen",
     "close": "Schließen",
     "copy": "Kopieren",

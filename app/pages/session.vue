@@ -1,6 +1,7 @@
 <template>
   <ClientOnly>
     <div v-if="!certValidating" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
       <SysSidebar route="chat" :soul-meta="soulMeta ? { ...soulMeta, maturity } : null" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled" @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
@@ -61,7 +62,7 @@
           </div>
         </Transition>
 
-        <div class="sess-banners">
+        <div id="main-content" class="sess-banners">
           <Transition name="slide-up">
             <div v-if="enrichStatus" class="banner" :class="`b-${enrichStatus.type}`">
               <span>{{ enrichStatus.message }}</span>

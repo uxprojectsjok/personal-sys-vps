@@ -83,26 +83,30 @@ if (import.meta.client) {
    CSS-Variablen werden hier definiert, damit die teleportierten Elemente
    außerhalb von .sys-chat trotzdem korrekte Farb- und Schriftwerte erben. */
 #teleports {
-  --bg:           #000000;
-  --surface:      #1a1a1a;
-  --surface-2:    #212121;
-  --surface-3:    #2a2a2a;
-  --line:         rgba(236,236,236,0.07);
-  --line-2:       rgba(236,236,236,0.12);
-  --fg:           #ececec;
-  --fg-2:         #ececec;
-  --fg-3:         #ececec;
-  --fg-4:         #ececec;
-  --accent:       #6db89a;
-  --accent-bright: #8ad0b3;
-  --accent-deep:  #4f9a7e;
-  --accent-dim:   rgba(109,184,154,0.14);
-  --accent-glow:  rgba(109,184,154,0.28);
-  --on-accent:    #ffffff;
-  --scrim:        rgba(10,10,10,0.66);
-  --r:    13px; --r-sm: 10px; --r-xs: 7px;
-  --serif: 'Noto Serif', Georgia, serif;
-  --sans:  'Inter', system-ui, sans-serif;
-  --mono:  'JetBrains Mono', ui-monospace, monospace;
+  /* Was hardcoded dark-only — same dark-mode-era mistake .sys-chat had
+     before it was fixed to inherit the real theme tokens. Every name here
+     matches a real global token, so `inherit` is required (not var()) to
+     bypass this local shadow instead of self-referencing. */
+  --bg:           inherit;
+  --surface:      inherit;
+  --surface-2:    inherit;
+  --surface-3:    inherit;
+  --line:         inherit;
+  --line-2:       inherit;
+  --fg:           inherit;
+  --fg-2:         inherit;
+  --fg-3:         inherit;
+  --fg-4:         inherit;
+  --accent:       inherit;
+  --accent-bright: inherit;
+  --accent-deep:  inherit;
+  --accent-dim:   inherit;
+  --accent-glow:  inherit;
+  --on-accent:    inherit;
+  --scrim:        inherit;
+  --r:    inherit; --r-sm: inherit; --r-xs: inherit;
+  --serif: inherit;
+  --sans:  inherit;
+  --mono:  inherit;
 }
 </style>

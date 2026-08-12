@@ -1,5 +1,6 @@
 <template>
   <div class="srp-page">
+    <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
     <header class="srp-header">
       <NuxtLink to="/" class="srp-logo">
         <img src="/logo.png" alt="SYS" class="srp-logo-img" />
@@ -34,7 +35,7 @@
       </button>
     </header>
 
-    <main class="srp-main">
+    <main id="main-content" class="srp-main">
       <div class="srp-col">
         <p v-if="loading" class="srp-status">{{ $t('landing.search_loading') }}</p>
         <p v-else-if="error" class="srp-status">{{ $t('landing.search_error') }}</p>

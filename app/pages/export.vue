@@ -1,12 +1,13 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
       <SysSidebar route="export" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('nav.group_tools'), $t('nav.export')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
-        <div class="scroll">
+        <div id="main-content" class="scroll">
           <div class="page exp-page">
 
             <!-- ── Header ── -->
@@ -465,6 +466,7 @@ function onNav(id) {
   font-family: var(--mono); font-size: 15px; font-weight: 700;
   color: var(--fg);
 }
+.exp-word-input:focus-visible { box-shadow: 0 0 0 2px var(--accent-glow); border-radius: 3px; }
 .exp-word-input::placeholder { color: var(--fg-3); font-weight: 400; }
 .exp-word-ic { width: 12px; height: 12px; flex: none; }
 .exp-word-ic.ok  { color: var(--accent-bright); opacity: 0.75; }

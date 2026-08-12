@@ -531,6 +531,7 @@ function handleClose() {
   font-family: var(--mono); font-size: 13px; font-weight: 700;
   color: var(--fg);
 }
+.senc-word-input:focus-visible { box-shadow: 0 0 0 2px var(--accent-glow); border-radius: 3px; }
 .senc-word-input::placeholder { color: var(--fg-4); font-weight: 400; }
 
 .senc-word-icon { width: 12px; height: 12px; flex: none; }

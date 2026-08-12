@@ -32,6 +32,8 @@
     <template v-else-if="hasSoul">
       <div class="app" :class="{ 'is-collapsed': sidebarCollapsed, 'drawer-open': drawerOpen }">
 
+        <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
+
         <!-- Sidebar -->
         <SysSidebar
           :route="route"
@@ -51,7 +53,7 @@
           <SysTopbar :crumbs="crumbs" @open-cmdk="cmdkOpen = true" @open-drawer="drawerOpen = true" />
 
           <!-- Scrollable view area -->
-          <div class="scroll">
+          <div id="main-content" class="scroll">
 
             <!-- ── Home ──────────────────────────────────────────────── -->
             <div v-if="route === 'home'" class="page">

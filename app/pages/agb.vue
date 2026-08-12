@@ -1,5 +1,7 @@
 <template>
   <div class="legal-page">
+
+    <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
     <nav class="l-nav">
       <div class="lockup"><NuxtLink to="/"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink></div>
       <div class="center"><span class="page-title">Kaufbedingungen</span></div>
@@ -12,7 +14,7 @@
       </div>
     </nav>
 
-    <main class="content">
+    <main id="main-content" class="content">
       <p class="template-notice">
         ⚠️ Platzhaltertext (Lorem Ipsum). Diese Seite ist eine Vorlage für die gesetzlichen
         Informationspflichten vor Vertragsschluss (Art. 246a EGBGB). Bevor diese Soul

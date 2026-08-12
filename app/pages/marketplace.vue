@@ -1,13 +1,14 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
       <SysSidebar route="market" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('common.network'), 'Marketplace']" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
 
-        <div class="scroll">
+        <div id="main-content" class="scroll">
           <div class="market-page">
 
             <!-- ── Hero ── -->
@@ -149,9 +150,14 @@ function onNav(id) {
   /* Was a hardcoded dark-only "Warm Ash & Sage" reskin of the panel's default
      violet tokens — same specificity as AgentMarketplacePanel.vue's own
      .inline override, so as the later-loaded stylesheet it silently won and
-     kept text pinned to #ececec regardless of theme. --fg family now defers
-     (inherit) to the real page tokens; everything else points at the actual
-     var() so it also tracks light/dark instead of copying fixed values. */
+     kept text pinned to #ececec regardless of theme. Every name below that
+     matches a real global token needs `inherit` (not var()) to bypass this
+     local shadow instead of self-referencing — --accent/--serif/--sans/
+     --mono were still doing that, same bug as --on-accent, just not yet
+     visibly broken since var(--accent-dim) etc happened to still resolve
+     through the (also-broken) --accent chain in most browsers' error
+     recovery. --ink and the --paper/--rule tokens are locally-named so
+     var() is safe for those. */
   --ink:         var(--fg);
   --paper:       var(--surface);
   --paper-2:     var(--surface-2);
@@ -159,17 +165,12 @@ function onNav(id) {
   --rule:        var(--line);
   --rule-2:      var(--line-2);
   --fg: inherit; --fg-2: inherit; --fg-3: inherit; --fg-4: inherit;
-  --accent:      var(--accent);
+  --accent: inherit; --accent-bright: inherit; --accent-deep: inherit; --on-accent: inherit;
   --accent-2:    var(--accent-dim);
-  --accent-bright: var(--accent-bright);
-  --accent-deep: var(--accent-deep);
-  --on-accent:   var(--on-accent);
   --ok:          var(--accent);
   --warn:        var(--accent-bright);
   --err:         #e06c75;
-  --serif:       var(--serif);
-  --sans:        var(--sans);
-  --mono:        var(--mono);
+  --serif: inherit; --sans: inherit; --mono: inherit;
 }
 
 .mk-panel :deep(.amm-tab) { font-size: 16px; }

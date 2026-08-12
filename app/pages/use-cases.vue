@@ -2,6 +2,8 @@
   <ClientOnly>
     <div class="sys-page">
 
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
+
       <!-- NAV -->
       <nav class="l-nav">
         <div class="lockup">
@@ -17,7 +19,7 @@
         </div>
       </nav>
 
-      <div class="uc-wrap">
+      <div id="main-content" class="uc-wrap">
 
         <!-- HERO -->
         <div class="uc-hero">

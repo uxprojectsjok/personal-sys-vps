@@ -1,12 +1,13 @@
 <template>
   <ClientOnly>
     <div v-if="hasSoul" class="app" :class="{ 'drawer-open': drawerOpen, 'is-collapsed': sidebarCollapsed }">
+      <a href="#main-content" class="skip-link">{{ $t('common.skip_to_content') }}</a>
       <SysSidebar route="agent" :soul-meta="soulMeta" :collapsed="sidebarCollapsed" :monetization-enabled="monetizationEnabled"
         @go="onNav" @lock="lockGate" @collapse="sidebarCollapsed = !sidebarCollapsed" />
       <div class="scrim-mob" @click="drawerOpen = false" />
       <div class="main">
         <SysTopbar :crumbs="[$t('nav.group_tools'), $t('nav.agent')]" @open-drawer="drawerOpen = !drawerOpen" @open-cmdk="cmdkOpen = true" />
-        <div class="scroll">
+        <div id="main-content" class="scroll">
           <div class="page ag-page">
             <div class="ag-head">
               <div class="ag-eyebrow">{{ $t('agent.eyebrow') }}</div>
