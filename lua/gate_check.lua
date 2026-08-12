@@ -24,17 +24,6 @@ if request_path == "/gate" or request_path:sub(1, 6) == "/gate/" then
   return
 end
 
--- Landing-Page: öffentlich (informativ, kein Zugriff auf Soul-Daten) — Login
--- läuft weiterhin regulär über den "Sign in"-Link (/gate?login=1) oben rechts.
--- Bisher redirectete dieser Handler "/" ungeachtet dessen bereits vor jeder
--- Client-JS-Ausführung zu /gate, im Widerspruch zum index.vue-Kommentar
--- ("'/' muss immer als Homepage erreichbar bleiben") — Betreiber-Entscheidung
--- 2026-08-12, das jetzt tatsächlich einzulösen.
-if request_path == "/" then
-  ngx.ctx.gate_done = true
-  return
-end
-
 -- QR-Connect-Landingpage für Fremde (kein sys_gate Cookie erforderlich)
 if request_path == "/connect" then
   ngx.ctx.gate_done = true
