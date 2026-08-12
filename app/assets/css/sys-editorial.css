@@ -30,7 +30,7 @@
 
 .sys-modal-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(7, 6, 11, 0.78);
+  background: var(--scrim);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex; align-items: center; justify-content: center;
@@ -42,7 +42,7 @@
 .sys-modal {
   width: 100%; max-width: 720px;
   max-height: 92dvh;
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--sys-rule-strong);
@@ -165,7 +165,7 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   border-bottom: 1px solid var(--sys-rule);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

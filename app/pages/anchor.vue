@@ -526,7 +526,7 @@ function onNav(id) {
 .vank-card {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
@@ -591,7 +591,7 @@ function onNav(id) {
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 var(--r) var(--r);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   padding: 16px 20px;
@@ -731,7 +731,7 @@ function onNav(id) {
 .vank-genesis-card {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;
@@ -795,7 +795,7 @@ function onNav(id) {
   overflow: hidden;
   margin-bottom: 12px;
   border: 1px solid var(--line);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -880,7 +880,7 @@ function onNav(id) {
 .vank-chain-card {
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   overflow: hidden;

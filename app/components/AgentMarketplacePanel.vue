@@ -998,6 +998,16 @@ async function register() {
   position: static; inset: auto; z-index: auto;
   background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
   display: block; padding: 0;
+
+  /* Inline mode drops the panel's own dark violet chrome and sits directly
+     on the page — but the violet --fg/--rule/--paper-3 above are still the
+     WINNING (more-specific-selector) declaration for this same element, so
+     text stayed near-white even against the page's light background.
+     `inherit` (not var()) bypasses that local declaration entirely and
+     picks up the page's real, theme-aware tokens instead. */
+  --fg: inherit; --fg-2: inherit; --fg-3: inherit; --fg-4: inherit;
+  --rule: var(--line); --rule-2: var(--line-2); --paper-3: var(--bg);
+  --paper: var(--surface); --paper-2: var(--surface-2);
 }
 
 .sys-amm {

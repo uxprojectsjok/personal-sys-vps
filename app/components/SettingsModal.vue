@@ -311,7 +311,7 @@
               <!-- Soul-Cert -->
               <div style="margin-bottom:24px">
                 <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.soul_cert') }}</div>
-                <div v-if="soulToken" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                <div v-if="soulToken" style="margin-bottom:12px;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:flex-start;gap:8px">
                     <code style="flex:1;font-family:var(--mono);font-size:14px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ soulToken }}</code>
                     <button @click="copyCurrentCert" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
@@ -339,7 +339,7 @@
                       <button @click="certRotationResult = null" style="background:none;border:none;cursor:pointer;color:var(--sys-fg-dim);font-size:16px;line-height:1;padding:0">×</button>
                     </div>
                     <div class="sm-sec-head" style="margin-bottom:4px">{{ $t('settings.bearer_token') }}</div>
-                    <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.3);padding:8px 10px;margin-bottom:8px">
+                    <div style="display:flex;align-items:center;gap:8px;background:var(--surface-3);padding:8px 10px;margin-bottom:8px">
                       <code style="flex:1;font-family:var(--mono);font-size:13px;color:var(--sys-accent-bright);word-break:break-all;user-select:all">Bearer {{ soulToken }}</code>
                       <button @click="copyCertResult" style="background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -368,7 +368,7 @@
                 <div class="sys-field-label" style="margin-bottom:8px">{{ $t('settings.vault_key_title') }}</div>
                 <p class="sm-desc" style="margin-bottom:12px">{{ $t('settings.vault_key_desc') }}</p>
 
-                <div v-if="vaultKeyStatus?.vault_key_hex" style="margin-bottom:12px;padding:8px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                <div v-if="vaultKeyStatus?.vault_key_hex" style="margin-bottom:12px;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:flex-start;gap:8px">
                     <code style="flex:1;font-family:var(--mono);font-size:14px;color:var(--fg-2);word-break:break-all;user-select:all;line-height:1.55">{{ vaultKeyStatus.vault_key_hex }}</code>
                     <button @click="copyVaultKey" style="background:none;border:none;cursor:pointer;padding:2px;flex-shrink:0" title="Kopieren">
@@ -380,7 +380,7 @@
                   </div>
                 </div>
 
-                <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs)">
+                <div v-if="vaultKeyStatus" style="margin-bottom:12px;padding:10px 12px;background:var(--surface-2);border-radius:var(--r-xs)">
                   <div style="display:flex;align-items:center;gap:8px">
                     <template v-if="vaultKeyStatus.checked === 0">
                       <span style="color:var(--fg-4);font-size:13px">{{ $t('settings.vault_key_not_encrypted') }}</span>
@@ -417,7 +417,7 @@
                 <p v-if="vaultKeySynced" class="sm-desc f-ok" style="margin-top:8px">{{ $t('settings.vault_key_synced') }}</p>
 
                 <!-- Aktuelle Methode -->
-                <div v-if="vaultKeyStatus?.vault_key_method" style="margin-top:10px;padding:8px 12px;background:rgba(0,0,0,0.12);border-radius:var(--r-xs)">
+                <div v-if="vaultKeyStatus?.vault_key_method" style="margin-top:10px;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-xs)">
                   <span style="font-size:13px;color:var(--fg-3)">
                     {{ $t('settings.vault_key_method_current', { method: vaultKeyStatus.vault_key_method === 'mnemonic' ? $t('vault_session.method_label_mnemonic') : (vaultKeyStatus.vault_key_method === 'passkey' ? $t('vault_session.method_label_passkey') : vaultKeyStatus.vault_key_method) }) }}
                     <template v-if="vaultKeyStatus.vault_key_set_at">{{ $t('settings.vault_key_set_at', { date: formatVaultKeyDate(vaultKeyStatus.vault_key_set_at) }) }}</template>
@@ -469,7 +469,7 @@
                         >{{ $t('settings.vault_key_change_mnemonic_generate') }}</button>
 
                         <template v-else>
-                          <div style="background:rgba(0,0,0,0.3);padding:10px 12px;margin-bottom:8px;font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);line-height:1.8;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px">
+                          <div style="background:var(--surface-3);padding:10px 12px;margin-bottom:8px;font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);line-height:1.8;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px">
                             <span v-for="(w, i) in newMnemonicWords" :key="i">{{ i + 1 }}. {{ w }}</span>
                           </div>
                           <p class="sm-desc" style="margin-bottom:8px">{{ $t('settings.vault_key_change_words_title') }}</p>
@@ -657,7 +657,7 @@
               <div class="sys-field" style="margin-bottom:20px">
                 <label class="sys-field-label">{{ $t('settings.invite_token_label') }}</label>
                 <div style="display:flex;gap:8px;align-items:center">
-                  <code style="flex:1;padding:10px 14px;background:rgba(0,0,0,0.18);border-radius:var(--r-xs);font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);word-break:break-all;user-select:all;border:1px solid var(--sys-rule)">
+                  <code style="flex:1;padding:10px 14px;background:var(--surface-2);border-radius:var(--r-xs);font-family:var(--mono);font-size:14px;color:var(--sys-accent-bright);word-break:break-all;user-select:all;border:1px solid var(--sys-rule)">
                     {{ inviteToken || $t('settings.invite_not_generated') }}
                   </code>
                   <button v-if="inviteToken" class="sys-btn-ed" @click="copyInviteToken" style="flex-shrink:0">

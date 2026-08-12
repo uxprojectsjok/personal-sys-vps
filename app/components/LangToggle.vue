@@ -17,10 +17,10 @@ const { lang, toggle } = useLang()
 <style scoped>
 .lang-toggle {
   font-family: var(--mono);
-  font-size: 17px;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+  color: var(--fg-3);
   background: none;
   border: none;
   cursor: pointer;
@@ -31,7 +31,7 @@ const { lang, toggle } = useLang()
   transition: color 0.15s;
   white-space: nowrap;
 }
-.lang-toggle:hover { color: rgba(255,255,255,0.65); }
-.lang-toggle span.active { color: #6db89a; font-weight: 600; }
-.sep { opacity: 0.35; }
+.lang-toggle:hover { color: var(--fg); }
+.lang-toggle span.active { color: var(--accent); font-weight: 600; }
+.sep { opacity: 0.4; }
 </style>

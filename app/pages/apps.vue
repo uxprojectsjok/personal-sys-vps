@@ -366,7 +366,7 @@ async function handleDeleteApp(a) {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   padding: 9px 18px; border-radius: var(--r-xs); z-index: 200;
   font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em;
-  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line-2); color: var(--fg-2);
   white-space: nowrap; pointer-events: none;
 }
@@ -385,7 +385,7 @@ async function handleDeleteApp(a) {
 .dt-upload-btn:hover { background: var(--accent-bright); }
 .dt-upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.dt-table { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; margin-top: 14px; background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.dt-table { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; margin-top: 14px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .dt-table-head { display: grid; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .dt-table-head span { font-family: var(--mono); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
 .dt-row { display: grid; padding: 9px 14px; align-items: center; border-bottom: 1px solid var(--line); transition: background 0.12s; }

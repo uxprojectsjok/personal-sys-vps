@@ -10,13 +10,20 @@
       </template>
     </div>
     <div class="tb-spacer" />
+    <button class="icon-btn" @click="toggle" :aria-label="isDark ? $t('settings.theme_light') : $t('settings.theme_dark')" :title="isDark ? $t('settings.theme_light') : $t('settings.theme_dark')">
+      <SysIcon :name="isDark ? 'sun' : 'moon'" style="width:18px;height:18px" />
+    </button>
     <slot />
   </header>
 </template>
 
 <script setup>
+import { useColorScheme } from '~/composables/useColorScheme.js'
+
 defineProps({
   crumbs: { type: Array, default: () => ['Start'] },
 })
 defineEmits(['open-cmdk', 'open-drawer'])
+
+const { isDark, toggle } = useColorScheme()
 </script>

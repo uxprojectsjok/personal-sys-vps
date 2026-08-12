@@ -3030,21 +3030,16 @@ defineExpose({
    No logic / no template changes required.
    ════════════════════════════════════════════════════════════════════ */
 
-/* ── Design tokens ───────────────────────────────────────────────── */
+/* ── Design tokens ───────────────────────────────────────────────────────
+   Was a hardcoded dark-only copy of the sys-v2.css root tokens (shadowed
+   --fg/--accent/etc under fixed values), which broke light theme — bubble
+   text stayed near-white regardless of the app-wide theme. Only --rule/
+   --rule-2/--paper-3 are locally-named (map to the real --line/--line-2/
+   --bg tokens); everything else now just inherits from :root. ──────────── */
 .sys-chat {
-  --rule:    rgba(236,236,236,0.07);
-  --rule-2:  rgba(236,236,236,0.12);
-  --fg:      #ececec;
-  --fg-2:    #ececec;
-  --fg-3:    #ececec;
-  --fg-4:    #ececec;
-  --accent:  #6db89a;
-  --accent-bright: #8ad0b3;
-  --accent-dim:    rgba(109,184,154,0.14);
-  --on-accent: #ffffff;
-  --paper-3: #171717;
-  --serif:   'Noto Serif', Georgia, serif;
-  --mono:    'JetBrains Mono', ui-monospace, monospace;
+  --rule:    var(--line);
+  --rule-2:  var(--line-2);
+  --paper-3: var(--bg);
 
   display: flex; flex-direction: column;
   flex: 1; min-height: 0; min-width: 0; overflow: hidden;
@@ -3636,7 +3631,7 @@ defineExpose({
   bottom: clamp(40px, 6vw, 64px);
   border: 1px solid transparent;
   border-radius: var(--r-lg);
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   display: flex; flex-direction: column;
@@ -4027,7 +4022,7 @@ defineExpose({
     padding: 5px clamp(5px, 1vw, 9px) 8px;
     gap: 4px;
     border-color: rgba(255,255,255,0.10);
-    background: rgba(23,23,23,0.55);
+    background: var(--glass);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
     box-shadow: 0 8px 28px rgba(0,0,0,0.35);

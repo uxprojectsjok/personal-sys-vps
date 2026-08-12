@@ -146,27 +146,30 @@ function onNav(id) {
    ════════════════════════════════════════════════ */
 
 .mk-panel :deep(.sys-amm-overlay) {
-  --ink:         #0e0d0b;
-  --paper:       #171717;
-  --paper-2:     rgba(255,255,255,0.03);
-  --paper-3:     rgba(255,255,255,0.02);
-  --rule:        rgba(236,236,236,0.10);
-  --rule-2:      rgba(236,236,236,0.15);
-  --fg:          #ececec;
-  --fg-2:        #ececec;
-  --fg-3:        #ececec;
-  --fg-4:        #ececec;
-  --accent:      #6db89a;
-  --accent-2:    rgba(109,184,154,0.12);
-  --accent-bright: #8ad0b3;
-  --accent-deep: #4a9e82;
-  --on-accent:   #ffffff;
-  --ok:          #6db89a;
-  --warn:        #8ad0b3;
+  /* Was a hardcoded dark-only "Warm Ash & Sage" reskin of the panel's default
+     violet tokens — same specificity as AgentMarketplacePanel.vue's own
+     .inline override, so as the later-loaded stylesheet it silently won and
+     kept text pinned to #ececec regardless of theme. --fg family now defers
+     (inherit) to the real page tokens; everything else points at the actual
+     var() so it also tracks light/dark instead of copying fixed values. */
+  --ink:         var(--fg);
+  --paper:       var(--surface);
+  --paper-2:     var(--surface-2);
+  --paper-3:     var(--bg);
+  --rule:        var(--line);
+  --rule-2:      var(--line-2);
+  --fg: inherit; --fg-2: inherit; --fg-3: inherit; --fg-4: inherit;
+  --accent:      var(--accent);
+  --accent-2:    var(--accent-dim);
+  --accent-bright: var(--accent-bright);
+  --accent-deep: var(--accent-deep);
+  --on-accent:   var(--on-accent);
+  --ok:          var(--accent);
+  --warn:        var(--accent-bright);
   --err:         #e06c75;
-  --serif:       'Noto Serif', Georgia, serif;
-  --sans:        'Inter', system-ui, -apple-system, sans-serif;
-  --mono:        'JetBrains Mono', ui-monospace, monospace;
+  --serif:       var(--serif);
+  --sans:        var(--sans);
+  --mono:        var(--mono);
 }
 
 .mk-panel :deep(.amm-tab) { font-size: 16px; }

@@ -185,8 +185,11 @@ async function doPay() {
 
 <style scoped>
 .at-page {
-  --bg: #0f0f0f; --surface-2: #171717; --line: rgba(255,255,255,0.07); --line-2: rgba(255,255,255,0.11);
-  --teal: #6db89a; --teal-bright: #8ad0b3;
+  /* Was hardcoded dark-only, shadowing the real theme tokens of the same
+     name (--bg/--surface-2/--line/--line-2 all exist globally) — `inherit`
+     bypasses the local declaration to pick up the real, theme-aware value. */
+  --bg: inherit; --surface-2: inherit; --line: inherit; --line-2: inherit;
+  --teal: var(--accent); --teal-bright: var(--accent-bright);
   /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
 }

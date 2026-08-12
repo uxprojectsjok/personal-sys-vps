@@ -129,7 +129,7 @@ function onNav(id) {
   border: 1px solid var(--line);
   border-radius: var(--r);
   overflow: hidden;
-  background: rgba(23,23,23,0.55);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

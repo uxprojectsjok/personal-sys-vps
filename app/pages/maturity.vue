@@ -407,7 +407,7 @@ function cardDesc(card) {
 @media (max-width: 720px) { .rf-cards { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .rf-cards { grid-template-columns: 1fr; } }
 .rf-card {
-  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line);
   padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 6px;
 }
@@ -448,7 +448,7 @@ function cardDesc(card) {
 }
 @media (max-width: 640px) { .rf-chain { grid-template-columns: 1fr; } }
 .rf-chain-item {
-  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line);
   padding: 16px; display: flex; flex-direction: column; gap: 2px;
 }
@@ -471,7 +471,7 @@ function cardDesc(card) {
 
 /* ── Kontinuitäts-Kette (Zahlen & Verknüpfungen, keine Icons) ── */
 .rf-chainlist {
-  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line);
   margin-top: 16px; padding: 4px 18px 14px; max-height: 340px; overflow-y: auto;
   -webkit-overflow-scrolling: touch; touch-action: pan-y;

@@ -1230,12 +1230,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ── ROOT — gleiche Variablen wie index.vue ───────────────────────── */
+/* ── ROOT ─────────────────────────────────────────────────────────── */
 .sys-page {
-  --bg:     #0f0f0f;
-  --bg-2:   #161616;
-  --line:   rgba(255,255,255,0.07);
-  --teal:   #6db89a;
+  /* Was hardcoded dark-only (#0f0f0f/#161616/rgba(255,255,255,.07)),
+     shadowing the real theme tokens of the same name — --line alone backs
+     ~18 border rules across this page, all silently stuck on a light-on-
+     dark hairline regardless of theme. --bg/--line need `inherit` (not
+     var()) since they share a name with the real ancestor token; --bg-2/
+     --teal are locally-named so var() is safe. */
+  --bg:     inherit;
+  --bg-2:   var(--surface);
+  --line:   inherit;
+  --teal:   var(--accent);
   /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   --text:   17px;
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
@@ -1247,7 +1253,7 @@ onUnmounted(() => {
   padding: 0 clamp(20px,4vw,52px); height: 64px;
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 100;
-  background: rgba(15,15,15,0.95); backdrop-filter: blur(12px);
+  background: var(--glass-solid); backdrop-filter: blur(12px);
 }
 .nav-home { display: flex; text-decoration: none; }
 .nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
@@ -1258,7 +1264,7 @@ onUnmounted(() => {
 /* ── MOBILE WALL ──────────────────────────────────────────────────── */
 .mobile-wall { display: none; min-height: calc(100vh - 64px); align-items: center; justify-content: center; padding: 40px 28px; text-align: center; }
 .mobile-inner { max-width: 380px; }
-.mobile-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(48px,14vw,72px); line-height: 0.95; letter-spacing: -0.04em; color: #fff; margin: 12px 0 24px; }
+.mobile-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(48px,14vw,72px); line-height: 0.95; letter-spacing: -0.04em; color: var(--fg); margin: 12px 0 24px; }
 .mobile-h1 em { font-style: italic; color: var(--teal); }
 .mobile-p { font-size: 16px; line-height: 1.7; color: var(--fg); margin-bottom: 32px; }
 .mobile-back { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); text-decoration: none; }
@@ -1270,7 +1276,7 @@ onUnmounted(() => {
 /* ── TOPBAR ───────────────────────────────────────────────────────── */
 .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); display: block; margin-bottom: 10px; }
 .topbar { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
-.scan-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px,5vw,56px); line-height: 1; letter-spacing: -0.03em; color: #fff; margin: 0; }
+.scan-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px,5vw,56px); line-height: 1; letter-spacing: -0.03em; color: var(--fg); margin: 0; }
 .scan-h1 em { font-style: italic; color: var(--teal); }
 .topbar-right { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; flex-wrap: wrap; }
 .stat-pill { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal); border: 1px solid rgba(109,184,154,0.3); padding: 5px 10px; }
@@ -1314,7 +1320,7 @@ onUnmounted(() => {
 .c-rank { width: 40px; }
 .rank { font-family: var(--mono); font-size: 12px; color: var(--fg); }
 .c-name { min-width: 100px; max-width: 160px; }
-.sname { display: block; font-family: var(--serif); font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sname { display: block; font-family: var(--serif); font-size: 15px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-tags { min-width: 120px; }
 .tag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: var(--fg); border: 1px solid var(--line); padding: 2px 6px; margin: 2px 2px 2px 0; }
 .c-tools { min-width: 110px; }
@@ -1387,13 +1393,13 @@ onUnmounted(() => {
 .colophon { border-top: 1px solid var(--line); padding: clamp(32px,5vw,64px) clamp(20px,4vw,52px); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; }
 @media (max-width: 720px) { .colophon { grid-template-columns: 1fr; gap: 32px; } }
 .col-brand { display: flex; flex-direction: column; gap: 12px; }
-.col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+.col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
 .col-name em { font-style: normal; color: var(--teal); }
 .fr-tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg); }
 .col-head { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg); margin-bottom: 16px; }
 .colophon ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .colophon a { font-size: 15px; color: var(--fg); text-decoration: none; transition: color 0.15s; }
-.colophon a:hover { color: #fff; }
+.colophon a:hover { color: var(--fg); }
 
 /* ── DESCRIPTION COLUMN ───────────────────────────────────────────────── */
 .c-desc { min-width: 180px; max-width: 280px; }
@@ -1434,7 +1440,7 @@ onUnmounted(() => {
 .modal-soul-name {
   font-family: var(--serif); font-weight: 400;
   font-size: clamp(28px,4vw,40px); letter-spacing: -0.03em;
-  line-height: 0.95; color: #fff; margin: 0 0 14px;
+  line-height: 0.95; color: var(--fg); margin: 0 0 14px;
 }
 .modal-soul-desc {
   font-family: var(--sans); font-size: var(--text); line-height: 1.72;

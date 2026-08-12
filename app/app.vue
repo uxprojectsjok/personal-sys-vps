@@ -16,6 +16,7 @@ import { onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul'
 import ConsentBanner from '~/components/ConsentBanner.vue'
+import { useColorScheme } from '~/composables/useColorScheme.js'
 
 // Diese Node hat keine eigene Datenschutzerklärung (privater, nicht-
 // gewerblicher Node) — die anonyme Reichweitenmessung läuft aber über die
@@ -29,6 +30,13 @@ function openCentralPrivacy() {
 
 const { setLocale } = useI18n()
 const { soulToken, hasSoul } = useSoul()
+
+// Applies data-theme from localStorage on every app boot. Previously this
+// only ran as a side-effect of some component importing useColorScheme
+// (SysTopbar, SettingsModal, ...) — pages that render none of those (e.g.
+// /use-cases, direct load) never got data-theme set at all and silently
+// fell back to the dark :root defaults, ignoring the stored preference.
+useColorScheme()
 
 if (import.meta.client && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {})

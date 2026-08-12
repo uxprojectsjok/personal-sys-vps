@@ -891,7 +891,7 @@ onMounted(() => {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   padding: 9px 18px; border-radius: var(--r-xs); z-index: 200;
   font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em;
-  background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--line-2); color: var(--fg-2);
   white-space: nowrap; pointer-events: none;
 }
@@ -931,7 +931,7 @@ onMounted(() => {
 .dt-tab-desc { font-family: var(--mono); font-size: 13px; color: var(--fg-2); letter-spacing: 0.04em; }
 
 /* ── Storage ── */
-.dt-storage { display: flex; align-items: center; gap: 10px; padding: 9px 14px; margin-bottom: 14px; border: 1px solid var(--line); background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: var(--r-xs); flex-wrap: wrap; }
+.dt-storage { display: flex; align-items: center; gap: 10px; padding: 9px 14px; margin-bottom: 14px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: var(--r-xs); flex-wrap: wrap; }
 .dt-storage-info { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .dt-storage-label { font-family: var(--mono); font-size: 13px; color: var(--fg); letter-spacing: 0.04em; }
 .dt-storage-sync { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.04em; }
@@ -965,7 +965,7 @@ onMounted(() => {
 .dt-file-input { display: none; }
 
 /* ── Table ── */
-.dt-table { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; margin-top: 14px; background: rgba(23,23,23,0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.dt-table { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; margin-top: 14px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 .dt-table-head {
   display: grid; grid-template-columns: 1fr 110px 100px;
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2);

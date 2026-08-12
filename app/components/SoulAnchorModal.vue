@@ -360,16 +360,21 @@ function copyProof() {
 <style scoped>
 /* ── Design tokens ─────────────────────────────────────── */
 .anc-backdrop {
-  --ink:    #08070c;
-  --paper:  #171717;
-  --paper-2:#1a1726;
-  --paper-3:#0d0b14;
-  --rule:   rgba(226,220,240,0.10);
-  --rule-2: rgba(226,220,240,0.20);
-  --fg:     #ece7f5;
-  --fg-2:   #ece7f5;
-  --fg-3:   #ece7f5;
-  --fg-4:   #ece7f5;
+  /* --paper and --rule tokens were hardcoded dark-only; now map to the
+     real theme surface/line tokens. --fg family shares a name with the
+     real ancestor token, so it needs `inherit` (not var()) to bypass this
+     local shadow instead of self-referencing. Violet --accent/--on-accent
+     kept as intentional branding for this flow, unlike the surfaces/text. */
+  --ink:    inherit;
+  --paper:  var(--surface);
+  --paper-2:var(--surface-2);
+  --paper-3:var(--bg);
+  --rule:   var(--line);
+  --rule-2: var(--line-2);
+  --fg:     inherit;
+  --fg-2:   inherit;
+  --fg-3:   inherit;
+  --fg-4:   inherit;
   --accent: #8b5cf6;
   --accent-bright: #a78bfa;
   --accent-dim:    rgba(139,92,246,0.12);

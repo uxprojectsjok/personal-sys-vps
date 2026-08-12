@@ -57,6 +57,11 @@
   --sh:    0 6px 22px rgba(0,0,0,0.34);
   --sh-lg: 0 22px 60px rgba(0,0,0,0.5);
 
+  /* ── Frosted "glass" card surfaces — was hardcoded rgba(23,23,23,X) in
+     ~30 places pre-light-theme; now theme-aware via these two tokens ──── */
+  --glass:       rgba(23,23,23,0.55);
+  --glass-solid: rgba(23,23,23,0.94);
+
   --sidebar-w: 264px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -81,6 +86,56 @@
   --sys-rule:        var(--line);
   --sys-rule-strong: var(--line-2);
   --sys-border:      var(--line);
+
+  /* main.css's own :root hardcodes these to #ffffff and never had a remap
+     here (unlike --sys-rule/--sys-paper/etc above) — loads before this file,
+     so the hardcoded white silently won everywhere .sys-input/.sys-* text
+     used them, light theme or not. ~20 files depend on these. */
+  --sys-fg:       var(--fg);
+  --sys-fg-muted: var(--fg-3);
+  --sys-fg-dim:   var(--fg-4);
+
+  /* Landing page's top vignette (see .lp-page in index.vue) — a dark blob
+     fading into --bg, subtle in dark mode. Themed separately since in light
+     mode the blob itself (not just its fade target) needs to disappear. */
+  --lp-glow: #1b1b1b;
+}
+
+/* ── Light theme — same structure, warm-neutral canvas + deepened accent
+   for text contrast (raw sage --accent is too pale to read on white) ────── */
+:root[data-theme="light"] {
+  --bg:        #f5f5f2;
+  --surface:   #ffffff;
+  --surface-2: #f7f7f4;
+  --surface-3: #ececea;
+  --scrim:     rgba(30,28,24,0.45);
+
+  --line:   rgba(20,18,14,0.09);
+  --line-2: rgba(20,18,14,0.16);
+
+  --fg:   #1c1b17;
+  --fg-2: #1c1b17;
+  --fg-3: #1c1b17;
+  --fg-4: #1c1b17;
+
+  --accent:        #4f9a7e;
+  --accent-bright: #3d7c64;
+  --accent-deep:   #2f6350;
+  --accent-dim:    rgba(79,154,126,0.12);
+  --accent-glow:   rgba(79,154,126,0.24);
+
+  --sh-sm: 0 1px 2px rgba(20,18,14,0.10);
+  --sh:    0 6px 22px rgba(20,18,14,0.10);
+  --sh-lg: 0 22px 60px rgba(20,18,14,0.16);
+
+  --glass:       rgba(255,255,255,0.72);
+  --glass-solid: rgba(255,255,255,0.94);
+
+  --sys-bg: #efefec;
+
+  /* Same value as --bg → the radial-gradient in .lp-page becomes a flat,
+     uniform fill instead of a dark blob bleeding into the light canvas. */
+  --lp-glow: var(--bg);
 }
 
 * { box-sizing: border-box; }
@@ -476,10 +531,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 70;
     height: calc(56px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
-    background: rgba(23,23,23,0.94);
+    background: var(--glass-solid);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(236,236,236,0.07);
+    border-top: 1px solid var(--line);
   }
   .mob-tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;

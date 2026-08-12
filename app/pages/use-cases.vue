@@ -490,12 +490,17 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 
 <style scoped>
 .sys-page {
-  --bg:     #0f0f0f;
-  --bg-2:   #161616;
-  --line:   rgba(255,255,255,0.07);
-  --line-2: rgba(255,255,255,0.11);
-  --teal:   #6db89a;
-  --teal-bright: #8ad0b3;
+  /* Was hardcoded dark-only, shadowing the real theme tokens of the same
+     name — every border/background on this page was silently stuck on
+     dark regardless of theme. --bg/--line/--line-2 need `inherit` (shared
+     name with the real ancestor token); --bg-2 and the --teal tokens are
+     locally-named so var() is safe. */
+  --bg:     inherit;
+  --bg-2:   var(--surface);
+  --line:   inherit;
+  --line-2: inherit;
+  --teal:   var(--accent);
+  --teal-bright: var(--accent-bright);
   /* --fg/--serif/--sans/--mono inherited from sys-v2.css's global :root — no local override. */
   --text:   17px;
   min-height: 100vh; background: var(--bg); color: var(--fg); font-family: var(--sans);
@@ -507,7 +512,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
   padding: 0 clamp(20px,4vw,52px); height: 64px;
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 100;
-  background: rgba(15,15,15,0.95); backdrop-filter: blur(12px);
+  background: var(--glass-solid); backdrop-filter: blur(12px);
 }
 .nav-home { display: flex; text-decoration: none; }
 .nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
@@ -519,12 +524,12 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .uc-wrap { padding: clamp(32px,5vw,56px) clamp(20px,4vw,52px) 0; max-width: 860px; margin: 0 auto; }
 .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal); display: block; margin-bottom: 16px; }
 .uc-hero { padding-bottom: clamp(32px,5vw,48px); margin-bottom: clamp(40px,6vw,64px); border-bottom: 1px solid var(--line); }
-.uc-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px,5.5vw,56px); line-height: 1.05; letter-spacing: -0.03em; color: #fff; margin: 0 0 22px; }
+.uc-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px,5.5vw,56px); line-height: 1.05; letter-spacing: -0.03em; color: var(--fg); margin: 0 0 22px; }
 .uc-h1 :deep(em) { font-style: italic; color: var(--teal); }
 .uc-intro { font-size: 17px; line-height: 1.75; color: var(--fg); max-width: 62ch; }
 
 /* ── CASE STUDY ───────────────────────────────────────────────────── */
-.uc-case { border: 1px solid var(--line); background: rgba(255,255,255,0.015); padding: clamp(24px,4vw,40px); margin-bottom: 40px; }
+.uc-case { border: 1px solid var(--line); background: var(--surface-2); padding: clamp(24px,4vw,40px); margin-bottom: 40px; }
 .uc-case + .uc-case { margin-top: 0; }
 .uc-guarantees { margin-top: 16px; }
 .case-head { margin-bottom: 36px; }
@@ -532,7 +537,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
   display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--teal-bright); border: 1px solid rgba(109,184,154,0.35); padding: 4px 10px; margin-bottom: 16px;
 }
-.case-title { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: #fff; margin: 0 0 12px; letter-spacing: -0.01em; }
+.case-title { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: var(--fg); margin: 0 0 12px; letter-spacing: -0.01em; }
 .case-sub { font-size: var(--text); color: var(--fg); line-height: 1.7; max-width: 62ch; }
 
 .uc-step { display: flex; gap: 20px; margin-bottom: 30px; align-items: flex-start; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
@@ -548,14 +553,14 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .step-sub { font-size: 15px; color: var(--fg); line-height: 1.7; }
 .i-code, :deep(.i-code) { font-family: var(--mono); font-size: 13px; color: var(--fg); background: rgba(109,184,154,0.14); padding: 1px 6px; }
 
-.copy-block { display: flex; align-items: stretch; border: 1px solid var(--line-2); background: rgba(255,255,255,0.03); }
+.copy-block { display: flex; align-items: stretch; border: 1px solid var(--line-2); background: var(--surface-2); }
 .copy-code { font-family: var(--mono); font-size: 13.5px; color: var(--fg); padding: 10px 12px; flex: 1; word-break: break-all; min-width: 0; display: block; }
 .copy-btn { font-family: var(--sans); font-size: 12px; background: none; border: none; border-left: 1px solid var(--line-2); color: var(--fg); padding: 0 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
 .copy-btn:hover { background: rgba(109,184,154,0.1); color: var(--teal-bright); }
 
 .uc-example {
   font-family: var(--mono); font-size: 13.5px; line-height: 1.7; color: var(--fg);
-  background: rgba(0,0,0,0.35); border: 1px solid var(--line-2); padding: 16px 18px;
+  background: var(--surface-3); border: 1px solid var(--line-2); padding: 16px 18px;
   overflow-x: auto; margin: 0; white-space: pre;
 }
 .uc-example code { color: inherit; }
@@ -569,7 +574,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 
 /* ── GUARANTEES ───────────────────────────────────────────────────── */
 .uc-guarantees { margin-bottom: 56px; }
-.uc-h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: #fff; margin: 0 0 26px; letter-spacing: -0.01em; }
+.uc-h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(24px,3.2vw,32px); color: var(--fg); margin: 0 0 26px; letter-spacing: -0.01em; }
 .guarantee-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 @media (max-width: 760px) { .guarantee-grid { grid-template-columns: 1fr; } }
 .guarantee-card { border: 1px solid var(--line); padding: 22px; }
@@ -584,7 +589,7 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .colophon { border-top: 1px solid var(--line); padding: clamp(32px,5vw,64px) clamp(20px,4vw,52px); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; max-width: 1100px; margin: 0 auto; }
 @media (max-width: 720px) { .colophon { grid-template-columns: 1fr; gap: 32px; } }
 .col-brand { display: flex; flex-direction: column; gap: 12px; }
-.col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+.col-name { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--fg); }
 .col-name em { font-style: italic; color: var(--teal); }
 .uc-fr-tag { font-family: var(--mono); font-size: 11px; color: var(--fg); }
 .col-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg); margin-bottom: 14px; }

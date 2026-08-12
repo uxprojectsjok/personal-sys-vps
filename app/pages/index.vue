@@ -2,7 +2,7 @@
   <ClientOnly>
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
-      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,#1b1b1b 0%,var(--bg) 60%)">
+      <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,var(--lp-glow) 0%,var(--bg) 60%)">
         <!-- Blanke Landing, gleiches Muster wie gate.vue: nur Logo + dezenter
              Pfeil. Diese Seite ist mit gültigem sys_gate-Cookie erreichbar
              (Netzwerk-Gate schon bestanden), aber noch ohne lokal geladene
