@@ -789,7 +789,7 @@
     "agent_running": "Running…",
     "agent_run_started": "Agent started.",
     "agent_run_complete": "Agent run complete.",
-    "agent_run_watch_timeout": "Stopped watching (timeout) — check the log manually.",
+    "agent_run_watch_timeout": "Stopped watching after 10 min — not an error, the run is just taking longer than expected. Reload the page to see its current status.",
     "agent_starting": "Agent starting",
     "agent_working": "Agent working",
     "wavespeed_key": "WaveSpeed API key",

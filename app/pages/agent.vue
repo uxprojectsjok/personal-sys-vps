@@ -129,17 +129,17 @@
                 <button
                   class="sys-btn-ed sys-btn-ed--primary"
                   style="margin-left:auto"
-                  :disabled="agentRunNowBusy"
+                  :disabled="!!agentRunPhase"
                   @click="runAgentNow"
-                >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
+                >{{ agentRunPhase ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
               </div>
             </div>
             <div v-else style="margin-bottom:24px">
               <button
                 class="sys-btn-ed sys-btn-ed--primary"
-                :disabled="agentRunNowBusy"
+                :disabled="!!agentRunPhase"
                 @click="runAgentNow"
-              >{{ agentRunNowBusy ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
+              >{{ agentRunPhase ? $t('settings.agent_running') : $t('settings.agent_run_now') }}</button>
             </div>
 
             <!-- Queue editor -->
@@ -162,7 +162,7 @@
               >{{ agentQueueSaving ? $t('settings.agent_queue_saving') : $t('settings.agent_queue_save') }}</button>
             </div>
 
-            <!-- Feedback -->
+            <!-- Feedback (Fehler + andere Aktionen wie Toggle/Queue speichern) -->
             <Transition name="sys-modal-fade">
               <div v-if="agentFeedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:11px"
                 :style="agentFeedback.ok
@@ -171,10 +171,12 @@
               >{{ agentFeedback.message }}</div>
             </Transition>
 
-            <!-- Agent running status -->
-            <div v-if="agentRunNowBusy || agentRunPolling" class="agent-status-running">
+            <!-- Agent-Lauf-Status: ein linearer Übergang starting → working → complete -->
+            <div v-if="agentRunPhase" class="agent-status-running">
               <span class="agent-status-dot"></span>
-              {{ agentRunNowBusy ? $t('settings.agent_starting') : $t('settings.agent_working') }}
+              {{ agentRunPhase === 'starting' ? $t('settings.agent_starting')
+                 : agentRunPhase === 'working' ? $t('settings.agent_working')
+                 : $t('settings.agent_run_complete') }}
             </div>
 
           </div>
@@ -347,11 +349,16 @@ const agentEnabled      = ref(false)
 const agentInterval     = ref('hourly')
 const agentLastRun      = ref('')
 const agentToggleBusy   = ref(false)
-const agentRunNowBusy   = ref(false)
+// Ein Zustand statt zwei getrennter Flags (vorher agentRunNowBusy +
+// agentRunPolling parallel, plus ein separates "Agent started"-Feedback-
+// Banner, das die ganze Laufzeit über stehen blieb) — Nutzer sah "Agent
+// started" und "Agent arbeitet" redundant gleichzeitig, ohne klaren
+// Übergang. Jetzt ein linearer Zustand: null → starting → working →
+// complete → null.
+const agentRunPhase     = ref(null) // null | 'starting' | 'working' | 'complete'
 const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
-const agentRunPolling   = ref(false)
 let   agentLogTimer     = null
 const agentMcpTokenOk   = ref(true)
 const agentLoadError    = ref('')
@@ -443,14 +450,14 @@ async function toggleAgent(enable) {
   setTimeout(() => { agentFeedback.value = null }, 4000)
 }
 
-// agentRunPolling ist reiner In-Memory-State — geht beim Verlassen/Neuladen
-// der Seite verloren, auch wenn der Lauf serverseitig weiterläuft. Eigene
+// agentRunPhase ist reiner In-Memory-State — geht beim Verlassen/Neuladen der
+// Seite verloren, auch wenn der Lauf serverseitig weiterläuft. Eigene
 // Funktion, damit sowohl runAgentNow() (frisch gestartet) als auch
 // resumeWatchIfRunning() (beim Mount, falls schon ein Lauf aktiv ist) dieselbe
 // Poll-Schleife nutzen, statt sie zu duplizieren.
 function watchAgentRun() {
   clearInterval(agentLogTimer)
-  agentRunPolling.value = true
+  agentRunPhase.value = 'working'
   let ticks = 0
   agentLogTimer = setInterval(async () => {
     ticks++
@@ -460,26 +467,33 @@ function watchAgentRun() {
         const ld = await lr.json()
         if (!ld.running) {
           clearInterval(agentLogTimer)
-          agentRunPolling.value = false
-          // Ohne dieses Update blieb die Feedback-Zeile für die gesamte
-          // Laufzeit auf "Agent started" stehen — der pulsierende
-          // "Agent arbeitet"-Punkt verschwand zwar korrekt, aber nichts
-          // zeigte an, DASS/WANN der Lauf tatsächlich fertig war (live
-          // gemeldet: Nutzer sah nur die alte "started"-Zeile, obwohl der
-          // Lauf längst durch war).
-          agentFeedback.value = { ok: true, message: t('settings.agent_run_complete') }
-          setTimeout(() => { agentFeedback.value = null }, 5000)
+          // 'complete' kurz halten statt sofort auf null zu springen — sonst
+          // sieht der Nutzer nie eine explizite Abschluss-Bestätigung, nur
+          // wie der Punkt plötzlich verschwindet (live bemängelt: Ablauf
+          // sollte starting → working → complete → fertig sein, nicht
+          // starting/working parallel zu einem separaten, stehenbleibenden
+          // "Agent started"-Banner).
+          agentRunPhase.value = 'complete'
+          setTimeout(() => { agentRunPhase.value = null }, 3000)
           const cr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
           if (cr.ok) { const cd = await cr.json(); agentLastRun.value = cd.last_run || '' }
           return
         }
       }
     } catch {}
-    if (ticks >= 90) {
+    // 300 Ticks × 2s = 10min — reine Läufe ohne echte Arbeit sind in ~1-2min
+    // fertig, aber ein Lauf mit echten Tool-Aufrufen (Zapier dynamic-enum-
+    // Auflösung, Gmail-Versand über mehrere Round-Trips) kann deutlich länger
+    // dauern (live beobachtet: >3min bei den vorherigen 90 Ticks/3min-Limit,
+    // fälschlich rot als Fehler angezeigt, obwohl der Lauf einwandfrei
+    // durchlief und die Mail ankam). "Aufgehört zuzuschauen" ist kein
+    // Scheitern des Laufs selbst — deshalb ok:true (neutral/grün) statt
+    // ok:false (rot), und der Text sagt das auch explizit.
+    if (ticks >= 300) {
       clearInterval(agentLogTimer)
-      agentRunPolling.value = false
-      agentFeedback.value = { ok: false, message: t('settings.agent_run_watch_timeout') }
-      setTimeout(() => { agentFeedback.value = null }, 6000)
+      agentRunPhase.value = null
+      agentFeedback.value = { ok: true, message: t('settings.agent_run_watch_timeout') }
+      setTimeout(() => { agentFeedback.value = null }, 8000)
     }
   }, 2000)
 }
@@ -499,8 +513,8 @@ async function resumeWatchIfRunning() {
 }
 
 async function runAgentNow() {
-  agentRunNowBusy.value = true
-  agentFeedback.value   = null
+  agentRunPhase.value = 'starting'
+  agentFeedback.value = null
   clearInterval(agentLogTimer)
   try {
     const r = await fetch('/api/agent/run', {
@@ -509,18 +523,19 @@ async function runAgentNow() {
     })
     const d = await r.json().catch(() => ({}))
     if (r.ok) {
-      agentFeedback.value   = { ok: true, message: d.message || t('settings.agent_run_started') }
-      agentRunNowBusy.value = false
+      // Kein separates "Agent started"-Feedback-Banner mehr — der
+      // agentRunPhase-Statusblock deckt "starting"/"working" jetzt allein
+      // ab, ohne redundant neben dem Punkt-Indikator stehen zu bleiben.
       watchAgentRun()
     } else {
       // message = menschenlesbarer Text (z.B. eingefangener sudo-Fehler aus
       // agent_run_now.lua), error = Maschinencode-Fallback wenn message fehlt.
-      agentFeedback.value   = { ok: false, message: d.message || d.error || `Error ${r.status}` }
-      agentRunNowBusy.value = false
+      agentFeedback.value = { ok: false, message: d.message || d.error || `Error ${r.status}` }
+      agentRunPhase.value = null
     }
   } catch (e) {
-    agentFeedback.value   = { ok: false, message: e.message }
-    agentRunNowBusy.value = false
+    agentFeedback.value = { ok: false, message: e.message }
+    agentRunPhase.value = null
   }
 }
 

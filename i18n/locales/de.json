@@ -789,7 +789,7 @@
     "agent_running": "Läuft…",
     "agent_run_started": "Agent gestartet.",
     "agent_run_complete": "Agent-Lauf abgeschlossen.",
-    "agent_run_watch_timeout": "Überwachung beendet (Timeout) — Log manuell prüfen.",
+    "agent_run_watch_timeout": "Beobachtung nach 10 Min. beendet — kein Fehler, der Lauf dauert nur länger als erwartet. Seite neu laden, um den aktuellen Status zu sehen.",
     "agent_starting": "Agent startet",
     "agent_working": "Agent arbeitet",
     "wavespeed_key": "WaveSpeed API-Key",
