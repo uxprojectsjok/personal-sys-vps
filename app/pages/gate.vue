@@ -1,5 +1,5 @@
 <template>
-  <div class="gate">
+  <div class="gate" :class="{ 'is-revealed': revealed }">
     <!-- Blanke Landing per Default (siehe gate-reveal-trigger-Kommentar unten) —
          der Login selbst bekommt keine Aufmerksamkeit, bis er gezielt aufgerufen
          wird. Nötig, weil diese Seite von außen verlinkt sein kann und dabei
@@ -379,6 +379,18 @@ const showPw = ref(false)
 </script>
 
 <style scoped>
+/* Standardmäßig zentriert .gate (sys-v2.css) die Karte vertikal in voller
+   Viewport-Höhe. Sobald das Login-Panel aufklappt, wächst die Karte nach
+   unten und würde bei reiner Zentrierung Logo+Notice weiter nach unten
+   drücken statt sie an ihrem Platz zu lassen — stattdessen rückt der ganze
+   Block bewusst Richtung Kopfbereich, Logo/Notice bleiben oben statt mit
+   dem Formular mitzuwandern. */
+.gate.is-revealed {
+  align-items: start;
+  padding-top: clamp(24px, 8vh, 96px);
+  transition: padding-top .25s ease;
+}
+
 .gate-notice {
   font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--fg-3); margin: -6px 0 0; text-align: center;
