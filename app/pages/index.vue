@@ -3,16 +3,17 @@
     <!-- ─── LANDING (no soul) ────────────────────────────────────────────── -->
     <template v-if="!hasSoul && gateRedirectChecked">
       <div class="gate" style="background:radial-gradient(120% 80% at 50% 0%,var(--lp-glow) 0%,var(--bg) 60%)">
-        <!-- Blanke Landing, gleiches Muster wie gate.vue: nur Logo + dezenter
-             Pfeil. Diese Seite ist mit gültigem sys_gate-Cookie erreichbar
-             (Netzwerk-Gate schon bestanden), aber noch ohne lokal geladene
-             Soul — der Pfeil führt zurück zu /gate für den eigentlichen
-             Login (Passwort + Cert/Invite-Code); ?login=1 überspringt dort
-             den redundanten zweiten Reveal-Klick. Nach erfolgreichem Login
-             öffnet gate.vue automatisch das Login-with-Soul-Sheet hier
-             (sessionStorage 'sys.invite_login', siehe onMounted unten) —
-             diese Seite selbst zeigt bewusst keine Node-Infos/Buttons/
-             Legal-Links, um auf einem privaten Node nichts preiszugeben. -->
+        <!-- Blanke Landing, gleiches Muster wie gate.vue: nur Logo + Notice +
+             dezenter Pfeil. Diese Seite ist mit gültigem sys_gate-Cookie
+             erreichbar (Netzwerk-Gate schon bestanden), aber noch ohne lokal
+             geladene Soul — der Pfeil führt zurück zu /gate für den
+             eigentlichen Login (Passwort + Cert/Invite-Code); ?login=1
+             überspringt dort den redundanten zweiten Reveal-Klick. Nach
+             erfolgreichem Login öffnet gate.vue automatisch das
+             Login-with-Soul-Sheet hier (sessionStorage 'sys.invite_login',
+             siehe onMounted unten) — abgesehen vom Notice-Hinweis zeigt diese
+             Seite bewusst keine Node-Infos/Buttons/Legal-Links, um auf einem
+             privaten Node nichts preiszugeben. -->
         <NuxtLink
           to="/gate?login=1"
           class="gate-reveal-trigger"
@@ -24,6 +25,7 @@
 
         <div class="gate-card">
           <SysMark size="220px" />
+          <p class="gate-notice">Private node, not public</p>
         </div>
       </div>
     </template>
@@ -729,6 +731,11 @@ onMounted(() => {
 
 <style scoped>
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
+
+.gate-notice {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fg-3); margin: 14px 0 0; text-align: center;
+}
 
 /* Dezenter Reveal-Trigger, gleiches Muster wie gate.vue's .gate-reveal-trigger. */
 .gate-reveal-trigger {

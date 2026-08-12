@@ -28,6 +28,7 @@
 
     <div class="gate-card">
       <SysMark size="220px" />
+      <p class="gate-notice">Private node, not public</p>
 
       <Transition name="gate-reveal">
         <div v-if="revealed && ready" class="gate-panel">
@@ -378,6 +379,10 @@ const showPw = ref(false)
 </script>
 
 <style scoped>
+.gate-notice {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fg-3); margin: 14px 0 0; text-align: center;
+}
 .gate .btn-primary { background: var(--accent); color: #fff; }
 .gate .btn-primary:hover { background: var(--accent-bright); }
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
