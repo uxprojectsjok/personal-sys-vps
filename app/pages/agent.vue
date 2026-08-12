@@ -205,6 +205,7 @@ onMounted(async () => {
   loadStatus()
   loadNodeConfig()
   loadAgentStatus()
+  resumeWatchIfRunning()
 })
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
@@ -442,6 +443,61 @@ async function toggleAgent(enable) {
   setTimeout(() => { agentFeedback.value = null }, 4000)
 }
 
+// agentRunPolling ist reiner In-Memory-State — geht beim Verlassen/Neuladen
+// der Seite verloren, auch wenn der Lauf serverseitig weiterläuft. Eigene
+// Funktion, damit sowohl runAgentNow() (frisch gestartet) als auch
+// resumeWatchIfRunning() (beim Mount, falls schon ein Lauf aktiv ist) dieselbe
+// Poll-Schleife nutzen, statt sie zu duplizieren.
+function watchAgentRun() {
+  clearInterval(agentLogTimer)
+  agentRunPolling.value = true
+  let ticks = 0
+  agentLogTimer = setInterval(async () => {
+    ticks++
+    try {
+      const lr = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+      if (lr.ok) {
+        const ld = await lr.json()
+        if (!ld.running) {
+          clearInterval(agentLogTimer)
+          agentRunPolling.value = false
+          // Ohne dieses Update blieb die Feedback-Zeile für die gesamte
+          // Laufzeit auf "Agent started" stehen — der pulsierende
+          // "Agent arbeitet"-Punkt verschwand zwar korrekt, aber nichts
+          // zeigte an, DASS/WANN der Lauf tatsächlich fertig war (live
+          // gemeldet: Nutzer sah nur die alte "started"-Zeile, obwohl der
+          // Lauf längst durch war).
+          agentFeedback.value = { ok: true, message: t('settings.agent_run_complete') }
+          setTimeout(() => { agentFeedback.value = null }, 5000)
+          const cr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+          if (cr.ok) { const cd = await cr.json(); agentLastRun.value = cd.last_run || '' }
+          return
+        }
+      }
+    } catch {}
+    if (ticks >= 90) {
+      clearInterval(agentLogTimer)
+      agentRunPolling.value = false
+      agentFeedback.value = { ok: false, message: t('settings.agent_run_watch_timeout') }
+      setTimeout(() => { agentFeedback.value = null }, 6000)
+    }
+  }, 2000)
+}
+
+// Beim Mount prüfen, ob bereits ein Lauf aktiv ist (Seite verlassen/neu
+// geladen während "Run now" noch lief) — sonst fehlt jede Statusanzeige,
+// obwohl der Agent serverseitig weiterläuft (live gemeldet: raus/rein und
+// die "Agent arbeitet"-Anzeige war weg, obwohl der Prozess noch lief).
+async function resumeWatchIfRunning() {
+  try {
+    const lr = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (lr.ok) {
+      const ld = await lr.json()
+      if (ld.running) watchAgentRun()
+    }
+  } catch {}
+}
+
 async function runAgentNow() {
   agentRunNowBusy.value = true
   agentFeedback.value   = null
@@ -455,27 +511,11 @@ async function runAgentNow() {
     if (r.ok) {
       agentFeedback.value   = { ok: true, message: d.message || t('settings.agent_run_started') }
       agentRunNowBusy.value = false
-      agentRunPolling.value = true
-      let ticks = 0
-      agentLogTimer = setInterval(async () => {
-        ticks++
-        try {
-          const lr = await fetch('/api/agent/log', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-          if (lr.ok) {
-            const ld = await lr.json()
-            if (!ld.running) {
-              clearInterval(agentLogTimer)
-              agentRunPolling.value = false
-              const cr = await fetch('/api/agent/cron', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-              if (cr.ok) { const cd = await cr.json(); agentLastRun.value = cd.last_run || '' }
-              return
-            }
-          }
-        } catch {}
-        if (ticks >= 90) { clearInterval(agentLogTimer); agentRunPolling.value = false }
-      }, 2000)
+      watchAgentRun()
     } else {
-      agentFeedback.value   = { ok: false, message: d.error || `Error ${r.status}` }
+      // message = menschenlesbarer Text (z.B. eingefangener sudo-Fehler aus
+      // agent_run_now.lua), error = Maschinencode-Fallback wenn message fehlt.
+      agentFeedback.value   = { ok: false, message: d.message || d.error || `Error ${r.status}` }
       agentRunNowBusy.value = false
     }
   } catch (e) {

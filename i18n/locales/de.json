@@ -788,6 +788,8 @@
     "agent_run_now": "Jetzt ausführen",
     "agent_running": "Läuft…",
     "agent_run_started": "Agent gestartet.",
+    "agent_run_complete": "Agent-Lauf abgeschlossen.",
+    "agent_run_watch_timeout": "Überwachung beendet (Timeout) — Log manuell prüfen.",
     "agent_starting": "Agent startet",
     "agent_working": "Agent arbeitet",
     "wavespeed_key": "WaveSpeed API-Key",
