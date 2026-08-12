@@ -140,6 +140,8 @@
   "landing": {
     "nav_use_cases": "Use cases",
     "nav_docs": "Docs",
+    "nav_docs_api": "API Docs",
+    "nav_docs_dev": "Dev Docs",
     "nav_community": "Community",
     "nav_pricing": "Pricing",
     "nav_scanner": "Scanner",
