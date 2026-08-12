@@ -34,8 +34,14 @@ const PBKDF2_ITERATIONS = 100_000
 const RP_ID   = typeof window !== 'undefined' ? window.location.hostname : 'YOUR_DOMAIN'
 const RP_NAME = 'SaveYourSoul'
 
-// localStorage-Key für gespeicherte Credential-IDs
+// localStorage-Key für gespeicherte Credential-IDs (Legacy-Flatliste, siehe
+// scopedKey() — bleibt als Fallback wenn keine soulId bekannt ist)
 const STORAGE_KEY = 'sys_passkey_credential_ids'
+
+// Index aller soulIds, für die eine pro-Soul-Liste existiert — nötig um ohne
+// bekannte soulId (initialer Login-Bildschirm) trotzdem alle lokal bekannten
+// Passkeys als OS-Auswahl anbieten zu können (Union aller Soul-Listen).
+const SOUL_INDEX_KEY = 'sys_passkey_soul_index'
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────────
 
@@ -97,27 +103,81 @@ async function deriveKeyFromPRF(prfOutput, usage) {
 }
 
 // ── Gespeicherte Credential-IDs ────────────────────────────────────────────────
+//
+// Pro Soul eine eigene Liste (sys_passkey_credential_ids_<soulId>) statt einer
+// einzigen geräteweiten Liste — sonst überschreibt/löscht jede Soul auf einem
+// gemeinsam genutzten Browser (z.B. Multi-Hoster) die Bookkeeping-Einträge
+// jeder anderen Soul, was pruneToCredentialId() nach jedem erfolgreichen
+// Unlock/Rekey/Verify einer Soul effektiv wieder auf genau EIN Credential
+// geräteweit einschränkte — für jede andere Soul dort dann permanent
+// unknown_credential/PRF-Mismatch. soulId=null (initialer Login, bevor eine
+// Soul bekannt ist) fällt auf die Legacy-Flatliste + Union aller Soul-Listen
+// zurück, damit das OS weiterhin alle lokal bekannten Passkeys zur Auswahl
+// anbietet.
 
-function getSavedCredentialIds() {
+function scopedKey(soulId) {
+  return soulId ? `sys_passkey_credential_ids_${soulId}` : STORAGE_KEY
+}
+
+function getSoulIndex() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(SOUL_INDEX_KEY)
     return raw ? JSON.parse(raw) : []
   } catch { return [] }
 }
 
-function saveCredentialId(id) {
-  const ids = getSavedCredentialIds()
-  if (!ids.includes(id)) {
-    ids.push(id)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
-  }
+function addToSoulIndex(soulId) {
+  if (!soulId) return
+  try {
+    const idx = getSoulIndex()
+    if (!idx.includes(soulId)) {
+      idx.push(soulId)
+      localStorage.setItem(SOUL_INDEX_KEY, JSON.stringify(idx))
+    }
+  } catch { /* ignore */ }
 }
 
-function clearSavedCredentialIds() {
-  try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+function getSavedCredentialIds(soulId = null) {
+  try {
+    if (soulId) {
+      const raw = localStorage.getItem(scopedKey(soulId))
+      return raw ? JSON.parse(raw) : []
+    }
+    // Keine soulId bekannt → Union aller pro-Soul-Listen plus Legacy-Flatliste
+    // (aus der Zeit vor dem Soul-Scoping), damit weiterhin alle bekannten
+    // Passkeys angeboten werden.
+    const union = new Set()
+    for (const id of getSoulIndex()) {
+      for (const cred of getSavedCredentialIds(id)) union.add(cred)
+    }
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      const legacy = raw ? JSON.parse(raw) : []
+      for (const cred of legacy) union.add(cred)
+    } catch { /* ignore */ }
+    return [...union]
+  } catch { return [] }
 }
 
-// Ersetzt die gesamte gespeicherte Liste durch genau eine ID. Für den Fall,
+function saveCredentialId(id, soulId = null) {
+  if (!id) return
+  try {
+    const key = scopedKey(soulId)
+    const raw = localStorage.getItem(key)
+    const ids = raw ? JSON.parse(raw) : []
+    if (!ids.includes(id)) {
+      ids.push(id)
+      localStorage.setItem(key, JSON.stringify(ids))
+    }
+    addToSoulIndex(soulId)
+  } catch { /* ignore */ }
+}
+
+function clearSavedCredentialIds(soulId = null) {
+  try { localStorage.removeItem(scopedKey(soulId)) } catch { /* ignore */ }
+}
+
+// Ersetzt die gespeicherte Liste EINER Soul durch genau eine ID. Für den Fall,
 // dass mehrere Credentials angesammelt wurden (saveCredentialId hängt immer
 // nur an, räumt nie auf — residentKey:'preferred' erzeugt bei jeder
 // Registrierung/Migration einen neuen Eintrag) und ein nachfolgender, nicht auf
@@ -125,10 +185,12 @@ function clearSavedCredentialIds() {
 // irgendeine der noch gespeicherten IDs zugewiesen bekommen kann — auch auf
 // demselben Gerät, ohne dass der Nutzer je etwas gelöscht hat. Nur aufrufen,
 // wenn extern (z.B. server-seitig) bestätigt ist, dass genau diese ID die
-// richtige ist — sonst könnte auf die falsche gekürzt werden.
-function pruneToCredentialId(id) {
+// richtige ist — sonst könnte auf die falsche gekürzt werden. Ohne soulId
+// (Legacy-Aufrufer) wirkt das weiterhin nur auf die geräteweite Flatliste.
+function pruneToCredentialId(id, soulId = null) {
   if (!id) return
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([id])) } catch { /* ignore */ }
+  try { localStorage.setItem(scopedKey(soulId), JSON.stringify([id])) } catch { /* ignore */ }
+  addToSoulIndex(soulId)
 }
 
 // ── Composable ─────────────────────────────────────────────────────────────────
@@ -154,9 +216,12 @@ export function useSoulPasskey() {
    *   statt hier eine Annahme über die Token-Quelle zu treffen. Ohne Callback wird
    *   die Registrierung übersprungen (Fingerprint-Score-Check greift dann nicht,
    *   Vault-Verschlüsselung selbst funktioniert trotzdem unverändert).
+   * @param {string} [soulId]  Wenn gesetzt, wird die Credential-ID in der
+   *   pro-Soul-Liste dieser Soul statt der geräteweiten Legacy-Flatliste
+   *   gespeichert (siehe scopedKey()).
    * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler
    */
-  async function registerPasskey(username = 'Soul', getAuthHeaders = null) {
+  async function registerPasskey(username = 'Soul', getAuthHeaders = null, soulId = null) {
     isRegistering.value  = true
     passkeyError.value   = null
 
@@ -201,7 +266,7 @@ export function useSoulPasskey() {
 
       // Credential-ID für späteres Authenticate speichern
       const credId = bufferToBase64url(credential.rawId)
-      saveCredentialId(credId)
+      saveCredentialId(credId, soulId)
       hasPasskey.value = true
       lastRegisteredCredentialId.value = credId
       lastUsedCredentialId.value       = credId  // die neu erstellte ID ist auch die gerade "benutzte"
@@ -234,8 +299,10 @@ export function useSoulPasskey() {
         return prfResult
       }
 
-      // Browser liefert PRF nicht bei Registration → sofort authenticate
-      return await authenticatePasskey()
+      // Browser liefert PRF nicht bei Registration → sofort authenticate.
+      // Auf die gerade neu erstellte ID eingeschränkt — sonst kann das OS bei
+      // mehreren gespeicherten Credentials (andere Souls) ein falsches wählen.
+      return await authenticatePasskey(null, credId, soulId)
 
     } catch (e) {
       if (e.name === 'NotAllowedError') {
@@ -270,10 +337,13 @@ export function useSoulPasskey() {
    *   get()-Aufruf einen ANDEREN, älteren lokalen Passkey wählen als den gerade neu
    *   registrierten, was serverseitig wieder als unknown_credential scheitert, obwohl
    *   die Registrierung selbst geklappt hat.
+   * @param {string} [soulId]  Wenn gesetzt (und restrictToCredentialId nicht),
+   *   werden nur die Credential-IDs dieser Soul als allowCredentials angeboten
+   *   statt der geräteweiten Union aller Souls.
    * @returns {Promise<ArrayBuffer|null>}  PRF-Output oder null bei Fehler — die dazugehörige
    *   rohe Signatur (falls serverChallengeB64url gesetzt war) steht danach in lastAssertion.value.
    */
-  async function authenticatePasskey(serverChallengeB64url = null, restrictToCredentialId = null) {
+  async function authenticatePasskey(serverChallengeB64url = null, restrictToCredentialId = null, soulId = null) {
     isAuthenticating.value = true
     passkeyError.value     = null
     lastAssertion.value    = null
@@ -281,7 +351,7 @@ export function useSoulPasskey() {
     try {
       const challenge   = serverChallengeB64url ? base64ToBuffer(serverChallengeB64url) : crypto.getRandomValues(new Uint8Array(32))
       const prfSalt     = strToBuffer(PRF_SALT_STRING)
-      const savedIds    = restrictToCredentialId ? [restrictToCredentialId] : getSavedCredentialIds()
+      const savedIds    = restrictToCredentialId ? [restrictToCredentialId] : getSavedCredentialIds(soulId)
       const allowCreds  = savedIds.map(id => ({
         type:       'public-key',
         id:         base64ToBuffer(id),
@@ -358,25 +428,46 @@ export function useSoulPasskey() {
    * Biometrie-Prompt für ein neues Credential zu zeigen.
    * @param {string} username
    * @param {() => Record<string,string>} [getAuthHeaders]
+   * @param {string} [soulId]  Wenn gesetzt, wird ausschließlich die pro-Soul-Liste
+   *   dieser Soul geprüft/genutzt/geleert — auf einem Browser mit mehreren Souls
+   *   (Multi-Hoster) darf ein fehlgeschlagener Login von Soul B nicht die
+   *   Credential-Liste von Soul A löschen.
    * @returns {Promise<ArrayBuffer|null>}
    */
-  async function authenticateOrRegister(username = 'Soul', getAuthHeaders = null) {
-    if (hasPasskey.value) {
-      const prf = await authenticatePasskey()
+  async function authenticateOrRegister(username = 'Soul', getAuthHeaders = null, soulId = null) {
+    const knownCred = soulId ? getSavedCredentialIds(soulId).length > 0 : hasPasskey.value
+    if (knownCred) {
+      const prf = await authenticatePasskey(null, null, soulId)
       if (prf) return prf
     }
-    clearSavedCredentialIds()
-    hasPasskey.value = false
-    return registerPasskey(username, getAuthHeaders)
+    clearSavedCredentialIds(soulId)
+    if (!soulId) hasPasskey.value = false
+    return registerPasskey(username, getAuthHeaders, soulId)
+  }
+
+  /**
+   * Prüft, ob für eine Soul lokal (noch) eine Passkey-Credential-ID bekannt ist.
+   * Rein lokale Bookkeeping-Prüfung — bestätigt NICHT, dass das Credential im
+   * OS/Passwortmanager tatsächlich noch existiert (das zeigt sich erst bei
+   * authenticatePasskey()). Gedacht für Aufrufer wie gate.vue's submit(), die
+   * unabhängig von einer separaten "Creds gespeichert?"-Prüfung (z.B.
+   * useSavedCreds.hasCreds, die nur den verschlüsselten Blob kennt, nicht ob
+   * der zugehörige Passkey noch existiert) entscheiden müssen, ob ein
+   * Registrierungs-Prompt nötig ist.
+   * @param {string} soulId
+   * @returns {boolean}
+   */
+  function hasCredentialFor(soulId) {
+    return getSavedCredentialIds(soulId).length > 0
   }
 
   /**
    * AES-256-GCM-Key für Verschlüsselung.
    * Erstellt Passkey wenn noch keiner vorhanden, sonst authenticate.
    */
-  async function getEncryptKey(username) {
+  async function getEncryptKey(username, soulId = null) {
     let prf = prfOutput.value
-    if (!prf) prf = await authenticateOrRegister(username)
+    if (!prf) prf = await authenticateOrRegister(username, null, soulId)
     if (!prf) return null
     return deriveKeyFromPRF(prf, 'encrypt')
   }
@@ -401,9 +492,9 @@ export function useSoulPasskey() {
   /**
    * AES-256-GCM-Key für Entschlüsselung.
    */
-  async function getDecryptKey() {
+  async function getDecryptKey(soulId = null) {
     let prf = prfOutput.value
-    if (!prf) prf = await authenticatePasskey()
+    if (!prf) prf = await authenticatePasskey(null, null, soulId)
     if (!prf) return null
     return deriveKeyFromPRF(prf, 'decrypt')
   }
@@ -431,5 +522,6 @@ export function useSoulPasskey() {
     clearPRF,
     checkPasskeySupport,
     pruneToCredentialId,
+    hasCredentialFor,
   }
 }

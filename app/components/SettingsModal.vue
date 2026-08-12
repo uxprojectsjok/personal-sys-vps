@@ -1786,7 +1786,7 @@ async function handleResyncVaultKey() {
     // getAuthHeaders übergeben, damit ein hier evtl. NEU registrierter Passkey
     // (z.B. weil der alte im OS gelöscht wurde) auch server-seitig für Fingerprint-
     // Verify registriert wird — siehe verifyAuthHeaders()-Kommentar oben.
-    const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
+    const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders, currentSoulId.value)
     if (!prf) {
       vaultKeyError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
       return
@@ -1802,8 +1802,9 @@ async function handleResyncVaultKey() {
       // authenticatePasskey()-Aufruf auf DEMSELBEN Gerät wieder eine andere,
       // noch gespeicherte (aber falsche/veraltete) ID zugewiesen bekommen —
       // genau der scheinbar zufällige "kann nicht sein"-Mismatch, den ein Test
-      // nach dem vorherigen Fix noch zeigte.
-      passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value)
+      // nach dem vorherigen Fix noch zeigte. Soul-skopiert (currentSoulId),
+      // sonst betrifft das Kürzen jede andere Soul auf demselben Browser mit.
+      passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value, currentSoulId.value)
       await fetchVaultKeyStatus()
     } else {
       vaultKeyError.value = result?.message || result?.error || t('settings.vault_key_sync_failed')
@@ -1864,7 +1865,7 @@ async function handleVaultKeyChange() {
   try {
     let newKey = ''
     if (newVaultKeyMethod.value === 'passkey') {
-      const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
+      const prf = await passkey.authenticateOrRegister(passkeyUsername(), verifyAuthHeaders, currentSoulId.value)
       if (!prf) {
         vaultKeyChangeError.value = passkey.passkeyError.value || t('settings.vault_key_biometric_failed')
         return
@@ -1884,7 +1885,7 @@ async function handleVaultKeyChange() {
     if (result?.ok) {
       vaultKeyChangeSuccess.value = t('settings.vault_key_change_success', { n: result.migrated?.length ?? 0 })
       if (newVaultKeyMethod.value === 'passkey') {
-        passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value)
+        passkey.pruneToCredentialId(passkey.lastUsedCredentialId.value, currentSoulId.value)
       }
       await fetchVaultKeyStatus()
     } else {

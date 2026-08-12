@@ -204,6 +204,7 @@ function passkeyUsername() {
   const soulId = soulToken.value?.split('.')?.[0]
   return soulId ? soulId.slice(0, 8) : 'Soul'
 }
+const currentSoulId = computed(() => soulToken.value?.split('.')?.[0] ?? '')
 
 const open             = ref(false)
 const selectedDuration = ref('1d')
@@ -301,7 +302,7 @@ async function handleUnlock() {
   if (encryptMode.value === 'passkey') {
     passkeyLoading.value = true
     try {
-      const prf = await authenticateOrRegister(passkeyUsername(), verifyAuthHeaders)
+      const prf = await authenticateOrRegister(passkeyUsername(), verifyAuthHeaders, currentSoulId.value)
       if (!prf) return
       const hexKey = await deriveVaultKeyHex(prf)
       await unlock(selectedDuration.value, '', hexKey, 'passkey')
@@ -312,7 +313,9 @@ async function handleUnlock() {
       // demselben Gerät wieder eine andere, noch gespeicherte ID zugewiesen
       // bekommen. Gleicher Fix wie in SettingsModal.vue's Vault-Key-Resync,
       // hier bisher gefehlt — zweiter Unlock-Einstiegspunkt, derselbe Bug.
-      if (isUnlocked.value) pruneToCredentialId(lastUsedCredentialId.value)
+      // Soul-skopiert (currentSoulId), sonst löscht/kürzt dieser Pfad die
+      // Credential-Liste EINER anderen Soul auf demselben Browser.
+      if (isUnlocked.value) pruneToCredentialId(lastUsedCredentialId.value, currentSoulId.value)
     } finally {
       passkeyLoading.value = false
     }

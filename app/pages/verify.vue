@@ -341,6 +341,7 @@ function passkeyUsername() {
   const soulId = soulToken.value?.split('.')?.[0]
   return soulId ? soulId.slice(0, 8) : 'Soul'
 }
+const currentSoulId = computed(() => soulToken.value?.split('.')?.[0] ?? '')
 const {
   connectWallet,
   isConnected:   walletConnected,
@@ -750,7 +751,7 @@ async function doFingerprint() {
   await claimChallenge()
   phase.value = 'verifying'
   try {
-    await authenticatePasskey(webauthnChallenge.value || undefined)
+    await authenticatePasskey(webauthnChallenge.value || undefined, null, currentSoulId.value)
     const assertion = lastAssertion.value
     if (!assertion) {
       errorMsg.value = 'Biometrische Verifikation abgelehnt.'
@@ -780,8 +781,9 @@ async function doFingerprint() {
       // vorn (beobachtet: zwei brandneue Credentials innerhalb einer Stunde, beide
       // erst Sekunden vor ihrer ersten Verifikation registriert — kein einziger
       // wiederverwendet). Gleiches Muster wie SettingsModal.vue/VaultSessionPanel.vue,
-      // hier bisher gefehlt.
-      pruneToCredentialId(lastUsedCredentialId.value)
+      // hier bisher gefehlt. Soul-skopiert (currentSoulId), sonst kürzt dieser Pfad
+      // die Credential-Liste einer ANDEREN Soul auf demselben Browser mit.
+      pruneToCredentialId(lastUsedCredentialId.value, currentSoulId.value)
     } else if (d.reason === 'unknown_credential' || d.reason === 'no_passkey_registered') {
       // Passkey wurde vor dem Sicherheitsfix erstellt, oder über gate.vue's initialem
       // Setup (das getAuthHeaders nicht übergibt) — Public Key nie serverseitig
@@ -794,7 +796,7 @@ async function doFingerprint() {
       // blieb false) — sichtbar daran, dass "fingerprint" nie in completed_methods
       // landete, obwohl die Migration selbst jedes Mal erfolgreich war (passkeys.json
       // sammelte einen neuen Eintrag pro Versuch, statt den einen wiederzuverwenden).
-      const migrated = await registerPasskey(passkeyUsername(), authHeaders)
+      const migrated = await registerPasskey(passkeyUsername(), authHeaders, currentSoulId.value)
       if (migrated) {
         // Auf genau das gerade neu registrierte Credential einschränken — sonst kann
         // das Betriebssystem (residentKey:'preferred' legt bei jedem create() einen
@@ -802,7 +804,7 @@ async function doFingerprint() {
         // lokalen Passkey für den folgenden get()-Aufruf wählen, was wieder als
         // unknown_credential scheitert — beobachtet direkt nach dem ersten Migrations-
         // Fix, mit 7 verschiedenen angesammelten Credentials für dieselbe Soul.
-        await authenticatePasskey(webauthnChallenge.value || undefined, lastRegisteredCredentialId.value)
+        await authenticatePasskey(webauthnChallenge.value || undefined, lastRegisteredCredentialId.value, currentSoulId.value)
         const newAssertion = lastAssertion.value
         if (newAssertion) {
           const r2 = await fetch('/api/verify/fingerprint-check', {
@@ -818,7 +820,7 @@ async function doFingerprint() {
           const d2 = await r2.json()
           ok = d2.match === true
           if (ok) {
-            pruneToCredentialId(lastRegisteredCredentialId.value)
+            pruneToCredentialId(lastRegisteredCredentialId.value, currentSoulId.value)
           } else {
             errorMsg.value = d2.reason === 'signature_invalid' ? 'Signaturprüfung fehlgeschlagen.' : (d2.reason || 'Verifikation fehlgeschlagen.')
           }

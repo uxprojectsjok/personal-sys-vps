@@ -201,7 +201,7 @@ async function biometricUnlock() {
   loading.value = true
   error.value   = ''
   try {
-    const prf = await passkey.authenticatePasskey()
+    const prf = await passkey.authenticatePasskey(null, null, lastSoulId.value)
     if (!prf) {
       // WebAuthn deliberately can't distinguish "user declined" from "no matching
       // credential exists anymore" (e.g. deleted from the OS/Google Password Manager
@@ -298,7 +298,14 @@ async function submit() {
     // hängen könnten. Erst per sys.md (Login with Soul) identifizieren, danach ist
     // Biometrie beim nächsten regulären Login mit Cert sinnvoll.
     const support = await passkey.checkPasskeySupport()
-    if (gateRes?.soul_id && support.supported && !creds.hasCreds.value) {
+    // creds.hasCreds prüft nur, ob lokal ein verschlüsselter Passwort-Blob
+    // liegt — nicht, ob der zugehörige Passkey im OS/Kontenmanager noch
+    // existiert. Ohne den zusätzlichen hasCredentialFor-Check bleibt der
+    // Save-Prompt nach einem manuell außerhalb der App gelöschten Passkey
+    // dauerhaft aus (hasCreds.value bleibt true, obwohl nichts mehr da ist,
+    // das den Blob je wieder entschlüsseln könnte).
+    const needsPasskeySetup = !creds.hasCreds.value || !passkey.hasCredentialFor(gateRes?.soul_id)
+    if (gateRes?.soul_id && support.supported && needsPasskeySetup) {
       mode.value = 'saving'
     } else {
       doRedirect()
@@ -344,7 +351,7 @@ async function doSaveCreds() {
     const prf = await passkey.authenticateOrRegister(currentSoulId.value ? currentSoulId.value.slice(0, 8) : 'Soul', () => ({
       Authorization: `Bearer ${currentSoulId.value}.${cert.value}`,
       'Content-Type': 'application/json',
-    }))
+    }), currentSoulId.value)
     if (!prf) {
       error.value = passkey.passkeyError.value || t('gate.error.biometric_unavailable')
       return
