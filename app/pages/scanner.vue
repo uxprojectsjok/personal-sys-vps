@@ -8,7 +8,11 @@
           <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink>
         </div>
         <div class="nav-end">
+          <button class="theme-toggle" @click="toggleTheme" :aria-label="isDark ? 'Light' : 'Dark'" :title="isDark ? 'Light' : 'Dark'">
+            <SysIcon :name="isDark ? 'sun' : 'moon'" style="width:15px;height:15px" />
+          </button>
           <LangToggle />
+          <NuxtLink to="/gate?login=1" class="nav-signin">{{ t.signIn }}</NuxtLink>
           <button class="back" @click="$router.back()" :aria-label="t.back">{{ t.back }}</button>
         </div>
       </nav>
@@ -400,12 +404,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { keccak256, toUtf8Bytes } from 'ethers'
+import { useColorScheme } from '~/composables/useColorScheme.js'
 
 const { lang } = useLang()
+const { isDark, toggle: toggleTheme } = useColorScheme()
 
 // ── i18n ────────────────────────────────────────────────────────────────────
 const de = {
   back:           '← Zurück',
+  signIn:         'Anmelden',
   mobileNote:     'Scan ist für Desktop optimiert. Öffne diese Seite auf einem größeren Bildschirm.',
   mobileBack:     'Zurück',
   souls:          'Souls',
@@ -508,6 +515,7 @@ const de = {
 }
 const en = {
   back:           '← Back',
+  signIn:         'Sign in',
   mobileNote:     'Scan is optimised for desktop. Open this page on a larger screen.',
   mobileBack:     'Back',
   souls:          'Souls',
@@ -1258,7 +1266,11 @@ onUnmounted(() => {
 .nav-home { display: flex; text-decoration: none; }
 .nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
 .nav-end { display: flex; align-items: center; gap: 16px; }
-.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; cursor: pointer; transition: color 0.15s; white-space: nowrap; }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 0; transition: color 0.15s; }
+.theme-toggle:hover { color: var(--fg); }
+.nav-signin { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); text-decoration: none; transition: color 0.15s; white-space: nowrap; display: inline-flex; align-items: center; }
+.nav-signin:hover { color: var(--fg); }
+.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; padding: 0; cursor: pointer; transition: color 0.15s; white-space: nowrap; display: inline-flex; align-items: center; }
 .back:hover { color: var(--teal); }
 
 /* ── MOBILE WALL ──────────────────────────────────────────────────── */

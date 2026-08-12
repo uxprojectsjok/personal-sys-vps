@@ -4,6 +4,10 @@
       <div class="lockup"><NuxtLink to="/"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink></div>
       <div class="center"><span class="page-title">Kaufbedingungen</span></div>
       <div class="nav-end">
+        <button class="theme-toggle" @click="toggleTheme" :aria-label="isDark ? 'Hell' : 'Dunkel'" :title="isDark ? 'Hell' : 'Dunkel'">
+          <SysIcon :name="isDark ? 'sun' : 'moon'" style="width:15px;height:15px" />
+        </button>
+        <NuxtLink to="/gate?login=1" class="nav-signin">Anmelden</NuxtLink>
         <button class="back" @click="$router.back()" aria-label="Zurück">← Zurück</button>
       </div>
     </nav>
@@ -87,8 +91,12 @@
 </template>
 
 <script setup>
+import { useColorScheme } from '~/composables/useColorScheme.js'
+
 definePageMeta({ layout: false })
 useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
+
+const { isDark, toggle: toggleTheme } = useColorScheme()
 </script>
 
 <style scoped>
@@ -107,8 +115,12 @@ useSeoMeta({ title: 'Kaufbedingungen – SYS', robots: 'noindex' })
 .center { text-align: center; }
 .page-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--fg); }
 .nav-end { display: flex; align-items: center; gap: 16px; }
-.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; cursor: pointer; }
+.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; padding: 0; cursor: pointer; display: inline-flex; align-items: center; }
 .back:hover { color: var(--accent); }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 0; transition: color 0.15s; }
+.theme-toggle:hover { color: var(--fg); }
+.nav-signin { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); text-decoration: none; transition: color 0.15s; white-space: nowrap; display: inline-flex; align-items: center; }
+.nav-signin:hover { color: var(--fg); }
 
 .content { max-width: 720px; margin: 0 auto; padding: 56px clamp(20px,4vw,44px) 80px; }
 .content h1 { font-family: var(--serif); font-size: clamp(26px,4vw,42px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 12px; }

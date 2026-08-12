@@ -8,7 +8,11 @@
           <NuxtLink to="/" class="nav-home"><img src="/logo-nav.png" alt="SYS. Agency" class="nav-logo-img" /></NuxtLink>
         </div>
         <div class="nav-end">
+          <button class="theme-toggle" @click="toggleTheme" :aria-label="isDark ? 'Light' : 'Dark'" :title="isDark ? 'Light' : 'Dark'">
+            <SysIcon :name="isDark ? 'sun' : 'moon'" style="width:15px;height:15px" />
+          </button>
           <LangToggle />
+          <NuxtLink to="/gate?login=1" class="nav-signin">{{ t.signIn }}</NuxtLink>
           <button class="back" @click="$router.back()" :aria-label="t.back">{{ t.back }}</button>
         </div>
       </nav>
@@ -97,8 +101,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useColorScheme } from '~/composables/useColorScheme.js'
 
 const { lang } = useLang()
+const { isDark, toggle: toggleTheme } = useColorScheme()
 const copied = ref(null)
 
 function copy(text, key) {
@@ -112,6 +118,7 @@ function copy(text, key) {
 // ── i18n ────────────────────────────────────────────────────────────────────
 const de = {
   back: '← Zurück',
+  signIn: 'Anmelden',
   kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in der Praxis.',
   intro: 'Kein Konzept, kein Mockup — echte Abläufe gegen diesen laufenden Node. So sieht es aus, wenn ein fremder, autonomer KI-Agent ohne jedes Vorwissen und ohne besondere Rechte eine bezahlte Soul findet, das gesetzliche Widerrufsrecht respektiert, zahlt — per x402 oder PayPal — und Zugriff bekommt — ausschließlich über die öffentliche HTTP-Schnittstelle, keine internen Abkürzungen.',
@@ -146,6 +153,7 @@ const de = {
 
 const en = {
   back: '← Back',
+  signIn: 'Sign in',
   kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in practice.',
   intro: 'Not a concept, not a mockup — real runs against this live node. This is what it looks like when a foreign, autonomous AI agent — with no prior knowledge and no special privileges — finds a paid soul, respects the statutory right of withdrawal, pays — via x402 or PayPal — and gets access — entirely through the public HTTP surface, no internal shortcuts.',
@@ -517,7 +525,11 @@ const cases = computed(() => lang.value === 'de' ? casesDe : casesEn)
 .nav-home { display: flex; text-decoration: none; }
 .nav-logo-img { display: block; height: clamp(28px,4vw,36px); width: auto; }
 .nav-end { display: flex; align-items: center; gap: 16px; }
-.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; cursor: pointer; transition: color 0.15s; white-space: nowrap; }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 0; transition: color 0.15s; }
+.theme-toggle:hover { color: var(--fg); }
+.nav-signin { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); text-decoration: none; transition: color 0.15s; white-space: nowrap; display: inline-flex; align-items: center; }
+.nav-signin:hover { color: var(--fg); }
+.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg); background: none; border: none; padding: 0; cursor: pointer; transition: color 0.15s; white-space: nowrap; display: inline-flex; align-items: center; }
 .back:hover { color: var(--teal); }
 
 /* ── WRAP / HERO ──────────────────────────────────────────────────── */
