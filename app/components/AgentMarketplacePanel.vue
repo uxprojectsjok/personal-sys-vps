@@ -435,7 +435,7 @@ const discoverable  = ref(true)
 const amort = reactive({
   enabled:              false,
   wallet:               '',
-  agent_tools:          ['soul_read', 'verify_human', 'soul_maturity'],
+  agent_tools:          ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid'],
   token_duration_days:  1,
   dynamic_pricing:      false,
   price_usdc:           '',
@@ -774,7 +774,7 @@ async function loadAmort() {
     const a = d.amortization || {}
     amort.enabled         = a.enabled         ?? false
     amort.wallet          = a.wallet          ?? ''
-    amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity'])
+    amort.agent_tools          = Array.isArray(a.agent_tools) ? a.agent_tools : (Array.isArray(a.free_tools) ? a.free_tools : ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid'])
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.dynamic_pricing      = a.dynamic_pricing ?? false
     amort.price_usdc           = a.price_usdc ?? ''

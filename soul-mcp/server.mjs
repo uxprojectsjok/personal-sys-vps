@@ -4235,7 +4235,7 @@ async function checkTrustedSoul(peerSoulId, peerCert, targetSoulId) {
 
     const agentTools = ctx?.amortization?.agent_tools?.length
       ? ctx.amortization.agent_tools
-      : (ctx?.amortization?.free_tools?.length ? ctx.amortization.free_tools : ['soul_read', 'verify_human', 'soul_maturity']);
+      : (ctx?.amortization?.free_tools?.length ? ctx.amortization.free_tools : ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid']);
     return { soul_id: soulId, agent_tools: agentTools };
   } catch {
     return null;
@@ -4285,10 +4285,10 @@ async function validatePolToken(token) {
       const ctx = JSON.parse(raw);
       const agentTools = ctx?.amortization?.agent_tools?.length
         ? ctx.amortization.agent_tools
-        : (ctx?.amortization?.free_tools || ['soul_read', 'verify_human', 'soul_maturity']);
+        : (ctx?.amortization?.free_tools || ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid']);
       return { ok: true, soul_id: data.soul_id, agent_tools: agentTools };
     } catch {
-      return { ok: true, soul_id: data.soul_id, agent_tools: ['soul_read', 'verify_human', 'soul_maturity'] };
+      return { ok: true, soul_id: data.soul_id, agent_tools: ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid'] };
     }
   } catch (err) {
     return { ok: false, error: `Validierung fehlgeschlagen: ${err.message}` };

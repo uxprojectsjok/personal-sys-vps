@@ -2110,7 +2110,7 @@ async function handleContact(query) {
       body: JSON.stringify({
         enabled:             amort.enabled             ?? false,
         wallet:              amort.wallet              ?? '',
-        agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
+        agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid'],
         token_duration_days: amort.token_duration_days ?? 1,
         trusted_souls:       trusted,
       }),
@@ -2243,7 +2243,7 @@ async function handlePin(query) {
       enabled:             cur.enabled             ?? false,
       price_usdc:          cur.price_usdc          ?? '',
       wallet:              cur.wallet              ?? '',
-      agent_tools:         Array.isArray(cur.agent_tools) ? cur.agent_tools : ['soul_read', 'verify_human', 'soul_maturity'],
+      agent_tools:         Array.isArray(cur.agent_tools) ? cur.agent_tools : ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid'],
       token_duration_days: cur.token_duration_days ?? 1,
       trusted_souls:       Array.isArray(cur.trusted_souls) ? cur.trusted_souls : [],
       ...patch,

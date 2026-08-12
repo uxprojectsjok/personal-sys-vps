@@ -161,7 +161,7 @@ export function registerTools(server, token, soulId = null) {
  * @param {string} soulId — soul_id des Ziel-Souls (für Filesystem-basierte Tools)
  */
 export function registerPaidTools(server, polToken, agentTools = [], soulId) {
-  const allowed = new Set(agentTools.length ? agentTools : ['soul_read', 'verify_human', 'soul_maturity']);
+  const allowed = new Set(agentTools.length ? agentTools : ['soul_read', 'verify_human', 'soul_maturity', 'beme_chat_paid']);
 
   // soul_read: spezieller paid-read Endpoint (liefert nur AGENT-Block)
   if (allowed.has('soul_read'))     soulReadPaid(server, polToken);
