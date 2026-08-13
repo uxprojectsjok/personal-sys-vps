@@ -3893,6 +3893,40 @@ app.get('/api/soul/transfer/listing', async (req, res) => {
   }
 });
 
+// Öffentliche, lesende Variante für Käufer-Agenten (show_soul_transfer_offer
+// MCP-Tool) — bewusst getrennt von der Owner-Route oben: kein soul_cert,
+// zeigt aber auch keinen Buyer-Fortschritt (buyer_wallet/Signatur einer evtl.
+// bereits laufenden Challenge eines ANDEREN Interessenten wären für einen
+// dritten Betrachter nicht relevant/sensibel genug, um sie extra zu
+// schützen, aber auch nicht nötig zu zeigen — nur ob überhaupt eine aktive
+// Challenge existiert, als Hinweis "gerade schon in Verhandlung"). Erstellt
+// im Gegensatz zu POST .../challenge KEINE Challenge — reines Ansehen.
+app.get('/api/soul/transfer/offer', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });
+  try {
+    const listing = await getSoulTransferListing(soulId);
+    if (!listing || !listing.active) {
+      return res.json({ ok: true, for_sale: false });
+    }
+    const [activeChallenge, onChainOwner] = await Promise.all([
+      getSoulTransferActiveChallenge(soulId),
+      getSoulTransferOnChainOwner(soulId).catch(() => null),
+    ]);
+    res.json({
+      ok: true,
+      for_sale: true,
+      mode: listing.mode,
+      price_usdc: listing.price_usdc,
+      duration_hours: listing.duration_hours,
+      seller_wallet: onChainOwner,
+      has_pending_challenge: !!activeChallenge,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/soul/transfer/listing', async (req, res) => {
   const soulId = req.body?.soul_id;
   if (!soulId) return res.status(400).json({ error: 'soul_id erforderlich' });

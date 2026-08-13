@@ -32,6 +32,7 @@ import { register as soulCloudPush }         from './soul_cloud_push.mjs';
 import { register as createAgent }           from './create_agent.mjs';
 import { register as callMe }                from './call_me.mjs';
 import { register as soulPreview }          from './soul_preview.mjs';
+import { register as showSoulTransferOffer } from './show_soul_transfer_offer.mjs';
 import { register as soulReadByToken }       from './soul_read_by_token.mjs';
 import { register as soulPaidComment }       from './soul_paid_comment.mjs';
 import { register as mindRead }              from './mind_read.mjs';
@@ -120,6 +121,7 @@ export function registerTools(server, token, soulId = null) {
   createAgent(server, token);
   callMe(server, token, soulId);
   soulPreview(server, token);
+  showSoulTransferOffer(server, token);
   soulReadByToken(server, token);
   soulPaidComment(server, token);
   mindRead(server, token, soulId);

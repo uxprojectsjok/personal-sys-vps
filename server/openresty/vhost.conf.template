@@ -257,6 +257,21 @@ server {
     proxy_set_header Host $host;
   }
 
+  # Öffentliche, lesende Variante für show_soul_transfer_offer (MCP-Tool) —
+  # kein soul_cert, erstellt keine Challenge, siehe server.mjs.
+  location = /api/soul/transfer/offer {
+    limit_except GET OPTIONS { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type" always;
+    add_header Cache-Control "no-store" always;
+    if ($request_method = OPTIONS) { return 204; }
+    default_type application/json;
+    proxy_pass       http://127.0.0.1:{{MCP_PORT}}/api/soul/transfer/offer;
+    proxy_set_header Host $host;
+  }
+
   location = /api/soul/transfer/complete {
     limit_except POST OPTIONS { deny all; }
     limit_req zone=api burst=10 nodelay;
