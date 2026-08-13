@@ -1929,20 +1929,32 @@ Claude's ethical principles are active and non-negotiable. This section is write
 }
 
 // POST /internal/run-tool — führt ein Soul-Tool server-seitig aus (In-App-Chat)
-// Kein Auth nötig — nur localhost erreichbar, soul_cert wird vom Nginx-Proxy vorab geprüft.
+// Nur über /api/soul-tool erreichbar (nginx, access_by_lua_file soul_auth.lua
+// prüft den soul_cert und setzt X-Soul-Id) — dieser Handler selbst prüft
+// nichts mehr, sondern verlässt sich bewusst auf den vorgelagerten Proxy.
 app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) => {
   const { tool, input = {} } = req.body;
   if (!tool) return res.status(400).json({ error: 'tool erforderlich' });
 
   try {
-    const dirs     = await readdir(SOULS_DIR).catch(() => []);
-    // Multi-hoster: soul_id kommt als X-Soul-Id Header (gesetzt von soul_auth.lua).
-    // Fallback: erste Soul im Verzeichnis (Single-hoster / interne Aufrufe ohne Auth).
+    // X-Soul-Id MUSS vom vorgelagerten soul_auth.lua gesetzt sein — kein
+    // Fallback mehr auf "erste Soul im Verzeichnis" bei fehlendem/ungültigem
+    // Header. Der frühere Fallback war nach aktueller Netzwerktopologie
+    // (Node lauscht nur auf 127.0.0.1, der einzige öffentliche Weg hierher
+    // ist bereits durch soul_auth.lua abgesichert) nicht ausnutzbar, beruhte
+    // aber genau auf derselben "wird schon vorher geprüft"-Annahme wie der
+    // tatsächlich live ausgenutzte Auth-Bypass in handleMcp()/
+    // handleMcpDiscover() (siehe dortiger Fix) — Härtung hier schließt
+    // dieselbe Fehlerklasse, bevor sie durch eine künftige Netzwerk-/Proxy-
+    // Änderung (z.B. Node versehentlich auf 0.0.0.0, oder eine neue Route
+    // ohne denselben Guard) tatsächlich ausnutzbar würde.
     const headerSoulId = req.headers['x-soul-id'];
-    const soulId = (headerSoulId && /^[a-f0-9-]{36}$/i.test(headerSoulId))
-      ? headerSoulId
-      : dirs.find(d => /^[a-f0-9-]{36}$/i.test(d));
-    if (!soulId) return res.status(404).json({ error: 'Keine Soul gefunden' });
+    if (!headerSoulId || !/^[a-f0-9-]{36}$/i.test(headerSoulId)) {
+      return res.status(401).json({ error: 'X-Soul-Id fehlt oder ungültig — nur über /api/soul-tool erreichbar.' });
+    }
+    const soulId = headerSoulId;
+    const soulDirExists = await stat(`${SOULS_DIR}${soulId}`).then(s => s.isDirectory()).catch(() => false);
+    if (!soulDirExists) return res.status(404).json({ error: 'Keine Soul gefunden' });
 
     const { vaultKeyHex } = await loadVaultMeta(soulId);
     const soulPath = `${SOULS_DIR}${soulId}/sys.md`;
