@@ -28,7 +28,6 @@
 
     <div class="gate-card">
       <SysMark size="220px" />
-      <p class="gate-notice">Private node, not public</p>
 
       <Transition name="gate-reveal">
         <div v-if="revealed && ready" class="gate-panel">
@@ -100,6 +99,8 @@
         </div>
       </Transition>
     </div>
+
+    <p class="gate-footer-notice">Private node, not public</p>
   </div>
 </template>
 
@@ -381,19 +382,24 @@ const showPw = ref(false)
 <style scoped>
 /* Standardmäßig zentriert .gate (sys-v2.css) die Karte vertikal in voller
    Viewport-Höhe. Sobald das Login-Panel aufklappt, wächst die Karte nach
-   unten und würde bei reiner Zentrierung Logo+Notice weiter nach unten
-   drücken statt sie an ihrem Platz zu lassen — stattdessen rückt der ganze
-   Block bewusst Richtung Kopfbereich, Logo/Notice bleiben oben statt mit
-   dem Formular mitzuwandern. */
+   unten und würde bei reiner Zentrierung das Logo weiter nach unten
+   drücken statt es an seinem Platz zu lassen — stattdessen rückt der ganze
+   Block bewusst Richtung Kopfbereich, das Logo bleibt oben statt mit dem
+   Formular mitzuwandern. */
 .gate.is-revealed {
   align-items: start;
   padding-top: clamp(24px, 8vh, 96px);
   transition: padding-top .25s ease;
 }
 
-.gate-notice {
-  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--fg-3); margin: -6px 0 0; text-align: center;
+/* Fest am unteren Viewport-Rand statt im Karten-Fluss — bleibt dadurch an
+   Ort und Stelle, egal ob die Karte gerade zentriert (Default) oder oben
+   verankert ist (.is-revealed, siehe oben). */
+.gate-footer-notice {
+  position: fixed; left: 0; right: 0; bottom: clamp(20px, 5vh, 40px);
+  text-align: center; font-size: 16px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--fg-2); pointer-events: none;
 }
 .gate .btn-primary { background: var(--accent); color: #fff; }
 .gate .btn-primary:hover { background: var(--accent-bright); }

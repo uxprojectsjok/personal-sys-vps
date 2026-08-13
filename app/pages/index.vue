@@ -25,8 +25,9 @@
 
         <div class="gate-card">
           <SysMark size="220px" />
-          <p class="gate-notice">Private node, not public</p>
         </div>
+
+        <p class="gate-footer-notice">Private node, not public</p>
       </div>
     </template>
 
@@ -732,9 +733,11 @@ onMounted(() => {
 <style scoped>
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
 
-.gate-notice {
-  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--fg-3); margin: -6px 0 0; text-align: center;
+.gate-footer-notice {
+  position: fixed; left: 0; right: 0; bottom: clamp(20px, 5vh, 40px);
+  text-align: center; font-size: 16px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--fg-2); pointer-events: none;
 }
 
 /* Dezenter Reveal-Trigger, gleiches Muster wie gate.vue's .gate-reveal-trigger. */
