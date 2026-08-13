@@ -400,51 +400,52 @@ async function handleMcp(req, res) {
       }
     }
   } else {
-    // Plain Service-Token: eindeutig per Reverse-Lookup zuordnen, bevor auf
-    // ?soul_id= oder die Single-Soul-Heuristik zurückgefallen wird.
-    let ownerSoulId = await findSoulByServiceToken(token);
-    const dirs     = ownerSoulId ? null : await readdir(SOULS_DIR).catch(() => []);
-    const soulDirs = dirs ? dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d)) : null;
-    if (ownerSoulId) {
-      // RFC 8707 Resource Indicator: ein per /oauth/authorize mit resource=
-      // ausgestellter Token ist an GENAU einen Endpunkt gebunden (/mcp oder
-      // /mcp/discover) — verhindert, dass ein für /mcp autorisierter Token
-      // (z.B. schmal für eine einzelne Drittintegration gedacht) auch an
-      // /mcp/discover repliziert werden kann und dort plötzlich Zugriff auf
-      // alle gewirten/verbundenen Souls bekommt. Ungebundene Tokens (kein
-      // resource-Feld — z.B. manuell in Settings→API erzeugte) bleiben wie
-      // bisher an beiden Endpunkten gültig.
-      const boundResource = await getServiceTokenResource(ownerSoulId, token);
-      if (boundResource && boundResource !== `${BASE_URL}/mcp`) {
-        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
-        return res.status(401).json({
-          jsonrpc: '2.0',
-          error: { code: -32001, message: 'Token ist an eine andere Resource gebunden (RFC 8707) — für /mcp neu autorisieren.' },
-          id: null,
-        });
-      }
-    } else if (soulIdParam && soulDirs.includes(soulIdParam)) {
-      ownerSoulId = soulIdParam;
-    } else if (soulDirs.length === 1) {
-      ownerSoulId = soulDirs[0];
-    } else if (soulDirs.length > 1) {
-      // Multi-Hoster mit >1 Soul und keinem/ungültigem ?soul_id= — dieselbe
-      // Ambiguität wie im Peer-Cert-Zweig oben, dieselbe Fehlermeldung statt
-      // stillschweigend die (alphabetisch) erste Soul zu liefern.
+    // Plain Service-Token: MUSS per Reverse-Lookup in irgendeiner Soul's
+    // authorized_services.json gefunden werden — das IST die eigentliche
+    // Authentifizierung an dieser Stelle. Vorher fiel ein nicht gefundener
+    // Token (z.B. irgendein beliebiger String im Authorization-Header) auf
+    // ?soul_id=/die Single-Soul-Heuristik zurück und bekam TROTZDEM das
+    // volle Owner-Toolset registriert — in der Annahme, "die eigentliche
+    // Token-Prüfung passiert lazily pro Tool-Aufruf über vault_auth". Stimmt
+    // aber nicht für alle Tools: mind_read/mind_write/context_write/
+    // soul_draw/soul_generate/shop_write_read/shop_log/call_me/
+    // soul_chain_status/vault_shared_upload u.a. schreiben/lesen direkt
+    // SOULS_DIR+soulId auf dem Dateisystem, komplett ohne den Token gegen
+    // diese soulId zu prüfen. Live verifiziert: ein frei erfundener Bearer-
+    // Token + ?soul_id=<echte-uuid> lieferte volles mind_read/mind_write auf
+    // eine fremde Soul — kompletter Auth-Bypass. ?soul_id=/Single-Soul-
+    // Heuristik bleiben nur noch zur Disambiguierung NACH erfolgreichem
+    // Reverse-Lookup relevant (aktuell: nirgends, ownerSoulId steht dann
+    // bereits fest) — kein Fallback mehr für "Token nicht gefunden".
+    const ownerSoulId = await findSoulByServiceToken(token);
+    if (!ownerSoulId) {
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
       return res.status(401).json({
         jsonrpc: '2.0',
-        error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp?soul_id=<ziel-soul-id>).' },
+        error: { code: -32001, message: 'Ungültiger oder unbekannter Service-Token.' },
         id: null,
       });
-    } else {
-      ownerSoulId = null;
+    }
+    // RFC 8707 Resource Indicator: ein per /oauth/authorize mit resource=
+    // ausgestellter Token ist an GENAU einen Endpunkt gebunden (/mcp oder
+    // /mcp/discover) — verhindert, dass ein für /mcp autorisierter Token
+    // (z.B. schmal für eine einzelne Drittintegration gedacht) auch an
+    // /mcp/discover repliziert werden kann und dort plötzlich Zugriff auf
+    // alle gewirten/verbundenen Souls bekommt. Ungebundene Tokens (kein
+    // resource-Feld — z.B. manuell in Settings→API erzeugte) bleiben wie
+    // bisher an beiden Endpunkten gültig.
+    const boundResource = await getServiceTokenResource(ownerSoulId, token);
+    if (boundResource && boundResource !== `${BASE_URL}/mcp`) {
+      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`);
+      return res.status(401).json({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Token ist an eine andere Resource gebunden (RFC 8707) — für /mcp neu autorisieren.' },
+        id: null,
+      });
     }
     registerTools(server, token, ownerSoulId);
-    if (ownerSoulId) {
-      await registerSoulApps(server, ownerSoulId);
-      await registerConnectionProxyTools(server, ownerSoulId, token);
-    }
+    await registerSoulApps(server, ownerSoulId);
+    await registerConnectionProxyTools(server, ownerSoulId, token);
   }
 
   registerPrompts(server);
@@ -506,38 +507,25 @@ async function handleMcpDiscover(req, res) {
     }
   } else {
     // Plain Service-Token (aus dem OAuth-Flow, z.B. Claude.ai-Connector) —
-    // trägt keine soul_id, wird aber eindeutig per Reverse-Lookup zugeordnet
-    // (der Token lebt in genau einer Soul's authorized_services.json); Fallback
-    // auf ?soul_id=/Single-Soul-Heuristik nur falls der Lookup nichts findet.
-    // Die eigentliche Token-Prüfung passiert lazily pro Tool-Aufruf über den
-    // bestehenden vault_auth-Pfad.
+    // MUSS per Reverse-Lookup in irgendeiner Soul's authorized_services.json
+    // gefunden werden, das ist die eigentliche Authentifizierung hier. Kein
+    // Fallback mehr auf ?soul_id=/Single-Soul-Heuristik für nicht gefundene
+    // Tokens — siehe ausführlicher Kommentar in handleMcp() für den Grund:
+    // ein frei erfundener Token bekam vorher trotzdem das volle
+    // Gatekeeper-Toolset (registerTools) für eine geratene/übergebene soul_id
+    // registriert, in der (falschen) Annahme, jedes Tool prüfe den Token
+    // selbst nochmal — mehrere Tools (mind_read/mind_write/context_write/...)
+    // tun das nicht, sondern vertrauen der übergebenen soulId blind.
     gkSoulId = await findSoulByServiceToken(token);
-    if (gkSoulId) {
-      // RFC 8707 — Gegenstück zum Check in handleMcp(): ein für /mcp
-      // ausgestellter Token darf nicht an /mcp/discover repliziert werden
-      // und dort das gebündelte Gatekeeper-Toolset freischalten.
-      const boundResource = await getServiceTokenResource(gkSoulId, token);
-      if (boundResource && boundResource !== `${BASE_URL}/mcp/discover`) {
-        return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
-      }
-    }
     if (!gkSoulId) {
-      const dirs     = await readdir(SOULS_DIR).catch(() => []);
-      const soulDirs = dirs.filter(d => /^[a-f0-9-]{36}$/i.test(d));
-      if (soulIdParam && soulDirs.includes(soulIdParam)) {
-        gkSoulId = soulIdParam;
-      } else if (soulDirs.length === 1) {
-        gkSoulId = soulDirs[0];
-      } else if (soulDirs.length > 1) {
-        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${BASE_URL}${DISCOVER_RESOURCE_PATH}"`);
-        return res.status(401).json({
-          jsonrpc: '2.0',
-          error: { code: -32001, message: 'Multi-Hoster: ?soul_id= Parameter erforderlich (z.B. /mcp/discover?soul_id=<ziel-soul-id>).' },
-          id: null,
-        });
-      } else {
-        return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
-      }
+      return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
+    }
+    // RFC 8707 — Gegenstück zum Check in handleMcp(): ein für /mcp
+    // ausgestellter Token darf nicht an /mcp/discover repliziert werden
+    // und dort das gebündelte Gatekeeper-Toolset freischalten.
+    const boundResource = await getServiceTokenResource(gkSoulId, token);
+    if (boundResource && boundResource !== `${BASE_URL}/mcp/discover`) {
+      return unauthorized(res, soulIdParam, DISCOVER_RESOURCE_PATH);
     }
   }
 
