@@ -16,7 +16,18 @@ local function get_master_path()
   return MASTER_PATH_GLOBAL
 end
 
-local function clear_node_lock()
+-- deleted_soul_id: nur DEREN Owner-Kennungen aufheben, nicht bedingungslos
+-- jede. Vorher wurde node_soul_id/admin_token/first_soul_id bei JEDER
+-- Soul-Löschung entfernt, egal welche Soul gelöscht wurde — eine kurz
+-- angelegte, wieder gelöschte Test-Soul in Multi-Hoster hat damit die
+-- Owner-Kennung einer ganz ANDEREN, weiterhin existierenden Soul mit
+-- weggerissen (live wiederholt beobachtet: first_soul_id verschwand nach
+-- "Soul angelegt, Soul wieder gelöscht", jedes Mal alle Node-Owner-UI weg).
+-- Der Guard weiter unten (Zeile ~78) verhindert zwar das Löschen der
+-- Owner-Soul solange andere Souls existieren, aber genau der Fall hier —
+-- eine NICHT-Owner-Soul löschen — lief an diesem Guard vorbei durch bis
+-- hierher und traf trotzdem die Owner-Felder.
+local function clear_node_lock(deleted_soul_id)
   local paths = { get_master_path() }
   if paths[1] ~= MASTER_PATH_GLOBAL then
     paths[#paths + 1] = MASTER_PATH_GLOBAL
@@ -27,9 +38,13 @@ local function clear_node_lock()
       local raw = f:read("*a"); f:close()
       local ok, data = pcall(cjson.decode, raw or "")
       if ok and type(data) == "table" then
-        data.node_soul_id  = nil
-        data.admin_token   = nil
-        data.first_soul_id = nil
+        if data.node_soul_id == deleted_soul_id then
+          data.node_soul_id = nil
+          data.admin_token  = nil
+        end
+        if data.first_soul_id == deleted_soul_id then
+          data.first_soul_id = nil
+        end
         local wf = io.open(path, "w")
         if wf then wf:write(cjson.encode(data)); wf:close() end
       end
@@ -95,8 +110,9 @@ if ret ~= 0 and ret ~= true then
   return
 end
 
--- Node-Lock aufheben: node_soul_id + admin_token aus master.json entfernen
-clear_node_lock()
+-- Node-Lock aufheben: node_soul_id + admin_token aus master.json entfernen,
+-- aber nur falls die gerade gelöschte Soul tatsächlich die Owner-Soul war.
+clear_node_lock(soul_id)
 
 -- Gate-Sessions leeren (shared dict)
 local gate_sessions = ngx.shared.gate_sessions
