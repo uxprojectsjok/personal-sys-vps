@@ -132,6 +132,45 @@ else
   warn "Could not find an existing site config with a /var/www/ root (or vhost.conf.template missing) — skipping vhost regeneration."
 fi
 
+# ── 2b. Sync new lua_shared_dict declarations into the live nginx.conf ───────
+# Same class of gap as the vhost.conf sync above and the sys-agent-run.sh gap
+# fixed in v1.3.14: nginx.conf itself (global http{} block, not the per-domain
+# vhost) is only ever written once, by init.sh at install time — a
+# lua_shared_dict added to nginx.conf.template later (e.g. sys_write_lock,
+# v1.4.x) never reached already-running nodes no matter how many times they
+# updated, since nothing here ever re-diffed it. Found live on
+# fab.uxprojects-jok.com right after pulling the commit that added
+# sys_write_lock: write_lock.lua loaded fine (fails open without the dict —
+# no crash, just silently no locking), but the intended protection was inert
+# until this was caught and patched in by hand.
+# Insert-only, one directive per missing name — never touches unrelated
+# nginx.conf content, and never runs on a shared-server nginx.conf (line 631
+# in init.sh's own shared-server branch uses the same "insert only" model,
+# this mirrors it for the update path instead of the install path).
+_NGINX_CONF_LIVE=""
+for _NC in /etc/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf; do
+  [ -f "$_NC" ] && _NGINX_CONF_LIVE="$_NC" && break
+done
+if [ -n "$_NGINX_CONF_LIVE" ] && [ -f "$SCRIPT_DIR/server/openresty/nginx.conf.template" ] && grep -q "lua_package_path" "$_NGINX_CONF_LIVE"; then
+  _DICTS_ADDED=0
+  while IFS= read -r _DICT_LINE; do
+    _DICT_NAME=$(echo "$_DICT_LINE" | awk '{print $2}')
+    [ -n "$_DICT_NAME" ] || continue
+    if ! grep -q "lua_shared_dict[[:space:]]\+$_DICT_NAME\b" "$_NGINX_CONF_LIVE"; then
+      sed -i "/lua_package_path /a\\  $_DICT_LINE" "$_NGINX_CONF_LIVE"
+      info "nginx.conf: added missing lua_shared_dict '$_DICT_NAME'."
+      _DICTS_ADDED=1
+    fi
+  done < <(grep "^\s*lua_shared_dict " "$SCRIPT_DIR/server/openresty/nginx.conf.template" | sed 's/^\s*//')
+  if [ "$_DICTS_ADDED" = 1 ]; then
+    if openresty -t 2>&1; then
+      info "nginx.conf updated with new shared dicts."
+    else
+      warn "nginx.conf syntax check failed after adding shared dicts — check manually, changes were NOT reverted automatically."
+    fi
+  fi
+fi
+
 # ── 3. Reload OpenResty ───────────────────────────────────────────────────────
 info "Reloading OpenResty..."
 openresty -t && openresty -s reload && info "OpenResty reloaded."
