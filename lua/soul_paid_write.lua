@@ -4,9 +4,10 @@
 -- Sicherheitsregel: Nur der Bereich zwischen <!-- AGENT:START --> und <!-- AGENT:END -->
 -- darf von zahlenden Agenten verändert werden. Alle anderen Bereiche sind gesperrt.
 
-local cjson     = require("cjson.safe")
-local resty_aes = require("resty.aes")
-local pol_check = require("pol_token_check")
+local cjson      = require("cjson.safe")
+local resty_aes  = require("resty.aes")
+local pol_check  = require("pol_token_check")
+local write_lock = require("write_lock")
 
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
@@ -83,6 +84,21 @@ if mode ~= "replace" and mode ~= "append" and mode ~= "prepend" then
   ngx.say('{"error":"mode muss replace | append | prepend sein"}')
   return
 end
+
+-- Ab hier: Read-Modify-Write auf sys.md — extern erreichbar (jeder mit
+-- pol_access_token), also ein realistisches Ziel für absichtlich parallel
+-- geschickte Requests, die sich sonst gegenseitig überschreiben (Lost-
+-- Update, gleiches Muster wie api_context.lua/soul_paid_comment.lua).
+-- Alles bis zur finalen Antwort läuft daher gesperrt, in do_write()
+-- gewrappt, Lock wird per pcall garantiert freigegeben.
+local lock_key = write_lock.sysmd_key(soul_id)
+if not write_lock.acquire(lock_key) then
+  ngx.status = 503
+  ngx.say('{"error":"locked","message":"Konkurrierender Schreibzugriff auf diese Soul — bitte kurz erneut versuchen."}')
+  return
+end
+
+local function do_write()
 
 -- api_context.json lesen
 local SOULS_DIR = "/var/lib/sys/souls/"
@@ -243,3 +259,15 @@ ngx.say(cjson.encode({
   mode    = mode,
   message = "Agent-Kontext " .. verb .. ". Änderung sofort aktiv.",
 }))
+
+end -- do_write()
+
+local w_ok, w_err = pcall(do_write)
+write_lock.release(lock_key)
+if not w_ok then
+  ngx.log(ngx.ERR, "[soul_paid_write] Write-Handler-Fehler: ", tostring(w_err))
+  if not ngx.headers_sent then
+    ngx.status = 500
+    ngx.say('{"error":"internal_error"}')
+  end
+end

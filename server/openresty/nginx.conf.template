@@ -34,6 +34,7 @@ http {
   lua_shared_dict pol_access        10m;
   lua_shared_dict gate_sessions      2m;
   lua_shared_dict connect_sessions   5m;
+  lua_shared_dict sys_write_lock     2m;
   client_max_body_size 150M;
 
   # Real IP — only needed if running behind a reverse proxy.

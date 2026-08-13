@@ -6,6 +6,7 @@
 local cjson        = require("cjson.safe")
 local resty_aes    = require("resty.aes")
 local resty_random = require("resty.random")
+local write_lock   = require("write_lock")
 local soul_id      = ngx.ctx.soul_id
 
 local MAGIC = "SYS\x01"  -- 4 Magic-Bytes, kompatibel mit api_serve.lua
@@ -219,6 +220,25 @@ if ngx.ctx.via_webhook then
   incoming.active_files  = nil
 end
 
+-- Ab hier: Read-Modify-Write auf ctx/sys.md — mehrere gleichzeitige PUTs
+-- (zwei Browser-Tabs, ein MCP-Write das parallel zu einem Frontend-Sync
+-- läuft) lasen sonst denselben alten Stand, schrieben nacheinander zurück,
+-- und der zweite Write gewann komplett — der erste verschwand spurlos,
+-- obwohl beide Requests "ok":true meldeten. Alles bis zur finalen Antwort
+-- läuft daher gesperrt; die ganze restliche PUT-Logik ist in do_put()
+-- gewrappt, damit jeder bestehende früh-return (inkl. goto skip_soul_write)
+-- unverändert funktioniert UND das Lock trotzdem garantiert freigegeben
+-- wird (pcall fängt selbst einen echten Laufzeitfehler ab).
+local lock_key = write_lock.sysmd_key(soul_id)
+if not write_lock.acquire(lock_key) then
+  ngx.status = 503
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"locked","message":"Konkurrierender Schreibzugriff auf diese Soul — bitte kurz erneut versuchen."}')
+  return
+end
+
+local function do_put()
+
 ensure_dirs()
 local ctx = read_context()
 
@@ -372,3 +392,16 @@ f:write(cjson.encode(ctx)); f:close()
 
 ngx.header["Content-Type"] = "application/json"
 ngx.say('{"ok":true}')
+
+end -- do_put()
+
+local put_ok, put_err = pcall(do_put)
+write_lock.release(lock_key)
+if not put_ok then
+  ngx.log(ngx.ERR, "[api_context] PUT-Handler-Fehler: ", tostring(put_err))
+  if not ngx.headers_sent then
+    ngx.status = 500
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"internal_error"}')
+  end
+end
