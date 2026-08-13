@@ -43,7 +43,15 @@ function issueCode(data) {
 }
 
 async function verifyPkce(codeVerifier, codeChallenge) {
-  if (!codeChallenge || !codeVerifier) return true; // kein PKCE → durchlassen
+  // War früher "if (!codeChallenge || !codeVerifier) return true" — ließ damit
+  // auch den Fall durch, dass EIN code_challenge gespeichert war, der Client
+  // aber beim Token-Tausch einfach gar keinen code_verifier mitschickte (statt
+  // eines falschen). Genau der Fall, den PKCE verhindern soll (RFC 7636):
+  // fehlender/falscher Verifier muss ablehnen, nicht durchlassen. Nur wenn bei
+  // /authorize selbst nie ein code_challenge gesetzt wurde, gibt es nichts zu
+  // prüfen.
+  if (!codeChallenge) return true;
+  if (!codeVerifier) return false;
   const encoder = new TextEncoder();
   const data = encoder.encode(codeVerifier);
   const hashBuf = await crypto.subtle.digest('SHA-256', data);
@@ -134,6 +142,16 @@ oauthRouter.get('/authorize', (req, res) => {
     return res.status(400).send('Nur response_type=code wird unterstützt.');
   }
 
+  // PKCE (RFC 7636) verpflichtend: redirect_uri wird bei der (bewusst
+  // zustandslosen, siehe /register-Kommentar oben) Dynamic Client
+  // Registration nie gespeichert, kann also bei /authorize/token auch nie
+  // gegen eine registrierte Liste geprüft werden. PKCE ist damit die einzige
+  // greifbare Absicherung gegen einen abgefangenen/wiederverwendeten
+  // Authorization Code — ohne sie war code_challenge rein optional.
+  if (!code_challenge) {
+    return res.status(400).send('code_challenge (PKCE) erforderlich.');
+  }
+
   const scopes = (scope || 'soul').split(/[\s,+]/);
   const scopeList = scopes
     .filter((s) => SCOPE_LABELS[s])
@@ -162,6 +180,12 @@ oauthRouter.get('/authorize', (req, res) => {
 
 oauthRouter.post('/authorize', async (req, res) => {
   const { soul_cert, client_id, redirect_uri, state, response_type, scope, code_challenge, code_challenge_method, resource } = req.body;
+
+  // Verteidigung gegen einen direkten POST unter Umgehung der GET-Consent-
+  // Seite (die dieselbe Prüfung schon vorher macht) — siehe dortiger Kommentar.
+  if (!code_challenge) {
+    return resConsent(res, req.body, 'code_challenge (PKCE) erforderlich.');
+  }
 
   if (!soul_cert || !soul_cert.includes('.')) {
     return resConsent(res, req.body, 'Ungültiges Soul-Cert – Format: uuid.32hexchars');
