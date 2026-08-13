@@ -67,19 +67,29 @@ if not soul_id:match(UUID_PAT) then
   return
 end
 
--- Gate-Soul-Binding: die Gate-Session muss zu GENAU dieser soul_id gehören.
--- Ohne diesen Check konnte auf einem Multi-Hoster-Node JEDE eingeloggte Soul
--- die soul_admin.json (per-Soul Master-Key + Admin-Token) und api_context.json
--- (Vault-Key, Permissions) JEDER ANDEREN Soul auf demselben Node löschen —
--- der Body-Parameter soul_id wurde bis hierhin gegen nichts geprüft. gate_auth.lua
--- speichert die Bindung bereits unter "gs:<token>" (dieselbe, die vault_auth.lua
--- für den Single-Hoster-Fall nutzt) — hier bisher komplett ignoriert. Nach dem
--- Reset könnte ein Angreifer sich zudem selbst einen Cert für die soul_id
--- ausstellen lassen (soul_cert.lua verlangt ohne api_context.json keinen proof
--- mehr) — praktisch ein Account-Takeover-Weg für eine fremde Soul.
+-- Gate-Soul-Binding: WENN die Gate-Session an eine soul_id gebunden ist, muss
+-- sie zu GENAU dieser soul_id gehören. Ohne diesen Check konnte auf einem
+-- Multi-Hoster-Node JEDE eingeloggte Soul die soul_admin.json (per-Soul
+-- Master-Key + Admin-Token) und api_context.json (Vault-Key, Permissions)
+-- JEDER ANDEREN Soul auf demselben Node löschen — der Body-Parameter soul_id
+-- wurde bis hierhin gegen nichts geprüft. gate_auth.lua speichert die Bindung
+-- bereits unter "gs:<token>" (dieselbe, die vault_auth.lua für den Single-
+-- Hoster-Fall nutzt) — hier bisher komplett ignoriert. Nach dem Reset könnte
+-- ein Angreifer sich zudem selbst einen Cert für die soul_id ausstellen lassen
+-- (soul_cert.lua verlangt ohne api_context.json keinen proof mehr) —
+-- praktisch ein Account-Takeover-Weg für eine fremde Soul.
+--
+-- KEINE Bindung (bound == nil) ist der legitime, unveränderte Ursprungsfall:
+-- gate_auth.lua setzt "gs:<token>" bewusst NICHT beim Invite-Token-Login
+-- (Neuzugang/Import auf einem Multi-Hoster-Node, noch keine lokale Soul
+-- gebunden — siehe dortiger Kommentar "kein gs:-Eintrag, Neuzugang kann Soul
+-- registrieren"). Genau dieser Pfad ist index.vue's "Login with Soul" ->
+-- invalid_proof -> Recovery-Button-Flow (handleResetRegistration), den es
+-- weiterhin geben muss. Nur ein VORHANDENER, aber ABWEICHENDER Bindungswert
+-- ist der eigentliche Missbrauchsfall und wird abgelehnt.
 if sessions then
   local bound = sessions:get("gs:" .. gate_token)
-  if not bound or bound ~= soul_id then
+  if bound and bound ~= soul_id then
     ngx.status = 403
     ngx.say('{"error":"soul_mismatch","message":"Die Gate-Session gehört nicht zu dieser soul_id."}')
     return
