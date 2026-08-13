@@ -153,6 +153,7 @@ server {
   location = /api/soul-sign-session {
     limit_except POST { deny all; }
     limit_req zone=chat burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/soul_sign_session.lua;
   }

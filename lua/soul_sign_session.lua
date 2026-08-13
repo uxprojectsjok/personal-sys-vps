@@ -43,6 +43,19 @@ or type(date) ~= "string" or #date < 1 then
   return
 end
 
+-- Ohne diese Prüfung konnte JEDER unauthentifiziert eine gültige HMAC-
+-- Signatur für BELIEBIGE soul_id/content_hash/date-Kombinationen anfordern —
+-- ein Signier-Orakel mit dem Node-weiten SOUL_MASTER_KEY. access_by_lua_file
+-- soul_auth.lua (siehe vhost.conf.template) setzt ngx.ctx.soul_id bereits aus
+-- dem geprüften Bearer-Cert; hier nur noch sicherstellen, dass eine Soul sich
+-- nicht für eine ANDERE soul_id signieren lassen kann.
+if soul_id ~= ngx.ctx.soul_id then
+  ngx.status = 403
+  ngx.header["Content-Type"] = "application/json"
+  ngx.say('{"error":"soul_mismatch"}')
+  return
+end
+
 -- HMAC-SHA256: Nachricht = soul_id:date:content_hash (Reihenfolge unveränderlich)
 local message = soul_id .. ":" .. date .. ":" .. content_hash
 
