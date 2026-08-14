@@ -248,6 +248,16 @@ for _SOUL_DIR in /var/lib/sys/souls/*/; do
     _APP_DIR="${_SOUL_DIR}vault_shared/apps/${_APP}"
     if [ ! -f "${_APP_DIR}/index.html" ]; then
       mkdir -p "$_APP_DIR"
+      # mkdir -p above may have just created vault_shared/apps/ itself (root-
+      # owned, this script runs as root) if it didn't already exist — the
+      # chown -R below only fixes $_APP_DIR and its own contents, never the
+      # apps/ parent. Left root-owned, www-data (the OpenResty worker that
+      # handles app uploads via /api/vault/apps, see api_serve.lua) can list
+      # existing apps but can never mkdir a NEW one in it — every future
+      # upload fails with write_failed on the app's first file. Found live
+      # (2026-08-14): a soul's apps/ was root:root while its two subfolders
+      # were correctly www-data-owned, exactly this sequence.
+      chown www-data:www-data "${_SOUL_DIR}vault_shared/apps"
       cp "$SCRIPT_DIR/shared/apps/${_APP}/"* "$_APP_DIR/"
       chown -R www-data:www-data "$_APP_DIR"
       info "  ${_APP} installed for $(basename "$_SOUL_DIR")"
