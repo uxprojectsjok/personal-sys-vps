@@ -1552,6 +1552,27 @@ server {
     content_by_lua_file /etc/openresty/lua/api_serve.lua;
   }
 
+  # ── MCP Apps Upload (POST) – braucht einen größeren client_body_buffer_size ──
+  # Ohne diesen eigenen Block landete /api/vault/apps im generischen
+  # /api/vault/-Catch-all unten, ohne client_body_buffer_size-Override — Nginx-
+  # Default dafür ist nur 8K auf x86-64. Ein base64-Upload-Payload überschreitet
+  # das schon bei winzigen Apps (4 kleine Dateien ≈ 11,6 KB JSON, live gemessen
+  # 2026-08-14). Über dem Buffer wird der Body in eine Temp-Datei gespillt,
+  # ngx.req.get_body_data() liefert dann nil, api_serve.lua fällt auf
+  # raw = "{}" zurück → payload.app_name ist nil → "invalid_app_name", obwohl
+  # der eingegebene Name selbst gültig war (das eigentliche Symptom, das den
+  # Bug aufgedeckt hat). Matcht den internen 5-MB-Gesamtgrößen-Cap aus
+  # api_serve.lua ("> 5 * 1024 * 1024").
+  location = /api/vault/apps {
+    limit_req zone=chat burst=30 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    client_max_body_size 5M;
+    client_body_buffer_size 5M;
+    content_by_lua_file /etc/openresty/lua/api_serve.lua;
+  }
+
   # ── Vault-Dateien servieren (GET) – soul-cert ODER webhook-token ─────────────
   # /api/vault/manifest, /api/vault/audio, /api/vault/video, /api/vault/images, /api/vault/context
   # Kein ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) haben Vorrang.

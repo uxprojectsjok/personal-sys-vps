@@ -8,9 +8,10 @@ Interactive iframe UIs served alongside MCP tools (`@modelcontextprotocol/ext-ap
 
 Own apps (`soul_apps.mjs`) and apps from wired souls (`wired_apps.mjs`) both work end-to-end, including the full interactive surface — not just static rendering. Confirmed live against a purpose-built experiment app (`interactive-test`, see below): a click inside the iframe reached a real MCP tool call, changed persistent server state, and silently surfaced in the model's next turn without the user typing anything — verified with server-side evidence (a counter in `api_context.json`), not just "the UI didn't show an error."
 
-Two open questions, not yet resolved:
-- Whether ChatGPT reliably honors the `_meta.ui.csp` domain hints the way it's supposed to, or whether an observed `Failed to fetch dynamically imported module` error will recur (see "Known host quirks" below).
+One open question, not yet resolved:
 - `wired_apps.mjs`'s interactive path (`callServerTool`/`updateModelContext`/`sendMessage` through a cross-node, Gatekeeper-proxied app) hasn't been experimentally confirmed yet — only read-only wired apps (`show-social-chat`) have.
+
+An observed `Failed to fetch dynamically imported module` error (see "Lesson from live testing" below) turned out to have a mundane, confirmed, already-fixed server-side cause on the node where it was found — not a ChatGPT-side CSP quirk as first suspected. See "Two real infra bugs, worth checking on your own node" below.
 
 ---
 
@@ -101,11 +102,25 @@ The fix, and the template going forward for any app doing real interactive work 
 1. Attach **all** button/event listeners synchronously, before touching the SDK at all — local-only functionality then survives total SDK failure.
 2. Load the SDK via **dynamic** `import()`, wrapped in try/catch, with the outcome (`loading…` / `imported ✓` / `import failed — {message}`) written to a visible status line — failures become diagnosable instead of silently indistinguishable from "nothing was clicked."
 
-One observed failure this way: `Failed to fetch dynamically imported module: https://{your-domain}/apps/_sdk/app.js` in ChatGPT, on a session where the server itself was independently confirmed fully healthy (`curl` from the server: `HTTP 200`, correct size, correct `Access-Control-Allow-Origin`/`Cross-Origin-Resource-Policy` headers). A retry (new session) succeeded — SDK reported connected, and all interaction mechanisms worked without error, later confirmed via server-side state. Whether this was a one-off sandbox-startup hiccup or an intermittent CSP/network issue on ChatGPT's side is still open — worth re-testing if it recurs.
+One observed failure this way: `Failed to fetch dynamically imported module: https://{your-domain}/apps/_sdk/app.js` in ChatGPT, on a session where the server itself was independently confirmed fully healthy (`curl` from the server: `HTTP 200`, correct size, correct `Access-Control-Allow-Origin`/`Cross-Origin-Resource-Policy` headers). A retry (new session) succeeded — SDK reported connected, and all interaction mechanisms worked without error, later confirmed via server-side state. At the time this looked like it might be an intermittent CSP/network issue on ChatGPT's side — it wasn't. See below: the real cause was a node-local OpenResty permission bug.
 
 ### Zero-network host-bridge check
 
 Also worth adding to an interactive test app: a synchronous check for `window.openai` / `window.claude` / `window.mcp` before any fetch happens at all. Purpose: if a host injects its own bridge object natively (the way OpenAI's own, non-MCP Apps SDK convention does via `window.openai`), that path wouldn't depend on successfully fetching our hosted SDK bundle at all — a potential fallback if the dynamic-import route keeps failing intermittently on a given host. Not yet observed to return anything on any host tested so far.
+
+---
+
+## Two real infra bugs, worth checking on your own node
+
+Neither of these is specific to any MCP host — both are OpenResty configuration/ownership issues that can exist on any SYS node, found by chasing down symptoms that first looked like host quirks. If you hit similar intermittent failures, check these first before suspecting the MCP host.
+
+### `proxy_temp/` root-owned — explains the "Failed to fetch" error above
+
+OpenResty's `proxy_temp/0` through `/9` (under its install prefix, e.g. `/usr/local/openresty/nginx/proxy_temp/`) need to be owned by the same user the worker processes run as (typically `www-data`) — check `user` in `nginx.conf` against `ps aux | grep "nginx: worker"`. If they're root-owned instead (can happen after certain install/upgrade paths), any proxied response large enough to need disk buffering can intermittently fail with `open() ".../proxy_temp/N/00/..." failed (13: Permission denied)`, visible in `error.log`. `/apps/_sdk/app.js` (337 KB) is exactly the kind of response that triggers this. This is a far more likely explanation for a `Failed to fetch dynamically imported module` error than any CSP/host-side behavior — the request may never have reliably reached the client. Fix: `chown -R www-data:www-data proxy_temp/` (adjust user/path to your setup).
+
+### `client_body_buffer_size` default (8K) breaks app uploads for anything but the tiniest app
+
+The Vault UI's "upload an app" flow (`POST /api/vault/apps`, `apps.vue`) sends the whole folder as one JSON body — file paths + base64 content. OpenResty's default `client_body_buffer_size` is 8K on x86-64, and by default no location block overrides it for `/api/vault/apps` specifically — it falls through to the generic `/api/vault/` catch-all, which also doesn't set one. A **4-file, ~8.5 KB-raw** test app already produces an ~11.6 KB JSON payload, comfortably over that limit. Once the body exceeds the buffer, OpenResty spills it to a temp file and `ngx.req.get_body_data()` returns `nil`; `api_serve.lua` falls back to `raw = "{}"`, so `payload.app_name` disappears and the request hits the exact same `invalid_app_name` branch as an actually-malformed name — a confusing error that has nothing to do with the name itself. Any real multi-file app (even a few small CSS/JS files) would trivially hit this. Fix: add a dedicated `location = /api/vault/apps { client_max_body_size 5M; client_body_buffer_size 5M; ... }` (matching the 5 MB total-content cap `api_serve.lua` already enforces internally) to your vhost config — see `server/openresty/vhost.conf.template` in this repo, which already has this fix.
 
 ---
 
