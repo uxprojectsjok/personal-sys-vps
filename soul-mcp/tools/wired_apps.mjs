@@ -18,8 +18,19 @@
 import { z } from 'zod';
 import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { injectBaseTag } from '../lib/app_html.mjs';
+import { setWiredAppsForSoul } from '../lib/wired_apps_cache.mjs';
 
 const BASE_URL = process.env.BASE_URL;
+
+// Geteilt mit gatekeeper_proxy.mjs (wire_search-Anreicherung) — dieselbe
+// Namensbildung wie registerWiredApp() unten, an EINER Stelle, damit ein vom
+// erweiterten wire_search zurückgegebener tool_name garantiert mit dem
+// tatsächlich registrierten Tool übereinstimmt statt aus einer zweiten,
+// potenziell abweichenden Kopie der Logik zu stammen.
+export function wiredAppToolName(soulId, appName) {
+  const shortId = soulId.slice(0, 8);
+  return `wired_app_${shortId}_${appName}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
 
 function lookup(wiredMap, soulId, permKey) {
   const entry = wiredMap[soulId];
@@ -47,8 +58,7 @@ function errResult(msg) {
 }
 
 function registerWiredApp(server, soulId, appName, base, title, description, rawHtml) {
-  const shortId     = soulId.slice(0, 8);
-  const toolName    = `wired_app_${shortId}_${appName}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const toolName    = wiredAppToolName(soulId, appName);
   const resourceUri = `ui://wired/${soulId}/${appName}/index.html`;
   // base = Herkunfts-Node der verdrahteten Soul (nicht der eigene BASE_URL
   // des Gatekeepers) — dort liegen style.css/app.js dieser App wirklich.
@@ -98,8 +108,13 @@ function registerWiredApp(server, soulId, appName, base, title, description, raw
 // /api/vault/apps abfragen und alle gefundenen Apps sofort registrieren.
 // Ein Fehler bei einer Soul (nicht erreichbar, keine Apps, ...) darf die
 // anderen nie beeinträchtigen.
+//
+// Rückgabe (appsBySoul) wird von server.mjs an registerWireSearch()
+// durchgereicht (wire_search-Anreicherung mit App-Metadaten, siehe
+// gatekeeper_proxy.mjs) — zusätzlich zur wired_list_apps-Textzusammenfassung
+// unten der eigentliche Zweck dieses Rückgabewerts.
 export async function registerWiredApps(server, wiredMap) {
-  const appsBySoul = {}; // für wired_list_apps' Text-Zusammenfassung
+  const appsBySoul = {}; // für wired_list_apps' Textzusammenfassung + wire_search-Anreicherung
 
   await Promise.all(Object.entries(wiredMap).map(async ([soulId, entry]) => {
     if (!entry.permissions?.context_files) return;
@@ -108,6 +123,10 @@ export async function registerWiredApps(server, wiredMap) {
       const data = await fetchJson(base, '/api/vault/apps', entry.token);
       const apps = Array.isArray(data.apps) ? data.apps : [];
       appsBySoul[soulId] = apps;
+      // Prozessweiter Cache für /mcp/discover/search (server.mjs) — siehe
+      // lib/wired_apps_cache.mjs-Kopfkommentar: federated Suchanfragen lesen
+      // von hier statt live nachzufragen.
+      setWiredAppsForSoul(soulId, apps);
       await Promise.all(apps.map(async (app) => {
         try {
           const detail = await fetchJson(base, `/api/vault/apps/${encodeURIComponent(app.name)}`, entry.token);
@@ -146,4 +165,6 @@ export async function registerWiredApps(server, wiredMap) {
       return { content: [{ type: 'text', text: `Apps von ${soul_id}:\n${text}\n\nJede App ist als Tool "wired_app_..." verfügbar.` }] };
     }
   );
+
+  return appsBySoul;
 }

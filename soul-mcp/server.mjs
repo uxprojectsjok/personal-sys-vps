@@ -32,6 +32,7 @@ import { createServiceToken, verifyServiceToken } from './lib/api.mjs';
 import { resolveGatekeeperPeers } from './lib/gatekeeper_peers.mjs';
 import { loadFederated, saveFederated, authenticateFederatedCaller } from './lib/federated_gatekeepers.mjs';
 import { registerGatekeeperTools, registerWireSearch, fetchApi, putApi, postApi } from './tools/gatekeeper_proxy.mjs';
+import { getWiredAppsForSoul } from './lib/wired_apps_cache.mjs';
 import { registerPrompts } from './prompts/index.mjs';
 import { oauthRouter } from './oauth.mjs';
 import { loadCtx } from './lib/vault_fs.mjs';
@@ -539,11 +540,12 @@ async function handleMcpDiscover(req, res) {
   registerTools(server, token, gkSoulId);
   await registerSoulApps(server, gkSoulId);
   const { wired, fed } = await registerConnectionProxyTools(server, gkSoulId, token);
+  let wiredApps = {};
   if (Object.keys(wired).length > 0) {
-    await registerWiredApps(server, wired);
+    wiredApps = await registerWiredApps(server, wired);
   }
   if (Object.keys(wired).length > 0 || Object.keys(fed).length > 0) {
-    registerWireSearch(server, gkSoulId, wired, fed);
+    registerWireSearch(server, gkSoulId, wired, fed, wiredApps);
   }
 
   const transport = new StreamableHTTPServerTransport({
@@ -1521,12 +1523,34 @@ app.get('/mcp/discover/search', async (req, res) => {
   // werden auf eine kanonische Verbindung reduziert.
   const { wired } = await loadAcceptedWired(gatekeeper_soul_id);
   const needle = (q || '').toLowerCase();
+  // App-Daten kommen aus dem prozessweiten Cache (lib/wired_apps_cache.mjs),
+  // NICHT aus einem Live-Fetch pro Suchanfrage — siehe dortiger Kopfkommentar.
+  // Kalt (noch nie über /mcp/discover verbunden seit Prozessstart): Soul
+  // taucht trotzdem auf, nur ohne Apps, kein Fehler.
+  function matches(name, apps) {
+    if (!needle) return true;
+    if ((name || '').toLowerCase().includes(needle)) return true;
+    return apps.some(a =>
+      (a.name || '').toLowerCase().includes(needle) ||
+      (a.title || '').toLowerCase().includes(needle) ||
+      (a.description || '').toLowerCase().includes(needle)
+    );
+  }
   const list = Object.values(wired)
-    .filter((e) => !needle || (e.name || '').toLowerCase().includes(needle))
-    .map((e) => ({
+    .map((e) => ({ e, apps: getWiredAppsForSoul(e.soul_id) }))
+    .filter(({ e, apps }) => matches(e.name, apps))
+    .map(({ e, apps }) => ({
       soul_id: e.soul_id, name: e.name, permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
       // Immer der echte Node, nie null.
       node_url: e.node_url || BASE_URL,
+      // Kein tool_name hier (anders als die lokale wire_search-Anreicherung in
+      // gatekeeper_proxy.mjs): registerWiredApps() läuft nur für DIREKT
+      // verdrahtete Souls, nie für föderierte — auf der anfragenden Seite
+      // existiert für diese Apps (noch) kein registriertes wired_app_*-Tool,
+      // ein tool_name hier wäre eine aufrufbar wirkende Information ohne
+      // tatsächliche Aufrufmöglichkeit. Rein informativ, bis föderierte
+      // App-Invocation eine eigene, separate Erweiterung wird.
+      apps: apps.map(a => ({ name: a.name, title: a.title || a.name, description: a.description || null })),
     }));
   res.json({ results: list });
 });

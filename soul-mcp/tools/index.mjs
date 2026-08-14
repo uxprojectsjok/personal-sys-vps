@@ -277,4 +277,4 @@ export function registerTrustRequestTools(server, requesterSoulId, targetSoulId,
 }
 
 // MCP Apps von gewirten Souls (Gatekeeper-Pfad) — siehe wired_apps.mjs.
-export { registerWiredApps } from './wired_apps.mjs';
+export { registerWiredApps, wiredAppToolName } from './wired_apps.mjs';

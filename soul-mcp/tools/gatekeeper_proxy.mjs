@@ -17,6 +17,7 @@ import { parseSocialMessages, appendToBlock, buildMsgEntry, SOCIAL_START, SOCIAL
 import { loadCtx } from '../lib/vault_fs.mjs';
 import { loadFederated } from '../lib/federated_gatekeepers.mjs';
 import { withWriteLock, writeLockKey } from '../lib/write_lock.mjs';
+import { wiredAppToolName } from './wired_apps.mjs';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -780,15 +781,59 @@ export function registerGatekeeperTools(server, wiredMap, callerToken = null, wi
 // it's still gated the same way (registered only in handleMcpDiscover,
 // requires the Gatekeeper's own cert/token) -- relaxing that is a deliberate,
 // separate decision, not something to do incidentally alongside another fix.
-export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed) {
+// wiredApps = appsBySoul-Rückgabe von registerWiredApps() (wired_apps.mjs),
+// für DIESE Verbindung frisch geholt — enthält pro soul_id die Liste ihrer
+// Apps ({name, title, description}). Macht wire_search zusätzlich zur reinen
+// Soul-Discovery auch zur App-/Capability-Discovery: Discovery → App →
+// Invocation in einem Aufruf, ohne dass der Agent den App-Namen vorher
+// kennen muss (siehe Datei-Kopfkommentar-Diskussion, 2026-08-14).
+export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed, wiredApps = {}) {
+  // Baut die App-Liste eines Ergebnis-Eintrags: name/title/description direkt
+  // aus appsBySoul, tool_name über denselben Namensbildungs-Code wie die
+  // tatsächliche Registrierung (wiredAppToolName, aus wired_apps.mjs importiert)
+  // — kein zweites, potenziell abweichendes Namensschema.
+  function appsFor(soulId, apps) {
+    return (apps || []).map(a => ({
+      name: a.name,
+      title: a.title || a.name,
+      description: a.description || null,
+      tool_name: wiredAppToolName(soulId, a.name),
+    }));
+  }
+
+  // Substring-Match nicht nur gegen den Soul-Namen, sondern auch gegen Namen/
+  // Titel/Beschreibung ihrer Apps — sonst würde z.B. "Bild analysieren" eine
+  // Soul namens "VisionAgent" mit App-Beschreibung "analysiert Bilder..."
+  // nie finden, nur weil der Soul-NAME selbst nicht matcht. Bleibt trotzdem
+  // reiner Substring-Match, keine echte Semantik (siehe Tool-Beschreibung
+  // unten) — für unscharfe/semantische Anfragen: leeres q (= alles) aufrufen
+  // und selbst über die zurückgegebenen Beschreibungen urteilen, das kann
+  // das aufrufende Modell ohnehin besser als ein serverseitiger Substring-Match.
+  function matches(needle, name, apps) {
+    if (!needle) return true;
+    if ((name || '').toLowerCase().includes(needle)) return true;
+    return (apps || []).some(a =>
+      (a.name || '').toLowerCase().includes(needle) ||
+      (a.title || '').toLowerCase().includes(needle) ||
+      (a.description || '').toLowerCase().includes(needle)
+    );
+  }
+
   server.tool(
     'wire_search',
-    'Durchsucht eigene verdrahtete Souls UND (falls vorhanden) föderierte Gatekeeper nach Namen. Leeres q = alle.',
-    { q: z.string().optional().describe('Suchbegriff gegen den Namen — leer für alle') },
+    [
+      'Durchsucht eigene verdrahtete Souls UND (falls vorhanden) föderierte Gatekeeper nach',
+      'Namen sowie Namen/Titel/Beschreibung ihrer veröffentlichten MCP Apps. Leeres q = alle.',
+      'Jeder Treffer listet seine Apps inkl. tool_name — direkt aufrufbar, ohne vorher',
+      'wired_list_apps separat zu bemühen. Reiner Substring-Match, keine echte Semantik:',
+      'für unscharfe Anfragen ("welche Soul kann X?") lieber mit leerem q alles holen und',
+      'selbst über die Beschreibungen urteilen, statt auf Treffer im Substring-Sinn zu hoffen.',
+    ].join(' '),
+    { q: z.string().optional().describe('Suchbegriff gegen Soul-Name UND App-Name/Titel/Beschreibung — leer für alle') },
     async ({ q } = {}) => {
       const needle = (q || '').toLowerCase();
       const local = Object.entries(wiredMap)
-        .filter(([, e]) => !needle || (e.name || '').toLowerCase().includes(needle))
+        .filter(([soul_id, e]) => matches(needle, e.name, wiredApps[soul_id]))
         .map(([soul_id, e]) => ({
           soul_id, name: e.name,
           permissions: Object.keys(e.permissions || {}).filter(k => e.permissions[k]),
@@ -798,6 +843,7 @@ export function registerWireSearch(server, gatekeeperSoulId, wiredMap, fed) {
           // Gatekeeper verdrahtet". node_url zeigt separat den echten Home-Node,
           // immer als echter Wert (same-node = eigener BASE_URL, nie null).
           node_url: e.node_url || BASE_URL,
+          apps: appsFor(soul_id, wiredApps[soul_id]),
           via: 'local',
         }));
 
