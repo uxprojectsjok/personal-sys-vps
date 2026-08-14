@@ -1387,7 +1387,19 @@ server {
   }
 
   location = /api/verify/complete {
-    limit_except POST { deny all; }
+    # CORS: an app running MCP App (e.g. vault_shared/apps/) that calls this
+    # directly from a foreign sandbox origin (e.g. ChatGPT's
+    # *.web-sandbox.oaiusercontent.com) needs these — same-origin callers
+    # (app/pages/verify.vue) are unaffected.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
+    # limit_except blocks at a phase that runs BEFORE the "if" above — its
+    # return 204 is never reached if OPTIONS is missing here (confirmed live:
+    # even the pre-existing /api/peer/verify with the same pattern returned
+    # 403 on OPTIONS, never actually cross-origin-tested before).
+    limit_except POST OPTIONS { deny all; }
     limit_req zone=auth burst=5 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
@@ -1405,7 +1417,12 @@ server {
   }
 
   location = /api/verify/face-check {
-    limit_except POST { deny all; }
+    # CORS: see comment on /api/verify/complete above.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST OPTIONS { deny all; }
     limit_req zone=auth burst=3 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
@@ -1415,7 +1432,12 @@ server {
   }
 
   location = /api/verify/voice-hq-check {
-    limit_except POST { deny all; }
+    # CORS: see comment on /api/verify/complete above.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST OPTIONS { deny all; }
     limit_req zone=auth burst=3 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
@@ -1452,7 +1474,12 @@ server {
   }
 
   location = /api/verify/status {
-    limit_except GET { deny all; }
+    # CORS: see comment on /api/verify/complete above.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except GET OPTIONS { deny all; }
     limit_req zone=api burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
@@ -1469,7 +1496,12 @@ server {
   }
 
   location = /api/verify/claim {
-    limit_except POST { deny all; }
+    # CORS: see comment on /api/verify/complete above.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "POST, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
+    limit_except POST OPTIONS { deny all; }
     limit_req zone=api burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
@@ -1493,7 +1525,11 @@ server {
     add_header Access-Control-Allow-Methods "GET, OPTIONS"         always;
     add_header Cache-Control                "no-store"             always;
     if ($request_method = OPTIONS) { return 204; }
-    limit_except GET { deny all; }
+    # Pre-existing bug, found while debugging cross-origin MCP App calls:
+    # limit_except blocks at a phase that runs BEFORE the "if" above, so
+    # OPTIONS never reached the return 204 — this location had never actually
+    # been cross-origin-tested despite looking correct.
+    limit_except GET OPTIONS { deny all; }
     limit_req zone=auth burst=5 nodelay;
     default_type application/json;
     content_by_lua_file /etc/openresty/lua/peer_verify.lua;
@@ -1578,6 +1614,14 @@ server {
   # Kein ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) haben Vorrang.
   # Statische Assets schließen /api/-Pfade bereits per negativem Lookahead aus.
   location /api/vault/ {
+    # CORS: an MCP App that reads e.g. /api/vault/audio (reference voice for
+    # voice_hq) directly needs this — same reason as /api/verify/* above.
+    # Covers /api/vault/audio/{filename} (the actual file) too, no dedicated
+    # location block for that.
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+    if ($request_method = OPTIONS) { return 204; }
     limit_req zone=chat burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;

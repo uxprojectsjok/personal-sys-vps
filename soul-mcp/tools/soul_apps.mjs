@@ -97,6 +97,16 @@ export async function registerSoulApps(server, soulId) {
         ? injectBaseTag(validation.html, `${BASE_URL}/apps/${soulId}/${appName}/`)
         : validation.html;
 
+      // Sandbox-Rechte (Kamera/Mikrofon/Geolocation/Clipboard) sind Opt-in per
+      // manifest.json — nur App-Autoren, die sie wirklich brauchen (z.B. eine
+      // Kamera-basierte Verifizierungs-App), sollen sie anfordern, nicht
+      // pauschal jede App. Erwartete Form in manifest.json (identisch zum
+      // McpUiResourcePermissions-Schema des SDK — leeres Objekt = angefordert):
+      //   "permissions": { "camera": {} }
+      const permissions = (manifest.permissions && typeof manifest.permissions === 'object')
+        ? manifest.permissions
+        : undefined;
+
       registerAppResource(
         server,
         resourceUri,
@@ -112,7 +122,7 @@ export async function registerSoulApps(server, soulId) {
           // Referenzen (u.a. der SDK-Import /apps/_sdk/app.js) gegen den
           // Sandbox-Origin statt gegen unsere Domain und schlagen fehl, noch
           // bevor App.connect() überhaupt laufen kann.
-          _meta: BASE_URL ? { ui: { csp: { resourceDomains: [BASE_URL], connectDomains: [BASE_URL], baseUriDomains: [BASE_URL] } } } : undefined,
+          _meta: BASE_URL ? { ui: { csp: { resourceDomains: [BASE_URL], connectDomains: [BASE_URL], baseUriDomains: [BASE_URL] }, ...(permissions ? { permissions } : {}) } } : undefined,
         },
         async () => ({
           contents: [{
@@ -124,7 +134,7 @@ export async function registerSoulApps(server, soulId) {
             // Registrierung — siehe registerAppResource-Doku: "content-item
             // value takes precedence". Beide Stellen zu setzen kostet nichts
             // und deckt beide Auswertungsreihenfolgen ab.
-            ...(BASE_URL ? { _meta: { ui: { csp: { resourceDomains: [BASE_URL], connectDomains: [BASE_URL], baseUriDomains: [BASE_URL] } } } } : {}),
+            ...(BASE_URL ? { _meta: { ui: { csp: { resourceDomains: [BASE_URL], connectDomains: [BASE_URL], baseUriDomains: [BASE_URL] }, ...(permissions ? { permissions } : {}) } } } : {}),
           }],
         }),
       );
