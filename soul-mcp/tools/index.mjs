@@ -97,7 +97,7 @@ export function registerTools(server, token, soulId = null) {
   soulDelete(server, token);
   bemeChat(server, token);
   bemeChatPaid(server, token); // Owner-Test-Zugang — immer verfügbar, unabhängig von amortization
-  soulMaturity(server, token);
+  soulMaturity(server, token, soulId);
   verifyHuman(server, token);
   verifyIdentity(server, token);
   soulEarnings(server, token);
@@ -132,7 +132,7 @@ export function registerTools(server, token, soulId = null) {
   healthCheck(server, token);
   foodLog(server, token);
   healthSync(server, token);
-  soulChainMetrics(server, token);
+  soulChainMetrics(server, token, soulId);
   sysTime(server);
 
   peerInbox(server, token, soulId);

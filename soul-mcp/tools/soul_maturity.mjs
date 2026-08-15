@@ -80,7 +80,7 @@ function scoreToLevel(score) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function register(server, token) {
+export function register(server, token, soulId) {
   server.tool(
     'soul_maturity',
     'Returns the real maturity level of the soul: maturity score (0–100), growth level, session count, and breakdown across 5 pillars (origin, depth, biometrics, archive, signature). Counts real growth-chain entries and scores section depth.',
@@ -149,10 +149,16 @@ export function register(server, token) {
 
         const score = Math.min(herkunft + tiefe + biometrie + archiv + signatur + netzwerk, 100);
 
-        // Chain Metrics (optional — kein Fehler wenn Endpunkt nicht erreichbar)
+        // Chain Metrics (optional — kein Fehler wenn Endpunkt nicht erreichbar).
+        // soul_id MUSS mitgeschickt werden — /api/soul/chain-metrics ist
+        // unauthentifiziert (siehe soul_chain_metrics.mjs-Kopfkommentar) und
+        // fällt ohne den Parameter auf die alphabetisch erste Soul im
+        // Verzeichnis zurück, nicht auf die aufrufende. Auf einem Multi-Soul-
+        // Node liefert das sonst stillschweigend fremde Chain-Daten.
         let chainMetrics = null;
         try {
-          chainMetrics = await getJson('/api/soul/chain-metrics', token);
+          const qs = soulId ? `?soul_id=${encodeURIComponent(soulId)}` : '';
+          chainMetrics = await getJson(`/api/soul/chain-metrics${qs}`, token);
         } catch { /* ignorieren */ }
 
         return {
