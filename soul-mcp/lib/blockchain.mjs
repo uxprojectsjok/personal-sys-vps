@@ -396,12 +396,16 @@ export async function getOnChainGenesis(soulId) {
 }
 
 /**
- * Knowledge-Blocks-Wert: gewichtete Summe der Soul-Größen aller Anchors.
- * Ältere Anchors erhalten mehr Gewicht — je länger das Wissen verankert ist, desto wertvoller.
+ * Knowledge Score: gewichtete Summe der Soul-Größen aller Anchors (in KB),
+ * NICHT die Anzahl von irgendetwas — ageWeight ist ein dimensionsloser
+ * Log-Faktor, kein Zeitmaß, das Ergebnis bleibt also "gewichtete KB", keine
+ * zusammengesetzte Einheit wie "KB·Alter" (siehe docs/spec/
+ * chain-metrics-terminology.md). Ältere Anchors erhalten mehr Gewicht — je
+ * länger das Wissen verankert ist, desto wertvoller.
  * @param {Array<{ tx?, block?, size?, ts?, genesis? }>} anchorHistory
  * @param {number} currentBlock
  */
-export function calcKnowledgeBlocks(anchorHistory, currentBlock) {
+export function calcKnowledgeScore(anchorHistory, currentBlock) {
   if (!Array.isArray(anchorHistory) || !anchorHistory.length) return 0;
   // Kalibriere Blockrate dynamisch aus Ist-Zustand
   const DEPLOY_TS = 1784716422;
@@ -457,7 +461,7 @@ export async function getChainMetrics(anchorHistory) {
   const empty = {
     anchor_count: 0, genesis_block: null, genesis_ts: null, genesis_tx: null,
     current_block: null, chain_age_blocks: 0, chain_age_days: 0,
-    chain_age_human: '—', knowledge_blocks: 0,
+    chain_age_human: '—', knowledge_score: 0,
   };
   if (!Array.isArray(anchorHistory) || !anchorHistory.length) return empty;
 
@@ -480,7 +484,7 @@ export async function getChainMetrics(anchorHistory) {
     chain_age_days:   Math.round(chainAgeDays * 10) / 10,
     chain_age_human:  formatChainAge(chainAgeDays),
     anchor_count:     anchorHistory.length,
-    knowledge_blocks: calcKnowledgeBlocks(anchorHistory, currentBlock),
+    knowledge_score:  calcKnowledgeScore(anchorHistory, currentBlock),
   };
 }
 

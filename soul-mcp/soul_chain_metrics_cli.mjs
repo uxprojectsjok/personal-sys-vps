@@ -90,7 +90,7 @@ if (!rpcOk) {
 // Backfill: Einträge die aus on-chain Daten rekonstruiert wurden haben size=0.
 // Der Blockchain-Contract speichert keine Soul-Größen. Einmalig mit aktueller
 // Vault-Größe befüllen — konservative Näherung (soul war kleiner in der Vergangenheit,
-// aber 0 ergibt knowledge_blocks=0 was noch ungenauer wäre).
+// aber 0 ergibt knowledge_score=0 was noch ungenauer wäre).
 const needsSizeBackfill = history.some(e => !e.size || e.size === 0);
 if (needsSizeBackfill) {
   try {
@@ -104,7 +104,7 @@ if (needsSizeBackfill) {
       }
       await writeFile(histPath, JSON.stringify(history, null, 2)).catch(() => {});
     }
-  } catch { /* Vault nicht zugänglich — knowledge_blocks bleibt 0 */ }
+  } catch { /* Vault nicht zugänglich — knowledge_score bleibt 0 */ }
 }
 
 try {

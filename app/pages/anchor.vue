@@ -59,13 +59,16 @@
                 </div>
                 <div class="vank-genesis-metrics">
                   <div class="vank-genesis-metric">
-                    <span class="vank-genesis-val" :key="'age-'+chainMetrics.chain_age_blocks">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
-                    <span class="vank-genesis-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
+                    <!-- days primär (semantisches Alter, live-kalibriert), Blocks als
+                    on-chain überprüfbarer Beleg im Sub-Text — siehe docs/spec/
+                    chain-metrics-terminology.md für die Begründung des Tauschs. -->
+                    <span class="vank-genesis-val" :key="'age-'+chainMetrics.chain_age_days">{{ chainMetrics.chain_age_days?.toLocaleString() }}</span>
+                    <span class="vank-genesis-unit">{{ $t('anchor.vis_days_unit') }}</span>
                     <span class="vank-genesis-label">{{ $t('anchor.chain_age_label') }}</span>
-                    <span class="vank-genesis-sub">~ {{ chainMetrics.chain_age_human }}</span>
+                    <span class="vank-genesis-sub">{{ chainMetrics.chain_age_blocks?.toLocaleString() }} {{ $t('anchor.chain_blocks_suffix') }}</span>
                   </div>
                   <div class="vank-genesis-metric">
-                    <span class="vank-genesis-val" :key="'kb-'+chainMetrics.knowledge_blocks">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                    <span class="vank-genesis-val" :key="'kb-'+chainMetrics.knowledge_score">{{ chainMetrics.knowledge_score?.toLocaleString() }}</span>
                     <span class="vank-genesis-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
                     <span class="vank-genesis-label">{{ $t('anchor.chain_knowledge_label') }}</span>
                     <span class="vank-genesis-sub">{{ $t('anchor.chain_anchors_label') }}: {{ chainMetrics.anchor_count }}</span>

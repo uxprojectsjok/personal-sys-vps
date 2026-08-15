@@ -74,14 +74,16 @@
             </div>
             <div class="rf-chain">
               <div class="rf-chain-item">
-                <span class="rf-chain-val" :key="'kb-'+chainMetrics.knowledge_blocks">{{ chainMetrics.knowledge_blocks?.toLocaleString() }}</span>
+                <span class="rf-chain-val" :key="'kb-'+chainMetrics.knowledge_score">{{ chainMetrics.knowledge_score?.toLocaleString() }}</span>
                 <span class="rf-chain-unit">{{ $t('anchor.chain_knowledge_suffix') }}</span>
                 <span class="rf-chain-label">{{ $t('anchor.chain_knowledge_label') }}</span>
               </div>
+              <!-- days primär, Blocks als on-chain Beleg im Label — siehe
+              docs/spec/chain-metrics-terminology.md -->
               <div class="rf-chain-item">
-                <span class="rf-chain-val" :key="'age-'+chainMetrics.chain_age_blocks">{{ chainMetrics.chain_age_blocks?.toLocaleString() }}</span>
-                <span class="rf-chain-unit">{{ $t('anchor.chain_blocks_suffix') }}</span>
-                <span class="rf-chain-label">{{ $t('anchor.chain_age_label') }} · {{ chainMetrics.chain_age_human }}</span>
+                <span class="rf-chain-val" :key="'age-'+chainMetrics.chain_age_days">{{ chainMetrics.chain_age_days?.toLocaleString() }}</span>
+                <span class="rf-chain-unit">{{ $t('anchor.vis_days_unit') }}</span>
+                <span class="rf-chain-label">{{ $t('anchor.chain_age_label') }} · {{ chainMetrics.chain_age_blocks?.toLocaleString() }} {{ $t('anchor.chain_blocks_suffix') }}</span>
               </div>
               <div class="rf-chain-item">
                 <span class="rf-chain-val">{{ chainMetrics.anchor_count }}</span>

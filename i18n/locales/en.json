@@ -1324,7 +1324,7 @@
     "chain_genesis_badge": "Genesis",
     "chain_age_label": "Chain Age",
     "chain_blocks_suffix": "blocks",
-    "chain_knowledge_label": "Knowledge",
+    "chain_knowledge_label": "Knowledge Score",
     "chain_knowledge_suffix": "KB+",
     "chain_anchors_label": "Anchors",
     "chain_since_label": "On Polygon since",

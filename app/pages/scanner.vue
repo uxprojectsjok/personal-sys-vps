@@ -147,7 +147,7 @@
                 <td class="c-genesis">
                   <div class="genesis-stack" v-if="soul.chain_metrics?.anchor_count > 0">
                     <span class="genesis-since">{{ t.genesisSince }} {{ formatGenesisDate(soul.chain_metrics.genesis_ts) }}</span>
-                    <span class="genesis-sub">~{{ soul.chain_metrics.chain_age_human }} · {{ soul.chain_metrics.knowledge_blocks?.toLocaleString() }} KB+</span>
+                    <span class="genesis-sub">~{{ soul.chain_metrics.chain_age_human }} · {{ soul.chain_metrics.knowledge_score?.toLocaleString() }} KB+</span>
                   </div>
                   <span class="dim" v-else>—</span>
                 </td>
