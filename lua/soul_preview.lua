@@ -21,7 +21,10 @@ local EU_CONSUMER_RIGHTS = eu_consumer_rights()
 
 ngx.header["Content-Type"]                = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
-ngx.header["Access-Control-Allow-Origin"] = "*"
+-- Access-Control-Allow-Origin bewusst NICHT hier gesetzt — der Vhost-
+-- Location-Block (add_header ... always;) deckt das bereits ab; ein
+-- zusätzliches Setzen hier führte zu einem doppelten Header ("*, *"), den
+-- Browser als ungültig ablehnen (siehe soul_chain_metrics.lua).
 
 if ngx.req.get_method() ~= "GET" then
   ngx.status = 405; ngx.say('{"error":"method_not_allowed"}'); return

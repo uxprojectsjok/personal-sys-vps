@@ -10,7 +10,14 @@ local CLI_SCRIPT = "/opt/sys/soul-mcp/soul_chain_metrics_cli.mjs"
 
 ngx.header["Content-Type"]                = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
-ngx.header["Access-Control-Allow-Origin"] = "*"
+-- Access-Control-Allow-Origin bewusst NICHT hier gesetzt — der Vhost-
+-- Location-Block (add_header ... always;) deckt das bereits ab, auch für
+-- die per "if ($request_method = OPTIONS) { return 204; }" kurzgeschlossene
+-- Preflight-Antwort, die diese Datei nie erreicht. Ein zusätzliches Setzen
+-- hier führte zu einem doppelten Access-Control-Allow-Origin-Header ("*, *"),
+-- den Browser als ungültig ablehnen (Cross-Origin-Fetch schlägt fehl, siehe
+-- 2026-08-16-Debugging: fab.uxprojects-jok.com/api/soul/chain-metrics von
+-- agency.uxprojects-jok.com aus aufgerufen).
 
 if ngx.req.get_method() ~= "GET" then
   ngx.status = 405; ngx.say('{"error":"method_not_allowed"}'); return

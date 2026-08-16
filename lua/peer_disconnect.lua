@@ -15,9 +15,10 @@ local SOULS_DIR = "/var/lib/sys/souls/"
 
 ngx.header["Content-Type"]                 = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
-ngx.header["Access-Control-Allow-Origin"] = "*"
-ngx.header["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-ngx.header["Access-Control-Allow-Headers"] = "Content-Type"
+-- Access-Control-Allow-{Origin,Methods,Headers} bewusst NICHT hier gesetzt —
+-- der Vhost-Location-Block (add_header ... always;) deckt das bereits ab;
+-- ein zusätzliches Setzen hier führte zu doppelten Headern ("*, *"), die
+-- Browser als ungültig ablehnen (siehe soul_chain_metrics.lua).
 
 if ngx.req.get_method() == "OPTIONS" then
   ngx.status = 204; return

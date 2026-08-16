@@ -7,9 +7,10 @@ local CONNECT_DIR = "/var/lib/sys/connect/"
 
 ngx.header["Content-Type"]                 = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
-ngx.header["Access-Control-Allow-Origin"] = "*"
-ngx.header["Access-Control-Allow-Headers"] = "Content-Type"
-ngx.header["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+-- Access-Control-Allow-{Origin,Headers,Methods} bewusst NICHT hier gesetzt —
+-- der Vhost-Location-Block (add_header ... always;) deckt das bereits ab;
+-- ein zusätzliches Setzen hier führte zu doppelten Headern ("*, *"), die
+-- Browser als ungültig ablehnen (siehe soul_chain_metrics.lua).
 
 if ngx.req.get_method() == "OPTIONS" then
   ngx.status = 204; return

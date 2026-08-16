@@ -40,7 +40,10 @@ end
 
 ngx.header["Content-Type"]                = "application/json"
 ngx.header["Cache-Control"]               = "no-store"
-ngx.header["Access-Control-Allow-Origin"] = "*"
+-- Access-Control-Allow-Origin bewusst NICHT hier gesetzt — der Vhost-
+-- Location-Block (add_header ... always;) deckt das bereits ab; ein
+-- zusätzliches Setzen hier führte zu einem doppelten Header ("*, *"), den
+-- Browser als ungültig ablehnen (siehe soul_chain_metrics.lua).
 
 if not data then
   ngx.status = 200
