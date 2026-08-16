@@ -218,7 +218,7 @@
 
                 <td class="c-access">
                   <button
-                    v-if="soul.mcp_endpoint || soul.wallet || soul.wallet_available"
+                    v-if="soul.monetization_enabled !== false && (soul.wallet_available || soul.paypal_enabled)"
                     class="access-btn"
                     :class="{ 'access-btn--warn': soul.chain_verified === 'fail' || soul.chain_verified === 'error' }"
                     @click="openModal(soul)"

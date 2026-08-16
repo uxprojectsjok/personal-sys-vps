@@ -3181,7 +3181,27 @@ async function pushSoulNetworkLines(lines, soulId) {
 
 // Restliche Soul-Felder (Preis/Wallet/Tools/Kontakt/PayPal/Endpoint/Modell) --
 // identisch für die node-weite Liste und die Soul-spezifische Einzelansicht.
-async function pushSoulFieldLines(lines, s) {
+// Gleiche Default-true-Semantik wie lua/get_config.lua:106-109 und
+// lua/node_status.lua:15-21 (Altinstallationen ohne Datei = enabled) — nur
+// bisher nirgends im Node-Prozess verfügbar, da /llms.txt und /api/soul/scan
+// komplett hier in server.mjs erzeugt werden, nicht in Lua. Ohne diesen Check
+// zeigten beide Endpoints Preis-/Zahlungs-/Zugangsinfos unabhängig vom
+// Marketplace-Toggle in den Settings (siehe SettingsModal.vue) — der Toggle
+// wirkte sich nur auf die lokalen Zahlungs-API-Routen aus (soul_pay_x402.lua
+// etc.), nie auf das, was llms.txt/scan nach außen zeigen.
+async function isMonetizationEnabled() {
+  try {
+    const raw = await readFile('/var/lib/sys/config/monetization_enabled', 'utf8');
+    return raw.trim() !== 'false';
+  } catch { return true; }
+}
+
+// monetizationOn: siehe isMonetizationEnabled() -- wenn false, werden alle
+// Marketplace/Paid-Agent-Felder ausgelassen (Preis/Wallet/Tools/Kontakt/
+// PayPal). Soul Transfer (Eigentumsübertragung) ist davon bewusst
+// ausgenommen -- eigenständiges Feature, kein Teil des Marketplace/Agent-
+// Sandbox-Zugangs (siehe marketplace.private_node_disabled-Hinweistext).
+async function pushSoulFieldLines(lines, s, monetizationOn) {
   const a = s.amortization ?? {};
   const base = parseFloat(a.price_usdc) || 0;
   const dynamic = a.dynamic_pricing === true;
@@ -3191,22 +3211,24 @@ async function pushSoulFieldLines(lines, s) {
   // Abschnitt pro Verbindung, hier für die Soul selbst.
   const selfActivity = activitySuffix(s).trim();
   if (selfActivity) lines.push(`- **Activity:** ${selfActivity.slice(1, -1)}`);
-  lines.push(`- **Price:** ${base} USDC per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
-  lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
-  if (a.wallet) {
-    lines.push(EU_CONSUMER_RIGHTS
-      ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
-      : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
-  }
-  if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
-    lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
-  }
-  if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
-  if (a.paypal_enabled) {
-    const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-    lines.push(EU_CONSUMER_RIGHTS
-      ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
-      : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
+  if (monetizationOn) {
+    lines.push(`- **Price:** ${base} USDC per request${dynamic ? ' (dynamic — call /api/soul/preview for live quote)' : ''}`);
+    lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
+    if (a.wallet) {
+      lines.push(EU_CONSUMER_RIGHTS
+        ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
+        : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
+    }
+    if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
+      lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
+    }
+    if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
+    if (a.paypal_enabled) {
+      const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
+      lines.push(EU_CONSUMER_RIGHTS
+        ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
+        : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
+    }
   }
   if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
   try {
@@ -3238,8 +3260,13 @@ async function pushSoulFieldLines(lines, s) {
 // llms.txt, nur dass die Soul-spezifische Fassung {soul_id} durch den echten
 // Wert ersetzt (direkt nutzbar, kein Platzhalter-Rätselraten für eine KI, die
 // eh schon genau diese eine Soul meint).
-function pushAccessFlowLines(lines, soulIdExample) {
+// monetizationOn: siehe isMonetizationEnabled() -- wenn false, wird das
+// gesamte "How to access"-Kapitel (Schritte 1-4 + Non-crypto alternative)
+// übersprungen, "Soul Transfer" bleibt bestehen (eigenständiges Feature, kein
+// Marketplace/Agent-Sandbox-Zugang).
+function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
   const sid = soulIdExample || '{soul_id}';
+  if (monetizationOn) {
   lines.push('## How to access (agent flow)');
   lines.push('');
   lines.push('**1. Preview (optional)**');
@@ -3296,6 +3323,7 @@ function pushAccessFlowLines(lines, soulIdExample) {
     ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
     : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
   lines.push('');
+  } // monetizationOn
   lines.push('## Soul Transfer (ownership, not access)');
   lines.push('Separate from buying paid access above — this transfers on-chain OWNERSHIP of a soul');
   lines.push('(SoulRegistry.soulOwner) to a new wallet, free or for a fixed USDC price. A soul with an');
@@ -3346,6 +3374,8 @@ app.get('/llms.txt', async (req, res) => {
   res.set('Cache-Control', 'public, max-age=300');
   res.set('Content-Type', 'text/plain; charset=utf-8');
 
+  const monetizationOn = await isMonetizationEnabled();
+
   const soulIdParam = req.query.soul_id;
   if (soulIdParam) {
     if (!/^[a-f0-9-]{36}$/i.test(soulIdParam)) {
@@ -3364,9 +3394,9 @@ app.get('/llms.txt', async (req, res) => {
     if (s.description) lines.push(`_${s.description}_`);
     if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
     lines.push('');
-    await pushSoulFieldLines(lines, s);
+    await pushSoulFieldLines(lines, s, monetizationOn);
     lines.push('');
-    pushAccessFlowLines(lines, s.soul_id);
+    pushAccessFlowLines(lines, s.soul_id, monetizationOn);
     return res.send(lines.join('\n'));
   }
 
@@ -3395,7 +3425,7 @@ app.get('/llms.txt', async (req, res) => {
       lines.push('');
       lines.push(`Own llms.txt: ${BASE_URL}/llms.txt?soul_id=${s.soul_id}`);
       lines.push('');
-      await pushSoulFieldLines(lines, s);
+      await pushSoulFieldLines(lines, s, monetizationOn);
       lines.push('');
     }
   } else {
@@ -3403,7 +3433,7 @@ app.get('/llms.txt', async (req, res) => {
     lines.push('');
   }
 
-  pushAccessFlowLines(lines, null);
+  pushAccessFlowLines(lines, null, monetizationOn);
 
   res.send(lines.join('\n'));
 });
@@ -3423,6 +3453,7 @@ app.get('/api/soul/scan', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const stats = indexStats();
   const ownOrigin = new URL(BASE_URL).origin;
+  const monetizationOn = await isMonetizationEnabled();
 
   // ── 1. Alle indizierten Souls holen und in lokal / remote aufteilen ─────────
   // Der soul_indexer (WebSocket, inkrementell) findet alle on-chain Souls.
@@ -3529,36 +3560,43 @@ app.get('/api/soul/scan', async (req, res) => {
       : daysSinceLastAnchor < DISCOVER_WINDOW_DAYS * 2 ? 'fading'
       : 'invisible';
 
+    // Marketplace/Paid-Agent-Felder komplett ausgeblendet, wenn der Node-Betreiber
+    // Marketplace deaktiviert hat (siehe isMonetizationEnabled()) — vorher wirkte
+    // sich der Toggle nur auf die lokalen Zahlungs-Routen aus, nie auf das, was
+    // /api/soul/scan nach außen zeigt. monetization_enabled zusätzlich als eigenes
+    // Feld, damit entfernte Scanner (z.B. scanner.vue) das nicht nur aus dem
+    // Fehlen von wallet/paypal-Feldern erraten müssen.
     return {
       soul_id:             s.soul_id,
       name:                s.name || s.soul_id?.slice(0, 8),
       description:         s.description ? s.description.slice(0, 120) : '',
       tags:                Array.isArray(s.tags) ? s.tags : [],
-      price_usdc:          baseUsdc,
-      usdc_current:        usdcCurrent,
-      dynamic_pricing:     dynamic,
-      token_duration_days: amort.token_duration_days ?? null,
+      price_usdc:          monetizationOn ? baseUsdc : null,
+      usdc_current:        monetizationOn ? usdcCurrent : null,
+      dynamic_pricing:     monetizationOn ? dynamic : false,
+      token_duration_days: monetizationOn ? (amort.token_duration_days ?? null) : null,
       sessions:            s.sessions ?? 0,
       anchor_count:        anchorCount,
       anchor_span_days:    anchorSpanDays,
       anchor_date:         s.anchor_date ?? null,
       days_since_last_anchor: daysSinceLastAnchor !== null ? Math.round(daysSinceLastAnchor * 10) / 10 : null,
       visibility_zone:     visibilityZone,
+      monetization_enabled: monetizationOn,
       // Bei aktivem EU_CONSUMER_RIGHTS werden Zahlungsziele (Wallet-Adresse,
       // PayPal-Link) erst nach show_withdrawal_terms/accept_digital_content_terms
       // genannt (im Consent-PDF) — hier nur noch ein Verfügbarkeits-Flag, damit
       // die Homepage-Methods-Pille weiterhin funktioniert, ohne das Ziel selbst
       // vorab öffentlich zu zeigen.
-      wallet:              EU_CONSUMER_RIGHTS ? null : (amort.wallet || null),
-      wallet_available:    !!amort.wallet,
+      wallet:              (monetizationOn && !EU_CONSUMER_RIGHTS) ? (amort.wallet || null) : null,
+      wallet_available:    monetizationOn && !!amort.wallet,
       mcp_endpoint:        s.mcp_endpoint,
       tx_hash:             txHash,
-      agent_tools:         Array.isArray(amort.agent_tools) ? amort.agent_tools : [],
-      contact_email:       amort.trader_email || null,
-      paypal_enabled:      amort.paypal_enabled === true,
-      paypal_target:       (amort.paypal_enabled === true && !EU_CONSUMER_RIGHTS) ? (amort.paypal_target || null) : null,
-      price_eur:           amort.paypal_enabled === true ? (amort.price_eur || null) : null,
-      price_note:          amort.paypal_enabled === true ? (amort.price_note || null) : null,
+      agent_tools:         monetizationOn && Array.isArray(amort.agent_tools) ? amort.agent_tools : [],
+      contact_email:       monetizationOn ? (amort.trader_email || null) : null,
+      paypal_enabled:      monetizationOn && amort.paypal_enabled === true,
+      paypal_target:       (monetizationOn && amort.paypal_enabled === true && !EU_CONSUMER_RIGHTS) ? (amort.paypal_target || null) : null,
+      price_eur:           (monetizationOn && amort.paypal_enabled === true) ? (amort.price_eur || null) : null,
+      price_note:          (monetizationOn && amort.paypal_enabled === true) ? (amort.price_note || null) : null,
       consent_required:    EU_CONSUMER_RIGHTS,
       transfer_offer:      transferListing?.active ? {
         mode: transferListing.mode,
