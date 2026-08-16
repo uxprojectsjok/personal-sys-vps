@@ -3,6 +3,7 @@ sys-legal-boundaries.md
 .env
 *.key
 *.pem
+utils/penpot-to-vue.mjs
 master.json
 node_modules/
 .output/
