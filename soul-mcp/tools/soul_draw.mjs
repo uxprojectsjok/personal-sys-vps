@@ -137,7 +137,7 @@ import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { SOULS_DIR, encryptBuf, decryptIfNeeded, loadVaultMeta } from '../lib/vault_fs.mjs';
 import { sharedFileUrl } from '../lib/api.mjs';
-import { recordArtworkProgress, artworkDir } from '../lib/artwork_log.mjs';
+import { recordArtworkProgress, artworkDir, appendStrokeReplayLog } from '../lib/artwork_log.mjs';
 import { loadHandwritingProfile, expandHandwritingText } from './soul_handwriting.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -960,6 +960,15 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
 
   const { strokes: withHandwriting, missing: missingHandwritingChars } = await applyHandwritingExpansion(soulId, strokes);
   strokes = applySignaturePositioning(withHandwriting, w, h, signaturePosition, signatureMargin);
+
+  // Für die "Kunstwerk Live"-Wiedergabe: die ENDGÜLTIGEN Striche (nach
+  // Handschrift-Expansion + Signatur-Positionierung, exakt was gleich
+  // gerendert wird) — nicht die rohen Eingabe-Striche. reflect/brush/style-
+  // Texturdetails gehen dabei nicht mit (die entstehen erst innerhalb von
+  // dispatchStrokeStyle beim Rendern selbst) — die Live-App zeichnet daher
+  // eine vereinfachte, aber geometrisch/farblich treue Annäherung nach, kein
+  // Pixel-Duplikat des PNGs.
+  await appendStrokeReplayLog(soulId, canvas_id, { at: new Date().toISOString(), width: w, height: h, background, strokes });
 
   for (const stroke of strokes) drawStroke(ctx, stroke);
   const pngBuf = canvas.toBuffer('image/png');

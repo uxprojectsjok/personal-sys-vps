@@ -237,14 +237,16 @@ AGENTEOF
   fi
 done
 
-# ── 5b. Install show-social-chat/show-agent-chat MCP Apps for existing souls ──
-# Read-only chat-window apps (Social Sphere / Agent Sandbox), see soul_apps.mjs
-# — installed once per soul, never overwritten afterward, so a soul that
-# customizes its own copy keeps it across updates.
-info "Checking show-social-chat/show-agent-chat apps for existing souls..."
+# ── 5b. Install bundled read-only MCP Apps for existing souls ────────────────
+# show-social-chat/show-agent-chat (Social Sphere / Agent Sandbox) and
+# kunstwerk-live (soul_draw stroke-by-stroke replay, polls soul_draw_replay —
+# see docs/spec/mcp-apps.md), see soul_apps.mjs — installed once per soul,
+# never overwritten afterward, so a soul that customizes its own copy keeps
+# it across updates.
+info "Checking show-social-chat/show-agent-chat/kunstwerk-live apps for existing souls..."
 for _SOUL_DIR in /var/lib/sys/souls/*/; do
   [ -d "$_SOUL_DIR" ] || continue
-  for _APP in show-social-chat show-agent-chat; do
+  for _APP in show-social-chat show-agent-chat kunstwerk-live; do
     _APP_DIR="${_SOUL_DIR}vault_shared/apps/${_APP}"
     if [ ! -f "${_APP_DIR}/index.html" ]; then
       mkdir -p "$_APP_DIR"

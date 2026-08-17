@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kunstwerk Live</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="bar">
+        <input id="canvasId" type="text" placeholder="canvas_id (leer = zuletzt bearbeitetes Werk)" />
+        <button id="btnWatch">Beobachten</button>
+      </div>
+      <p id="bridge-status" class="sdk-line">Bridge-Check läuft …</p>
+      <p id="sdk-status" class="sdk-line">SDK: wird angestoßen …</p>
+      <div class="stage">
+        <canvas id="stage" width="800" height="600"></canvas>
+        <div id="empty" class="empty">Wird geladen …</div>
+      </div>
+      <p id="status" class="status"></p>
+    </div>
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>

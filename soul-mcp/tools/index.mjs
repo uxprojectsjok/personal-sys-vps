@@ -53,6 +53,7 @@ import { register as contextWrite }          from './context_write.mjs';
 import { register as sessionEnd }            from './session_end.mjs';
 import { register as soulDraw }              from './soul_draw.mjs';
 import { register as soulHandwriting }       from './soul_handwriting.mjs';
+import { register as soulDrawReplay }        from './soul_draw_replay.mjs';
 
 
 // ── Peer Messaging (MCP-WhatsApp) ─────────────────────────────────────────────
@@ -147,6 +148,7 @@ export function registerTools(server, token, soulId = null) {
   if (soulId) sessionEnd(server, soulId, token);
   if (soulId) soulDraw(server, soulId, token);
   if (soulId) soulHandwriting(server, soulId, token);
+  if (soulId) soulDrawReplay(server, soulId);
 }
 
 /**
