@@ -93,28 +93,39 @@
  * Ereignis, nicht als mathematisch glatte Kurve — und hat Vorrang vor style,
  * kombinierbar mit interpolation und colorVariation. signature (pro Strich)
  * + signaturePosition/signatureMargin (pro Aufruf, siehe runSoulDraw) sind
- * reine Positionierungs-Hilfe — KEIN Font-/Handschrift-Modell: Striche mit
- * signature:true werden als starre Gruppe automatisch an eine Ecke/Kante der
- * tatsächlichen Leinwand verschoben (Bounding Box aus den Strichen selbst
- * berechnet), die Buchstabenformen zeichnet der Aufrufer weiterhin ganz
- * normal (typischerweise mit brush). Alle Achsen sind pro Strich unabhängig
- * kombinierbar und laufen identisch durch drawStroke()s
- * Dispatcher in Raster- UND SVG-Context — live geprüft: CanvasGradient
- * exportiert korrekt als <linearGradient>/<radialGradient> INKLUSIVE
- * transparenter Stopps (stop-opacity), globalCompositeOperation wird von
- * SVGCanvas übernommen, gespiegelte Pfade (reflect) exportieren korrekt als
- * eigenständiger <path> mit literal gespiegelten Koordinaten (kein
- * transform="matrix(...)" — reflectPoints() spiegelt die Punkte selbst,
- * bevor sie in den normalen Pfad-Renderer laufen). NICHT SVG-tauglich
- * dagegen: destination-in-Masking wird von der SVG-Export-Engine
- * stillschweigend verworfen (deshalb kein maskenbasiertes Kantenauflösen —
- * edgeFade nutzt stattdessen transparente Gradient-Stopps, die nachweislich
- * funktionieren).
+ * reine Positionierungs-Hilfe: Striche mit signature:true werden als starre
+ * Gruppe automatisch an eine Ecke/Kante der tatsächlichen Leinwand
+ * verschoben (Bounding Box aus den Strichen selbst berechnet). Die
+ * Buchstabenformen selbst kann der Aufrufer entweder ganz normal als
+ * Striche zeichnen (typischerweise mit brush, handschriftlich aber nicht
+ * garantiert exakt lesbar), oder — für Inhalte, bei denen exakte Lesbarkeit
+ * zählt (Datum, Name) — mode:"text" nutzen: echter Font-Text (fillText) mit
+ * einem gebündelten Handschrift-Font (Google Fonts "Caveat"). mode:"text"
+ * läuft bewusst NUR im Raster-Pass — live geprüft: der SVGCanvas-Text-Export
+ * von @napi-rs/canvas verschluckt nachweislich zufällig Zeichen ("KRO" wird
+ * zu "KO", das Alphabet zu "ABFJMOQTX", reproduzierbar auch in der jeweils
+ * neuesten Bibliotheksversion) — ein aktuell ungefixter Upstream-Bug, kein
+ * Font- oder Encoding-Problem. renderStrokesToSvgFragment() ruft für
+ * mode:"text"-Striche deshalb gar nicht erst den SVG-Renderpfad auf, sondern
+ * schreibt nur einen Klartext-Kommentar-Marker in die Fortsetzungshistorie.
+ * Alle übrigen Achsen sind pro Strich unabhängig kombinierbar und laufen
+ * identisch durch drawStroke()s Dispatcher in Raster- UND SVG-Context — live
+ * geprüft: CanvasGradient exportiert korrekt als <linearGradient>/
+ * <radialGradient> INKLUSIVE transparenter Stopps (stop-opacity),
+ * globalCompositeOperation wird von SVGCanvas übernommen, gespiegelte Pfade
+ * (reflect) exportieren korrekt als eigenständiger <path> mit literal
+ * gespiegelten Koordinaten (kein transform="matrix(...)" — reflectPoints()
+ * spiegelt die Punkte selbst, bevor sie in den normalen Pfad-Renderer
+ * laufen). NICHT SVG-tauglich: destination-in-Masking wird von der SVG-
+ * Export-Engine stillschweigend verworfen (deshalb kein maskenbasiertes
+ * Kantenauflösen — edgeFade nutzt stattdessen transparente Gradient-Stopps,
+ * die nachweislich funktionieren) — und wie oben beschrieben fillText().
  */
 
-import { createCanvas, loadImage, SVGCanvas, SvgExportFlag } from '@napi-rs/canvas';
+import { createCanvas, loadImage, SVGCanvas, SvgExportFlag, GlobalFonts } from '@napi-rs/canvas';
 import { readFile, writeFile, mkdir, stat } from 'fs/promises';
 import { createHash } from 'crypto';
+import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { SOULS_DIR, encryptBuf, decryptIfNeeded, loadVaultMeta } from '../lib/vault_fs.mjs';
 import { sharedFileUrl } from '../lib/api.mjs';
@@ -123,6 +134,22 @@ import { recordArtworkProgress, artworkDir } from '../lib/artwork_log.mjs';
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 const PAPER = '#EDE6D6';
+
+// Handschrift-Font für mode:"text"-Striche (Signaturen/Daten) — Google Fonts
+// "Caveat" (SIL Open Font License 1.1, siehe assets/fonts/OFL.txt), lokal
+// gebündelt statt zur Laufzeit nachgeladen. Registrierung einmalig beim
+// Modul-Import; schlägt sie fehl, fällt fillText() auf die System-Default-
+// Schrift zurück statt den ganzen Prozess zu crashen — Text bleibt lesbar,
+// nur nicht mehr handschriftlich.
+const SIGNATURE_FONT_FAMILY = 'Caveat';
+try {
+  GlobalFonts.registerFromPath(
+    fileURLToPath(new URL('../assets/fonts/Caveat.ttf', import.meta.url)),
+    SIGNATURE_FONT_FAMILY,
+  );
+} catch (e) {
+  console.warn('[soul_draw] Signatur-Font konnte nicht geladen werden, Fallback auf System-Font:', e.message);
+}
 
 // ── Kern-Renderer (reine Canvas-2D-Logik, läuft gegen Raster- UND SVG-Context) ─
 
@@ -233,6 +260,22 @@ function computeBounds(points) {
     if (p.y > maxY) maxY = p.y;
   }
   return { minX, minY, maxX, maxY };
+}
+
+// Text-Bounding-Box relativ zum fillText()-Anker (baseline-Ursprung, siehe
+// drawTextStroke) — für computeSignatureOffset, damit eine signaturePosition-
+// Gruppe, die einen Text-Strich enthält, an der tatsächlich sichtbaren
+// Text-Ausdehnung ausgerichtet wird statt am einzelnen Anker-Punkt (der ja
+// nur die Baseline-Startposition ist, nicht die volle Textbox). Eigener
+// Scratch-Canvas nur für measureText() — kein sichtbares Rendering.
+let _measureCtx = null;
+function measureTextBounds(anchor, text, font, fontSize) {
+  if (!_measureCtx) _measureCtx = createCanvas(10, 10).getContext('2d');
+  _measureCtx.font = `${fontSize}px "${font || SIGNATURE_FONT_FAMILY}"`;
+  const m = _measureCtx.measureText(text || '');
+  const ascent  = m.actualBoundingBoxAscent  || fontSize * 0.75;
+  const descent = m.actualBoundingBoxDescent || fontSize * 0.2;
+  return { minX: anchor.x, maxX: anchor.x + m.width, minY: anchor.y - ascent, maxY: anchor.y + descent };
 }
 
 // Parst #RGB/#RRGGBB zu rgba(r,g,b,alpha) — Basis für edgeFade und glow, die
@@ -536,6 +579,26 @@ function drawGlowStroke(ctx, points, { color, width, opacity }) {
   }
 }
 
+// mode "text" — echter Font-Text (fillText) statt Koordinaten-Pfad, für
+// Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe KROs Befund:
+// freihändig gezeichnete Ziffern wirken als Datum nicht zuverlässig lesbar).
+// NUR im Raster-Pass aufgerufen — siehe renderStrokesToSvgFragment(): der
+// SVGCanvas-Text-Export von @napi-rs/canvas verschluckt live nachweislich
+// zufällig Zeichen ("KRO" → "KO", das Alphabet → "ABFJMOQTX", auch in der
+// jeweils neuesten Version geprüft), ein bekannter, aktuell ungefixter Bug.
+// points[0] ist der Baseline-Anker (x,y bei fillText-Semantik); ein
+// eventueller zweiter Punkt (vom Schema für mode:"stroke"/"fill" verlangt)
+// wird ignoriert.
+function drawTextStroke(ctx, points, { text, font, fontSize = 32, color = '#1c1b18', opacity = 0.9 }) {
+  if (!text || !points?.length) return;
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px "${font || SIGNATURE_FONT_FAMILY}"`;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, points[0].x, points[0].y);
+  ctx.globalAlpha = 1;
+}
+
 // Spiegelt Kontrollpunkte an einer horizontalen Wasserlinie (2*waterline - y),
 // mit optionaler sinusförmiger x-Verzerrung pro Punkt für Wasserkräuselung —
 // Basis für reflect. Reine Koordinaten-Transformation, kein Rendering-Trick,
@@ -560,9 +623,19 @@ function reflectPoints(points, waterline, waviness) {
 // Versatz (dx/dy) — sie bewegen sich als starre Gruppe, damit die relative
 // Position der Buchstaben zueinander erhalten bleibt.
 function computeSignatureOffset(strokes, canvasW, canvasH, position, margin) {
-  const points = strokes.filter(s => s.signature).flatMap(s => s.points || []);
-  if (!points.length) return { dx: 0, dy: 0 };
-  const b = computeBounds(points);
+  const tagged = strokes.filter(s => s.signature && s.points?.length);
+  if (!tagged.length) return { dx: 0, dy: 0 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of tagged) {
+    const b = s.mode === 'text'
+      ? measureTextBounds(s.points[0], s.text, s.font, s.fontSize || 32)
+      : computeBounds(s.points);
+    if (b.minX < minX) minX = b.minX;
+    if (b.minY < minY) minY = b.minY;
+    if (b.maxX > maxX) maxX = b.maxX;
+    if (b.maxY > maxY) maxY = b.maxY;
+  }
+  const b = { minX, minY, maxX, maxY };
   const cx = (b.minX + b.maxX) / 2;
   let dx = 0, dy = 0;
   if (position.includes('right'))       dx = (canvasW - margin) - b.maxX;
@@ -594,12 +667,18 @@ function applySignaturePositioning(strokes, canvasW, canvasH, position, margin =
 function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
   const {
     points, color = '#1c1b18', width = 14, opacity = 0.9, style = 'ink', mode = 'stroke',
-    gradientTo, gradientShape, blend, interpolation, colorVariation, brush,
+    gradientTo, gradientShape, blend, interpolation, colorVariation, brush, text, font, fontSize,
   } = stroke;
 
   ctx.globalCompositeOperation = style === 'eraser' ? 'destination-out' : (blend || 'source-over');
 
-  if (brush) {
+  if (mode === 'text') {
+    // Nie im SVG-Pass rendern — siehe drawTextStroke()s Kommentar zum
+    // SVGCanvas-Text-Export-Bug. renderStrokesToSvgFragment() ruft für
+    // mode:"text"-Striche gar nicht erst dispatchStrokeStyle() auf; dieser
+    // vector-Check ist nur ein zusätzliches Sicherheitsnetz.
+    if (!vector) drawTextStroke(ctx, points, { text, font, fontSize, color, opacity });
+  } else if (brush) {
     drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, colorVariation, interpolation, brush, vector });
   } else if (mode === 'fill') {
     drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape, interpolation });
@@ -673,6 +752,18 @@ function drawStroke(ctx, stroke, { vector = false } = {}) {
 function renderStrokesToSvgFragment(strokes, width, height) {
   let fragment = '';
   for (const stroke of strokes) {
+    if (stroke.mode === 'text') {
+      // Bewusst NICHT über drawStroke()/SVGCanvas gerendert — deren fillText-
+      // Export verschluckt live nachweislich zufällig Zeichen (siehe
+      // drawTextStroke()s Kommentar), ein aktuell ungefixter Bug in
+      // @napi-rs/canvas. Der Text lebt bewusst nur im PNG; hier nur ein
+      // durchsuchbarer, ehrlicher Marker, der weiterhin als <!-- stroke -->
+      // zählt (es WAR ein echter Strich in diesem Aufruf, nur nicht als
+      // Vektor persistiert).
+      const escaped = (stroke.text || '').replace(/--/g, '––');
+      fragment += `\t<!-- stroke --><!-- text (raster-only, siehe PNG — SVGCanvas-Text-Export-Bug): "${escaped}" -->\n`;
+      continue;
+    }
     const canvas = new SVGCanvas(width, height, SvgExportFlag.RelativePathEncoding);
     const ctx = canvas.getContext('2d');
     drawStroke(ctx, stroke, { vector: true });
@@ -753,8 +844,12 @@ const strokeSchema = z.object({
   opacity: z.number().min(0).max(1).optional(),
   style: z.enum(['ink', 'solid', 'eraser', 'dry', 'watercolor', 'spray', 'glow']).optional()
     .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge). "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
-  mode: z.enum(['stroke', 'fill']).optional()
-    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen.'),
+  mode: z.enum(['stroke', 'fill', 'text']).optional()
+    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort).'),
+  text: z.string().max(120).optional()
+    .describe('Nur bei mode:"text". Der zu rendernde Text, z.B. "KRO · 17.08.2026" — echte Schriftzeichen (Google Fonts "Caveat", handschriftlicher Charakter), garantiert exakt lesbar, im Gegensatz zu freihändig als Striche gezeichneten Ziffern/Buchstaben. WICHTIG: wird NUR im PNG gerendert, nicht im SVG (bekannter Bug im SVG-Text-Export von @napi-rs/canvas — verschluckt dort zufällig Zeichen). Die SVG-Fortsetzungshistorie bekommt stattdessen einen Kommentar-Marker mit dem Text im Klartext, damit er nachvollziehbar bleibt.'),
+  font: z.string().max(60).optional().describe('Nur bei mode:"text". Font-Familie, falls bereits im Prozess registriert. Standard: "Caveat" (handschriftlich).'),
+  fontSize: z.number().min(6).max(300).optional().describe('Nur bei mode:"text". Schriftgröße in px. Standard 32.'),
   gradientTo: z.string().max(32).optional()
     .describe('Zweite Farbe — verläuft von `color` zu dieser Farbe über die Bounding Box des Strichs/der Fläche (z.B. Himmel, Glanzlicht, weiche Schattierung). Kann auch "rgba(r,g,b,0)" sein (transparent) — löst den Strich/die Fläche nach außen ins Nichts auf statt zu einer zweiten harten Farbe. Siehe auch edgeFade für dieselbe Wirkung ohne rgba() von Hand auszurechnen.'),
   gradientShape: z.enum(['linear', 'radial']).optional()
@@ -933,11 +1028,19 @@ export function register(server, soulId, token) {
       'Für eine Signatur/Monogramm: signature:true auf den betreffenden Strichen markiert sie',
       'als eine Gruppe, signaturePosition ("bottom-right" etc.) verschiebt genau diese Gruppe',
       'automatisch an den Leinwandrand — die Bounding Box wird aus den Strichen selbst',
-      'berechnet, keine Koordinaten von Hand ausrechnen nötig, funktioniert unabhängig von der',
-      'tatsächlichen Leinwandgröße. Die Buchstabenformen selbst werden ganz normal als Striche',
-      'gezeichnet (typischerweise mit brush für einen handschriftlichen Charakter) — kein',
-      'Font-/Handschrift-Modell, reine Positionierungs-Hilfe. signatureMargin steuert den',
-      'Randabstand (Standard 24px).',
+      'berechnet (auch bei mode:"text"-Strichen, siehe unten), keine Koordinaten von Hand',
+      'ausrechnen nötig, funktioniert unabhängig von der tatsächlichen Leinwandgröße.',
+      'signatureMargin steuert den Randabstand (Standard 24px). Für die Buchstabenformen',
+      'selbst zwei Möglichkeiten: entweder ganz normal als Striche zeichnen (typischerweise mit',
+      'brush für einen handschriftlichen, aber nicht garantiert exakt lesbaren Charakter — gut',
+      'für ein Monogramm/einen Namenszug), oder mode:"text" für Inhalte, bei denen exakte',
+      'Lesbarkeit zählt (Datum, vollständiger Name): rendert `text` mit einem echten',
+      'Handschrift-Font, garantiert exakt korrekte Zeichen statt freihändig gezeichneter Ziffern.',
+      'WICHTIG: mode:"text" wird NUR im PNG gerendert (bekannter Bug im SVG-Text-Export der',
+      'Canvas-Bibliothek verschluckt dort zufällig Zeichen) — die SVG-Fortsetzungshistorie',
+      'bekommt stattdessen einen Klartext-Kommentar-Marker. Kombinierbar: z.B. der Name als',
+      'brush-Strich, das Datum direkt daneben als mode:"text" — beide mit signature:true in',
+      'derselben signaturePosition-Gruppe.',
       '',
       'Beim allerersten Aufruf mit einer neuen canvas_id: width/height/background legen',
       'die Leinwand an. Bei jedem weiteren Aufruf mit derselben canvas_id werden diese',
