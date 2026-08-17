@@ -1,7 +1,7 @@
 {
   "name": "kunstwerk-live",
-  "title": "Kunstwerk Live",
-  "version": "1.0.0",
-  "description": "Zeigt ein mit soul_draw gezeichnetes Werk als Strich-für-Strich-Wiedergabe statt nur als fertiges Bild — lädt beim Öffnen sofort den aktuellen Stand und zeichnet danach jeden neuen Strich animiert nach, sobald er entsteht (Polling, kein echter Push). Ohne canvas_id zeigt sie automatisch das zuletzt bearbeitete Werk.",
+  "title": "Kunstwerk",
+  "version": "2.0.0",
+  "description": "Zeigt ein mit soul_draw gezeichnetes Werk: Spinner während gezeichnet wird, dann das fertige PNG — kein Text, keine Eingabe nötig. Ohne weitere Angabe automatisch das zuletzt bearbeitete Werk. Aktualisiert sich im Hintergrund, falls weitergezeichnet wird.",
   "entry": "index.html"
 }

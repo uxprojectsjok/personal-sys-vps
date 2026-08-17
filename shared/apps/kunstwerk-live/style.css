@@ -4,99 +4,41 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
-  background: #202124;
-  color: white;
-  font-family: Arial, Helvetica, sans-serif;
-  padding: 16px;
-}
-
-.wrap {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-#canvasId {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #444;
-  background: #303134;
-  color: white;
-  font-size: 14px;
-}
-
-#canvasId::placeholder {
-  color: #888;
-}
-
-button {
-  padding: 10px 18px;
-  font-size: 14px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #8ab4f8;
-  color: #202124;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-button:hover {
-  opacity: 0.9;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sdk-line {
-  margin: 0 0 8px;
-  padding: 5px 9px;
-  border-radius: 6px;
-  background: #303134;
-  font-size: 11px;
-  font-family: ui-monospace, Menlo, monospace;
-  color: #999;
+  background: #EDE6D6;
 }
 
 .stage {
   position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #EDE6D6;
-  line-height: 0;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-#stage {
+.result {
   display: block;
   width: 100%;
   height: auto;
 }
 
-.empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #7a7568;
-  font-size: 14px;
-  background: #EDE6D6;
-  text-align: center;
-  padding: 16px;
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(28, 27, 24, 0.15);
+  border-top-color: rgba(28, 27, 24, 0.55);
+  animation: spin 0.8s linear infinite;
+  margin: 60px 0;
 }
 
-.status {
-  margin: 10px 0 0;
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  margin: 24px;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 13px;
-  color: #aaa;
-  min-height: 18px;
+  color: #a33;
+  text-align: center;
 }

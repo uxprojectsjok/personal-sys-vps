@@ -42,21 +42,6 @@ async function appendFolderLog(soulId, canvasId, entry) {
   await appendFile(logPath, `${entry}\n`).catch(() => {});
 }
 
-// Rohe Strich-Geometrie pro soul_draw()-Aufruf, JSON Lines (ein Objekt pro
-// Zeile, append-only) — für die "Kunstwerk Live"-Wiedergabe (siehe
-// shared/apps/kunstwerk-live/, soul_draw_replay.mjs). Getrennt von log.md
-// (menschenlesbare Fortschritts-Zeile) und sys.md (Provenienz-Hash): hier
-// steht die tatsächliche Punkt-für-Punkt-Geometrie, damit eine App sie
-// clientseitig nachanimieren kann, ohne selbst @napi-rs/canvas nachzubauen.
-// Nicht kritisch für die eigentliche Werk-Funktion — Fehler hier werden
-// verschluckt statt den ganzen soul_draw-Aufruf scheitern zu lassen.
-export async function appendStrokeReplayLog(soulId, canvasId, batch) {
-  const dir = artworkDir(soulId, canvasId);
-  await mkdir(dir, { recursive: true }).catch(() => {});
-  const logPath = `${dir}/${canvasId}.strokes.jsonl`;
-  await appendFile(logPath, `${JSON.stringify(batch)}\n`).catch(() => {});
-}
-
 // Gleiches Verschlüsselungs-Muster wie server.mjs's 'soul_write'-Case:
 // wasEncrypted vor dem Schreiben prüfen, nur dann wieder verschlüsseln.
 // contentHash optional: für Zwischenschritte ohne fertiges Artefakt (z.B.

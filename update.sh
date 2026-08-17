@@ -239,8 +239,9 @@ done
 
 # ── 5b. Install bundled read-only MCP Apps for existing souls ────────────────
 # show-social-chat/show-agent-chat (Social Sphere / Agent Sandbox) and
-# kunstwerk-live (soul_draw stroke-by-stroke replay, polls soul_draw_replay —
-# see docs/spec/mcp-apps.md), see soul_apps.mjs — installed once per soul,
+# kunstwerk-live (spinner while a soul_draw work is in progress, then the
+# finished PNG, polls soul_draw_snapshot — see docs/spec/mcp-apps.md), see
+# soul_apps.mjs — installed once per soul,
 # never overwritten afterward, so a soul that customizes its own copy keeps
 # it across updates.
 info "Checking show-social-chat/show-agent-chat/kunstwerk-live apps for existing souls..."

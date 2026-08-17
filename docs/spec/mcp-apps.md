@@ -137,34 +137,28 @@ on user interaction, or a self-scheduled `setInterval`/poll loop) — nothing
 today lets the server push a frame into it unprompted. Any "live" UI in this
 project is therefore polling dressed up as live, not real push.
 
-## `kunstwerk-live` — polling-based stroke replay
+## `kunstwerk-live` — spinner, then the finished result
 
-`shared/apps/kunstwerk-live/` shows a `soul_draw` work as a stroke-by-stroke
-replay instead of just the finished PNG: loads the full existing history
-instantly on open, then polls `soul_draw_replay` (owner-only tool,
-`soul-mcp/tools/soul_draw_replay.mjs`) every ~4s and animates only newly
-arrived strokes. `soul_draw_replay` reads a new per-canvas append-only log
-(`vault_shared/{canvas_id}/{canvas_id}.strokes.jsonl`, written by
-`appendStrokeReplayLog()` in `lib/artwork_log.mjs`, called from
-`runSoulDraw()` — logs the FINAL strokes array, i.e. after
-`applyHandwritingExpansion`/`applySignaturePositioning`, not the raw
-caller input) — protected the same way as `log.md` in `api_serve.lua`
-(listed but not individually deletable, since a gap would break replay from
-that point on). `canvas_id` is optional on `soul_draw_replay`; omitted, it
-resolves to whichever canvas's replay log has the newest mtime, so the app
-can show "whatever's being worked on" with zero input.
-
-The client-side replay is a deliberately simplified, non-pixel-parity
-renderer: plain colored lines following the logged points (linear
-interpolation, not soul_draw's Catmull-Rom smoothing), `mode:"fill"`/`"text"`
-drawn instantly rather than traced. `mode:"handwriting"` strokes replay
-faithfully (already expanded to real point-based strokes server-side before
-logging); `mode:"text"` falls back to a generic `cursive` browser font (the
-bundled Caveat font isn't available client-side). brush texture, `reflect`
-mirroring, and blend modes aren't reproduced — those apply only inside
-`dispatchStrokeStyle()` at render time and never enter the logged geometry.
-Installed for all souls via the same `update.sh` step 5b loop as
-show-social-chat/show-agent-chat.
+`shared/apps/kunstwerk-live/` shows a `soul_draw` work the way an image-
+generation result is normally shown: a spinner while it's not ready yet,
+then just the finished picture — no status text, no input field, nothing
+else in the UI. First version of this app animated a stroke-by-stroke
+replay (client-side reconstruction of the stroke geometry, polling a
+per-canvas append-only log); scrapped after live use — it read as noisy
+rather than useful, and could never be pixel-accurate (no brush texture,
+`reflect` mirroring, blend modes, or the real signature font — those only
+exist inside `dispatchStrokeStyle()` at render time, never in a logged
+point list). Replaced with something both simpler and strictly better:
+`soul_draw_snapshot` (owner-only tool, `soul-mcp/tools/soul_draw_snapshot.mjs`)
+just returns the actual, already-rendered PNG as base64, read straight off
+disk — pixel-identical to the real file, by construction, no client-side
+approximation needed at all. `canvas_id` is optional; omitted, it resolves
+to whichever canvas's PNG has the newest mtime, so the app can show
+"whatever's being worked on" with zero input. The app polls this every
+1.5s until an image is ready (spinner), then every 4s in the background to
+pick up further progress on the same work, swapping the `<img>` src only
+when `updated_at` actually changes. Installed for all souls via the same
+`update.sh` step 5b loop as show-social-chat/show-agent-chat.
 
 ## Design Decisions
 
