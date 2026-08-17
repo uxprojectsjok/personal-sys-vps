@@ -139,26 +139,29 @@ project is therefore polling dressed up as live, not real push.
 
 ## `kunstwerk-live` — spinner, then the finished result
 
-`shared/apps/kunstwerk-live/` shows a `soul_draw` work the way an image-
+`shared/apps/kunstwerk-live/` shows a work the way an image/video
 generation result is normally shown: a spinner while it's not ready yet,
-then just the finished picture — no status text, no input field, nothing
-else in the UI. First version of this app animated a stroke-by-stroke
-replay (client-side reconstruction of the stroke geometry, polling a
-per-canvas append-only log); scrapped after live use — it read as noisy
-rather than useful, and could never be pixel-accurate (no brush texture,
-`reflect` mirroring, blend modes, or the real signature font — those only
-exist inside `dispatchStrokeStyle()` at render time, never in a logged
-point list). Replaced with something both simpler and strictly better:
-`soul_draw_snapshot` (owner-only tool, `soul-mcp/tools/soul_draw_snapshot.mjs`)
-just returns the actual, already-rendered PNG as base64, read straight off
-disk — pixel-identical to the real file, by construction, no client-side
-approximation needed at all. `canvas_id` is optional; omitted, it resolves
-to whichever canvas's PNG has the newest mtime, so the app can show
-"whatever's being worked on" with zero input. The app polls this every
-1.5s until an image is ready (spinner), then every 4s in the background to
-pick up further progress on the same work, swapping the `<img>` src only
-when `updated_at` actually changes. Installed for all souls via the same
-`update.sh` step 5b loop as show-social-chat/show-agent-chat.
+then just the finished result — no status text, no input field, nothing
+else in the UI. First version animated a stroke-by-stroke replay (client-
+side reconstruction of stroke geometry); scrapped after live use — read as
+noisy rather than useful, and could never be pixel-accurate (no brush
+texture, `reflect` mirroring, blend modes, or the real signature font —
+those only exist inside `dispatchStrokeStyle()` at render time). Second
+version returned the actual rendered PNG as base64 — pixel-identical, no
+approximation. `soul_draw`'s own tool response already returns its image
+inline (most hosts render `type:"image"` content automatically) — the
+spinner moment barely exists for `soul_draw` alone, it renders in
+milliseconds. The response shape (`{state, kind, ...}`) is designed to also
+cover a genuinely async source — a `mode:"image-to-video"` generation
+spread across multiple tool calls, where a spinner actually earns its keep
+— but this repo doesn't carry that paid-API tool, so `soul_draw_snapshot`
+here only ever returns `kind:"image"`; the same `app.mjs` runs unchanged.
+`canvas_id` optional; omitted, resolves to whichever canvas's PNG has the
+newest mtime, so the app can show "whatever's being worked on" with zero
+input. Poll interval: 1.5s while nothing exists yet, 4s once something is
+already showing (background refresh for further progress on the same
+work). Installed for all souls via the same `update.sh` step 5b loop as
+show-social-chat/show-agent-chat.
 
 ## Design Decisions
 

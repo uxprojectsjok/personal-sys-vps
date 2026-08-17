@@ -14,6 +14,14 @@
  * Werk dieser Soul gewählt (per mtime des jeweiligen PNGs unter
  * vault_shared/) — die App kann so ohne jede Eingabe direkt "das, woran
  * gerade gearbeitet wird" zeigen.
+ *
+ * Bild-only in diesem Repo: die /opt/sys-Fassung deckt zusätzlich
+ * soul_generate mode:"image-to-video" ab (checkPendingVideoGeneration()) —
+ * dieses Repo hat soul_generate.mjs (WaveSpeed AI, kostenpflichtig) nie
+ * bekommen, daher hier bewusst nur der PNG-Pfad. Response-Form
+ * ({state, kind, ...}) bleibt trotzdem identisch zur /opt/sys-Fassung, damit
+ * dieselbe kunstwerk-live-App (app.mjs) unverändert funktioniert — sie zeigt
+ * hier einfach nie kind:"video".
  */
 
 import { readFile, readdir, stat } from 'fs/promises';
@@ -44,17 +52,18 @@ async function resolveLatestCanvasId(soulId) {
 
 export async function loadDrawSnapshot(soulId, canvasId) {
   const resolvedId = canvasId || await resolveLatestCanvasId(soulId);
-  if (!resolvedId) return { canvas_id: null, ready: false };
+  if (!resolvedId) return { canvas_id: null, state: 'empty' };
   const pngPath = `${artworkDir(soulId, resolvedId)}/${resolvedId}.png`;
   let buf, st;
   try {
     [buf, st] = await Promise.all([readFile(pngPath), stat(pngPath)]);
   } catch {
-    return { canvas_id: resolvedId, ready: false };
+    return { canvas_id: resolvedId, state: 'empty' };
   }
   return {
     canvas_id: resolvedId,
-    ready: true,
+    state: 'ready',
+    kind: 'image',
     updated_at: st.mtimeMs,
     png_base64: buf.toString('base64'),
   };

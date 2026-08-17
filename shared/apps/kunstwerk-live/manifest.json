@@ -1,7 +1,7 @@
 {
   "name": "kunstwerk-live",
   "title": "Kunstwerk",
-  "version": "2.0.0",
-  "description": "Zeigt ein mit soul_draw gezeichnetes Werk: Spinner während gezeichnet wird, dann das fertige PNG — kein Text, keine Eingabe nötig. Ohne weitere Angabe automatisch das zuletzt bearbeitete Werk. Aktualisiert sich im Hintergrund, falls weitergezeichnet wird.",
+  "version": "3.0.0",
+  "description": "Zeigt ein Werk: Spinner während es entsteht, dann das fertige Ergebnis — PNG (soul_draw) oder Video (soul_generate mode:\"image-to-video\", das über mehrere Aufrufe hinweg fertig wird). Kein Text, keine Eingabe nötig. Ohne weitere Angabe automatisch das zuletzt bearbeitete Werk. Aktualisiert sich im Hintergrund.",
   "entry": "index.html"
 }
