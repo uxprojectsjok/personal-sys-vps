@@ -108,6 +108,14 @@
  * Font- oder Encoding-Problem. renderStrokesToSvgFragment() ruft für
  * mode:"text"-Striche deshalb gar nicht erst den SVG-Renderpfad auf, sondern
  * schreibt nur einen Klartext-Kommentar-Marker in die Fortsetzungshistorie.
+ * Dritte Möglichkeit — echte, eigene Handschrift statt geliehener Typografie
+ * ODER Freihand-Neuerfindung pro Werk: mode:"handwriting" setzt Text aus
+ * einmal gespeicherten eigenen Buchstabenformen zusammen (siehe
+ * soul_handwriting.mjs, soul_handwriting_save/_list) — mit leichter, pro
+ * Aufruf gewürfelter Variation, damit zwei Signaturen ähnlich, aber nie
+ * pixelgleich sind. Läuft komplett über echte Vektor-Striche (expandiert VOR
+ * dem eigentlichen Render-Durchlauf in runSoulDraw, siehe dort), deshalb
+ * ohne den mode:"text"-Bug identisch in Raster UND SVG einsetzbar.
  * Alle übrigen Achsen sind pro Strich unabhängig kombinierbar und laufen
  * identisch durch drawStroke()s Dispatcher in Raster- UND SVG-Context — live
  * geprüft: CanvasGradient exportiert korrekt als <linearGradient>/
@@ -130,6 +138,7 @@ import { z } from 'zod';
 import { SOULS_DIR, encryptBuf, decryptIfNeeded, loadVaultMeta } from '../lib/vault_fs.mjs';
 import { sharedFileUrl } from '../lib/api.mjs';
 import { recordArtworkProgress, artworkDir } from '../lib/artwork_log.mjs';
+import { loadHandwritingProfile, expandHandwritingText } from './soul_handwriting.mjs';
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -646,6 +655,30 @@ function computeSignatureOffset(strokes, canvasW, canvasH, position, margin) {
   return { dx, dy };
 }
 
+// mode:"handwriting" — ersetzt jeden solchen Strich VOR dem eigentlichen
+// Render-Durchlauf durch die tatsächlichen, aus dem gespeicherten Profil
+// zusammengesetzten Glyphen-Striche (siehe soul_handwriting.mjs). Profil wird
+// nur bei Bedarf (mind. ein handwriting-Strich vorhanden) geladen. Fehlende
+// Zeichen werden übersprungen (mit Standard-Vorschub) statt den Aufruf
+// scheitern zu lassen — missing wird zurückgegeben, damit der Aufrufer
+// erfährt, was im Profil noch fehlt (siehe formatSoulDrawSummary).
+async function applyHandwritingExpansion(soulId, strokes) {
+  if (!strokes.some(s => s.mode === 'handwriting')) return { strokes, missing: [] };
+  const profile = await loadHandwritingProfile(soulId);
+  const missing = new Set();
+  const expanded = [];
+  for (const s of strokes) {
+    if (s.mode !== 'handwriting' || !s.points?.length) { expanded.push(s); continue; }
+    const { strokes: sub, missing: m } = expandHandwritingText(profile, s.points[0], s.text || '', {
+      fontSize: s.fontSize, color: s.color, opacity: s.opacity,
+      jitter: s.handwritingJitter, colorVariation: s.colorVariation, signature: s.signature,
+    });
+    m.forEach(c => missing.add(c));
+    expanded.push(...sub);
+  }
+  return { strokes: expanded, missing: [...missing] };
+}
+
 function applySignaturePositioning(strokes, canvasW, canvasH, position, margin = 24) {
   if (!position) return strokes;
   const { dx, dy } = computeSignatureOffset(strokes, canvasW, canvasH, position, margin);
@@ -844,12 +877,14 @@ const strokeSchema = z.object({
   opacity: z.number().min(0).max(1).optional(),
   style: z.enum(['ink', 'solid', 'eraser', 'dry', 'watercolor', 'spray', 'glow']).optional()
     .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge). "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
-  mode: z.enum(['stroke', 'fill', 'text']).optional()
-    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort).'),
+  mode: z.enum(['stroke', 'fill', 'text', 'handwriting']).optional()
+    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung).'),
   text: z.string().max(120).optional()
-    .describe('Nur bei mode:"text". Der zu rendernde Text, z.B. "KRO · 17.08.2026" — echte Schriftzeichen (Google Fonts "Caveat", handschriftlicher Charakter), garantiert exakt lesbar, im Gegensatz zu freihändig als Striche gezeichneten Ziffern/Buchstaben. WICHTIG: wird NUR im PNG gerendert, nicht im SVG (bekannter Bug im SVG-Text-Export von @napi-rs/canvas — verschluckt dort zufällig Zeichen). Die SVG-Fortsetzungshistorie bekommt stattdessen einen Kommentar-Marker mit dem Text im Klartext, damit er nachvollziehbar bleibt.'),
+    .describe('Bei mode:"text" oder mode:"handwriting": der zu rendernde Text, z.B. "KRO · 17.08.2026". Bei "text": echter Font (Google Fonts "Caveat"), garantiert exakt lesbar, aber geliehene Typografie, NUR im PNG (bekannter Bug im SVG-Text-Export von @napi-rs/canvas — verschluckt dort zufällig Zeichen; die SVG-Fortsetzungshistorie bekommt stattdessen einen Klartext-Kommentar-Marker). Bei "handwriting": echte eigene Buchstabenformen aus dem Handschriftprofil, funktioniert identisch in PNG und SVG.'),
   font: z.string().max(60).optional().describe('Nur bei mode:"text". Font-Familie, falls bereits im Prozess registriert. Standard: "Caveat" (handschriftlich).'),
-  fontSize: z.number().min(6).max(300).optional().describe('Nur bei mode:"text". Schriftgröße in px. Standard 32.'),
+  fontSize: z.number().min(6).max(300).optional().describe('Bei mode:"text" oder mode:"handwriting": Schrift-/Zeichengröße in px. Standard 32.'),
+  handwritingJitter: z.number().min(0).max(1).optional()
+    .describe('Nur bei mode:"handwriting", Standard 0.15. Wie stark Rotation/Skalierung/Position/Zeichenabstand pro Vorkommen jeder Glyphe zufällig variieren — 0 = jede Signatur pixelgleich, höhere Werte = natürlichere, weniger identische Wiederholung.'),
   gradientTo: z.string().max(32).optional()
     .describe('Zweite Farbe — verläuft von `color` zu dieser Farbe über die Bounding Box des Strichs/der Fläche (z.B. Himmel, Glanzlicht, weiche Schattierung). Kann auch "rgba(r,g,b,0)" sein (transparent) — löst den Strich/die Fläche nach außen ins Nichts auf statt zu einer zweiten harten Farbe. Siehe auch edgeFade für dieselbe Wirkung ohne rgba() von Hand auszurechnen.'),
   gradientShape: z.enum(['linear', 'radial']).optional()
@@ -923,7 +958,8 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
     existingSvgText = rawSvg ? decryptIfNeeded(rawSvg, vaultKeyHex).toString('utf8') : null;
   }
 
-  strokes = applySignaturePositioning(strokes, w, h, signaturePosition, signatureMargin);
+  const { strokes: withHandwriting, missing: missingHandwritingChars } = await applyHandwritingExpansion(soulId, strokes);
+  strokes = applySignaturePositioning(withHandwriting, w, h, signaturePosition, signatureMargin);
 
   for (const stroke of strokes) drawStroke(ctx, stroke);
   const pngBuf = canvas.toBuffer('image/png');
@@ -949,11 +985,11 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
   const viewUrlPng  = token ? sharedFileUrl(soulId, `${canvas_id}/${canvas_id}.png`, token) : null;
   const sizeKb      = Math.ceil(pngBuf.length / 1024);
 
-  return { isNew, w, h, pngBuf, sizeKb, totalStrokes, vaultUrlPng, viewUrlPng, svgHash, description };
+  return { isNew, w, h, pngBuf, sizeKb, totalStrokes, vaultUrlPng, viewUrlPng, svgHash, description, missingHandwritingChars };
 }
 
 export function formatSoulDrawSummary(canvasId, strokeCount, result) {
-  const { isNew, w, h, sizeKb, totalStrokes, vaultUrlPng, viewUrlPng, svgHash, description } = result;
+  const { isNew, w, h, sizeKb, totalStrokes, vaultUrlPng, viewUrlPng, svgHash, description, missingHandwritingChars } = result;
   const descPart = description ? ` — ${description}` : '';
   return [
     isNew
@@ -962,6 +998,9 @@ export function formatSoulDrawSummary(canvasId, strokeCount, result) {
     `PNG: ${sizeKb} KB${viewUrlPng ? ` — ${viewUrlPng}` : ''}`,
     `SVG (Vektor-Quelle, geschützt in vault/context) — über context_get "${canvasId}.svg" lesbar.`,
     `Fortschritt in sys.md ("## Kunstwerke") vermerkt (sha256 ${svgHash.slice(0, 12)}…) — fließt in den nächsten Blockchain-Anker ein.`,
+    missingHandwritingChars?.length
+      ? `Hinweis: mode:"handwriting" — folgende Zeichen sind noch nicht im Handschriftprofil definiert und wurden übersprungen: ${missingHandwritingChars.map(c => `"${c}"`).join(', ')} (siehe soul_handwriting_save).`
+      : null,
     '',
     `Mit peer_send teilen (PNG):`,
     `  to: "Till" (oder "alle")`,
@@ -1028,19 +1067,25 @@ export function register(server, soulId, token) {
       'Für eine Signatur/Monogramm: signature:true auf den betreffenden Strichen markiert sie',
       'als eine Gruppe, signaturePosition ("bottom-right" etc.) verschiebt genau diese Gruppe',
       'automatisch an den Leinwandrand — die Bounding Box wird aus den Strichen selbst',
-      'berechnet (auch bei mode:"text"-Strichen, siehe unten), keine Koordinaten von Hand',
+      'berechnet (auch bei mode:"text"/"handwriting"-Strichen), keine Koordinaten von Hand',
       'ausrechnen nötig, funktioniert unabhängig von der tatsächlichen Leinwandgröße.',
       'signatureMargin steuert den Randabstand (Standard 24px). Für die Buchstabenformen',
-      'selbst zwei Möglichkeiten: entweder ganz normal als Striche zeichnen (typischerweise mit',
-      'brush für einen handschriftlichen, aber nicht garantiert exakt lesbaren Charakter — gut',
-      'für ein Monogramm/einen Namenszug), oder mode:"text" für Inhalte, bei denen exakte',
-      'Lesbarkeit zählt (Datum, vollständiger Name): rendert `text` mit einem echten',
-      'Handschrift-Font, garantiert exakt korrekte Zeichen statt freihändig gezeichneter Ziffern.',
-      'WICHTIG: mode:"text" wird NUR im PNG gerendert (bekannter Bug im SVG-Text-Export der',
-      'Canvas-Bibliothek verschluckt dort zufällig Zeichen) — die SVG-Fortsetzungshistorie',
-      'bekommt stattdessen einen Klartext-Kommentar-Marker. Kombinierbar: z.B. der Name als',
-      'brush-Strich, das Datum direkt daneben als mode:"text" — beide mit signature:true in',
-      'derselben signaturePosition-Gruppe.',
+      'selbst drei Möglichkeiten: (1) ganz normal als Striche zeichnen (typischerweise mit',
+      'brush) — handschriftlich, aber jedes Mal neu erfunden, nicht garantiert exakt lesbar',
+      'und nicht wiedererkennbar dieselbe Hand. (2) mode:"text" für Inhalte, bei denen exakte',
+      'Lesbarkeit zählt: rendert `text` mit einem echten Handschrift-Font, garantiert exakt',
+      'korrekte Zeichen, aber geliehene Typografie, NUR im PNG (bekannter Bug im SVG-Text-',
+      'Export der Canvas-Bibliothek verschluckt dort zufällig Zeichen — die SVG-',
+      'Fortsetzungshistorie bekommt stattdessen einen Klartext-Kommentar-Marker). (3) mode:',
+      '"handwriting" für eine echte, wiedererkennbare EIGENE Handschrift: setzt `text` aus',
+      'einmal per soul_handwriting_save gespeicherten eigenen Buchstabenformen zusammen —',
+      'echte Vektor-Striche, funktioniert identisch in PNG und SVG (kein Font-Bug), mit',
+      'leichter, bei jedem Aufruf neu gewürfelter Variation (handwritingJitter), damit zwei',
+      'Signaturen ähnlich, aber nie pixelgleich sind. Noch nicht definierte Zeichen werden',
+      'übersprungen, nicht als Fehler — die Rückmeldung nennt sie (dann ggf. per',
+      'soul_handwriting_save nachtragen; soul_handwriting_list zeigt den aktuellen Stand).',
+      'Kombinierbar: z.B. der Name als brush-Strich, das Datum daneben als mode:"handwriting"',
+      'oder "text" — alle mit signature:true in derselben signaturePosition-Gruppe.',
       '',
       'Beim allerersten Aufruf mit einer neuen canvas_id: width/height/background legen',
       'die Leinwand an. Bei jedem weiteren Aufruf mit derselben canvas_id werden diese',
