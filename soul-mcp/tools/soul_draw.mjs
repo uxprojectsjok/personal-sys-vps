@@ -64,10 +64,11 @@
  * (Vektor) teilen sich dieselbe Canvas-2D-API, drawStroke() unten läuft
  * unverändert gegen beide.
  *
- * Technik-Bandbreite pro Strich (style/mode/gradientTo/blend/edgeFade/reflect,
- * siehe strokeSchema unten): reine Linien (ink/solid) reichen für Gesten-
- * Skizzen, aber weder für flächige moderne/abstrakte Kompositionen noch für
- * klassisch wirkende Schichtmalerei. Deshalb: mode "fill" füllt die
+ * Technik-Bandbreite pro Strich (style/mode/gradientTo/blend/edgeFade/reflect/
+ * interpolation/colorVariation/brush, siehe strokeSchema unten): reine Linien
+ * (ink/solid) reichen für Gesten-Skizzen, aber weder für flächige moderne/
+ * abstrakte Kompositionen noch für klassisch wirkende Schichtmalerei oder
+ * lebendige, unregelmäßige Pinseltextur. Deshalb: mode "fill" füllt die
  * Punktkontur statt sie zu umranden (Farbblöcke, Hintergründe, ohne hunderte
  * Striche zu brauchen), style "dry"/"watercolor"/"spray"/"glow" simulieren
  * unterschiedliche Pinsel-/Licht-Charakteristik (siehe die einzelnen
@@ -79,16 +80,30 @@
  * Gezeichnetem statt es deckend zu ersetzen — Glasur-/Schatten-Aufbau in
  * mehreren Schichten, wie bei klassischer Ölmalerei. reflect spiegelt
  * denselben Strich an einer Wasserlinie (mit Stildurchgabe + optionaler
- * Wellenverzerrung) für Wasser-/Spiegel-Reflexionen. Alle Achsen sind pro
+ * Wellenverzerrung) für Wasser-/Spiegel-Reflexionen. interpolation (0–1)
+ * steuert stufenlos, wie stark die rohen Kontrollpunkte geglättet werden (1 =
+ * volle Catmull-Rom-Glättung wie bisher, 0 = reine lineare/eckige Verbindung
+ * der rohen Punkte) — Himmel weich, Wasser gebrochen, Masten präzise, Nebel
+ * fast verschwunden. colorVariation lässt die Farbe pro gezeichnetem Segment
+ * leicht um `color` schwanken (Pigmentvariation, damit wiederholte Striche
+ * derselben Nennfarbe nicht identisch wirken). brush ist der parametrisierte
+ * "Impressionisten-Pinsel" (length/bristleDensity/grain/jitter/
+ * opacityVariation/pressureVariation/edgeBreak): zerlegt den Strich in kurze,
+ * unabhängig gewürfelte Marken statt einer glatten Linie — Pinselstrich als
+ * Ereignis, nicht als mathematisch glatte Kurve — und hat Vorrang vor style,
+ * kombinierbar mit interpolation und colorVariation. Alle Achsen sind pro
  * Strich unabhängig kombinierbar und laufen identisch durch drawStroke()s
  * Dispatcher in Raster- UND SVG-Context — live geprüft: CanvasGradient
  * exportiert korrekt als <linearGradient>/<radialGradient> INKLUSIVE
  * transparenter Stopps (stop-opacity), globalCompositeOperation wird von
  * SVGCanvas übernommen, gespiegelte Pfade (reflect) exportieren korrekt als
- * <path transform="matrix(...)">. NICHT SVG-tauglich dagegen: destination-in-
- * Masking wird von der SVG-Export-Engine stillschweigend verworfen (deshalb
- * kein maskenbasiertes Kantenauflösen — edgeFade nutzt stattdessen
- * transparente Gradient-Stopps, die nachweislich funktionieren).
+ * eigenständiger <path> mit literal gespiegelten Koordinaten (kein
+ * transform="matrix(...)" — reflectPoints() spiegelt die Punkte selbst,
+ * bevor sie in den normalen Pfad-Renderer laufen). NICHT SVG-tauglich
+ * dagegen: destination-in-Masking wird von der SVG-Export-Engine
+ * stillschweigend verworfen (deshalb kein maskenbasiertes Kantenauflösen —
+ * edgeFade nutzt stattdessen transparente Gradient-Stopps, die nachweislich
+ * funktionieren).
  */
 
 import { createCanvas, loadImage, SVGCanvas, SvgExportFlag } from '@napi-rs/canvas';
@@ -122,8 +137,11 @@ function paintPaper(ctx, w, h) {
 }
 
 // Catmull-Rom Interpolation, damit wenige Kontrollpunkte (die ein LLM
-// realistisch liefern kann) zu einer weichen Kurve werden.
-function catmullRomPoints(points, segmentsPerSpan = 12) {
+// realistisch liefern kann) zu einer weichen Kurve werden. Reine
+// Catmull-Rom-Berechnung, unverändert — der öffentliche Zugriffspunkt ist
+// jetzt catmullRomPoints() weiter unten (mit interpolation-Parameter), diese
+// Funktion ist deren "voll geglätteter" Baustein.
+function catmullRomOnly(points, segmentsPerSpan) {
   if (points.length < 3) return points;
   const pts = [points[0], ...points, points[points.length - 1]];
   const out = [];
@@ -143,6 +161,48 @@ function catmullRomPoints(points, segmentsPerSpan = 12) {
     }
   }
   out.push(points[points.length - 1]);
+  return out;
+}
+
+// Dieselbe Span-/Sample-Struktur wie catmullRomOnly() (gleiche p1→p2-Spans,
+// gleiche segmentsPerSpan-Aufteilung), aber reine lineare Interpolation
+// zwischen den ROHEN Nachbarpunkten statt der kubischen Catmull-Rom-Formel
+// (p0/p3 bleiben unbenutzt — kein Überschwingen). Absichtlich index-gleich
+// lang zu catmullRomOnly()s Ausgabe, damit interpolation unten pro Sample
+// zwischen beiden lerpen kann, ohne Punkte neu zuordnen zu müssen.
+function linearPoints(points, segmentsPerSpan) {
+  if (points.length < 3) return points;
+  const pts = [points[0], ...points, points[points.length - 1]];
+  const out = [];
+  for (let i = 1; i < pts.length - 2; i++) {
+    const p1 = pts[i], p2 = pts[i + 1];
+    for (let t = 0; t < segmentsPerSpan; t++) {
+      const s = t / segmentsPerSpan;
+      const pr0 = p1.pressure ?? 0.7, pr1 = p2.pressure ?? 0.7;
+      out.push({ x: p1.x + (p2.x - p1.x) * s, y: p1.y + (p2.y - p1.y) * s, pressure: pr0 + (pr1 - pr0) * s });
+    }
+  }
+  out.push(points[points.length - 1]);
+  return out;
+}
+
+// interpolation (0–1, Standard 1): 0 folgt den rohen Kontrollpunkten (eckig/
+// "gebrochen", kein Überschwingen), 1 ist die heutige volle Catmull-Rom-
+// Glättung. Fast-Path bei >=1 (Standard-/Altverhalten) macht exakt dieselbe
+// Arbeit wie vorher, keine Verhaltensänderung für Aufrufer ohne diesen
+// Parameter. Dazwischen: Sample-für-Sample-Lerp zwischen linearPoints() und
+// catmullRomOnly() — z.B. Himmel weich (nah 1), Wasser gebrochen (nah 0),
+// Masten präzise (0), Nebel fast verschwunden (irgendwo dazwischen).
+function catmullRomPoints(points, segmentsPerSpan = 12, interpolation = 1) {
+  const smooth = catmullRomOnly(points, segmentsPerSpan);
+  if (interpolation >= 1 || points.length < 3) return smooth;
+  const linear = linearPoints(points, segmentsPerSpan);
+  const n = Math.min(smooth.length, linear.length);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = linear[i], b = smooth[i];
+    out[i] = { x: a.x + (b.x - a.x) * interpolation, y: a.y + (b.y - a.y) * interpolation, pressure: b.pressure };
+  }
   return out;
 }
 
@@ -185,6 +245,24 @@ function colorWithAlpha(color, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// colorVariation (0–1): verschiebt jeden RGB-Kanal von color um bis zu
+// variation*255, geclamped auf 0-255 — Pigmentvariation statt digitalem
+// Rauschen (zehn "gleichblaue" Wasserstriche sind dann nicht zehnmal exakt
+// derselbe Hex-Wert). Nicht-Hex-Input: Farbe unverändert zurückgeben statt
+// zu crashen (gleiche Fallback-Philosophie wie colorWithAlpha).
+function varyColor(color, variation) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color || '');
+  if (!m || !variation) return color;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+  const shift = () => (Math.random() - 0.5) * 2 * variation * 255;
+  const r = clamp(parseInt(hex.slice(0, 2), 16) + shift());
+  const g = clamp(parseInt(hex.slice(2, 4), 16) + shift());
+  const b = clamp(parseInt(hex.slice(4, 6), 16) + shift());
+  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 // Liefert entweder die einfache Farbe oder — wenn gradientTo gesetzt ist —
 // ein CanvasGradient, gebaut über die Bounding Box der Kontrollpunkte.
 // "linear" läuft von oben nach unten (Standard, z.B. für Himmel), "radial"
@@ -211,10 +289,11 @@ function resolveFillStyle(ctx, color, gradientTo, gradientShape, points) {
 
 // style "ink"/"solid" — unverändert das ursprüngliche Taper-Verhalten,
 // jetzt nur um optionale Gradient-Strichfarbe erweitert.
-function drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo, gradientShape }) {
-  const smoothed = catmullRomPoints(points);
+function drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo, gradientShape, interpolation, colorVariation }) {
+  const smoothed = catmullRomPoints(points, 12, interpolation);
+  const flatStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
   ctx.globalAlpha = style === 'eraser' ? 1 : opacity;
-  ctx.strokeStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
+  ctx.strokeStyle = flatStyle;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
@@ -222,6 +301,8 @@ function drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo,
     const t = i / (smoothed.length - 1);
     const pressure = smoothed[i].pressure ?? (style === 'solid' ? 1 : taperEnvelope(t) * 0.7 + 0.3);
     ctx.lineWidth = Math.max(0.6, width * pressure);
+    // colorVariation nur ohne gradientTo (Gradient hat Vorrang, keine Kombination)
+    if (colorVariation && !gradientTo) ctx.strokeStyle = varyColor(color, colorVariation);
     ctx.beginPath();
     ctx.moveTo(smoothed[i].x, smoothed[i].y);
     ctx.lineTo(smoothed[i + 1].x, smoothed[i + 1].y);
@@ -237,8 +318,8 @@ function drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo,
 // gerade statt Catmull-Rom-geglättet — für Farbflächen unerheblich, echte
 // geglättete geschlossene Kurven wären ein eigenes (noch nicht gebrauchtes)
 // Feature.
-function drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape }) {
-  const smoothed = catmullRomPoints(points);
+function drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape, interpolation }) {
+  const smoothed = catmullRomPoints(points, 12, interpolation);
   ctx.globalAlpha = opacity;
   ctx.fillStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
   ctx.beginPath();
@@ -252,8 +333,8 @@ function drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape 
 // style "dry" — Trockenpinsel/Kreide: viele kurze Segmente, zufällige Lücken
 // und schwankende Deckkraft/Breite brechen die Linie auf statt sie glatt
 // durchzuziehen.
-function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape }) {
-  const smoothed = catmullRomPoints(points);
+function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation }) {
+  const smoothed = catmullRomPoints(points, 12, interpolation);
   ctx.strokeStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
   ctx.lineCap = 'round';
   for (let i = 0; i < smoothed.length - 1; i++) {
@@ -262,6 +343,7 @@ function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradien
     const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.3);
     ctx.globalAlpha = opacity * (0.35 + Math.random() * 0.5);
     ctx.lineWidth = Math.max(0.5, width * pressure * (0.6 + Math.random() * 0.5));
+    if (colorVariation && !gradientTo) ctx.strokeStyle = varyColor(color, colorVariation);
     ctx.beginPath();
     ctx.moveTo(smoothed[i].x, smoothed[i].y);
     ctx.lineTo(smoothed[i + 1].x, smoothed[i + 1].y);
@@ -273,7 +355,7 @@ function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradien
 // style "watercolor" — mehrere leicht versetzte, sehr transparente
 // Durchgänge übereinander simulieren eine weiche, ineinander verlaufende
 // Lasur statt einer scharfen Kante.
-function drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape }) {
+function drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation }) {
   const passes = 5;
   ctx.strokeStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
   ctx.lineCap = 'round';
@@ -284,8 +366,9 @@ function drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, 
       x: pt.x + (Math.random() - 0.5) * width * 0.6,
       y: pt.y + (Math.random() - 0.5) * width * 0.6,
     }));
-    const smoothed = catmullRomPoints(jittered);
+    const smoothed = catmullRomPoints(jittered, 12, interpolation);
     ctx.globalAlpha = (opacity / passes) * 1.6;
+    if (colorVariation && !gradientTo) ctx.strokeStyle = varyColor(color, colorVariation);
     for (let i = 0; i < smoothed.length - 1; i++) {
       const t = i / (smoothed.length - 1);
       const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.4);
@@ -329,6 +412,94 @@ function drawSprayStroke(ctx, points, { color, width, opacity, vector }) {
       ctx.beginPath();
       ctx.arc(x, y, Math.random() * 1.4 + 0.3, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// brush — der parametrisierte "Impressionisten-Pinsel": Pinselstrich als
+// Ereignis, nicht als mathematisch glatte Kurve. Der Pfad wird fein
+// aufgelöst (hohe Sample-Dichte, respektiert interpolation), dann per
+// Bogenlänge in length-px-"Marken" zerlegt — jede Marke ist eine
+// UNABHÄNGIGE Mikroentscheidung mit eigenem gewürfeltem Pressure-/Opacity-/
+// Farb-/Aussetzer-Wurf, bristleDensity-fach überlagert (mit jitter-Versatz
+// pro Durchgang, wie mehrere Borsten eines echten Pinsels). Genau daraus
+// entsteht eine Sequenz wie "kräftig → aufbrechen → fast verschwinden →
+// wieder Pigment → abrupt enden", ganz ohne einen eigenen "kein Taper"-
+// Schalter — unabhängige Zufallswürfe pro Marke reichen dafür aus.
+// grain (feines Opacity-Rauschen innerhalb einer Marke) bleibt wie bei
+// drawSprayStroke() auf den Raster-Pass beschränkt — im Vektor-Export würde
+// jeder Grain-Punkt als eigener <path> exportiert, dieselbe Kostenabwägung
+// wie dort dokumentiert.
+function drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, colorVariation, interpolation, brush, vector }) {
+  const {
+    length = 14,
+    bristleDensity = 3,
+    grain = 0.15,
+    jitter = width * 0.12,
+    opacityVariation = 0.35,
+    pressureVariation = 0.3,
+    edgeBreak = 0.12,
+  } = brush || {};
+
+  const fine = catmullRomPoints(points, 20, interpolation);
+  const flatStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (let pass = 0; pass < bristleDensity; pass++) {
+    // Pro Durchgang EIN seitlicher Versatz der ganzen Bahn (nicht pro Marke)
+    // — simuliert leicht unterschiedliche Borsten eines Pinsels statt eines
+    // komplett neu gewürfelten Pfads pro Durchgang.
+    const offX = (Math.random() - 0.5) * jitter;
+    const offY = (Math.random() - 0.5) * jitter;
+
+    // pressureLevel/opacityLevel treiben als gebundener Random Walk (statt
+    // unabhängig gewürfelter Werte pro Marke) — sonst springt die Breite
+    // zwischen zwei benachbarten, kurzen Marken hart, was bei runden
+    // Linecaps wie eine Perlenkette statt eines Pinselstrichs aussieht.
+    // Der Walk lässt trotzdem "kräftig → aufbrechen → fast verschwinden →
+    // wieder Pigment" als LANGSAME Drift entlang des Strichs entstehen.
+    let pressureLevel = 1;
+    let opacityLevel = 1;
+
+    let markStart = 0;
+    let accLen = 0;
+    for (let i = 0; i < fine.length - 1; i++) {
+      accLen += Math.hypot(fine[i + 1].x - fine[i].x, fine[i + 1].y - fine[i].y);
+      if (accLen < length && i !== fine.length - 2) continue;
+
+      const t = i / (fine.length - 1);
+      const basePressure = fine[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.3);
+      pressureLevel = Math.max(0.15, Math.min(1.8, pressureLevel + (Math.random() - 0.5) * pressureVariation * 0.6));
+      opacityLevel = Math.max(0.15, Math.min(1.6, opacityLevel + (Math.random() - 0.5) * opacityVariation * 0.6));
+
+      if (Math.random() >= edgeBreak) {
+        ctx.strokeStyle = (colorVariation && !gradientTo) ? varyColor(color, colorVariation) : flatStyle;
+        ctx.lineWidth = Math.max(0.4, width * basePressure * pressureLevel);
+        ctx.globalAlpha = Math.max(0.05, Math.min(1, (opacity / bristleDensity) * 1.5 * opacityLevel));
+        ctx.beginPath();
+        ctx.moveTo(fine[markStart].x + offX, fine[markStart].y + offY);
+        ctx.lineTo(fine[i + 1].x + offX, fine[i + 1].y + offY);
+        ctx.stroke();
+
+        if (grain > 0 && !vector) {
+          const dots = Math.round(grain * 6);
+          for (let g = 0; g < dots; g++) {
+            const gt = Math.random();
+            const gx = fine[markStart].x + (fine[i + 1].x - fine[markStart].x) * gt + offX + (Math.random() - 0.5) * width * 0.4;
+            const gy = fine[markStart].y + (fine[i + 1].y - fine[markStart].y) * gt + offY + (Math.random() - 0.5) * width * 0.4;
+            ctx.globalAlpha = opacity * grain * Math.random() * 0.5;
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.arc(gx, gy, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      markStart = i + 1;
+      accLen = 0;
     }
   }
   ctx.globalAlpha = 1;
@@ -384,23 +555,25 @@ function reflectPoints(points, waterline, waviness) {
 function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
   const {
     points, color = '#1c1b18', width = 14, opacity = 0.9, style = 'ink', mode = 'stroke',
-    gradientTo, gradientShape, blend,
+    gradientTo, gradientShape, blend, interpolation, colorVariation, brush,
   } = stroke;
 
   ctx.globalCompositeOperation = style === 'eraser' ? 'destination-out' : (blend || 'source-over');
 
-  if (mode === 'fill') {
-    drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape });
+  if (brush) {
+    drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, colorVariation, interpolation, brush, vector });
+  } else if (mode === 'fill') {
+    drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape, interpolation });
   } else if (style === 'dry') {
-    drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape });
+    drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
   } else if (style === 'watercolor') {
-    drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape });
+    drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
   } else if (style === 'spray') {
     drawSprayStroke(ctx, points, { color, width, opacity, vector });
   } else if (style === 'glow') {
     drawGlowStroke(ctx, points, { color, width, opacity });
   } else {
-    drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo, gradientShape });
+    drawLineStroke(ctx, points, { color, width, opacity, style, gradientTo, gradientShape, interpolation, colorVariation });
   }
 
   ctx.globalCompositeOperation = 'source-over';
@@ -557,6 +730,20 @@ const strokeSchema = z.object({
     waviness: z.number().min(0).max(50).optional().describe('Amplitude einer sinusförmigen horizontalen Verzerrung in px, für Wasserkräuselung. Standard 0 (glatte Spiegelung).'),
   }).optional()
     .describe('Spiegelt denselben Strich unterhalb von waterline — mit reduzierter Deckkraft und optionaler Wellenverzerrung. Die Spiegelung übernimmt automatisch style/mode/Farbe des Original-Strichs (ein gespiegelter watercolor-Strich wirkt wie eine weiche Wasserspiegelung, ein gespiegelter ink-Strich wie eine klare Mastreflexion). Für Wasser-/Spiegel-Reflexionen.'),
+  interpolation: z.number().min(0).max(1).optional()
+    .describe('0–1, Standard 1. Steuert, wie stark die rohen Kontrollpunkte geglättet werden. 1 (Standard): volle Catmull-Rom-Glättung wie bisher — weiche, runde Kurve. 0: reine lineare Verbindung der rohen Punkte — eckig, gebrochen, den Kontrollpunkten wörtlich folgend. Dazwischen: stufenloser Übergang. Himmel/Wasser eher weich (nah 1), Wellen/Nebel eher gebrochen (nah 0), Masten/Architektur eher präzise-eckig (nah 0).'),
+  colorVariation: z.number().min(0).max(1).optional()
+    .describe('0–1, Standard 0. Lässt die Farbe pro gezeichnetem Segment leicht um `color` schwanken (jeder RGB-Kanal um bis zu ±(colorVariation×255)), statt den ganzen Strich in exakt einer Farbe zu malen — für Pigment-/Farbvariation, damit z.B. mehrere Wasserstriche derselben Nennfarbe nicht identisch wirken. Wird ignoriert, wenn gradientTo gesetzt ist (Gradient hat Vorrang).'),
+  brush: z.object({
+    length: z.number().min(1).max(200).optional().describe('px-Länge einer einzelnen "Borsten-Marke" — Basis-Granularität jeder Mikroentscheidung entlang des Strichs. Standard 14.'),
+    bristleDensity: z.number().min(1).max(12).optional().describe('Anzahl überlagerter Durchgänge (wie mehrere Borsten eines echten Pinsels). Standard 3.'),
+    grain: z.number().min(0).max(1).optional().describe('Feines Opacity-Rauschen (Körnung) innerhalb jeder Marke — nur im PNG sichtbar, nicht im SVG-Export. Standard 0.15.'),
+    jitter: z.number().min(0).max(50).optional().describe('Seitliche Versatz-Abweichung in px pro Durchgang. Standard ≈ width×0.12.'),
+    opacityVariation: z.number().min(0).max(1).optional().describe('Wie stark die Deckkraft von Marke zu Marke zufällig schwankt. Standard 0.35.'),
+    pressureVariation: z.number().min(0).max(1).optional().describe('Wie stark die Strichbreite von Marke zu Marke zufällig schwankt. Standard 0.3.'),
+    edgeBreak: z.number().min(0).max(1).optional().describe('Wahrscheinlichkeit, dass eine einzelne Marke ganz ausfällt (trockener Aussetzer/Lücke). Standard 0.12.'),
+  }).optional()
+    .describe('Der parametrisierte "Impressionisten-Pinsel": zerlegt den Strich in kurze, unabhängig gewürfelte Marken statt einer glatten, gleichmäßigen Linie — Pinselstrich als Ereignis, nicht als mathematisch glatte Kurve (kräftig → aufbrechen → fast verschwinden → wieder Pigment → abrupt enden). Hat Vorrang vor `style`, wenn gesetzt — kombinierbar mit `interpolation` und `colorVariation`. Für lebendige, unregelmäßige Pinseltextur (Laub, bewegtes Wasser, lockere Studien) statt der glatten ink/dry/watercolor-Striche.'),
 });
 
 // Geteilter Kern — genutzt sowohl vom MCP-Tool unten (register(), für Claude.ai/
@@ -683,6 +870,22 @@ export function register(server, soulId, token) {
       'waviness? } spiegelt denselben Strich an einer Wasserlinie, mit reduzierter Deckkraft',
       'und optionaler Wellenverzerrung — übernimmt automatisch Stil/Farbe des Original-',
       'Strichs (z.B. ein gespiegelter ink-Strich für eine klare Mastreflexion im Wasser).',
+      '',
+      'Ein Pinselstrich ist ein Ereignis, keine mathematisch glatte Kurve — drei Achsen',
+      'dafür: interpolation (0-1, Standard 1) steuert stufenlos, wie stark die rohen',
+      'Kontrollpunkte geglättet werden — 1 = volle weiche Kurve wie bisher, 0 = eckig/',
+      'gebrochen, den Punkten wörtlich folgend (Himmel weich, Wasser gebrochen, Masten',
+      'präzise, Nebel fast verschwunden). colorVariation (0-1, Standard 0) lässt die Farbe',
+      'pro gezeichnetem Segment leicht um `color` schwanken (Pigmentvariation, damit',
+      'wiederholte Striche derselben Nennfarbe nicht identisch wirken). brush: { length?,',
+      'bristleDensity?, grain?, jitter?, opacityVariation?, pressureVariation?, edgeBreak? }',
+      'ist der parametrisierte Impressionisten-Pinsel — zerlegt den Strich in kurze,',
+      'unabhängig gewürfelte Marken statt einer glatten Linie, jede mit eigenem Zufallswurf',
+      'für Druck/Deckkraft/Aussetzer, mehrfach überlagert wie Borsten eines echten Pinsels',
+      '(kräftig → aufbrechen → fast verschwinden → wieder Pigment → abrupt enden, ganz ohne',
+      'eigenen Taper-Schalter). Hat Vorrang vor style, kombinierbar mit interpolation und',
+      'colorVariation — für lebendige, unregelmäßige Textur (Laub, bewegtes Wasser, lockere',
+      'Studien) statt der glatten ink/dry/watercolor-Striche.',
       '',
       'Beim allerersten Aufruf mit einer neuen canvas_id: width/height/background legen',
       'die Leinwand an. Bei jedem weiteren Aufruf mit derselben canvas_id werden diese',
