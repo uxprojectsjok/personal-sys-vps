@@ -2061,11 +2061,11 @@ app.post('/internal/run-tool', express.json({ limit: '2mb' }), async (req, res) 
       // behandelt token=null bereits als "keine externe View-URL bauen", die
       // vault-shared://-URL bleibt trotzdem nutzbar.
       case 'soul_draw': {
-        const { canvas_id, width, height, background, strokes, description } = input;
+        const { canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin } = input;
         if (!canvas_id || !Array.isArray(strokes) || strokes.length === 0) {
           return res.status(400).json({ error: 'canvas_id und strokes (min. 1 Strich) erforderlich' });
         }
-        const result = await runSoulDraw(soulId, null, { canvas_id, width, height, background, strokes, description });
+        const result = await runSoulDraw(soulId, null, { canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin });
         const text = formatSoulDrawSummary(canvas_id, strokes.length, result);
         return res.json({ content: [{ type: 'text', text }] });
       }

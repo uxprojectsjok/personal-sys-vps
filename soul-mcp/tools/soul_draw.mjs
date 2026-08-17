@@ -91,8 +91,14 @@
  * opacityVariation/pressureVariation/edgeBreak): zerlegt den Strich in kurze,
  * unabhängig gewürfelte Marken statt einer glatten Linie — Pinselstrich als
  * Ereignis, nicht als mathematisch glatte Kurve — und hat Vorrang vor style,
- * kombinierbar mit interpolation und colorVariation. Alle Achsen sind pro
- * Strich unabhängig kombinierbar und laufen identisch durch drawStroke()s
+ * kombinierbar mit interpolation und colorVariation. signature (pro Strich)
+ * + signaturePosition/signatureMargin (pro Aufruf, siehe runSoulDraw) sind
+ * reine Positionierungs-Hilfe — KEIN Font-/Handschrift-Modell: Striche mit
+ * signature:true werden als starre Gruppe automatisch an eine Ecke/Kante der
+ * tatsächlichen Leinwand verschoben (Bounding Box aus den Strichen selbst
+ * berechnet), die Buchstabenformen zeichnet der Aufrufer weiterhin ganz
+ * normal (typischerweise mit brush). Alle Achsen sind pro Strich unabhängig
+ * kombinierbar und laufen identisch durch drawStroke()s
  * Dispatcher in Raster- UND SVG-Context — live geprüft: CanvasGradient
  * exportiert korrekt als <linearGradient>/<radialGradient> INKLUSIVE
  * transparenter Stopps (stop-opacity), globalCompositeOperation wird von
@@ -543,6 +549,39 @@ function reflectPoints(points, waterline, waviness) {
   }));
 }
 
+// signaturePosition — reine Positionierungs-Hilfe, KEIN Handschrift-/Font-
+// Modell: der Aufrufer zeichnet die Signatur ganz normal als eigene(n)
+// Strich(e) mit signature:true, in welchen Koordinaten auch immer bequem
+// sind — die Bounding Box dieser Striche wird automatisch an die gewünschte
+// Ecke/Kante der TATSÄCHLICHEN Leinwand verschoben (deren Größe erst bei
+// Neuanlage feststeht und bei Fortsetzung variieren kann), statt dass der
+// Aufrufer für jede Canvas-Größe von Hand die exakten Zielkoordinaten
+// ausrechnen muss. Alle signature:true-Striche bekommen denselben
+// Versatz (dx/dy) — sie bewegen sich als starre Gruppe, damit die relative
+// Position der Buchstaben zueinander erhalten bleibt.
+function computeSignatureOffset(strokes, canvasW, canvasH, position, margin) {
+  const points = strokes.filter(s => s.signature).flatMap(s => s.points || []);
+  if (!points.length) return { dx: 0, dy: 0 };
+  const b = computeBounds(points);
+  const cx = (b.minX + b.maxX) / 2;
+  let dx = 0, dy = 0;
+  if (position.includes('right'))       dx = (canvasW - margin) - b.maxX;
+  else if (position.includes('left'))   dx = margin - b.minX;
+  else                                  dx = (canvasW / 2) - cx; // center
+  if (position.startsWith('bottom'))    dy = (canvasH - margin) - b.maxY;
+  else                                  dy = margin - b.minY;   // top
+  return { dx, dy };
+}
+
+function applySignaturePositioning(strokes, canvasW, canvasH, position, margin = 24) {
+  if (!position) return strokes;
+  const { dx, dy } = computeSignatureOffset(strokes, canvasW, canvasH, position, margin);
+  if (!dx && !dy) return strokes;
+  return strokes.map(s => s.signature
+    ? { ...s, points: s.points.map(p => ({ ...p, x: p.x + dx, y: p.y + dy })) }
+    : s);
+}
+
 // Kern-Dispatcher — wählt Fläche vs. Linien-"Pinsel" (inkl. glow), setzt
 // Blend-Mode/Eraser einheitlich für alle Techniken. blend (multiply/screen/
 // overlay/soft-light) ist reines ctx.globalCompositeOperation, unterstützt
@@ -744,6 +783,8 @@ const strokeSchema = z.object({
     edgeBreak: z.number().min(0).max(1).optional().describe('Wahrscheinlichkeit, dass eine einzelne Marke ganz ausfällt (trockener Aussetzer/Lücke). Standard 0.12.'),
   }).optional()
     .describe('Der parametrisierte "Impressionisten-Pinsel": zerlegt den Strich in kurze, unabhängig gewürfelte Marken statt einer glatten, gleichmäßigen Linie — Pinselstrich als Ereignis, nicht als mathematisch glatte Kurve (kräftig → aufbrechen → fast verschwinden → wieder Pigment → abrupt enden). Hat Vorrang vor `style`, wenn gesetzt — kombinierbar mit `interpolation` und `colorVariation`. Für lebendige, unregelmäßige Pinseltextur (Laub, bewegtes Wasser, lockere Studien) statt der glatten ink/dry/watercolor-Striche.'),
+  signature: z.boolean().optional()
+    .describe('Markiert diesen Strich als Teil der Signatur. Zusammen mit dem Aufruf-Parameter signaturePosition werden alle so markierten Striche automatisch als starre Gruppe an die gewünschte Ecke/Kante der tatsächlichen Leinwand verschoben — die Buchstabenformen selbst werden ganz normal als Striche gezeichnet (z.B. mit brush für einen handschriftlichen Charakter), in beliebigen, bequemen Koordinaten. Kein Font-/Handschrift-Modell, nur Positionierung.'),
 });
 
 // Geteilter Kern — genutzt sowohl vom MCP-Tool unten (register(), für Claude.ai/
@@ -755,7 +796,7 @@ const strokeSchema = z.object({
 // ein zweites Mal reimplementieren müssen, mit allen bereits hier gefixten
 // Bugs (destruktives SVGCanvas.getContent(), Papier-Textur-Dateigröße) erneut
 // zum Risiko.
-export async function runSoulDraw(soulId, token, { canvas_id, width, height, background, strokes, description }) {
+export async function runSoulDraw(soulId, token, { canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin }) {
   const pngDir  = artworkDir(soulId, canvas_id);
   const ctxDir  = `${SOULS_DIR}${soulId}/vault/context`;
   const pngPath = `${pngDir}/${canvas_id}.png`;
@@ -786,6 +827,8 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
     const rawSvg = await readFile(svgPath).catch(() => null);
     existingSvgText = rawSvg ? decryptIfNeeded(rawSvg, vaultKeyHex).toString('utf8') : null;
   }
+
+  strokes = applySignaturePositioning(strokes, w, h, signaturePosition, signatureMargin);
 
   for (const stroke of strokes) drawStroke(ctx, stroke);
   const pngBuf = canvas.toBuffer('image/png');
@@ -887,6 +930,15 @@ export function register(server, soulId, token) {
       'colorVariation — für lebendige, unregelmäßige Textur (Laub, bewegtes Wasser, lockere',
       'Studien) statt der glatten ink/dry/watercolor-Striche.',
       '',
+      'Für eine Signatur/Monogramm: signature:true auf den betreffenden Strichen markiert sie',
+      'als eine Gruppe, signaturePosition ("bottom-right" etc.) verschiebt genau diese Gruppe',
+      'automatisch an den Leinwandrand — die Bounding Box wird aus den Strichen selbst',
+      'berechnet, keine Koordinaten von Hand ausrechnen nötig, funktioniert unabhängig von der',
+      'tatsächlichen Leinwandgröße. Die Buchstabenformen selbst werden ganz normal als Striche',
+      'gezeichnet (typischerweise mit brush für einen handschriftlichen Charakter) — kein',
+      'Font-/Handschrift-Modell, reine Positionierungs-Hilfe. signatureMargin steuert den',
+      'Randabstand (Standard 24px).',
+      '',
       'Beim allerersten Aufruf mit einer neuen canvas_id: width/height/background legen',
       'die Leinwand an. Bei jedem weiteren Aufruf mit derselben canvas_id werden diese',
       'Parameter ignoriert (Leinwandgröße bleibt fix), nur strokes werden hinzugefügt.',
@@ -901,10 +953,13 @@ export function register(server, soulId, token) {
       strokes: z.array(strokeSchema).min(1).max(500)
         .describe('Neue Pinselstriche, die zum Werk hinzugefügt werden'),
       description: z.string().max(200).optional().describe('Optionale Beschreibung für peer_send'),
+      signaturePosition: z.enum(['bottom-right', 'bottom-left', 'top-right', 'top-left', 'bottom-center', 'top-center']).optional()
+        .describe('Verschiebt alle Striche mit signature:true als starre Gruppe an diese Ecke/Kante der tatsächlichen Leinwand (Bounding Box der markierten Striche wird automatisch berechnet). Ohne signature:true-Striche im selben Aufruf wirkungslos.'),
+      signatureMargin: z.number().min(0).max(200).optional().describe('Abstand der Signatur vom Leinwandrand in px. Standard 24.'),
     },
-    async ({ canvas_id, width, height, background, strokes, description }) => {
+    async ({ canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin }) => {
       try {
-        const result = await runSoulDraw(soulId, token, { canvas_id, width, height, background, strokes, description });
+        const result = await runSoulDraw(soulId, token, { canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin });
         return {
           content: [
             { type: 'image', data: result.pngBuf.toString('base64'), mimeType: 'image/png' },
