@@ -510,38 +510,47 @@ async function triggerSync() {
     // Pollt health.md alle 5 Sek. bis last_sync sich geändert hat
     const started = Date.now()
     const poll = async () => {
+      // Äußeres try/catch als letztes Sicherheitsnetz: poll() plant sich per
+      // setTimeout selbst neu und wird nicht awaited — ein unerwarteter Wurf
+      // hier würde sonst als unhandled rejection verpuffen und syncing für
+      // immer auf true stehen lassen (Button dreht sich endlos weiter).
       try {
-        const mr = await fetch('/api/vault/context/health.md', { headers: authHeaders() })
-        if (mr.ok) {
-          const text = await mr.text()
-          const newSync = text.match(/last_sync:\s*([^\n]+)/)?.[1]?.trim() || null
-          if (newSync && newSync !== prevLastSync) {
-            health.raw      = text
-            health.source   = text.match(/source:\s*(\S+)/)?.[1] || null
-            health.lastSync = newSync
-            if (!health.configured && health.source) health.configured = true
-            syncing.value  = false
-            syncDone.value = false
+        try {
+          const mr = await fetch('/api/vault/context/health.md', { headers: authHeaders() })
+          if (mr.ok) {
+            const text = await mr.text()
+            const newSync = text.match(/last_sync:\s*([^\n]+)/)?.[1]?.trim() || null
+            if (newSync && newSync !== prevLastSync) {
+              health.raw      = text
+              health.source   = text.match(/source:\s*(\S+)/)?.[1] || null
+              health.lastSync = newSync
+              if (!health.configured && health.source) health.configured = true
+              syncing.value  = false
+              syncDone.value = false
+              return
+            }
+          }
+          // Backend kennt das Sync-Ergebnis oft schon, bevor/ohne dass sich last_sync
+          // in health.md ändert (z.B. bei Fehlern wie MFA-Pflicht) — Fehler sofort zeigen
+          // statt bis zum 90s-Timeout stumm weiterzupollen.
+          const status = await fetchSyncStatus()
+          if (status?.last_run && new Date(status.last_run + 'Z').getTime() >= started && !status.ok) {
+            syncing.value   = false
+            syncError.value = status.message || t('health.sync_error_generic')
             return
           }
+        } catch { /**/ }
+        if (Date.now() - started < 90000) {
+          setTimeout(poll, 5000)
+        } else {
+          syncing.value  = false
+          syncDone.value = true
+          const status = await fetchSyncStatus()
+          if (status && !status.ok) syncError.value = status.message || t('health.sync_error_generic')
         }
-        // Backend kennt das Sync-Ergebnis oft schon, bevor/ohne dass sich last_sync
-        // in health.md ändert (z.B. bei Fehlern wie MFA-Pflicht) — Fehler sofort zeigen
-        // statt bis zum 90s-Timeout stumm weiterzupollen.
-        const status = await fetchSyncStatus()
-        if (status?.last_run && new Date(status.last_run + 'Z').getTime() >= started && !status.ok) {
-          syncing.value   = false
-          syncError.value = status.message || t('health.sync_error_generic')
-          return
-        }
-      } catch { /**/ }
-      if (Date.now() - started < 90000) {
-        setTimeout(poll, 5000)
-      } else {
-        syncing.value  = false
-        syncDone.value = true
-        const status = await fetchSyncStatus()
-        if (status && !status.ok) syncError.value = status.message || t('health.sync_error_generic')
+      } catch {
+        syncing.value   = false
+        syncError.value = t('health.sync_error_generic')
       }
     }
     setTimeout(poll, 5000)

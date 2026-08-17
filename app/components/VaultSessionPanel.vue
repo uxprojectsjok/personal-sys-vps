@@ -32,11 +32,11 @@
         <button
           v-if="open"
           @click.stop="handleRefresh"
-          :disabled="loading"
+          :disabled="fetchingStatus"
           class="w-7 h-7 flex items-center justify-center rounded-none text-[var(--sys-fg-dim)] hover:text-[var(--sys-fg)] hover:bg-[rgba(255,255,255,0.06)] transition-colors"
           :aria-label="$t('vault_session.refresh_aria')"
         >
-          <svg class="w-3.5 h-3.5" :class="loading ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg class="w-3.5 h-3.5" :class="fetchingStatus ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
@@ -192,7 +192,7 @@ const { t } = useI18n()
 
 onMounted(() => { if (props.headless) fetchStatus() })
 
-const { isUnlocked, expiresAt, isUnlimited, loading, error, vaultKey, timeRemaining, fetchStatus, unlock, lock } = useVaultSession()
+const { isUnlocked, expiresAt, isUnlimited, loading, fetchingStatus, error, vaultKey, timeRemaining, fetchStatus, unlock, lock } = useVaultSession()
 const { hasPasskey, isAuthenticating, passkeyError, authenticateOrRegister, deriveVaultKeyHex, lastUsedCredentialId, pruneToCredentialId } = useSoulPasskey()
 const { soulToken } = useSoul()
 

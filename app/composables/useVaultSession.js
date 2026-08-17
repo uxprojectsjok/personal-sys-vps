@@ -230,6 +230,7 @@ export function useVaultSession() {
     expiresAt,
     isUnlimited,
     loading,
+    fetchingStatus,
     error,
     vaultKey,
     timeRemaining,

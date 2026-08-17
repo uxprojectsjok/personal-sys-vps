@@ -975,6 +975,15 @@ async function runScan() {
   const soulMap  = new Map()
   const staleIds = new Set()   // per Live-Abgleich widerlegte Souls — auch aus dem Cache tilgen
 
+  // Discovery-Phase in try/finally: ein unerwarteter Fehler hier darf
+  // refreshing nie dauerhaft auf true stehen lassen, sonst dreht sich der
+  // Refresh-Button für immer weiter (bzw. friert bei der Nicht-Infinite-
+  // Animation mittendrin ein), ohne dass ein neuer Scan möglich wäre.
+  // Verify/Owner/Metrics laufen bewusst weiter im Hintergrund danach
+  // (eigener verifying-Zähler) — deshalb endet dieser Block schon nach der
+  // BFS, nicht erst nach dem finalen await Promise.all ganz unten.
+  try {
+
   // Bootstrap: nodes.json (fast path) + Etherscan chain discovery (autonomous) — parallel
   const config = useRuntimeConfig()
   const [seeds, { origins: chainNodes, stubs: chainStubs }] = await Promise.all([
@@ -1091,9 +1100,11 @@ async function runScan() {
     }
   }
 
-  loading.value = false
-  lastUpdate.value = new Date()
-  refreshing.value = false
+  } finally {
+    loading.value = false
+    lastUpdate.value = new Date()
+    refreshing.value = false
+  }
 
   // Persist live data to localStorage for offline fallback
   cacheSave(soulMap, [...staleIds])
@@ -1302,7 +1313,7 @@ onUnmounted(() => {
   border: 1px solid rgba(230,140,80,0.35); background: rgba(230,140,80,0.06);
   padding: 8px 14px; margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 4px 10px;
 }
-.refresh-btn.spin { animation: spin 0.7s linear; }
+.refresh-btn.spin { animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── TABLE ────────────────────────────────────────────────────────── */
