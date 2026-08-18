@@ -65,6 +65,11 @@ import { register as vaultSharedGet }        from './vault_shared_get.mjs';
 import { register as vaultSharedUpload }     from './vault_shared_upload.mjs';
 import { register as vaultSharedList }       from './vault_shared_list.mjs';
 
+// ── TILL/Trader (Yield + Prediction Markets) — PRIVATE-REPO-ONLY, nur hier
+// (registerTools/Owner-Toolset) registriert, niemals in registerPaidTools/
+// registerPeerTools. ──────────────────────────────────────────────────────
+import { register as traderTools }           from './trader.mjs';
+
 // ── Paid-only Filesystem-Tools ────────────────────────────────────────────────
 import { register as healthCheckPayed }      from './health_check_payed.mjs';
 
@@ -149,6 +154,7 @@ export function registerTools(server, token, soulId = null) {
   if (soulId) soulDraw(server, soulId, token);
   if (soulId) soulHandwriting(server, soulId, token);
   if (soulId) soulDrawSnapshot(server, soulId);
+  if (soulId) traderTools(server, soulId);
 }
 
 /**

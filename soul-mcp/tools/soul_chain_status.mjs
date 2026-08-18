@@ -1,57 +1,16 @@
 import { readFile } from 'fs/promises';
 import { SOULS_DIR } from '../lib/vault_fs.mjs';
+import { summarize, gate } from '../lib/chain_gate.mjs';
 
-// Gate-Logik bewusst als eigenständige JS-Kopie der Lua-Version in
+// Gate-Logik lebt jetzt in lib/chain_gate.mjs (trader_mcp.mjs braucht
+// dieselbe Prüfung für den Identitäts-Gate vor Geld-bewegenden Aktionen).
+// Bewusst weiterhin eine eigenständige JS-Kopie der Lua-Version in
 // chain_lib.lua, statt einen internen HTTP-Umweg zu bauen — die Logik ist
 // klein und stabil (3 Schwellwerte, Datumsdifferenz, Typ-Zählung), ein
 // neuer interner Endpoint samt Auth-Verdrahtung wäre für diesen Nutzen
 // unverhältnismäßig ("am Ende einfach"-Leitplanke, siehe
 // verify-identity-hq-plan.md). Bei Änderung der Stufen-Logik: beide Stellen
-// pflegen (hier + chain_lib.lua gateCheck/summarize).
-
-const ANCHOR_TYPES = new Set(['idv_document', 'sim_verification', 'sepa_transfer', 'eudi_wallet', 'eid_chip', 'paypal_transfer']);
-const CONTINUITY_TYPES = new Set(['face_hq', 'voice_hq', 'face', 'voice', 'fingerprint', 'longmem_interview', 'peer_vouch', 'passkey_wallet']);
-
-function daysAgo(isoTs) {
-  const t = new Date(isoTs).getTime();
-  if (Number.isNaN(t)) return Infinity;
-  return (Date.now() - t) / 86_400_000;
-}
-
-function isRevoked(chain, linkId) {
-  return chain.some(l => l.category === 'revocation' && typeof l.evidence_ref === 'string' && l.evidence_ref.startsWith(linkId));
-}
-
-function summarize(chain) {
-  let freshestContinuity = Infinity, freshestAnchor = Infinity, anyAnchor = false;
-  const anchorTypes = new Set();
-  for (const l of chain) {
-    if (isRevoked(chain, l.link_id)) continue;
-    const age = daysAgo(l.timestamp);
-    if (CONTINUITY_TYPES.has(l.attestation_type) && age < freshestContinuity) freshestContinuity = age;
-    // "low"-Confidence-Anker (human_override) zählen bewusst nicht — siehe
-    // chain_lib.lua confirmPendingAnchor/summarize.
-    if (ANCHOR_TYPES.has(l.attestation_type) && l.confidence !== 'low') {
-      anyAnchor = true;
-      if (age < freshestAnchor) freshestAnchor = age;
-      anchorTypes.add(l.attestation_type);
-    }
-  }
-  return {
-    chain_length: chain.length,
-    freshest_continuity_days: freshestContinuity,
-    any_anchor: anyAnchor,
-    freshest_anchor_days: freshestAnchor,
-    independent_anchor_types: anchorTypes.size,
-  };
-}
-
-function gate(s, tier) {
-  if (tier === 'low')    return s.freshest_continuity_days < 30;
-  if (tier === 'medium') return s.freshest_continuity_days < 7 && s.any_anchor;
-  if (tier === 'high')   return s.freshest_continuity_days < 1 && s.freshest_anchor_days < 365 && s.independent_anchor_types >= 2;
-  return false;
-}
+// pflegen (lib/chain_gate.mjs + chain_lib.lua gateCheck/summarize).
 
 export function register(server, token, soulId = null) {
   server.tool(
