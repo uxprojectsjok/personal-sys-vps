@@ -68,7 +68,7 @@ import {
   savePrivateKey as saveX402AgentKey,
   loadAccount as loadX402AgentAccount,
 } from './lib/x402_agent_wallet.mjs';
-import { getBalances as getX402AgentBalances, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
+import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
 // WebSocketProvider in soul_indexer.mjs internally rejecting on an RPC error —
@@ -2797,7 +2797,8 @@ app.get('/internal/x402-agent/balance', async (req, res) => {
     const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
     const balances = await getX402AgentBalances(account.address);
-    res.json({ ok: true, address: account.address, ...balances });
+    const prices = await getX402AgentPrices(balances.map(b => b.coingeckoId));
+    res.json({ ok: true, address: account.address, balances, prices });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

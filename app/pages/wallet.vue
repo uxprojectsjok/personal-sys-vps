@@ -35,13 +35,11 @@
               <p class="wa-field-desc">{{ $t('wallet.token_desc') }}</p>
               <div class="wa-chip-row">
                 <button
-                  v-for="tk in tokens" :key="tk.symbol" type="button"
+                  v-for="sym in displayTokenSymbols" :key="sym" type="button"
                   class="wa-chip"
-                  :class="{ 'wa-chip--active': tk.enabled && selectedToken === tk.symbol, 'wa-chip--disabled': !tk.enabled }"
-                  :disabled="!tk.enabled"
-                  :title="tk.enabled ? '' : $t('wallet.soon_tag')"
-                  @click="selectedToken = tk.symbol"
-                >{{ tk.symbol }}</button>
+                  :class="{ 'wa-chip--active': selectedToken === sym }"
+                  @click="selectedToken = sym"
+                >{{ sym }}</button>
               </div>
             </div>
 
@@ -81,7 +79,7 @@
                 </div>
                 <div v-if="activeBalance !== null" class="archivar-lm-row">
                   <span class="archivar-lm-key">{{ $t('settings.x402_balance_label') }}</span>
-                  <span class="archivar-lm-val">{{ activeBalance }} {{ selectedToken }}</span>
+                  <span class="archivar-lm-val">{{ activeBalance }} {{ selectedToken }}<span v-if="activeBalanceUsd !== null" class="archivar-lm-dim"> · ${{ activeBalanceUsd }}</span></span>
                 </div>
               </div>
             </div>
@@ -158,18 +156,16 @@ function onNav(id) {
 }
 
 // ── Aktiver Token ────────────────────────────────────────────────────────────
-// Rein clientseitige Auswahl, welches der bereits geladenen Guthaben (POL/USDC
-// — die einzigen beiden, die /api/x402/agent/balances tatsächlich liefert)
-// im Status-Block hervorgehoben wird. ETH/USDT sind bewusst deaktiviert
-// (Multi-Chain steht unten als "geplant") statt vorzutäuschen, dass sie schon
-// funktionieren.
-const tokens = [
-  { symbol: 'POL', key: 'pol', enabled: true },
-  { symbol: 'USDC', key: 'usdc', enabled: true },
-  { symbol: 'ETH', key: 'eth', enabled: false },
-  { symbol: 'USDT', key: 'usdt', enabled: false },
-]
+// Wählt aus, welches der geladenen Guthaben im Status-Block hervorgehoben
+// wird. Symbole kommen NICHT aus einer festen Liste hier, sondern live vom
+// jeweiligen Vertrag (x402_client.mjs liest symbol() live statt es fest zu
+// hinterlegen — der historische PoS-USDT-Vertrag berichtet inzwischen z.B.
+// "USDT0" statt "USDT", ein echtes Rebranding, live geprüft). Vor dem ersten
+// Laden zeigt die Chip-Reihe eine bekannte Erwartung, damit sie nicht leer
+// ist — sobald echte Daten da sind, übernehmen die.
+const KNOWN_TOKEN_SYMBOLS = ['POL', 'USDC', 'WETH', 'USDT0']
 const selectedToken = ref('USDC')
+const displayTokenSymbols = computed(() => x402Balances.value?.length ? x402Balances.value.map(b => b.symbol) : KNOWN_TOKEN_SYMBOLS)
 
 const roadmapItems = computed(() => [
   { title: t('wallet.roadmap_trading_title'), desc: t('wallet.roadmap_trading_desc') },
@@ -184,7 +180,8 @@ const roadmapItems = computed(() => [
 // direkt mit @x402/evm + viem, keine Third-Party-Pairing-Dance nötig.
 const x402Configured   = ref(false)
 const x402Address      = ref('')
-const x402Balances     = ref(null)
+const x402Balances     = ref(null) // [{ symbol, amount, coingeckoId, address? }]
+const x402Prices       = ref(null) // { [coingeckoId]: { usd } }, siehe getPrices() in x402_client.mjs
 const x402KeyInput     = ref('')
 const x402KeySaving    = ref(false)
 const x402BalancesBusy = ref(false)
@@ -192,10 +189,18 @@ const x402PayBusy      = ref(false)
 const x402PayResult    = ref('')
 const x402Feedback     = ref(null)
 
-const activeBalance = computed(() => {
-  if (!x402Balances.value) return null
-  const tk = tokens.find(t => t.symbol === selectedToken.value)
-  return tk ? (x402Balances.value[tk.key] ?? null) : null
+function formatAmount(amountStr) {
+  const n = Number(amountStr)
+  if (!isFinite(n)) return amountStr
+  return n.toFixed(n >= 1 ? 4 : 6).replace(/\.?0+$/, '')
+}
+
+const activeBalanceEntry = computed(() => x402Balances.value?.find(b => b.symbol === selectedToken.value) || null)
+const activeBalance = computed(() => activeBalanceEntry.value ? formatAmount(activeBalanceEntry.value.amount) : null)
+const activeBalanceUsd = computed(() => {
+  const entry = activeBalanceEntry.value
+  const price = entry && x402Prices.value?.[entry.coingeckoId]?.usd
+  return price != null ? (Number(entry.amount) * price).toFixed(2) : null
 })
 
 function x402ShowFeedback(ok, message) {
@@ -244,7 +249,8 @@ async function x402GetBalances() {
     const r = await fetch('/api/x402/agent/balances', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     const d = await r.json().catch(() => ({}))
     if (r.ok && d.ok) {
-      x402Balances.value = { usdc: d.usdc, pol: d.pol }
+      x402Balances.value = d.balances
+      x402Prices.value   = d.prices
     } else {
       x402ShowFeedback(false, d.error || `Error ${r.status}`)
     }
@@ -323,9 +329,8 @@ async function x402SendTestPayment() {
   background: transparent; color: var(--fg); font-family: var(--sans); font-size: 14px;
   font-weight: 500; cursor: pointer; transition: all 0.15s;
 }
-.wa-chip:hover:not(:disabled) { border-color: var(--accent); }
+.wa-chip:hover { border-color: var(--accent); }
 .wa-chip--active { background: rgba(109,184,154,0.10); border-color: var(--accent); color: var(--accent); }
-.wa-chip--disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* Private Key */
 .wa-key-row { display: flex; gap: 8px; }

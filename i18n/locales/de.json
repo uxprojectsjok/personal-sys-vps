@@ -1410,7 +1410,7 @@
     "type_provider": "Anbieter wählen",
     "soon_tag": "bald",
     "token_label": "Aktiver Token",
-    "token_desc": "Bestimmt, welches Guthaben angezeigt und für Test-Zahlungen verwendet wird.",
+    "token_desc": "Bestimmt, welches Guthaben im Status-Block angezeigt wird. Test-Zahlungen laufen unabhängig davon immer in USDC (der x402-Endpunkt akzeptiert kein anderes Settlement-Asset).",
     "status_label": "Status",
     "roadmap_label": "Geplante Fähigkeiten",
     "roadmap_tag": "geplant",

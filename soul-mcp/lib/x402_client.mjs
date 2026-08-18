@@ -16,10 +16,32 @@ import { wrapFetchWithPayment } from '@x402/fetch';
 const USDC_ADDRESS = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
 const RPC_URL       = 'https://polygon-bor-rpc.publicnode.com';
 
+// Token-Liste für die Guthaben-Anzeige (Wallet-Seite "Aktiver Token"-Chips).
+// Adressen live gegen die echten Verträge verifiziert (name()/symbol()/
+// decimals()), NICHT aus dem Gedächtnis übernommen — dabei eine echte
+// Überraschung gefunden: der historische PoS-USDT-Vertrag (seit Jahren
+// dieselbe Adresse, in jedem Wallet/DEX als "USDT" bekannt) berichtet
+// inzwischen symbol()->"USDT0" statt "USDT" (Tethers LayerZero-Omnichain-
+// Rebranding). Deshalb wird das Symbol hier bewusst LIVE vom Vertrag
+// gelesen statt fest als String hinterlegt — bleibt automatisch korrekt bei
+// künftigen Rebrandings, statt eine mögliche stille Fehlbezeichnung im Code
+// einzufrieren. coingeckoId nur für die Preis-Anzeige (getPrices unten),
+// hat nichts mit dem on-chain-Symbol zu tun.
+const TOKENS = [
+  { coingeckoId: 'usd-coin', address: USDC_ADDRESS, decimals: 6 },
+  { coingeckoId: 'weth',     address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619', decimals: 18 },
+  { coingeckoId: 'tether',   address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6 },
+];
+// polygon.nativeCurrency.symbol ("POL") kommt aus viems eigener, gepflegter
+// Chain-Definition — bewusst nicht hier separat hardcodiert.
+const NATIVE_COINGECKO_ID = 'polygon-ecosystem-token';
+
 const ERC20_ABI = [
   { name: 'balanceOf', type: 'function', stateMutability: 'view',
     inputs: [{ name: 'account', type: 'address' }],
     outputs: [{ name: '', type: 'uint256' }] },
+  { name: 'symbol', type: 'function', stateMutability: 'view',
+    inputs: [], outputs: [{ name: '', type: 'string' }] },
 ];
 
 let _publicClient = null;
@@ -29,16 +51,51 @@ function getPublicClient() {
   return _publicClient;
 }
 
+// Liefert eine Liste { symbol, amount, coingeckoId, address? } — native POL
+// zuerst, dann die ERC20-Token aus TOKENS in derselben Reihenfolge. amount
+// ist bereits als Dezimal-String formatiert (formatUnits), nicht als
+// Rohbetrag.
 export async function getBalances(address) {
   const client = getPublicClient();
-  const [usdcRaw, polRaw] = await Promise.all([
-    client.readContract({ address: USDC_ADDRESS, abi: ERC20_ABI, functionName: 'balanceOf', args: [address] }),
+  const [polRaw, ...tokenReads] = await Promise.all([
     client.getBalance({ address }),
+    ...TOKENS.flatMap(t => [
+      client.readContract({ address: t.address, abi: ERC20_ABI, functionName: 'balanceOf', args: [address] }),
+      client.readContract({ address: t.address, abi: ERC20_ABI, functionName: 'symbol' }),
+    ]),
   ]);
-  return {
-    usdc: formatUnits(usdcRaw, 6),
-    pol: formatUnits(polRaw, 18),
-  };
+
+  const balances = [{
+    symbol: polygon.nativeCurrency.symbol,
+    amount: formatUnits(polRaw, 18),
+    coingeckoId: NATIVE_COINGECKO_ID,
+  }];
+  TOKENS.forEach((t, i) => {
+    balances.push({
+      symbol: tokenReads[i * 2 + 1],
+      amount: formatUnits(tokenReads[i * 2], t.decimals),
+      coingeckoId: t.coingeckoId,
+      address: t.address,
+    });
+  });
+  return balances;
+}
+
+// USD-Preise für die Anzeige (CoinGecko public API, kein Key nötig) — reine
+// Zusatzinfo, ein Fehlschlag hier darf die eigentlichen (zuverlässigeren,
+// direkt on-chain gelesenen) Guthaben nie unsichtbar machen. Bei Fehler
+// leeres Objekt zurück, Aufrufer zeigt dann nur die rohen Token-Mengen ohne
+// USD-Wert statt einen Fehler zu werfen.
+export async function getPrices(coingeckoIds) {
+  try {
+    const ids = [...new Set(coingeckoIds)].join(',');
+    if (!ids) return {};
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`);
+    if (!res.ok) return {};
+    return await res.json();
+  } catch {
+    return {};
+  }
 }
 
 /**

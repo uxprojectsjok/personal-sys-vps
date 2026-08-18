@@ -1410,7 +1410,7 @@
     "type_provider": "Choose Provider",
     "soon_tag": "soon",
     "token_label": "Active Token",
-    "token_desc": "Determines which balance is shown and used for test payments.",
+    "token_desc": "Determines which balance is shown in the status block. Test payments always settle in USDC regardless (the x402 endpoint accepts no other settlement asset).",
     "status_label": "Status",
     "roadmap_label": "Planned Capabilities",
     "roadmap_tag": "planned",
