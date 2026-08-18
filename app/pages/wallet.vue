@@ -11,38 +11,49 @@
           <div class="page wa-page">
             <div class="wa-head">
               <div class="wa-eyebrow">{{ $t('wallet.eyebrow') }}</div>
-              <h1 class="wa-title">{{ $t('wallet.hero_prefix') }} <em>{{ $t('wallet.hero_em') }}</em></h1>
-              <p class="wa-sub">{{ $t('settings.x402_desc') }}</p>
+              <h1 class="wa-title">{{ soulMeta?.name }} <em>{{ $t('nav.wallet') }}</em></h1>
             </div>
 
-            <!-- Status Block -->
-            <div class="archivar-lm-block" style="margin-bottom:20px;font-size:15px">
-              <div class="archivar-lm-row" style="gap:16px">
-                <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_wallet_label') }}</span>
-                <span class="archivar-lm-val" :class="x402Configured ? 'archivar-lm-ok' : ''">
-                  {{ x402Configured ? $t('settings.x402_wallet_ready') : $t('settings.x402_wallet_missing') }}
-                </span>
-              </div>
-              <div v-if="x402Address" class="archivar-lm-row" style="gap:16px">
-                <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_address_label') }}</span>
-                <code class="archivar-lm-val archivar-lm-dim" style="font-size:14px;word-break:break-all;text-align:right">{{ x402Address }}</code>
-              </div>
-              <div v-if="x402Balances" class="archivar-lm-row" style="gap:16px">
-                <span class="archivar-lm-key" style="font-size:15px;text-transform:none;letter-spacing:0;flex-shrink:0">{{ $t('settings.x402_balance_label') }}</span>
-                <span class="archivar-lm-val">{{ x402Balances.usdc }} USDC · {{ x402Balances.pol }} POL</span>
+            <!-- Wallet-Typ -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ $t('wallet.type_label') }}</div>
+              <div class="wa-select-stack">
+                <div class="wa-select-row wa-select-row--active">
+                  <span>{{ $t('wallet.type_manual') }}</span>
+                  <span class="wa-chevron">⌄</span>
+                </div>
+                <div class="wa-select-row wa-select-row--disabled">
+                  <span>{{ $t('wallet.type_provider') }}</span>
+                  <span class="wa-soon-tag">{{ $t('wallet.soon_tag') }}</span>
+                </div>
               </div>
             </div>
 
-            <!-- Key entry -->
-            <div class="sys-field" style="gap:10px;margin-bottom:24px">
-              <label class="sys-field-label">{{ x402Configured ? $t('settings.x402_replace_key_label') : $t('settings.x402_key_label') }}</label>
-              <p style="font-size:15px;line-height:1.65;color:var(--fg-2);margin:0 0 8px">{{ $t('settings.x402_key_desc') }}</p>
-              <div style="display:flex;gap:8px">
+            <!-- Aktiver Token -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ $t('wallet.token_label') }}</div>
+              <p class="wa-field-desc">{{ $t('wallet.token_desc') }}</p>
+              <div class="wa-chip-row">
+                <button
+                  v-for="tk in tokens" :key="tk.symbol" type="button"
+                  class="wa-chip"
+                  :class="{ 'wa-chip--active': tk.enabled && selectedToken === tk.symbol, 'wa-chip--disabled': !tk.enabled }"
+                  :disabled="!tk.enabled"
+                  :title="tk.enabled ? '' : $t('wallet.soon_tag')"
+                  @click="selectedToken = tk.symbol"
+                >{{ tk.symbol }}</button>
+              </div>
+            </div>
+
+            <!-- Private Key -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ x402Configured ? $t('settings.x402_replace_key_label') : $t('settings.x402_key_label') }}</div>
+              <p class="wa-field-desc">{{ $t('settings.x402_key_desc') }}</p>
+              <div class="wa-key-row">
                 <input
                   v-model="x402KeyInput"
                   type="password"
-                  class="sys-input sys-input--mono"
-                  style="flex:1"
+                  class="sys-input sys-input--mono wa-key-input"
                   placeholder="0x…"
                   autocomplete="off"
                 />
@@ -54,17 +65,38 @@
               </div>
             </div>
 
-            <!-- Balance + test payment -->
-            <div v-if="x402Configured" class="sys-field" style="gap:10px;margin-bottom:24px">
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="sys-btn-ed sys-btn-ed--primary" :disabled="x402BalancesBusy" @click="x402GetBalances">
+            <!-- Status -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ $t('wallet.status_label') }}</div>
+              <div class="archivar-lm-block">
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('settings.x402_wallet_label') }}</span>
+                  <span class="archivar-lm-val" :class="x402Configured ? 'archivar-lm-ok' : ''">
+                    {{ x402Configured ? $t('settings.x402_wallet_ready') : $t('settings.x402_wallet_missing') }}
+                  </span>
+                </div>
+                <div v-if="x402Address" class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('settings.x402_address_label') }}</span>
+                  <code class="archivar-lm-val archivar-lm-dim">{{ x402Address }}</code>
+                </div>
+                <div v-if="activeBalance !== null" class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('settings.x402_balance_label') }}</span>
+                  <span class="archivar-lm-val">{{ activeBalance }} {{ selectedToken }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Aktionen -->
+            <div v-if="x402Configured" class="wa-field">
+              <div class="wa-actions-row">
+                <button class="wa-btn-ghost" :disabled="x402BalancesBusy" @click="x402GetBalances">
                   {{ x402BalancesBusy ? $t('settings.agent_running') : $t('settings.x402_balances_btn') }}
                 </button>
-                <button class="sys-btn-ed sys-btn-ed--primary" :disabled="x402PayBusy" @click="x402SendTestPayment">
+                <button class="wa-btn-ghost" :disabled="x402PayBusy" @click="x402SendTestPayment">
                   {{ x402PayBusy ? $t('settings.agent_running') : $t('settings.x402_test_pay_btn') }}
                 </button>
               </div>
-              <p style="font-size:15px;line-height:1.65;color:var(--fg-4);margin:0">{{ $t('settings.x402_test_pay_hint') }}</p>
+              <p class="wa-hint">{{ $t('settings.x402_test_pay_hint') }}</p>
 
               <div v-if="x402PayResult" class="sm-infoblock" style="margin-top:8px">
                 <pre style="white-space:pre-wrap;word-break:break-all;margin:0;font-family:var(--mono);font-size:13px">{{ x402PayResult }}</pre>
@@ -73,12 +105,24 @@
 
             <!-- Feedback -->
             <Transition name="sys-modal-fade">
-              <div v-if="x402Feedback" style="margin-top:10px;padding:10px 14px;border-left:2px solid;font-family:var(--mono);font-size:13px"
-                :style="x402Feedback.ok
-                  ? 'border-color:var(--sys-ok);color:var(--sys-ok);background:rgba(184,220,196,0.06)'
-                  : 'border-color:var(--sys-err);color:var(--sys-err);background:rgba(240,163,163,0.06)'"
-              >{{ x402Feedback.message }}</div>
+              <div v-if="x402Feedback" class="wa-feedback" :class="x402Feedback.ok ? 'wa-feedback--ok' : 'wa-feedback--err'">
+                {{ x402Feedback.message }}
+              </div>
             </Transition>
+
+            <!-- Geplante Fähigkeiten -->
+            <div class="wa-field wa-field--last">
+              <div class="wa-field-label">{{ $t('wallet.roadmap_label') }}</div>
+              <div class="wa-roadmap-box">
+                <div v-for="item in roadmapItems" :key="item.title" class="wa-roadmap-row">
+                  <div class="wa-roadmap-left">
+                    <div class="wa-roadmap-title">{{ item.title }}</div>
+                    <div class="wa-roadmap-desc">{{ item.desc }}</div>
+                  </div>
+                  <span class="wa-roadmap-tag">{{ $t('wallet.roadmap_tag') }}</span>
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -90,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
@@ -113,6 +157,26 @@ function onNav(id) {
   drawerOpen.value = false; router.push('/')
 }
 
+// ── Aktiver Token ────────────────────────────────────────────────────────────
+// Rein clientseitige Auswahl, welches der bereits geladenen Guthaben (POL/USDC
+// — die einzigen beiden, die /api/x402/agent/balances tatsächlich liefert)
+// im Status-Block hervorgehoben wird. ETH/USDT sind bewusst deaktiviert
+// (Multi-Chain steht unten als "geplant") statt vorzutäuschen, dass sie schon
+// funktionieren.
+const tokens = [
+  { symbol: 'POL', key: 'pol', enabled: true },
+  { symbol: 'USDC', key: 'usdc', enabled: true },
+  { symbol: 'ETH', key: 'eth', enabled: false },
+  { symbol: 'USDT', key: 'usdt', enabled: false },
+]
+const selectedToken = ref('USDC')
+
+const roadmapItems = computed(() => [
+  { title: t('wallet.roadmap_trading_title'), desc: t('wallet.roadmap_trading_desc') },
+  { title: t('wallet.roadmap_multichain_title'), desc: t('wallet.roadmap_multichain_desc') },
+  { title: t('wallet.roadmap_limitorders_title'), desc: t('wallet.roadmap_limitorders_desc') },
+])
+
 // ── x402 Test-Wallet (per Soul, siehe soul-mcp/lib/x402_agent_wallet.mjs) ──────
 // Operator/Soul kann eine kleine Test-Wallet hinterlegen (privater Key, nie
 // der Haupt-Wallet), um den eigenen x402-Verkaufsweg (POST /api/soul/pay/x402)
@@ -127,6 +191,12 @@ const x402BalancesBusy = ref(false)
 const x402PayBusy      = ref(false)
 const x402PayResult    = ref('')
 const x402Feedback     = ref(null)
+
+const activeBalance = computed(() => {
+  if (!x402Balances.value) return null
+  const tk = tokens.find(t => t.symbol === selectedToken.value)
+  return tk ? (x402Balances.value[tk.key] ?? null) : null
+})
 
 function x402ShowFeedback(ok, message) {
   x402Feedback.value = { ok, message }
@@ -219,16 +289,103 @@ async function x402SendTestPayment() {
 .wa-title {
   font-family: var(--serif); font-size: clamp(32px, 5vw, 48px);
   font-weight: 400; letter-spacing: -0.03em; color: var(--fg);
-  line-height: 1.05; margin-bottom: 14px;
+  line-height: 1.05;
 }
 .wa-title em { font-style: italic; color: var(--accent); }
-.wa-sub { font-size: 17px; line-height: 1.65; color: var(--fg); max-width: 560px; margin: 0; }
+
+.wa-field { margin-bottom: 28px; }
+.wa-field--last { margin-bottom: 0; }
+.wa-field-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fg); margin-bottom: 10px;
+}
+.wa-field-desc { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 640px; margin: 0 0 12px; }
+
+/* Wallet-Typ */
+.wa-select-stack { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.wa-select-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border: 1px solid var(--line-2); border-radius: var(--r-xs);
+  font-family: var(--sans); font-size: 15px; color: var(--fg);
+}
+.wa-select-row--active { border-color: var(--accent); }
+.wa-select-row--disabled { opacity: 0.5; }
+.wa-chevron { color: var(--fg); font-size: 14px; }
+.wa-soon-tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--fg);
+}
+
+/* Aktiver Token */
+.wa-chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.wa-chip {
+  padding: 7px 16px; border-radius: 999px; border: 1px solid var(--line-2);
+  background: transparent; color: var(--fg); font-family: var(--sans); font-size: 14px;
+  font-weight: 500; cursor: pointer; transition: all 0.15s;
+}
+.wa-chip:hover:not(:disabled) { border-color: var(--accent); }
+.wa-chip--active { background: rgba(109,184,154,0.10); border-color: var(--accent); color: var(--accent); }
+.wa-chip--disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Private Key */
+.wa-key-row { display: flex; gap: 8px; }
+.wa-key-input { flex: 1; }
+
+/* Aktionen */
+.wa-actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.wa-hint { font-size: 15px; line-height: 1.65; color: var(--fg); margin: 0; }
+
+/* Eigene Ghost-Button-Variante statt .sys-btn-ed--ghost: dessen Rahmenfarbe
+   (--sys-rule-strong, aus sys-editorial.css) ist fest auf einen hellen,
+   für dunklen Hintergrund gedachten Ton codiert und passt sich nicht ans
+   Seiten-Theme an — im Hell-Modus dadurch praktisch unsichtbar (kein Rahmen,
+   kein erkennbarer Button mehr). Live geprüft (Playwright-Screenshot beider
+   Themes) vor diesem Fix. Nutzt stattdessen dieselben theme-reaktiven Tokens
+   wie der Rest dieser Seite (var(--line-2)/var(--fg)/var(--accent)).
+   Nicht in sys-editorial.css selbst gefixt — das ist eine app-weit geteilte
+   Datei für "alle upgraded modals"; ein Fix dort bräuchte eigenes Testen
+   gegen jeden bestehenden Verbraucher, außerhalb des Umfangs dieser Seite. */
+.wa-btn-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 20px; border-radius: var(--r-xs);
+  font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  cursor: pointer; border: 1px solid var(--line-2); background: transparent; color: var(--fg);
+  transition: all 0.15s;
+}
+.wa-btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.wa-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.wa-feedback {
+  margin-top: 10px; padding: 10px 14px; border-left: 2px solid;
+  font-family: var(--mono); font-size: 13px;
+}
+.wa-feedback--ok  { border-color: var(--sys-ok); color: var(--sys-ok); background: rgba(184,220,196,0.06); }
+.wa-feedback--err { border-color: var(--sys-err); color: var(--sys-err); background: rgba(240,163,163,0.06); }
+
+/* Geplante Fähigkeiten */
+.wa-roadmap-box { border: 1px solid var(--line); border-radius: var(--r-xs); overflow: hidden; }
+.wa-roadmap-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 16px; border-bottom: 1px solid var(--line);
+}
+.wa-roadmap-row:last-child { border-bottom: none; }
+.wa-roadmap-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wa-roadmap-title { font-family: var(--sans); font-size: 15px; font-weight: 500; color: var(--fg); }
+.wa-roadmap-desc { font-family: var(--sans); font-size: 13px; color: var(--fg); line-height: 1.5; }
+.wa-roadmap-tag {
+  flex: none; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--fg);
+}
 
 .archivar-lm-block { border: 1px solid var(--sys-rule); border-radius: var(--r-xs); overflow: hidden; }
 .archivar-lm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--sys-rule); font-family: var(--mono); font-size: 14px; }
 .archivar-lm-row:last-child { border-bottom: none; }
 .archivar-lm-key  { color: var(--fg); letter-spacing: 0.06em; text-transform: uppercase; font-size: 11px; }
-.archivar-lm-val  { color: var(--fg-2); letter-spacing: 0.04em; }
+.archivar-lm-val  { color: var(--fg); letter-spacing: 0.04em; }
 .archivar-lm-ok   { color: var(--sys-ok); }
 .archivar-lm-dim  { color: var(--fg); }
+
+@media (max-width: 640px) {
+  .wa-roadmap-row { flex-wrap: wrap; }
+}
 </style>

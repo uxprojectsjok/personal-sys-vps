@@ -1404,7 +1404,22 @@
   "wallet": {
     "eyebrow": "X402 · WALLET",
     "hero_prefix": "Test your own,",
-    "hero_em": "payments"
+    "hero_em": "payments",
+    "type_label": "Wallet Type",
+    "type_manual": "Manual Private Key",
+    "type_provider": "Choose Provider",
+    "soon_tag": "soon",
+    "token_label": "Active Token",
+    "token_desc": "Determines which balance is shown and used for test payments.",
+    "status_label": "Status",
+    "roadmap_label": "Planned Capabilities",
+    "roadmap_tag": "planned",
+    "roadmap_trading_title": "Trading",
+    "roadmap_trading_desc": "Agent can autonomously execute swaps between tokens",
+    "roadmap_multichain_title": "Multi-Chain",
+    "roadmap_multichain_desc": "Wallet support across multiple networks",
+    "roadmap_limitorders_title": "Limit Orders",
+    "roadmap_limitorders_desc": "Conditional trades the agent monitors autonomously"
   },
   "agent": {
     "eyebrow": "AUTONOMOUS AGENT",
