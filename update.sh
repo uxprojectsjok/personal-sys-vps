@@ -153,20 +153,39 @@ for _NC in /etc/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf;
 done
 if [ -n "$_NGINX_CONF_LIVE" ] && [ -f "$SCRIPT_DIR/server/openresty/nginx.conf.template" ] && grep -q "lua_package_path" "$_NGINX_CONF_LIVE"; then
   _DICTS_ADDED=0
+  _ADDED_NAMES=""
   while IFS= read -r _DICT_LINE; do
     _DICT_NAME=$(echo "$_DICT_LINE" | awk '{print $2}')
     [ -n "$_DICT_NAME" ] || continue
-    if ! grep -q "lua_shared_dict[[:space:]]\+$_DICT_NAME\b" "$_NGINX_CONF_LIVE"; then
+    # Auch node-globale Deklarationen prüfen (init.sh schreibt gate_sessions/
+    # sys_write_lock nach /etc/openresty/sys-node-globals.conf, per `include`
+    # in nginx.conf eingebunden, nicht direkt in nginx.conf selbst) — sonst
+    # entsteht hier eine doppelte Deklaration, die die Syntaxprüfung bricht
+    # (live so aufgetreten: "gate_sessions" already defined, 2026-08-18,
+    # reload schlug fehl, Seite lief nur weiter, weil der alte Worker-Prozess
+    # den Reload-Fehler überlebt — kein sofortiger Ausfall, aber ein
+    # Blindgänger für den nächsten Neustart).
+    if ! grep -q "lua_shared_dict[[:space:]]\+$_DICT_NAME\b" "$_NGINX_CONF_LIVE" \
+       && { [ ! -f /etc/openresty/sys-node-globals.conf ] || ! grep -q "lua_shared_dict[[:space:]]\+$_DICT_NAME\b" /etc/openresty/sys-node-globals.conf; }; then
       sed -i "/lua_package_path /a\\  $_DICT_LINE" "$_NGINX_CONF_LIVE"
       info "nginx.conf: added missing lua_shared_dict '$_DICT_NAME'."
       _DICTS_ADDED=1
+      _ADDED_NAMES="$_ADDED_NAMES $_DICT_NAME"
     fi
   done < <(grep "^\s*lua_shared_dict " "$SCRIPT_DIR/server/openresty/nginx.conf.template" | sed 's/^\s*//')
   if [ "$_DICTS_ADDED" = 1 ]; then
     if openresty -t 2>&1; then
       info "nginx.conf updated with new shared dicts."
     else
-      warn "nginx.conf syntax check failed after adding shared dicts — check manually, changes were NOT reverted automatically."
+      warn "nginx.conf syntax check failed after adding shared dicts — reverting the just-added line(s) instead of leaving a broken config in place."
+      for _NAME in $_ADDED_NAMES; do
+        sed -i "/^\s*lua_shared_dict[[:space:]]\+${_NAME}\b/d" "$_NGINX_CONF_LIVE"
+      done
+      if openresty -t 2>&1; then
+        warn "Reverted — nginx.conf is valid again, but dict(s)($_ADDED_NAMES) are NOT active. Check manually."
+      else
+        err "nginx.conf still invalid after revert — needs manual attention immediately."
+      fi
     fi
   fi
 fi
