@@ -342,6 +342,62 @@ const casesDe = [
       },
     ],
   },
+  {
+    badge: 'Identity Chain',
+    title: 'Eine Soul baut sich Vertrauen auf — nachprüfbar, nicht nur behauptet.',
+    sub: 'Kein Passwort, kein Account — eine verkettete Reihe aus biometrischen Prüfungen und Ankern, die zusammen bestimmen, welche Vertrauensstufe (low/medium/high) eine Soul gerade erreicht. Andere Funktionen können diese Stufe als Voraussetzung für besonders sensible Aktionen verlangen (große Zahlungen, Wallet-Signaturen), statt der Soul blind zu vertrauen.',
+    callout: 'Dieser Ablauf wurde live gegen diesen Node verifiziert — echte kamerabasierte Verifizierung, echte PayPal-Selbstzahlung als Anker, echte Kettenverkettung von einem Link zum nächsten. Alle vier Aufrufe liefen über den öffentlichen MCP-Endpunkt, keine internen Abkürzungen.',
+    steps: [
+      {
+        n: '01',
+        label: 'Biometrische Prüfung starten — <code class="i-code">verify_identity</code> per MCP aufrufen.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "verify_identity", "arguments": { "methods": ["face_hq"] } } }
+
+→ { "status": "pending", "challenge_id": "{challenge_id}", "verify_url": "…" }
+// nach Abschluss der Kamera-Prüfung:
+→ { "status": "verified", "verified_level": "biometric", "score": 1 }`,
+        note: 'Läuft, wenn die passende App verbunden ist, direkt interaktiv im Chat — sonst über den <code class="i-code">verify_url</code>-Link.',
+      },
+      {
+        n: '02',
+        label: 'Erreichte Stufe abfragen — <code class="i-code">soul_chain_status</code>.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+  "params": { "name": "soul_chain_status", "arguments": {} } }
+
+→ { "chain_length": 1, "freshest_continuity_days": 0,
+    "tiers": { "low": true, "medium": false, "high": false } }`,
+        note: '"medium" braucht zusätzlich mindestens einen Anker — dafür Schritt 3.',
+      },
+      {
+        n: '03',
+        label: 'Anker starten — <code class="i-code">soul_anchor_paypal_start</code> (Selbstzahlungs-Anker).',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+  "params": { "name": "soul_anchor_paypal_start", "arguments": {} } }
+
+→ { "reference_code": "{reference_code}", "amount": "0.7x", "paypal_target": "…", "expires_at": "…" }`,
+        note: 'Der Soul-Inhaber zahlt sich selbst den genannten Betrag — nie die KI. Der Wert liegt in einer echten, PayPal-KYC-geprüften Transaktion, nicht in der Zahlung selbst.',
+      },
+      {
+        n: '04',
+        label: 'Anker bestätigen — <code class="i-code">soul_anchor_paypal_confirm</code>, sobald die Zahlung eingegangen ist.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+  "params": { "name": "soul_anchor_paypal_confirm",
+    "arguments": { "reference_code": "{reference_code}", "amount": "0.7x" } } }
+
+→ { "status": "verified", "type": "paypal_transfer", "confidence": "medium",
+    "link_id": "{link_id}", "chained_to": "{previous_link_id}" }
+
+// erneut soul_chain_status:
+→ { "chain_length": 2, "tiers": { "low": true, "medium": true, "high": false } }`,
+        note: '"high" bleibt aktuell unerreichbar — braucht zwei unabhängige Anker-Typen, bisher ist nur PayPal implementiert.',
+      },
+    ],
+  },
 ]
 
 const casesEn = [
@@ -490,6 +546,62 @@ const casesEn = [
 { "jsonrpc": "2.0", "id": 1, "method": "tools/call",
   "params": { "name": "<tool>", "arguments": {} } }`,
         note: 'No difference from here on out — same token, same bearer auth, same enabled tools.',
+      },
+    ],
+  },
+  {
+    badge: 'Identity Chain',
+    title: 'A soul earns trust — verifiable, not just claimed.',
+    sub: 'No password, no account — a chained series of biometric checks and anchors that together determine which trust tier (low/medium/high) a soul currently qualifies for. Other features can require this tier before allowing especially sensitive actions (large payments, wallet signatures) instead of trusting the soul blindly.',
+    callout: 'This flow was also verified live against this node — real camera-based verification, a real PayPal self-payment as anchor, real chain-linking from one link to the next. All four calls went through the public MCP endpoint, no internal shortcuts.',
+    steps: [
+      {
+        n: '01',
+        label: 'Start a biometric check — call <code class="i-code">verify_identity</code> via MCP.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+  "params": { "name": "verify_identity", "arguments": { "methods": ["face_hq"] } } }
+
+→ { "status": "pending", "challenge_id": "{challenge_id}", "verify_url": "…" }
+// once the camera check completes:
+→ { "status": "verified", "verified_level": "biometric", "score": 1 }`,
+        note: 'Runs interactively right in the chat if a matching app is connected — otherwise via the <code class="i-code">verify_url</code> link.',
+      },
+      {
+        n: '02',
+        label: 'Check the tier reached — <code class="i-code">soul_chain_status</code>.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+  "params": { "name": "soul_chain_status", "arguments": {} } }
+
+→ { "chain_length": 1, "freshest_continuity_days": 0,
+    "tiers": { "low": true, "medium": false, "high": false } }`,
+        note: '"medium" also needs at least one anchor — that\'s step 3.',
+      },
+      {
+        n: '03',
+        label: 'Start an anchor — <code class="i-code">soul_anchor_paypal_start</code> (self-payment anchor).',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+  "params": { "name": "soul_anchor_paypal_start", "arguments": {} } }
+
+→ { "reference_code": "{reference_code}", "amount": "0.7x", "paypal_target": "…", "expires_at": "…" }`,
+        note: 'The soul owner pays themselves the stated amount — never the AI. The value comes from a real, PayPal-KYC-checked transaction, not from the payment itself.',
+      },
+      {
+        n: '04',
+        label: 'Confirm the anchor — <code class="i-code">soul_anchor_paypal_confirm</code>, once the payment has arrived.',
+        request: 'POST {mcp_endpoint}',
+        example: `{ "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+  "params": { "name": "soul_anchor_paypal_confirm",
+    "arguments": { "reference_code": "{reference_code}", "amount": "0.7x" } } }
+
+→ { "status": "verified", "type": "paypal_transfer", "confidence": "medium",
+    "link_id": "{link_id}", "chained_to": "{previous_link_id}" }
+
+// soul_chain_status again:
+→ { "chain_length": 2, "tiers": { "low": true, "medium": true, "high": false } }`,
+        note: '"high" stays out of reach for now — it needs two independent anchor types, and only PayPal is implemented so far.',
       },
     ],
   },
