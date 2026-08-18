@@ -69,6 +69,10 @@ import {
   loadAccount as loadX402AgentAccount,
 } from './lib/x402_agent_wallet.mjs';
 import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
+import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
+import { getMarkets as getPolymarketMarkets, getPositions as getPolymarketPositions, getUsdceBalance as getPolymarketUsdceBalance, placeMarketOrder as placePolymarketOrder } from './lib/polymarket_client.mjs';
+import { getHistory as getTraderHistory, appendAction as appendTraderAction } from './lib/trader_history.mjs';
+import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
 // WebSocketProvider in soul_indexer.mjs internally rejecting on an RPC error —
@@ -2831,6 +2835,212 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// ── TILL/Trader (Yield + Prediction Markets) ─────────────────────────────────
+// Nutzt dieselbe per-Soul x402-Wallet wie oben (x402_agent_wallet.mjs) —
+// kein zweiter Schlüssel, siehe aave_client.mjs/polymarket_client.mjs.
+// PRIVATE-REPO-ONLY: nicht nach SaveYourSoul_init spiegeln.
+app.get('/internal/trader/yield/positions', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const positions = await getAaveYieldPositions(account.address);
+    res.json({ ok: true, address: account.address, positions });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// USD-Wert zum Zeitpunkt der Aktion für die Steuer-Historie — siehe
+// trader_history.mjs Datei-Kommentar: wird HIER berechnet und mitgespeichert,
+// nie später aus dem dann schon veralteten aktuellen Kurs nachgerechnet.
+async function usdValueAtNow(coingeckoId, amount) {
+  try {
+    const prices = await getX402AgentPrices([coingeckoId]);
+    const price = prices?.[coingeckoId]?.usd;
+    return price != null ? (Number(amount) * price).toFixed(2) : null;
+  } catch {
+    return null;
+  }
+}
+
+app.post('/internal/trader/yield/supply', async (req, res) => {
+  const { soul_id: soulId, symbol, amount } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  if (typeof amount !== 'string' || !amount.trim()) return res.status(400).json({ ok: false, error: 'amount_required' });
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const asset = AAVE_SUPPORTED_ASSETS.find(a => a.symbol === symbol);
+    const usd = asset ? await usdValueAtNow(asset.coingeckoId, amount) : null;
+    // Sicherheitsprüfung (Notfall-Stopp/Tageslimit/erlaubte Token) VOR der
+    // eigentlichen On-Chain-Aktion — siehe trader_config.mjs Datei-Kommentar.
+    await assertTraderActionAllowed(soulId, { symbol, usd });
+    const result = await aaveSupply(account, symbol, amount);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/yield/withdraw', async (req, res) => {
+  const { soul_id: soulId, symbol, amount } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  if (typeof amount !== 'string' || !amount.trim()) return res.status(400).json({ ok: false, error: 'amount_required' });
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const asset = AAVE_SUPPORTED_ASSETS.find(a => a.symbol === symbol);
+    let resolvedAmount = amount;
+    if (amount === 'max' && asset) {
+      const positions = await getAaveYieldPositions(account.address);
+      resolvedAmount = positions.find(p => p.symbol === symbol)?.deposited || '0';
+    }
+    const usd = asset ? await usdValueAtNow(asset.coingeckoId, resolvedAmount) : null;
+    // Notfall-Stopp gilt auch fürs Abheben — im Zweifel lieber gar keine
+    // automatisierte Bewegung, auch nicht "nur raus". Tageslimit zählt
+    // Ein- UND Auszahlungen zusammen, bewusst konservativ.
+    await assertTraderActionAllowed(soulId, { symbol, usd });
+    const result = await aaveWithdraw(account, symbol, amount);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// Marktdaten sind öffentlich (Gamma-API) — kein soul_id/Wallet nötig zum
+// Browsen, nur zum Wetten (unten).
+app.get('/internal/trader/markets', async (req, res) => {
+  try {
+    const markets = await getPolymarketMarkets({ limit: Number(req.query.limit) || 20, search: req.query.search });
+    res.json({ ok: true, markets });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/internal/trader/predictions/positions', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const [positions, usdceBalance] = await Promise.all([
+      getPolymarketPositions(account.address),
+      getPolymarketUsdceBalance(account.address),
+    ]);
+    res.json({ ok: true, address: account.address, positions, usdceBalance });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/predictions/bet', async (req, res) => {
+  const { soul_id: soulId, tokenId, side, usdcAmount, price, negRisk, question, outcome } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof tokenId !== 'string' || !tokenId) return res.status(400).json({ ok: false, error: 'tokenId_required' });
+  if (side !== 'BUY' && side !== 'SELL') return res.status(400).json({ ok: false, error: 'invalid_side' });
+  if (!usdcAmount || !price) return res.status(400).json({ ok: false, error: 'usdcAmount_and_price_required' });
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const balance = await getPolymarketUsdceBalance(account.address);
+    if (Number(balance) < Number(usdcAmount)) {
+      return res.status(400).json({ ok: false, error: 'insufficient_usdce', message: `USDC.e-Guthaben (${balance}) reicht nicht für Einsatz ${usdcAmount}.` });
+    }
+    // Kein "erlaubte Token"-Konzept für Wetten (nur für Yield-Assets
+    // gedacht) — nur Notfall-Stopp + Tageslimit, daher kein symbol hier.
+    await assertTraderActionAllowed(soulId, { usd: usdcAmount });
+    const result = await placePolymarketOrder(account, { tokenId, side, usdcAmount, price, negRisk: !!negRisk });
+    const label = question ? `Wette · ${question}${outcome ? ` (${outcome})` : ''}` : `Wette · ${tokenId.slice(0, 10)}…`;
+    await appendTraderAction(soulId, { action: label, amount: `${usdcAmount} USDC.e`, usd: Number(usdcAmount).toFixed(2), status: 'erfolgreich' });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/internal/trader/history', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const history = await getTraderHistory(soulId);
+    res.json({ ok: true, history });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── TILL/Trader Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) ─────────
+// Durchgesetzt wird das oben in den drei Schreib-Routen — diese Routen hier
+// verwalten nur die Einstellungen selbst (siehe trader_config.mjs).
+app.get('/internal/trader/safety', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const [config, dailyUsedUsd] = await Promise.all([
+      getTraderConfig(soulId),
+      getTraderDailyUsedUsd(soulId),
+    ]);
+    res.json({ ok: true, ...config, dailyUsedUsd });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/kill-switch', async (req, res) => {
+  const { soul_id: soulId, active } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  try {
+    const config = await setTraderKillSwitch(soulId, !!active);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/daily-limit', async (req, res) => {
+  const { soul_id: soulId, limitUsd } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (limitUsd == null || isNaN(Number(limitUsd)) || Number(limitUsd) < 0) {
+    return res.status(400).json({ ok: false, error: 'invalid_limit' });
+  }
+  try {
+    const config = await setTraderDailyLimit(soulId, limitUsd);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/allowed-tokens', async (req, res) => {
+  const { soul_id: soulId, symbol, allowed } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  try {
+    const config = await setTraderAllowedToken(soulId, symbol, !!allowed);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
