@@ -333,6 +333,7 @@ function onNav(id) {
   if (id === 'archivar')    { router.push('/archivar');    return }
   if (id === 'gatekeeper')  { router.push('/gatekeeper');  return }
   if (id === 'wallet')      { router.push('/wallet');      return }
+  if (id === 'trader')      { router.push('/trader');      return }
   if (id === 'agent')       { router.push('/agent');       return }
   if (id === 'market')      { router.push('/marketplace'); return }
   if (id === 'impressum')   { router.push('/impressum');   return }

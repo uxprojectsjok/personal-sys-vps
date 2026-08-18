@@ -95,6 +95,7 @@ const nav = computed(() => [
     { id: 'connect',     icon: 'qr',         label: t('nav.connect') },
     { id: 'gatekeeper',  icon: 'gatekeeper', label: t('nav.gatekeeper') },
     { id: 'wallet',      icon: 'wallet',     label: t('nav.wallet') },
+    { id: 'trader',      icon: 'bolt',       label: t('nav.trader') },
     // Marketplace/Earnings: Private Node hat serverseitig ohnehin keinen
     // Zugriff (soul_amortization.lua/soul_pay_x402.lua lehnen ab) — hier zusätzlich
     // aus der Navigation genommen, damit der Nutzer nicht ins Leere klickt.
