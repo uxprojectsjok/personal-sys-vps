@@ -2841,8 +2841,6 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
 // Nutzt dieselbe per-Soul x402-Wallet wie oben (x402_agent_wallet.mjs) —
 // kein zweiter Schlüssel, siehe aave_client.mjs.
 // PRIVATE-REPO-ONLY: nicht nach SaveYourSoul_init spiegeln.
-// (Prediction Markets/Polymarket wurden am 2026-08-19 ersatzlos entfernt —
-// in Deutschland unerlaubtes Glücksspiel, §285 StGB.)
 app.get('/internal/trader/yield/positions', async (req, res) => {
   const soulId = req.query.soul_id;
   if (typeof soulId !== 'string' || !soulId) {
@@ -2920,12 +2918,6 @@ app.post('/internal/trader/yield/withdraw', async (req, res) => {
     res.status(502).json({ ok: false, error: err.message });
   }
 });
-
-// Prediction-Markets (Polymarket) sind in Deutschland unerlaubtes Glücksspiel
-// — §285 StGB stellt bereits die Teilnahme unter Strafe, nicht nur das
-// Anbieten. Die drei Routen (Markt-Browsing, Positionen, Order-Placement)
-// wurden deshalb ersatzlos entfernt (2026-08-19), inkl. der zugehörigen
-// MCP-Tools und UI-Sektion. Yield (Aave) bleibt unberührt, kein Glücksspiel.
 
 app.get('/internal/trader/history', async (req, res) => {
   const soulId = req.query.soul_id;

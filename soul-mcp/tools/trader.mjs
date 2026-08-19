@@ -6,12 +6,6 @@
  * trader_config.mjs) — eine Business-Logik, zwei Zugänge (REST für den
  * Browser, MCP für den Agenten).
  *
- * Prediction Markets (Polymarket) wurden am 2026-08-19 ersatzlos entfernt —
- * in Deutschland unerlaubtes Glücksspiel, §285 StGB stellt bereits die
- * Teilnahme unter Strafe. Betraf trader_markets/trader_predictions_positions/
- * trader_place_bet hier plus die drei /internal/trader/predictions|markets-
- * Routen in server.mjs plus die Prediction-Markets-Sektion in trader.vue.
- *
  * PRIVATE-REPO-ONLY. Nur in registerTools() (Owner-Toolset) registriert —
  * NIEMALS in registerPaidTools/registerPeerTools, damit zahlende/verdrahtete
  * externe Aufrufer diese Tools nie sehen.

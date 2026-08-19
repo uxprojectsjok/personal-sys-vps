@@ -1918,9 +1918,7 @@ server {
   }
 
   # ── TILL/Trader: Yield (Aave) — nutzt dieselbe x402-Wallet wie oben,
-  # PRIVATE-REPO-ONLY (siehe soul-mcp/lib/aave_client.mjs). Prediction
-  # Markets/Polymarket wurden am 2026-08-19 ersatzlos entfernt — in
-  # Deutschland unerlaubtes Glücksspiel, §285 StGB. ──────────────────────────
+  # PRIVATE-REPO-ONLY (siehe soul-mcp/lib/aave_client.mjs). ──────────────────
   location = /api/trader/yield/positions {
     limit_except GET OPTIONS { deny all; }
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
