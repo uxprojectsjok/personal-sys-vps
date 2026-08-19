@@ -70,7 +70,6 @@ import {
 } from './lib/x402_agent_wallet.mjs';
 import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
-import { getMarkets as getPolymarketMarkets, getPositions as getPolymarketPositions, getUsdceBalance as getPolymarketUsdceBalance, placeMarketOrder as placePolymarketOrder } from './lib/polymarket_client.mjs';
 import { getHistory as getTraderHistory, appendAction as appendTraderAction } from './lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
 
@@ -2838,10 +2837,12 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
   }
 });
 
-// ── TILL/Trader (Yield + Prediction Markets) ─────────────────────────────────
+// ── TILL/Trader (Yield) ───────────────────────────────────────────────────
 // Nutzt dieselbe per-Soul x402-Wallet wie oben (x402_agent_wallet.mjs) —
-// kein zweiter Schlüssel, siehe aave_client.mjs/polymarket_client.mjs.
+// kein zweiter Schlüssel, siehe aave_client.mjs.
 // PRIVATE-REPO-ONLY: nicht nach SaveYourSoul_init spiegeln.
+// (Prediction Markets/Polymarket wurden am 2026-08-19 ersatzlos entfernt —
+// in Deutschland unerlaubtes Glücksspiel, §285 StGB.)
 app.get('/internal/trader/yield/positions', async (req, res) => {
   const soulId = req.query.soul_id;
   if (typeof soulId !== 'string' || !soulId) {
@@ -2920,60 +2921,11 @@ app.post('/internal/trader/yield/withdraw', async (req, res) => {
   }
 });
 
-// Marktdaten sind öffentlich (Gamma-API) — kein soul_id/Wallet nötig zum
-// Browsen, nur zum Wetten (unten).
-app.get('/internal/trader/markets', async (req, res) => {
-  try {
-    const markets = await getPolymarketMarkets({ limit: Number(req.query.limit) || 20, search: req.query.search });
-    res.json({ ok: true, markets });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
-  }
-});
-
-app.get('/internal/trader/predictions/positions', async (req, res) => {
-  const soulId = req.query.soul_id;
-  if (typeof soulId !== 'string' || !soulId) {
-    return res.status(400).json({ ok: false, error: 'soul_id_required' });
-  }
-  try {
-    const account = await loadX402AgentAccount(soulId);
-    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
-    const [positions, usdceBalance] = await Promise.all([
-      getPolymarketPositions(account.address),
-      getPolymarketUsdceBalance(account.address),
-    ]);
-    res.json({ ok: true, address: account.address, positions, usdceBalance });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-app.post('/internal/trader/predictions/bet', async (req, res) => {
-  const { soul_id: soulId, tokenId, side, usdcAmount, price, negRisk, question, outcome } = req.body || {};
-  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
-  if (typeof tokenId !== 'string' || !tokenId) return res.status(400).json({ ok: false, error: 'tokenId_required' });
-  if (side !== 'BUY' && side !== 'SELL') return res.status(400).json({ ok: false, error: 'invalid_side' });
-  if (!usdcAmount || !price) return res.status(400).json({ ok: false, error: 'usdcAmount_and_price_required' });
-  try {
-    const account = await loadX402AgentAccount(soulId);
-    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
-    const balance = await getPolymarketUsdceBalance(account.address);
-    if (Number(balance) < Number(usdcAmount)) {
-      return res.status(400).json({ ok: false, error: 'insufficient_usdce', message: `USDC.e-Guthaben (${balance}) reicht nicht für Einsatz ${usdcAmount}.` });
-    }
-    // Kein "erlaubte Token"-Konzept für Wetten (nur für Yield-Assets
-    // gedacht) — nur Notfall-Stopp + Tageslimit, daher kein symbol hier.
-    await assertTraderActionAllowed(soulId, { usd: usdcAmount });
-    const result = await placePolymarketOrder(account, { tokenId, side, usdcAmount, price, negRisk: !!negRisk });
-    const label = question ? `Wette · ${question}${outcome ? ` (${outcome})` : ''}` : `Wette · ${tokenId.slice(0, 10)}…`;
-    await appendTraderAction(soulId, { action: label, amount: `${usdcAmount} USDC.e`, usd: Number(usdcAmount).toFixed(2), status: 'erfolgreich' });
-    res.json({ ok: true, ...result });
-  } catch (err) {
-    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
-    res.status(502).json({ ok: false, error: err.message });
-  }
-});
+// Prediction-Markets (Polymarket) sind in Deutschland unerlaubtes Glücksspiel
+// — §285 StGB stellt bereits die Teilnahme unter Strafe, nicht nur das
+// Anbieten. Die drei Routen (Markt-Browsing, Positionen, Order-Placement)
+// wurden deshalb ersatzlos entfernt (2026-08-19), inkl. der zugehörigen
+// MCP-Tools und UI-Sektion. Yield (Aave) bleibt unberührt, kein Glücksspiel.
 
 app.get('/internal/trader/history', async (req, res) => {
   const soulId = req.query.soul_id;

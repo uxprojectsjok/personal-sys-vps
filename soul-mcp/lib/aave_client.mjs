@@ -17,9 +17,8 @@ const RPC_URL = 'https://polygon-bor-rpc.publicnode.com';
 // Live verifiziert: getReservesList() auf diesem Vertrag enthält unsere
 // native USDC-Adresse (siehe x402_client.mjs) UND die separate USDC.e/
 // "USDC (PoS)"-Adresse als jeweils eigene Reserve — zwei unterschiedliche,
-// beide legitime Verträge, nicht dieselbe (relevant für Polymarket, siehe
-// polymarket_client.mjs). Aave selbst nutzt hier unsere native USDC direkt,
-// kein Bridging nötig.
+// beide legitime Verträge, nicht dieselbe. Aave selbst nutzt hier unsere
+// native USDC direkt, kein Bridging nötig.
 const POOL_ADDRESS = '0x794a61358D6845594F94dc1DB02A252b5b4814aD';
 
 // Unterstützte Reserven — dieselben drei ERC20s, die die Wallet-Seite schon

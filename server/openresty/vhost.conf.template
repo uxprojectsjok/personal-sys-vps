@@ -1917,9 +1917,10 @@ server {
     content_by_lua_file /etc/openresty/lua/x402_agent_pay.lua;
   }
 
-  # ── TILL/Trader: Yield (Aave) + Prediction Markets (Polymarket) —
-  # nutzt dieselbe x402-Wallet wie oben, PRIVATE-REPO-ONLY (siehe
-  # soul-mcp/lib/aave_client.mjs, lib/polymarket_client.mjs) ──────────────────
+  # ── TILL/Trader: Yield (Aave) — nutzt dieselbe x402-Wallet wie oben,
+  # PRIVATE-REPO-ONLY (siehe soul-mcp/lib/aave_client.mjs). Prediction
+  # Markets/Polymarket wurden am 2026-08-19 ersatzlos entfernt — in
+  # Deutschland unerlaubtes Glücksspiel, §285 StGB. ──────────────────────────
   location = /api/trader/yield/positions {
     limit_except GET OPTIONS { deny all; }
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
@@ -1942,30 +1943,6 @@ server {
     default_type application/json;
     add_header Cache-Control "no-store" always;
     content_by_lua_file /etc/openresty/lua/trader_yield_withdraw.lua;
-  }
-
-  location = /api/trader/markets {
-    limit_except GET OPTIONS { deny all; }
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/trader_markets.lua;
-  }
-
-  location = /api/trader/predictions/positions {
-    limit_except GET OPTIONS { deny all; }
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/trader_predictions_positions.lua;
-  }
-
-  location = /api/trader/predictions/bet {
-    limit_except POST OPTIONS { deny all; }
-    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/trader_predictions_bet.lua;
   }
 
   location = /api/trader/history {

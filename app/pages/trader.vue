@@ -85,54 +85,6 @@
               </div>
             </div>
 
-            <!-- ── Prediction Markets ── -->
-            <div class="tr-field">
-              <div class="tr-field-label">{{ $t('trader.predictions_label') }}</div>
-              <p class="tr-field-desc">{{ $t('trader.predictions_desc') }}</p>
-
-              <div class="tr-box">
-                <div v-for="p in predictionPositions" :key="p.conditionId + p.outcome" class="tr-row tr-row--stacked">
-                  <div class="tr-row-top">
-                    <span>{{ p.title }}</span>
-                    <span :class="p.outcome === 'Yes' ? 'tr-yes' : 'tr-no'">{{ String(p.outcome).toUpperCase() }}</span>
-                  </div>
-                  <div class="tr-row-bottom">
-                    <span>{{ $t('trader.stake_label') }} {{ formatAmount(p.size) }}</span>
-                    <span>{{ formatAmount(p.curPrice) }}</span>
-                  </div>
-                </div>
-                <div v-if="!predictionPositions.length" class="tr-row tr-row--empty">
-                  <span>{{ $t('trader.predictions_empty_title') }}</span>
-                </div>
-              </div>
-
-              <div class="tr-bet-panel">
-                <div class="tr-micro-label">
-                  {{ $t('trader.new_bet_label') }}
-                  <span v-if="usdceBalance !== null" class="tr-usdce-balance">USDC.e: {{ formatAmount(usdceBalance) }}</span>
-                </div>
-                <div class="tr-input-row tr-select-row" @click="marketPickerOpen = !marketPickerOpen">
-                  <span>{{ selectedMarket ? selectedMarket.question : $t('trader.select_market') }}</span>
-                  <span class="tr-chevron">⌄</span>
-                </div>
-                <div v-if="marketPickerOpen" class="tr-market-list">
-                  <button v-for="m in markets" :key="m.id" type="button" class="tr-market-item" @click="selectMarket(m)">{{ m.question }}</button>
-                  <div v-if="!markets.length" class="tr-market-item tr-market-item--empty">{{ $t('trader.history_empty') }}</div>
-                </div>
-                <div class="tr-toggle-row">
-                  <button type="button" class="tr-btn-ghost tr-btn-fill" :class="{ 'tr-btn-active': betSide === 'Yes' }" :disabled="!selectedMarket" @click="betSide = 'Yes'">YES</button>
-                  <button type="button" class="tr-btn-ghost tr-btn-fill" :class="{ 'tr-btn-active': betSide === 'No' }" :disabled="!selectedMarket" @click="betSide = 'No'">NO</button>
-                </div>
-                <div class="tr-input-row tr-input-row--field">
-                  <label for="tr-stake">{{ $t('trader.stake_label') }}</label>
-                  <input id="tr-stake" v-model="betStake" type="text" inputmode="decimal" class="tr-stake-input" placeholder="0.00" :disabled="!selectedMarket" />
-                </div>
-                <button class="tr-btn-primary" :disabled="!canPlaceBet || betBusy" @click="submitBet">{{ betBusy ? '…' : $t('trader.place_bet_btn') }}</button>
-                <p v-if="betError" class="tr-error">{{ betError }}</p>
-                <p class="tr-disclaimer">{{ $t('trader.bet_disclaimer') }}</p>
-              </div>
-            </div>
-
             <!-- ── Sicherheit ── -->
             <div class="tr-field">
               <div class="tr-field-label">{{ $t('trader.safety_label') }}</div>
@@ -226,8 +178,6 @@ onMounted(() => {
   fetchNodeStatus()
   loadWalletData()
   loadYield()
-  loadMarkets()
-  loadPredictions()
   loadHistory()
   loadSafety()
 })
@@ -334,83 +284,8 @@ async function submitYieldForm() {
   yieldBusy.value = false
 }
 
-// ── Prediction Markets (Polymarket) ─────────────────────────────────────
-// usdceBalance ist NICHT dasselbe Guthaben wie das native USDC oben im
-// Portfolio (siehe soul-mcp/lib/polymarket_client.mjs Datei-Kommentar) —
-// eigener Wert, eigene Anzeige, damit das nicht verwechselt wird.
-const markets            = ref([])
-const marketPickerOpen   = ref(false)
-const selectedMarket     = ref(null)
-const betSide            = ref('Yes')
-const betStake           = ref('')
-const betBusy            = ref(false)
-const betError           = ref('')
-const predictionPositions = ref([])
-const usdceBalance       = ref(null)
-
-async function loadMarkets() {
-  try {
-    const r = await fetch('/api/trader/markets?limit=15', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) markets.value = d.markets
-  } catch { /* silent */ }
-}
-
-async function loadPredictions() {
-  try {
-    const r = await fetch('/api/trader/predictions/positions', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) { predictionPositions.value = d.positions; usdceBalance.value = d.usdceBalance }
-  } catch { /* silent */ }
-}
-
-function selectMarket(m) {
-  selectedMarket.value = m
-  marketPickerOpen.value = false
-  betSide.value = 'Yes'
-  betError.value = ''
-}
-
-const canPlaceBet = computed(() => {
-  if (!selectedMarket.value || !betStake.value.trim()) return false
-  const stake = Number(betStake.value)
-  if (!(stake > 0)) return false
-  if (usdceBalance.value !== null && stake > Number(usdceBalance.value)) return false
-  return true
-})
-
-async function submitBet() {
-  betBusy.value = true
-  betError.value = ''
-  try {
-    const idx = betSide.value === 'Yes' ? 0 : 1
-    const tokenId = selectedMarket.value.clobTokenIds[idx]
-    const price = selectedMarket.value.outcomePrices[idx]
-    const r = await fetch('/api/trader/predictions/bet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({
-        tokenId, side: 'BUY', usdcAmount: betStake.value.trim(), price,
-        negRisk: selectedMarket.value.negRisk,
-        question: selectedMarket.value.question, outcome: betSide.value,
-      }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) {
-      selectedMarket.value = null
-      betStake.value = ''
-      await Promise.all([loadPredictions(), loadHistory(), loadSafety()])
-    } else {
-      betError.value = d.message || d.error || `Error ${r.status}`
-    }
-  } catch (e) {
-    betError.value = e.message
-  }
-  betBusy.value = false
-}
-
 // ── Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) ────────────────
-// Durchgesetzt wird das serverseitig VOR jeder Yield-/Wette-Aktion (siehe
+// Durchgesetzt wird das serverseitig VOR jeder Yield-Aktion (siehe
 // soul-mcp/lib/trader_config.mjs) — hier nur Anzeige/Verwaltung.
 const killSwitchActive = ref(false)
 const dailyLimitUsd    = ref(50)
@@ -574,13 +449,10 @@ function exportCSV() {
 .tr-total-val { font-family: var(--mono); color: var(--accent); font-size: 15px; }
 .tr-row-left { display: flex; flex-direction: column; gap: 2px; }
 .tr-row-apy { font-size: 12px; color: var(--accent); }
-.tr-row--stacked { flex-direction: column; align-items: stretch; gap: 4px; }
-.tr-row-top, .tr-row-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tr-row-bottom { font-size: 13px; color: var(--fg); }
 .tr-yes { color: var(--accent); font-weight: 600; }
 .tr-no { color: var(--sys-err, #E06C75); font-weight: 600; }
 
-/* ── Empty-State-Notiz (Yield / Predictions) ── */
+/* ── Empty-State-Notiz (Yield) ── */
 .tr-empty-note { padding: 16px; display: flex; flex-direction: column; gap: 4px; }
 .tr-empty-title { font-size: 14px; font-weight: 600; color: var(--fg); }
 .tr-empty-desc { font-size: 13px; color: var(--fg); line-height: 1.55; }
@@ -613,9 +485,7 @@ function exportCSV() {
   font-size: 13px; color: var(--fg);
 }
 .tr-input-row label { color: var(--fg); }
-.tr-chevron { color: var(--fg); }
 .tr-toggle-row { display: flex; gap: 8px; }
-.tr-disclaimer { font-size: 12px; color: var(--fg); line-height: 1.5; margin: 0; }
 .tr-stake-input {
   width: 100px; text-align: right; background: none; border: none; color: var(--fg);
   font-family: var(--mono); font-size: 13px; padding: 0;
@@ -623,19 +493,6 @@ function exportCSV() {
 .tr-stake-input:disabled { opacity: 0.7; cursor: not-allowed; }
 .tr-btn-active { border-color: var(--accent); color: var(--accent); background: rgba(109,184,154,0.10); }
 .tr-error { font-size: 12px; color: var(--sys-err, #E06C75); line-height: 1.5; margin: 0; }
-.tr-select-row { cursor: pointer; }
-.tr-usdce-balance { float: right; font-weight: 400; color: var(--fg); text-transform: none; letter-spacing: 0; }
-.tr-market-list {
-  display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto;
-  border: 1px solid var(--tr-line); border-radius: var(--r-xs); padding: 4px;
-}
-.tr-market-item {
-  text-align: left; padding: 8px 10px; border: none; background: transparent; color: var(--fg);
-  font-family: var(--sans); font-size: 13px; border-radius: 6px; cursor: pointer;
-}
-.tr-market-item:hover { background: rgba(236,236,236,0.06); }
-.tr-market-item--empty { color: var(--fg); cursor: default; }
-.tr-market-item--empty:hover { background: transparent; }
 
 /* ── Sicherheit ── */
 .tr-safety-clickable { cursor: pointer; font-family: var(--mono); }

@@ -1,16 +1,22 @@
 /**
- * trader.mjs — MCP-Tools für TILL/Trader (Yield + Prediction Markets),
- * damit der autonome Agent (sys-agent-run.sh, Tasks aus agent.md) dieselben
- * Aktionen ausführen kann wie die Trader-UI. Ruft dieselben Lib-Funktionen
- * direkt auf wie server.mjs's /internal/trader/*-Routen (aave_client.mjs,
- * polymarket_client.mjs, trader_history.mjs, trader_config.mjs) — eine
- * Business-Logik, zwei Zugänge (REST für den Browser, MCP für den Agenten).
+ * trader.mjs — MCP-Tools für TILL/Trader (Yield only), damit der autonome
+ * Agent (sys-agent-run.sh, Tasks aus agent.md) dieselben Aktionen ausführen
+ * kann wie die Trader-UI. Ruft dieselben Lib-Funktionen direkt auf wie
+ * server.mjs's /internal/trader/*-Routen (aave_client.mjs, trader_history.mjs,
+ * trader_config.mjs) — eine Business-Logik, zwei Zugänge (REST für den
+ * Browser, MCP für den Agenten).
+ *
+ * Prediction Markets (Polymarket) wurden am 2026-08-19 ersatzlos entfernt —
+ * in Deutschland unerlaubtes Glücksspiel, §285 StGB stellt bereits die
+ * Teilnahme unter Strafe. Betraf trader_markets/trader_predictions_positions/
+ * trader_place_bet hier plus die drei /internal/trader/predictions|markets-
+ * Routen in server.mjs plus die Prediction-Markets-Sektion in trader.vue.
  *
  * PRIVATE-REPO-ONLY. Nur in registerTools() (Owner-Toolset) registriert —
  * NIEMALS in registerPaidTools/registerPeerTools, damit zahlende/verdrahtete
  * externe Aufrufer diese Tools nie sehen.
  *
- * ZUSÄTZLICHER Identitäts-Gate für die drei geldbewegenden Tools UND jede
+ * ZUSÄTZLICHER Identitäts-Gate für die geldbewegenden Tools UND jede
  * Sicherheits-AUFWEICHUNG (Notfall-Stopp aus, Tageslimit erhöhen, Token
  * freischalten): erfordert eine frische Verifizierungskette (Stufe "medium",
  * siehe lib/chain_gate.mjs — dieselbe Logik wie soul_chain_status). Das
@@ -25,7 +31,6 @@
 import { z } from 'zod';
 import { loadAccount as loadX402AgentAccount } from '../lib/x402_agent_wallet.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from '../lib/aave_client.mjs';
-import { getMarkets as getPolymarketMarkets, getPositions as getPolymarketPositions, getUsdceBalance as getPolymarketUsdceBalance, placeMarketOrder as placePolymarketOrder } from '../lib/polymarket_client.mjs';
 import { getHistory as getTraderHistory, appendAction as appendTraderAction } from '../lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from '../lib/trader_config.mjs';
 import { qualifiesForTier } from '../lib/chain_gate.mjs';
@@ -73,36 +78,8 @@ export function register(server, soulId) {
   );
 
   server.tool(
-    'trader_markets',
-    'Polymarket — offene, aktive Prediction-Markets durchsuchen (öffentliche Gamma-API, kein Wallet nötig).',
-    { search: z.string().optional().describe('Freitextsuche'), limit: z.number().optional().describe('Standard 20') },
-    async ({ search, limit }) => {
-      try {
-        return ok(await getPolymarketMarkets({ search, limit: limit || 20 }));
-      } catch (err) { return fail(err); }
-    }
-  );
-
-  server.tool(
-    'trader_predictions_positions',
-    'Polymarket — offene eigene Wetten + USDC.e-Guthaben (NICHT dasselbe Token wie natives USDC im Portfolio, siehe polymarket_client.mjs).',
-    {},
-    async () => {
-      try {
-        const account = await loadX402AgentAccount(soulId);
-        if (!account) throw new Error('x402-Wallet nicht konfiguriert.');
-        const [positions, usdceBalance] = await Promise.all([
-          getPolymarketPositions(account.address),
-          getPolymarketUsdceBalance(account.address),
-        ]);
-        return ok({ address: account.address, positions, usdceBalance });
-      } catch (err) { return fail(err); }
-    }
-  );
-
-  server.tool(
     'trader_history',
-    'Letzte Aktionen (Yield-Ein-/Auszahlungen, Wetten) mit USD-Wert zum Zeitpunkt — für die Steuer-Übersicht.',
+    'Letzte Aktionen (Yield-Ein-/Auszahlungen) mit USD-Wert zum Zeitpunkt — für die Steuer-Übersicht.',
     {},
     async () => {
       try {
@@ -178,45 +155,6 @@ export function register(server, soulId) {
         await assertTraderActionAllowed(soulId, { symbol, usd });
         const result = await aaveWithdraw(account, symbol, amount);
         await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
-        return ok(result);
-      } catch (err) { return fail(err); }
-    }
-  );
-
-  server.tool(
-    'trader_place_bet',
-    [
-      'Platziert eine Market-Order (Fill-or-Kill) auf ein Polymarket-Outcome —',
-      'siehe trader_markets für tokenId (clobTokenIds[0]=YES/[1]=NO) und aktuellen',
-      'Preis (outcomePrices). Bewegt echtes Geld in USDC.e (NICHT natives USDC —',
-      'prüfe trader_predictions_positions.usdceBalance vorher). Erfordert eine',
-      'frische Identitätsprüfung UND respektiert Notfall-Stopp/Tageslimit.',
-      '',
-      'WARNUNG: der Order-Pfad wurde bisher nicht gegen eine echte Order',
-      'getestet (nur die Auth-Signatur live verifiziert, siehe',
-      'polymarket_client.mjs Datei-Kommentar) — erst mit kleinem Betrag prüfen.',
-    ].join('\n'),
-    {
-      tokenId: z.string().describe('clobTokenIds[0] für YES, [1] für NO aus trader_markets'),
-      usdcAmount: z.string().describe('Einsatz in USDC.e als Dezimalstring'),
-      price: z.number().describe('outcomePrices[idx] aus trader_markets zum selben Index wie tokenId'),
-      negRisk: z.boolean().optional().describe('negRisk-Feld aus dem Markt-Objekt'),
-      question: z.string().optional().describe('Für die Historie: die Marktfrage'),
-      outcome: z.enum(['Yes', 'No']).optional().describe('Für die Historie: gewählte Seite'),
-    },
-    async ({ tokenId, usdcAmount, price, negRisk, question, outcome }) => {
-      try {
-        await assertIdentityVerified(soulId);
-        const account = await loadX402AgentAccount(soulId);
-        if (!account) throw new Error('x402-Wallet nicht konfiguriert.');
-        const balance = await getPolymarketUsdceBalance(account.address);
-        if (Number(balance) < Number(usdcAmount)) {
-          throw new Error(`USDC.e-Guthaben (${balance}) reicht nicht für Einsatz ${usdcAmount}.`);
-        }
-        await assertTraderActionAllowed(soulId, { usd: usdcAmount });
-        const result = await placePolymarketOrder(account, { tokenId, side: 'BUY', usdcAmount, price, negRisk: !!negRisk });
-        const label = question ? `Wette · ${question}${outcome ? ` (${outcome})` : ''}` : `Wette · ${tokenId.slice(0, 10)}…`;
-        await appendTraderAction(soulId, { action: label, amount: `${usdcAmount} USDC.e`, usd: Number(usdcAmount).toFixed(2), status: 'erfolgreich' });
         return ok(result);
       } catch (err) { return fail(err); }
     }
