@@ -2856,13 +2856,33 @@ app.get('/internal/trader/yield/positions', async (req, res) => {
   }
 });
 
-// USD-Wert zum Zeitpunkt der Aktion für die Steuer-Historie — siehe
-// trader_history.mjs Datei-Kommentar: wird HIER berechnet und mitgespeichert,
-// nie später aus dem dann schon veralteten aktuellen Kurs nachgerechnet.
+// USD-Wert zum Zeitpunkt der Aktion — NICHT für die Historie/Anzeige (die
+// zeigt EUR, siehe eurValueAtNow unten), sondern ausschließlich als Eingabe
+// für assertTraderActionAllowed()/getTraderDailyUsedUsd() (trader_config.mjs),
+// die das Tageslimit weiterhin in USD führen (dailyLimitUsd). Nie selbst
+// angezeigt oder gespeichert außer implizit über das Tageslimit.
 async function usdValueAtNow(coingeckoId, amount) {
   try {
     const prices = await getX402AgentPrices([coingeckoId]);
     const price = prices?.[coingeckoId]?.usd;
+    return price != null ? (Number(amount) * price).toFixed(2) : null;
+  } catch {
+    return null;
+  }
+}
+
+// EUR-Wert zum Zeitpunkt der Aktion für die Steuer-Historie — siehe
+// trader_history.mjs Datei-Kommentar: wird HIER berechnet und mitgespeichert,
+// nie später aus dem dann schon veralteten aktuellen Kurs nachgerechnet.
+// Eigener Fetch statt getX402AgentPrices (die ist fest auf usd verdrahtet
+// und wird auch von wallet.vue/trader.vue-Portfolio genutzt — hier separat,
+// um die USD-Anzeige dort nicht anzufassen).
+async function eurValueAtNow(coingeckoId, amount) {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coingeckoId)}&vs_currencies=eur`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const price = data?.[coingeckoId]?.eur;
     return price != null ? (Number(amount) * price).toFixed(2) : null;
   } catch {
     return null;
@@ -2882,8 +2902,9 @@ app.post('/internal/trader/yield/supply', async (req, res) => {
     // Sicherheitsprüfung (Notfall-Stopp/Tageslimit/erlaubte Token) VOR der
     // eigentlichen On-Chain-Aktion — siehe trader_config.mjs Datei-Kommentar.
     await assertTraderActionAllowed(soulId, { symbol, usd });
+    const eur = asset ? await eurValueAtNow(asset.coingeckoId, amount) : null;
     const result = await aaveSupply(account, symbol, amount);
-    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
@@ -2910,8 +2931,9 @@ app.post('/internal/trader/yield/withdraw', async (req, res) => {
     // automatisierte Bewegung, auch nicht "nur raus". Tageslimit zählt
     // Ein- UND Auszahlungen zusammen, bewusst konservativ.
     await assertTraderActionAllowed(soulId, { symbol, usd });
+    const eur = asset ? await eurValueAtNow(asset.coingeckoId, resolvedAmount) : null;
     const result = await aaveWithdraw(account, symbol, amount);
-    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });

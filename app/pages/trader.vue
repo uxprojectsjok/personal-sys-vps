@@ -53,6 +53,10 @@
             <div class="tr-field">
               <div class="tr-field-label">{{ $t('trader.yield_label') }}</div>
               <p class="tr-field-desc">{{ $t('trader.yield_desc') }}</p>
+              <p class="tr-provider-note">
+                {{ $t('trader.yield_provider_note') }}
+                <a :href="'https://polygonscan.com/address/' + AAVE_POOL_ADDRESS" target="_blank" rel="noopener noreferrer"><code>{{ AAVE_POOL_ADDRESS }}</code></a>
+              </p>
               <div class="tr-box">
                 <div v-for="p in yieldPositions" :key="p.symbol" class="tr-row">
                   <span class="tr-row-left">
@@ -66,8 +70,8 @@
                 </div>
               </div>
               <div class="tr-actions-row">
-                <button class="tr-btn-ghost" :disabled="yieldBusy" @click="openYieldForm('supply')">{{ $t('trader.yield_deposit_btn') }}</button>
-                <button class="tr-btn-ghost" :disabled="yieldBusy" @click="openYieldForm('withdraw')">{{ $t('trader.yield_withdraw_btn') }}</button>
+                <button class="tr-btn-ghost tr-btn-ghost--accent" :disabled="yieldBusy" @click="openYieldForm('supply')">{{ $t('trader.yield_deposit_btn') }}</button>
+                <button class="tr-btn-ghost tr-btn-ghost--accent" :disabled="yieldBusy" @click="openYieldForm('withdraw')">{{ $t('trader.yield_withdraw_btn') }}</button>
               </div>
               <div v-if="yieldFormMode" class="tr-bet-panel">
                 <div class="tr-micro-label">{{ yieldFormMode === 'supply' ? $t('trader.yield_deposit_btn') : $t('trader.yield_withdraw_btn') }}</div>
@@ -109,7 +113,7 @@
                   <span>{{ $t('trader.kill_switch_label') }}</span>
                   <span class="tr-kill-right">
                     <span :class="killSwitchActive ? 'tr-no' : 'tr-yes'">{{ killSwitchActive ? 'Gestoppt' : 'Aktiv' }}</span>
-                    <button type="button" class="tr-btn-ghost tr-btn-sm" :disabled="safetyBusy" @click="toggleKillSwitch">
+                    <button type="button" class="tr-btn-ghost tr-btn-sm" :class="{ 'tr-btn-ghost--accent': killSwitchActive, 'tr-btn-ghost--danger': !killSwitchActive }" :disabled="safetyBusy" @click="toggleKillSwitch">
                       {{ killSwitchActive ? 'Reaktivieren' : 'Stoppen' }}
                     </button>
                   </span>
@@ -135,7 +139,7 @@
                     <span>{{ a.action }}</span>
                     <span>{{ formatDate(a.date) }}</span>
                     <span>{{ a.amount }}</span>
-                    <span class="tr-table-usd">${{ a.usd }}</span>
+                    <span class="tr-table-value">{{ a.eur }}&nbsp;€</span>
                     <span class="tr-status-ok">{{ a.status }}</span>
                   </div>
                 </div>
@@ -171,6 +175,10 @@ import { useNodeStatus } from '~/composables/useNodeStatus.js'
 
 definePageMeta({ layout: false })
 const { t } = useI18n()
+// Aave V3 Pool auf Polygon — live gegen den echten Vertrag verifiziert,
+// siehe soul-mcp/lib/aave_client.mjs. Hier verlinkt, damit man den Vertrag
+// selbst auf Polygonscan gegenchecken kann statt uns blind zu vertrauen.
+const AAVE_POOL_ADDRESS = '0x794a61358D6845594F94dc1DB02A252b5b4814aD'
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
@@ -378,7 +386,7 @@ function formatDate(iso) {
 
 function exportCSV() {
   const rows = [[t('trader.col_action'), t('trader.col_date'), t('trader.col_amount'), t('trader.col_value'), t('trader.col_status')]]
-  for (const a of actions.value) rows.push([a.action, a.date, a.amount, a.usd, a.status])
+  for (const a of actions.value) rows.push([a.action, a.date, a.amount, a.eur, a.status])
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
   const url  = URL.createObjectURL(blob)
@@ -422,6 +430,10 @@ function exportCSV() {
 .tr-field--last { margin-bottom: 0; }
 .tr-field-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); font-weight: 600; }
 .tr-field-desc { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 640px; margin: 0; }
+.tr-provider-note { font-size: 13px; color: var(--fg); margin: 0; }
+.tr-provider-note a { color: var(--accent); text-decoration: none; }
+.tr-provider-note a:hover { text-decoration: underline; }
+.tr-provider-note code { font-family: var(--mono); font-size: 12px; }
 
 /* ── Wallet-Link Banner ── */
 .tr-wallet-link {
@@ -468,6 +480,10 @@ function exportCSV() {
 }
 .tr-btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .tr-btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+.tr-btn-ghost--accent { border-color: var(--accent); color: var(--accent); }
+.tr-btn-ghost--accent:hover:not(:disabled) { background: rgba(109,184,154,0.10); }
+.tr-btn-ghost--danger { border-color: var(--sys-err, #E06C75); color: var(--sys-err, #E06C75); }
+.tr-btn-ghost--danger:hover:not(:disabled) { background: rgba(224,108,117,0.10); border-color: var(--sys-err, #E06C75); color: var(--sys-err, #E06C75); }
 .tr-btn-fill { flex: 1; }
 .tr-btn-primary {
   width: 100%; height: 46px; border-radius: var(--r-xs); border: none;
@@ -516,7 +532,7 @@ function exportCSV() {
 .tr-table-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg); background: rgba(236,236,236,0.04); border-bottom: 1px solid var(--tr-line); }
 .tr-table-row { font-size: 13px; color: var(--fg); border-bottom: 1px solid var(--tr-line); }
 .tr-table-row:last-child { border-bottom: none; }
-.tr-table-usd { color: var(--fg); }
+.tr-table-value { color: var(--fg); }
 .tr-status-ok { color: var(--accent); }
 
 .tr-empty { padding: 24px; border: 1px solid var(--tr-line); border-radius: var(--r-xs); font-size: 15px; color: var(--fg); text-align: center; }

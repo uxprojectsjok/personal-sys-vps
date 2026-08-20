@@ -4,9 +4,12 @@
  * wired_souls.mjs' gatekeeper_config.json: eine flache JSON-Datei pro Soul,
  * kein DB-Layer nötig für diese Größenordnung.
  *
- * WERT (USD) wird beim Schreiben der Aktion mit-gespeichert (Preis zum
- * Zeitpunkt der Aktion), nicht später aus dem aktuellen Kurs nachgerechnet —
- * sonst stimmt die Steuerhistorie nicht (siehe Trader-Penpot-Board-Notiz).
+ * WERT (EUR, für die Anzeige/Steuerhistorie) wird beim Schreiben der Aktion
+ * mit-gespeichert (Kurs zum Zeitpunkt der Aktion), nicht später aus dem
+ * aktuellen Kurs nachgerechnet — sonst stimmt die Steuerhistorie nicht
+ * (siehe Trader-Penpot-Board-Notiz). `usd` bleibt daneben als reiner
+ * interner Wert für das Tageslimit (trader_config.mjs dailyLimitUsd) —
+ * nicht für die Anzeige.
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -28,7 +31,7 @@ export async function getHistory(soulId) {
 }
 
 /**
- * entry: { action, amount, usd, status, txHash? }
+ * entry: { action, amount, usd, eur, status, txHash? }
  * date/id werden hier gesetzt, nicht vom Aufrufer.
  */
 export async function appendAction(soulId, entry) {

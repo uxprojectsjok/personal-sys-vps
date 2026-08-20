@@ -40,11 +40,30 @@ async function assertIdentityVerified(soulId) {
   }
 }
 
+// Nur als Eingabe für assertTraderActionAllowed()/getTraderDailyUsedUsd()
+// (trader_config.mjs, Tageslimit ist dailyLimitUsd) — nicht für die
+// Historie/Anzeige, siehe eurValueAtNow unten.
 async function usdValueAtNow(coingeckoId, amount) {
   try {
     const { getPrices } = await import('../lib/x402_client.mjs');
     const prices = await getPrices([coingeckoId]);
     const price = prices?.[coingeckoId]?.usd;
+    return price != null ? (Number(amount) * price).toFixed(2) : null;
+  } catch {
+    return null;
+  }
+}
+
+// EUR-Wert zum Zeitpunkt der Aktion für die Steuer-Historie — eigener Fetch
+// statt x402_client.getPrices (die ist fest auf usd verdrahtet, auch von
+// Wallet-/Trader-Portfolio genutzt — hier separat, um deren USD-Anzeige
+// nicht anzufassen).
+async function eurValueAtNow(coingeckoId, amount) {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coingeckoId)}&vs_currencies=eur`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const price = data?.[coingeckoId]?.eur;
     return price != null ? (Number(amount) * price).toFixed(2) : null;
   } catch {
     return null;
@@ -73,7 +92,7 @@ export function register(server, soulId) {
 
   server.tool(
     'trader_history',
-    'Letzte Aktionen (Yield-Ein-/Auszahlungen) mit USD-Wert zum Zeitpunkt — für die Steuer-Übersicht.',
+    'Letzte Aktionen (Yield-Ein-/Auszahlungen) mit EUR-Wert zum Zeitpunkt — für die Steuer-Übersicht.',
     {},
     async () => {
       try {
@@ -116,8 +135,9 @@ export function register(server, soulId) {
         const asset = AAVE_SUPPORTED_ASSETS.find(a => a.symbol === symbol);
         const usd = asset ? await usdValueAtNow(asset.coingeckoId, amount) : null;
         await assertTraderActionAllowed(soulId, { symbol, usd });
+        const eur = asset ? await eurValueAtNow(asset.coingeckoId, amount) : null;
         const result = await aaveSupply(account, symbol, amount);
-        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
         return ok(result);
       } catch (err) { return fail(err); }
     }
@@ -147,8 +167,9 @@ export function register(server, soulId) {
         }
         const usd = asset ? await usdValueAtNow(asset.coingeckoId, resolvedAmount) : null;
         await assertTraderActionAllowed(soulId, { symbol, usd });
+        const eur = asset ? await eurValueAtNow(asset.coingeckoId, resolvedAmount) : null;
         const result = await aaveWithdraw(account, symbol, amount);
-        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, status: 'erfolgreich', txHash: result.txHash });
+        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
         return ok(result);
       } catch (err) { return fail(err); }
     }
