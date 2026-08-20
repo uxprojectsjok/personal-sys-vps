@@ -1442,8 +1442,9 @@
     "col_amount": "Amount",
     "col_value": "Value (EUR)",
     "col_status": "Status",
+    "col_tx_hash": "Tx hash",
     "export_title": "CSV Export",
-    "export_sub": "All Yield and bet actions, in full, for tax purposes.",
+    "export_sub": "All Yield actions, in full, for tax purposes.",
     "btn_export_csv": "Export CSV"
   },
   "agent": {

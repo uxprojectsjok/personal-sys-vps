@@ -1442,8 +1442,9 @@
     "col_amount": "Betrag",
     "col_value": "Wert (EUR)",
     "col_status": "Status",
+    "col_tx_hash": "Tx-Hash",
     "export_title": "CSV-Export",
-    "export_sub": "Alle Yield- und Wette-Aktionen, vollständig, für die Steuererklärung.",
+    "export_sub": "Alle Yield-Aktionen, vollständig, für die Steuererklärung.",
     "btn_export_csv": "CSV exportieren"
   },
   "agent": {

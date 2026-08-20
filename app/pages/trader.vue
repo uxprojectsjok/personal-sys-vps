@@ -51,7 +51,15 @@
 
             <!-- ── Yield ── -->
             <div class="tr-field">
-              <div class="tr-field-label">{{ $t('trader.yield_label') }}</div>
+              <div class="tr-field-label-row">
+                <div class="tr-field-label">{{ $t('trader.yield_label') }}</div>
+                <button class="icon-btn" :class="{ on: yieldRefreshing }" :disabled="yieldRefreshing" :title="$t('files.refresh')" @click="refreshYield">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" :class="{ spin: yieldRefreshing }">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4a8 8 0 1 1 0 12"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4H0"/>
+                  </svg>
+                </button>
+              </div>
               <p class="tr-field-desc">{{ $t('trader.yield_desc') }}</p>
               <p class="tr-provider-note">
                 {{ $t('trader.yield_provider_note') }}
@@ -253,6 +261,13 @@ const yieldBusy       = ref(false)
 const yieldFormError  = ref('')
 const yieldAssetOptions = ['USDC', 'WETH', 'USDT0']
 const yieldHasPositions = computed(() => yieldPositions.value.some(p => Number(p.deposited) > 0))
+const yieldRefreshing = ref(false)
+
+async function refreshYield() {
+  yieldRefreshing.value = true
+  try { await Promise.all([loadYield(), loadWalletData(), loadHistory(), loadSafety()]) }
+  finally { yieldRefreshing.value = false }
+}
 
 async function loadYield() {
   try {
@@ -385,8 +400,8 @@ function formatDate(iso) {
 }
 
 function exportCSV() {
-  const rows = [[t('trader.col_action'), t('trader.col_date'), t('trader.col_amount'), t('trader.col_value'), t('trader.col_status')]]
-  for (const a of actions.value) rows.push([a.action, a.date, a.amount, a.eur, a.status])
+  const rows = [[t('trader.col_action'), t('trader.col_date'), t('trader.col_amount'), t('trader.col_value'), t('trader.col_status'), t('trader.col_tx_hash')]]
+  for (const a of actions.value) rows.push([a.action, a.date, a.amount, a.eur, a.status, a.txHash || ''])
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
   const url  = URL.createObjectURL(blob)
@@ -429,6 +444,10 @@ function exportCSV() {
 .tr-field { display: flex; flex-direction: column; gap: 10px; }
 .tr-field--last { margin-bottom: 0; }
 .tr-field-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); font-weight: 600; }
+.tr-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tr-field-label-row .tr-field-label { margin: 0; }
+.spin { animation: tr-spin 0.7s linear infinite; }
+@keyframes tr-spin { to { transform: rotate(360deg); } }
 .tr-field-desc { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 640px; margin: 0; }
 .tr-provider-note { font-size: 13px; color: var(--fg); margin: 0; }
 .tr-provider-note a { color: var(--accent); text-decoration: none; }
