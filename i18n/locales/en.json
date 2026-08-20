@@ -1427,6 +1427,7 @@
     "yield_desc": "Lends balances to lending protocols — earns interest without market timing.",
     "yield_empty_title": "No deposit yet",
     "yield_provider_note": "Aave V3 Pool on Polygon — verify the contract yourself:",
+    "interest_earned_label": "interest earned so far",
     "yield_deposit_btn": "Deposit",
     "yield_withdraw_btn": "Withdraw",
     "stake_label": "Stake",
@@ -1443,6 +1444,10 @@
     "col_value": "Value (EUR)",
     "col_status": "Status",
     "col_tx_hash": "Tx hash",
+    "col_block": "Block",
+    "col_balance_before": "Balance before",
+    "col_balance_after": "Balance after",
+    "col_interest_accrued": "Interest accrued (at that point)",
     "export_title": "CSV Export",
     "export_sub": "All Yield actions, in full, for tax purposes.",
     "btn_export_csv": "Export CSV"

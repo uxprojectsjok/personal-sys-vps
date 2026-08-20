@@ -70,7 +70,7 @@ import {
 } from './lib/x402_agent_wallet.mjs';
 import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
-import { getHistory as getTraderHistory, appendAction as appendTraderAction } from './lib/trader_history.mjs';
+import { getHistory as getTraderHistory, appendAction as appendTraderAction, getNetPrincipal as getTraderNetPrincipal } from './lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
@@ -2841,6 +2841,20 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
 // Nutzt dieselbe per-Soul x402-Wallet wie oben (x402_agent_wallet.mjs) —
 // kein zweiter Schlüssel, siehe aave_client.mjs.
 // PRIVATE-REPO-ONLY: nicht nach SaveYourSoul_init spiegeln.
+// aTokens sind rebasing — die aktuelle Balance IST bereits Kapital+Zinsen
+// verschmolzen, kein separater Claim-Schritt. "Zinsen bisher" gibt's also
+// nicht direkt vom Vertrag, sondern nur als Differenz zur eigenen
+// Netto-Einzahlung aus trader_history (siehe getNetPrincipal Datei-Kommentar).
+// Math.max(0, ...) dämpft Rundungsreste/Race zwischen History-Schreiben und
+// Chain-Read, die sonst kurzzeitig leicht negativ ausschlagen könnten.
+async function withInterestEarned(soulId, positions) {
+  return Promise.all(positions.map(async (p) => {
+    const netPrincipal = await getTraderNetPrincipal(soulId, p.symbol);
+    const interestEarned = Math.max(0, Number(p.deposited) - netPrincipal);
+    return { ...p, interestEarned: interestEarned.toFixed(6) };
+  }));
+}
+
 app.get('/internal/trader/yield/positions', async (req, res) => {
   const soulId = req.query.soul_id;
   if (typeof soulId !== 'string' || !soulId) {
@@ -2849,7 +2863,7 @@ app.get('/internal/trader/yield/positions', async (req, res) => {
   try {
     const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
-    const positions = await getAaveYieldPositions(account.address);
+    const positions = await withInterestEarned(soulId, await getAaveYieldPositions(account.address));
     res.json({ ok: true, address: account.address, positions });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -2904,7 +2918,13 @@ app.post('/internal/trader/yield/supply', async (req, res) => {
     await assertTraderActionAllowed(soulId, { symbol, usd });
     const eur = asset ? await eurValueAtNow(asset.coingeckoId, amount) : null;
     const result = await aaveSupply(account, symbol, amount);
-    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
+    // Netto-Einzahlung VOR dieser Aktion (also ohne den gerade eingezahlten
+    // Betrag) + Balance unmittelbar vor der Tx (aave_client.mjs) ergibt die
+    // bis zu diesem Block kumulierten Zinsen — fest, block-gebunden, per
+    // Polygonscan nachprüfbar (nicht die live nachrechnende Anzeige oben).
+    const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+    const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: amount });
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
@@ -2933,7 +2953,9 @@ app.post('/internal/trader/yield/withdraw', async (req, res) => {
     await assertTraderActionAllowed(soulId, { symbol, usd });
     const eur = asset ? await eurValueAtNow(asset.coingeckoId, resolvedAmount) : null;
     const result = await aaveWithdraw(account, symbol, amount);
-    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
+    const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+    const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: `-${resolvedAmount}` });
     res.json({ ok: true, ...result });
   } catch (err) {
     if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });

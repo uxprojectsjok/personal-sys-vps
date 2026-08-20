@@ -31,8 +31,19 @@ export async function getHistory(soulId) {
 }
 
 /**
- * entry: { action, amount, usd, eur, status, txHash? }
+ * entry: { action, amount, usd, eur, status, txHash?, blockNumber?,
+ *          balanceBefore?, balanceAfter?, interestAccruedAtAction?,
+ *          symbol?, principal? }
  * date/id werden hier gesetzt, nicht vom Aufrufer.
+ *
+ * - `symbol` + signiertes `principal` (Dezimalstring, + bei Einzahlung,
+ *   - bei Abhebung): Grundlage für getNetPrincipal() unten.
+ * - `blockNumber`/`balanceBefore`/`balanceAfter`: aToken-Rohdaten, exakt an
+ *   den Tx-Block gebunden (aave_client.mjs supply()/withdraw()) — später per
+ *   Polygonscan-Ausdruck bei genau diesem Block nachprüfbar.
+ * - `interestAccruedAtAction`: kumulierte Zinsen bis unmittelbar vor dieser
+ *   Aktion (balanceBefore minus Netto-Einzahlung vor dieser Aktion) — fest,
+ *   nicht live nachgerechnet wie die Live-Anzeige auf der Trader-Seite.
  */
 export async function appendAction(soulId, entry) {
   const history = await getHistory(soulId);
@@ -41,4 +52,15 @@ export async function appendAction(soulId, entry) {
   await mkdir(`${SOULS_DIR}${soulId}`, { recursive: true });
   await writeFile(historyPath(soulId), JSON.stringify(history), 'utf8');
   return record;
+}
+
+/** Netto-Einzahlung (Summe aller signierten `principal`-Werte) für ein
+ * Symbol — nur erfolgreiche Einträge zählen. Rundungsreste/negative Werte
+ * (z.B. durch mehrere Teilabhebungen) bleiben roh, Aufrufer entscheidet
+ * über Anzeige (z.B. Math.max(0, ...) fürs "Zinsen bisher"-Delta). */
+export async function getNetPrincipal(soulId, symbol) {
+  const history = await getHistory(soulId);
+  return history
+    .filter(a => a.status === 'erfolgreich' && a.symbol === symbol && a.principal != null)
+    .reduce((sum, a) => sum + Number(a.principal), 0);
 }

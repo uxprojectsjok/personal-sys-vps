@@ -70,6 +70,7 @@
                   <span class="tr-row-left">
                     <span>Aave · {{ p.symbol }}</span>
                     <span class="tr-row-apy">{{ p.apy }}% APY</span>
+                    <span v-if="Number(p.interestEarned) > 0" class="tr-row-interest">+{{ formatAmount(p.interestEarned) }} {{ p.symbol }} {{ $t('trader.interest_earned_label') }}</span>
                   </span>
                   <span class="tr-row-val">{{ formatAmount(p.deposited) }} {{ p.symbol }}</span>
                 </div>
@@ -400,8 +401,16 @@ function formatDate(iso) {
 }
 
 function exportCSV() {
-  const rows = [[t('trader.col_action'), t('trader.col_date'), t('trader.col_amount'), t('trader.col_value'), t('trader.col_status'), t('trader.col_tx_hash')]]
-  for (const a of actions.value) rows.push([a.action, a.date, a.amount, a.eur, a.status, a.txHash || ''])
+  const rows = [[
+    t('trader.col_action'), t('trader.col_date'), t('trader.col_amount'), t('trader.col_value'), t('trader.col_status'),
+    t('trader.col_tx_hash'), t('trader.col_block'), t('trader.col_balance_before'), t('trader.col_balance_after'), t('trader.col_interest_accrued'),
+  ]]
+  for (const a of actions.value) {
+    rows.push([
+      a.action, a.date, a.amount, a.eur, a.status,
+      a.txHash || '', a.blockNumber || '', a.balanceBefore || '', a.balanceAfter || '', a.interestAccruedAtAction || '',
+    ])
+  }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
   const url  = URL.createObjectURL(blob)
@@ -480,6 +489,7 @@ function exportCSV() {
 .tr-total-val { font-family: var(--mono); color: var(--accent); font-size: 15px; }
 .tr-row-left { display: flex; flex-direction: column; gap: 2px; }
 .tr-row-apy { font-size: 12px; color: var(--accent); }
+.tr-row-interest { font-size: 12px; color: var(--fg); }
 .tr-yes { color: var(--accent); font-weight: 600; }
 .tr-no { color: var(--sys-err, #E06C75); font-weight: 600; }
 

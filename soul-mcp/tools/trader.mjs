@@ -25,7 +25,7 @@
 import { z } from 'zod';
 import { loadAccount as loadX402AgentAccount } from '../lib/x402_agent_wallet.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from '../lib/aave_client.mjs';
-import { getHistory as getTraderHistory, appendAction as appendTraderAction } from '../lib/trader_history.mjs';
+import { getHistory as getTraderHistory, appendAction as appendTraderAction, getNetPrincipal as getTraderNetPrincipal } from '../lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from '../lib/trader_config.mjs';
 import { qualifiesForTier } from '../lib/chain_gate.mjs';
 
@@ -79,13 +79,18 @@ export function register(server, soulId) {
   // ── Lesend, kein Identitäts-Gate ─────────────────────────────────────────
   server.tool(
     'trader_yield_positions',
-    'Yield (Aave V3) — aktuelle Positionen (eingezahlter Betrag, APY) über USDC/WETH/USDT0.',
+    'Yield (Aave V3) — aktuelle Positionen (eingezahlter Betrag, APY, bisher verdiente Zinsen) über USDC/WETH/USDT0.',
     {},
     async () => {
       try {
         const account = await loadX402AgentAccount(soulId);
         if (!account) throw new Error('x402-Wallet nicht konfiguriert — erst in Settings/Wallet einen Private Key hinterlegen.');
-        return ok(await getAaveYieldPositions(account.address));
+        const positions = await getAaveYieldPositions(account.address);
+        return ok(await Promise.all(positions.map(async (p) => {
+          const netPrincipal = await getTraderNetPrincipal(soulId, p.symbol);
+          const interestEarned = Math.max(0, Number(p.deposited) - netPrincipal);
+          return { ...p, interestEarned: interestEarned.toFixed(6) };
+        })));
       } catch (err) { return fail(err); }
     }
   );
@@ -137,7 +142,9 @@ export function register(server, soulId) {
         await assertTraderActionAllowed(soulId, { symbol, usd });
         const eur = asset ? await eurValueAtNow(asset.coingeckoId, amount) : null;
         const result = await aaveSupply(account, symbol, amount);
-        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
+        const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+        const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: amount });
         return ok(result);
       } catch (err) { return fail(err); }
     }
@@ -169,7 +176,9 @@ export function register(server, soulId) {
         await assertTraderActionAllowed(soulId, { symbol, usd });
         const eur = asset ? await eurValueAtNow(asset.coingeckoId, resolvedAmount) : null;
         const result = await aaveWithdraw(account, symbol, amount);
-        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash });
+        const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+        const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+        await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: `-${resolvedAmount}` });
         return ok(result);
       } catch (err) { return fail(err); }
     }

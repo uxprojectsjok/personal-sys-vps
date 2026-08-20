@@ -1427,6 +1427,7 @@
     "yield_desc": "Verleiht Guthaben an Lending-Protokolle — verdient Zinsen ohne Markt-Timing.",
     "yield_empty_title": "Noch keine Einzahlung",
     "yield_provider_note": "Aave V3 Pool auf Polygon — Vertrag selbst prüfen:",
+    "interest_earned_label": "Zinsen bisher",
     "yield_deposit_btn": "Einzahlen",
     "yield_withdraw_btn": "Abheben",
     "stake_label": "Einsatz",
@@ -1443,6 +1444,10 @@
     "col_value": "Wert (EUR)",
     "col_status": "Status",
     "col_tx_hash": "Tx-Hash",
+    "col_block": "Block",
+    "col_balance_before": "Balance vorher",
+    "col_balance_after": "Balance nachher",
+    "col_interest_accrued": "Zinsen kumuliert (zu diesem Zeitpunkt)",
     "export_title": "CSV-Export",
     "export_sub": "Alle Yield-Aktionen, vollständig, für die Steuererklärung.",
     "btn_export_csv": "CSV exportieren"

@@ -136,6 +136,11 @@ export async function supply(account, symbol, amountDecimalStr) {
   const publicClient = getPublicClient();
   const walletClient = getWalletClient(account);
 
+  const reserve = await publicClient.readContract({ address: POOL_ADDRESS, abi: POOL_ABI, functionName: 'getReserveData', args: [asset.address] });
+  const balanceBefore = await publicClient.readContract({
+    address: reserve.aTokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address],
+  });
+
   const allowance = await publicClient.readContract({
     address: asset.address, abi: ERC20_ABI, functionName: 'allowance', args: [account.address, POOL_ADDRESS],
   });
@@ -150,7 +155,16 @@ export async function supply(account, symbol, amountDecimalStr) {
     address: POOL_ADDRESS, abi: POOL_ABI, functionName: 'supply', args: [asset.address, amount, account.address, 0],
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: supplyHash });
-  return { txHash: supplyHash, status: receipt.status };
+  // Balance NACH der Tx erneut lesen statt "balanceBefore + amount" zu rechnen —
+  // die Chain kennt den echten Wert, inkl. der paar Sekunden Zinsen, die
+  // zwischen den beiden Reads zusätzlich aufgelaufen sind.
+  const balanceAfter = await publicClient.readContract({
+    address: reserve.aTokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address],
+  });
+  return {
+    txHash: supplyHash, status: receipt.status, blockNumber: receipt.blockNumber.toString(),
+    balanceBefore: formatUnits(balanceBefore, asset.decimals), balanceAfter: formatUnits(balanceAfter, asset.decimals),
+  };
 }
 
 /**
@@ -167,9 +181,20 @@ export async function withdraw(account, symbol, amountDecimalStr) {
   const publicClient = getPublicClient();
   const walletClient = getWalletClient(account);
 
+  const reserve = await publicClient.readContract({ address: POOL_ADDRESS, abi: POOL_ABI, functionName: 'getReserveData', args: [asset.address] });
+  const balanceBefore = await publicClient.readContract({
+    address: reserve.aTokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address],
+  });
+
   const hash = await walletClient.writeContract({
     address: POOL_ADDRESS, abi: POOL_ABI, functionName: 'withdraw', args: [asset.address, amount, account.address],
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  return { txHash: hash, status: receipt.status };
+  const balanceAfter = await publicClient.readContract({
+    address: reserve.aTokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address],
+  });
+  return {
+    txHash: hash, status: receipt.status, blockNumber: receipt.blockNumber.toString(),
+    balanceBefore: formatUnits(balanceBefore, asset.decimals), balanceAfter: formatUnits(balanceAfter, asset.decimals),
+  };
 }
