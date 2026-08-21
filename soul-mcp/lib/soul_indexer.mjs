@@ -28,15 +28,6 @@ const POLYGONSCAN_BASE   = 'https://api.etherscan.io/v2/api'; // Etherscan API V
 const ANCHORED_TOPIC0    = '0x24b87c8294e674d1419dd6c41c12b8d49dc2544499faf53e81accbe330f7cdae';
 const SAVE_INTERVAL_MS = 60_000;  // Disk-Sync alle 60s
 
-// Preisangabe MwSt. (PAngV §6) — generischer Fallback für Discovery-Flächen
-// (scan/discover/llms.txt), falls der Betreiber keinen eigenen trader_vat_note
-// gesetzt hat. Mit gesetztem trader_vat_note (z.B. "§19 UStG, keine USt.") wird
-// IMMER dieser echte, operator-spezifische Text bevorzugt — der generische
-// Text impliziert "ggf. inkl. MwSt.", was für Kleinunternehmer schlicht falsch wäre.
-const PRICE_NOTE_FALLBACK = 'Alle Preise sind Endpreise.';
-function priceNote(am) {
-  return (am.trader_vat_note && am.trader_vat_note.trim() !== '') ? am.trader_vat_note : PRICE_NOTE_FALLBACK;
-}
 const IPFS_TTL_MS      = 24 * 60 * 60 * 1000; // IPFS-Cache 24h
 
 // ── Härtung: Limits ───────────────────────────────────────────────────────────
@@ -226,12 +217,6 @@ async function enrichFromIpfs(entry, rawCid) {
         token_duration_days: typeof am.token_duration_days === 'number' ? am.token_duration_days : undefined,
         ...(aTools?.length && { agent_tools: aTools }),
         ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
-        ...(am.paypal_enabled === true && {
-          paypal_enabled: true,
-          paypal_target:  str(am.paypal_target, 200) ?? null,
-          price_eur:      str(am.price_eur, 20) ?? null,
-          price_note:     str(priceNote(am), 300),
-        }),
       };
     }
 
@@ -258,7 +243,6 @@ async function enrichFromLocal(entry, soulId) {
     const aTools = Array.isArray(am.agent_tools)
       ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
       : undefined;
-    const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
     entry.amortization = {
       enabled:             !!am.enabled,
       price_usdc:          am.price_usdc ? str(am.price_usdc, 20) : null,
@@ -267,12 +251,6 @@ async function enrichFromLocal(entry, soulId) {
       ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
       ...(aTools?.length && { agent_tools: aTools }),
       ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
-      ...(am.paypal_enabled === true && {
-        paypal_enabled: true,
-        paypal_target:  str(paypalTarget, 200) ?? null,
-        price_eur:      str(am.price_eur, 20) ?? null,
-        price_note:     str(priceNote(am), 300),
-      }),
     };
     if (am.enabled && BASE_URL) {
       entry.pay_endpoint    = `${BASE_URL}/api/soul/pay`;
@@ -568,7 +546,6 @@ async function seedFromLocalAnchors() {
             const aTools = Array.isArray(am.agent_tools)
               ? am.agent_tools.map(t => str(t)).filter(Boolean).slice(0, 20)
               : undefined;
-            const paypalTarget = (am.paypal_link && am.paypal_link !== '') ? am.paypal_link : (am.paypal_email || '');
             localAmort = {
               enabled:             !!am.enabled,
               price_usdc:          am.price_usdc ? str(am.price_usdc, 20) : null,
@@ -577,12 +554,6 @@ async function seedFromLocalAnchors() {
               ...(typeof am.token_duration_days === 'number' && { token_duration_days: am.token_duration_days }),
               ...(aTools?.length && { agent_tools: aTools }),
               ...(am.trader_email && { trader_email: str(am.trader_email, 254) }),
-              ...(am.paypal_enabled === true && {
-                paypal_enabled: true,
-                paypal_target:  str(paypalTarget, 200) ?? null,
-                price_eur:      str(am.price_eur, 20) ?? null,
-                price_note:     str(priceNote(am), 300),
-              }),
             };
             if (am.enabled && BASE_URL) {
               localPayEp    = `${BASE_URL}/api/soul/pay`;

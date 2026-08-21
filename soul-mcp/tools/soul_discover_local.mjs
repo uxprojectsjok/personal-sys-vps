@@ -34,7 +34,7 @@ export function register(server) {
       '',
       'Parameters:',
       '- q:         Free-text search — name, soul_id, tags, description — optional',
-      '- amortized: true = only souls accepting payment (x402/PayPal) — optional',
+      '- amortized: true = only souls accepting payment (x402) — optional',
       '- limit:     Max. results (1–100, default 20) — optional',
       '',
       'ACCESS MODELS:',
@@ -52,28 +52,16 @@ export function register(server) {
       '1. soul_discover_local(amortized=true) → only payable souls',
       '2. soul_preview(pay_endpoint, soul_id) → free teaser + live price (dynamic_pricing)',
       '   ALWAYS call before paying — especially for dynamic_pricing=true souls.',
-      '3. pay pay_endpoint with x402 (own x402 client needed — no wrapper tool here)',
-      '',
-      'NON-CRYPTO PATH (PayPal) — for human users without a crypto wallet:',
-      'Souls with amortization.paypal_enabled also accept PayPal — target/price also',
-      'via soul_preview on the target soul itself.',
-      '',
       ...(EU_CONSUMER_RIGHTS ? [
-        'IMPORTANT — BEFORE moving to payment: ask the user (if unclear) whether',
-        'they are in the EU. For EU users ALWAYS call show_withdrawal_terms first,',
-        'show its link, then on consent accept_digital_content_terms — statutory',
-        '14-day withdrawal right for digital content, forfeited by immediate access.',
-        'Without these steps do NOT prompt for PayPal payment directly. Non-EU users',
-        'can skip this step.',
-        '',
-      ] : []),
-      'After that: the human pays outside the system via PayPal, the operator',
-      'reviews manually (usually within 48h) and then sends back a finished',
-      'access_token — typically pasted directly into this chat, without any payment',
-      'having been triggered here. Recognizable by: 48 hex characters, no "0x" prefix.',
-      'In that case do NOT ask for a payment — the token is already valid.',
-      'Use directly: soul_read_by_token(read_endpoint, access_token=<the token>).',
-      'read_endpoint = the soul\'s pay_endpoint with /pay replaced by /paid-read.',
+        '3. IMPORTANT — ask the user (if unclear) whether they are in the EU. For EU',
+        '   users ALWAYS call show_withdrawal_terms first, show its link, then on',
+        '   consent accept_digital_content_terms — statutory 14-day withdrawal right',
+        '   for digital content, forfeited by immediate access. Without these steps',
+        '   do NOT proceed to payment directly. Non-EU users can skip this step.',
+        '4. pay pay_endpoint with x402 (own x402 client needed — no wrapper tool here)',
+      ] : [
+        '3. pay pay_endpoint with x402 (own x402 client needed — no wrapper tool here)',
+      ]),
     ].join('\n'),
     {
       q:         z.string().optional().describe('Free-text search (soul_id or name)'),
@@ -133,9 +121,6 @@ export function register(server) {
               lines.push(`- **Agent tools:** ${aTools.join(', ')}`);
             }
             if (s.pay_endpoint) lines.push(`- **Preview/payment:** call soul_preview(pay_endpoint="${s.pay_endpoint}", soul_id="${s.soul_id}") — reports price and payment target`);
-            if (s.amortization.paypal_enabled) {
-              lines.push(`- **Non-crypto access:** PayPal available — target/price via soul_preview. Include an email address in the payment note for token delivery. Manually reviewed by the operator, usually within 48h. Use a received token directly with soul_read_by_token(read_endpoint, access_token), don't request another payment.`);
-            }
           } else {
             lines.push(`- **Access:** no public access (no payment endpoint configured) — owner or trusted-peer soul_cert only`);
           }

@@ -124,32 +124,6 @@
                   </template>
                 </div>
                 <div class="field span-2">
-                  <label class="field-label field-label--toggle">
-                    <span class="toggle-switch" :class="{ on: amort.paypal_enabled }" @click="amort.paypal_enabled = !amort.paypal_enabled" role="switch" :aria-checked="amort.paypal_enabled" tabindex="0" @keydown.enter.space.prevent="amort.paypal_enabled = !amort.paypal_enabled">
-                      <span class="toggle-knob"></span>
-                    </span>
-                    {{ $t('marketplace.field_paypal_enabled') }}
-                    <span class="field-hint">{{ $t('marketplace.field_paypal_enabled_hint') }}</span>
-                  </label>
-                </div>
-                <template v-if="amort.paypal_enabled">
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_paypal_link') }}</label>
-                    <input v-model="amort.paypal_link" type="text" class="input mono" placeholder="https://paypal.me/deinname" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_paypal_email') }}</label>
-                    <input v-model="amort.paypal_email" type="text" class="input mono" placeholder="du@example.com" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">{{ $t('marketplace.field_price_eur') }} <span class="field-hint">{{ $t('marketplace.field_price_eur_hint') }}</span></label>
-                    <input v-model="amort.price_eur" type="text" class="input mono" placeholder="12.00" />
-                  </div>
-                </template>
-                <!-- Anbieterkennzeichnung: nicht mehr an PayPal gekoppelt — wird auch
-                     für x402 gebraucht (EU-Widerrufsbelehrung + Verkaufs-Mail-Absender,
-                     siehe accept_digital_content_terms.mjs / soul_pay_x402.lua). -->
-                <div class="field span-2">
                   <label class="field-label">{{ $t('marketplace.field_trader_section') }} <span class="field-hint">{{ $t('marketplace.field_trader_section_hint') }}</span></label>
                 </div>
                 <div class="field">
@@ -284,40 +258,9 @@
             <p v-if="newCid" class="field-ok">{{ $t('marketplace.published_ok') }} {{ newCid.slice(0, 20) }}…</p>
           </section>
 
-          <!-- ───── STEP 3 · MANUELLE TOKENS ───── -->
+          <!-- ───── STEP 3 · TOKENS ───── -->
           <section v-else-if="step === 'tokens'" class="step">
             <p class="prose">{{ $t('marketplace.step3_prose') }}</p>
-
-            <div class="card">
-              <div class="card-body">
-                <div class="field">
-                  <label class="field-label">{{ $t('marketplace.token_duration_label') }}</label>
-                  <input v-model.number="manualDuration" type="number" min="1" max="30" step="1" class="input" />
-                </div>
-                <div class="field">
-                  <label class="field-label">{{ $t('marketplace.token_note_label') }}</label>
-                  <input v-model="manualNote" type="text" class="input" :placeholder="$t('marketplace.token_note_placeholder')" />
-                </div>
-                <div class="field span-2">
-                  <label class="field-label">{{ $t('marketplace.token_reference_label') }} <span class="field-hint">{{ $t('marketplace.token_reference_hint') }}</span></label>
-                  <input v-model="manualReferenceId" type="text" class="input mono" placeholder="z.B. 1581eae2-9e09-41df-a6f3-6f4e080a9833" />
-                </div>
-              </div>
-            </div>
-
-            <button class="btn btn-primary" style="margin: 14px auto; display: flex;" :disabled="issuingToken" @click="issueManualToken">
-              {{ issuingToken ? $t('marketplace.token_issuing') : $t('marketplace.token_issue_btn') }}
-            </button>
-
-            <p v-if="issueTokenError" class="field-error">{{ issueTokenError }}</p>
-
-            <div v-if="issuedToken" class="cid">
-              <span class="kicker">{{ $t('marketplace.token_issued_hint') }}</span>
-              <div class="token-copy-row">
-                <p class="cid-value token-copy-val">{{ issuedToken }}</p>
-                <button class="btn btn-ghost" @click="copyIssuedToken">{{ tokenCopied ? $t('common.copy_done') : $t('common.copy') }}</button>
-              </div>
-            </div>
 
             <div v-if="tokenList.length" class="token-list">
               <div v-for="tk in tokenList" :key="tk.token" class="token-row">
@@ -328,7 +271,7 @@
                   <span v-if="tk.reference_id" class="token-ref" :title="$t('marketplace.token_reference_label')">{{ tk.reference_id.slice(0, 8) }}…</span>
                   <span class="token-exp">{{ $t('marketplace.token_expires', { date: formatTokenDate(tk.expires_at) }) }}</span>
                 </div>
-                <button class="btn btn-ghost" @click="revokeManualToken(tk.token)">{{ $t('marketplace.token_revoke_btn') }}</button>
+                <button class="btn btn-ghost" @click="revokeToken(tk.token)">{{ $t('marketplace.token_revoke_btn') }}</button>
               </div>
             </div>
             <p v-else-if="tokensLoaded" class="prose">{{ $t('marketplace.tokens_empty') }}</p>
@@ -439,10 +382,6 @@ const amort = reactive({
   token_duration_days:  1,
   dynamic_pricing:      false,
   price_usdc:           '',
-  paypal_enabled:       false,
-  paypal_link:          '',
-  paypal_email:         '',
-  price_eur:            '',
   trader_name:          '',
   trader_address:       '',
   trader_email:         '',
@@ -572,10 +511,6 @@ async function persistMetaFields() {
         token_duration_days: Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:     amort.dynamic_pricing,
         price_usdc:          amort.price_usdc,
-        paypal_enabled:      amort.paypal_enabled,
-        paypal_link:         amort.paypal_link,
-        paypal_email:        amort.paypal_email,
-        price_eur:           amort.price_eur,
         trader_name:         amort.trader_name,
         trader_address:      amort.trader_address,
         trader_email:        amort.trader_email,
@@ -660,7 +595,6 @@ function toggleTool(name) {
 watch(step, (newStep) => {
   showToolPicker.value = false
   if (newStep === 'ipfs') loadPreview()
-  if (newStep !== 'tokens') issuedToken.value = ''
 })
 
 const BASE = () => ''
@@ -668,14 +602,7 @@ function authHeader() {
   return { 'Authorization': `Bearer ${props.soulCert}`, 'Content-Type': 'application/json' }
 }
 
-// ═══════════ STEP 3 · MANUELLE ZUGANGS-TOKENS (Nicht-Krypto-Käufer) ═══════════
-const manualDuration    = ref(1)
-const manualNote        = ref('')
-const manualReferenceId = ref('')
-const issuingToken    = ref(false)
-const issueTokenError = ref('')
-const issuedToken     = ref('')
-const tokenCopied     = ref(false)
+// ═══════════ STEP 3 · ZUGANGS-TOKENS ═══════════
 const tokenList       = ref([])
 const tokensLoaded    = ref(false)
 
@@ -698,37 +625,7 @@ async function loadTokenList() {
   tokensLoaded.value = true
 }
 
-async function issueManualToken() {
-  issueTokenError.value = ''
-  issuedToken.value     = ''
-  issuingToken.value    = true
-  try {
-    const days = Math.min(30, Math.max(1, Math.floor(Number(manualDuration.value) || 1)))
-    const r = await fetch(`${BASE()}/api/soul/pay/manual`, {
-      method: 'POST',
-      headers: authHeader(),
-      body: JSON.stringify({ token_duration_days: days, note: manualNote.value, reference_id: manualReferenceId.value.trim() }),
-    })
-    const d = await r.json()
-    if (!r.ok || !d.ok) throw new Error(d.message || d.error || 'Fehler beim Ausstellen')
-    issuedToken.value      = d.access_token
-    manualNote.value       = ''
-    manualReferenceId.value = ''
-    await loadTokenList()
-  } catch (e) {
-    issueTokenError.value = e.message
-  }
-  issuingToken.value = false
-}
-
-async function copyIssuedToken() {
-  if (!issuedToken.value) return
-  await navigator.clipboard.writeText(issuedToken.value).catch(() => {})
-  tokenCopied.value = true
-  setTimeout(() => { tokenCopied.value = false; issuedToken.value = '' }, 1500)
-}
-
-async function revokeManualToken(token) {
+async function revokeToken(token) {
   try {
     const r = await fetch(`${BASE()}/api/soul/tokens?token=${encodeURIComponent(token)}`, {
       method: 'DELETE',
@@ -778,10 +675,6 @@ async function loadAmort() {
     amort.token_duration_days  = Math.min(30, Math.max(1, parseInt(a.token_duration_days) || 1))
     amort.dynamic_pricing      = a.dynamic_pricing ?? false
     amort.price_usdc           = a.price_usdc ?? ''
-    amort.paypal_enabled       = a.paypal_enabled ?? false
-    amort.paypal_link          = a.paypal_link ?? ''
-    amort.paypal_email         = a.paypal_email ?? ''
-    amort.price_eur            = a.price_eur ?? ''
     amort.trader_name          = a.trader_name ?? ''
     amort.trader_address       = a.trader_address ?? ''
     amort.trader_email         = a.trader_email ?? ''
@@ -855,10 +748,6 @@ async function setMode(mode) {
           token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
           dynamic_pricing:      amort.dynamic_pricing,
           price_usdc:           amort.price_usdc,
-          paypal_enabled:       amort.paypal_enabled,
-          paypal_link:          amort.paypal_link,
-          paypal_email:         amort.paypal_email,
-          price_eur:            amort.price_eur,
           trader_name:          amort.trader_name,
           trader_address:       amort.trader_address,
           trader_email:         amort.trader_email,
@@ -899,10 +788,6 @@ async function saveAmort() {
         token_duration_days:  Math.min(30, Math.max(1, parseInt(amort.token_duration_days) || 1)),
         dynamic_pricing:      amort.dynamic_pricing,
         price_usdc:           amort.price_usdc,
-        paypal_enabled:       amort.paypal_enabled,
-        paypal_link:          amort.paypal_link,
-        paypal_email:         amort.paypal_email,
-        price_eur:            amort.price_eur,
         trader_name:          amort.trader_name,
         trader_address:       amort.trader_address,
         trader_email:         amort.trader_email,
@@ -1197,8 +1082,6 @@ async function register() {
 .arr { font-family: var(--serif); }
 
 /* Token-Tab */
-.token-copy-row { display: flex; align-items: center; gap: 10px; }
-.token-copy-val { flex: 1; margin: 0; }
 .token-list { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--rule-2); margin-top: 4px; }
 .token-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--paper-2); }
 .token-row + .token-row { border-top: 1px solid var(--rule-2); }

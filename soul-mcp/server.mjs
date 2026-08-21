@@ -2695,8 +2695,8 @@ app.post('/internal/verify-x402', async (req, res) => {
 // diesen Schritt könnte die Rechnung einen anderen Betrag zeigen als real
 // abgebucht wurde — inakzeptabel für ein Dokument mit gesetzlicher Rechnungsnummer.
 // no-op (200, nichts zu tun) wenn keine invoice_meta.json existiert — z.B. weil
-// EU_CONSUMER_RIGHTS deaktiviert ist oder es sich um einen PayPal-Kauf handelt
-// (dort ist der Preis nie dynamisch, siehe accept_digital_content_terms.mjs).
+// EU_CONSUMER_RIGHTS deaktiviert ist (dann läuft /api/soul/terms/accept gar
+// nicht erst, siehe dort).
 app.post('/internal/x402-finalize-invoice', async (req, res) => {
   const { soul_id: soulId, reference_id: referenceId, usdc_amount: usdcAmount, tx_hash: txHash, confirmed_at: confirmedAt } = req.body || {};
   if (typeof soulId !== 'string' || !soulId || typeof referenceId !== 'string' || !referenceId) {
@@ -3180,7 +3180,7 @@ async function pushSoulNetworkLines(lines, soulId) {
   }
 }
 
-// Restliche Soul-Felder (Preis/Wallet/Tools/Kontakt/PayPal/Endpoint/Modell) --
+// Restliche Soul-Felder (Preis/Wallet/Tools/Kontakt/Endpoint/Modell) --
 // identisch für die node-weite Liste und die Soul-spezifische Einzelansicht.
 // Gleiche Default-true-Semantik wie lua/get_config.lua:106-109 und
 // lua/node_status.lua:15-21 (Altinstallationen ohne Datei = enabled) — nur
@@ -3198,8 +3198,8 @@ async function isMonetizationEnabled() {
 }
 
 // monetizationOn: siehe isMonetizationEnabled() -- wenn false, werden alle
-// Marketplace/Paid-Agent-Felder ausgelassen (Preis/Wallet/Tools/Kontakt/
-// PayPal). Soul Transfer (Eigentumsübertragung) ist davon bewusst
+// Marketplace/Paid-Agent-Felder ausgelassen (Preis/Wallet/Tools/Kontakt).
+// Soul Transfer (Eigentumsübertragung) ist davon bewusst
 // ausgenommen -- eigenständiges Feature, kein Teil des Marketplace/Agent-
 // Sandbox-Zugangs (siehe marketplace.private_node_disabled-Hinweistext).
 async function pushSoulFieldLines(lines, s, monetizationOn) {
@@ -3217,19 +3217,13 @@ async function pushSoulFieldLines(lines, s, monetizationOn) {
     lines.push(`- **Token valid:** ${a.token_duration_days ?? 1} day(s)`);
     if (a.wallet) {
       lines.push(EU_CONSUMER_RIGHTS
-        ? '- **Wallet (Polygon):** available — call show_withdrawal_terms(payment_method="x402") then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
+        ? '- **Wallet (Polygon):** available — call show_withdrawal_terms() then accept_digital_content_terms to learn the address (shown only in the resulting invoice PDF)'
         : `- **Wallet (Polygon):** \`${a.wallet}\` — pay via x402 (402 challenge -> signed EIP-3009 retry)`);
     }
     if (Array.isArray(a.agent_tools) && a.agent_tools.length) {
       lines.push(`- **Tools after payment:** ${a.agent_tools.join(', ')}`);
     }
     if (a.trader_email) lines.push(`- **Contact:** ${a.trader_email} (typically replies within 48h)`);
-    if (a.paypal_enabled) {
-      const eur = a.price_eur ? `${a.price_eur} EUR` : 'price on request';
-      lines.push(EU_CONSUMER_RIGHTS
-        ? `- **Non-crypto access:** PayPal (${eur}) — call show_withdrawal_terms(payment_method="paypal") then accept_digital_content_terms to learn the target (shown only in the resulting invoice PDF)${a.price_note ? `. Price note: ${a.price_note}` : ''}`
-        : `- **Non-crypto access:** PayPal (${eur}) to ${a.paypal_target} — please leave an email address in the payment note so the access token can be sent there. Manually reviewed by the operator, typically within 48h${a.price_note ? `. Price note: ${a.price_note}` : ''}`);
-    }
   }
   if (s.mcp_endpoint) lines.push(`- **MCP endpoint:** ${s.mcp_endpoint}`);
   try {
@@ -3240,7 +3234,7 @@ async function pushSoulFieldLines(lines, s, monetizationOn) {
   // Gatekeeper role, stated explicitly -- distinct from "Tools after payment"
   // above (that's the paid-agent whitelist, agent_tools). These wired_*/wire_*
   // tools are NOT part of the anonymous paid-agent flow -- only an owner/peer/
-  // service-token session (not a pol_access_token from x402/PayPal) gets them,
+  // service-token session (not a pol_access_token from x402) gets them,
   // see registerConnectionProxyTools()'s call sites in this file. Stated here
   // so a crawling AI understands WHY this soul has elevated context/value
   // (see pushSoulNetworkLines above) without implying anonymous access to it.
@@ -3262,9 +3256,8 @@ async function pushSoulFieldLines(lines, s, monetizationOn) {
 // Wert ersetzt (direkt nutzbar, kein Platzhalter-Rätselraten für eine KI, die
 // eh schon genau diese eine Soul meint).
 // monetizationOn: siehe isMonetizationEnabled() -- wenn false, wird das
-// gesamte "How to access"-Kapitel (Schritte 1-4 + Non-crypto alternative)
-// übersprungen, "Soul Transfer" bleibt bestehen (eigenständiges Feature, kein
-// Marketplace/Agent-Sandbox-Zugang).
+// gesamte "How to access"-Kapitel (Schritte 1-4) übersprungen, "Soul Transfer"
+// bleibt bestehen (eigenständiges Feature, kein Marketplace/Agent-Sandbox-Zugang).
 function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
   const sid = soulIdExample || '{soul_id}';
   if (monetizationOn) {
@@ -3279,11 +3272,11 @@ function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
     lines.push('You do NOT have an /mcp session yet at this point (it always requires a token, and none');
     lines.push('exists before payment) — use the plain HTTP twins, not the MCP tool names, unless you');
     lines.push('already hold an owner/peer/paid token for this node:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "payment_method": "x402" }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/show\nContent-Type: application/json\n\n{ "soul_id": "${sid}" }\n\`\`\``);
     lines.push('Returns `{ terms_token, preview_url, preview_url_txt, terms_url, terms_url_txt, legal_text }`.');
     lines.push('Show preview_url (or preview_url_txt if you cannot render a PDF) to the buyer. Once they');
     lines.push('explicitly agree to both (a) immediate performance and (b) losing their 14-day withdrawal right:');
-    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "terms_token": "{from above}", "payment_method": "x402", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
+    lines.push(`\`\`\`\nPOST ${BASE_URL}/api/soul/terms/accept\nContent-Type: application/json\n\n{ "soul_id": "${sid}", "terms_token": "{from above}", "consent_immediate_performance": true, "consent_withdrawal_waiver": true }\n\`\`\``);
     lines.push('Returns `{ invoice: { download_url, download_url_txt }, withdrawal_notice: { download_url, download_url_txt },');
     lines.push('waiver: { download_url, download_url_txt }, reference_id, payment: { value: wallet }, invoice_number }`');
     lines.push('— three separate documents (invoice, withdrawal notice, waiver declaration). The wallet address AND');
@@ -3318,11 +3311,6 @@ function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
   lines.push('**4. Use token**');
   lines.push(`\`\`\`\nAuthorization: Bearer {access_token}\nPOST ${soulIdExample ? `${BASE_URL}/mcp?soul_id=${sid}` : '{mcp_endpoint}'}\n\`\`\``);
   lines.push('Access is limited to the Agent Sandbox tools configured by the soul owner.');
-  lines.push('');
-  lines.push('**Non-crypto alternative**');
-  lines.push(EU_CONSUMER_RIGHTS
-    ? 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet. IMPORTANT — before telling an EU-based buyer to send the payment: ask if they are in the EU (if unknown), and if so, call show_withdrawal_terms FIRST, show its link to the buyer, then call accept_digital_content_terms once they agree — do not skip straight to payment instructions. Non-EU buyers can skip this. Then: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.'
-    : 'Souls with "Non-crypto access" above also accept PayPal for human buyers without a Polygon wallet: pay externally, leaving an email address in the payment note so the operator can send the access token back. Access is granted manually, typically within 48h — not instant like the x402 flow. If a human hands you such a token directly in chat (48 hex chars, no "0x" prefix — that would be a TX hash instead), do not ask for payment again: call soul_read_by_token(read_endpoint, access_token) right away.');
   lines.push('');
   } // monetizationOn
   lines.push('## Soul Transfer (ownership, not access)');
@@ -3390,7 +3378,7 @@ app.get('/llms.txt', async (req, res) => {
     lines.push(`# SYS Soul — ${s.name || s.soul_id}`);
     lines.push('');
     lines.push('> Personal AI identity running the SYS open protocol.');
-    lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
+    lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon).');
     lines.push('');
     if (s.description) lines.push(`_${s.description}_`);
     if (s.tags?.length) lines.push(`Tags: ${s.tags.map(t => `#${t}`).join(' ')}`);
@@ -3408,7 +3396,7 @@ app.get('/llms.txt', async (req, res) => {
   lines.push(`# SYS Node — ${BASE_URL}`);
   lines.push('');
   lines.push('> Personal AI identity node running the SYS open protocol.');
-  lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon) or PayPal.');
+  lines.push('> Self-hosted, cryptographically secured. Access via x402 (USDC on Polygon).');
   lines.push('');
   lines.push('This node is operated independently. The operator is solely responsible for');
   lines.push('compliance with applicable law (GDPR, TMG/DDG, etc.) on this node, including');
@@ -3523,8 +3511,7 @@ app.get('/api/soul/scan', async (req, res) => {
     // Aktives Transfer-Angebot (falls vorhanden) — dieselbe Anreicherung wird
     // beim Mergen mit Remote-Scans (Schritt 4 unten) automatisch netzwerkweit
     // sichtbar, ganz ohne eigene Remote-Fetch-Logik, weil jeder Node schon
-    // seinen eigenen /api/soul/scan genauso anreichert (gleiches Prinzip wie
-    // paypal_enabled/price_eur oben).
+    // seinen eigenen /api/soul/scan genauso anreichert.
     const transferListing = s.soul_id ? await getSoulTransferListing(s.soul_id).catch(() => null) : null;
 
     // Effective live price (same formula as loadPaymentHint)
@@ -3566,7 +3553,7 @@ app.get('/api/soul/scan', async (req, res) => {
     // sich der Toggle nur auf die lokalen Zahlungs-Routen aus, nie auf das, was
     // /api/soul/scan nach außen zeigt. monetization_enabled zusätzlich als eigenes
     // Feld, damit entfernte Scanner (z.B. scanner.vue) das nicht nur aus dem
-    // Fehlen von wallet/paypal-Feldern erraten müssen.
+    // Fehlen des wallet-Felds erraten müssen.
     return {
       soul_id:             s.soul_id,
       name:                s.name || s.soul_id?.slice(0, 8),
@@ -3583,10 +3570,10 @@ app.get('/api/soul/scan', async (req, res) => {
       days_since_last_anchor: daysSinceLastAnchor !== null ? Math.round(daysSinceLastAnchor * 10) / 10 : null,
       visibility_zone:     visibilityZone,
       monetization_enabled: monetizationOn,
-      // Bei aktivem EU_CONSUMER_RIGHTS werden Zahlungsziele (Wallet-Adresse,
-      // PayPal-Link) erst nach show_withdrawal_terms/accept_digital_content_terms
-      // genannt (im Consent-PDF) — hier nur noch ein Verfügbarkeits-Flag, damit
-      // die Homepage-Methods-Pille weiterhin funktioniert, ohne das Ziel selbst
+      // Bei aktivem EU_CONSUMER_RIGHTS wird das Zahlungsziel (Wallet-Adresse)
+      // erst nach show_withdrawal_terms/accept_digital_content_terms genannt
+      // (im Consent-PDF) — hier nur noch ein Verfügbarkeits-Flag, damit die
+      // Homepage-Methods-Pille weiterhin funktioniert, ohne das Ziel selbst
       // vorab öffentlich zu zeigen.
       wallet:              (monetizationOn && !EU_CONSUMER_RIGHTS) ? (amort.wallet || null) : null,
       wallet_available:    monetizationOn && !!amort.wallet,
@@ -3594,10 +3581,6 @@ app.get('/api/soul/scan', async (req, res) => {
       tx_hash:             txHash,
       agent_tools:         monetizationOn && Array.isArray(amort.agent_tools) ? amort.agent_tools : [],
       contact_email:       monetizationOn ? (amort.trader_email || null) : null,
-      paypal_enabled:      monetizationOn && amort.paypal_enabled === true,
-      paypal_target:       (monetizationOn && amort.paypal_enabled === true && !EU_CONSUMER_RIGHTS) ? (amort.paypal_target || null) : null,
-      price_eur:           (monetizationOn && amort.paypal_enabled === true) ? (amort.price_eur || null) : null,
-      price_note:          (monetizationOn && amort.paypal_enabled === true) ? (amort.price_note || null) : null,
       consent_required:    EU_CONSUMER_RIGHTS,
       transfer_offer:      transferListing?.active ? {
         mode: transferListing.mode,
@@ -3673,42 +3656,32 @@ app.post('/api/soul/terms/show', async (req, res) => {
   if (!EU_CONSUMER_RIGHTS) {
     return res.status(404).json({ error: 'not_enabled', message: 'Dieser Node hat EU_CONSUMER_RIGHTS nicht aktiviert.' });
   }
-  const { soul_id, payment_method } = req.body || {};
-  if (!soul_id || !['paypal', 'x402'].includes(payment_method)) {
-    return res.status(400).json({ error: 'soul_id und payment_method ("paypal"|"x402") erforderlich' });
+  const { soul_id } = req.body || {};
+  if (!soul_id) {
+    return res.status(400).json({ error: 'soul_id erforderlich' });
   }
   try {
     const ctx   = await loadCtx(soul_id);
     const amort = ctx.amortization || {};
     const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
-    const paypalAvailable = amort.paypal_enabled === true;
     const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
-    if (payment_method === 'paypal' && !paypalAvailable) {
-      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
-    }
-    if (payment_method === 'x402' && !x402Available) {
+    if (!x402Available) {
       return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' });
     }
 
     const termsToken = randomUUID();
     const tokenDurationDays = amort.token_duration_days || 1;
-    // Siehe /api/soul/terms/accept: für x402 den aktuellen dynamischen Preis
-    // zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
-    // zeigt die Vorabinformation einen anderen Betrag als tatsächlich
-    // abgebucht wird (derselbe Bug wie zuvor bei der Rechnung, hier nur an
-    // einer weiteren Stelle unkorrigiert geblieben).
-    let previewPrice;
-    let previewBasePrice = null;
-    const previewDynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
-    if (payment_method === 'x402') {
-      previewBasePrice = Number(amort.price_usdc) || 0;
-      previewPrice = previewDynamicPricing
-        ? (await computeDynamicUsdcPrice(soul_id, previewBasePrice)).toFixed(6)
-        : (amort.price_usdc || '?');
-    } else {
-      previewPrice = amort.price_eur || '?';
-    }
+    // Siehe /api/soul/terms/accept: den aktuellen dynamischen Preis zeigen
+    // (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst zeigt die
+    // Vorabinformation einen anderen Betrag als tatsächlich abgebucht wird
+    // (derselbe Bug wie zuvor bei der Rechnung, hier nur an einer weiteren
+    // Stelle unkorrigiert geblieben).
+    const previewBasePrice = Number(amort.price_usdc) || 0;
+    const previewDynamicPricing = amort.dynamic_pricing === true;
+    const previewPrice = previewDynamicPricing
+      ? (await computeDynamicUsdcPrice(soul_id, previewBasePrice)).toFixed(6)
+      : (amort.price_usdc || '?');
     const previewFields = {
       termsToken,
       soulName: ctx.name || soul_id.slice(0, 8),
@@ -3716,10 +3689,8 @@ app.post('/api/soul/terms/show', async (req, res) => {
       price:    previewPrice,
       basePrice: previewBasePrice,
       dynamicPricing: previewDynamicPricing,
-      currency: payment_method === 'x402' ? 'USDC' : 'EUR',
-      target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
+      currency: 'USDC',
       wallet:   amort.wallet || '',
-      paymentMethod: payment_method,
       traderName:      amort.trader_name || '',
       traderAddress:   amort.trader_address || '',
       traderEmail:     amort.trader_email || '',
@@ -3737,7 +3708,7 @@ app.post('/api/soul/terms/show', async (req, res) => {
     await writeFile(`${purchaseDir}/vorabinformation.txt`, previewTxt, 'utf8');
     await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
       created_at: new Date().toISOString(),
-      payment_method,
+      payment_method: 'x402',
     }), 'utf8');
 
     sweepExpiredConsentTxt(soul_id, tokenDurationDays).catch(() => {});
@@ -3761,12 +3732,12 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     return res.status(404).json({ error: 'not_enabled', message: 'Dieser Node hat EU_CONSUMER_RIGHTS nicht aktiviert.' });
   }
   const {
-    soul_id, terms_token, payment_method,
+    soul_id, terms_token,
     consent_immediate_performance, consent_withdrawal_waiver, contact_note,
   } = req.body || {};
 
-  if (!soul_id || !terms_token || !['paypal', 'x402'].includes(payment_method)) {
-    return res.status(400).json({ error: 'soul_id, terms_token und payment_method ("paypal"|"x402") erforderlich' });
+  if (!soul_id || !terms_token) {
+    return res.status(400).json({ error: 'soul_id und terms_token erforderlich' });
   }
   if (!consent_immediate_performance || !consent_withdrawal_waiver) {
     return res.status(400).json({
@@ -3779,13 +3750,9 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     const ctx   = await loadCtx(soul_id);
     const amort = ctx.amortization || {};
     const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
-    const paypalAvailable = amort.paypal_enabled === true;
     const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
-    if (payment_method === 'paypal' && !paypalAvailable) {
-      return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen PayPal-Zahlungsweg.' });
-    }
-    if (payment_method === 'x402' && !x402Available) {
+    if (!x402Available) {
       return res.status(402).json({ error: 'Diese Soul akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).' });
     }
 
@@ -3799,23 +3766,16 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       });
     }
 
-    const target = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
-    const wallet  = amort.wallet || '';
-    // Siehe accept_digital_content_terms.mjs: für x402 den aktuellen dynamischen
-    // Preis zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
+    const wallet = amort.wallet || '';
+    // Siehe accept_digital_content_terms.mjs: den aktuellen dynamischen Preis
+    // zeigen (gleiche Formel wie soul_pay_x402.lua beim Settlement), sonst
     // zeigt die Rechnung einen anderen Betrag als tatsächlich abgebucht wird.
-    let price;
-    let basePrice = null;
-    const dynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
-    if (payment_method === 'x402') {
-      basePrice = Number(amort.price_usdc) || 0;
-      price = dynamicPricing
-        ? (await computeDynamicUsdcPrice(soul_id, basePrice)).toFixed(6)
-        : (amort.price_usdc || '?');
-    } else {
-      price = amort.price_eur || '?';
-    }
-    const currency = payment_method === 'x402' ? 'USDC' : 'EUR';
+    const basePrice = Number(amort.price_usdc) || 0;
+    const dynamicPricing = amort.dynamic_pricing === true;
+    const price = dynamicPricing
+      ? (await computeDynamicUsdcPrice(soul_id, basePrice)).toFixed(6)
+      : (amort.price_usdc || '?');
+    const currency = 'USDC';
     const now = new Date();
     const timestampDisplay = now.toLocaleString('de-DE', {
       timeZone: 'Europe/Berlin',
@@ -3836,9 +3796,7 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       basePrice,
       dynamicPricing,
       currency,
-      target,
       wallet,
-      paymentMethod: payment_method,
       contactNote: contact_note || '',
       timestamp: timestampDisplay,
       referenceId: terms_token,
@@ -3871,19 +3829,17 @@ app.post('/api/soul/terms/accept', async (req, res) => {
     ]);
     await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
       created_at: new Date().toISOString(),
-      payment_method,
+      payment_method: 'x402',
       invoice_number: invoiceNumber,
       accepted_at: timestampDisplay,
     }), 'utf8');
 
     // Siehe accept_digital_content_terms.mjs: Metadaten für die Rechnungskorrektur
     // nach echtem x402-Settlement (/internal/x402-finalize-invoice, aufgerufen von
-    // soul_pay_x402.lua). PayPal-Preise sind nie dynamisch, brauchen das nicht.
-    if (payment_method === 'x402') {
-      await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
-        quotedPrice: price, ...sharedFields,
-      }), 'utf8');
-    }
+    // soul_pay_x402.lua).
+    await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
+      quotedPrice: price, ...sharedFields,
+    }), 'utf8');
 
     res.json({
       ok: true,
@@ -3900,9 +3856,7 @@ app.post('/api/soul/terms/accept', async (req, res) => {
         download_url_txt: `${BASE_URL}/api/vault/consent/${soul_id}/${terms_token}/verzichtserklaerung.txt`,
       },
       reference_id: terms_token,
-      payment: payment_method === 'x402'
-        ? { method: 'x402', label: 'Wallet-Adresse (Polygon, USDC via x402)', value: wallet }
-        : { method: 'paypal', label: 'PayPal-Zahlungsziel', value: target },
+      payment: { method: 'x402', label: 'Wallet-Adresse (Polygon, USDC via x402)', value: wallet },
       price,
       currency,
       invoice_number: invoiceNumber,

@@ -95,16 +95,11 @@ if created_at then preview.created_at = created_at end
 if version    then preview.version    = version    end
 if maturity   then preview.maturity   = maturity   end
 if type(amort) == "table" then
-  local paypal_target = (amort.paypal_link and amort.paypal_link ~= "") and amort.paypal_link
-                      or (amort.paypal_email or "")
   preview.amortization = {
     enabled         = amort.enabled == true,
     price_usdc      = amort.price_usdc,
     wallet          = amort.wallet,
     agent_tools     = filter_tools(amort.agent_tools or amort.free_tools),
-    paypal_enabled  = amort.paypal_enabled == true,
-    paypal_target   = paypal_target,
-    price_eur       = amort.price_eur,
     trader_vat_note = amort.trader_vat_note,
   }
 end

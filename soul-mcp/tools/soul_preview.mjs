@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-// EU withdrawal-rights consent flow — off by default, opt-in via init.sh
-// ("Set up EU consumer rights?") / EU_CONSUMER_RIGHTS in soul-mcp/.env.
-const EU_CONSUMER_RIGHTS = process.env.EU_CONSUMER_RIGHTS === 'true';
-
 /**
  * soul_preview — Free teaser of a paid Soul before committing to payment.
  *
@@ -41,26 +37,6 @@ export function register(server, _token) {
       'protocol (it responds with a 402 + payment requirements; retry with a',
       'signed EIP-3009 authorization). This server has no dedicated payment tool —',
       'x402 is a standard, any compliant client already knows how to speak it.',
-      '',
-      ...(EU_CONSUMER_RIGHTS ? [
-        'Some Souls also accept PayPal for human buyers without crypto — if the',
-        'preview shows paypal_accepted, mention that option to the human.',
-        '',
-        'STOP — before telling the human to send the PayPal payment: ask if they are',
-        'in the EU (if unknown). If yes (or unsure), you MUST call',
-        'show_withdrawal_terms FIRST (then accept_digital_content_terms once they',
-        'agree) — this is the legally required withdrawal-rights waiver for digital',
-        'content, not optional.',
-        'Do not skip straight from preview to "send PayPal to X" for EU buyers.',
-        'Only after that (or immediately, for confirmed non-EU buyers): the human',
-        'pays externally, then contacts the Soul owner directly — access is granted',
-        'manually, typically within 48h, not instantly like x402.',
-      ] : [
-        'Some Souls also accept PayPal for human buyers without crypto — if the',
-        'preview shows paypal_accepted, mention that option to the human. The',
-        'human pays externally, then contacts the Soul owner directly — access is',
-        'granted manually, typically within 48h, not instantly like x402.',
-      ]),
       '',
       'Parameters:',
       '  pay_endpoint  full URL of the Soul\'s pay endpoint (from soul_discover)',
@@ -119,16 +95,6 @@ export function register(server, _token) {
           ? `[${d.preview_note}]`
           : (d.preview || '(no AGENT block content found)');
 
-        const paypalLines = d.paypal_accepted
-          ? [
-              d.paypal_target
-                ? `PayPal: ${d.price_eur || '?'} EUR to ${d.paypal_target} — ${d.paypal_note}`
-                : `PayPal: ${d.price_eur || '?'} EUR — ${d.paypal_note}`,
-              ...(d.price_note ? [`Price note: ${d.price_note}`] : []),
-              ``,
-            ]
-          : [];
-
         const walletLine = d.wallet
           ? `Wallet:  ${d.wallet}`
           : `Wallet:  ${d.wallet_note || '(not set)'}`;
@@ -137,7 +103,6 @@ export function register(server, _token) {
           `Soul preview · ${soul_id.slice(0, 8)}…`,
           `Price:   ${priceLine}`,
           walletLine,
-          ...paypalLines,
           ``,
           `--- AGENT block preview ---`,
           agentContent,

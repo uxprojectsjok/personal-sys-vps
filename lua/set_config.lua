@@ -39,6 +39,7 @@ local elevenlabs_agent_url = body.elevenlabs_agent_url
 local model                = body.model
 local mcp_url              = body.mcp_url
 local reown_project_id     = body.reown_project_id
+local anchor_paypal_target = body.anchor_paypal_target
 
 if anthropic_key ~= nil then
   if type(anthropic_key) ~= "string" then
@@ -83,6 +84,25 @@ if elevenlabs_agent_url ~= nil and type(elevenlabs_agent_url) ~= "string" then
   ngx.header["Content-Type"] = "application/json"
   ngx.say('{"error":"invalid_agent_url"}')
   return
+end
+
+if anchor_paypal_target ~= nil then
+  if type(anchor_paypal_target) ~= "string" then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_anchor_paypal_target"}')
+    return
+  end
+  local trimmed = anchor_paypal_target:match("^%s*(.-)%s*$"):sub(1, 254)
+  if trimmed ~= "" and not trimmed:find("@", 1, true)
+                    and not trimmed:match("^https://[%w%.]-paypal%.me/[%w%.%-_]+$")
+                    and not trimmed:match("^https://[%w%.]-paypal%.com/paypalme/[%w%.%-_]+$") then
+    ngx.status = 400
+    ngx.header["Content-Type"] = "application/json"
+    ngx.say('{"error":"invalid_anchor_paypal_target","message":"Muss eine E-Mail-Adresse oder ein PayPal.me-Link sein"}')
+    return
+  end
+  anchor_paypal_target = trimmed
 end
 
 if mcp_url ~= nil then
@@ -140,6 +160,9 @@ if mcp_url ~= nil then
 end
 if reown_project_id ~= nil then
   existing.reown_project_id = (reown_project_id ~= "") and reown_project_id or nil
+end
+if anchor_paypal_target ~= nil then
+  existing.anchor_paypal_target = (anchor_paypal_target ~= "") and anchor_paypal_target or nil
 end
 
 -- ── Schreiben ──────────────────────────────────────────────────────────────────
@@ -210,4 +233,5 @@ ngx.say(cjson.encode({
   elevenlabs_agent_url   = existing.elevenlabs_agent_url or cjson.null,
   model                  = existing.model or cjson.null,
   reown_project_id_set   = type(existing.reown_project_id) == "string" and existing.reown_project_id ~= "",
+  anchor_paypal_target_set = type(existing.anchor_paypal_target) == "string" and existing.anchor_paypal_target ~= "",
 }))

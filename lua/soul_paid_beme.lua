@@ -1,6 +1,6 @@
 -- /etc/openresty/lua/soul_paid_beme.lua
 -- POST /api/soul/paid-beme
--- Bearer = access_token (x402/PayPal) ODER Owner-Credential — soul_cert
+-- Bearer = access_token (x402) ODER Owner-Credential — soul_cert
 -- ({soul_id}.{hmac32}) ODER service_token (64hex, z.B. der von Claude.ai/
 -- ChatGPT über OAuth ausgestellte Owner-Token aus authorized_services.json).
 --
@@ -127,7 +127,7 @@ if not soul_id then
   end
 end
 
--- Kein gültiges Owner-Credential -- als access_token (x402/PayPal) prüfen
+-- Kein gültiges Owner-Credential -- als access_token (x402) prüfen
 if not soul_id then
   local tdata = pol_check.check(token)
   if not tdata or not tdata.soul_id then

@@ -42,9 +42,9 @@ export function register(server, soulId) {
   server.tool(
     'accept_digital_content_terms',
     [
-      'EU-Pflichtschritt vor jedem Kauf (PayPal, x402): Der Käufer',
-      'muss ausdrücklich zustimmen, dass die digitale Leistung sofort beginnt',
-      'UND dass er dadurch sein gesetzliches 14-tägiges Widerrufsrecht verliert.',
+      'EU-Pflichtschritt vor jedem x402/USDC-Kauf: Der Käufer muss ausdrücklich',
+      'zustimmen, dass die digitale Leistung sofort beginnt UND dass er dadurch',
+      'sein gesetzliches 14-tägiges Widerrufsrecht verliert.',
       '',
       'VORAUSSETZUNG: show_withdrawal_terms muss VORHER aufgerufen und sein Link',
       'dem Nutzer gezeigt worden sein — terms_token kommt aus dessen Antwort.',
@@ -55,8 +55,8 @@ export function register(server, soulId) {
       'wirkt dieses Tool ausschließlich auf die Soul der aktuellen MCP-Verbindung. Für',
       'eine ANDERE soul_id (die dir bekannt ist, aber zu der du keine Session hast) den',
       'HTTP-Weg nutzen: POST {node_url}/api/soul/terms/accept mit soul_id, terms_token',
-      '(aus POST {node_url}/api/soul/terms/show), payment_method und beiden Consent-',
-      'Feldern im Body — keine MCP-Session nötig, gleiche Felder/Regeln wie hier.',
+      '(aus POST {node_url}/api/soul/terms/show) und beiden Consent-Feldern im Body —',
+      'keine MCP-Session nötig, gleiche Felder/Regeln wie hier.',
       '',
       'Nur mit beiden Einwilligungen (=true) UND gültigem terms_token wird der',
       'Bezahlweg genannt. Niemals consent=true raten oder ohne echte, vom Nutzer',
@@ -68,19 +68,16 @@ export function register(server, soulId) {
       'Dokument, wird NICHT überschrieben). PFLICHT: Alle drei neuen Links IMMER',
       'wörtlich an den Nutzer weitergeben — als klickbare Markdown-Links, nicht nur',
       'in eigenen Worten zusammenfassen und dabei weglassen. Zusätzlich ausdrücklich',
-      'darauf hinweisen: die Referenz-ID (= terms_token) MUSS bei der Zahlung angegeben',
-      'werden (PayPal: in der Notiz; x402: als reference_id beim Aufruf von',
-      'POST /api/soul/pay/x402), sonst kann der Betreiber/das System die Zahlung',
-      'nicht zuordnen.',
+      'darauf hinweisen: die Referenz-ID (= terms_token) MUSS als reference_id beim',
+      'Aufruf von POST /api/soul/pay/x402 mitgeschickt werden, sonst kann das System',
+      'die Zahlung nicht zuordnen.',
       '',
-      'payment_method MUSS identisch zu dem in show_withdrawal_terms gewählten',
-      'Zahlungsweg sein — das Zahlungsziel (Wallet-Adresse für x402 oder',
-      'PayPal-Ziel) wird erst HIER, nach erteilter Zustimmung, zum ersten Mal genannt.',
+      'Das Zahlungsziel (Wallet-Adresse) wird erst HIER, nach erteilter Zustimmung,',
+      'zum ersten Mal genannt.',
     ].join('\n'),
     {
       terms_token: z.string().uuid()
         .describe('Referenz-ID aus der Antwort von show_withdrawal_terms — dieses Tool muss vorher aufgerufen worden sein.'),
-      payment_method: z.enum(['paypal', 'x402']).describe('Gewählter Zahlungsweg — muss zu dem in show_withdrawal_terms gewählten passen.'),
       consent_immediate_performance: z.boolean()
         .describe('Zustimmung: die digitale Leistung soll sofort beginnen, vor Ablauf der 14-tägigen Widerrufsfrist. Nur auf true setzen nach echter, im Chat erklärter Zustimmung des Nutzers.'),
       consent_withdrawal_waiver: z.boolean()
@@ -88,11 +85,10 @@ export function register(server, soulId) {
       contact_note: z.string().max(200).optional()
         .describe('Optionale Notiz/Kontakt (z.B. E-Mail), für den späteren manuellen Abgleich durch den Soul-Inhaber'),
     },
-    async ({ terms_token, payment_method, consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
+    async ({ terms_token, consent_immediate_performance, consent_withdrawal_waiver, contact_note }) => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
       const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
-      const paypalAvailable = amort.paypal_enabled === true;
       const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
       // Siehe show_withdrawal_terms.mjs für die Begründung: "diese Soul" ohne Name/
@@ -100,10 +96,7 @@ export function register(server, soulId) {
       // fast immer heißt "du bist als die FALSCHE Soul verbunden".
       const selfLabel = `${ctx.name || soulId.slice(0, 8)} (${soulId}, deine aktuelle MCP-Session)`;
       const httpHint  = `Für eine ANDERE soul_id (nicht ${soulId}): POST ${BASE_URL}/api/soul/terms/accept mit soul_id + terms_token (aus POST ${BASE_URL}/api/soul/terms/show) im Body -- keine MCP-Session dafür nötig.`;
-      if (payment_method === 'paypal' && !paypalAvailable) {
-        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen PayPal-Zahlungsweg.\n\n${httpHint}` }], isError: true };
-      }
-      if (payment_method === 'x402' && !x402Available) {
+      if (!x402Available) {
         return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).\n\n${httpHint}` }], isError: true };
       }
 
@@ -137,28 +130,19 @@ export function register(server, soulId) {
       }
 
       try {
-        const target      = amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)';
-        const wallet       = amort.wallet || '';
-        // Für x402 den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe
-        // Formel wie soul_pay_x402.lua verwendet, um ihn beim Settlement zu
-        // berechnen) statt des statischen Basispreises — sonst zeigt die Rechnung
-        // einen anderen Betrag als tatsächlich abgebucht wird (live gefunden,
-        // 2026-08-08: Rechnung zeigte 0.50, abgebucht wurden 0.760856 USDC).
-        // PayPal-Preise sind bewusst NIE dynamisch (siehe soul_preview.lua) — dort
-        // bleibt der konfigurierte Festpreis immer korrekt.
-        let price;
-        let basePrice = null;
-        const dynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
-        if (payment_method === 'x402') {
-          basePrice = Number(amort.price_usdc) || 0;
-          price = dynamicPricing
-            ? (await computeDynamicUsdcPrice(soulId, basePrice)).toFixed(6)
-            : (amort.price_usdc || '?');
-        } else {
-          price = amort.price_eur || '?';
-        }
-        const currency     = payment_method === 'x402' ? 'USDC' : 'EUR';
-        const now          = new Date();
+        const wallet = amort.wallet || '';
+        // Den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe Formel wie
+        // soul_pay_x402.lua verwendet, um ihn beim Settlement zu berechnen) statt
+        // des statischen Basispreises — sonst zeigt die Rechnung einen anderen
+        // Betrag als tatsächlich abgebucht wird (live gefunden, 2026-08-08:
+        // Rechnung zeigte 0.50, abgebucht wurden 0.760856 USDC).
+        const basePrice = Number(amort.price_usdc) || 0;
+        const dynamicPricing = amort.dynamic_pricing === true;
+        const price = dynamicPricing
+          ? (await computeDynamicUsdcPrice(soulId, basePrice)).toFixed(6)
+          : (amort.price_usdc || '?');
+        const currency = 'USDC';
+        const now      = new Date();
         // Lokale Zeit statt UTC — für ein an Verbraucher gerichtetes Rechtsdokument
         // ist "Z" (UTC) irreführend, Käufer erwarten ihre eigene (Europe/Berlin) Uhrzeit.
         const timestampDisplay = now.toLocaleString('de-DE', {
@@ -181,9 +165,7 @@ export function register(server, soulId) {
           basePrice,
           dynamicPricing,
           currency,
-          target,
           wallet,
-          paymentMethod: payment_method,
           contactNote: contact_note || '',
           timestamp: timestampDisplay,
           referenceId: terms_token,
@@ -222,24 +204,22 @@ export function register(server, soulId) {
         // payment_method angelegt) — fürs Vault-Explorer-Frontend.
         await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
           created_at: new Date().toISOString(),
-          payment_method,
+          payment_method: 'x402',
           invoice_number: invoiceNumber,
           accepted_at: timestampDisplay,
         }), 'utf8');
 
-        // Nur für x402: Metadaten für die Rechnungskorrektur nach echtem Settlement
-        // hinterlegen (siehe /internal/x402-finalize-invoice in server.mjs, aufgerufen
-        // von soul_pay_x402.lua nach bestätigter Zahlung). Der hier gezeigte Preis ist
+        // Metadaten für die Rechnungskorrektur nach echtem Settlement hinterlegen
+        // (siehe /internal/x402-finalize-invoice in server.mjs, aufgerufen von
+        // soul_pay_x402.lua nach bestätigter Zahlung). Der hier gezeigte Preis ist
         // eine Quote — der tatsächlich abgebuchte Betrag kann sich bis zur echten
-        // Zahlung minimal verschieben (Anker/Nachfrage ändern sich zwischen Zustimmung
-        // und Zahlung). Diese Datei erlaubt es, Rechnung + Verzichtserklärung danach mit
-        // dem TATSÄCHLICHEN Betrag zu überschreiben, statt sich auf die Quote zu verlassen.
-        // PayPal braucht das nicht — dort ist der Preis nie dynamisch (siehe oben).
-        if (payment_method === 'x402') {
-          await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
-            quotedPrice: price, ...sharedFields,
-          }), 'utf8');
-        }
+        // Zahlung minimal verschieben (Anker/Nachfrage ändern sich zwischen
+        // Zustimmung und Zahlung). Diese Datei erlaubt es, Rechnung + Verzichts-
+        // erklärung danach mit dem TATSÄCHLICHEN Betrag zu überschreiben, statt
+        // sich auf die Quote zu verlassen.
+        await writeFile(`${purchaseDir}/finalize_pending.json`, JSON.stringify({
+          quotedPrice: price, ...sharedFields,
+        }), 'utf8');
 
         const invoiceUrl        = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/rechnung.pdf`;
         const invoiceUrlTxt     = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/rechnung.txt`;
@@ -248,22 +228,14 @@ export function register(server, soulId) {
         const waiverUrl         = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.pdf`;
         const waiverUrlTxt      = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.txt`;
 
-        const paymentLines = payment_method === 'x402'
-          ? [
-              `x402/Polygon: ${price} ${currency} an ${wallet}`,
-              `WICHTIG: Diese Referenz-ID MUSS als reference_id im x402_payment_header-Aufruf`,
-              `von POST /api/soul/pay/x402 mitgeschickt werden — sonst kann das System die`,
-              `Zahlung nicht zuordnen und lehnt sie ab.`,
-              'Der Zugang wird nach Bestätigung der Zahlung durch den x402-Facilitator',
-              'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
-            ]
-          : [
-              `PayPal: ${price} ${currency} an ${target}`,
-              `WICHTIG: Diese Referenz-ID MUSS in der PayPal-Zahlungsnotiz angegeben`,
-              `werden — sonst kann der Betreiber die Zahlung nicht zuordnen.`,
-              'Nach der Zahlung den Soul-Inhaber direkt kontaktieren — Zugang wird',
-              'manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
-            ];
+        const paymentLines = [
+          `x402/Polygon: ${price} ${currency} an ${wallet}`,
+          `WICHTIG: Diese Referenz-ID MUSS als reference_id im x402_payment_header-Aufruf`,
+          `von POST /api/soul/pay/x402 mitgeschickt werden — sonst kann das System die`,
+          `Zahlung nicht zuordnen und lehnt sie ab.`,
+          'Der Zugang wird nach Bestätigung der Zahlung durch den x402-Facilitator',
+          'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
+        ];
 
         return {
           content: [

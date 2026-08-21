@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * soul_paid_comment — Hinterlässt einen Kommentar im AGENT-Block einer fremden Soul.
  *
- * Nutzt einen bereits ausgestellten access_token (aus einer x402- oder PayPal-Zahlung).
+ * Nutzt einen bereits ausgestellten access_token (aus einer x402-Zahlung).
  * Keine neue Zahlung nötig solange der Token gültig ist.
  */
 export function register(server, _token) {
@@ -12,7 +12,7 @@ export function register(server, _token) {
     [
       'Hinterlässt einen Kommentar im öffentlichen Agent-Bereich einer fremden Soul.',
       '',
-      'Voraussetzung: Ein gültiger access_token aus einer x402- oder PayPal-Zahlung an die Ziel-Soul.',
+      'Voraussetzung: Ein gültiger access_token aus einer x402-Zahlung an die Ziel-Soul.',
       'Keine neue Zahlung nötig — der Token gilt für Read UND Comment.',
       '',
       'Der Kommentar landet im <!-- AGENT:START --> / <!-- AGENT:END --> Block',

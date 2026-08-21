@@ -4,9 +4,9 @@ export function register(server, token) {
   server.tool(
     'soul_earnings',
     [
-      'Returns the earnings overview for this soul — all received x402 (USDC on Polygon) and',
-      'PayPal-derived payments from AI agents, plus historical POL payments if any remain from',
-      'before the POL rail was retired.',
+      'Returns the earnings overview for this soul — all received x402 (USDC on Polygon)',
+      'payments from AI agents, plus historical POL payments if any remain from before',
+      'the POL rail was retired.',
       '',
       'Fields:',
       '- total_usdc:          Total amount in USDC from x402 payments',

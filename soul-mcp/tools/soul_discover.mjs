@@ -99,7 +99,7 @@ export function register(server, token) {
       '',
       'Parameters:',
       '- q:         Free-text search — name, soul_id, tags, description — optional',
-      '- amortized: true = only souls accepting payment (x402/PayPal) — optional',
+      '- amortized: true = only souls accepting payment (x402) — optional',
       '- limit:     Max. results (1–100, default 20) — optional',
       '',
       'ZUGANGS-MODELLE — wichtig, nicht verwechseln:',
@@ -120,28 +120,17 @@ export function register(server, token) {
       '   erteilter Zustimmung (falls die Ziel-Soul EU-Widerrufsrecht durchsetzt) — dieses Tool',
       '   durchsucht Souls über mehrere fremde Nodes hinweg, ein lokales EU-Flag ist hier nicht',
       '   bekannt, daher wird das Zahlungsziel grundsätzlich nie an dieser Stelle genannt.',
-      '3. pay_endpoint mit x402 bezahlen (eigener x402-Client nötig — kein Wrapper-Tool hier)',
-      '',
-      'NICHT-KRYPTO-WEG (PayPal) — für menschliche Nutzer ohne Krypto-Wallet:',
-      'Souls mit amortization.paypal_enabled akzeptieren zusätzlich PayPal — Ziel/Preis auch',
-      'hier erst über soul_preview auf der Ziel-Soul selbst abrufen.',
-      '',
       ...(EU_CONSUMER_RIGHTS ? [
-        'WICHTIG — BEVOR du zur Zahlung überleitest: Frage den Nutzer (falls unklar), ob',
-        'er/sie in der EU ist. Bei EU-Nutzern IMMER zuerst show_withdrawal_terms',
-        'aufrufen, dessen Link zeigen, dann bei Zustimmung accept_digital_content_terms —',
-        'gesetzliches 14-tägiges Widerrufsrecht bei digitalen Leistungen, das durch',
-        'sofortigen Zugang erlischt. Ohne diese Schritte NICHT direkt zur PayPal-Zahlung',
-        'auffordern. Nicht-EU-Nutzer können diesen Schritt überspringen.',
-        '',
-      ] : []),
-      'Danach: Der Mensch zahlt außerhalb des Systems per PayPal, der Betreiber prüft',
-      'manuell (i.d.R. binnen 48h) und schickt dann einen fertigen access_token zurück —',
-      'meist direkt in diesem Chat eingefügt, ohne dass hier selbst eine Zahlung ausgelöst wurde.',
-      'Erkennbar an: 48 Hex-Zeichen, kein "0x"-Präfix.',
-      'In diesem Fall NICHT nach einer Zahlung fragen — der Token ist bereits gültig.',
-      'Direkt verwenden: soul_read_by_token(read_endpoint, access_token=<der Token>).',
-      'read_endpoint = pay_endpoint der Soul mit /pay ersetzt durch /paid-read.',
+        '3. WICHTIG — Frage den Nutzer (falls unklar), ob er/sie in der EU ist. Bei',
+        '   EU-Nutzern IMMER zuerst show_withdrawal_terms aufrufen, dessen Link zeigen,',
+        '   dann bei Zustimmung accept_digital_content_terms — gesetzliches 14-tägiges',
+        '   Widerrufsrecht bei digitalen Leistungen, das durch sofortigen Zugang',
+        '   erlischt. Ohne diese Schritte NICHT direkt zur Zahlung übergehen.',
+        '   Nicht-EU-Nutzer können diesen Schritt überspringen.',
+        '4. pay_endpoint mit x402 bezahlen (eigener x402-Client nötig — kein Wrapper-Tool hier)',
+      ] : [
+        '3. pay_endpoint mit x402 bezahlen (eigener x402-Client nötig — kein Wrapper-Tool hier)',
+      ]),
     ].join('\n'),
     {
       q:         z.string().optional().describe('Freitext-Suche (soul_id, Name, Tags, Description, plus llms.txt-Volltext anderer Nodes)'),
@@ -214,7 +203,7 @@ export function register(server, token) {
             } else {
               lines.push(`- **Preis:** ${s.amortization.price_usdc} USDC pro Anfrage`);
             }
-            // Zahlungsziel (Wallet/PayPal) bewusst NICHT hier — siehe Tool-Beschreibung:
+            // Zahlungsziel (Wallet) bewusst NICHT hier — siehe Tool-Beschreibung:
             // soul_discover sucht node-übergreifend, ein lokales EU-Widerrufsrecht-Flag der
             // Ziel-Soul ist hier nicht bekannt. Immer über soul_preview auf der Ziel-Soul selbst
             // abrufen, das läuft lokal auf deren Node und respektiert deren Flag korrekt.
@@ -223,9 +212,6 @@ export function register(server, token) {
               lines.push(`- **Agent-Tools:** ${aTools.join(', ')}`);
             }
             if (s.pay_endpoint) lines.push(`- **Preview/Zahlung:** soul_preview(pay_endpoint="${s.pay_endpoint}", soul_id="${s.soul_id}") aufrufen — nennt Preis und Zahlungsziel`);
-            if (s.amortization.paypal_enabled) {
-              lines.push(`- **Nicht-Krypto-Zugang:** PayPal verfügbar — Ziel/Preis über soul_preview abrufen. Bitte in der Zahlungsnotiz eine E-Mail-Adresse für den Token-Versand angeben. Manuelle Prüfung durch den Betreiber, i.d.R. binnen 48h. Erhaltenen Token direkt mit soul_read_by_token(read_endpoint, access_token) nutzen, keine erneute Zahlung anfordern.`);
-            }
           } else {
             lines.push(`- **Zugang:** kein öffentlicher Zugang (kein Bezahl-Endpunkt konfiguriert)`);
           }

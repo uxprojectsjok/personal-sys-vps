@@ -175,30 +175,17 @@ function legalFooterTxtLines(traderLegalFooter) {
   return ['', ...traderLegalFooter.split('\n')];
 }
 
-// Zahlungsmethoden-spezifische Texte — PayPal hat ein Notizfeld, in das der
-// Käufer selbst die Referenz-ID einträgt; x402 hat keins, dort läuft die
-// Zuordnung über reference_id im POST /api/soul/pay/x402-Aufruf (server-seitig
-// gegen consent_docs/ geprüft, siehe soul_pay_x402.lua). Die frühere direkte
-// POL-Überweisung (eigener Zweig hier) ist entfernt, siehe CHANGELOG.
-function paymentMethodTexts(paymentMethod, { target, wallet }) {
-  if (paymentMethod === 'x402') {
-    return {
-      targetLabel: 'Wallet-Adresse (Polygon, USDC via x402)',
-      targetValue: wallet || '(nicht konfiguriert)',
-      referenceNote: 'Diese Referenz-ID muss beim Einlösen der Zahlung als reference_id an ' +
-        'POST /api/soul/pay/x402 mitgeschickt werden — nur so kann der Anbieter die Zahlung dieser ' +
-        'Einwilligung zuordnen. Sie steht NICHT in der signierten x402-Zahlungsautorisierung selbst.',
-      provisionNote: 'Zugang erfolgt über ein Zugriffs-Token, automatisch ausgestellt direkt nach ' +
-        'Bestätigung der Zahlung durch den x402-Facilitator (Polygon) — kein manuelles Prüfen nötig.',
-    };
-  }
+// reference_id läuft über den POST /api/soul/pay/x402-Aufruf (server-seitig
+// gegen consent_docs/ geprüft, siehe soul_pay_x402.lua).
+function x402Texts(wallet) {
   return {
-    targetLabel: 'PayPal-Zahlungsziel',
-    targetValue: target || '(nicht konfiguriert)',
-    referenceNote: 'Diese Referenz-ID muss bei der PayPal-Zahlung in der Notiz angegeben werden — ' +
-      'nur so kann der Anbieter die Zahlung dieser Einwilligung zuordnen.',
-    provisionNote: 'Zugang erfolgt über ein Zugriffs-Token, gültig ab Ausstellung. Das Token wird ' +
-      'nach manueller Prüfung des Zahlungseingangs per E-Mail oder direkt im Chat übermittelt.',
+    targetLabel: 'Wallet-Adresse (Polygon, USDC via x402)',
+    targetValue: wallet || '(nicht konfiguriert)',
+    referenceNote: 'Diese Referenz-ID muss beim Einlösen der Zahlung als reference_id an ' +
+      'POST /api/soul/pay/x402 mitgeschickt werden — nur so kann der Anbieter die Zahlung dieser ' +
+      'Einwilligung zuordnen. Sie steht NICHT in der signierten x402-Zahlungsautorisierung selbst.',
+    provisionNote: 'Zugang erfolgt über ein Zugriffs-Token, automatisch ausgestellt direkt nach ' +
+      'Bestätigung der Zahlung durch den x402-Facilitator (Polygon) — kein manuelles Prüfen nötig.',
   };
 }
 
@@ -368,9 +355,9 @@ export function buildWithdrawalNoticeTxt({ traderName, traderAddress, traderEmai
 // Vorschau-PDF — VOR der Zustimmung, von show_withdrawal_terms erzeugt.
 // Zeigt bereits Preis, Zahlungsziel und Anbieter — informierte Zustimmung setzt
 // voraus, dass der Käufer das VOR dem "Ja, ich stimme zu" kennt, nicht erst danach.
-export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
+export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price, currency = 'USDC', basePrice, dynamicPricing, wallet, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
   const { default: PDFDocument } = await import('pdfkit');
-  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+  const pm = x402Texts(wallet);
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const chunks = [];
@@ -445,8 +432,8 @@ export async function buildTermsPreviewPdf({ termsToken, soulName, soulId, price
 // ohne Layout. Für zahlende Agenten, die keinen PDF-Parser einsetzen wollen/
 // können — liegt unter demselben Referenz-ID-Pfad wie die PDF (nur .txt statt
 // .pdf), Sicherheit also identisch (Unratbarkeit der UUID, siehe vault_consent_serve.lua).
-export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
-  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, currency = 'USDC', basePrice, dynamicPricing, wallet, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, tokenDurationDays }) {
+  const pm = x402Texts(wallet);
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
     'Widerrufsbelehrung — Vorschau (noch keine Zustimmung erteilt)',
@@ -484,8 +471,8 @@ export function buildTermsPreviewTxt({ termsToken, soulName, soulId, price, curr
 // unterschiedliche Rechnungsnummern für denselben Kauf bekommen — der Zähler
 // ist "lückenlos fortlaufend" (§ 14 Abs. 4 Nr. 4 UStG), ein zweiter Aufruf
 // hier hätte eine Nummer verbraucht, ohne dass ein zweiter Kauf stattfand.
-export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
-  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+export function buildInvoiceTxt({ soulName, soulId, price, currency = 'USDC', basePrice, dynamicPricing, wallet, contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
+  const pm = x402Texts(wallet);
   const priceNote = dynamicPriceNote(price, currency, basePrice, dynamicPricing);
   const lines = [
     `SYS. — ${traderName || 'SaveYourSoul'}`,
@@ -526,15 +513,11 @@ export function buildInvoiceTxt({ soulName, soulId, price, currency = 'EUR', bas
 
 // Reine Rechnung (§ 14 UStG) — von accept_digital_content_terms erzeugt, als
 // eigenes Dokument neben der Widerrufsbelehrung (buildWithdrawalNoticePdf) und
-// der Verzichtserklärung (buildWaiverPdf), statt (wie früher) alles in ein
-// einziges "Rechnung & Widerrufsbelehrung"-PDF zu mischen. Vermeidet weiterhin
-// eine zweite, separate Rechnungserzeugung (z.B. über PayPals eigenes
-// Invoice-Feature, das dafür die Leistungsbeschreibung an PayPal übermitteln
-// müsste — bewusst vermieden, siehe verify-identity-hq-plan.md, Abschnitt
-// Datensparsamkeit/Rechnungsstellung).
-export async function buildInvoicePdf({ soulName, soulId, price, currency = 'EUR', basePrice, dynamicPricing, target, wallet, paymentMethod = 'paypal', contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
+// der Verzichtserklärung (buildWaiverPdf), statt alles in ein einziges
+// "Rechnung & Widerrufsbelehrung"-PDF zu mischen.
+export async function buildInvoicePdf({ soulName, soulId, price, currency = 'USDC', basePrice, dynamicPricing, wallet, contactNote, timestamp, referenceId, traderName, traderAddress, traderEmail, traderLegalForm, traderVatNote, traderLegalFooter, invoiceNumber, invoiceDate }) {
   const { default: PDFDocument } = await import('pdfkit');
-  const pm = paymentMethodTexts(paymentMethod, { target, wallet });
+  const pm = x402Texts(wallet);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });

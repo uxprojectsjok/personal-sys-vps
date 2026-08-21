@@ -44,10 +44,6 @@ local DEFAULTS = {
   token_duration_days  = 1,
   activated_at         = cjson.null,
   verified_wallet = cjson.null,
-  paypal_enabled  = false,
-  paypal_link     = "",
-  paypal_email    = "",
-  price_eur       = "",
   price_usdc      = "",
   -- Anbieterkennzeichnung (Impressum) — für EU-Widerrufsbelehrung, s. accept_digital_content_terms
   trader_name      = "",
@@ -122,7 +118,7 @@ local function is_monetization_enabled()
   return v ~= "false"
 end
 
-if not is_monetization_enabled() and (incoming.enabled == true or incoming.paypal_enabled == true) then
+if not is_monetization_enabled() and incoming.enabled == true then
   ngx.status = 403
   ngx.say(cjson.encode({
     error   = "private_node",
@@ -156,37 +152,7 @@ if type(incoming.wallet) == "string" and incoming.wallet:match("^0x[0-9a-fA-F]+$
   amort.wallet = incoming.wallet
 end
 
--- paypal_enabled: Nicht-Krypto-Zahlungsweg (manuell bestätigt, kein Auto-Verify)
-if incoming.paypal_enabled == true or incoming.paypal_enabled == false then
-  amort.paypal_enabled = incoming.paypal_enabled
-end
-
--- paypal_link: PayPal.me-URL
-if type(incoming.paypal_link) == "string" then
-  local link = incoming.paypal_link:match("^%s*(.-)%s*$"):sub(1, 200)
-  if link == "" or link:match("^https://[%w%.]-paypal%.me/[%w%.%-_]+$")
-                 or link:match("^https://[%w%.]-paypal%.com/paypalme/[%w%.%-_]+$") then
-    amort.paypal_link = link
-  end
-end
-
--- paypal_email: Alternative zum Link
-if type(incoming.paypal_email) == "string" then
-  local email = incoming.paypal_email:match("^%s*(.-)%s*$"):sub(1, 254)
-  if email == "" or email:match("^[%w%.%-_%+]+@[%w%.%-]+%.%a%a+$") then
-    amort.paypal_email = email
-  end
-end
-
--- price_eur: positive Zahl als String, wie price_usdc
-if type(incoming.price_eur) == "string" then
-  local n = tonumber(incoming.price_eur)
-  if n and n >= 0 then
-    amort.price_eur = incoming.price_eur
-  end
-end
-
--- price_usdc: positive Zahl als String, wie price_eur — manuell gepflegt,
+-- price_usdc: positive Zahl als String — manuell gepflegt,
 -- kein Live-Kurs, genutzt vom x402-Zahlungsweg (lua/soul_pay_x402.lua)
 if type(incoming.price_usdc) == "string" then
   local n = tonumber(incoming.price_usdc)

@@ -18,7 +18,7 @@
       <p class="template-notice">
         ⚠️ Platzhaltertext (Lorem Ipsum). Diese Seite ist eine Vorlage für die gesetzlichen
         Informationspflichten vor Vertragsschluss (Art. 246a EGBGB). Bevor diese Soul
-        echte Zahlungen (PayPal oder x402/USDC) entgegennimmt, muss der Node-Betreiber
+        echte Zahlungen (x402/USDC) entgegennimmt, muss der Node-Betreiber
         diesen Text durch seine eigenen, rechtlich geprüften Angaben ersetzen — das
         SYS-Projekt liefert hier keine Rechtsberatung.
       </p>

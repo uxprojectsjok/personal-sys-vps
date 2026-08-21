@@ -869,16 +869,6 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_anchor_confirm.lua;
   }
 
-  # ── Manuelle Token-Ausstellung (Nicht-Krypto-Zahlung, z.B. PayPal) ───────────
-  location = /api/soul/pay/manual {
-    limit_except POST { deny all; }
-    limit_req zone=auth burst=10 nodelay;
-    access_by_lua_file /etc/openresty/lua/soul_auth.lua;
-    default_type application/json;
-    add_header Cache-Control "no-store" always;
-    content_by_lua_file /etc/openresty/lua/soul_pay_manual.lua;
-  }
-
   location = /api/soul/register-anchor {
     limit_except POST { deny all; }
     limit_req zone=chat burst=5 nodelay;
@@ -966,9 +956,7 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_tokens.lua;
   }
 
-  # x402/USDC-Zahlungsweg — die direkte POL-Überweisung (/api/soul/pay,
-  # soul_pay.lua) wurde entfernt, siehe CHANGELOG; nur noch x402/USDC +
-  # PayPal als Zahlungswege. Öffentlich (kein soul-cert nötig — zahlender
+  # x402/USDC-Zahlungsweg. Öffentlich (kein soul-cert nötig — zahlender
   # Agent/x402-Client kennt ihn nicht), siehe soul_pay_x402.lua Kopfkommentar.
   location = /api/soul/pay/x402 {
     limit_except POST { deny all; }

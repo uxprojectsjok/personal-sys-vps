@@ -36,17 +36,16 @@ if not SUPPORTED[kind] then
   return
 end
 
--- PayPal-Zieladresse aus amortization lesen (dieselbe, die Käufer schon nutzen).
-local ctx_file = "/var/lib/sys/souls/" .. soul_id .. "/api_context.json"
-local f = io.open(ctx_file, "r")
+-- PayPal-Zieladresse aus den Soul-Settings lesen (config.json, siehe set_config.lua) —
+-- eigenständiges Anchor-Feld, unabhängig von den Käufer-Zahlungswegen in soul_amortization.lua.
+local config_path = "/var/lib/sys/souls/" .. soul_id .. "/config.json"
+local f = io.open(config_path, "r")
 local paypal_target = nil
 if f then
   local raw = f:read("*a"); f:close()
-  local ok_c, ctx = pcall(cjson.decode, raw)
-  if ok_c and type(ctx) == "table" and type(ctx.amortization) == "table" then
-    local amort = ctx.amortization
-    paypal_target = (amort.paypal_link and amort.paypal_link ~= "") and amort.paypal_link
-                  or (amort.paypal_email or nil)
+  local ok_c, cfg = pcall(cjson.decode, raw)
+  if ok_c and type(cfg) == "table" and type(cfg.anchor_paypal_target) == "string" and cfg.anchor_paypal_target ~= "" then
+    paypal_target = cfg.anchor_paypal_target
   end
 end
 

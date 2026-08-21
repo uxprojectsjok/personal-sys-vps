@@ -119,9 +119,6 @@
                       {{ soul.usdc_current ?? soul.price_usdc }}<span class="price-u"> USDC</span>
                     </span>
                     <span class="dim" v-else>—</span>
-                    <span v-if="soul.paypal_enabled" class="price paypal-price">
-                      {{ soul.price_eur ?? '?' }}<span class="price-u"> EUR</span>
-                    </span>
                   </div>
                 </td>
 
@@ -162,8 +159,7 @@
 
                 <td class="c-methods">
                   <span class="method-pill" v-if="soul.wallet || soul.wallet_available">{{ t.methodWallet }}</span>
-                  <span class="method-pill" v-if="soul.paypal_enabled">{{ t.methodPaypal }}</span>
-                  <span class="dim" v-if="!(soul.wallet || soul.wallet_available) && !soul.paypal_enabled">—</span>
+                  <span class="dim" v-if="!(soul.wallet || soul.wallet_available)">—</span>
                 </td>
 
                 <td class="c-chain">
@@ -218,7 +214,7 @@
 
                 <td class="c-access">
                   <button
-                    v-if="soul.monetization_enabled !== false && (soul.wallet_available || soul.paypal_enabled)"
+                    v-if="soul.monetization_enabled !== false && soul.wallet_available"
                     class="access-btn"
                     :class="{ 'access-btn--warn': soul.chain_verified === 'fail' || soul.chain_verified === 'error' }"
                     @click="openModal(soul)"
@@ -336,32 +332,6 @@
               </div>
             </div>
 
-            <!-- PAYPAL ALTERNATIVE -->
-            <template v-if="selectedSoul.paypal_enabled">
-              <div class="modal-divider"/>
-              <div class="modal-row-label" style="margin-bottom:16px">{{ t.modalPaypalHow }}</div>
-              <div class="modal-step">
-                <span class="step-n">↔</span>
-                <div class="step-body">
-                  <div class="step-label">
-                    {{ t.paypalStepPre }} <em>{{ selectedSoul.price_eur ? `${selectedSoul.price_eur} EUR` : '' }}</em> {{ t.paypalStepMid }}
-                  </div>
-
-                  <!-- Direkte Ziel-Anzeige (Non-EU-Nodes bzw. EU_CONSUMER_RIGHTS aus) -->
-                  <div class="copy-block" v-if="selectedSoul.paypal_target">
-                    <code class="copy-code">{{ selectedSoul.paypal_target }}</code>
-                    <button class="copy-btn" @click="copy(selectedSoul.paypal_target, 'paypal')">{{ copied === 'paypal' ? t.copied : t.copy }}</button>
-                  </div>
-
-                  <!-- PayPal-Ziel ist auf diesem Node erst nach Zustimmung im Chat/MCP-Tool verfügbar -->
-                  <p class="step-label" v-else>{{ t.paypalViaChat }}</p>
-
-                  <div class="step-sub">{{ t.paypalStepSub }}</div>
-                  <div v-if="selectedSoul.price_note" class="step-sub">{{ selectedSoul.price_note }}</div>
-                </div>
-              </div>
-            </template>
-
             <!-- CONTACT -->
             <template v-if="selectedSoul.contact_email">
               <div class="modal-divider"/>
@@ -450,7 +420,6 @@ const de = {
   chainErr:       'Fehler',
   chainFail:      'Ungeprüft',
   methodWallet:   'Wallet',
-  methodPaypal:   'PayPal',
   modalKicker:    'SOUL ACCESS',
   modalPrice:     'Preis',
   dynBadge:       'dynamisch',
@@ -458,19 +427,14 @@ const de = {
   modalTokenValid:'Token gültig:',
   modalDays:      ' Tage',
   aiAccessLabel:  'Zugang per KI-Chat',
-  aiAccessIntro:  'Kopiere diesen Link und füge ihn deiner KI im Chat ein. Sag ihr außerdem, ob du per x402/USDC oder PayPal zahlen möchtest — den Rest übernimmt sie.',
+  aiAccessIntro:  'Kopiere diesen Link und füge ihn deiner KI im Chat ein. Sag ihr, dass sie per x402/USDC zahlen soll — den Rest übernimmt sie.',
   modalHow:       'Zugang erhalten',
   step1Pre:       'Preis:',
   step1Post:      '— gezahlt per x402 (signierte EIP-3009-Autorisierung) an diese Wallet auf Polygon:',
   step2:          'Dein KI-Agent ruft diesen Endpunkt per x402-Protokoll auf (402-Challenge → signierte Autorisierung):',
   step3Pre:       'Du erhältst einen',
   step3Post:      '— nutze ihn als Bearer-Token am MCP-Endpunkt:',
-  modalPaypalHow: 'Ohne Polygon-Wallet',
-  paypalStepPre:  'Zahle',
-  paypalStepMid:  'per PayPal an:',
-  paypalStepSub:  'Danach den Soul-Betreiber kontaktieren — Zugang wird manuell geprüft und freigeschaltet, in der Regel innerhalb von 48 Stunden.',
   walletViaChat:    'Die Wallet-Adresse bekommst du im Chat mit deiner KI oder direkt über das passende MCP-Tool.',
-  paypalViaChat:    'Das PayPal-Ziel bekommst du im Chat mit deiner KI oder direkt über das passende MCP-Tool.',
   llmsTitle:      'KI-lesbare Node-Beschreibung',
   visDiscoverable: 'Auffindbar',
   visFading:       'Verblassend — verlässt Discovery-Fenster',
@@ -553,7 +517,6 @@ const en = {
   chainErr:       'Error',
   chainFail:      'Unverified',
   methodWallet:   'Wallet',
-  methodPaypal:   'PayPal',
   modalKicker:    'SOUL ACCESS',
   modalPrice:     'Price',
   dynBadge:       'dynamic',
@@ -561,19 +524,14 @@ const en = {
   modalTokenValid:'Token valid:',
   modalDays:      ' days',
   aiAccessLabel:  'Access via AI chat',
-  aiAccessIntro:  'Copy this link and paste it to your AI in chat. Also tell it whether you want to pay via x402/USDC or PayPal — it takes care of the rest.',
+  aiAccessIntro:  'Copy this link and paste it to your AI in chat. Tell it to pay via x402/USDC — it takes care of the rest.',
   modalHow:       'How to access',
   step1Pre:       'Price:',
   step1Post:      '— paid via x402 (signed EIP-3009 authorization) to this wallet on Polygon:',
   step2:          'Your AI agent calls this endpoint via the x402 protocol (402 challenge → signed authorization):',
   step3Pre:       'You receive an',
   step3Post:      '— use it as Bearer token at the MCP endpoint:',
-  modalPaypalHow: 'Without a Polygon wallet',
-  paypalStepPre:  'Pay',
-  paypalStepMid:  'via PayPal to:',
-  paypalStepSub:  'Then contact the soul operator directly — access is reviewed and granted manually, typically within 48 hours.',
   walletViaChat:    'Get the wallet address from your AI in chat, or directly via the matching MCP tool.',
-  paypalViaChat:    'Get the PayPal target from your AI in chat, or directly via the matching MCP tool.',
   llmsTitle:      'AI-readable node description',
   visDiscoverable: 'Discoverable',
   visFading:       'Fading — leaving discovery window',

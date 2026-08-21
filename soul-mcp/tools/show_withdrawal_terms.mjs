@@ -15,7 +15,6 @@
  * Garantie — aber ein anderer Hebel als die bisherigen.
  */
 
-import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { loadCtx } from '../lib/vault_fs.mjs';
@@ -28,27 +27,25 @@ export function register(server, soulId) {
   server.tool(
     'show_withdrawal_terms',
     [
-      'PFLICHT-ERSTAUFRUF vor jedem Kauf bei dieser Soul — PayPal UND x402/USDC',
-      'gleichermaßen. Muss aufgerufen werden BEVOR accept_digital_content_terms',
-      'aufgerufen wird — ohne den hier erzeugten terms_token schlägt',
-      'accept_digital_content_terms fehl.',
+      'PFLICHT-ERSTAUFRUF vor jedem x402/USDC-Kauf bei dieser Soul. Muss aufgerufen',
+      'werden BEVOR accept_digital_content_terms aufgerufen wird — ohne den hier',
+      'erzeugten terms_token schlägt accept_digital_content_terms fehl.',
       '',
       'GEBUNDEN AN DIESE SESSION, kein soul_id-Parameter: dieses Tool prüft/verkauft',
       'ausschließlich die Soul, mit der die aktuelle MCP-Verbindung besteht — NIE eine',
       'andere, beliebige Soul. Soll eine ANDERE, dir bekannte soul_id gekauft werden',
       '(z.B. weil ein Nutzer explizit nach dieser Soul fragt), funktioniert das über',
-      'dieses Tool NICHT — auch dann nicht, wenn diese Soul genau denselben Zahlungsweg',
+      'dieses Tool NICHT — auch dann nicht, wenn diese Soul denselben Zahlungsweg',
       'anbietet. Stattdessen den rohen HTTP-Weg nutzen, ganz ohne MCP-Session:',
-      'POST {node_url}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>",',
-      '"payment_method": "paypal"|"x402"} im Body (node_url aus llms.txt/wire_search/',
-      'wire_status). Liefert dieselben Felder wie hier. Zweiter Schritt dann',
-      'POST {node_url}/api/soul/terms/accept, Gegenstück zu accept_digital_content_terms.',
+      'POST {node_url}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>"} im Body',
+      '(node_url aus llms.txt/wire_search/wire_status). Liefert dieselben Felder wie',
+      'hier. Zweiter Schritt dann POST {node_url}/api/soul/terms/accept, Gegenstück',
+      'zu accept_digital_content_terms.',
       '',
-      'WICHTIG: Die Wallet-Adresse bzw. das PayPal-Ziel werden NICHT vorab genannt',
-      '(auch nicht von soul_preview/soul_discover) — sie erscheinen erst in der',
-      'PDF-Antwort von accept_digital_content_terms, nach erteilter Zustimmung.',
-      'Das gilt für ALLE Zahlungswege gleichermaßen (Vorsichtsprinzip beim',
-      'ungeklärten Anwendungsbereich des Widerrufsrechts bei Krypto-Zahlungen).',
+      'WICHTIG: Die Wallet-Adresse wird NICHT vorab genannt (auch nicht von',
+      'soul_preview/soul_discover) — sie erscheint erst in der PDF-Antwort von',
+      'accept_digital_content_terms, nach erteilter Zustimmung (Vorsichtsprinzip',
+      'beim ungeklärten Anwendungsbereich des Widerrufsrechts bei Krypto-Zahlungen).',
       '',
       'Gibt eine gesetzlich vorgeschriebene EU-Widerrufsbelehrung zurück (Link zu',
       'einem PDF + Volltext). Das ist eine rechtliche Informationspflicht, keine',
@@ -59,17 +56,11 @@ export function register(server, soulId) {
       '',
       'Zeige dem Nutzer den zurückgegebenen Link, bevor du fortfährst.',
     ].join('\n'),
-    {
-      payment_method: z.enum(['paypal', 'x402']).describe('Gewählter Zahlungsweg — bestimmt, welches Zahlungsziel später in accept_digital_content_terms genannt wird.'),
-    },
-    async ({ payment_method }) => {
+    {},
+    async () => {
       const ctx   = await loadCtx(soulId);
       const amort = ctx.amortization || {};
-      // walletAvailable: Kern-Voraussetzung für x402 (die frühere direkte
-      // POL-Überweisung nutzte dasselbe Wallet-Feld — Name hier absichtlich
-      // generisch statt "polAvailable", der Zahlungsweg selbst ist entfernt).
       const walletAvailable = amort.enabled === true && typeof amort.wallet === 'string' && amort.wallet.startsWith('0x');
-      const paypalAvailable = amort.paypal_enabled === true;
       const x402Available   = walletAvailable && typeof amort.price_usdc === 'string' && Number(amort.price_usdc) > 0;
 
       // Nennt die betroffene Soul explizit (Name + soul_id) und den HTTP-Fallback --
@@ -79,36 +70,24 @@ export function register(server, soulId) {
       // über seine EIGENE Session getestet hat -- die Meldung gab keinen Hinweis,
       // dass ein anderer Weg für eine andere soul_id existiert).
       const selfLabel = `${ctx.name || soulId.slice(0, 8)} (${soulId}, deine aktuelle MCP-Session)`;
-      const httpHint  = `Für eine ANDERE soul_id (nicht ${soulId}): POST ${BASE_URL}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>", "payment_method": "${payment_method}"} im Body -- keine MCP-Session dafür nötig.`;
-      if (payment_method === 'paypal' && !paypalAvailable) {
-        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen PayPal-Zahlungsweg.\n\n${httpHint}` }], isError: true };
-      }
-      if (payment_method === 'x402' && !x402Available) {
+      const httpHint  = `Für eine ANDERE soul_id (nicht ${soulId}): POST ${BASE_URL}/api/soul/terms/show mit {"soul_id": "<ziel-soul-id>"} im Body -- keine MCP-Session dafür nötig.`;
+      if (!x402Available) {
         return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen x402-Zahlungsweg (kein USDC-Preis hinterlegt).\n\n${httpHint}` }], isError: true };
-      }
-      if (!paypalAvailable && !x402Available) {
-        return { content: [{ type: 'text', text: `${selfLabel} akzeptiert aktuell keinen Zahlungsweg.\n\n${httpHint}` }], isError: true };
       }
 
       try {
         const termsToken  = randomUUID();
         const tokenDurationDays = amort.token_duration_days || 1;
-        // Für x402 den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe
-        // Formel wie soul_pay_x402.lua beim Settlement) — siehe
-        // accept_digital_content_terms.mjs für die ausführliche Begründung. Sonst
-        // zeigt die Vorabinformation einen anderen Betrag als tatsächlich abgebucht
-        // wird (live gefunden, 2026-08-08: Vorabinformation zeigte 0.50 statt dynamisch).
-        let previewPrice;
-        let previewBasePrice = null;
-        const previewDynamicPricing = payment_method === 'x402' && amort.dynamic_pricing === true;
-        if (payment_method === 'x402') {
-          previewBasePrice = Number(amort.price_usdc) || 0;
-          previewPrice = previewDynamicPricing
-            ? (await computeDynamicUsdcPrice(soulId, previewBasePrice)).toFixed(6)
-            : (amort.price_usdc || '?');
-        } else {
-          previewPrice = amort.price_eur || '?';
-        }
+        // Den TATSÄCHLICH aktuellen dynamischen Preis zeigen (dieselbe Formel wie
+        // soul_pay_x402.lua beim Settlement) — siehe accept_digital_content_terms.mjs
+        // für die ausführliche Begründung. Sonst zeigt die Vorabinformation einen
+        // anderen Betrag als tatsächlich abgebucht wird (live gefunden, 2026-08-08:
+        // Vorabinformation zeigte 0.50 statt dynamisch).
+        const previewBasePrice = Number(amort.price_usdc) || 0;
+        const previewDynamicPricing = amort.dynamic_pricing === true;
+        const previewPrice = previewDynamicPricing
+          ? (await computeDynamicUsdcPrice(soulId, previewBasePrice)).toFixed(6)
+          : (amort.price_usdc || '?');
         const previewFields = {
           termsToken,
           soulName: ctx.name || soulId.slice(0, 8),
@@ -116,10 +95,8 @@ export function register(server, soulId) {
           price:    previewPrice,
           basePrice: previewBasePrice,
           dynamicPricing: previewDynamicPricing,
-          currency: payment_method === 'x402' ? 'USDC' : 'EUR',
-          target:   amort.paypal_link || amort.paypal_email || '(nicht konfiguriert)',
+          currency: 'USDC',
           wallet:   amort.wallet || '',
-          paymentMethod: payment_method,
           traderName:      amort.trader_name || '',
           traderAddress:   amort.trader_address || '',
           traderEmail:     amort.trader_email || '',
@@ -141,7 +118,7 @@ export function register(server, soulId) {
         // wird von accept_digital_content_terms um invoice_number/accepted_at ergänzt.
         await writeFile(`${purchaseDir}/meta.json`, JSON.stringify({
           created_at: new Date().toISOString(),
-          payment_method,
+          payment_method: 'x402',
         }), 'utf8');
         const previewUrl    = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}/vorabinformation.pdf`;
         const previewUrlTxt = `${BASE_URL}/api/vault/consent/${soulId}/${termsToken}/vorabinformation.txt`;

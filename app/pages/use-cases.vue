@@ -123,7 +123,7 @@ const de = {
   signIn: 'Anmelden',
   kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in der Praxis.',
-  intro: 'Kein Konzept, kein Mockup — echte Abläufe gegen diesen laufenden Node. So sieht es aus, wenn ein fremder, autonomer KI-Agent ohne jedes Vorwissen und ohne besondere Rechte eine bezahlte Soul findet, das gesetzliche Widerrufsrecht respektiert, zahlt — per x402 oder PayPal — und Zugriff bekommt — ausschließlich über die öffentliche HTTP-Schnittstelle, keine internen Abkürzungen.',
+  intro: 'Kein Konzept, kein Mockup — echte Abläufe gegen diesen laufenden Node. So sieht es aus, wenn ein fremder, autonomer KI-Agent ohne jedes Vorwissen und ohne besondere Rechte eine bezahlte Soul findet, das gesetzliche Widerrufsrecht respektiert, per x402 zahlt und Zugriff bekommt — ausschließlich über die öffentliche HTTP-Schnittstelle, keine internen Abkürzungen.',
 
   guaranteesH2: 'Was dabei technisch garantiert ist.',
   guarantees: [
@@ -158,7 +158,7 @@ const en = {
   signIn: 'Sign in',
   kicker: 'USE CASES',
   h1: 'SYS<em>.</em> in practice.',
-  intro: 'Not a concept, not a mockup — real runs against this live node. This is what it looks like when a foreign, autonomous AI agent — with no prior knowledge and no special privileges — finds a paid soul, respects the statutory right of withdrawal, pays — via x402 or PayPal — and gets access — entirely through the public HTTP surface, no internal shortcuts.',
+  intro: 'Not a concept, not a mockup — real runs against this live node. This is what it looks like when a foreign, autonomous AI agent — with no prior knowledge and no special privileges — finds a paid soul, respects the statutory right of withdrawal, pays via x402, and gets access — entirely through the public HTTP surface, no internal shortcuts.',
 
   guaranteesH2: 'What is technically guaranteed here.',
   guarantees: [
@@ -268,77 +268,6 @@ const casesDe = [
 { "jsonrpc": "2.0", "id": 1, "method": "tools/call",
   "params": { "name": "<tool>", "arguments": {} } }`,
         note: 'Gültig für die konfigurierte Token-Laufzeit, mehrfach nutzbar — für jedes Tool, das der Soul-Inhaber für zahlende Agenten freigegeben hat.',
-      },
-    ],
-  },
-  {
-    badge: 'PayPal',
-    title: 'Ein menschlicher Käufer zahlt ohne Wallet.',
-    sub: 'Gleicher Zustimmungsablauf wie beim x402-Weg — nur mit einer echten, manuell geprüften Überweisung statt automatischem On-Chain-Settlement. Für Käufer ohne Polygon-Wallet.',
-    callout: 'Auch dieser Ablauf wurde live gegen diesen Node verifiziert — echte PayPal-Zahlung, manuelle Token-Ausstellung durch den Betreiber, danach erfolgreiche Einlösung durch einen extern per MCP verbundenen Agenten (Claude), bestätigt durch einen echten, protokollierten Tool-Aufruf.',
-    steps: [
-      {
-        n: '01',
-        label: 'Discovery — derselbe öffentliche Scan wie bei x402.',
-        request: 'GET /api/soul/scan',
-        example: `{
-  "ok": true,
-  "souls": [{
-    "soul_id": "{soul_id}",
-    "name": "KRO",
-    "paypal_enabled": true,
-    "price_eur": "0.50",
-    "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
-  }]
-}`,
-      },
-      {
-        n: '02',
-        label: 'Preview — bestätigt Preis in EUR und dass PayPal akzeptiert wird.',
-        request: 'GET /api/soul/preview?soul_id={soul_id}',
-        example: `{
-  "paypal_accepted": true,
-  "price_eur": "0.50",
-  "paypal_target": ""   // noch nicht genannt — siehe Schritt 4
-}`,
-      },
-      {
-        n: '03',
-        label: 'Vorabinformation zum Widerrufsrecht — <strong>Pflicht</strong> vor jeder Zahlung, identisch zu x402.',
-        request: 'POST /api/soul/terms/show',
-        example: `{ "soul_id": "{soul_id}", "payment_method": "paypal" }
-
-→ { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
-      },
-      {
-        n: '04',
-        label: 'Zustimmung — erst jetzt wird das PayPal-Ziel genannt.',
-        request: 'POST /api/soul/terms/accept',
-        example: `{
-  "soul_id": "{soul_id}",
-  "terms_token": "{terms_token}",
-  "payment_method": "paypal",
-  "consent_immediate_performance": true,
-  "consent_withdrawal_waiver": true
-}
-
-→ { "payment": { "value": "https://paypal.me/{provider}" }, "price": "0.50", "invoice_number": "…" }`,
-        note: 'Die <code class="i-code">reference_id</code> (= <code class="i-code">terms_token</code>) muss in die PayPal-Zahlungsnotiz — sonst kann der Betreiber die Zahlung nicht zuordnen.',
-      },
-      {
-        n: '05',
-        label: 'Zahlung — echte Überweisung außerhalb der API, manuell geprüft.',
-        note: 'Kein Endpunkt — dieser Schritt läuft auf paypal.com selbst. Der Käufer überweist den genannten Betrag mit <code class="i-code">{terms_token}</code> in der Notiz. Der Betreiber gleicht den Zahlungseingang gegen diese Referenz ab und stellt danach von Hand einen Zugangs-Token aus — üblich innerhalb von 48h, nicht sofort wie bei x402.',
-      },
-      {
-        n: '06',
-        label: 'Zugriff — sobald der Token vorliegt, identisch zu x402.',
-        request: 'POST {mcp_endpoint}',
-        example: `Header: Authorization: Bearer {access_token}
-
-{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
-  "params": { "name": "<tool>", "arguments": {} } }`,
-        note: 'Ab hier kein Unterschied mehr zum x402-Weg — derselbe Token, dieselbe Bearer-Auth, dieselben freigegebenen Tools.',
       },
     ],
   },
@@ -475,77 +404,6 @@ const casesEn = [
 { "jsonrpc": "2.0", "id": 1, "method": "tools/call",
   "params": { "name": "<tool>", "arguments": {} } }`,
         note: 'Valid for the configured token lifetime, reusable — for any tool the soul owner enabled for paying agents.',
-      },
-    ],
-  },
-  {
-    badge: 'PayPal',
-    title: 'A human buyer pays without a wallet.',
-    sub: 'Same consent flow as the x402 path — just with a real, manually reviewed transfer instead of automatic on-chain settlement. For buyers without a Polygon wallet.',
-    callout: 'This flow was also verified live against this node — a real PayPal payment, manual token issuance by the operator, then successful redemption by an externally connected agent (Claude, via MCP), confirmed by a real, logged tool call.',
-    steps: [
-      {
-        n: '01',
-        label: 'Discovery — the same public scan as x402.',
-        request: 'GET /api/soul/scan',
-        example: `{
-  "ok": true,
-  "souls": [{
-    "soul_id": "{soul_id}",
-    "name": "KRO",
-    "paypal_enabled": true,
-    "price_eur": "0.50",
-    "mcp_endpoint": "https://agency.uxprojects-jok.com/mcp"
-  }]
-}`,
-      },
-      {
-        n: '02',
-        label: 'Preview — confirms the EUR price and that PayPal is accepted.',
-        request: 'GET /api/soul/preview?soul_id={soul_id}',
-        example: `{
-  "paypal_accepted": true,
-  "price_eur": "0.50",
-  "paypal_target": ""   // not revealed yet — see step 4
-}`,
-      },
-      {
-        n: '03',
-        label: 'Pre-purchase withdrawal-rights notice — <strong>mandatory</strong> before any payment, identical to x402.',
-        request: 'POST /api/soul/terms/show',
-        example: `{ "soul_id": "{soul_id}", "payment_method": "paypal" }
-
-→ { "terms_token": "{terms_token}", "preview_url": "…", "legal_text": "…" }`,
-      },
-      {
-        n: '04',
-        label: 'Consent — only now is the PayPal target revealed.',
-        request: 'POST /api/soul/terms/accept',
-        example: `{
-  "soul_id": "{soul_id}",
-  "terms_token": "{terms_token}",
-  "payment_method": "paypal",
-  "consent_immediate_performance": true,
-  "consent_withdrawal_waiver": true
-}
-
-→ { "payment": { "value": "https://paypal.me/{provider}" }, "price": "0.50", "invoice_number": "…" }`,
-        note: 'The <code class="i-code">reference_id</code> (= <code class="i-code">terms_token</code>) must go into the PayPal payment note — otherwise the operator can\'t match the payment.',
-      },
-      {
-        n: '05',
-        label: 'Payment — a real transfer outside the API, reviewed manually.',
-        note: 'No endpoint — this step happens on paypal.com itself. The buyer sends the invoiced amount with <code class="i-code">{terms_token}</code> in the note. The operator matches the incoming payment against that reference, then issues an access token by hand — typically within 48h, not instant like x402.',
-      },
-      {
-        n: '06',
-        label: 'Access — once the token exists, identical to x402.',
-        request: 'POST {mcp_endpoint}',
-        example: `Header: Authorization: Bearer {access_token}
-
-{ "jsonrpc": "2.0", "id": 1, "method": "tools/call",
-  "params": { "name": "<tool>", "arguments": {} } }`,
-        note: 'No difference from here on out — same token, same bearer auth, same enabled tools.',
       },
     ],
   },

@@ -154,7 +154,7 @@ Parameters: q (search term), amortized (only paid access), limit.
 → First step in any agent flow that wants to reach other souls.
 
 ### soul_read_by_token
-**When:** You have an access_token (from a completed x402 payment, or received manually/via PayPal) and want to read another user's soul.
+**When:** You have an access_token (from a completed x402 payment) and want to read another user's soul.
 Parameters: token, soul_id.
 
 ### verify_human
@@ -176,7 +176,6 @@ Flow: soul_discover → soul_preview (price + live quote) → POST pay_endpoint 
 transferWithAuthorization and retry with a PAYMENT-SIGNATURE header → access_token.
 No SYS-specific payment tool — any x402-compliant client already knows this handshake.
 Returns access_token (validity per soul config, default 1 day) — then use soul_read_by_token.
-Non-crypto alternative: PayPal, manually reviewed by the operator — see soul_discover's guidance.
 
 ### soul_paid_comment
 **When:** You have access to a soul and want to leave an AI comment in the AGENT block.
