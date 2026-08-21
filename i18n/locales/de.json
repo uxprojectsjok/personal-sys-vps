@@ -26,7 +26,7 @@
     "settings": "Einstellungen",
     "gatekeeper": "Gatekeeper",
     "wallet": "Wallet",
-    "trader": "Trader",
+    "trader": "Agent Trader",
     "agent": "Agent",
     "archivar": "Archivar",
     "legal": "Recht",
@@ -1415,9 +1415,9 @@
     "roadmap_tag": "geplant"
   },
   "trader": {
-    "crumb": "Trader",
-    "eyebrow": "TILL · TRADER",
-    "title_em": "TILL-Trader",
+    "crumb": "Agent Trader",
+    "eyebrow": "TILL · AGENT TRADER",
+    "title_em": "Agent Trader",
     "portfolio_label": "Portfolio",
     "wallet_connected_prefix": "Verbunden:",
     "wallet_type_manual": "Manuell",

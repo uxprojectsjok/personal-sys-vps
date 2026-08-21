@@ -14,7 +14,6 @@
             <div class="tr-head">
               <div class="tr-eyebrow">{{ $t('trader.eyebrow') }}</div>
               <h1 class="tr-title">{{ soulMeta?.name }} <em>{{ $t('trader.title_em') }}</em></h1>
-              <p class="tr-motto"><b>T</b>rade <b>I</b>t <b>L</b>ike <b>L</b>ightning.</p>
             </div>
 
             <!-- ── Portfolio ── -->
@@ -446,8 +445,6 @@ function exportCSV() {
 .tr-eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
 .tr-title { font-family: var(--serif); font-size: clamp(28px, 4vw, 42px); font-weight: 400; letter-spacing: -0.03em; color: var(--fg); margin: 0 0 12px; }
 .tr-title em { font-style: italic; color: var(--accent); }
-.tr-motto { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--accent); opacity: 0.85; margin: 0; }
-.tr-motto b { font-weight: 700; }
 
 /* ── Field shell ── */
 .tr-field { display: flex; flex-direction: column; gap: 10px; }
