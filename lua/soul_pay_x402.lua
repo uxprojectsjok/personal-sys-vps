@@ -80,7 +80,7 @@ do
     local pv = pf:read("*a"); pf:close()
     if pv == "false" then
       ngx.status = 403
-      ngx.say('{"error":"private_node","message":"Dieser Node akzeptiert keine zahlenden Agenten (Private Node)."}')
+      ngx.say('{"error":"private_node","message":"This node does not accept paying agents (Private Node)."}')
       return
     end
   end
@@ -156,7 +156,7 @@ local ctx_file  = SOULS_DIR .. soul_id .. "/api_context.json"
 local cf = io.open(ctx_file, "r")
 if not cf then
   ngx.status = 404
-  ngx.say('{"error":"Soul nicht gefunden"}')
+  ngx.say('{"error":"Soul not found"}')
   return
 end
 local raw_ctx = cf:read("*a"); cf:close()
@@ -170,14 +170,14 @@ end
 local amort = ctx.amortization
 if type(amort) ~= "table" or amort.private == true or amort.enabled ~= true then
   ngx.status = 402
-  ngx.say('{"error":"payment_not_required","message":"Diese Soul hat Amortisation nicht aktiviert."}')
+  ngx.say('{"error":"payment_not_required","message":"This soul has not enabled amortization."}')
   return
 end
 
 local wallet = amort.wallet or ""
 if not wallet:match("^0x[0-9a-fA-F]+$") then
   ngx.status = 503
-  ngx.say('{"error":"Soul-Wallet nicht konfiguriert"}')
+  ngx.say('{"error":"Soul wallet not configured"}')
   return
 end
 
@@ -186,7 +186,7 @@ if not price_usdc or price_usdc <= 0 then
   ngx.status = 402
   ngx.say(cjson.encode({
     error   = "x402_not_configured",
-    message = "Diese Soul hat keinen USDC-Preis konfiguriert (amortization.price_usdc fehlt).",
+    message = "This soul has no USDC price configured (amortization.price_usdc missing).",
   }))
   return
 end
@@ -216,7 +216,7 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
   ngx.header["PAYMENT-REQUIRED"] = ngx.encode_base64(cjson.encode(payment_required))
   ngx.say(cjson.encode({
     error   = "payment_required",
-    message = "USDC-Zahlung erforderlich (x402). Siehe PAYMENT-REQUIRED-Header oder amount/payTo/asset/network unten.",
+    message = "USDC payment required (x402). See the PAYMENT-REQUIRED header or amount/payTo/asset/network below.",
     accepts = payment_required.accepts,
   }))
   return
@@ -241,7 +241,7 @@ if eu_consumer_rights then
     ngx.status = 400
     ngx.say(cjson.encode({
       error   = "reference_id_required",
-      message = "Referenz-ID aus accept_digital_content_terms erforderlich — der Käufer muss zuerst der Widerrufsbelehrung zustimmen.",
+      message = "reference_id from accept_digital_content_terms required — the buyer must agree to the withdrawal-rights notice first.",
     }))
     return
   end
@@ -254,7 +254,7 @@ if eu_consumer_rights then
     ngx.status = 404
     ngx.say(cjson.encode({
       error   = "consent_not_found",
-      message = "Keine Einwilligung mit dieser Referenz-ID gefunden — accept_digital_content_terms wurde für sie nicht aufgerufen.",
+      message = "No consent found for this reference_id — accept_digital_content_terms was not called for it.",
     }))
     return
   end
@@ -274,7 +274,7 @@ local replay_key = "x402:" .. str.to_hex(sha:final())
 local tx_cache = ngx.shared.pol_tx_used
 if tx_cache:get(replay_key) then
   ngx.status = 409
-  ngx.say('{"error":"payment_already_used","message":"Dieser Zahlungsnachweis wurde bereits eingelöst."}')
+  ngx.say('{"error":"payment_already_used","message":"This proof of payment has already been redeemed."}')
   return
 end
 
@@ -288,7 +288,7 @@ if uf then
       if type(h) == "string" and h == replay_key then
         tx_cache:set(replay_key, "1", 172800)
         ngx.status = 409
-        ngx.say('{"error":"payment_already_used","message":"Dieser Zahlungsnachweis wurde bereits eingelöst."}')
+        ngx.say('{"error":"payment_already_used","message":"This proof of payment has already been redeemed."}')
         return
       end
     end
@@ -316,14 +316,14 @@ local res, err = httpc:request_uri("http://127.0.0.1:3098/internal/verify-x402",
 
 if not res or err then
   ngx.status = 502
-  ngx.say(cjson.encode({ error = "x402-Verifikation fehlgeschlagen", detail = tostring(err) }))
+  ngx.say(cjson.encode({ error = "x402 verification failed", detail = tostring(err) }))
   return
 end
 
 local ok_v, vdata = pcall(cjson.decode, res.body or "")
 if not ok_v or type(vdata) ~= "table" then
   ngx.status = 502
-  ngx.say('{"error":"Ungültige Antwort vom x402-Verifikationsdienst"}')
+  ngx.say('{"error":"Invalid response from x402 verification service"}')
   return
 end
 
@@ -333,7 +333,7 @@ if res.status ~= 200 or vdata.ok ~= true then
   ngx.status = status
   ngx.say(cjson.encode({
     error   = vdata.reason or "payment_invalid",
-    message = vdata.message or "x402-Zahlung ungültig",
+    message = vdata.message or "x402 payment invalid",
     detail  = vdata,
   }))
   return
@@ -562,5 +562,5 @@ ngx.say(cjson.encode({
   usdc_amount  = vdata.usdc_amount,
   from         = vdata.from,
   confirmed_at = vdata.confirmed_at,
-  note         = "Verwende access_token als Bearer-Token für MCP-Zugriff auf diese Soul.",
+  note         = "Use access_token as a Bearer token for MCP access to this soul.",
 }))
