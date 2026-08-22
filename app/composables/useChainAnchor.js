@@ -1234,25 +1234,45 @@ export function useChainAnchor() {
         } catch { /* weiter */ }
       }
 
-      // TX-Hash aus Event-Logs holen
       // SoulRegistry v1.1.0 deployed 2026-07-22 → Polygon Mainnet Block 90 674 283
       const DEPLOY_BLOCK = 90_674_283;
+      // TX-Hash aus Event-Logs holen. Live gefunden (2026-08-22): ein einzelner
+      // queryFilter über den vollen Bereich seit Deploy (oder sogar über den
+      // ursprünglich hier stehenden "-1_200_000 Blöcke ≈ 7 Tage"-Fallback)
+      // schlägt an diesem RPC-Endpoint IMMER fehl — polygon-bor-rpc.publicnode.com
+      // begrenzt eth_getLogs auf max. 10 000 Blöcke pro Aufruf (-32701 "exceed
+      // maximum block range: 10000"). Beide bisherigen Varianten überschritten
+      // das massiv, der äußere try/catch schluckte den Fehler dann still — der
+      // eigentliche Zweck dieser Funktion (fehlenden tx-Hash nachträglich aus
+      // der Chain holen) griff dadurch faktisch NIE, jeder betroffene Anker
+      // landete dauerhaft mit tx:"" in sys.md. Fix: rückwärts in 10 000er-
+      // Fenstern vom aktuellen Block scannen, sobald ein Treffer gefunden ist
+      // abbrechen — im Normalfall (Anker ist Stunden/Tage alt) nur 1-2 Aufrufe,
+      // im Worst Case bis zu 20 Fenster (~200k Blöcke, mehr als die ursprünglich
+      // gemeinte Woche).
       let txHash = null;
       try {
         const filter = contract.filters.Anchored(idBytes32);
-        // Zuerst vollständig versuchen, bei Fehler auf letzte 7 Tage (~1.2M Blöcke) fallen
-        let events = [];
-        try {
-          events = await contract.queryFilter(filter, DEPLOY_BLOCK);
-        } catch {
-          events = await contract.queryFilter(filter, -1_200_000);
-        }
-        if (events.length) {
-          // Event mit passendem contentHash finden (neuester zuerst)
-          const match = [...events].reverse().find(
-            (e) => e.args?.contentHash === latest.contentHash,
-          );
-          txHash = (match ?? events[events.length - 1])?.transactionHash ?? null;
+        const currentBlock = await provider.getBlockNumber();
+        const WINDOW = 10_000;
+        const MAX_WINDOWS = 20;
+        let toBlock = currentBlock;
+        for (let i = 0; i < MAX_WINDOWS && toBlock >= DEPLOY_BLOCK; i++) {
+          const fromBlock = Math.max(DEPLOY_BLOCK, toBlock - WINDOW + 1);
+          let events = [];
+          try {
+            events = await contract.queryFilter(filter, fromBlock, toBlock);
+          } catch { /* dieses Fenster nicht abfragbar — weiter zum nächsten */ }
+          if (events.length) {
+            // Event mit passendem contentHash finden (neuester zuerst)
+            const match = [...events].reverse().find(
+              (e) => e.args?.contentHash === latest.contentHash,
+            );
+            txHash = (match ?? events[events.length - 1])?.transactionHash ?? null;
+            break;
+          }
+          if (fromBlock === DEPLOY_BLOCK) break;
+          toBlock = fromBlock - 1;
         }
       } catch { /* TX-Hash nicht ermittelbar – weiter ohne */ }
 
