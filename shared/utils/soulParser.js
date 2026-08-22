@@ -323,8 +323,17 @@ export function updateFrontmatterField(markdown, key, value) {
   const fmBody = markdown.slice(openIdx + 3, closeIdx); // "\nkey: val\n…\n"
   const after  = markdown.slice(closeIdx);              // "---\n\n## …"
 
-  // Vorhandenes Feld aktualisieren
-  const linePattern = new RegExp(`(\\n${key}:)[^\\n]*`);
+  // Vorhandenes Feld aktualisieren. [^\n]* träfe nur die erste Zeile eines
+  // Werts — reicht nicht, wenn der bisher gespeicherte Wert (z.B. eine ältere,
+  // mehrzeilig eingerückte JSON-Struktur) selbst über mehrere Zeilen geht:
+  // ein solcher Ersatz ließ den Rest der alten Zeilen als verwaisten Text
+  // stehen (live gefunden 2026-08-22 bei soul_chain_anchor/soul_anchor_history
+  // — Reste einer alten mehrzeiligen Version blieben nach jedem Update hinter
+  // dem neuen, korrekten einzeiligen Wert liegen). [\s\S]*? verschlingt jede
+  // Fortsetzungszeile (eingerückt, beginnt nie mit einem Schlüssel auf Spalte 0)
+  // bis zum nächsten echten Top-Level-Schlüssel, der schließenden "---" oder
+  // dem Dateiende — unabhängig davon, wie viele Zeilen der alte Wert umfasst.
+  const linePattern = new RegExp(`(\\n${key}:)[\\s\\S]*?(?=\\n\\S+:|$)`);
   if (linePattern.test(fmBody)) {
     return before + fmBody.replace(linePattern, `$1 ${value}`) + after;
   }

@@ -802,23 +802,12 @@ export function useChainAnchor() {
       // Tags aus anchorSoul()-Aufruf mitführen — dienen soul_discover als kanonische Quelle
       if (Array.isArray(tags) && tags.length) anchorObj.tags = tags;
       const anchor = JSON.stringify(anchorObj);
-      if (/soul_chain_anchor:/m.test(soulContent.value)) {
-        soulContent.value = soulContent.value.replace(
-          /soul_chain_anchor:\s*.+/m,
-          `soul_chain_anchor: ${anchor}`,
-        );
-      } else {
-        soulContent.value = updateFrontmatterField(
-          soulContent.value,
-          "soul_chain_anchor",
-          anchor,
-        );
-      }
+      soulContent.value = updateFrontmatterField(soulContent.value, "soul_chain_anchor", anchor);
       save();
 
       // soul_anchor_history in sys.md aktualisieren (Genesis + Block + Size)
       const soulSize = new TextEncoder().encode(soulContent.value ?? '').length;
-      const histMatch = soulContent.value?.match(/soul_anchor_history:\s*(.+)/m);
+      const histMatch = soulContent.value?.match(/soul_anchor_history:([\s\S]*?)(?=\n\S+:|$)/m);
       let anchorHistory = [];
       try { anchorHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { anchorHistory = []; }
       if (!Array.isArray(anchorHistory)) anchorHistory = [];
@@ -843,14 +832,7 @@ export function useChainAnchor() {
       if (anchorHistory.length === 0 && (serverAnchorCount ?? 0) === 0) histEntry.genesis = true;
       anchorHistory.push(histEntry);
       const histJson = JSON.stringify(anchorHistory);
-      if (/soul_anchor_history:/m.test(soulContent.value)) {
-        soulContent.value = soulContent.value.replace(
-          /soul_anchor_history:\s*.+/m,
-          `soul_anchor_history: ${histJson}`,
-        );
-      } else {
-        soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
-      }
+      soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
       save();
 
       // chain_anchor.json (plaintext) — damit soul_discover den TX-Hash ohne Entschlüsselung lesen kann
@@ -1228,7 +1210,7 @@ export function useChainAnchor() {
       // sind — beide Felder unabhängig prüfen, sonst überspringt ein bereits
       // korrekter soul_chain_anchor (z.B. nach einem früheren Teil-Fix) den Rest
       // der Funktion, obwohl soul_anchor_history noch hinterherhinkt.
-      const localAnchorMatch = soulContent.value?.match(/soul_chain_anchor:\s*(\{.+\})/m);
+      const localAnchorMatch = soulContent.value?.match(/soul_chain_anchor:\s*(\{[\s\S]*?\})(?=\n\S+:|$)/m);
       let localAnchorCurrent = false;
       if (localAnchorMatch) {
         try {
@@ -1236,7 +1218,7 @@ export function useChainAnchor() {
           localAnchorCurrent = local.date >= latestDate && !!local.tx;
         } catch { /* weiter */ }
       }
-      const localHistMatchEarly = soulContent.value?.match(/soul_anchor_history:\s*(.+)/m);
+      const localHistMatchEarly = soulContent.value?.match(/soul_anchor_history:\s*(\[[\s\S]*?\])(?=\n\S+:|$)/m);
       let localHistoryEarly = [];
       try { localHistoryEarly = JSON.parse(localHistMatchEarly?.[1] ?? '[]'); } catch { localHistoryEarly = []; }
       if (!Array.isArray(localHistoryEarly)) localHistoryEarly = [];
@@ -1275,18 +1257,7 @@ export function useChainAnchor() {
           : `${ACTIVE_NETWORK.explorer}/address/${CONTRACT_ADDRESS}`,
       });
 
-      if (/soul_chain_anchor:/m.test(soulContent.value)) {
-        soulContent.value = soulContent.value.replace(
-          /soul_chain_anchor:\s*.+/m,
-          `soul_chain_anchor: ${anchor}`,
-        );
-      } else {
-        soulContent.value = updateFrontmatterField(
-          soulContent.value,
-          "soul_chain_anchor",
-          anchor,
-        );
-      }
+      soulContent.value = updateFrontmatterField(soulContent.value, "soul_chain_anchor", anchor);
 
       // soul_anchor_history rekonstruieren, falls sie hinter der On-Chain-Historie
       // zurückliegt (derselbe "Mobile-Bug" wie bei soul_chain_anchor betrifft auch
@@ -1294,20 +1265,13 @@ export function useChainAnchor() {
       // aktualisiert). Nur ersetzen wenn die Serverliste dieselbe Länge wie die
       // On-Chain-Historie hat (sonst lieber unverändert lassen als mit einer
       // möglicherweise unvollständigen Serverantwort überschreiben).
-      const histMatch = soulContent.value.match(/soul_anchor_history:\s*(.+)/m);
+      const histMatch = soulContent.value.match(/soul_anchor_history:([\s\S]*?)(?=\n\S+:|$)/m);
       let localHistory = [];
       try { localHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { localHistory = []; }
       if (!Array.isArray(localHistory)) localHistory = [];
       if (localHistory.length < history.length && serverHistory.length === history.length) {
         const histJson = JSON.stringify(serverHistory);
-        if (/soul_anchor_history:/m.test(soulContent.value)) {
-          soulContent.value = soulContent.value.replace(
-            /soul_anchor_history:\s*.+/m,
-            `soul_anchor_history: ${histJson}`,
-          );
-        } else {
-          soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
-        }
+        soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
       }
 
       save();
