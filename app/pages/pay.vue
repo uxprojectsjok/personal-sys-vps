@@ -43,7 +43,10 @@
 
           <!-- Wrong network -->
           <template v-else-if="phase === 'wrong_network'">
-            <p class="pay-hint">Connected: <span class="pay-mono">{{ address }}</span> — wrong network.</p>
+            <p class="pay-hint">Connected: <span class="pay-mono">{{ address }}</span> — wrong network.
+              <button class="pay-link" @click="doSwitchAccount">Not your wallet? Switch account</button>
+              <br><span class="pay-subhint">Still wrong? Switch the active account in your wallet extension itself (its own account switcher) — this page picks it up automatically.</span>
+            </p>
             <button class="pay-btn pay-btn--primary" :disabled="switchingNetwork" @click="doSwitchNetwork">
               {{ switchingNetwork ? 'Switching…' : 'Switch to Polygon' }}
             </button>
@@ -51,7 +54,10 @@
 
           <!-- Ready to pay -->
           <template v-else-if="phase === 'ready'">
-            <p class="pay-hint">Connected: <span class="pay-mono">{{ address }}</span></p>
+            <p class="pay-hint">Connected: <span class="pay-mono">{{ address }}</span>
+              <button class="pay-link" @click="doSwitchAccount">Not your wallet? Switch account</button>
+              <br><span class="pay-subhint">Still wrong? Switch the active account in your wallet extension itself (its own account switcher) — this page picks it up automatically.</span>
+            </p>
             <button class="pay-btn pay-btn--primary" :disabled="paying" @click="doPay">
               {{ paying ? 'Confirm the signature request in your wallet…' : `Pay ${priceUsdc} USDC` }}
             </button>
@@ -210,6 +216,28 @@ async function doConnect() {
   }
 }
 
+// MetaMask (and most EIP-1193 wallets) authorize per DOMAIN, not per page —
+// eth_requestAccounts silently returns whatever account was already granted
+// to this origin from an earlier, unrelated connect (e.g. on /wallet or
+// /anchor), without prompting again. wallet_requestPermissions forces the
+// account picker to reopen (EIP-2255) even when a permission already exists.
+async function doSwitchAccount() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_requestPermissions',
+      params: [{ eth_accounts: {} }],
+    })
+    // The dialog above only grants/revokes which accounts this site may see.
+    // If the address below still doesn't change, switch the ACTIVE account
+    // in your wallet extension itself (its own account switcher) — that's
+    // what onAccountsChanged picks up.
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+    onAccountsChanged(accounts)
+  } catch (e) {
+    if (e.code !== 4001) showError(null, e.message, null, phase.value)
+  }
+}
+
 async function doSwitchNetwork() {
   switchingNetwork.value = true
   try {
@@ -249,6 +277,25 @@ function onChainChanged() {
   checkNetwork().then(ok => { if (phase.value === 'wrong_network' || phase.value === 'ready') phase.value = ok ? 'ready' : 'wrong_network' })
 }
 
+// The permission dialog opened by doSwitchAccount only lets the user pick
+// which accounts this site MAY see — the account actually returned by
+// eth_requestAccounts is still whichever one is active in the wallet
+// extension itself. Switching the active account (in the extension's own
+// account switcher) fires accountsChanged instead of anything we requested,
+// so this listener — not the permission dialog — is what actually picks up
+// the new address.
+function onAccountsChanged(accounts) {
+  if (!accounts || accounts.length === 0) {
+    address.value = ''
+    phase.value = 'connect'
+    return
+  }
+  address.value = accounts[0]
+  if (phase.value === 'ready' || phase.value === 'wrong_network') {
+    checkNetwork().then(ok => { phase.value = ok ? 'ready' : 'wrong_network' })
+  }
+}
+
 async function doPay() {
   paying.value = true
   try {
@@ -266,9 +313,20 @@ async function doPay() {
 
     // @x402/core defaults to a $1 max-per-payment spend control (safety net
     // against a manipulated 402 response demanding more than expected) — set
-    // it to the exact price the buyer already reviewed on this page instead
-    // of disabling it outright.
-    const client = new x402Client({ spendControls: { maxAmountPerPayment: priceUsdc.value } })
+    // it to (roughly) the price the buyer already reviewed on this page
+    // instead of disabling it outright.
+    // NOTE: the plain `new x402Client(fn)` constructor takes a
+    // paymentRequirementsSelector, NOT a config object — passing
+    // { spendControls } there is silently ignored (only `.fromConfig()`
+    // reads it), leaving the $1 default active. setSpendControls() is the
+    // only way to apply it on a plain instance.
+    // This soul's price is dynamic (rises with chain age/anchors/demand), so
+    // the live 402 fetched inside fetchWithPay a moment later can already be
+    // fractionally higher than the snapshot shown on page load — a 2%
+    // headroom absorbs that drift without meaningfully weakening the cap as
+    // a safety net against a genuinely manipulated response.
+    const client = new x402Client()
+    client.setSpendControls({ maxAmountPerPayment: (parseFloat(priceUsdc.value) * 1.02).toFixed(6) })
     registerExactEvmScheme(client, { signer, schemeOptions: { rpcUrl: 'https://polygon-bor-rpc.publicnode.com' } })
     // wrapFetchWithPayment wants the raw x402Client — see soul-mcp/lib/x402_client.mjs's
     // payX402() comment for the double-wrap trap that silently skips signing entirely.
@@ -310,11 +368,13 @@ onMounted(() => {
   loadPreview()
   if (typeof window !== 'undefined' && window.ethereum) {
     window.ethereum.on?.('chainChanged', onChainChanged)
+    window.ethereum.on?.('accountsChanged', onAccountsChanged)
   }
 })
 onUnmounted(() => {
   if (typeof window !== 'undefined' && window.ethereum) {
     window.ethereum.removeListener?.('chainChanged', onChainChanged)
+    window.ethereum.removeListener?.('accountsChanged', onAccountsChanged)
   }
 })
 </script>
@@ -358,6 +418,9 @@ a.pay-mono:hover { text-decoration: underline; }
 .pay-btn--ghost:hover { border-color: var(--teal); color: var(--teal-bright); }
 
 .pay-hint { font-size: 15px; color: var(--fg); line-height: 1.65; margin: 0; }
+.pay-link { background: none; border: none; padding: 0; margin-left: 8px; font-size: 14px; color: var(--teal-bright); text-decoration: underline; cursor: pointer; }
+.pay-link:hover { color: var(--teal); }
+.pay-subhint { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--fg); }
 
 .pay-token-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pay-token { flex: 1; min-width: 0; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; }

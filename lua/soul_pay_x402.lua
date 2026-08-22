@@ -117,10 +117,15 @@ end
 
 -- Gleiche Formel wie soul_pay.lua (Zeile ~223): base × (1 + anchors×A + age_days×G + buyers_30d×D).
 -- Frisch aus anchor_history.json/demand_log.json berechnet statt über einen
--- x402-eigenen Quote-Mechanismus — das 402-maxTimeoutSeconds-Fenster (60s) ist
--- kurz genug, dass sich diese Metriken zwischen Challenge und Zahlung praktisch
--- nie ändern (gleiches Fallback-Prinzip wie soul_pay.lua ohne quote_id).
-local function dynamic_usdc_price(soul_id_, base_price)
+-- x402-eigenen Quote-Mechanismus. WICHTIG: der Preis ist über die Zeit streng
+-- monoton nicht-fallend (chain_age_days wächst jede Sekunde) — jede
+-- Signierverzögerung zwischen Challenge und Verify-Aufruf lässt den frisch
+-- neu berechneten Preis sonst über den ursprünglich gequoteten (und
+-- signierten) Betrag steigen. Der optionale as_of-Parameter erlaubt es dem
+-- Verify-Pfad, den Preis mit einem Gnadenfenster in die Vergangenheit
+-- (GRACE_SECONDS) statt mit "jetzt" zu berechnen — siehe Aufrufstelle unten.
+local function dynamic_usdc_price(soul_id_, base_price, as_of)
+  as_of = as_of or ngx.time()
   local ah_file = SOULS_DIR .. soul_id_ .. "/anchor_history.json"
   local ah = io.open(ah_file, "r")
   if not ah then return base_price end
@@ -132,7 +137,7 @@ local function dynamic_usdc_price(soul_id_, base_price)
   if type(hist[1].ts) == "string" then
     local y,mo,d,h,mi,s = hist[1].ts:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
     if y then
-      local ref    = ngx.time()
+      local ref    = as_of
       local tz_off = ref - os.time(os.date("!*t", ref))
       local genesis = os.time({
         year=tonumber(y),month=tonumber(mo),day=tonumber(d),
@@ -147,7 +152,7 @@ local function dynamic_usdc_price(soul_id_, base_price)
   if dfl then
     local ok_dl, dlog = pcall(cjson.decode, dfl:read("*a")); dfl:close()
     if ok_dl and type(dlog) == "table" then
-      local cutoff = ngx.time() - 30 * 86400
+      local cutoff = as_of - 30 * 86400
       for _, e in ipairs(dlog) do
         if type(e) == "table" and (tonumber(e.ts) or 0) > cutoff then buyers_30d = buyers_30d + 1 end
       end
@@ -309,13 +314,24 @@ if uf then
 end
 
 -- ── x402-Zahlung verifizieren + settlen ───────────────────────────────────────
+-- Preis mit Gnadenfenster statt "jetzt" neu berechnen (siehe dynamic_usdc_price-
+-- Kommentar oben): der Betrag wurde vom Käufer bereits VOR dem Signieren in der
+-- Wallet gequotet — bis der signierte Header hier ankommt, ist der (monoton
+-- nicht-fallende) Preis sonst schon minimal weitergewachsen, und ein exakt
+-- passender, echter Zahlungsbetrag würde fälschlich als "zu niedrig" abgelehnt.
+local GRACE_SECONDS = 300
+local verify_price_usdc = tonumber(amort.price_usdc)
+if amort.dynamic_pricing == true then
+  verify_price_usdc = dynamic_usdc_price(soul_id, verify_price_usdc, ngx.time() - GRACE_SECONDS)
+end
+
 local httpc = http.new()
 httpc:set_timeout(20000)
 
 local verify_body = cjson.encode({
   payment_header        = x402_payment_header,
   expected_to           = wallet,
-  expected_amount_usdc  = string.format("%.6f", price_usdc),
+  expected_amount_usdc  = string.format("%.6f", verify_price_usdc),
 })
 
 local res, err = httpc:request_uri("http://127.0.0.1:3098/internal/verify-x402", {
