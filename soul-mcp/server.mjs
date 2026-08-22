@@ -3860,6 +3860,10 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       price,
       currency,
       invoice_number: invoiceNumber,
+      // Für Clients, die x402 nicht selbst signieren können: Link zur
+      // Browser-Käufer-Seite (/pay), die stattdessen die EIGENE Wallet des
+      // Menschen nutzt — kein Wallet/Dienst des Node-Betreibers involviert.
+      human_pay_url: `${BASE_URL}/pay?soul_id=${soul_id}&reference_id=${terms_token}`,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

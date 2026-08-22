@@ -2028,6 +2028,20 @@ server {
     try_files /accept-transfer/index.html /index.html;
   }
 
+  ################################
+  # Pay: öffentliche Käufer-Seite für x402-Zahlungen — verbindet die EIGENE
+  # Wallet des Käufers (window.ethereum, kein WalletConnect/Reown), signiert
+  # und zahlt direkt gegen /api/soul/pay/x402. Kein Gate-Check, Käufer hat
+  # keine Session auf diesem Node, exakt wie bei /accept-transfer begründet.
+  ################################
+  location = /pay {
+    root /var/www/{{DOMAIN}};
+    add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+    try_files /pay/index.html /index.html;
+  }
+
   # ── EU-CONSENT:START (stripped by init.sh when EU_CONSUMER_RIGHTS=false) ────
   ################################
   # Kaufbedingungen (/agb): öffentlich, kein Gate-Check — verlinkt aus

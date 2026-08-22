@@ -55,6 +55,13 @@ end
 
 local soul_id = incoming.soul_id
 
+-- reference_id ist immer ein optionales Feld (Notiz zur Zuordnung des Tokens).
+-- Hier schon geparst statt erst im Settlement-Zweig, damit sie in den
+-- 402-Herausforderung (kein Zahlungsnachweis) für human_pay_url unten
+-- verfügbar ist — der Browser-Käufer-Flow (/pay) braucht sie schon dort.
+local reference_id = type(incoming.reference_id) == "string" and incoming.reference_id:match("^%s*(.-)%s*$") or nil
+if reference_id == "" then reference_id = nil end
+
 -- Realer x402-Header, nicht nur ein JSON-Body-Feld: Standard-Clients (z.B.
 -- @x402/fetch, polygon-agent x402-pay) schicken den Zahlungsnachweis als
 -- HTTP-Request-Header PAYMENT-SIGNATURE (v2) bzw. X-PAYMENT (v1), genau
@@ -199,9 +206,15 @@ local net = X402_NETWORKS[os.getenv("POLYGON_NETWORK") or ""] or X402_NETWORKS.m
 -- ── Kein Zahlungsnachweis: echter x402-402-Handshake ─────────────────────────
 if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
   local amount_atomic = tostring(math.floor(price_usdc * 1e6 + 0.5))
+  -- human_pay_url: Link zur Browser-Käufer-Seite (/pay) für Agenten, die x402
+  -- nicht selbst signieren können — der Mensch bezahlt dort mit seiner eigenen
+  -- Wallet. Additiv, unbekannte Felder ignoriert jeder spec-treue x402-Client.
+  local origin = ngx.var.scheme .. "://" .. ngx.var.host
+  local human_pay_url = origin .. "/pay?soul_id=" .. soul_id
+    .. (reference_id and ("&reference_id=" .. reference_id) or "")
   local payment_required = {
     x402Version = 2,
-    resource    = { url = ngx.var.scheme .. "://" .. ngx.var.host .. "/api/soul/pay/x402" },
+    resource    = { url = origin .. "/api/soul/pay/x402" },
     accepts     = {{
       scheme            = "exact",
       network           = net.chain,
@@ -211,6 +224,7 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
       maxTimeoutSeconds = 60,
       extra             = { name = net.eip712_name, version = net.eip712_version },
     }},
+    human_pay_url = human_pay_url,
   }
   ngx.status = 402
   ngx.header["PAYMENT-REQUIRED"] = ngx.encode_base64(cjson.encode(payment_required))
@@ -218,13 +232,10 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
     error   = "payment_required",
     message = "USDC payment required (x402). See the PAYMENT-REQUIRED header or amount/payTo/asset/network below.",
     accepts = payment_required.accepts,
+    human_pay_url = human_pay_url,
   }))
   return
 end
-
--- reference_id ist immer ein optionales Feld (Notiz zur Zuordnung des Tokens).
-local reference_id = type(incoming.reference_id) == "string" and incoming.reference_id:match("^%s*(.-)%s*$") or nil
-if reference_id == "" then reference_id = nil end
 
 -- ── EU-Widerrufsrecht: Referenz-ID technisch erzwingen (gleicher Schutz wie
 -- beim POL-Weg — bewusst dupliziert, siehe Datei-Kopfkommentar). ─────────────

@@ -206,6 +206,10 @@ local response = {
   buyers_30d        = buyers_30d,
   pay_endpoint      = base_url .. "/api/soul/pay/x402",
   price_endpoint    = base_url .. "/api/soul/price",
+  -- Link zur Browser-Käufer-Seite (/pay) für Agenten, die x402 nicht selbst
+  -- signieren können — kein reference_id hier, Preview läuft vor jedem
+  -- möglichen Consent-Schritt.
+  human_pay_url     = base_url .. "/pay?soul_id=" .. soul_id,
 }
 
 -- Wallet-Adresse: bei aktivem EU_CONSUMER_RIGHTS bewusst NICHT vorab nennen (siehe

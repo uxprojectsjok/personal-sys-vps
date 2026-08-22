@@ -228,6 +228,7 @@ export function register(server, soulId) {
         const waiverUrl         = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.pdf`;
         const waiverUrlTxt      = `${BASE_URL}/api/vault/consent/${soulId}/${terms_token}/verzichtserklaerung.txt`;
 
+        const humanPayUrl = `${BASE_URL}/pay?soul_id=${soulId}&reference_id=${terms_token}`;
         const paymentLines = [
           `x402/Polygon: ${price} ${currency} an ${wallet}`,
           `WICHTIG: Diese Referenz-ID MUSS als reference_id im x402_payment_header-Aufruf`,
@@ -235,6 +236,14 @@ export function register(server, soulId) {
           `Zahlung nicht zuordnen und lehnt sie ab.`,
           'Der Zugang wird nach Bestätigung der Zahlung durch den x402-Facilitator',
           'automatisch freigeschaltet (kein manuelles Prüfen nötig).',
+          '',
+          'Kann der zahlende Client x402 nicht selbst signieren (z.B. ein Chat-Agent ohne',
+          'eigenes Wallet-Signing-Tool): der Mensch kann stattdessen diesen Link öffnen und',
+          'mit seiner EIGENEN Wallet direkt im Browser bezahlen (kein Wallet/Dienst des',
+          'Node-Betreibers involviert). PFLICHT: diesen Link IMMER zeigen, sobald x402 selbst',
+          'nicht ausgeführt werden kann — nicht nur die technische Grenze erklären.',
+          `📄 [Mit eigener Wallet bezahlen](${humanPayUrl})`,
+          humanPayUrl,
         ];
 
         return {
