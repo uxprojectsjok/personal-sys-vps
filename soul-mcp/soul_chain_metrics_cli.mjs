@@ -124,12 +124,25 @@ try {
     else                                              visibilityZone = 'invisible';
   }
 
+  // history mitgeben (chronologisch, wie contract.getHistory() client-seitig) —
+  // erlaubt dem Frontend (useChainAnchor.js syncAnchorFromChain), soul_anchor_history
+  // in sys.md aus dieser bereits gemergten, verlässlichen Quelle zu reparieren statt
+  // per eth_getLogs zu scannen: publicnode.com liefert Logs nur für ca. die letzten
+  // 90-100k Blöcke (deutlich weniger als die ~10k-pro-Aufruf-Grenze vermuten lässt,
+  // die Historie insgesamt reicht bis Block 90 674 283 zurück) — für alles Ältere
+  // bleibt ein Event-Scan strukturell unmöglich, unabhängig von der Fenstergröße.
   process.stdout.write(JSON.stringify({
     ...metrics,
     last_anchor_ts:      lastEntry?.ts ?? null,
     days_since_last_anchor: daysSinceLast !== null ? Math.round(daysSinceLast * 10) / 10 : null,
     visibility_zone:     visibilityZone,
     discover_window_days: DISCOVER_WINDOW_DAYS,
+    history: history.map(e => ({
+      tx: e.tx ?? null,
+      ts: e.ts,
+      size: e.size || null,
+      ...(e.genesis ? { genesis: true } : {}),
+    })),
   }));
 } catch (err) {
   process.stdout.write(JSON.stringify({ error: err.message, anchor_count: history.length }));

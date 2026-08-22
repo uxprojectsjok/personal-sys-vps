@@ -1224,57 +1224,45 @@ export function useChainAnchor() {
       let nextAllowed = 0;
       try { nextAllowed = Number(await contract.nextAnchorAllowed(idBytes32)); } catch { /* ignore */ }
 
-      // Prüfen ob lokale soul_chain_anchor bereits aktuell ist
-      const localMatch = soulContent.value?.match(/soul_chain_anchor:\s*(\{.+\})/m);
-      if (localMatch) {
+      // Prüfen ob lokale soul_chain_anchor UND soul_anchor_history bereits aktuell
+      // sind — beide Felder unabhängig prüfen, sonst überspringt ein bereits
+      // korrekter soul_chain_anchor (z.B. nach einem früheren Teil-Fix) den Rest
+      // der Funktion, obwohl soul_anchor_history noch hinterherhinkt.
+      const localAnchorMatch = soulContent.value?.match(/soul_chain_anchor:\s*(\{.+\})/m);
+      let localAnchorCurrent = false;
+      if (localAnchorMatch) {
         try {
-          const local = JSON.parse(localMatch[1]);
-          // Lokaler Eintrag aktuell → kein Schreiben nötig, aber nextAllowed zurückgeben
-          if (local.date >= latestDate && local.tx) return { nextAllowed };
+          const local = JSON.parse(localAnchorMatch[1]);
+          localAnchorCurrent = local.date >= latestDate && !!local.tx;
         } catch { /* weiter */ }
       }
+      const localHistMatchEarly = soulContent.value?.match(/soul_anchor_history:\s*(.+)/m);
+      let localHistoryEarly = [];
+      try { localHistoryEarly = JSON.parse(localHistMatchEarly?.[1] ?? '[]'); } catch { localHistoryEarly = []; }
+      if (!Array.isArray(localHistoryEarly)) localHistoryEarly = [];
+      if (localAnchorCurrent && localHistoryEarly.length >= history.length) return { nextAllowed };
 
-      // SoulRegistry v1.1.0 deployed 2026-07-22 → Polygon Mainnet Block 90 674 283
-      const DEPLOY_BLOCK = 90_674_283;
-      // TX-Hash aus Event-Logs holen. Live gefunden (2026-08-22): ein einzelner
-      // queryFilter über den vollen Bereich seit Deploy (oder sogar über den
-      // ursprünglich hier stehenden "-1_200_000 Blöcke ≈ 7 Tage"-Fallback)
-      // schlägt an diesem RPC-Endpoint IMMER fehl — polygon-bor-rpc.publicnode.com
-      // begrenzt eth_getLogs auf max. 10 000 Blöcke pro Aufruf (-32701 "exceed
-      // maximum block range: 10000"). Beide bisherigen Varianten überschritten
-      // das massiv, der äußere try/catch schluckte den Fehler dann still — der
-      // eigentliche Zweck dieser Funktion (fehlenden tx-Hash nachträglich aus
-      // der Chain holen) griff dadurch faktisch NIE, jeder betroffene Anker
-      // landete dauerhaft mit tx:"" in sys.md. Fix: rückwärts in 10 000er-
-      // Fenstern vom aktuellen Block scannen, sobald ein Treffer gefunden ist
-      // abbrechen — im Normalfall (Anker ist Stunden/Tage alt) nur 1-2 Aufrufe,
-      // im Worst Case bis zu 20 Fenster (~200k Blöcke, mehr als die ursprünglich
-      // gemeinte Woche).
-      let txHash = null;
+      // TX-Hash NICHT per eth_getLogs client-seitig scannen (früherer Ansatz).
+      // Live gefunden (2026-08-22): polygon-bor-rpc.publicnode.com liefert Logs
+      // nur für ungefähr die letzten 90-100k Blöcke zurück, unabhängig von der
+      // 10k-Blöcke-pro-Aufruf-Grenze — auch gechunkt bleibt der Rest der Historie
+      // (bis Deploy-Block 90 674 283) strukturell unerreichbar. Stattdessen die
+      // bereits gemergte, verlässliche Quelle nutzen: soul_chain_metrics_cli.mjs
+      // kennt echte TX-Hashes aus anchor_history.json (dort live beim Anchor-Klick
+      // geschrieben, nie aus Logs rekonstruiert) und liefert sie per soul_id ohne
+      // Auth über /api/soul/chain-metrics mit — chronologisch sortiert, exakt wie
+      // contract.getHistory() hier, also 1:1 per Index zippbar.
+      let serverHistory = [];
       try {
-        const filter = contract.filters.Anchored(idBytes32);
-        const currentBlock = await provider.getBlockNumber();
-        const WINDOW = 10_000;
-        const MAX_WINDOWS = 20;
-        let toBlock = currentBlock;
-        for (let i = 0; i < MAX_WINDOWS && toBlock >= DEPLOY_BLOCK; i++) {
-          const fromBlock = Math.max(DEPLOY_BLOCK, toBlock - WINDOW + 1);
-          let events = [];
-          try {
-            events = await contract.queryFilter(filter, fromBlock, toBlock);
-          } catch { /* dieses Fenster nicht abfragbar — weiter zum nächsten */ }
-          if (events.length) {
-            // Event mit passendem contentHash finden (neuester zuerst)
-            const match = [...events].reverse().find(
-              (e) => e.args?.contentHash === latest.contentHash,
-            );
-            txHash = (match ?? events[events.length - 1])?.transactionHash ?? null;
-            break;
-          }
-          if (fromBlock === DEPLOY_BLOCK) break;
-          toBlock = fromBlock - 1;
+        const res = await fetch(`/api/soul/chain-metrics?soul_id=${encodeURIComponent(soulMeta.value.id)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.history)) serverHistory = data.history;
         }
-      } catch { /* TX-Hash nicht ermittelbar – weiter ohne */ }
+      } catch { /* Server nicht erreichbar – weiter ohne */ }
+
+      const latestServer = serverHistory[serverHistory.length - 1];
+      const txHash = (serverHistory.length === history.length && latestServer?.tx) || null;
 
       const anchor = JSON.stringify({
         tx:       txHash ?? "",
@@ -1299,6 +1287,29 @@ export function useChainAnchor() {
           anchor,
         );
       }
+
+      // soul_anchor_history rekonstruieren, falls sie hinter der On-Chain-Historie
+      // zurückliegt (derselbe "Mobile-Bug" wie bei soul_chain_anchor betrifft auch
+      // dieses Feld — es wird sonst NIRGENDS außerhalb des primären Anker-Klicks
+      // aktualisiert). Nur ersetzen wenn die Serverliste dieselbe Länge wie die
+      // On-Chain-Historie hat (sonst lieber unverändert lassen als mit einer
+      // möglicherweise unvollständigen Serverantwort überschreiben).
+      const histMatch = soulContent.value.match(/soul_anchor_history:\s*(.+)/m);
+      let localHistory = [];
+      try { localHistory = JSON.parse(histMatch?.[1] ?? '[]'); } catch { localHistory = []; }
+      if (!Array.isArray(localHistory)) localHistory = [];
+      if (localHistory.length < history.length && serverHistory.length === history.length) {
+        const histJson = JSON.stringify(serverHistory);
+        if (/soul_anchor_history:/m.test(soulContent.value)) {
+          soulContent.value = soulContent.value.replace(
+            /soul_anchor_history:\s*.+/m,
+            `soul_anchor_history: ${histJson}`,
+          );
+        } else {
+          soulContent.value = updateFrontmatterField(soulContent.value, 'soul_anchor_history', histJson);
+        }
+      }
+
       save();
       return { date: latestDate, sessions: Number(latest.sessionCount), txHash, nextAllowed };
     } catch {
