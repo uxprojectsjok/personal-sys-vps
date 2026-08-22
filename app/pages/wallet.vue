@@ -86,6 +86,15 @@
 
             <!-- Aktionen -->
             <div v-if="x402Configured" class="wa-field">
+              <input
+                v-model="x402ReferenceId"
+                type="text"
+                class="sys-input sys-input--mono"
+                style="margin-bottom:10px"
+                :placeholder="$t('settings.x402_reference_id_placeholder')"
+                autocomplete="off"
+                spellcheck="false"
+              />
               <div class="wa-actions-row">
                 <button class="wa-btn-ghost" :disabled="x402BalancesBusy" @click="x402GetBalances">
                   {{ x402BalancesBusy ? $t('settings.agent_running') : $t('settings.x402_balances_btn') }}
@@ -95,6 +104,7 @@
                 </button>
               </div>
               <p class="wa-hint">{{ $t('settings.x402_test_pay_hint') }}</p>
+              <p class="wa-hint">{{ $t('settings.x402_reference_id_hint') }}</p>
 
               <div v-if="x402PayResult" class="sm-infoblock" style="margin-top:8px">
                 <pre style="white-space:pre-wrap;word-break:break-all;margin:0;font-family:var(--mono);font-size:13px">{{ x402PayResult }}</pre>
@@ -188,6 +198,7 @@ const x402BalancesBusy = ref(false)
 const x402PayBusy      = ref(false)
 const x402PayResult    = ref('')
 const x402Feedback     = ref(null)
+const x402ReferenceId  = ref('')
 
 function formatAmount(amountStr) {
   const n = Number(amountStr)
@@ -266,13 +277,14 @@ async function x402SendTestPayment() {
   x402Feedback.value  = null
   try {
     const soul_id = soulToken.value?.split('.')?.[0]
+    const referenceId = x402ReferenceId.value.trim()
     const r = await fetch('/api/x402/agent/pay', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body: JSON.stringify({
         url: `${window.location.origin}/api/soul/pay/x402`,
         method: 'POST',
-        body: { soul_id },
+        body: referenceId ? { soul_id, reference_id: referenceId } : { soul_id },
       }),
     })
     const d = await r.json().catch(() => ({}))

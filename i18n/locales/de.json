@@ -759,6 +759,8 @@
     "x402_balances_btn": "Guthaben anzeigen",
     "x402_test_pay_btn": "Test-Zahlung senden",
     "x402_test_pay_hint": "Zahlt echt gegen den eigenen x402-Endpunkt dieser Soul — nutzt das oben angezeigte Guthaben.",
+    "x402_reference_id_placeholder": "reference_id (optional) — terms_token aus show_withdrawal_terms",
+    "x402_reference_id_hint": "Nur nötig wenn EU-Widerrufsrecht aktiv ist: terms_token aus einem vorherigen show_withdrawal_terms + accept_digital_content_terms für diese Soul. Leer lassen, wenn nicht aktiv.",
     "agent_cron_title": "Wartungs-Agent",
     "agent_cron_desc": "Claude Code läuft auf diesem Server nach Zeitplan und arbeitet Aufgaben aus der Queue ab. Kein SSH nötig — Aufgaben im Chat aufschreiben, der Agent erledigt sie.",
     "agent_master_switch_hint": "Der Autonomous Agent ist node-weit deaktiviert. Auch wenn du ihn unten für dich aktivierst, läuft er erst, wenn der Schalter oben ebenfalls an ist.",
