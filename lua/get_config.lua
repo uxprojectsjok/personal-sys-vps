@@ -62,6 +62,11 @@ if has_reown then
 end
 
 local has_anchor_paypal_target = type(soul_cfg.anchor_paypal_target) == "string" and soul_cfg.anchor_paypal_target ~= ""
+local anchor_paypal_target_preview = ""
+if has_anchor_paypal_target then
+  local t = soul_cfg.anchor_paypal_target
+  anchor_paypal_target_preview = (#t > 28) and (t:sub(1, 28) .. "…") or t
+end
 
 -- ── Aktiver Key-Status (welche Ebene wird genutzt?) ───────────────────────────
 local key_source = "env"
@@ -122,6 +127,6 @@ ngx.say(cjson.encode({
   reown_project_id_set   = has_reown,
   reown_preview          = reown_preview,
   reown_project_id       = has_reown and soul_cfg.reown_project_id or cjson.null,
-  anchor_paypal_target_set = has_anchor_paypal_target,
-  anchor_paypal_target     = has_anchor_paypal_target and soul_cfg.anchor_paypal_target or cjson.null,
+  anchor_paypal_target_set     = has_anchor_paypal_target,
+  anchor_paypal_target_preview = anchor_paypal_target_preview,
 }))

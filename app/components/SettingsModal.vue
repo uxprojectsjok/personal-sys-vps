@@ -171,25 +171,25 @@
                 </div>
               </div>
 
-              <!-- Identity-Chain-Anker: PayPal-Selbstzahlungsziel (Klartext, kein eye) -->
+              <!-- Identity-Chain-Anker: PayPal-Selbstzahlungsziel (maskiert wie Pinata/Zapier) -->
               <div class="sys-field" style="gap:12px;margin-bottom:24px">
-                <label class="sys-field-label">
-                  {{ $t('settings.anchor_paypal_target_label') }}
-                  <span v-if="anchorPaypalTargetSet" class="sm-key-ok">{{ $t('settings.agent_saved') }}</span>
-                </label>
+                <label class="sys-field-label">{{ $t('settings.anchor_paypal_target_label') }}</label>
                 <p class="sm-desc" style="margin-bottom:4px">{{ $t('settings.anchor_paypal_target_hint') }}</p>
-                <input
-                  v-model="anchorPaypalTarget"
-                  type="text"
-                  class="sys-input"
-                  :style="anchorPaypalTargetSet ? 'border-color:var(--sys-ok)' : ''"
-                  :placeholder="anchorPaypalTargetSet ? $t('settings.anchor_paypal_target_placeholder_set') : $t('settings.anchor_paypal_target_placeholder_empty')"
-                  autocomplete="off"
-                  spellcheck="false"
-                  @keyup.enter="saveAnchorPaypalTarget"
-                />
-                <div v-if="anchorPaypalTarget || anchorPaypalTargetSet" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <button v-if="anchorPaypalTarget" @click="saveAnchorPaypalTarget" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn">{{ $t('common.save') }}</button>
+                <div style="display:flex;gap:0">
+                  <input
+                    v-model="anchorPaypalTarget"
+                    type="password"
+                    class="sys-input"
+                    style="flex:1;border-radius:var(--r-xs)"
+                    :style="anchorPaypalTargetSet ? 'border-color:var(--sys-ok)' : ''"
+                    :placeholder="anchorPaypalTargetSet ? $t('common.overwrite_placeholder') : $t('settings.anchor_paypal_target_placeholder_empty')"
+                    autocomplete="off"
+                    spellcheck="false"
+                    @keyup.enter="saveAnchorPaypalTarget"
+                  />
+                </div>
+                <div v-if="anchorPaypalTargetSet || anchorPaypalTargetFeedback" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span v-if="anchorPaypalTargetSet" class="sm-key-ok">{{ anchorPaypalTargetPreview }}</span>
                   <button v-if="anchorPaypalTargetSet" @click="deleteAnchorPaypalTarget" class="sys-btn-ed sys-btn-ed--ghost sm-test-btn" style="color:var(--sys-err)">{{ $t('settings.delete') }}</button>
                   <span v-if="anchorPaypalTargetFeedback" class="sm-feedback"
                     :style="anchorPaypalTargetFeedback.ok ? 'color:var(--sys-ok)' : 'color:var(--sys-err)'">
@@ -1028,6 +1028,7 @@ const mcpDirty   = ref(false)
 
 const anchorPaypalTarget         = ref('')
 const anchorPaypalTargetSet      = ref(false)
+const anchorPaypalTargetPreview  = ref('')
 const anchorPaypalTargetFeedback = ref(null)
 
 
@@ -1070,8 +1071,8 @@ async function loadStatus() {
     mcpPreview.value = d.mcp_preview || ''
     reownSet.value     = !!d.reown_project_id_set
     reownPreview.value = d.reown_preview || ''
-    anchorPaypalTargetSet.value = !!d.anchor_paypal_target_set
-    anchorPaypalTarget.value    = d.anchor_paypal_target || ''
+    anchorPaypalTargetSet.value     = !!d.anchor_paypal_target_set
+    anchorPaypalTargetPreview.value = d.anchor_paypal_target_preview || ''
 
     if (d.model) model.value = d.model
   } catch {}
@@ -1391,6 +1392,7 @@ async function deleteAgentUrl() {
 }
 
 async function saveAnchorPaypalTarget() {
+  if (!anchorPaypalTarget.value.trim()) return
   anchorPaypalTargetFeedback.value = null
   try {
     const res = await fetch('/api/set-config', {
@@ -1400,8 +1402,10 @@ async function saveAnchorPaypalTarget() {
     })
     const d = await res.json().catch(() => ({}))
     if (res.ok) {
-      anchorPaypalTargetSet.value = !!anchorPaypalTarget.value.trim()
+      anchorPaypalTarget.value = ''
       anchorPaypalTargetFeedback.value = { ok: true, message: 'Gespeichert ✓' }
+      anchorPaypalTargetSet.value = true
+      await loadStatus()
     } else {
       anchorPaypalTargetFeedback.value = { ok: false, message: d.message || d.error || `Fehler ${res.status}` }
     }
@@ -1418,8 +1422,9 @@ async function deleteAnchorPaypalTarget() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
       body: JSON.stringify({ anchor_paypal_target: '' }),
     })
-    anchorPaypalTarget.value    = ''
-    anchorPaypalTargetSet.value = false
+    anchorPaypalTarget.value        = ''
+    anchorPaypalTargetSet.value     = false
+    anchorPaypalTargetPreview.value = ''
   } catch {}
 }
 
