@@ -225,6 +225,7 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
       extra             = { name = net.eip712_name, version = net.eip712_version },
     }},
     human_pay_url = human_pay_url,
+    human_pay_note = "If you (the calling agent) cannot sign this x402 payment yourself, send this exact URL to the human you're assisting — they can pay it with their own wallet directly in their browser, no signing capability needed on your end.",
   }
   ngx.status = 402
   ngx.header["PAYMENT-REQUIRED"] = ngx.encode_base64(cjson.encode(payment_required))
@@ -233,6 +234,7 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
     message = "USDC payment required (x402). See the PAYMENT-REQUIRED header or amount/payTo/asset/network below.",
     accepts = payment_required.accepts,
     human_pay_url = human_pay_url,
+    human_pay_note = "If you (the calling agent) cannot sign this x402 payment yourself, send this exact URL to the human you're assisting — they can pay it with their own wallet directly in their browser, no signing capability needed on your end.",
   }))
   return
 end

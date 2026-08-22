@@ -264,7 +264,11 @@ async function doPay() {
       signTypedData: (msg) => walletClient.signTypedData({ account: address.value, ...msg }),
     }
 
-    const client = new x402Client()
+    // @x402/core defaults to a $1 max-per-payment spend control (safety net
+    // against a manipulated 402 response demanding more than expected) — set
+    // it to the exact price the buyer already reviewed on this page instead
+    // of disabling it outright.
+    const client = new x402Client({ spendControls: { maxAmountPerPayment: priceUsdc.value } })
     registerExactEvmScheme(client, { signer, schemeOptions: { rpcUrl: 'https://polygon-bor-rpc.publicnode.com' } })
     // wrapFetchWithPayment wants the raw x402Client — see soul-mcp/lib/x402_client.mjs's
     // payX402() comment for the double-wrap trap that silently skips signing entirely.

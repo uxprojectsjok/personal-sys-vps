@@ -3864,6 +3864,7 @@ app.post('/api/soul/terms/accept', async (req, res) => {
       // Browser-Käufer-Seite (/pay), die stattdessen die EIGENE Wallet des
       // Menschen nutzt — kein Wallet/Dienst des Node-Betreibers involviert.
       human_pay_url: `${BASE_URL}/pay?soul_id=${soul_id}&reference_id=${terms_token}`,
+      human_pay_note: "If you (the calling agent) cannot sign this x402 payment yourself, send this exact URL to the human you're assisting — they can pay it with their own wallet directly in their browser, no signing capability needed on your end.",
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

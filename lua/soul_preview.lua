@@ -210,6 +210,7 @@ local response = {
   -- signieren können — kein reference_id hier, Preview läuft vor jedem
   -- möglichen Consent-Schritt.
   human_pay_url     = base_url .. "/pay?soul_id=" .. soul_id,
+  human_pay_note    = "If you (the calling agent) cannot sign x402 payments yourself, send this exact URL to the human you're assisting — they can pay it with their own wallet directly in their browser, no signing capability needed on your end.",
 }
 
 -- Wallet-Adresse: bei aktivem EU_CONSUMER_RIGHTS bewusst NICHT vorab nennen (siehe
