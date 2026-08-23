@@ -8,6 +8,16 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.5.0] — 2026-08-23
+
+**Added: biometric passkey unlock on Multi-Hoster nodes.** Previously disabled entirely ("unreliable with multiple souls sharing one RP_ID"), even though credential storage was already scoped per `soul_id`. `useSoulPasskey.js` gains `getKnownSoulIds()`/`soulIdForCredential()` to resolve which soul a picked passkey actually belongs to. Android Chrome doesn't show its own picker for multiple `allowCredentials` on one RP — it silently authenticates with whichever one it prefers — so `gate.vue` now shows an explicit soul-picker dropdown before the passkey request is made, rather than relying on OS disambiguation.
+
+**Fixed** (found via live testing while building the above)
+- `gate.vue`: the `invalid_credentials` error code (stale saved password) from `gate_auth.lua` wasn't handled, only `invalid_cert` — a stale saved password surfaced as a generic connection error instead of prompting re-login.
+- `gate.vue`: a temporal-dead-zone bug where a new function parameter named `soulId` shadowed an existing `const soulId` declared later in the same block.
+
+**Migration required:** none — frontend-only change (`app/composables/useSavedCreds.js`, `app/composables/useSoulPasskey.js`, `app/pages/gate.vue`), picked up on next `npm run generate` + redeploy.
+
 ## [1.4.2] — 2026-08-10
 
 **Fixed: soul-mcp crash-looped continuously after pulling v1.4.0 — two independent bugs stacked into a full outage, found live on `fab.uxprojects-jok.com`.**
