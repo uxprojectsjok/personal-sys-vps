@@ -8,7 +8,11 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
-## [1.5.1] — 2026-08-23
+## [1.6.0] — 2026-08-23
+
+**Added: Earnings table entries are now deletable.** The Earnings TX table (`app/pages/earnings.vue`) had no way to remove individual rows. New `lua/soul_earnings_delete.lua` (`DELETE /api/soul/earnings/{tx_hash}`, `vault_auth.lua`/soul_cert protected) removes an entry by `tx_hash` from whichever of `usdc_earnings.json`/`earnings.json` holds it and recomputes the totals — searches both files since the client doesn't need to know which one an entry actually lives in. Deleting only removes the local record; the on-chain transaction itself is unaffected (surfaced in the confirm-dialog copy). Trader history got the same treatment but stays private-repo-only, along with the rest of the Trader feature.
+
+**Migration required:** none — `git pull`/tag update alone doesn't reach this: the new route needs `lua/soul_earnings_delete.lua` deployed to `/etc/openresty/lua/` **and** the vhost regenerated from `server/openresty/vhost.conf.template` (new `location` block) before it's reachable. Use `update.sh`, which handles both, rather than a manual `cp lua/*.lua` alone.
 
 **Added: admin script to reset the gate password manually via SSH.** For lockout recovery when the normal in-app path (logged in, `/settings` → `POST /api/gate-password`) isn't usable. Deliberately not a new HTTP endpoint — SSH-only, root-required. `scripts/reset-gate-password.sh` mirrors `gate_set_password.lua`'s exact hash (HMAC-SHA256 of the master key with the `sys_` prefix stripped) via `resty`, resolves the domain-specific `master.json` (which takes priority over the global fallback), and does a full `systemctl restart` rather than a reload, since `master.json` is cached in a `lua_shared_dict` that a reload alone doesn't clear.
 
