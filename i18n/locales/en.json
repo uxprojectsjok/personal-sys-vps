@@ -1448,6 +1448,12 @@
     "col_balance_before": "Balance before",
     "col_balance_after": "Balance after",
     "col_interest_accrued": "Interest accrued (at that point)",
+    "col_delete": "",
+    "delete_aria": "Delete action",
+    "delete_title": "Delete action",
+    "delete_msg": "Really delete this entry from the history? Only the local record disappears — the on-chain transaction itself is unaffected.",
+    "delete_confirm": "Delete",
+    "delete_failed": "Delete failed.",
     "export_title": "CSV Export",
     "export_sub": "All Yield actions, in full, for tax purposes.",
     "btn_export_csv": "Export CSV"

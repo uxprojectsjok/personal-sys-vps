@@ -54,6 +54,19 @@ export async function appendAction(soulId, entry) {
   return record;
 }
 
+/**
+ * Entfernt einen einzelnen Eintrag anhand seiner id (siehe appendAction) —
+ * Nutzer-initiiertes Löschen aus der "Letzte Aktionen"-Tabelle (trader.vue).
+ * @returns {Promise<boolean>} true wenn ein Eintrag entfernt wurde, sonst false.
+ */
+export async function deleteAction(soulId, id) {
+  const history = await getHistory(soulId);
+  const next = history.filter(a => a.id !== id);
+  if (next.length === history.length) return false;
+  await writeFile(historyPath(soulId), JSON.stringify(next), 'utf8');
+  return true;
+}
+
 /** Netto-Einzahlung (Summe aller signierten `principal`-Werte) für ein
  * Symbol — nur erfolgreiche Einträge zählen. Rundungsreste/negative Werte
  * (z.B. durch mehrere Teilabhebungen) bleiben roh, Aufrufer entscheidet

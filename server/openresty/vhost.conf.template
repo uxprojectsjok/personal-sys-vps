@@ -1951,6 +1951,15 @@ server {
     content_by_lua_file /etc/openresty/lua/trader_history.lua;
   }
 
+  # ── Trader History — einzelne Aktion löschen (soul_cert) ──────────────────────
+  location ~ ^/api/trader/history/[^/]+$ {
+    limit_except DELETE { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_history_delete.lua;
+  }
+
   location = /api/trader/safety {
     limit_except GET OPTIONS { deny all; }
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;

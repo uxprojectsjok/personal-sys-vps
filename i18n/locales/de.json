@@ -1448,6 +1448,12 @@
     "col_balance_before": "Balance vorher",
     "col_balance_after": "Balance nachher",
     "col_interest_accrued": "Zinsen kumuliert (zu diesem Zeitpunkt)",
+    "col_delete": "",
+    "delete_aria": "Aktion löschen",
+    "delete_title": "Aktion löschen",
+    "delete_msg": "Diesen Eintrag wirklich aus der Historie löschen? Nur der lokale Eintrag verschwindet — die On-Chain-Transaktion selbst bleibt unverändert bestehen.",
+    "delete_confirm": "Löschen",
+    "delete_failed": "Löschen fehlgeschlagen.",
     "export_title": "CSV-Export",
     "export_sub": "Alle Yield-Aktionen, vollständig, für die Steuererklärung.",
     "btn_export_csv": "CSV exportieren"

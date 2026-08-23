@@ -70,7 +70,7 @@ import {
 } from './lib/x402_agent_wallet.mjs';
 import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
-import { getHistory as getTraderHistory, appendAction as appendTraderAction, getNetPrincipal as getTraderNetPrincipal } from './lib/trader_history.mjs';
+import { getHistory as getTraderHistory, appendAction as appendTraderAction, deleteAction as deleteTraderAction, getNetPrincipal as getTraderNetPrincipal } from './lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
@@ -2971,6 +2971,24 @@ app.get('/internal/trader/history', async (req, res) => {
   try {
     const history = await getTraderHistory(soulId);
     res.json({ ok: true, history });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// soul_id kommt vom Lua-Proxy aus ngx.ctx.soul_id (authentifizierte Identität
+// des Aufrufers), nie vom Client selbst -- deleteAction() kann dadurch nie
+// über die eigene Historie hinaus löschen, auch ohne zusätzlichen Check hier.
+app.delete('/internal/trader/history/:id', async (req, res) => {
+  const soulId = req.query.soul_id;
+  const { id } = req.params;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const deleted = await deleteTraderAction(soulId, id);
+    if (!deleted) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

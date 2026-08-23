@@ -142,6 +142,7 @@
                     <span>{{ $t('trader.col_amount') }}</span>
                     <span>{{ $t('trader.col_value') }}</span>
                     <span>{{ $t('trader.col_status') }}</span>
+                    <span>{{ $t('trader.col_delete') }}</span>
                   </div>
                   <div v-for="a in actions" :key="a.id" class="tr-table-row">
                     <span>{{ a.action }}</span>
@@ -149,6 +150,9 @@
                     <span>{{ a.amount }}</span>
                     <span class="tr-table-value">{{ a.eur }}&nbsp;€</span>
                     <span class="tr-status-ok">{{ a.status }}</span>
+                    <button class="tr-act-del" :disabled="deletingId === a.id" @click="deleteAction(a)" :title="$t('trader.delete_aria')" :aria-label="$t('trader.delete_aria')">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -169,6 +173,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <ConfirmModal />
     </div>
     <SysPageLoading v-else />
   </ClientOnly>
@@ -180,9 +185,12 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useNodeStatus } from '~/composables/useNodeStatus.js'
+import { useConfirm } from '~/composables/useConfirm.js'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 const { t } = useI18n()
+const { ask: confirmAsk } = useConfirm()
 // Aave V3 Pool auf Polygon — live gegen den echten Vertrag verifiziert,
 // siehe soul-mcp/lib/aave_client.mjs. Hier verlinkt, damit man den Vertrag
 // selbst auf Polygonscan gegenchecken kann statt uns blind zu vertrauen.
@@ -394,6 +402,28 @@ async function loadHistory() {
   } catch { /* silent */ }
 }
 
+const deletingId = ref(null)
+
+async function deleteAction(a) {
+  const ok = await confirmAsk({
+    title:       t('trader.delete_title'),
+    message:     t('trader.delete_msg'),
+    confirmText: t('trader.delete_confirm'),
+    cancelText:  t('common.cancel'),
+    danger:      true,
+  })
+  if (!ok) return
+  deletingId.value = a.id
+  try {
+    const r = await fetch(`/api/trader/history/${a.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    if (r.ok) actions.value = actions.value.filter(x => x.id !== a.id)
+  } catch { /* silent, wie der Rest dieser Seite */ }
+  finally { deletingId.value = null }
+}
+
 function formatDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -554,12 +584,15 @@ function exportCSV() {
 /* ── Tabelle (Letzte Aktionen), Muster analog earnings.vue ── */
 .tr-table-wrap { overflow-x: auto; }
 .tr-table { border: 1px solid var(--tr-line); border-radius: var(--r-xs); overflow: hidden; min-width: 640px; }
-.tr-table-head, .tr-table-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; padding: 10px 14px; }
+.tr-table-head, .tr-table-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 32px; align-items: center; gap: 12px; padding: 10px 14px; }
 .tr-table-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg); background: rgba(236,236,236,0.04); border-bottom: 1px solid var(--tr-line); }
 .tr-table-row { font-size: 13px; color: var(--fg); border-bottom: 1px solid var(--tr-line); }
 .tr-table-row:last-child { border-bottom: none; }
 .tr-table-value { color: var(--fg); }
 .tr-status-ok { color: var(--accent); }
+.tr-act-del { background: none; border: none; padding: 4px; display: grid; place-items: center; color: var(--fg); opacity: 0.5; cursor: pointer; border-radius: var(--r-xs); transition: opacity .15s, color .15s, background .15s; }
+.tr-act-del:hover { opacity: 1; color: var(--sys-err, #E06C75); background: rgba(224,108,117,0.08); }
+.tr-act-del:disabled { opacity: 0.25; cursor: not-allowed; }
 
 .tr-empty { padding: 24px; border: 1px solid var(--tr-line); border-radius: var(--r-xs); font-size: 15px; color: var(--fg); text-align: center; }
 
@@ -569,7 +602,7 @@ function exportCSV() {
 .tr-export-sub { font-size: 13px; color: var(--fg); }
 
 @media (max-width: 640px) {
-  .tr-table-head, .tr-table-row { grid-template-columns: 1.5fr 1fr 1fr; }
+  .tr-table-head, .tr-table-row { grid-template-columns: 1.5fr 1fr 1fr 28px; }
   .tr-table-head span:nth-child(3), .tr-table-head span:nth-child(4),
   .tr-table-row span:nth-child(3), .tr-table-row span:nth-child(4) { display: none; }
 }
