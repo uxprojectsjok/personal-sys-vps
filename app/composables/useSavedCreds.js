@@ -78,5 +78,5 @@ export function useSavedCreds() {
     hasCreds.value = false
   }
 
-  return { hasCreds, initForSoul, saveCreds, loadCreds, updateCert, clearCreds }
+  return { hasCreds, initForSoul, saveCreds, loadCreds, updateCert, clearCreds, checkCreds }
 }

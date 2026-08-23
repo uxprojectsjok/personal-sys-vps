@@ -1,5 +1,5 @@
 <template>
-  <div class="gate" :class="{ 'is-revealed': revealed }">
+  <div class="gate">
     <!-- Blanke Landing per Default (siehe gate-reveal-trigger-Kommentar unten) —
          der Login selbst bekommt keine Aufmerksamkeit, bis er gezielt aufgerufen
          wird. Nötig, weil diese Seite von außen verlinkt sein kann und dabei
@@ -14,12 +14,15 @@
       <SysIcon name="arrow" style="width:14px;height:14px" />
     </button>
 
-    <!-- Abbrechen zurück zur blanken Landing — ohne das gäbe es, sobald einmal
-         aufgeklappt, keinen Weg mehr zurück außer Reload. -->
+    <!-- Abbrechen: bei ?login=1 (direkt über den Landing-Header erreicht) zurück
+         zur Landingpage — es gibt hier keine "blanke Gate-Landing" zu der man
+         sonst zurückkehren würde. Sonst wie bisher zurück zur blanken Landing
+         dieser Seite selbst (ohne das gäbe es, sobald einmal aufgeklappt,
+         keinen Weg mehr zurück außer Reload). -->
     <button
       v-if="revealed"
       class="gate-close-trigger"
-      @click="revealed = false"
+      @click="directLogin ? navigateTo('/') : (revealed = false)"
       :aria-label="$t('gate.close_aria')"
       :title="$t('gate.close_aria')"
     >
@@ -27,16 +30,30 @@
     </button>
 
     <div class="gate-card">
-      <SysMark size="220px" />
-
       <Transition name="gate-reveal">
         <div v-if="revealed && ready" class="gate-panel">
 
           <!-- ── Biometric unlock ── -->
           <template v-if="mode === 'biometric'">
+            <h1>{{ $t('gate.welcome_back') }}<em>.</em></h1>
             <p class="welcome">{{ isPwa ? $t('gate.biometric_prompt_pwa') : $t('gate.biometric_prompt') }}</p>
             <p v-if="error" class="gate-error">{{ error }}</p>
-            <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock">
+
+            <!-- Mehr als eine Soul mit gespeicherten Creds auf diesem Gerät: eigene
+                 Auswahl statt der nativen OS-Auswahl (auf manchen Plattformen —
+                 bestätigt Android Chrome — zeigt der Passkey-Prompt trotz mehrerer
+                 allowCredentials keine eigene Auswahl, sondern wählt still eine
+                 aus). Die Auswahl schränkt die Passkey-Anfrage direkt auf genau
+                 diese eine Soul ein. -->
+            <select
+              v-if="pickableSoulIds.length > 1"
+              v-model="chosenSoulId"
+              class="gate-select"
+              :disabled="loading"
+            >
+              <option v-for="id in pickableSoulIds" :key="id" :value="id">{{ id.slice(0, 8) }}…</option>
+            </select>
+            <button class="btn btn-primary btn-lg" :disabled="loading" @click="biometricUnlock(pickableSoulIds.length > 1 ? chosenSoulId : pickableSoulIds[0])">
               <span v-if="loading" class="gate-spinner" />
               {{ loading ? $t('gate.loading_soul') : $t('gate.unlock') }}
               <SysIcon v-if="!loading" name="arrow" style="width:18px;height:18px" />
@@ -100,7 +117,13 @@
       </Transition>
     </div>
 
-    <p class="gate-footer-notice">Private node, not public</p>
+    <div class="gate-legal-links">
+      <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
+      <span class="gate-legal-sep">·</span>
+      <NuxtLink to="/lizenz">{{ $t('lizenz.pageTitle') }}</NuxtLink>
+    </div>
   </div>
 </template>
 
@@ -121,17 +144,25 @@ const mode           = ref('form')   // 'form' | 'biometric' | 'saving'
 const nextUrl        = ref('/')
 const hasSavedCreds  = ref(false)
 const ready          = ref(false)   // true after gate-status known (prevents flicker)
-// true after the discreet top-right button is clicked — or immediately when
-// linked in from index.vue's own arrow (?login=1), which already served as
-// that first click, no need to make the visitor click twice in a row.
-const revealed       = ref(useRoute().query.login === '1')
+const pickableSoulIds = ref([])   // known souls with saved creds on this device — see biometric picker in template
+const chosenSoulId   = ref('')   // dropdown selection when pickableSoulIds.length > 1
+
+const route = useRoute()
+// ?login=1 (set by the landing header's Login link) skips the discreet reveal
+// step — that page already announced "this is the login", no point hiding it
+// again here. Anyone reaching /gate any other way still gets the default
+// blank-landing-with-reveal-trigger privacy behavior, unchanged.
+const directLogin = route.query.login === '1'
+// Blanke "revealed erst nach Klick"-Landing bewusst deaktiviert (2026-07-29,
+// Betreiber-Entscheidung für dieses Deployment) — das Formular soll direkt
+// sichtbar sein, kein versteckter Reveal-Trigger nötig.
+const revealed    = ref(true)
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 
 const lastSoulId    = ref('')   // soul_id of last login (for biometric unlock)
 const currentSoulId = ref('')   // soul_id from current submit (for saving creds)
 
-const route   = useRoute()
 const passkey = useSoulPasskey()
 const creds   = useSavedCreds()
 
@@ -185,25 +216,43 @@ onMounted(async () => {
     }
   }
 
-  // Biometric: only for confirmed single-hoster with saved creds (multi-hoster
-  // biometric unreliable) — statusKnown guards against treating an unknown
-  // status (failed /api/gate-status fetch) as "single-hoster" by accident.
-  if (statusKnown && !multiHoster.value) {
+  // Biometric: verfügbar sobald IRGENDEINE auf diesem Gerät bekannte Soul
+  // gespeicherte Creds hat — nicht mehr auf eine einzelne "letzte Soul"
+  // beschränkt, und nicht mehr pauschal für Multi-Hoster ausgeschaltet.
+  // Mehrere Souls auf demselben Gerät sind bereits pro-Soul sauber getrennt
+  // gespeichert (useSoulPasskey/useSavedCreds); biometricUnlock() lässt das
+  // Betriebssystem bei mehr als einer bekannten Soul selbst die native
+  // Auswahl zeigen, statt hier zu raten, welche gemeint ist.
+  // statusKnown guards against treating an unknown status (failed
+  // /api/gate-status fetch) as "safe to offer biometric" by accident.
+  if (statusKnown) {
     lastSoulId.value = localStorage.getItem(PWA_SOUL_KEY) || ''
-    creds.initForSoul(lastSoulId.value)
-    hasSavedCreds.value = creds.hasCreds.value
+    const knownSoulIds = passkey.getKnownSoulIds()
+    pickableSoulIds.value = knownSoulIds.filter(id => creds.checkCreds(id))
+    hasSavedCreds.value = pickableSoulIds.value.length > 0
+    chosenSoulId.value = pickableSoulIds.value[0] || ''
     if (hasSavedCreds.value && soulRegistered.value) mode.value = 'biometric'
   }
 
   ready.value = true  // all checks done, safe to render
 })
 
-async function biometricUnlock() {
+async function biometricUnlock(targetSoulId = null) {
   if (loading.value) return
   loading.value = true
   error.value   = ''
   try {
-    const prf = await passkey.authenticatePasskey(null, null, lastSoulId.value)
+    // Gezielt auf die gewählte Soul eingeschränkt statt der vollen OS-Auswahl:
+    // auf Android Chrome (bestätigt live) zeigt navigator.credentials.get()
+    // trotz mehrerer allowCredentials-Einträge KEINE eigene Auswahl an — es
+    // wählt still eines aus, ohne den Nutzer zu fragen. Die eigene Auswahl im
+    // Template (pickableSoulIds) übernimmt die Entscheidung deshalb selbst
+    // und übergibt hier direkt die gewünschte Soul.
+    // Parameter bewusst NICHT "soulId" genannt — kollidiert sonst mit dem
+    // weiter unten im selben try-Block deklarierten "const soulId" (JS hebt
+    // die Deklaration an den Blockanfang, jeder frühere Zugriff wirft "Cannot
+    // access before initialization" — live so aufgetreten).
+    const prf = await passkey.authenticatePasskey(null, null, targetSoulId)
     if (!prf) {
       // WebAuthn deliberately can't distinguish "user declined" from "no matching
       // credential exists anymore" (e.g. deleted from the OS/Google Password Manager
@@ -214,16 +263,19 @@ async function biometricUnlock() {
       // with no way to ever be re-offered passkey registration (submit() below only
       // offers it when hasCreds is false).
       error.value = passkey.passkeyError.value || t('gate.error.biometric_failed')
-      creds.clearCreds(lastSoulId.value)
+      if (targetSoulId || lastSoulId.value) creds.clearCreds(targetSoulId || lastSoulId.value)
       hasSavedCreds.value = false
       mode.value = 'form'
       return
     }
 
-    const saved = await creds.loadCreds(prf, lastSoulId.value)
+    const resolvedSoulId = targetSoulId || passkey.soulIdForCredential(passkey.lastUsedCredentialId.value) || lastSoulId.value
+    lastSoulId.value = resolvedSoulId
+
+    const saved = await creds.loadCreds(prf, resolvedSoulId)
     if (!saved) {
       error.value = t('gate.error.creds_load_failed')
-      creds.clearCreds(lastSoulId.value)
+      creds.clearCreds(resolvedSoulId)
       hasSavedCreds.value = false
       mode.value = 'form'
       return
@@ -234,6 +286,7 @@ async function biometricUnlock() {
     const gateRes = await $fetch('/api/gate-auth', { method: 'POST', body })
 
     const soulId = gateRes?.soul_id || localStorage.getItem(PWA_SOUL_KEY) || ''
+    if (soulId) localStorage.setItem(PWA_SOUL_KEY, soulId)
     if (soulId && saved.cert) {
       try {
         const bearer = `${soulId}.${saved.cert}`
@@ -253,10 +306,14 @@ async function biometricUnlock() {
 
     doRedirect()
   } catch (e) {
+    // invalid_credentials = stale saved PASSWORD (gate_auth.lua's exact error
+    // code on a password mismatch) — previously only invalid_cert was
+    // handled here, so a stale password silently fell through to the generic
+    // "connection error" message instead of clearing the stale blob.
     const err = e?.data?.error || ''
-    if (err === 'invalid_cert' || err === 'gate_not_configured' || e?.status === 401) {
+    if (err === 'invalid_cert' || err === 'invalid_credentials' || err === 'gate_not_configured' || e?.status === 401) {
       error.value = t('gate.error.cert_expired')
-      creds.clearCreds(lastSoulId.value)
+      creds.clearCreds(targetSoulId || lastSoulId.value)
       hasSavedCreds.value = false
       mode.value = 'form'
     } else {
@@ -283,16 +340,14 @@ async function submit() {
       currentSoulId.value = gateRes.soul_id
       creds.initForSoul(gateRes.soul_id)
     }
-    // Was invite_login-only: after a *returning* soul's cert login (gateRes.soul_id
-    // set, invite_login not), doRedirect()/Skip below sent the browser back to "/"
-    // with nothing to do there — index.vue only auto-opens the Login-with-Soul sheet
-    // for this exact flag, and this page's own blank splash has no other action on
-    // it, so the visitor just landed back at the logo+arrow with no way forward. The
-    // gate only proves the password/cert was valid; it never hands back sys.md itself
-    // (client-side-only by design), so *any* successful login — invite or returning —
-    // needs that sheet to actually load the soul. Set for every gateRes.ok, not just
-    // the invite branch.
-    if (gateRes?.ok) sessionStorage.setItem('sys.invite_login', '1')
+    // Set on ANY successful gate-auth, not just invite_login: a matched-cert
+    // login (existing soul, gateRes.soul_id set) lands here with the exact
+    // same problem — this browser has no local sys.md (hasSoul false), so
+    // without this flag index.vue's auto-open never triggers and the user is
+    // stuck on the bare marketing landing with no visible way to load their
+    // soul. Harmless when unneeded: index.vue only acts on it while
+    // !hasSoul.value, i.e. exactly when there's actually nothing loaded yet.
+    sessionStorage.setItem('sys.invite_login', '1')
 
     // Biometrics ist an eine soul_id gebunden (creds.initForSoul/authenticateOrRegister
     // brauchen currentSoulId) — ohne gebundene Soul (Invite-Login auf einem frischen
@@ -380,31 +435,15 @@ const showPw = ref(false)
 </script>
 
 <style scoped>
-/* Standardmäßig zentriert .gate (sys-v2.css) die Karte vertikal in voller
-   Viewport-Höhe. Sobald das Login-Panel aufklappt, wächst die Karte nach
-   unten und würde bei reiner Zentrierung das Logo weiter nach unten
-   drücken statt es an seinem Platz zu lassen — stattdessen rückt der ganze
-   Block bewusst Richtung Kopfbereich, das Logo bleibt oben statt mit dem
-   Formular mitzuwandern. */
-.gate.is-revealed {
-  align-items: start;
-  padding-top: clamp(24px, 8vh, 96px);
-  transition: padding-top .25s ease;
-}
-
-/* Fest am unteren Viewport-Rand statt im Karten-Fluss — bleibt dadurch an
-   Ort und Stelle, egal ob die Karte gerade zentriert (Default) oder oben
-   verankert ist (.is-revealed, siehe oben). */
-.gate-footer-notice {
-  position: fixed; left: 0; right: 0; bottom: clamp(20px, 5vh, 40px);
-  text-align: center; font-size: 16px; font-weight: 700;
-  letter-spacing: .04em; text-transform: uppercase;
-  color: var(--fg-2); pointer-events: none;
-}
 .gate .btn-primary { background: var(--accent); color: #fff; }
 .gate .btn-primary:hover { background: var(--accent-bright); }
 .gate h1 em { font-style: italic; color: var(--accent-bright); }
 .gate-error { font-size: 12px; color: var(--c-err, #e06c75); border-left: 2px solid currentColor; padding-left: 10px; line-height: 1.6; margin: 0 0 14px; text-align: left; }
+.gate-select {
+  width: 100%; margin-bottom: 14px; padding: 12px 14px; border-radius: 8px;
+  border: 1px solid var(--line-2, rgba(0,0,0,0.15)); background: var(--surface, #fff);
+  color: var(--fg, #111); font-size: 15px; font-family: inherit;
+}
 .gate-hint { font-size: 13px; color: var(--fg-2); line-height: 1.6; margin: 0 0 14px; }
 .gate-autofill { font-size: 12px; color: var(--accent); margin: -8px 0 12px; text-align: left; }
 .gate-link { background: none; border: none; padding: 0; font-size: 15px; color: var(--fg); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; margin-top: 12px; }
@@ -442,4 +481,25 @@ const showPw = ref(false)
 
 .gate-reveal-enter-active, .gate-reveal-leave-active { transition: opacity .25s ease, transform .25s ease; }
 .gate-reveal-enter-from, .gate-reveal-leave-to { opacity: 0; transform: translateY(6px); }
+
+.gate-legal-links {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: nowrap;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.04em;
+  z-index: 15;
+  max-width: calc(100vw - 32px); overflow-x: auto; white-space: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.gate-legal-links::-webkit-scrollbar { display: none; }
+.gate-legal-links a { color: var(--fg-3); text-decoration: none; flex: none; }
+.gate-legal-links a:hover { color: var(--fg); text-decoration: underline; }
+.gate-legal-sep { color: var(--line-2); }
+
+@media (max-width: 640px) {
+  .gate-legal-links {
+    flex-direction: column; gap: 6px; bottom: 16px;
+    max-width: calc(100vw - 32px); overflow-x: visible; white-space: normal;
+  }
+  .gate-legal-sep { display: none; }
+}
 </style>

@@ -462,6 +462,34 @@ export function useSoulPasskey() {
   }
 
   /**
+   * Alle Soul-IDs, für die auf diesem Gerät je ein Passkey registriert wurde
+   * (SOUL_INDEX_KEY) — Grundlage dafür, dem Betriebssystem beim Login die
+   * volle Auswahl über alle lokal bekannten Souls anzubieten, statt sich auf
+   * eine einzelne gemerkte "letzte Soul" zu beschränken.
+   * @returns {string[]}
+   */
+  function getKnownSoulIds() {
+    return getSoulIndex()
+  }
+
+  /**
+   * Findet zu einer vom Betriebssystem tatsächlich gewählten Credential-ID
+   * die zugehörige Soul — nötig, weil authenticatePasskey(null, null, null)
+   * (volle OS-Auswahl über alle Souls) danach nur die Credential-ID kennt,
+   * nicht welche Soul sie gehört. Reine lokale Bookkeeping-Suche über den
+   * ohnehin schon pro Soul gespeicherten Credential-Listen.
+   * @param {string} credId  base64url, z.B. aus lastUsedCredentialId.value
+   * @returns {string|null}
+   */
+  function soulIdForCredential(credId) {
+    if (!credId) return null
+    for (const soulId of getSoulIndex()) {
+      if (getSavedCredentialIds(soulId).includes(credId)) return soulId
+    }
+    return null
+  }
+
+  /**
    * AES-256-GCM-Key für Verschlüsselung.
    * Erstellt Passkey wenn noch keiner vorhanden, sonst authenticate.
    */
@@ -523,5 +551,7 @@ export function useSoulPasskey() {
     checkPasskeySupport,
     pruneToCredentialId,
     hasCredentialFor,
+    getKnownSoulIds,
+    soulIdForCredential,
   }
 }
