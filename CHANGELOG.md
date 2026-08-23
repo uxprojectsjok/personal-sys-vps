@@ -8,6 +8,17 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.5.1] — 2026-08-23
+
+**Added: admin script to reset the gate password manually via SSH.** For lockout recovery when the normal in-app path (logged in, `/settings` → `POST /api/gate-password`) isn't usable. Deliberately not a new HTTP endpoint — SSH-only, root-required. `scripts/reset-gate-password.sh` mirrors `gate_set_password.lua`'s exact hash (HMAC-SHA256 of the master key with the `sys_` prefix stripped) via `resty`, resolves the domain-specific `master.json` (which takes priority over the global fallback), and does a full `systemctl restart` rather than a reload, since `master.json` is cached in a `lua_shared_dict` that a reload alone doesn't clear.
+
+**Fixed: mobile sidebar's last legal link (Lizenz) was hidden under the bottom tab bar.** `.sb-nav` could already scroll to its true end, but the fixed `.mob-tab-bar` (higher z-index) covered the last ~56px of that scrolled content — the drawer's last item was visible/reachable in theory but untappable in practice.
+
+**Fixed**
+- `app/assets/css/sys-v2.css`: `.sb-nav` now reserves bottom padding for the tab bar height + safe-area inset, same reserved-space pattern `.app`'s own `.scroll` already uses.
+
+**Migration required:** none — `scripts/reset-gate-password.sh` is opt-in admin tooling (nothing runs it automatically), and the CSS fix is picked up on next `npm run generate` + redeploy.
+
 ## [1.5.0] — 2026-08-23
 
 **Added: biometric passkey unlock on Multi-Hoster nodes.** Previously disabled entirely ("unreliable with multiple souls sharing one RP_ID"), even though credential storage was already scoped per `soul_id`. `useSoulPasskey.js` gains `getKnownSoulIds()`/`soulIdForCredential()` to resolve which soul a picked passkey actually belongs to. Android Chrome doesn't show its own picker for multiple `allowCredentials` on one RP — it silently authenticates with whichever one it prefers — so `gate.vue` now shows an explicit soul-picker dropdown before the passkey request is made, rather than relying on OS disambiguation.
