@@ -81,6 +81,7 @@
                   <span>{{ $t('earnings.col_amount') }}</span>
                   <span>{{ $t('earnings.col_period') }}</span>
                   <span>{{ $t('earnings.col_status') }}</span>
+                  <span>{{ $t('earnings.col_delete') }}</span>
                 </div>
                 <div v-for="e in sortedEntries" :key="e.tx_hash" class="earn-table-row">
                   <span class="earn-tx-hash">
@@ -95,6 +96,9 @@
                   <span class="earn-tx-status" :class="isActive(e) ? 'earn-status--on' : 'earn-status--off'">
                     {{ isActive(e) ? $t('earnings.status_active') : $t('earnings.status_expired') }}
                   </span>
+                  <button class="earn-act-del" :disabled="deletingTx === e.tx_hash" @click="deleteEntry(e)" :title="$t('earnings.delete_aria')" :aria-label="$t('earnings.delete_aria')">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h10M6 4V2h4v2M5 4v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/></svg>
+                  </button>
                 </div>
               </div>
               <div v-else class="earn-empty">
@@ -121,6 +125,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <ConfirmModal />
     </div>
     <SysPageLoading v-else />
 </ClientOnly>
@@ -132,10 +137,13 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useNodeStatus } from '~/composables/useNodeStatus.js'
+import { useConfirm } from '~/composables/useConfirm.js'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 
 const { t } = useI18n()
+const { ask: confirmAsk } = useConfirm()
 const router = useRouter()
 const { soulMeta, hasSoul, soulToken, isLoaded, clear } = useSoul()
 const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
@@ -211,6 +219,31 @@ function isActive(entry) {
 function formatAmountShort(entry) {
   const amount = parseFloat(entry.usdc_amount ?? entry.pol_amount ?? 0)
   return amount.toFixed(3) + ' ' + entry.currency
+}
+
+const deletingTx = ref(null)
+
+async function deleteEntry(e) {
+  const ok = await confirmAsk({
+    title:       t('earnings.delete_title'),
+    message:     t('earnings.delete_msg'),
+    confirmText: t('earnings.delete_confirm'),
+    cancelText:  t('common.cancel'),
+    danger:      true,
+  })
+  if (!ok) return
+  deletingTx.value = e.tx_hash
+  try {
+    const r = await fetch(`/api/soul/earnings/${e.tx_hash}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    if (r.ok) {
+      earnings.value.usdc_entries = (earnings.value.usdc_entries || []).filter(x => x.tx_hash !== e.tx_hash)
+      earnings.value.entries      = (earnings.value.entries      || []).filter(x => x.tx_hash !== e.tx_hash)
+    }
+  } catch { /* silent, wie der Rest dieser Seite */ }
+  finally { deletingTx.value = null }
 }
 
 function exportCSV() {
@@ -342,20 +375,23 @@ function onNav(id) {
 .earn-table-wrap { }
 .earn-table { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .earn-table-head {
-  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
+  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr 32px;
   padding: 10px 18px;
   font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--fg-2);
   border-bottom: 1px solid var(--line); background: var(--surface-2);
 }
 .earn-table-row {
-  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr;
+  display: grid; grid-template-columns: 2fr 2fr 1.2fr 2fr 1.4fr 32px;
   padding: 12px 18px; border-bottom: 1px solid var(--line);
   font-size: 15px; color: var(--fg); align-items: center;
   transition: background 0.12s;
 }
 .earn-table-row:last-child { border-bottom: none; }
 .earn-table-row:hover { background: var(--surface-2); }
+.earn-act-del { background: none; border: none; padding: 4px; display: grid; place-items: center; color: var(--fg); opacity: 0.5; cursor: pointer; border-radius: var(--r-xs, 4px); transition: opacity .15s, color .15s, background .15s; }
+.earn-act-del:hover { opacity: 1; color: var(--sys-err, #E06C75); background: rgba(224,108,117,0.08); }
+.earn-act-del:disabled { opacity: 0.25; cursor: not-allowed; }
 .earn-tx-hash { font-family: var(--mono); }
 .earn-tx-link { color: var(--accent); text-decoration: none; }
 .earn-tx-link:hover { color: var(--accent-bright); text-decoration: underline; }
@@ -391,7 +427,7 @@ function onNav(id) {
    vorbehalten. Volle Präzision + alle Spalten weiterhin im CSV-Export. */
 @media (max-width: 720px) {
   .earn-stats { grid-template-columns: 1fr 1fr; }
-  .earn-table-head, .earn-table-row { grid-template-columns: 2fr 1fr; }
+  .earn-table-head, .earn-table-row { grid-template-columns: 2fr 1fr 28px; }
   .earn-table-head span:nth-child(2),
   .earn-table-head span:nth-child(4),
   .earn-table-head span:nth-child(5) { display: none; }

@@ -948,6 +948,16 @@ server {
     content_by_lua_file /etc/openresty/lua/soul_earnings.lua;
   }
 
+  # ── Soul Earnings — einzelnen TX-Eintrag löschen (soul_cert) ──────────────────
+  location ~ ^/api/soul/earnings/[^/]+$ {
+    limit_except DELETE { deny all; }
+    limit_req zone=api burst=10 nodelay;
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/soul_earnings_delete.lua;
+  }
+
   location = /api/soul/tokens {
     limit_req zone=api burst=10 nodelay;
     access_by_lua_file /etc/openresty/lua/soul_auth.lua;
