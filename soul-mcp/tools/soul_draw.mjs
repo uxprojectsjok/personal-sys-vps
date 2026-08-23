@@ -65,7 +65,8 @@
  * unverändert gegen beide.
  *
  * Technik-Bandbreite pro Strich (style/mode/gradientTo/blend/edgeFade/reflect/
- * interpolation/colorVariation/brush, siehe strokeSchema unten): reine Linien
+ * interpolation/colorVariation/brush/water/pigment/wetness, siehe strokeSchema
+ * unten): reine Linien
  * (ink/solid) reichen für Gesten-Skizzen, aber weder für flächige moderne/
  * abstrakte Kompositionen noch für klassisch wirkende Schichtmalerei oder
  * lebendige, unregelmäßige Pinseltextur. Deshalb: mode "fill" füllt die
@@ -91,7 +92,19 @@
  * opacityVariation/pressureVariation/edgeBreak): zerlegt den Strich in kurze,
  * unabhängig gewürfelte Marken statt einer glatten Linie — Pinselstrich als
  * Ereignis, nicht als mathematisch glatte Kurve — und hat Vorrang vor style,
- * kombinierbar mit interpolation und colorVariation. signature (pro Strich)
+ * kombinierbar mit interpolation und colorVariation. Für style:"watercolor"
+ * zusätzlich water/pigment/wetness (siehe drawWatercolorStroke() unten und
+ * die Nässe-Zustand-Sektion davor) — KROs Befund war, dass eine Lasur bisher
+ * stateless war, unabhängig davon was daneben/vorher gemalt wurde. water und
+ * pigment trennen "wie nass" von "wie konzentriert" (statt nur opacity),
+ * wetness ("wet_on_dry"/"wet_on_wet"/"re_wet") lässt Pigment tatsächlich in
+ * eine noch feuchte Nachbarfläche laufen und sich dort mit deren Farbe
+ * mischen — eine kleine, pro Canvas persistierte Liste von Nässe-Regionen
+ * (Kreis + Farbe + Nässegrad) trocknet dabei pro soul_draw-AUFRUF ab (nicht
+ * in Echtzeit — die Zeit zwischen zwei Aufrufen sagt nichts über die gemeinte
+ * Maldauer), sodass mehrere Striche in derselben Sitzung ineinanderfließen
+ * können, während ein späterer, neuer Aufruf bereits angetrocknetes Vorwerk
+ * vorfindet. signature (pro Strich)
  * + signaturePosition/signatureMargin (pro Aufruf, siehe runSoulDraw) sind
  * reine Positionierungs-Hilfe: Striche mit signature:true werden als starre
  * Gruppe automatisch an eine Ecke/Kante der tatsächlichen Leinwand
@@ -321,6 +334,89 @@ function varyColor(color, variation) {
   return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
+// ── Nässe-Zustand für wet-on-wet/re_wet ───────────────────────────────────────
+// Siehe KROs Befund: ein watercolor-Strich war bisher eine stateless weiche
+// Lasur, unabhängig davon, was daneben oder vorher gemalt wurde — echtes
+// Aquarell braucht aber, dass Pigment in noch feuchte Nachbarflächen laufen
+// und sich dort mit deren Farbe mischen kann, UND dass eine Fläche über
+// mehrere soul_draw-Aufrufe hinweg allmählich trocknet statt binär
+// nass/trocken zu sein. Modelliert als kleine, persistierte Liste von
+// Kreisregionen (Zentrum/Radius/Farbe/Nässe 0–1) neben dem PNG (interner
+// Render-Zustand, keine Kunst — deshalb NICHT in vault_shared/ selbst,
+// sondern im Canvas-Unterordner, wo listVaultSharedFs()/soul_draw_snapshot
+// nur exakt benannte .png/.mp4 anfassen, keine generische Verzeichnis-
+// Auflistung machen, siehe dortige Kommentare). Trocknen ist bewusst NICHT
+// echtzeit-basiert (die Zeit zwischen zwei Aufrufen sagt nichts über die
+// gemeinte Maldauer aus, siehe Datei-Kopfkommentar zum Mehrjahres-Werk-
+// Modell) — stattdessen trocknet jede Region einmal PRO AUFRUF ab, bevor
+// die neuen Striche dieses Aufrufs verarbeitet werden: mehrere Striche im
+// selben Aufruf bleiben also untereinander "in derselben Sitzung" feucht,
+// während ein späterer, neuer Aufruf bereits angetrocknetes Vorwerk vorfindet.
+const WETNESS_DECAY_PER_CALL = 0.5;
+const WETNESS_MIN            = 0.04; // darunter: Region wird beim Speichern verworfen
+const WETNESS_MAX_REGIONS    = 60;   // Deckelung wie paintPaper()/spray — Dateigröße/Kosten
+
+function decayWetRegions(regions) {
+  return (regions || [])
+    .map(r => ({ ...r, wetness: r.wetness * WETNESS_DECAY_PER_CALL }))
+    .filter(r => r.wetness > WETNESS_MIN);
+}
+
+function pruneWetRegions(regions) {
+  if (regions.length <= WETNESS_MAX_REGIONS) return regions;
+  // Trockenste zuerst raus, nicht älteste zuerst — für wet_on_wet zählt nur,
+  // was noch nennenswert feucht ist.
+  return [...regions].sort((a, b) => b.wetness - a.wetness).slice(0, WETNESS_MAX_REGIONS);
+}
+
+async function loadWetRegions(path) {
+  try {
+    const raw = await readFile(path, 'utf8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
+async function saveWetRegions(path, regions) {
+  await writeFile(path, JSON.stringify(pruneWetRegions(regions)), 'utf8');
+}
+
+// Mischt zwei Hex-Farben kanalweise (t=0 → colorA, t=1 → colorB) — Grundlage
+// für "zwei Farben verschmelzen organisch in einer nassen Fläche". Gleiche
+// Fallback-Philosophie wie varyColor()/colorWithAlpha(): Nicht-Hex-Input gibt
+// unverändert colorA zurück statt zu crashen.
+function mixHexColors(colorA, colorB, t) {
+  const ma = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colorA || '');
+  const mb = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colorB || '');
+  if (!ma || !mb) return colorA;
+  const expand = h => (h.length === 3 ? h.split('').map(c => c + c).join('') : h);
+  const ha = expand(ma[1]), hb = expand(mb[1]);
+  const lerp = (a, b) => Math.round(a + (b - a) * t);
+  const chan = (h, i) => parseInt(h.slice(i, i + 2), 16);
+  const r = lerp(chan(ha, 0), chan(hb, 0));
+  const g = lerp(chan(ha, 2), chan(hb, 2));
+  const b = lerp(chan(ha, 4), chan(hb, 4));
+  return `#${[r, g, b].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Nächstgelegene, hinreichend nahe Nachbarregion für einen watercolor-Strich —
+// bewusst grobe Kreis-Näherung (Zentrum/Radius aus der Bounding Box), keine
+// pixelgenaue Überlappung nötig für eine künstlerische Simulation. reach
+// wächst mit water (nasser Pinsel "spürt" weiter entfernte Feuchtigkeit).
+function findWetNeighbor(regions, bounds, reach) {
+  const cx = (bounds.minX + bounds.maxX) / 2, cy = (bounds.minY + bounds.maxY) / 2;
+  let best = null, bestScore = -Infinity;
+  for (const r of regions) {
+    const d = Math.hypot(r.x - cx, r.y - cy);
+    const edgeDist = d - r.r;
+    if (edgeDist < reach) {
+      const score = r.wetness - Math.max(0, edgeDist) / reach;
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+  }
+  return best;
+}
+
 // Liefert entweder die einfache Farbe oder — wenn gradientTo gesetzt ist —
 // ein CanvasGradient, gebaut über die Bounding Box der Kontrollpunkte.
 // "linear" läuft von oben nach unten (Standard, z.B. für Himmel), "radial"
@@ -410,23 +506,61 @@ function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradien
   ctx.globalAlpha = 1;
 }
 
-// style "watercolor" — mehrere leicht versetzte, sehr transparente
-// Durchgänge übereinander simulieren eine weiche, ineinander verlaufende
-// Lasur statt einer scharfen Kante.
-function drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation }) {
-  const passes = 5;
-  ctx.strokeStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
+// style "watercolor" — mehrere leicht versetzte, transparente Durchgänge
+// übereinander simulieren eine weiche Lasur; water/pigment ersetzen dabei
+// NICHT opacity, sondern differenzieren sie in zwei unabhängige, physikalisch
+// gemeinte Achsen (siehe KROs Befund): water steuert, wie weit/unvorhersehbar
+// die Farbe verläuft (Jitter-Radius, Durchgangszahl, Reichweite zu
+// Nachbarregionen), pigment die tatsächliche Farbkonzentration (Deckkraft-
+// Anteil pro Durchgang) — derselbe width-Strich kann so als hauchdünner,
+// sehr nasser Schleier beginnen und mit mehr pigment konzentriert werden.
+// wetness+wetRegions tragen das eigentliche "in feuchte Nachbarflächen
+// laufen"-Verhalten: wet_on_wet/re_wet suchen (siehe findWetNeighbor) eine
+// nahegelegene, noch feuchte Region aus vorherigen Strichen/Aufrufen, mischen
+// deren Farbe organisch ein (mixHexColors) und malen zusätzliche, transparente
+// "Lauf"-Durchgänge, die zu deren Zentrum hin verzerrt sind — echtes
+// Ineinanderfließen statt nur zweier unabhängiger Lasuren übereinander.
+// Rückgabewert: die vom AUFRUFER (runSoulDraw) zu persistierende neue
+// Nässe-Region dieses Strichs — jeder watercolor-Strich hinterlässt eine,
+// unabhängig vom wetness-Modus (auch wet_on_dry-Striche sind unmittelbar nach
+// dem Malen selbst feucht, nur ihre UMGEBUNG war es vorher nicht).
+function drawWatercolorStroke(ctx, points, opts) {
+  const {
+    color, width, opacity = 0.9, gradientTo, gradientShape, interpolation, colorVariation,
+    water = 0.5, pigment = 0.6, wetness = 'wet_on_dry', wetRegions = [],
+  } = opts;
+
+  const bounds = computeBounds(points);
+  const cx = (bounds.minX + bounds.maxX) / 2, cy = (bounds.minY + bounds.maxY) / 2;
+  const strokeRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + width;
+
+  let neighbor = null;
+  if (wetness !== 'wet_on_dry') {
+    const reach = strokeRadius + width * (1 + water * 3);
+    neighbor = findWetNeighbor(wetRegions, bounds, reach);
+  }
+  // re_wet erzwingt volle Nässe der gefundenen (oder gedachten) Nachbarstelle,
+  // auch wenn sie längst angetrocknet ist — der eigentliche Unterschied zu
+  // wet_on_wet, das nur mit der TATSÄCHLICH noch vorhandenen Nässe arbeitet.
+  const neighborWetness = wetness === 're_wet' ? 1 : (neighbor?.wetness ?? 0);
+  const blendColor = neighbor ? mixHexColors(color, neighbor.color, Math.min(0.6, neighborWetness * 0.7)) : color;
+  const flatStyle = gradientTo ? resolveFillStyle(ctx, blendColor, gradientTo, gradientShape, points) : blendColor;
+
+  const passes       = Math.max(2, Math.round(4 + water * 4));
+  const baseAlpha    = opacity * (0.35 + pigment * 0.65);
+  const jitterAmount = width * (0.35 + water * 0.9);
+
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (let p = 0; p < passes; p++) {
+    ctx.strokeStyle = (colorVariation && !gradientTo) ? varyColor(blendColor, colorVariation) : flatStyle;
     const jittered = points.map(pt => ({
       ...pt,
-      x: pt.x + (Math.random() - 0.5) * width * 0.6,
-      y: pt.y + (Math.random() - 0.5) * width * 0.6,
+      x: pt.x + (Math.random() - 0.5) * jitterAmount,
+      y: pt.y + (Math.random() - 0.5) * jitterAmount,
     }));
     const smoothed = catmullRomPoints(jittered, 12, interpolation);
-    ctx.globalAlpha = (opacity / passes) * 1.6;
-    if (colorVariation && !gradientTo) ctx.strokeStyle = varyColor(color, colorVariation);
+    ctx.globalAlpha = Math.min(1, (baseAlpha / passes) * 1.8);
     for (let i = 0; i < smoothed.length - 1; i++) {
       const t = i / (smoothed.length - 1);
       const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.4);
@@ -437,7 +571,35 @@ function drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, 
       ctx.stroke();
     }
   }
+
+  // Das eigentliche Verlaufen: zusätzliche, sehr transparente Durchgänge,
+  // deren Punkte zufällig weit zum Zentrum der Nachbarregion hin verzogen
+  // werden — Pigment "kriecht" dorthin, statt dass beide Flächen unabhängig
+  // nebeneinander stehen bleiben.
+  if (neighbor && water > 0 && neighborWetness > 0) {
+    const bleedPasses = Math.max(1, Math.round(2 + water * 3));
+    for (let p = 0; p < bleedPasses; p++) {
+      const pull = (0.15 + Math.random() * 0.35) * water;
+      const bled = points.map(pt => ({
+        ...pt,
+        x: pt.x + (neighbor.x - pt.x) * pull * Math.random(),
+        y: pt.y + (neighbor.y - pt.y) * pull * Math.random(),
+      }));
+      const smoothed = catmullRomPoints(bled, 12, interpolation);
+      ctx.strokeStyle = mixHexColors(blendColor, neighbor.color, 0.3 + Math.random() * 0.4);
+      ctx.globalAlpha = Math.min(0.5, baseAlpha * 0.25 * neighborWetness);
+      for (let i = 0; i < smoothed.length - 1; i++) {
+        ctx.lineWidth = Math.max(1, width * (0.5 + Math.random() * 0.6));
+        ctx.beginPath();
+        ctx.moveTo(smoothed[i].x, smoothed[i].y);
+        ctx.lineTo(smoothed[i + 1].x, smoothed[i + 1].y);
+        ctx.stroke();
+      }
+    }
+  }
   ctx.globalAlpha = 1;
+
+  return { x: cx, y: cy, r: strokeRadius, color: blendColor, wetness: 1 };
 }
 
 // style "spray" — Sprühdose/Stipple: viele kleine, zufällig um den Pfad
@@ -697,13 +859,16 @@ function applySignaturePositioning(strokes, canvasW, canvasH, position, margin =
 // nicht am ctx-Typ erraten. Aus drawStroke() herausgezogen, damit reflect
 // (siehe dort) denselben Stil-Dispatch ein zweites Mal auf gespiegelte
 // Punkte anwenden kann, ohne die Weiche zu duplizieren.
-function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
+function dispatchStrokeStyle(ctx, stroke, { vector = false, wetRegions = [] } = {}) {
   const {
     points, color = '#1c1b18', width = 14, opacity = 0.9, style = 'ink', mode = 'stroke',
     gradientTo, gradientShape, blend, interpolation, colorVariation, brush, text, font, fontSize,
+    water, pigment, wetness,
   } = stroke;
 
   ctx.globalCompositeOperation = style === 'eraser' ? 'destination-out' : (blend || 'source-over');
+
+  let newWetRegion = null;
 
   if (mode === 'text') {
     // Nie im SVG-Pass rendern — siehe drawTextStroke()s Kommentar zum
@@ -718,7 +883,7 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
   } else if (style === 'dry') {
     drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
   } else if (style === 'watercolor') {
-    drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
+    newWetRegion = drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation, water, pigment, wetness, wetRegions });
   } else if (style === 'spray') {
     drawSprayStroke(ctx, points, { color, width, opacity, vector });
   } else if (style === 'glow') {
@@ -728,6 +893,7 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
   }
 
   ctx.globalCompositeOperation = 'source-over';
+  return newWetRegion;
 }
 
 // Öffentliche Zeichenfunktion — ein normaler Durchgang, plus bei gesetztem
@@ -740,8 +906,12 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false } = {}) {
 // (siehe renderStrokesToSvgFragment), landet also im selben
 // <!-- stroke -->-Block; countStrokes() zählt Original+Reflexion weiterhin
 // als EIN Strich.
-function drawStroke(ctx, stroke, { vector = false } = {}) {
-  if (!stroke.points || stroke.points.length < 2) return;
+// Rückgabewert: neue Nässe-Region (siehe drawWatercolorStroke), oder null bei
+// jedem anderen style/mode — nur vom Original-Strich, eine gespiegelte
+// reflect-Kopie hinterlässt bewusst keine eigene Region (sonst würde jede
+// Wasserlinie unrealistischerweise selbst zur Feuchtfläche).
+function drawStroke(ctx, stroke, { vector = false, wetRegions = [] } = {}) {
+  if (!stroke.points || stroke.points.length < 2) return null;
 
   // edgeFade: Komfort-Kurzform, greift nur wenn gradientTo nicht schon
   // explizit gesetzt ist (ein Aufrufer, der bewusst eine zweite Farbe will,
@@ -757,7 +927,7 @@ function drawStroke(ctx, stroke, { vector = false } = {}) {
     };
   }
 
-  dispatchStrokeStyle(ctx, resolved, { vector });
+  const newWetRegion = dispatchStrokeStyle(ctx, resolved, { vector, wetRegions });
 
   if (resolved.reflect) {
     const { waterline, opacity: reflectOpacity = 0.35, waviness = 0 } = resolved.reflect;
@@ -766,8 +936,10 @@ function drawStroke(ctx, stroke, { vector = false } = {}) {
       points: reflectPoints(resolved.points, waterline, waviness),
       opacity: (resolved.opacity ?? 0.9) * reflectOpacity,
     };
-    dispatchStrokeStyle(ctx, reflected, { vector });
+    dispatchStrokeStyle(ctx, reflected, { vector, wetRegions });
   }
+
+  return newWetRegion;
 }
 
 // ── SVG-Hilfsfunktionen ───────────────────────────────────────────────────────
@@ -782,9 +954,17 @@ function drawStroke(ctx, stroke, { vector = false } = {}) {
 // einen <!-- stroke --> Kommentar davor, rein zum verlässlichen Zählen (ein
 // Strich kann durch den Taper-Loop in viele <path>-Segmente zerfallen — ohne
 // Marker wäre "Anzahl Striche insgesamt" aus dem SVG nicht rekonstruierbar).
-function renderStrokesToSvgFragment(strokes, width, height) {
+// wetRegionsPerStroke[i]: Nässe-Zustand GENAU zum Zeitpunkt, als Strich i im
+// Raster-Pass gezeichnet wurde (siehe runSoulDraw) — sorgt dafür, dass der
+// SVG-Export dieselbe fortschreitende Nässe-Historie sieht wie der Raster-
+// Pass, statt versehentlich den fertigen Endzustand für jeden Strich zu
+// verwenden. Fehlt der Eintrag (ältere Aufrufer/Tests ohne dieses Argument),
+// fällt der jeweilige Strich auf "keine Nachbarn bekannt" zurück — harmlos,
+// nur wet_on_wet/re_wet hätten dann nichts zum Verlaufen.
+function renderStrokesToSvgFragment(strokes, width, height, wetRegionsPerStroke = []) {
   let fragment = '';
-  for (const stroke of strokes) {
+  for (let idx = 0; idx < strokes.length; idx++) {
+    const stroke = strokes[idx];
     if (stroke.mode === 'text') {
       // Bewusst NICHT über drawStroke()/SVGCanvas gerendert — deren fillText-
       // Export verschluckt live nachweislich zufällig Zeichen (siehe
@@ -799,7 +979,7 @@ function renderStrokesToSvgFragment(strokes, width, height) {
     }
     const canvas = new SVGCanvas(width, height, SvgExportFlag.RelativePathEncoding);
     const ctx = canvas.getContext('2d');
-    drawStroke(ctx, stroke, { vector: true });
+    drawStroke(ctx, stroke, { vector: true, wetRegions: wetRegionsPerStroke[idx] || [] });
     const full = canvas.getContent().toString('utf8');
     const inner = (full.match(/<svg[^>]*>([\s\S]*)<\/svg>/) || [, ''])[1];
     fragment += `\t<!-- stroke -->\n${inner}`;
@@ -876,7 +1056,13 @@ const strokeSchema = z.object({
   width: z.number().min(0.5).max(200).optional().describe('Grundstärke des Strichs in px'),
   opacity: z.number().min(0).max(1).optional(),
   style: z.enum(['ink', 'solid', 'eraser', 'dry', 'watercolor', 'spray', 'glow']).optional()
-    .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge). "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
+    .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge, siehe water/pigment/wetness für die volle Aquarell-Physik). "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
+  water: z.number().min(0).max(1).optional()
+    .describe('Nur bei style:"watercolor", Standard 0.5. Wie nass der Pinsel ist — unabhängig von pigment. Steuert Streuradius/Durchgangszahl der Lasur UND (zusammen mit wetness) wie weit/stark Farbe in eine feuchte Nachbarfläche läuft. Wenig Wasser: knapper, vorhersehbarer Schleier. Viel Wasser: weiträumiges, unkontrollierteres Verlaufen.'),
+  pigment: z.number().min(0).max(1).optional()
+    .describe('Nur bei style:"watercolor", Standard 0.6. Farbkonzentration, unabhängig von water — wie viel Pigment auf dem nassen Pinsel ist. Für den Effekt "eine Bewegung, unterschiedliche Farbdichte" mehrere kurze, aufeinanderfolgende Striche entlang derselben Bewegung mit unterschiedlichem pigment kombinieren (z.B. sehr wässriger Anfang, konzentriertes Ende).'),
+  wetness: z.enum(['wet_on_dry', 'wet_on_wet', 're_wet']).optional()
+    .describe('Nur bei style:"watercolor", Standard "wet_on_dry". "wet_on_dry": malt klar, ohne mit Nachbarstrichen zu verschmelzen. "wet_on_wet": sucht eine nahegelegene, noch feuchte Fläche (auch aus früheren Aufrufen — jeder watercolor-Strich bleibt danach kurz "feucht" und trocknet mit jedem weiteren soul_draw-Aufruf etwas mehr an, kein Echtzeit-Timer) und lässt die Farbe organisch hineinlaufen/sich mit ihr mischen — für Himmel, Nebel, ineinanderfließende Flächen. Am stärksten kurz nach dem Nachbarstrich (auch noch im selben Aufruf), schwächer über mehrere spätere Aufrufe hinweg. "re_wet": aktiviert eine Fläche zwangsweise als frisch feucht, auch wenn sie längst angetrocknet ist — um bewusst an einer alten Stelle weiterzuarbeiten.'),
   mode: z.enum(['stroke', 'fill', 'text', 'handwriting']).optional()
     .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung).'),
   text: z.string().max(120).optional()
@@ -927,10 +1113,11 @@ const strokeSchema = z.object({
 // Bugs (destruktives SVGCanvas.getContent(), Papier-Textur-Dateigröße) erneut
 // zum Risiko.
 export async function runSoulDraw(soulId, token, { canvas_id, width, height, background, strokes, description, signaturePosition, signatureMargin }) {
-  const pngDir  = artworkDir(soulId, canvas_id);
-  const ctxDir  = `${SOULS_DIR}${soulId}/vault/context`;
-  const pngPath = `${pngDir}/${canvas_id}.png`;
-  const svgPath = `${ctxDir}/${canvas_id}.svg`;
+  const pngDir      = artworkDir(soulId, canvas_id);
+  const ctxDir      = `${SOULS_DIR}${soulId}/vault/context`;
+  const pngPath     = `${pngDir}/${canvas_id}.png`;
+  const svgPath     = `${ctxDir}/${canvas_id}.svg`;
+  const wetnessPath = `${pngDir}/${canvas_id}.wetness.json`;
   await mkdir(pngDir, { recursive: true });
   await mkdir(ctxDir, { recursive: true });
 
@@ -961,11 +1148,25 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
   const { strokes: withHandwriting, missing: missingHandwritingChars } = await applyHandwritingExpansion(soulId, strokes);
   strokes = applySignaturePositioning(withHandwriting, w, h, signaturePosition, signatureMargin);
 
-  for (const stroke of strokes) drawStroke(ctx, stroke);
+  // Nässe-Zustand: einmal pro AUFRUF abtrocknen (nicht pro Strich — mehrere
+  // Striche in diesem Aufruf gelten als "in derselben Sitzung"), dann
+  // progressiv fortschreiben, während die Striche gezeichnet werden, damit
+  // ein späterer Strich im selben Aufruf bereits frühere als Nachbarn sehen
+  // kann. wetRegionsPerStroke[i] hält den Snapshot GENAU vor Strich i fest,
+  // für den identischen SVG-Durchlauf weiter unten (siehe dortiger Kommentar).
+  let wetRegions = decayWetRegions(await loadWetRegions(wetnessPath));
+  const wetRegionsPerStroke = [];
+  for (const stroke of strokes) {
+    wetRegionsPerStroke.push(wetRegions);
+    const newRegion = drawStroke(ctx, stroke, { wetRegions });
+    if (newRegion) wetRegions = [...wetRegions, newRegion];
+  }
+  await saveWetRegions(wetnessPath, wetRegions);
+
   const pngBuf = canvas.toBuffer('image/png');
   await writeFile(pngPath, pngBuf);
 
-  const svgFragment = renderStrokesToSvgFragment(strokes, w, h);
+  const svgFragment = renderStrokesToSvgFragment(strokes, w, h, wetRegionsPerStroke);
   const svgText = isNew || !existingSvgText
     ? buildNewSvgDocument(w, h, background, svgFragment)
     : spliceSvgFragment(existingSvgText, svgFragment);
@@ -1034,7 +1235,20 @@ export function register(server, soulId, token) {
       'aufgebrochenen Trockenpinsel/Kreide, "watercolor" für weiche, ineinander verlaufende',
       'Lasuren, "spray" für gestreute Textur/Körnung, "glow" für weichen Lichtschein (mehrere',
       'gestapelte, nach außen verblassende Kreise statt hartem Verlaufsrand — Licht, das seine',
-      'Umgebung durchdringt, statt als Symbol draufzusitzen). mode: "fill" behandelt die Punkte',
+      'Umgebung durchdringt, statt als Symbol draufzusitzen).',
+      '',
+      'Echte Aquarell-Physik für style:"watercolor" (drei zusätzliche Achsen): water (0-1,',
+      'Standard 0.5) und pigment (0-1, Standard 0.6) trennen "wie nass der Pinsel ist" von',
+      '"wie konzentriert die Farbe ist" — derselbe Strich kann so von hauchdünnem, nassem',
+      'Schleier bis konzentriert-dunkel reichen (dafür mehrere kurze Striche entlang derselben',
+      'Bewegung mit unterschiedlichem pigment kombinieren). wetness ("wet_on_dry" Standard,',
+      '"wet_on_wet", "re_wet") lässt Farbe tatsächlich in benachbarte, noch feuchte Flächen',
+      'laufen und sich dort organisch mit deren Farbe mischen — jeder watercolor-Strich bleibt',
+      'danach kurz feucht und trocknet mit jedem weiteren soul_draw-Aufruf etwas mehr an (kein',
+      'Echtzeit-Timer, sondern pro Aufruf/Sitzung), "wet_on_wet" wirkt also am stärksten kurz',
+      'nach dem Nachbarstrich (auch noch im selben Aufruf) und schwächer über mehrere spätere',
+      'Aufrufe hinweg. "re_wet" aktiviert eine längst angetrocknete Fläche zwangsweise neu, um',
+      'bewusst dort weiterzumalen. mode: "fill" behandelt die Punkte',
       'statt als Linie als geschlossene Fläche und füllt sie — flache Farbblöcke für',
       'Hintergründe oder moderne/abstrakte Kompositionen, ohne viele Striche zu brauchen.',
       'gradientTo/gradientShape blenden zwei Farben über die Fläche/den Strich (Himmel,',
