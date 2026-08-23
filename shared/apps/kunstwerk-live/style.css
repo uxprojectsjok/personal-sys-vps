@@ -20,6 +20,13 @@ body {
   width: 100%;
   height: auto;
 }
+/* Ohne das hier gewinnt .result{display:block} gegen das hidden-Attribut
+   (gleiche Spezifität, Autoren-Regel schlägt UA-Default) — ein per JS
+   ausgeblendetes <video>/<img> blieb dadurch trotzdem sichtbar, live in
+   ChatGPT aufgefallen: Bild UND leerer Videoplayer gleichzeitig zu sehen. */
+.result[hidden] {
+  display: none;
+}
 
 .spinner {
   width: 34px;
