@@ -592,6 +592,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     box-shadow: var(--sh-lg);
     overflow: hidden;
   }
+  /* .mob-tab-bar is fixed to the same viewport bottom but with a HIGHER
+     z-index (70 vs. this drawer's 60) — without this, .sb-nav's own scroll
+     lets it scroll all the way to its true end, but the last ~56px of that
+     (the last nav group's last item, e.g. Lizenz) ends up rendered under the
+     tab bar: visually covered and untappable, since the tab bar sits on top.
+     Same reserved-space pattern .app already uses for .scroll. */
+  .sb-nav { padding-bottom: calc(14px + 56px + env(safe-area-inset-bottom)); }
   .app.drawer-open .sidebar { transform: translateX(0); }
   .scrim-mob { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .app.drawer-open .scrim-mob { opacity: 1; pointer-events: auto; }
