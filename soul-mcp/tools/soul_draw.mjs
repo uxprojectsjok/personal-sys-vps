@@ -65,7 +65,8 @@
  * unverändert gegen beide.
  *
  * Technik-Bandbreite pro Strich (style/mode/gradientTo/blend/edgeFade/reflect/
- * interpolation/colorVariation/brush/water/pigment/wetness, siehe strokeSchema
+ * interpolation/colorVariation/brush/water/pigment/wetness/direction/falloff/
+ * intensity, siehe strokeSchema
  * unten): reine Linien
  * (ink/solid) reichen für Gesten-Skizzen, aber weder für flächige moderne/
  * abstrakte Kompositionen noch für klassisch wirkende Schichtmalerei oder
@@ -104,7 +105,21 @@
  * in Echtzeit — die Zeit zwischen zwei Aufrufen sagt nichts über die gemeinte
  * Maldauer), sodass mehrere Striche in derselben Sitzung ineinanderfließen
  * können, während ein späterer, neuer Aufruf bereits angetrocknetes Vorwerk
- * vorfindet. signature (pro Strich)
+ * vorfindet.
+ *
+ * mode:"dissolve" ist eine KOMPOSITIONS-Entscheidung, keine Material-
+ * Entscheidung wie water/pigment/wetness: löst eine bereits gemalte Fläche
+ * gezielt zum Papier (oder einer anderen Zielfarbe) hin auf, statt Pigment
+ * hinzuzufügen — die "verlorene Kante" der Malerei (siehe KROs Beispiel: eine
+ * Gesichtshälfte bewusst weich verschwinden lassen, statt sie mit zehn
+ * einzelnen Strichen nachzubilden). direction/falloff/intensity, siehe
+ * drawDissolveStroke() unten. Bewusst additiv im append-only-Modell gelöst
+ * (weicher, papierfarbener Überzug statt destination-out/echtem Löschen) —
+ * eine echte Undo/Layer/Revision-Architektur für die andere Klasse von
+ * Korrektur ("das war komplett falsch, ganz zurücknehmen") bleibt ein
+ * separates, noch nicht begonnenes Vorhaben.
+ *
+ * signature (pro Strich)
  * + signaturePosition/signatureMargin (pro Aufruf, siehe runSoulDraw) sind
  * reine Positionierungs-Hilfe: Striche mit signature:true werden als starre
  * Gruppe automatisch an eine Ecke/Kante der tatsächlichen Leinwand
@@ -439,6 +454,74 @@ function resolveFillStyle(ctx, color, gradientTo, gradientShape, points) {
   g.addColorStop(0, color);
   g.addColorStop(1, gradientTo);
   return g;
+}
+
+// Gradient-Endpunkte für einen beliebigen Winkel über eine Bounding Box —
+// resolveFillStyle() oben kann nur "oben nach unten" (linear) oder "Mitte
+// nach außen" (radial), für eine gerichtete Auflösung (mode:"dissolve")
+// braucht es aber einen frei wählbaren Winkel. direction (Grad, math.
+// Konvention: 0=rechts, 90=unten, 180=links, 270=oben) zeigt dabei auf die
+// Richtung ZUNEHMENDER Auflösung — direction:180 löst also nach links auf.
+// Die halbe Bounding-Box-Diagonale als Länge reicht, um die Box unabhängig
+// vom Winkel vollständig abzudecken.
+function directionalGradientLine(bounds, direction) {
+  const cx = (bounds.minX + bounds.maxX) / 2, cy = (bounds.minY + bounds.maxY) / 2;
+  const w = bounds.maxX - bounds.minX, h = bounds.maxY - bounds.minY;
+  const rad = (direction || 0) * Math.PI / 180;
+  const dx = Math.cos(rad), dy = Math.sin(rad);
+  const len = Math.hypot(w, h) / 2 || 1;
+  return { x0: cx - dx * len, y0: cy - dy * len, x1: cx + dx * len, y1: cy + dy * len };
+}
+
+// mode "dissolve" — löst eine bereits gemalte Fläche gezielt zum Papier (oder
+// einer anderen Zielfarbe) hin auf, statt neues Pigment hinzuzufügen: die
+// klassische "verlorene Kante" (lost edge) der Malerei, mit der ein Gesicht
+// z.B. auf einer Seite bewusst weich ins Nichts übergeht statt überall hart
+// konturiert zu sein. Eine EIGENE Kompositions-Operation statt zehn einzelner
+// Striche — points umreißt die betroffene Fläche (wie mode:"fill"), direction
+// (optional) gibt eine Richtung zunehmender Auflösung vor (ohne direction:
+// gleichmäßige, ungerichtete Auflösung der ganzen Fläche), falloff (0–1)
+// steuert die Breite des Übergangs (0 = harte Kante genau in der Mitte, 1 =
+// über die gesamte Fläche verteilt), intensity (0–1) wie weit die Auflösung
+// am stärksten betroffenen Ende reicht (1 = dort vollständig zur Zielfarbe).
+// Technisch: mehrere leicht versetzte, transparente Durchgänge (gleiche
+// Organik wie drawWatercolorStroke/drawDryStroke) füllen die Fläche mit einem
+// alpha-Gradienten der Zielfarbe — bewusst KEIN destination-out/echtes
+// Löschen: das würde bis auf echte Transparenz durchlöchern (das Papier
+// selbst ist schon der unterste Layer auf demselben Canvas), während ein
+// weicher, papierfarbener Überzug optisch genau dem entspricht, wie
+// Aquarellpigment beim Abtupfen/Aufhellen wirklich zum Papierton zurückkehrt.
+function drawDissolveStroke(ctx, points, { color = PAPER, direction, falloff = 0.4, intensity = 0.85, interpolation }) {
+  const bounds = computeBounds(points);
+  const passes = 6;
+  for (let p = 0; p < passes; p++) {
+    const jittered = points.map(pt => ({
+      ...pt,
+      x: pt.x + (Math.random() - 0.5) * 10,
+      y: pt.y + (Math.random() - 0.5) * 10,
+    }));
+    const smoothed = catmullRomPoints(jittered, 12, interpolation ?? 1);
+    ctx.beginPath();
+    ctx.moveTo(smoothed[0].x, smoothed[0].y);
+    for (let i = 1; i < smoothed.length; i++) ctx.lineTo(smoothed[i].x, smoothed[i].y);
+    ctx.closePath();
+
+    if (direction != null) {
+      const { x0, y0, x1, y1 } = directionalGradientLine(bounds, direction);
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      const lo = Math.max(0, 0.5 - falloff / 2), hi = Math.min(1, 0.5 + falloff / 2);
+      g.addColorStop(0, colorWithAlpha(color, 0));
+      g.addColorStop(lo, colorWithAlpha(color, 0));
+      g.addColorStop(hi, colorWithAlpha(color, intensity));
+      g.addColorStop(1, colorWithAlpha(color, intensity));
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = colorWithAlpha(color, intensity);
+    }
+    ctx.globalAlpha = Math.min(1, (1 / passes) * 1.6);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 // style "ink"/"solid" — unverändert das ursprüngliche Taper-Verhalten,
@@ -863,7 +946,7 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false, wetRegions = [] } = 
   const {
     points, color = '#1c1b18', width = 14, opacity = 0.9, style = 'ink', mode = 'stroke',
     gradientTo, gradientShape, blend, interpolation, colorVariation, brush, text, font, fontSize,
-    water, pigment, wetness,
+    water, pigment, wetness, direction, falloff, intensity,
   } = stroke;
 
   ctx.globalCompositeOperation = style === 'eraser' ? 'destination-out' : (blend || 'source-over');
@@ -880,6 +963,12 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false, wetRegions = [] } = 
     drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, colorVariation, interpolation, brush, vector });
   } else if (mode === 'fill') {
     drawFillShape(ctx, points, { color, opacity, gradientTo, gradientShape, interpolation });
+  } else if (mode === 'dissolve') {
+    // Bewusst stroke.color roh (nicht das oben mit '#1c1b18' vorbelegte
+    // color), sonst würde eine Auflösung ohne explizite Zielfarbe fälschlich
+    // zu dunklem Tintenschwarz statt zum Papierton auflösen (drawDissolve-
+    // Stroke()s eigener PAPER-Default greift nur bei echtem undefined).
+    drawDissolveStroke(ctx, points, { color: stroke.color, direction, falloff, intensity, interpolation });
   } else if (style === 'dry') {
     drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
   } else if (style === 'watercolor') {
@@ -1063,8 +1152,14 @@ const strokeSchema = z.object({
     .describe('Nur bei style:"watercolor", Standard 0.6. Farbkonzentration, unabhängig von water — wie viel Pigment auf dem nassen Pinsel ist. Für den Effekt "eine Bewegung, unterschiedliche Farbdichte" mehrere kurze, aufeinanderfolgende Striche entlang derselben Bewegung mit unterschiedlichem pigment kombinieren (z.B. sehr wässriger Anfang, konzentriertes Ende).'),
   wetness: z.enum(['wet_on_dry', 'wet_on_wet', 're_wet']).optional()
     .describe('Nur bei style:"watercolor", Standard "wet_on_dry". "wet_on_dry": malt klar, ohne mit Nachbarstrichen zu verschmelzen. "wet_on_wet": sucht eine nahegelegene, noch feuchte Fläche (auch aus früheren Aufrufen — jeder watercolor-Strich bleibt danach kurz "feucht" und trocknet mit jedem weiteren soul_draw-Aufruf etwas mehr an, kein Echtzeit-Timer) und lässt die Farbe organisch hineinlaufen/sich mit ihr mischen — für Himmel, Nebel, ineinanderfließende Flächen. Am stärksten kurz nach dem Nachbarstrich (auch noch im selben Aufruf), schwächer über mehrere spätere Aufrufe hinweg. "re_wet": aktiviert eine Fläche zwangsweise als frisch feucht, auch wenn sie längst angetrocknet ist — um bewusst an einer alten Stelle weiterzuarbeiten.'),
-  mode: z.enum(['stroke', 'fill', 'text', 'handwriting']).optional()
-    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung).'),
+  mode: z.enum(['stroke', 'fill', 'text', 'handwriting', 'dissolve']).optional()
+    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung). "dissolve": löst eine bereits gemalte Fläche gezielt zum Papier (oder `color`) hin auf statt neues Pigment hinzuzufügen — die "verlorene Kante" der Malerei (z.B. eine Gesichtshälfte bewusst weich verschwinden lassen), siehe direction/falloff/intensity. Eine Kompositions-Entscheidung über eine Fläche, kein Pinselstrich.'),
+  direction: z.number().min(0).max(360).optional()
+    .describe('Nur bei mode:"dissolve". Winkel in Grad (0=rechts, 90=unten, 180=links, 270=oben), in dessen Richtung die Auflösung zunimmt — direction:180 löst z.B. nach links auf (linke Bildhälfte verschwindet, rechte bleibt). Ohne Angabe: gleichmäßige, ungerichtete Auflösung der ganzen Fläche.'),
+  falloff: z.number().min(0).max(1).optional()
+    .describe('Nur bei mode:"dissolve", Standard 0.4. Breite des Übergangs: 0 = harte Kante genau in der Mitte der Fläche, 1 = Übergang über die gesamte Fläche verteilt (sehr allmählich).'),
+  intensity: z.number().min(0).max(1).optional()
+    .describe('Nur bei mode:"dissolve", Standard 0.85. Wie vollständig die Auflösung am stärksten betroffenen Ende ist — 1 = dort vollständig zur Zielfarbe (meist Papier), niedrigere Werte lassen noch etwas vom ursprünglichen Gemalten durchscheinen.'),
   text: z.string().max(120).optional()
     .describe('Bei mode:"text" oder mode:"handwriting": der zu rendernde Text, z.B. "KRO · 17.08.2026". Bei "text": echter Font (Google Fonts "Caveat"), garantiert exakt lesbar, aber geliehene Typografie, NUR im PNG (bekannter Bug im SVG-Text-Export von @napi-rs/canvas — verschluckt dort zufällig Zeichen; die SVG-Fortsetzungshistorie bekommt stattdessen einen Klartext-Kommentar-Marker). Bei "handwriting": echte eigene Buchstabenformen aus dem Handschriftprofil, funktioniert identisch in PNG und SVG.'),
   font: z.string().max(60).optional().describe('Nur bei mode:"text". Font-Familie, falls bereits im Prozess registriert. Standard: "Caveat" (handschriftlich).'),
@@ -1248,7 +1343,20 @@ export function register(server, soulId, token) {
       'Echtzeit-Timer, sondern pro Aufruf/Sitzung), "wet_on_wet" wirkt also am stärksten kurz',
       'nach dem Nachbarstrich (auch noch im selben Aufruf) und schwächer über mehrere spätere',
       'Aufrufe hinweg. "re_wet" aktiviert eine längst angetrocknete Fläche zwangsweise neu, um',
-      'bewusst dort weiterzumalen. mode: "fill" behandelt die Punkte',
+      'bewusst dort weiterzumalen.',
+      '',
+      'Eine Kompositions-Entscheidung statt eines Material-Strichs: mode:"dissolve" löst eine',
+      'bereits gemalte Fläche gezielt zum Papier (oder `color`) hin auf, statt neues Pigment',
+      'hinzuzufügen — die "verlorene Kante" der klassischen Malerei, z.B. eine Gesichtshälfte',
+      'bewusst weich verschwinden lassen, statt sie mit vielen einzelnen Strichen nachzubilden.',
+      'points umreißt die betroffene Fläche (wie mode:"fill"). direction (0-360°, math. Konvention',
+      '— 0=rechts, 90=unten, 180=links, 270=oben) zeigt in die Richtung zunehmender Auflösung',
+      '(direction:180 löst nach links auf); ohne direction löst sich die ganze Fläche gleichmäßig',
+      'auf. falloff (0-1, Standard 0.4) steuert die Übergangsbreite (0 = harte Kante genau in der',
+      'Mitte, 1 = über die ganze Fläche verteilt). intensity (0-1, Standard 0.85) wie vollständig',
+      'die Auflösung am stärksten betroffenen Ende ist.',
+      '',
+      'mode: "fill" behandelt die Punkte',
       'statt als Linie als geschlossene Fläche und füllt sie — flache Farbblöcke für',
       'Hintergründe oder moderne/abstrakte Kompositionen, ohne viele Striche zu brauchen.',
       'gradientTo/gradientShape blenden zwei Farben über die Fläche/den Strich (Himmel,',
