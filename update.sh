@@ -258,15 +258,30 @@ done
 
 # ── 5b. Install bundled read-only MCP Apps for existing souls ────────────────
 # show-social-chat/show-agent-chat (Social Sphere / Agent Sandbox) and
-# kunstwerk-live (spinner while a soul_draw work is in progress, then the
-# finished PNG, polls soul_draw_snapshot — see docs/spec/mcp-apps.md), see
-# soul_apps.mjs — installed once per soul,
-# never overwritten afterward, so a soul that customizes its own copy keeps
-# it across updates.
-info "Checking show-social-chat/show-agent-chat/kunstwerk-live apps for existing souls..."
+# kunstwerk-galerie (prev/next browser over finished soul_draw works, polls
+# soul_draw_snapshot — see docs/spec/mcp-apps.md), see soul_apps.mjs —
+# installed once per soul, never overwritten afterward, so a soul that
+# customizes its own copy keeps it across updates.
+#
+# kunstwerk-galerie was renamed from kunstwerk-live (v1.7.0) — a soul that
+# already has the old dirname installed would otherwise keep it forever
+# (this loop only ever installs into an app dir that's missing entirely) and
+# never see the renamed/rewritten version. Since this is the stock template,
+# not soul-customized content, remove the stale copy here so the install
+# step below picks up the new name — a one-time migration, harmless to run
+# repeatedly (no-ops once every soul is off the old name).
+for _SOUL_DIR in /var/lib/sys/souls/*/; do
+  _OLD_APP_DIR="${_SOUL_DIR}vault_shared/apps/kunstwerk-live"
+  if [ -d "$_OLD_APP_DIR" ]; then
+    rm -rf "$_OLD_APP_DIR"
+    info "  kunstwerk-live removed for $(basename "$_SOUL_DIR") (superseded by kunstwerk-galerie)"
+  fi
+done
+
+info "Checking show-social-chat/show-agent-chat/kunstwerk-galerie apps for existing souls..."
 for _SOUL_DIR in /var/lib/sys/souls/*/; do
   [ -d "$_SOUL_DIR" ] || continue
-  for _APP in show-social-chat show-agent-chat kunstwerk-live; do
+  for _APP in show-social-chat show-agent-chat kunstwerk-galerie; do
     _APP_DIR="${_SOUL_DIR}vault_shared/apps/${_APP}"
     if [ ! -f "${_APP_DIR}/index.html" ]; then
       mkdir -p "$_APP_DIR"

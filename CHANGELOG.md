@@ -8,6 +8,20 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.7.0] — 2026-08-25
+
+**Added: real watercolor physics for `soul_draw`.** `water`/`pigment` (0–1) replace opacity as the sole watercolor knob — water controls how far/unpredictably color spreads into wet neighbors, pigment the actual color concentration, independent of each other. `wetness` (`wet_on_dry` default / `wet_on_wet` / `re_wet`) makes strokes interact: a small per-canvas list of wet regions persists next to the PNG and decays once per `soul_draw` call (not real time), so multiple strokes in one sitting stay wet together while a later call finds already-drying prior work. Works identically in the PNG and SVG vector export.
+
+**Added: `soul_draw` `mode:"dissolve"`** — a compositional "lost edge" operation distinct from material strokes: `points` outlines the affected area (like `mode:"fill"`), `direction` (0–360°) points toward increasing dissolution, `falloff` controls transition width, `intensity` how complete the dissolve is at its strongest end. Deliberately additive (soft paper-colored overlay passes, not destination-out) to fit the append-only canvas model.
+
+**Renamed:** `kunstwerk-live` MCP App → **`kunstwerk-galerie`**, rewritten for prev/next browsing instead of "show the latest". `soul_gallery_list` now returns every finished work (`canvas_id`/`kind`/`updated_at`, newest first) with a fixed `canvas_id` per gallery position — fixes a live-reported bug where two overlapping polls without an explicit `canvas_id` could each resolve "the latest work" differently, showing two different artworks in quick succession. New dark nav bar, loading spinner over the still-visible previous image during navigation, always-visible filename caption (was hover-only, which never showed on touch devices).
+
+**Fixed**
+- `kunstwerk-galerie` (as `kunstwerk-live`, carried through the rename): `.result[hidden]{display:none}` — an author `.result{display:block}` rule had equal specificity to the `[hidden]` attribute and won, so the unused image/video element stayed visibly shown even after JS correctly toggled `.hidden` on it.
+- `update.sh`: the bundled-MCP-Apps install loop (§5b) still referenced the old `kunstwerk-live` dirname — after this rename, `shared/apps/kunstwerk-live/` no longer exists, so any *new* soul missing the app would have hit a failed `cp` and aborted the whole update script (`set -e`). Also added a one-time migration: an already-installed `kunstwerk-live` copy under an existing soul is removed so the loop reinstalls it under the new name, since a soul that never customized the stock template would otherwise be stuck on the pre-rename version forever (installs are intentionally never overwritten — see the loop's own comment — which normally protects real customizations, but silently fossilizes a plain rename instead).
+
+**Migration required:** none beyond running `update.sh` (not just `git pull` + rebuild) — it now handles the `kunstwerk-galerie` app-folder migration for existing souls automatically. Frontend (`app/`) and Lua/vhost are untouched by this release; only `soul-mcp/tools/` + `shared/apps/` changed.
+
 ## [1.6.0] — 2026-08-23
 
 **Added: Earnings table entries are now deletable.** The Earnings TX table (`app/pages/earnings.vue`) had no way to remove individual rows. New `lua/soul_earnings_delete.lua` (`DELETE /api/soul/earnings/{tx_hash}`, `vault_auth.lua`/soul_cert protected) removes an entry by `tx_hash` from whichever of `usdc_earnings.json`/`earnings.json` holds it and recomputes the totals — searches both files since the client doesn't need to know which one an entry actually lives in. Deleting only removes the local record; the on-chain transaction itself is unaffected (surfaced in the confirm-dialog copy). Trader history got the same treatment but stays private-repo-only, along with the rest of the Trader feature.
