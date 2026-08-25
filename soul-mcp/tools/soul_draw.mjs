@@ -190,6 +190,30 @@ try {
 
 // ── Kern-Renderer (reine Canvas-2D-Logik, läuft gegen Raster- UND SVG-Context) ─
 
+// Gesäter PRNG (mulberry32) statt Math.random() für alles, was in BEIDEN
+// Durchläufen (Raster-Canvas in runSoulDraw + separater SVGCanvas-Durchlauf
+// in renderStrokesToSvgFragment) läuft — Jitter/Passes/Bleed in
+// drawWatercolorStroke/drawDryStroke/drawBrushStroke/drawDissolveStroke/
+// varyColor nutzen alle Math.random(), aber die beiden Durchläufe sind zwei
+// KOMPLETT UNABHÄNGIGE Funktionsaufrufe ohne gemeinsamen Zufallszustand —
+// bei genug überlappenden halbtransparenten Strichen driftet die
+// Komposition sichtbar auseinander (live gefunden: ein Werk mit
+// zusätzlichen "Ringen" im PNG, die im SVG fehlten, obwohl beide dieselben
+// 14 Striche zeichnen sollten). seedStrokeRng() wird PRO STRICH (nicht
+// einmal fürs ganze Werk) sowohl im Raster- als auch im Vektor-Durchlauf
+// mit demselben Wert aufgerufen (siehe runSoulDraw/renderStrokesToSvgFragment)
+// — Divergenz durch raster-only Extra-Zufallszüge (z.B. drawBrushStroke()s
+// grain-Punkte, nur bei !vector) bleibt dadurch auf den EINEN betroffenen
+// Strich begrenzt, statt sich auf alle folgenden Striche fortzupflanzen.
+let _rngState = 1;
+function seedStrokeRng(seed) { _rngState = (seed >>> 0) || 1; }
+function rng() {
+  _rngState |= 0; _rngState = (_rngState + 0x6D2B79F5) | 0;
+  let t = Math.imul(_rngState ^ (_rngState >>> 15), 1 | _rngState);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
 function paintPaper(ctx, w, h) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, w, h);
@@ -342,7 +366,7 @@ function varyColor(color, variation) {
   let hex = m[1];
   if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
   const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
-  const shift = () => (Math.random() - 0.5) * 2 * variation * 255;
+  const shift = () => (rng() - 0.5) * 2 * variation * 255;
   const r = clamp(parseInt(hex.slice(0, 2), 16) + shift());
   const g = clamp(parseInt(hex.slice(2, 4), 16) + shift());
   const b = clamp(parseInt(hex.slice(4, 6), 16) + shift());
@@ -412,6 +436,45 @@ function mixHexColors(colorA, colorB, t) {
   const g = lerp(chan(ha, 2), chan(hb, 2));
   const b = lerp(chan(ha, 4), chan(hb, 4));
   return `#${[r, g, b].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+// "broken color" / palette-lokale Variation (KROs Befund zum Monet-Vergleich):
+// statt EINER Nennfarbe (ggf. + zufälliger colorVariation-Abweichung derselben
+// Farbe) bekommt der Strich eine kleine Palette VERWANDTER Töne und wandert
+// entlang seines Verlaufs (t: 0=Anfang, 1=Ende) selbst hindurch — mit
+// zufälligem Wobble pro Segment, damit es kein sauberer linearer Verlauf
+// wird, sondern wie nebeneinanderliegende, vom Auge gemischte Pinselflecken
+// wirkt (Monets Wasser: nicht "orange Fläche", sondern orange/rosa/gelb/blau
+// nebeneinander). t kommt vom Aufrufer (Position im Strich), nicht von hier.
+function pickPaletteColor(palette, t) {
+  if (!palette || palette.length < 2) return null;
+  const wobble = (rng() - 0.5) * 0.5;
+  const pos = Math.max(0, Math.min(0.999, t + wobble)) * (palette.length - 1);
+  const i0 = Math.floor(pos), i1 = Math.min(palette.length - 1, i0 + 1);
+  return mixHexColors(palette[i0], palette[i1], pos - i0);
+}
+
+// Gewichtete diskrete Palettenwahl — anderer Anwendungsfall als
+// pickPaletteColor() oben (die entlang eines EINZELNEN Strichs kontinuierlich
+// wandert): hier bekommt JEDE Marke unabhängig EINE feste Farbe aus der
+// Palette zugelost, mit expliziten Anteilen statt Gleichverteilung. KROs
+// eigenes Beispiel: "überwiegend blau-grau, aber 15% warme, 10% violette,
+// 5% grüne Marken dazwischen" — genau dieser Anteils-Gedanke, nicht ein
+// weicher Verlauf. Fehlen/unpassende Länge von weights: fällt auf
+// Gleichverteilung zurück statt einen Fehler zu werfen (harmlos, planvolle
+// Toleranz statt harter Validierung für einen rein künstlerischen Parameter).
+function pickWeightedPaletteColor(palette, weights) {
+  if (!palette || palette.length < 2) return null;
+  const w = (Array.isArray(weights) && weights.length === palette.length && weights.some((x) => x > 0))
+    ? weights
+    : palette.map(() => 1);
+  const total = w.reduce((sum, x) => sum + Math.max(0, x), 0);
+  let r = rng() * total;
+  for (let i = 0; i < palette.length; i++) {
+    r -= Math.max(0, w[i]);
+    if (r <= 0) return palette[i];
+  }
+  return palette[palette.length - 1];
 }
 
 // Nächstgelegene, hinreichend nahe Nachbarregion für einen watercolor-Strich —
@@ -497,8 +560,8 @@ function drawDissolveStroke(ctx, points, { color = PAPER, direction, falloff = 0
   for (let p = 0; p < passes; p++) {
     const jittered = points.map(pt => ({
       ...pt,
-      x: pt.x + (Math.random() - 0.5) * 10,
-      y: pt.y + (Math.random() - 0.5) * 10,
+      x: pt.x + (rng() - 0.5) * 10,
+      y: pt.y + (rng() - 0.5) * 10,
     }));
     const smoothed = catmullRomPoints(jittered, 12, interpolation ?? 1);
     ctx.beginPath();
@@ -575,11 +638,11 @@ function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradien
   ctx.strokeStyle = resolveFillStyle(ctx, color, gradientTo, gradientShape, points);
   ctx.lineCap = 'round';
   for (let i = 0; i < smoothed.length - 1; i++) {
-    if (Math.random() < 0.35) continue;
+    if (rng() < 0.35) continue;
     const t = i / (smoothed.length - 1);
     const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.3);
-    ctx.globalAlpha = opacity * (0.35 + Math.random() * 0.5);
-    ctx.lineWidth = Math.max(0.5, width * pressure * (0.6 + Math.random() * 0.5));
+    ctx.globalAlpha = opacity * (0.35 + rng() * 0.5);
+    ctx.lineWidth = Math.max(0.5, width * pressure * (0.6 + rng() * 0.5));
     if (colorVariation && !gradientTo) ctx.strokeStyle = varyColor(color, colorVariation);
     ctx.beginPath();
     ctx.moveTo(smoothed[i].x, smoothed[i].y);
@@ -609,7 +672,7 @@ function drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradien
 // dem Malen selbst feucht, nur ihre UMGEBUNG war es vorher nicht).
 function drawWatercolorStroke(ctx, points, opts) {
   const {
-    color, width, opacity = 0.9, gradientTo, gradientShape, interpolation, colorVariation,
+    color, width, opacity = 0.9, gradientTo, gradientShape, interpolation, colorVariation, palette,
     water = 0.5, pigment = 0.6, wetness = 'wet_on_dry', wetRegions = [],
   } = opts;
 
@@ -636,16 +699,20 @@ function drawWatercolorStroke(ctx, points, opts) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (let p = 0; p < passes; p++) {
-    ctx.strokeStyle = (colorVariation && !gradientTo) ? varyColor(blendColor, colorVariation) : flatStyle;
+    // palette hat Vorrang vor colorVariation/gradientTo — die Farbe wird PRO
+    // SEGMENT über pickPaletteColor() bestimmt (siehe dort), nicht einmal
+    // pro Durchgang. Ohne palette: unverändertes Verhalten.
+    if (!palette) ctx.strokeStyle = (colorVariation && !gradientTo) ? varyColor(blendColor, colorVariation) : flatStyle;
     const jittered = points.map(pt => ({
       ...pt,
-      x: pt.x + (Math.random() - 0.5) * jitterAmount,
-      y: pt.y + (Math.random() - 0.5) * jitterAmount,
+      x: pt.x + (rng() - 0.5) * jitterAmount,
+      y: pt.y + (rng() - 0.5) * jitterAmount,
     }));
     const smoothed = catmullRomPoints(jittered, 12, interpolation);
     ctx.globalAlpha = Math.min(1, (baseAlpha / passes) * 1.8);
     for (let i = 0; i < smoothed.length - 1; i++) {
       const t = i / (smoothed.length - 1);
+      if (palette) ctx.strokeStyle = pickPaletteColor(palette, t);
       const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.4);
       ctx.lineWidth = Math.max(1, width * pressure * (1.1 + p * 0.15));
       ctx.beginPath();
@@ -662,17 +729,17 @@ function drawWatercolorStroke(ctx, points, opts) {
   if (neighbor && water > 0 && neighborWetness > 0) {
     const bleedPasses = Math.max(1, Math.round(2 + water * 3));
     for (let p = 0; p < bleedPasses; p++) {
-      const pull = (0.15 + Math.random() * 0.35) * water;
+      const pull = (0.15 + rng() * 0.35) * water;
       const bled = points.map(pt => ({
         ...pt,
-        x: pt.x + (neighbor.x - pt.x) * pull * Math.random(),
-        y: pt.y + (neighbor.y - pt.y) * pull * Math.random(),
+        x: pt.x + (neighbor.x - pt.x) * pull * rng(),
+        y: pt.y + (neighbor.y - pt.y) * pull * rng(),
       }));
       const smoothed = catmullRomPoints(bled, 12, interpolation);
-      ctx.strokeStyle = mixHexColors(blendColor, neighbor.color, 0.3 + Math.random() * 0.4);
+      ctx.strokeStyle = mixHexColors(blendColor, neighbor.color, 0.3 + rng() * 0.4);
       ctx.globalAlpha = Math.min(0.5, baseAlpha * 0.25 * neighborWetness);
       for (let i = 0; i < smoothed.length - 1; i++) {
-        ctx.lineWidth = Math.max(1, width * (0.5 + Math.random() * 0.6));
+        ctx.lineWidth = Math.max(1, width * (0.5 + rng() * 0.6));
         ctx.beginPath();
         ctx.moveTo(smoothed[i].x, smoothed[i].y);
         ctx.lineTo(smoothed[i + 1].x, smoothed[i + 1].y);
@@ -683,6 +750,87 @@ function drawWatercolorStroke(ctx, points, opts) {
   ctx.globalAlpha = 1;
 
   return { x: cx, y: cy, r: strokeRadius, color: blendColor, wetness: 1 };
+}
+
+// style "oil" — deckende Ölfarbe statt lasierender Wasserfarbe (KROs größte
+// gefundene Lücke im Monet-Vergleich): hoher, überwiegend deckender
+// Pigmentauftrag statt Transparenz, sichtbare Borstenstruktur (mehrere leicht
+// versetzte Durchgänge, wie drawBrushStroke), und "wet-in-wet"-Verschieben
+// bereits gemalter Nachbarfarbe in den neuen Strich — nutzt DIESELBE
+// wetRegions-Infrastruktur wie watercolor (findWetNeighbor/mixHexColors),
+// aber bewusst OHNE eigenen wetness-Parameter: echte Ölfarbe bleibt lange
+// genug offen, dass "wet-in-wet" für sie eher der Normalfall als eine
+// bewusste Ausnahme ist (anders als Aquarell, das schnell anzieht). Die
+// Verschiebung ist dafür lokaler/stärker als watercolors diffuses Verlaufen
+// — kein separater "Bleed-Durchgang" danach, sondern direkt in den
+// Haupt-Durchgängen gemischt (Öl "schiebt" Farbe, statt sie zu verdünnen).
+// oilLoad (0-1, wie viel Farbe auf dem Pinsel ist) steuert, wie deckend jeder
+// Durchgang ist — bei niedrigem Wert schimmert die Unterfarbe stellenweise
+// durch (drybrush-artig), bei hohem Wert praktisch vollständig deckend.
+// palette: siehe pickPaletteColor() — dieselbe "broken color"-Palette-
+// Wanderung wie bei watercolor, hier oft der wichtigere Fall (Monets
+// nebeneinanderliegende, vom Auge gemischte Pinselflecken sind primär ein
+// Öl-Phänomen, nicht Aquarell). Rückgabewert wie drawWatercolorStroke: die
+// neue Nässe-Region für nachfolgende Striche (eigene UND watercolor können
+// sie als Nachbarn finden — dasselbe wetRegions-Array).
+function drawOilStroke(ctx, points, opts) {
+  const {
+    color, width, opacity = 0.95, interpolation, palette,
+    oilLoad = 0.7, wetRegions = [],
+  } = opts;
+
+  const bounds = computeBounds(points);
+  const cx = (bounds.minX + bounds.maxX) / 2, cy = (bounds.minY + bounds.maxY) / 2;
+  const strokeRadius = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2 + width;
+  const reach = width * 1.4;
+
+  const passes = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Für die zurückgegebene wetRegion (Zentrum des GANZEN Strichs) reicht der
+  // einmalige, grobe Nachbar-Fund — die eigentliche Verschiebung beim Malen
+  // selbst (unten) sucht dagegen PRO SEGMENT lokal, s. dortiger Kommentar.
+  const overallNeighbor = findWetNeighbor(wetRegions, bounds, strokeRadius + width * 1.2);
+
+  for (let p = 0; p < passes; p++) {
+    // Pro Durchgang EIN seitlicher Borsten-Versatz (wie drawBrushStroke),
+    // nicht pro Segment — sonst wirkt es wie Wasserfarben-Jitter statt
+    // parallel geführter Borsten eines Pinsels.
+    const offX = (rng() - 0.5) * width * 0.14;
+    const offY = (rng() - 0.5) * width * 0.14;
+    const jittered = points.map(pt => ({ ...pt, x: pt.x + offX, y: pt.y + offY }));
+    const smoothed = catmullRomPoints(jittered, 12, interpolation);
+    for (let i = 0; i < smoothed.length - 1; i++) {
+      const t = i / (smoothed.length - 1);
+      let segColor = palette ? pickPaletteColor(palette, t) : color;
+      // Lokale Nachbarsuche PRO SEGMENT statt einmal für den ganzen Strich —
+      // ein langer Strich kann so an verschiedenen Stellen unterschiedliche
+      // Unterfarbe aufnehmen (KROs Befund: "ein neuer Strich müsste
+      // teilweise die Farbe des darunterliegenden Strichs aufnehmen", nicht
+      // nur EINE Nachbarfarbe pauschal für den ganzen Strich).
+      const localBounds = { minX: smoothed[i].x - reach, maxX: smoothed[i].x + reach, minY: smoothed[i].y - reach, maxY: smoothed[i].y + reach };
+      const localNeighbor = findWetNeighbor(wetRegions, localBounds, reach);
+      if (localNeighbor) {
+        const dragAmount = Math.min(0.65, (localNeighbor.wetness ?? 0) * 0.75) * (0.6 + rng() * 0.4);
+        segColor = mixHexColors(segColor, localNeighbor.color, dragAmount);
+      }
+      ctx.strokeStyle = segColor;
+      const pressure = smoothed[i].pressure ?? (taperEnvelope(t) * 0.6 + 0.5);
+      ctx.lineWidth = Math.max(1, width * pressure * (1 + p * 0.08));
+      // Deckend, aber nicht IMMER voll — vereinzelte dünnere Stellen lassen
+      // die Unterfarbe "stellenweise sichtbar" bleiben (KROs Befund), statt
+      // dass jeder Strich die Fläche komplett verschluckt.
+      ctx.globalAlpha = Math.min(1, opacity * (0.55 + oilLoad * 0.45) * (rng() > 0.12 ? 1 : 0.4));
+      ctx.beginPath();
+      ctx.moveTo(smoothed[i].x, smoothed[i].y);
+      ctx.lineTo(smoothed[i + 1].x, smoothed[i + 1].y);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  return { x: cx, y: cy, r: strokeRadius, color: palette ? pickPaletteColor(palette, 0.5) : (overallNeighbor ? mixHexColors(color, overallNeighbor.color, 0.3) : color), wetness: 1 };
 }
 
 // style "spray" — Sprühdose/Stipple: viele kleine, zufällig um den Pfad
@@ -754,8 +902,8 @@ function drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradi
     // Pro Durchgang EIN seitlicher Versatz der ganzen Bahn (nicht pro Marke)
     // — simuliert leicht unterschiedliche Borsten eines Pinsels statt eines
     // komplett neu gewürfelten Pfads pro Durchgang.
-    const offX = (Math.random() - 0.5) * jitter;
-    const offY = (Math.random() - 0.5) * jitter;
+    const offX = (rng() - 0.5) * jitter;
+    const offY = (rng() - 0.5) * jitter;
 
     // pressureLevel/opacityLevel treiben als gebundener Random Walk (statt
     // unabhängig gewürfelter Werte pro Marke) — sonst springt die Breite
@@ -774,10 +922,10 @@ function drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradi
 
       const t = i / (fine.length - 1);
       const basePressure = fine[i].pressure ?? (taperEnvelope(t) * 0.7 + 0.3);
-      pressureLevel = Math.max(0.15, Math.min(1.8, pressureLevel + (Math.random() - 0.5) * pressureVariation * 0.6));
-      opacityLevel = Math.max(0.15, Math.min(1.6, opacityLevel + (Math.random() - 0.5) * opacityVariation * 0.6));
+      pressureLevel = Math.max(0.15, Math.min(1.8, pressureLevel + (rng() - 0.5) * pressureVariation * 0.6));
+      opacityLevel = Math.max(0.15, Math.min(1.6, opacityLevel + (rng() - 0.5) * opacityVariation * 0.6));
 
-      if (Math.random() >= edgeBreak) {
+      if (rng() >= edgeBreak) {
         ctx.strokeStyle = (colorVariation && !gradientTo) ? varyColor(color, colorVariation) : flatStyle;
         ctx.lineWidth = Math.max(0.4, width * basePressure * pressureLevel);
         ctx.globalAlpha = Math.max(0.05, Math.min(1, (opacity / bristleDensity) * 1.5 * opacityLevel));
@@ -789,13 +937,13 @@ function drawBrushStroke(ctx, points, { color, width, opacity, gradientTo, gradi
         if (grain > 0 && !vector) {
           const dots = Math.round(grain * 6);
           for (let g = 0; g < dots; g++) {
-            const gt = Math.random();
-            const gx = fine[markStart].x + (fine[i + 1].x - fine[markStart].x) * gt + offX + (Math.random() - 0.5) * width * 0.4;
-            const gy = fine[markStart].y + (fine[i + 1].y - fine[markStart].y) * gt + offY + (Math.random() - 0.5) * width * 0.4;
-            ctx.globalAlpha = opacity * grain * Math.random() * 0.5;
+            const gt = rng();
+            const gx = fine[markStart].x + (fine[i + 1].x - fine[markStart].x) * gt + offX + (rng() - 0.5) * width * 0.4;
+            const gy = fine[markStart].y + (fine[i + 1].y - fine[markStart].y) * gt + offY + (rng() - 0.5) * width * 0.4;
+            ctx.globalAlpha = opacity * grain * rng() * 0.5;
             ctx.fillStyle = ctx.strokeStyle;
             ctx.beginPath();
-            ctx.arc(gx, gy, Math.random() * 1.2 + 0.3, 0, Math.PI * 2);
+            ctx.arc(gx, gy, rng() * 1.2 + 0.3, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -924,6 +1072,569 @@ async function applyHandwritingExpansion(soulId, strokes) {
   return { strokes: expanded, missing: [...missing] };
 }
 
+// Ray-Casting-Punkt-in-Polygon-Test — Standardalgorithmus, keine
+// Bibliothek nötig für die grobe künstlerische Verwendung hier
+// (Feld-Region ist ein einfaches, nicht notwendig konvexes Polygon).
+function pointInPolygon(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Für role:"tree"s Krone — einfacher als Polygon-Test, keine Punktliste
+// nötig, nur Zentrum + zwei Radien (elliptische Streuzone).
+function pointInEllipse(px, py, cx, cy, rx, ry) {
+  const dx = (px - cx) / rx, dy = (py - cy) / ry;
+  return dx * dx + dy * dy <= 1;
+}
+
+// mode:"field" — KROs eigener Befund zum Monet-Vergleich: das Werk hatte
+// viele technische, aber voneinander UNABHÄNGIGE Einzelstriche statt eines
+// zusammenhängenden optischen Felds. Ein field-Strich beschreibt keinen
+// einzelnen Pinselzug mehr, sondern eine ganze Region: "hier eine kleine
+// Gruppe verwandter Farben, eine Richtung, eine Dichte, eine lokale
+// Bewegung" — und wird VOR dem eigentlichen Render-Durchlauf (wie
+// mode:"handwriting" oben) zu vielen einzelnen kurzen Dabs expandiert, die
+// danach ganz normal durch dispatchStrokeStyle laufen (jeder Dab kann also
+// oil/watercolor/... sein, inkl. wet-in-wet-Verschiebung UNTEREINANDER, da
+// sie nacheinander ins selbe wetRegions-Array eingehen).
+//
+// Bewusst DICHTE-GEDECKELT (targetCount max. 220 pro field-Strich): das
+// bestehende Werk (kro_monet_harbor_01) hat inzwischen 17.774 SVG-Pfade,
+// genau das von KRO benannte Problem ("mehr Pinselereignisse bringen uns
+// nicht automatisch näher an die Referenz") — ein Werkzeug, das genau diese
+// Sorge worst-case vervielfachen könnte, wäre kontraproduktiv. Ein einzelner
+// field-Aufruf ersetzt viele einzeln zu formulierende Striche EFFIZIENTER
+// (ein Tool-Call statt hundert), aber erzeugt am Ende real trotzdem einen
+// Pfad pro Dab im SVG — Dichte bewusst moderat, nicht "so viele wie möglich".
+function expandFieldStroke(stroke) {
+  const {
+    region, fieldDirection = 0, fieldDirectionJitter = 20, fieldLength = 24,
+    fieldWidth, fieldDensity = 0.5, fieldStyle,
+    width, style, color, palette, paletteWeights, opacity, colorVariation, interpolation,
+    water, pigment, wetness, oilLoad, gradientTo, gradientShape, brush,
+  } = stroke;
+  if (!region || region.length < 3) return [];
+
+  const bounds = computeBounds(region);
+  const areaW = Math.max(1, bounds.maxX - bounds.minX);
+  const areaH = Math.max(1, bounds.maxY - bounds.minY);
+  const dabW = fieldWidth || width || 14;
+  const dabLen = fieldLength;
+  const cellArea = Math.max(40, dabW * dabLen * 0.6);
+  const targetCount = Math.min(220, Math.max(4, Math.round(((areaW * areaH) / cellArea) * fieldDensity)));
+  // paletteWeights gesetzt: JEDE Marke bekommt unabhängig eine feste,
+  // gewürfelte Farbe aus der Palette (siehe pickWeightedPaletteColor) — sonst
+  // unverändertes Verhalten (Marke behält die palette, pickPaletteColor()
+  // wandert wie gehabt kontinuierlich innerhalb ihres eigenen kurzen Pfads).
+  const useWeighted = Array.isArray(palette) && Array.isArray(paletteWeights);
+
+  const dabs = [];
+  let attempts = 0;
+  while (dabs.length < targetCount && attempts < targetCount * 8) {
+    attempts++;
+    const px = bounds.minX + rng() * areaW;
+    const py = bounds.minY + rng() * areaH;
+    if (!pointInPolygon(px, py, region)) continue;
+    const angleDeg = fieldDirection + (rng() - 0.5) * 2 * fieldDirectionJitter;
+    const angle = (angleDeg * Math.PI) / 180;
+    const half = (dabLen / 2) * (0.6 + rng() * 0.8);
+    const dx = Math.cos(angle) * half, dy = Math.sin(angle) * half;
+    dabs.push({
+      points: [{ x: px - dx, y: py - dy }, { x: px + dx, y: py + dy }],
+      color: useWeighted ? pickWeightedPaletteColor(palette, paletteWeights) : color,
+      palette: useWeighted ? undefined : palette,
+      width: dabW * (0.7 + rng() * 0.6), opacity, style: fieldStyle || style,
+      colorVariation, interpolation: interpolation ?? 0.6, water, pigment, wetness, oilLoad,
+      gradientTo, gradientShape, brush,
+    });
+  }
+  return dabs;
+}
+
+// Läuft VOR dem seedStrokeRng()-Durchlauf in runSoulDraw, deshalb bewusst
+// mit dem NOCH UNGESÄTEN rng() (Modul-Startzustand bzw. was auch immer
+// vorher lief) — harmlos, da das Ergebnis (die konkreten Dab-Koordinaten)
+// hier EINMAL bestimmt und danach als ganz normale, feste Striche in BEIDE
+// Durchläufe (Raster + SVG) eingehen. Keine eigene Determinismus-Sorge wie
+// bei den style-Funktionen — die expandierten Dabs selbst sind bereits
+// fixe Daten, sobald diese Funktion einmal gelaufen ist.
+function expandFieldStrokes(strokes) {
+  const expanded = [];
+  for (const s of strokes) {
+    if (s.mode === 'field') expanded.push(...expandFieldStroke(s));
+    else expanded.push(s);
+  }
+  return expanded;
+}
+
+// mode:"object" — eine Stufe ÜBER mode:"field": nicht viele ÄHNLICHE Dabs in
+// einer Region, sondern eine kleine, ROLLEN-basierte Gruppe UNTERSCHIEDLICHER
+// Striche, die zusammen ein erkennbares Ding ergeben statt einer bloßen
+// Textur. KROs eigener Befund im Monet-Vergleich: "Strich → Strichgruppe →
+// Volumen → Objekt", nicht umgekehrt "Objekt → Striche" (ein Symbol, das wie
+// ein Boot AUSSEHEN soll, statt mehrerer Striche, aus deren Beziehung
+// zueinander die Wahrnehmung eines Boots entsteht). role wählt eine feste,
+// handgebaute Rezeptur aus mehreren Teil-Strichen mit unterschiedlicher
+// Funktion (bei "ship" z.B. Rumpf/Bug-Heck/Mast/Takelage/Spiegelung/
+// verlorene Kante — exakt KROs eigene Aufschlüsselung), nicht zufällig
+// gestreute, gleichartige Marken wie bei "field".
+//
+// Bewusst nur ZWEI Rollen zum Start (ship, mast) statt KROs gesamtem
+// Vokabular (crane/pier/reflection/mist/building_mass) auf einmal — erst
+// bewähren, dann erweitern, gleiche Vorsicht wie beim ersten field-Schritt.
+//
+// depth (foreground/midground/background) ist eine einfache, in diese
+// Funktion eingebaute Kurzform atmosphärischer Perspektive (weiter hinten:
+// weniger Masse/Kontrast) — kein eigenständiges value_map-Werkzeug, das
+// bleibt weiterhin offen, aber deckt genau den Tiefen-Bedarf ab, den ein
+// einzelnes Objekt in einer Szene hat.
+// Presets für role:"quadruped" — bewusst nur STARTPUNKTE (Parameter-Bündel),
+// kein separater Code-Pfad pro Tierart. "Hund und Katze sind sich ähnlich":
+// hier heißt das konkret "ähnliche Zahlenwerte auf demselben Bauplan", nicht
+// zwei verschiedene Funktionen. KRO kann jeden dieser Werte einzeln
+// überschreiben oder eine komplett neue Tierart nur aus eigenen
+// Proportions-Schätzungen beschreiben (preset weglassen, alle Werte direkt
+// angeben) — das ist der eigentliche Verallgemeinerungs-Mechanismus, die
+// Presets hier sind nur bequeme, kalibrierte Beispiele, keine Obergrenze.
+const QUADRUPED_PRESETS = {
+  cat:   { legLength: 0.22, bodyLength: 0.9,  bodyHeight: 0.4,  neckLength: 0.1,  headSize: 0.32, earStyle: 'pointed', tailLength: 0.75, tailStyle: 'curled' },
+  dog:   { legLength: 0.27, bodyLength: 1,    bodyHeight: 0.44, neckLength: 0.16, headSize: 0.3,  earStyle: 'floppy',  tailLength: 0.5,  tailStyle: 'straight' },
+  fox:   { legLength: 0.24, bodyLength: 0.95, bodyHeight: 0.36, neckLength: 0.12, headSize: 0.26, earStyle: 'pointed', tailLength: 0.85, tailStyle: 'bushy' },
+  horse: { legLength: 0.46, bodyLength: 1.3,  bodyHeight: 0.5,  neckLength: 0.45, headSize: 0.24, earStyle: 'pointed', tailLength: 0.7,  tailStyle: 'bushy' },
+  cow:   { legLength: 0.28, bodyLength: 1.3,  bodyHeight: 0.6,  neckLength: 0.2,  headSize: 0.28, earStyle: 'round',   tailLength: 0.6,  tailStyle: 'straight' },
+};
+
+// Presets für role:"biped" — gleiches Prinzip wie QUADRUPED_PRESETS: EIN
+// Bauplan (Rumpf senkrecht statt waagerecht, zwei Beine statt vier, Kopf,
+// optional Arme/Flügel), Mensch und stehender Vogel sind nur unterschiedliche
+// Zahlenwerte darauf, keine getrennten Rollen.
+const BIPED_PRESETS = {
+  human: { legLength: 0.5,  torsoLength: 0.45, torsoWidth: 0.16, neckLength: 0.06, headSize: 0.14, limbStyle: 'arms',  legSpread: 0.12 },
+  bird:  { legLength: 0.18, torsoLength: 0.32, torsoWidth: 0.22, neckLength: 0.22, headSize: 0.16, limbStyle: 'wings', legSpread: 0.04 },
+};
+
+// Presets für role:"tree" — Baumkrone ist kein Einzelstrich, sondern eine
+// kleine Dab-Streuung (gleiche Idee wie expandFieldStroke, hier lokal für
+// eine Ellipse statt eines beliebigen Polygons — Kronen sind praktisch immer
+// rundlich/oval, ein Polygon wäre unnötiger Aufwand für den Aufrufer).
+const TREE_PRESETS = {
+  deciduous: { trunkHeight: 0.5, trunkWidth: 0.06, canopyRadius: 0.55, canopyAspect: 1,    canopyDensity: 0.55 },
+  conifer:   { trunkHeight: 0.35, trunkWidth: 0.05, canopyRadius: 0.35, canopyAspect: 1.8,  canopyDensity: 0.65 },
+};
+
+function expandObjectStroke(stroke) {
+  const {
+    role, anchor, scale = 200, direction = 0, mass = 0.6, edge = 'soft',
+    contrast = 0.7, depth = 'midground', palette, color, style = 'oil', preset, hasMast = true,
+  } = stroke;
+  if (!anchor || typeof anchor.x !== 'number' || typeof anchor.y !== 'number') return [];
+
+  const depthFactor = depth === 'background' ? 0.55 : depth === 'foreground' ? 1.15 : 1;
+  const effMass = Math.max(0.15, Math.min(1.2, mass * depthFactor));
+  const effContrast = Math.max(0.1, Math.min(1, contrast * depthFactor));
+  const effOpacity = 0.5 + effContrast * 0.45;
+
+  const rad = (direction * Math.PI) / 180;
+  const dirX = Math.cos(rad), dirY = Math.sin(rad);
+  const perpX = -dirY, perpY = dirX;
+
+  const baseColor = (palette && palette.length) ? palette[0] : (color || '#2a2a28');
+  const midColor = (palette && palette.length > 1) ? palette[Math.floor(palette.length / 2)] : baseColor;
+
+  if (role === 'quadruped') {
+    // Preset liefert Startwerte, explizite Parameter im Aufruf gewinnen —
+    // KRO kann so "cat" nehmen UND z.B. nur tailStyle abweichend angeben.
+    const p = { ...(QUADRUPED_PRESETS[preset] || QUADRUPED_PRESETS.dog), ...stroke };
+    const {
+      legLength, bodyLength, bodyHeight, neckLength, headSize, earStyle, tailLength, tailStyle,
+    } = p;
+
+    const bodyLen = scale * bodyLength;
+    const bodyH = scale * bodyHeight * effMass;
+    const legLen = scale * legLength;
+
+    // "unten" ist hier IMMER Bildschirm-unten (Schwerkraft) statt aus
+    // direction abgeleitet — anders als bei "ship" (das auf Wasser in
+    // beliebiger Ausrichtung stehen kann) steht ein Landtier immer mit den
+    // Beinen nach unten, unabhängig davon, wohin es blickt (direction).
+    const bx0 = anchor.x - dirX * bodyLen / 2, by0 = anchor.y - dirY * bodyLen / 2; // hinten
+    const bx1 = anchor.x + dirX * bodyLen / 2, by1 = anchor.y + dirY * bodyLen / 2; // vorne (Kopf-Ende)
+
+    const strokes = [];
+
+    // 1) Rumpf — ein Zug von hinten nach vorne.
+    strokes.push({
+      points: [{ x: bx0, y: by0 }, { x: anchor.x, y: anchor.y }, { x: bx1, y: by1 }],
+      color: baseColor, width: bodyH, opacity: effOpacity, style, interpolation: 0.6,
+    });
+
+    // 2) Beine — zwei Beinpaare (nahe hinten/vorne), je zwei leicht versetzt
+    // (Tiefenandeutung: das "hintere" Bein eines Paars beginnt an derselben
+    // Rumpfstelle, steht aber seitlich versetzt).
+    [0.2, 0.8].forEach((t) => {
+      const px = bx0 + (bx1 - bx0) * t, py = by0 + (by1 - by0) * t;
+      [-0.13, 0.13].forEach((offset) => {
+        strokes.push({
+          points: [
+            { x: px + dirX * scale * offset, y: py + bodyH * 0.3 },
+            { x: px + dirX * scale * offset, y: py + bodyH * 0.3 + legLen },
+          ],
+          color: baseColor, width: Math.max(1, bodyH * 0.16), opacity: effOpacity * 0.95, style, interpolation: 0.2,
+        });
+      });
+    });
+
+    // 3) Hals + Kopf am vorderen Ende, leicht angehoben (Kopf wird meist
+    // über Rückenhöhe getragen, nicht in einer Linie mit dem Rumpf).
+    const neckLen = scale * neckLength;
+    const headCx = bx1 + dirX * neckLen, headCy = by1 + dirY * neckLen - bodyH * 0.35;
+    strokes.push({
+      points: [{ x: bx1, y: by1 }, { x: headCx, y: headCy }],
+      color: baseColor, width: bodyH * 0.65, opacity: effOpacity, style, interpolation: 0.3,
+    });
+    const headSz = scale * headSize;
+    strokes.push({
+      points: [
+        { x: headCx - dirX * headSz * 0.3, y: headCy },
+        { x: headCx + dirX * headSz * 0.5, y: headCy - headSz * 0.15 },
+      ],
+      color: baseColor, width: Math.max(2, headSz * 0.8), opacity: effOpacity, style,
+    });
+
+    // 4) Ohren — Form hängt von earStyle ab.
+    if (earStyle !== 'none') {
+      const earLen = headSz * 0.4;
+      const earBaseX = headCx, earBaseY = headCy - headSz * 0.25;
+      if (earStyle === 'pointed') {
+        strokes.push({
+          points: [{ x: earBaseX, y: earBaseY }, { x: earBaseX - dirX * earLen * 0.3, y: earBaseY - earLen }],
+          color: baseColor, width: Math.max(1, headSz * 0.12), opacity: effOpacity, style: 'ink',
+        });
+      } else if (earStyle === 'floppy') {
+        strokes.push({
+          points: [
+            { x: earBaseX, y: earBaseY },
+            { x: earBaseX, y: earBaseY + earLen * 0.7 },
+            { x: earBaseX - dirX * earLen * 0.3, y: earBaseY + earLen },
+          ],
+          color: baseColor, width: Math.max(1, headSz * 0.16), opacity: effOpacity * 0.9, style: 'ink', interpolation: 0.7,
+        });
+      } else if (earStyle === 'round') {
+        strokes.push({
+          points: [{ x: earBaseX, y: earBaseY }, { x: earBaseX, y: earBaseY - earLen * 0.4 }],
+          color: baseColor, width: Math.max(2, headSz * 0.22), opacity: effOpacity, style: 'ink',
+        });
+      }
+    }
+
+    // 5) Schwanz am hinteren Ende — Form hängt von tailStyle ab.
+    if (tailStyle !== 'none') {
+      const tailLen = scale * tailLength;
+      let tailEnd;
+      if (tailStyle === 'curled') tailEnd = { x: bx0 - dirX * tailLen * 0.55, y: by0 - tailLen * 0.35 };
+      else if (tailStyle === 'bushy') tailEnd = { x: bx0 - dirX * tailLen, y: by0 - tailLen * 0.15 };
+      else tailEnd = { x: bx0 - dirX * tailLen * 0.8, y: by0 + tailLen * 0.25 };
+      strokes.push({
+        points: [{ x: bx0, y: by0 }, { x: bx0 - dirX * tailLen * 0.4, y: by0 - tailLen * 0.1 }, tailEnd],
+        color: baseColor, width: Math.max(1, bodyH * (tailStyle === 'bushy' ? 0.3 : 0.12)), opacity: effOpacity * 0.9, style, interpolation: 0.6,
+      });
+    }
+
+    // 6) Verlorene Kante — Beine/Boden ins Gras/den Untergrund auflösen.
+    if (edge !== 'hard') {
+      const dissolveColor = (palette && palette.length > 2) ? palette[palette.length - 1] : '#EDE6D6';
+      strokes.push({
+        mode: 'dissolve',
+        points: [
+          { x: bx0 - bodyLen * 0.1, y: by0 + bodyH * 0.3 },
+          { x: bx1 + bodyLen * 0.1, y: by1 + bodyH * 0.3 },
+          { x: bx1 + bodyLen * 0.1, y: by1 + bodyH * 0.3 + legLen + bodyH },
+          { x: bx0 - bodyLen * 0.1, y: by0 + bodyH * 0.3 + legLen + bodyH },
+        ],
+        color: dissolveColor, direction: 90, falloff: 0.6, intensity: edge === 'lost' ? 0.7 : 0.35,
+      });
+    }
+
+    return strokes;
+  }
+
+  if (role === 'mast') {
+    const len = scale;
+    const w = Math.max(1, len * 0.02 * effMass);
+    return [{
+      points: [
+        { x: anchor.x, y: anchor.y },
+        { x: anchor.x + dirX * len, y: anchor.y + dirY * len },
+      ],
+      color: baseColor, width: w, opacity: effOpacity, style, interpolation: 0.3,
+    }];
+  }
+
+  if (role === 'ship') {
+    const hullLen = scale;
+    const hullW = Math.max(3, hullLen * 0.14 * effMass);
+    const hx0 = anchor.x - dirX * hullLen / 2, hy0 = anchor.y - dirY * hullLen / 2;
+    const hx1 = anchor.x + dirX * hullLen / 2, hy1 = anchor.y + dirY * hullLen / 2;
+    // "leicht gebrochen": Mittelpunkt seitlich versetzt statt exakt gerade.
+    const midX = anchor.x + perpX * hullW * 0.15, midY = anchor.y + perpY * hullW * 0.15;
+
+    const strokes = [];
+
+    // 1) Rumpf — breiter, dunkler, leicht gebrochener Zug entlang direction.
+    // reflect (sofern edge nicht "hard"): Spiegelung direkt über den
+    // bestehenden reflect-Mechanismus statt eines eigenen Spiegel-Strichs.
+    strokes.push({
+      points: [{ x: hx0, y: hy0 }, { x: midX, y: midY }, { x: hx1, y: hy1 }],
+      color: baseColor, width: hullW, opacity: effOpacity, style, interpolation: 0.5,
+      reflect: edge !== 'hard'
+        ? { waterline: anchor.y + Math.abs(perpY) * hullW * 0.5, opacity: 0.28 * effContrast, waviness: hullW * 0.4 }
+        : undefined,
+    });
+
+    // 2) Bug/Heck — zwei kurze Richtungswechsel an den Rumpf-Enden, leicht
+    // nach außen UND quer zur Fahrtrichtung (Silhouette, die über die
+    // Rumpflinie hinausragt).
+    const kinkLen = hullLen * 0.13;
+    [[hx0, hy0, -1], [hx1, hy1, 1]].forEach(([hx, hy, sign]) => {
+      strokes.push({
+        points: [
+          { x: hx, y: hy },
+          { x: hx + dirX * kinkLen * sign * 0.3 - perpX * kinkLen * 0.9, y: hy + dirY * kinkLen * sign * 0.3 - perpY * kinkLen * 0.9 },
+        ],
+        color: baseColor, width: hullW * 0.7, opacity: effOpacity * 0.9, style,
+      });
+    });
+
+    // 3) Mast + 4) Takelage — nur wenn hasMast (Standard true). Das ist die
+    // Verallgemeinerung "ship" → beliebiges Wasserfahrzeug: hasMast:false
+    // macht aus derselben Rezeptur ein Ruderboot statt eines Segelschiffs,
+    // ohne eine eigene role dafür zu brauchen — dieselbe Lektion wie bei
+    // quadruped (ein Bauplan mit Parametern statt Rezept pro Objekt).
+    if (hasMast) {
+      const mastLen = hullLen * 0.8;
+      const mastTopX = anchor.x - perpX * mastLen, mastTopY = anchor.y - perpY * mastLen;
+      strokes.push({
+        points: [{ x: anchor.x, y: anchor.y }, { x: mastTopX, y: mastTopY }],
+        color: baseColor, width: Math.max(1, hullLen * 0.012 * effMass), opacity: effOpacity * 0.95, style: 'ink',
+      });
+
+      // Takelage — 1-3 sehr schwache diagonale Verbindungen Mastspitze zu
+      // Rumpfenden (hier: beide Enden, also 2 — "1-3" je nach Schiffsgröße
+      // wäre eine spätere Erweiterung, kein Grund das jetzt zu verkomplizieren).
+      [[hx0, hy0], [hx1, hy1]].forEach(([hx, hy]) => {
+        strokes.push({
+          points: [{ x: mastTopX, y: mastTopY }, { x: hx, y: hy }],
+          color: midColor, width: 1, opacity: effOpacity * 0.25, style: 'ink',
+        });
+      });
+    }
+
+    // 6) Verlorene Kante — ein Rumpfende weich zum Wasser/Nebel hin auflösen
+    // (bei edge:"hard" ausgelassen — dann bleibt das Schiff klar umrissen).
+    if (edge !== 'hard') {
+      const dissolveColor = (palette && palette.length > 2) ? palette[palette.length - 1] : '#EDE6D6';
+      strokes.push({
+        mode: 'dissolve',
+        points: [
+          { x: hx1 - dirX * hullLen * 0.35 - perpX * hullW, y: hy1 - dirY * hullLen * 0.35 - perpY * hullW },
+          { x: hx1 + dirX * hullLen * 0.15 - perpX * hullW, y: hy1 + dirY * hullLen * 0.15 - perpY * hullW },
+          { x: hx1 + dirX * hullLen * 0.15 + perpX * hullW, y: hy1 + dirY * hullLen * 0.15 + perpY * hullW },
+          { x: hx1 - dirX * hullLen * 0.35 + perpX * hullW, y: hy1 - dirY * hullLen * 0.35 + perpY * hullW },
+        ],
+        color: dissolveColor,
+        direction,
+        falloff: 0.5,
+        intensity: edge === 'lost' ? 0.9 : 0.55,
+      });
+    }
+
+    return strokes;
+  }
+
+  if (role === 'biped') {
+    const p = { ...(BIPED_PRESETS[preset] || BIPED_PRESETS.human), ...stroke };
+    const { legLength, torsoLength, torsoWidth, neckLength, headSize, limbStyle, legSpread } = p;
+
+    const torsoLen = scale * torsoLength;
+    const torsoW = scale * torsoWidth * effMass;
+    const legLen = scale * legLength;
+    const spread = scale * legSpread;
+
+    // "oben"/"unten" sind hier IMMER Bildschirm-oben/unten (Schwerkraft),
+    // unabhängig von direction — wie bei quadruped, aus demselben Grund
+    // (ein stehendes Wesen hat Beine immer nach unten, direction bestimmt
+    // nur, wohin Kopf/Vorderseite blicken).
+    const topX = anchor.x, topY = anchor.y - torsoLen;
+
+    const strokes = [];
+
+    // 1) Rumpf — senkrechter Zug von der Hüfte (anchor) nach oben.
+    strokes.push({
+      points: [{ x: anchor.x, y: anchor.y }, { x: topX, y: topY }],
+      color: baseColor, width: torsoW, opacity: effOpacity, style, interpolation: 0.4,
+    });
+
+    // 2) Beine — zwei Züge von der Hüfte nach unten, seitlich versetzt
+    // (legSpread = Standbreite, unabhängig von direction).
+    [-1, 1].forEach((side) => {
+      strokes.push({
+        points: [
+          { x: anchor.x + side * spread, y: anchor.y },
+          { x: anchor.x + side * spread, y: anchor.y + legLen },
+        ],
+        color: baseColor, width: Math.max(1, torsoW * 0.35), opacity: effOpacity * 0.95, style, interpolation: 0.2,
+      });
+    });
+
+    // 3) Hals + Kopf — leichter Vorwärts-Versatz Richtung direction.
+    const neckLen = scale * neckLength;
+    const headCx = topX + dirX * scale * 0.05, headCy = topY - neckLen;
+    strokes.push({
+      points: [{ x: topX, y: topY }, { x: headCx, y: headCy }],
+      color: baseColor, width: torsoW * 0.6, opacity: effOpacity, style, interpolation: 0.3,
+    });
+    const headSz = scale * headSize;
+    strokes.push({
+      points: [
+        { x: headCx - headSz * 0.3, y: headCy },
+        { x: headCx + headSz * 0.3, y: headCy - headSz * 0.1 },
+      ],
+      color: baseColor, width: Math.max(2, headSz * 0.9), opacity: effOpacity, style,
+    });
+
+    // 4) Arme (herabhängend) oder Flügel (angelegt, diagonal nach hinten/
+    // unten) — je nach limbStyle. "none" lässt beides weg (z.B. für sehr
+    // entfernte/kleine Figuren, wo Arme/Flügel ohnehin nicht lesbar wären).
+    if (limbStyle === 'arms') {
+      [-1, 1].forEach((side) => {
+        strokes.push({
+          points: [
+            { x: topX + side * torsoW * 0.4, y: topY + torsoLen * 0.1 },
+            { x: topX + side * torsoW * 0.7, y: topY + torsoLen * 0.75 },
+          ],
+          color: baseColor, width: Math.max(1, torsoW * 0.22), opacity: effOpacity * 0.9, style, interpolation: 0.3,
+        });
+      });
+    } else if (limbStyle === 'wings') {
+      [-1, 1].forEach((side) => {
+        strokes.push({
+          points: [
+            { x: topX + side * torsoW * 0.3, y: topY + torsoLen * 0.15 },
+            { x: topX + side * torsoW * 1.4, y: topY + torsoLen * 0.5 },
+            { x: topX + side * torsoW * 0.9, y: topY + torsoLen * 0.85 },
+          ],
+          color: baseColor, width: Math.max(1, torsoW * 0.3), opacity: effOpacity * 0.85, style, interpolation: 0.6,
+        });
+      });
+    }
+
+    // 5) Verlorene Kante am Boden.
+    if (edge !== 'hard') {
+      const dissolveColor = (palette && palette.length > 2) ? palette[palette.length - 1] : '#EDE6D6';
+      strokes.push({
+        mode: 'dissolve',
+        points: [
+          { x: anchor.x - spread - torsoW, y: anchor.y + legLen * 0.6 },
+          { x: anchor.x + spread + torsoW, y: anchor.y + legLen * 0.6 },
+          { x: anchor.x + spread + torsoW, y: anchor.y + legLen + torsoW },
+          { x: anchor.x - spread - torsoW, y: anchor.y + legLen + torsoW },
+        ],
+        color: dissolveColor, direction: 90, falloff: 0.6, intensity: edge === 'lost' ? 0.7 : 0.35,
+      });
+    }
+
+    return strokes;
+  }
+
+  if (role === 'tree') {
+    const p = { ...(TREE_PRESETS[preset] || TREE_PRESETS.deciduous), ...stroke };
+    const { trunkHeight, trunkWidth, canopyRadius, canopyAspect, canopyDensity } = p;
+
+    const trunkLen = scale * trunkHeight;
+    const trunkW = Math.max(2, scale * trunkWidth * effMass);
+    const trunkTopX = anchor.x, trunkTopY = anchor.y - trunkLen;
+
+    const strokes = [];
+
+    // 1) Stamm — senkrechter Zug vom Boden (anchor) nach oben. `palette` gilt
+    // NUR für die Krone (Laub-Farbvarianz) — der Stamm braucht seine eigene
+    // Holzfarbe, sonst verschwindet er farblich in der Krone darüber (Bug:
+    // palette[0] hier war eine Laubfarbe, kein Holzton).
+    strokes.push({
+      points: [{ x: anchor.x, y: anchor.y }, { x: trunkTopX, y: trunkTopY }],
+      color: color || '#5a4632',
+      width: trunkW, opacity: effOpacity, style: 'dry', interpolation: 0.3,
+    });
+
+    // 2) Krone — KEIN Einzelstrich, sondern eine Dab-Streuung in einer
+    // Ellipse über dem Stamm (gleiche Streu-Idee wie expandFieldStroke,
+    // hier lokal für eine Ellipse statt eines Polygons — Baumkronen sind
+    // praktisch immer rundlich/oval). canopyAspect > 1 macht die Krone
+    // schlanker/höher (Nadelbaum-artig) statt rund (Laubbaum-artig).
+    const canopyR = scale * canopyRadius;
+    const canopyRy = canopyR * canopyAspect;
+    const canopyCx = trunkTopX, canopyCy = trunkTopY - canopyRy * 0.5;
+    const canopyPalette = (palette && palette.length) ? palette : [color || '#4a6b3a'];
+    const dabW = Math.max(4, canopyR * 0.18);
+    const dabLen = dabW * 1.3;
+    const cellArea = Math.max(20, dabW * dabLen * 0.6);
+    const approxArea = Math.PI * canopyR * canopyRy;
+    const targetCount = Math.min(180, Math.max(6, Math.round((approxArea / cellArea) * canopyDensity)));
+
+    let attempts = 0, placed = 0;
+    while (placed < targetCount && attempts < targetCount * 8) {
+      attempts++;
+      const px = canopyCx + (rng() - 0.5) * 2 * canopyR;
+      const py = canopyCy + (rng() - 0.5) * 2 * canopyRy;
+      if (!pointInEllipse(px, py, canopyCx, canopyCy, canopyR, canopyRy)) continue;
+      placed++;
+      const angle = rng() * Math.PI * 2;
+      const half = (dabLen / 2) * (0.6 + rng() * 0.8);
+      const ddx = Math.cos(angle) * half, ddy = Math.sin(angle) * half;
+      const dabColor = canopyPalette.length >= 2
+        ? pickWeightedPaletteColor(canopyPalette, canopyPalette.map(() => 1))
+        : canopyPalette[0];
+      strokes.push({
+        points: [{ x: px - ddx, y: py - ddy }, { x: px + ddx, y: py + ddy }],
+        color: dabColor, width: dabW * (0.7 + rng() * 0.6), opacity: effOpacity * (0.7 + rng() * 0.3), style: 'oil',
+      });
+    }
+
+    // 3) Weiche Kante über die ganze Krone verteilt statt harter Silhouette
+    // (dissolve ohne direction: gleichmäßige, ungerichtete Auflösung).
+    if (edge !== 'hard') {
+      strokes.push({
+        mode: 'dissolve',
+        points: [
+          { x: canopyCx - canopyR, y: canopyCy - canopyRy },
+          { x: canopyCx + canopyR, y: canopyCy - canopyRy },
+          { x: canopyCx + canopyR, y: canopyCy + canopyRy },
+          { x: canopyCx - canopyR, y: canopyCy + canopyRy },
+        ],
+        color: '#EDE6D6', falloff: 0.85, intensity: edge === 'lost' ? 0.5 : 0.25,
+      });
+    }
+
+    return strokes;
+  }
+
+  return [];
+}
+
+function expandObjectStrokes(strokes) {
+  const expanded = [];
+  for (const s of strokes) {
+    if (s.mode === 'object') expanded.push(...expandObjectStroke(s));
+    else expanded.push(s);
+  }
+  return expanded;
+}
+
 function applySignaturePositioning(strokes, canvasW, canvasH, position, margin = 24) {
   if (!position) return strokes;
   const { dx, dy } = computeSignatureOffset(strokes, canvasW, canvasH, position, margin);
@@ -946,7 +1657,7 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false, wetRegions = [] } = 
   const {
     points, color = '#1c1b18', width = 14, opacity = 0.9, style = 'ink', mode = 'stroke',
     gradientTo, gradientShape, blend, interpolation, colorVariation, brush, text, font, fontSize,
-    water, pigment, wetness, direction, falloff, intensity,
+    water, pigment, wetness, direction, falloff, intensity, palette, oilLoad,
   } = stroke;
 
   ctx.globalCompositeOperation = style === 'eraser' ? 'destination-out' : (blend || 'source-over');
@@ -972,7 +1683,9 @@ function dispatchStrokeStyle(ctx, stroke, { vector = false, wetRegions = [] } = 
   } else if (style === 'dry') {
     drawDryStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation });
   } else if (style === 'watercolor') {
-    newWetRegion = drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation, water, pigment, wetness, wetRegions });
+    newWetRegion = drawWatercolorStroke(ctx, points, { color, width, opacity, gradientTo, gradientShape, interpolation, colorVariation, palette, water, pigment, wetness, wetRegions });
+  } else if (style === 'oil') {
+    newWetRegion = drawOilStroke(ctx, points, { color, width, opacity, interpolation, palette, oilLoad, wetRegions });
   } else if (style === 'spray') {
     drawSprayStroke(ctx, points, { color, width, opacity, vector });
   } else if (style === 'glow') {
@@ -1050,10 +1763,15 @@ function drawStroke(ctx, stroke, { vector = false, wetRegions = [] } = {}) {
 // verwenden. Fehlt der Eintrag (ältere Aufrufer/Tests ohne dieses Argument),
 // fällt der jeweilige Strich auf "keine Nachbarn bekannt" zurück — harmlos,
 // nur wet_on_wet/re_wet hätten dann nichts zum Verlaufen.
-function renderStrokesToSvgFragment(strokes, width, height, wetRegionsPerStroke = []) {
+function renderStrokesToSvgFragment(strokes, width, height, wetRegionsPerStroke = [], strokeSeedBase = 0) {
   let fragment = '';
   for (let idx = 0; idx < strokes.length; idx++) {
     const stroke = strokes[idx];
+    // Gleiche Formel wie im Raster-Durchlauf (runSoulDraw) — siehe rng()-
+    // Kommentar oben. Muss VOR dem text-Sonderfall stehen (der ruft
+    // drawStroke() gar nicht auf), damit Strich-Index und Seed trotzdem im
+    // Gleichschritt mit dem Raster-Durchlauf bleiben.
+    seedStrokeRng(strokeSeedBase + idx * 104729);
     if (stroke.mode === 'text') {
       // Bewusst NICHT über drawStroke()/SVGCanvas gerendert — deren fillText-
       // Export verschluckt live nachweislich zufällig Zeichen (siehe
@@ -1139,21 +1857,93 @@ const strokePointSchema = z.object({
 });
 
 const strokeSchema = z.object({
-  points: z.array(strokePointSchema).min(2).max(200)
-    .describe('Wenige Kontrollpunkte reichen (3–6 pro Strich) — werden automatisch zu einer weichen Kurve interpoliert.'),
+  points: z.array(strokePointSchema).min(2).max(200).optional()
+    .describe('Wenige Kontrollpunkte reichen (3–6 pro Strich) — werden automatisch zu einer weichen Kurve interpoliert. Bei mode:"field" stattdessen `region` verwenden (siehe dort).'),
   color: z.string().max(20).optional().describe('Hex-Farbe, z.B. "#A8402F"'),
   width: z.number().min(0.5).max(200).optional().describe('Grundstärke des Strichs in px'),
   opacity: z.number().min(0).max(1).optional(),
-  style: z.enum(['ink', 'solid', 'eraser', 'dry', 'watercolor', 'spray', 'glow']).optional()
-    .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge, siehe water/pigment/wetness für die volle Aquarell-Physik). "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
+  style: z.enum(['ink', 'solid', 'eraser', 'dry', 'watercolor', 'oil', 'spray', 'glow']).optional()
+    .describe('"ink"/"solid": glatte, tapernde/gleichmäßige Linie (Standard: ink). "eraser" löscht nur im PNG (destination-out) — im append-only SVG wird stattdessen mit der Papierfarbe übermalt, echtes Löschen alter SVG-Striche ist nicht möglich. "dry": aufgebrochener Trockenpinsel/Kreide-Strich. "watercolor": weiche, transparente, ineinander verlaufende Lasur (mehrere Durchgänge, siehe water/pigment/wetness für die volle Aquarell-Physik). "oil": deckende Ölfarbe statt Lasur — hoher Pigmentauftrag, Borstenstruktur, verschiebt automatisch etwas Nachbarfarbe hinein ("wet-in-wet", siehe oilLoad) statt sie zu verdünnen. Für Motive, die eher wie Monet/Impressionismus als wie Aquarell wirken sollen. "spray": gestreute Stipple-Punkte statt einer Linie — Textur/Körnung/Laub. "glow": weicher Lichtschein (mehrere gestapelte, nach außen verblassende Kreise) statt hartem Verlaufsrand — für Sonne/Glanzlicht/Laterne, die ihre Umgebung sichtbar durchdringen soll, nicht nur als Symbol draufsitzt.'),
+  oilLoad: z.number().min(0).max(1).optional()
+    .describe('Nur bei style:"oil", Standard 0.7. Wie viel Farbe auf dem Pinsel ist — hoch: praktisch vollständig deckend. Niedrig: vereinzelte dünnere Stellen, Unterfarbe schimmert stellenweise durch (drybrush-artig).'),
+  palette: z.array(z.string().max(20)).min(2).max(6).optional()
+    .describe('"Broken color" statt einer einzelnen Farbe (nur bei style:"watercolor"/"oil") — eine kleine Palette verwandter Hex-Töne (z.B. ["#6E8790","#78939A","#657B88","#8A9692"]), durch die der Strich entlang seines eigenen Verlaufs mit leichtem Zufalls-Wobble selbst wandert, statt `color` konstant zu verwenden. Für Monet-artige Flächen, wo mehrere verwandte, aber nicht identische Töne nebeneinanderliegen und sich erst im Auge mischen, statt eine Fläche in einer Farbe zu füllen. Überschreibt `color`/`colorVariation` für diesen Strich, wenn gesetzt.'),
   water: z.number().min(0).max(1).optional()
     .describe('Nur bei style:"watercolor", Standard 0.5. Wie nass der Pinsel ist — unabhängig von pigment. Steuert Streuradius/Durchgangszahl der Lasur UND (zusammen mit wetness) wie weit/stark Farbe in eine feuchte Nachbarfläche läuft. Wenig Wasser: knapper, vorhersehbarer Schleier. Viel Wasser: weiträumiges, unkontrollierteres Verlaufen.'),
   pigment: z.number().min(0).max(1).optional()
     .describe('Nur bei style:"watercolor", Standard 0.6. Farbkonzentration, unabhängig von water — wie viel Pigment auf dem nassen Pinsel ist. Für den Effekt "eine Bewegung, unterschiedliche Farbdichte" mehrere kurze, aufeinanderfolgende Striche entlang derselben Bewegung mit unterschiedlichem pigment kombinieren (z.B. sehr wässriger Anfang, konzentriertes Ende).'),
   wetness: z.enum(['wet_on_dry', 'wet_on_wet', 're_wet']).optional()
     .describe('Nur bei style:"watercolor", Standard "wet_on_dry". "wet_on_dry": malt klar, ohne mit Nachbarstrichen zu verschmelzen. "wet_on_wet": sucht eine nahegelegene, noch feuchte Fläche (auch aus früheren Aufrufen — jeder watercolor-Strich bleibt danach kurz "feucht" und trocknet mit jedem weiteren soul_draw-Aufruf etwas mehr an, kein Echtzeit-Timer) und lässt die Farbe organisch hineinlaufen/sich mit ihr mischen — für Himmel, Nebel, ineinanderfließende Flächen. Am stärksten kurz nach dem Nachbarstrich (auch noch im selben Aufruf), schwächer über mehrere spätere Aufrufe hinweg. "re_wet": aktiviert eine Fläche zwangsweise als frisch feucht, auch wenn sie längst angetrocknet ist — um bewusst an einer alten Stelle weiterzuarbeiten.'),
-  mode: z.enum(['stroke', 'fill', 'text', 'handwriting', 'dissolve']).optional()
-    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung). "dissolve": löst eine bereits gemalte Fläche gezielt zum Papier (oder `color`) hin auf statt neues Pigment hinzuzufügen — die "verlorene Kante" der Malerei (z.B. eine Gesichtshälfte bewusst weich verschwinden lassen), siehe direction/falloff/intensity. Eine Kompositions-Entscheidung über eine Fläche, kein Pinselstrich.'),
+  mode: z.enum(['stroke', 'fill', 'text', 'handwriting', 'dissolve', 'field', 'object']).optional()
+    .describe('"stroke" (Standard): malt den Pfad als Pinsellinie. "fill": behandelt die Punkte als geschlossene Form und füllt sie mit `color` — flache Farbflächen für Hintergründe oder moderne/abstrakte Kompositionen, ohne viele überlappende Striche zu brauchen. "text": rendert `text` mit einem echten Handschrift-Font an points[0] (Baseline-Anker) — für Signaturen/Daten, bei denen exakte Lesbarkeit zählt (siehe `text`-Feld). Nur im PNG sichtbar, nicht im SVG (siehe dort). "handwriting": setzt `text` aus der EIGENEN, einmal per soul_handwriting_save gespeicherten Handschrift zusammen — echte Vektor-Striche, funktioniert identisch in PNG und SVG, mit leichter Variation pro Aufruf (siehe `handwritingJitter`). Noch nicht definierte Zeichen werden übersprungen (siehe Rückmeldung). "dissolve": löst eine bereits gemalte Fläche gezielt zum Papier (oder `color`) hin auf statt neues Pigment hinzuzufügen — die "verlorene Kante" der Malerei (z.B. eine Gesichtshälfte bewusst weich verschwinden lassen), siehe direction/falloff/intensity. Eine Kompositions-Entscheidung über eine Fläche, kein Pinselstrich. "field": erzeugt viele kurze, zusammenhängende Dabs innerhalb einer Region statt eines einzelnen Strichs — siehe region/fieldDirection/fieldLength/fieldWidth/fieldDensity/fieldStyle. Für "ein zusammenhängendes optisches Feld" statt vieler unabhängiger Einzelstriche (KROs Befund zum Monet-Vergleich) — EIN Aufruf statt hundert einzeln formulierter Striche. "object": eine Stufe über "field" — erzeugt eine kleine, ROLLEN-basierte Gruppe unterschiedlicher Teilstriche, die gemeinsam ein erkennbares Ding ergeben (siehe role/anchor/scale/direction/mass/edge/contrast/depth), statt vieler gleichartiger Marken. "Strich → Strichgruppe → Objekt" statt "Objekt → Striche" (KROs eigener Befund).'),
+  role: z.enum(['ship', 'mast', 'quadruped', 'biped', 'tree']).optional()
+    .describe('Nur bei mode:"object". Welcher Bauplan verwendet wird. "ship": Rumpf (breit, dunkel, leicht gebrochen) + Bug/Heck (zwei kurze Richtungswechsel) + optional Mast+Takelage (siehe hasMast — false macht daraus z.B. ein Ruderboot, ohne eine eigene Rolle zu brauchen) + Spiegelung (über reflect) + optional eine verlorene Kante an einem Rumpfende (siehe edge) — exakt KROs eigene Aufschlüsselung "diese Striche erzeugen gemeinsam die Wahrnehmung eines Bootes", nicht ein einzelner Boots-Strich. "mast": ein einzelner dünner Zug entlang direction — der einfachste Baustein, für wiederholte Masten/Kräne in einer Szene. "quadruped": ein generischer Vierbeiner-Bauplan (Rumpf + 2 Beinpaare + Hals/Kopf + Ohren + Schwanz + optional verlorene Kante am Boden) — KEIN Rezept pro Tierart, sondern EIN Bauplan, den beliebige Tiere über legLength/bodyLength/bodyHeight/neckLength/headSize/earStyle/tailLength/tailStyle/preset werden (siehe dort). "biped": generischer Zweibeiner-Bauplan (Rumpf senkrecht + 2 Beine über legSpread + Hals/Kopf + Arme ODER angelegte Flügel über limbStyle) — für Menschen, Vögel (stehend/watend), alles Aufrechte; Beine zeigen wie bei quadruped immer bildschirm-abwärts, unabhängig von direction. "tree": Stamm (senkrecht, "dry"-Textur) + Krone als Dab-Streuung in einer Ellipse (canopyRadius/canopyAspect/canopyDensity, optional palette für Laub-Farbvarianz) statt eines Umriss-Strichs — für Bäume/Büsche/belaubte Massen. "Hund und Katze sind sich ähnlich" gilt hier für alle fünf Rollen gleichermaßen: ähnliche Parameterwerte auf demselben Bauplan, nicht eine neue Rolle pro Art — für eine neue, nicht gelistete Art/Sorte einfach alle Werte aus eigenem Wissen über deren Proportionen schätzen, kein preset nötig. Weitere Baupläne (crane/pier/building_mass als reine Objekte, nicht Lebewesen) folgen, sobald sich ein konkreter Bedarf zeigt.'),
+  anchor: strokePointSchema.optional()
+    .describe('Nur bei mode:"object" (ersetzt `points`, wie `region` bei mode:"field"). Bezugspunkt der Strichgruppe — bei "ship" die Rumpfmitte etwa auf Höhe der Wasserlinie, bei "mast" der Fußpunkt, bei "quadruped" die Rumpfmitte auf Rückenhöhe (Beine hängen von dort nach unten), bei "biped" die Hüfte (Rumpf geht von dort nach oben, Beine nach unten), bei "tree" der Stammfuß (Boden, Stamm geht von dort nach oben).'),
+  hasMast: z.boolean().optional()
+    .describe('Nur bei role:"ship", Standard true. false lässt Mast+Takelage weg — macht aus demselben Rumpf-Bauplan z.B. ein Ruderboot oder einen Kahn, ohne eine eigene Rolle zu brauchen (ein Bauplan, ein Spektrum von Wasserfahrzeugen statt "vessel" als neue Rolle).'),
+  limbStyle: z.enum(['arms', 'wings', 'none']).optional()
+    .describe('Nur bei role:"biped", Standard aus preset (human: "arms", bird: "wings"). "arms": zwei herabhängende dünne Züge seitlich am Rumpf. "wings": zwei angelegte, diagonal nach hinten/unten geknickte Formen (Ruhestellung, keine ausgebreiteten Flügel). "none" lässt beides weg, z.B. für sehr kleine/entfernte Figuren.'),
+  legSpread: z.number().min(0).max(1).optional()
+    .describe('Nur bei role:"biped", relativ zu `scale`. Standbreite — wie weit die beiden Beine seitlich vom Rumpf-Mittelpunkt (anchor) auseinander stehen.'),
+  torsoLength: z.number().min(0.05).max(2).optional()
+    .describe('Nur bei role:"biped", relativ zu `scale`. Rumpflänge von der Hüfte (anchor) bis zu den Schultern.'),
+  torsoWidth: z.number().min(0.02).max(1).optional()
+    .describe('Nur bei role:"biped", relativ zu `scale`. Rumpfbreite/-dicke.'),
+  trunkHeight: z.number().min(0.05).max(3).optional()
+    .describe('Nur bei role:"tree", relativ zu `scale`. Stammhöhe vom Boden (anchor) bis zum Kronenansatz.'),
+  trunkWidth: z.number().min(0.005).max(0.5).optional()
+    .describe('Nur bei role:"tree", relativ zu `scale`. Stammdicke.'),
+  canopyRadius: z.number().min(0.05).max(3).optional()
+    .describe('Nur bei role:"tree", relativ zu `scale`. Kronenradius (horizontal) — canopyAspect skaliert davon den vertikalen Radius.'),
+  canopyAspect: z.number().min(0.2).max(4).optional()
+    .describe('Nur bei role:"tree", Standard 1. Verhältnis vertikaler/horizontaler Kronenradius — 1 rund (Laubbaum-artig), deutlich >1 schlank/hoch (Nadelbaum-artig).'),
+  canopyDensity: z.number().min(0.05).max(1).optional()
+    .describe('Nur bei role:"tree". Wie dicht die Krone mit Dabs gefüllt wird — niedrig für lichtes/lückiges Laub, hoch für dichtes Blattwerk.'),
+  preset: z.enum(['cat', 'dog', 'fox', 'horse', 'cow', 'human', 'bird', 'deciduous', 'conifer']).optional()
+    .describe('Kalibrierte Startwerte für den jeweiligen Bauplan: bei role:"quadruped" cat/dog/fox/horse/cow, bei role:"biped" human/bird, bei role:"tree" deciduous/conifer. Einzelne Werte können trotzdem überschrieben werden (preset + z.B. abweichendes tailStyle kombinierbar). Nur eine bequeme Abkürzung, keine Voraussetzung: für jede andere Art/Sorte einfach alle Werte direkt angeben.'),
+  legLength: z.number().min(0).max(2).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Beinlänge — kurz (Katze, ~0.4) bis lang (Pferd, ~0.85).'),
+  bodyLength: z.number().min(0.1).max(3).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Rumpflänge.'),
+  bodyHeight: z.number().min(0.05).max(1.5).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Rumpfhöhe/-dicke.'),
+  neckLength: z.number().min(0).max(2).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Halslänge zwischen Rumpf und Kopf — 0 für kaum sichtbaren Hals (Katze/Hund), deutlich höher für langhalsige Tiere.'),
+  headSize: z.number().min(0.05).max(1).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Kopfgröße relativ zum Rumpf.'),
+  earStyle: z.enum(['pointed', 'floppy', 'round', 'none']).optional()
+    .describe('Nur bei role:"quadruped". Ohrform — "pointed" (Katze/Fuchs), "floppy" (viele Hunderassen), "round" (Kuh/Bär-artig), "none" ohne sichtbare Ohren.'),
+  tailLength: z.number().min(0).max(2).optional()
+    .describe('Nur bei role:"quadruped", relativ zu `scale`. Schwanzlänge.'),
+  tailStyle: z.enum(['straight', 'curled', 'bushy', 'none']).optional()
+    .describe('Nur bei role:"quadruped". Schwanzform — "straight", "curled" (eingerollt, katzenartig), "bushy" (buschig, fuchs-/pferdeschweifartig), "none" ohne Schwanz.'),
+  scale: z.number().min(4).max(2000).optional()
+    .describe('Nur bei mode:"object", Standard 200. Größenreferenz der ganzen Strichgruppe in px — bei "ship" die Rumpflänge, bei "mast" die Länge.'),
+  mass: z.number().min(0).max(1.5).optional()
+    .describe('Nur bei mode:"object", Standard 0.6. Wie kräftig/breit die Teilstriche relativ zu `scale` sind.'),
+  edge: z.enum(['hard', 'soft', 'lost']).optional()
+    .describe('Nur bei mode:"object", Standard "soft". "hard": klar umrissen, keine Spiegelung, keine verlorene Kante. "soft": Spiegelung + eine dezent aufgelöste Kante an einem Ende. "lost": wie "soft", aber die Auflösung ist deutlich stärker — größere Teile verschwinden sichtbar ins Wasser/den Nebel.'),
+  contrast: z.number().min(0).max(1).optional()
+    .describe('Nur bei mode:"object", Standard 0.7. Wie dunkel/deutlich die Strichgruppe gegen ihre Umgebung steht, unabhängig von `mass` (Größe) — niedrig für fast verschwindende, weit entfernte Objekte.'),
+  depth: z.enum(['foreground', 'midground', 'background']).optional()
+    .describe('Nur bei mode:"object", Standard "midground". Einfache eingebaute atmosphärische Perspektive: "background" dämpft mass/contrast automatisch, "foreground" verstärkt sie leicht — kein eigenes value_map-Werkzeug, aber deckt den Tiefen-Bedarf für ein einzelnes Objekt in der Szene ab.'),
+  region: z.array(strokePointSchema).min(3).max(60).optional()
+    .describe('Nur bei mode:"field". Umriss der Region, die mit Dabs gefüllt wird (wie `points` bei mode:"fill", geschlossenes Polygon, muss nicht konvex sein).'),
+  fieldDirection: z.number().min(0).max(360).optional()
+    .describe('Nur bei mode:"field", Standard 0. Bevorzugte Ausrichtung der Dabs in Grad (0=rechts, 90=unten, 180=links, 270=oben) — z.B. Wasser eher horizontal (0/180), Reflexionen/Masten eher vertikal (90/270).'),
+  fieldDirectionJitter: z.number().min(0).max(90).optional()
+    .describe('Nur bei mode:"field", Standard 20. Wie stark die Ausrichtung einzelner Dabs zufällig von fieldDirection abweicht (in Grad) — 0 = alle exakt parallel (unnatürlich gleichförmig), höher = organischer.'),
+  fieldLength: z.number().min(2).max(300).optional()
+    .describe('Nur bei mode:"field", Standard 24. Länge eines einzelnen Dabs in px.'),
+  fieldWidth: z.number().min(0.5).max(200).optional()
+    .describe('Nur bei mode:"field". Breite eines einzelnen Dabs — Standard: `width`, falls gesetzt, sonst 14.'),
+  fieldDensity: z.number().min(0.05).max(1).optional()
+    .describe('Nur bei mode:"field", Standard 0.5. Wie dicht die Region mit Dabs gefüllt wird, relativ zu Region-Fläche und Dab-Größe — bewusst gedeckelt (max. 220 Dabs pro field-Strich), um das SVG nicht unnötig aufzublähen. Höher = dichter/deckender, niedriger = luftiger/skizzenhafter.'),
+  fieldStyle: z.enum(['ink', 'solid', 'dry', 'watercolor', 'oil', 'spray', 'glow']).optional()
+    .describe('Nur bei mode:"field". Welchen Stil jeder einzelne Dab nutzt (siehe `style`) — Standard: `style`, falls gesetzt, sonst "ink". "oil" oder "watercolor" meist am sinnvollsten für ein zusammenhängendes Feld.'),
+  paletteWeights: z.array(z.number().min(0).max(1)).min(2).max(6).optional()
+    .describe('Nur bei mode:"field", zusammen mit `palette` (gleiche Länge, gleiche Reihenfolge). Statt palette\'s normalem kontinuierlichen Wandern entlang eines Strichs bekommt hier JEDE einzelne Marke unabhängig eine feste Farbe aus der Palette zugelost, mit diesen Anteilen (relativ, müssen sich nicht zu 1 summieren) — z.B. palette:["#6E8790","#D4A95A","#8A6E9A","#7AA07A"], paletteWeights:[0.7,0.15,0.1,0.05] für "überwiegend blaugrau, aber 15% warme, 10% violette, 5% grüne Marken dazwischen". Für echtes broken color: das Auge mischt die nebeneinanderliegenden Marken, nicht ein einzelner Mischwert.'),
   direction: z.number().min(0).max(360).optional()
     .describe('Nur bei mode:"dissolve". Winkel in Grad (0=rechts, 90=unten, 180=links, 270=oben), in dessen Richtung die Auflösung zunimmt — direction:180 löst z.B. nach links auf (linke Bildhälfte verschwindet, rechte bleibt). Ohne Angabe: gleichmäßige, ungerichtete Auflösung der ganzen Fläche.'),
   falloff: z.number().min(0).max(1).optional()
@@ -1196,6 +1986,27 @@ const strokeSchema = z.object({
     .describe('Der parametrisierte "Impressionisten-Pinsel": zerlegt den Strich in kurze, unabhängig gewürfelte Marken statt einer glatten, gleichmäßigen Linie — Pinselstrich als Ereignis, nicht als mathematisch glatte Kurve (kräftig → aufbrechen → fast verschwinden → wieder Pigment → abrupt enden). Hat Vorrang vor `style`, wenn gesetzt — kombinierbar mit `interpolation` und `colorVariation`. Für lebendige, unregelmäßige Pinseltextur (Laub, bewegtes Wasser, lockere Studien) statt der glatten ink/dry/watercolor-Striche.'),
   signature: z.boolean().optional()
     .describe('Markiert diesen Strich als Teil der Signatur. Zusammen mit dem Aufruf-Parameter signaturePosition werden alle so markierten Striche automatisch als starre Gruppe an die gewünschte Ecke/Kante der tatsächlichen Leinwand verschoben — die Buchstabenformen selbst werden ganz normal als Striche gezeichnet (z.B. mit brush für einen handschriftlichen Charakter), in beliebigen, bequemen Koordinaten. Kein Font-/Handschrift-Modell, nur Positionierung.'),
+}).superRefine((data, ctx) => {
+  // points ist optional geworden, damit mode:"field" (nutzt region) und
+  // mode:"object" (nutzt anchor) valide sind — hier stattdessen
+  // laufzeitgeprüft: GENAU das passende Feld muss zum jeweiligen mode
+  // vorhanden sein, sonst bekäme ein Strich ohne sein Pflichtfeld erst tief
+  // in dispatchStrokeStyle/expandFieldStroke/expandObjectStroke einen
+  // kryptischen Fehler.
+  if (data.mode === 'field') {
+    if (!data.region || data.region.length < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['region'], message: 'mode:"field" braucht region (mind. 3 Punkte).' });
+    }
+  } else if (data.mode === 'object') {
+    if (!data.anchor) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['anchor'], message: 'mode:"object" braucht anchor.' });
+    }
+    if (!data.role) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['role'], message: 'mode:"object" braucht role (z.B. "ship" oder "mast").' });
+    }
+  } else if (!data.points || data.points.length < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['points'], message: 'points (mind. 2 Punkte) ist außer bei mode:"field"/"object" erforderlich.' });
+  }
 });
 
 // Geteilter Kern — genutzt sowohl vom MCP-Tool unten (register(), für Claude.ai/
@@ -1241,7 +2052,9 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
   }
 
   const { strokes: withHandwriting, missing: missingHandwritingChars } = await applyHandwritingExpansion(soulId, strokes);
-  strokes = applySignaturePositioning(withHandwriting, w, h, signaturePosition, signatureMargin);
+  const withFields = expandFieldStrokes(withHandwriting);
+  const withObjects = expandObjectStrokes(withFields);
+  strokes = applySignaturePositioning(withObjects, w, h, signaturePosition, signatureMargin);
 
   // Nässe-Zustand: einmal pro AUFRUF abtrocknen (nicht pro Strich — mehrere
   // Striche in diesem Aufruf gelten als "in derselben Sitzung"), dann
@@ -1249,19 +2062,27 @@ export async function runSoulDraw(soulId, token, { canvas_id, width, height, bac
   // ein späterer Strich im selben Aufruf bereits frühere als Nachbarn sehen
   // kann. wetRegionsPerStroke[i] hält den Snapshot GENAU vor Strich i fest,
   // für den identischen SVG-Durchlauf weiter unten (siehe dortiger Kommentar).
+  // strokeSeedBase: EIN Zufallswert für diesen ganzen Aufruf, aber pro Strich
+  // (seedStrokeRng(strokeSeedBase + idx * 104729)) neu gesät — identisch im
+  // Raster- (hier) und im Vektor-Durchlauf (renderStrokesToSvgFragment)
+  // unten, damit beide Male exakt dieselben "Zufalls"-Jitter/Passes/Bleed-
+  // Werte würfeln. Siehe rng()-Kommentar oben für den gefundenen Bug, den
+  // das behebt.
+  const strokeSeedBase = Math.floor(Math.random() * 0x7fffffff);
   let wetRegions = decayWetRegions(await loadWetRegions(wetnessPath));
   const wetRegionsPerStroke = [];
-  for (const stroke of strokes) {
+  strokes.forEach((stroke, idx) => {
     wetRegionsPerStroke.push(wetRegions);
+    seedStrokeRng(strokeSeedBase + idx * 104729);
     const newRegion = drawStroke(ctx, stroke, { wetRegions });
     if (newRegion) wetRegions = [...wetRegions, newRegion];
-  }
+  });
   await saveWetRegions(wetnessPath, wetRegions);
 
   const pngBuf = canvas.toBuffer('image/png');
   await writeFile(pngPath, pngBuf);
 
-  const svgFragment = renderStrokesToSvgFragment(strokes, w, h, wetRegionsPerStroke);
+  const svgFragment = renderStrokesToSvgFragment(strokes, w, h, wetRegionsPerStroke, strokeSeedBase);
   const svgText = isNew || !existingSvgText
     ? buildNewSvgDocument(w, h, background, svgFragment)
     : spliceSvgFragment(existingSvgText, svgFragment);
@@ -1304,6 +2125,97 @@ export function formatSoulDrawSummary(canvasId, strokeCount, result) {
   ].filter(Boolean).join('\n');
 }
 
+// ── Checkpoint/Flatten ────────────────────────────────────────────────────────
+// KROs eigener Befund im Monet-Vergleich: "malen → betrachten →
+// entfernen/vereinfachen → übermalen" braucht einen besseren Korrekturzyklus,
+// nicht nur einen besseren Pinsel. Das SVG ist aber bewusst APPEND-ONLY —
+// jeder soul_draw-Aufruf trägt seinen contentHash in sys.md ("## Kunstwerke")
+// ein, der in den nächsten Blockchain-Anker einfließt. Echtes Löschen
+// einzelner Striche aus einem bestehenden SVG würde einen bereits
+// verankerten Hash im Nachhinein ungültig/nicht mehr nachvollziehbar machen
+// — das widerspricht dem ganzen Sinn der Provenienz-Kette. Deshalb hier KEIN
+// Löschen, sondern ein neuer, eigenständiger canvas_id: sein SVG startet mit
+// null Strichen, bekommt aber das aktuelle, geflachte PNG der Quelle als
+// EIN eingebettetes Hintergrundbild (<image>, base64) statt tausender
+// einzelner Pfade. source_canvas_id bleibt dabei komplett unverändert —
+// eigene Datei, eigene bereits verankerte Historie, nichts wird überschrieben
+// oder gelöscht. Lineage wird ehrlich im sys.md-Eintrag vermerkt statt so zu
+// tun, als hätte die Arbeit bei null begonnen.
+export async function runSoulDrawCheckpoint(soulId, token, { source_canvas_id, new_canvas_id, note }) {
+  const sourcePngPath = `${artworkDir(soulId, source_canvas_id)}/${source_canvas_id}.png`;
+  const sourceSvgPath = `${SOULS_DIR}${soulId}/vault/context/${source_canvas_id}.svg`;
+  if (!(await fileExists(sourcePngPath))) {
+    throw new Error(`Quellwerk "${source_canvas_id}" existiert nicht (kein PNG gefunden).`);
+  }
+
+  const newPngDir = artworkDir(soulId, new_canvas_id);
+  const newPngPath = `${newPngDir}/${new_canvas_id}.png`;
+  const newSvgPath = `${SOULS_DIR}${soulId}/vault/context/${new_canvas_id}.svg`;
+  if (await fileExists(newSvgPath)) {
+    throw new Error(`"${new_canvas_id}" existiert bereits — anderen Namen wählen.`);
+  }
+
+  const { vaultKeyHex, cipherMode } = await loadVaultMeta(soulId);
+
+  // Nur für die Log-Nachricht (wie groß die Vereinfachung tatsächlich war),
+  // keine funktionale Rolle — Quelle könnte z.B. auch ein reines
+  // soul_generate-Werk ohne eigenes soul_draw-SVG sein.
+  let sourcePathCount = null;
+  try {
+    const rawSourceSvg = await readFile(sourceSvgPath);
+    const sourceSvgText = decryptIfNeeded(rawSourceSvg, vaultKeyHex).toString('utf8');
+    sourcePathCount = countStrokes(sourceSvgText);
+  } catch { /* kein SVG bei der Quelle — kein Problem, einfach kein Zähler */ }
+
+  const pngBuf = await readFile(sourcePngPath);
+  const img = await loadImage(pngBuf);
+  const w = img.width, h = img.height;
+
+  await mkdir(newPngDir, { recursive: true });
+  await writeFile(newPngPath, pngBuf);
+
+  const b64 = pngBuf.toString('base64');
+  const lineageNote = sourcePathCount !== null
+    ? ` (${sourcePathCount} Striche zu diesem einen Hintergrundbild vereinfacht)`
+    : '';
+  const svgText = [
+    '<?xml version="1.0" encoding="utf-8" ?>',
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}">`,
+    `\t<!-- checkpoint: gestartet als geflachtetes Abbild von "${source_canvas_id}"${lineageNote} — dessen eigene Historie/Anker bleiben unverändert erhalten, dies hier ist ein bewusster neuer Anfang, kein Ersatz. -->`,
+    `\t<image href="data:image/png;base64,${b64}" x="0" y="0" width="${w}" height="${h}" />`,
+    '</svg>',
+    '',
+  ].join('\n');
+
+  let svgOutBuf = Buffer.from(svgText, 'utf8');
+  if (cipherMode === 'ciphered' && vaultKeyHex) svgOutBuf = encryptBuf(svgOutBuf, vaultKeyHex);
+  await mkdir(`${SOULS_DIR}${soulId}/vault/context`, { recursive: true });
+  await writeFile(newSvgPath, svgOutBuf);
+  await ensureContextRegistered(soulId, `${new_canvas_id}.svg`);
+
+  const svgHash = sha256Hex(svgText);
+  const noteText = note ? ` — ${note}` : '';
+  const stageLabel = `Checkpoint: kuratiert aus "${source_canvas_id}"${lineageNote}, neuer eigener Verlauf ab hier${noteText}`;
+  await recordArtworkProgress(soulId, new_canvas_id, { stageLabel, contentHash: svgHash });
+
+  const vaultUrlPng = `vault-shared://${soulId}/${new_canvas_id}/${new_canvas_id}.png`;
+  const viewUrlPng  = token ? sharedFileUrl(soulId, `${new_canvas_id}/${new_canvas_id}.png`, token) : null;
+
+  return { source_canvas_id, new_canvas_id, w, h, sourcePathCount, svgHash, vaultUrlPng, viewUrlPng };
+}
+
+export function formatSoulDrawCheckpointSummary(result) {
+  const { source_canvas_id, new_canvas_id, w, h, sourcePathCount, svgHash, vaultUrlPng, viewUrlPng } = result;
+  const sourceInfo = sourcePathCount !== null ? ` (dessen ${sourcePathCount} Striche zu diesem einen Hintergrundbild vereinfacht)` : '';
+  return [
+    `Checkpoint erstellt: "${new_canvas_id}" (${w}×${h}px), gestartet als geflachtetes Abbild von "${source_canvas_id}"${sourceInfo}.`,
+    `"${source_canvas_id}" bleibt vollständig unverändert — eigene Historie, eigene Anker, nichts gelöscht oder überschrieben.`,
+    `Ab jetzt mit soul_draw und canvas_id:"${new_canvas_id}" weiterarbeiten — startet mit 0 Strichen im neuen SVG-Verlauf.`,
+    `PNG: ${viewUrlPng || vaultUrlPng}`,
+    `Fortschritt in sys.md ("## Kunstwerke") vermerkt (sha256 ${svgHash.slice(0, 12)}…) — fließt in den nächsten Blockchain-Anker ein.`,
+  ].join('\n');
+}
+
 export function register(server, soulId, token) {
   server.tool(
     'soul_draw',
@@ -1328,9 +2240,16 @@ export function register(server, soulId, token) {
       '',
       'Technik-Bandbreite pro Strich (style): "ink"/"solid" für klare Linien, "dry" für',
       'aufgebrochenen Trockenpinsel/Kreide, "watercolor" für weiche, ineinander verlaufende',
-      'Lasuren, "spray" für gestreute Textur/Körnung, "glow" für weichen Lichtschein (mehrere',
-      'gestapelte, nach außen verblassende Kreise statt hartem Verlaufsrand — Licht, das seine',
-      'Umgebung durchdringt, statt als Symbol draufzusitzen).',
+      'Lasuren, "oil" für deckende Ölfarbe mit Borstenstruktur und automatischem "wet-in-wet"-',
+      'Verschieben von Nachbarfarbe (siehe oilLoad) — für impressionistisch/Monet-artige Wirkung',
+      'statt Aquarell-Transparenz, "spray" für gestreute Textur/Körnung, "glow" für weichen',
+      'Lichtschein (mehrere gestapelte, nach außen verblassende Kreise statt hartem Verlaufsrand',
+      '— Licht, das seine Umgebung durchdringt, statt als Symbol draufzusitzen).',
+      '',
+      'palette (nur watercolor/oil): statt einer festen `color` eine kleine Palette verwandter',
+      'Töne, durch die der Strich entlang seines eigenen Verlaufs selbst wandert ("broken color"',
+      '— mehrere ähnliche, aber nicht identische Farben nebeneinander statt einer Fläche in',
+      'einer Farbe, mischt sich erst im Auge des Betrachters).',
       '',
       'Echte Aquarell-Physik für style:"watercolor" (drei zusätzliche Achsen): water (0-1,',
       'Standard 0.5) und pigment (0-1, Standard 0.6) trennen "wie nass der Pinsel ist" von',
@@ -1355,6 +2274,58 @@ export function register(server, soulId, token) {
       'auf. falloff (0-1, Standard 0.4) steuert die Übergangsbreite (0 = harte Kante genau in der',
       'Mitte, 1 = über die ganze Fläche verteilt). intensity (0-1, Standard 0.85) wie vollständig',
       'die Auflösung am stärksten betroffenen Ende ist.',
+      '',
+      'Für ein zusammenhängendes optisches Feld statt vieler unabhängiger Einzelstriche',
+      '(KROs eigener Befund im Monet-Vergleich): mode:"field" erzeugt viele kurze Dabs',
+      'innerhalb einer Region (region statt points, wie mode:"fill") in einem Aufruf statt',
+      'hundert einzeln formulierter Striche — fieldDirection/fieldDirectionJitter (Ausrichtung',
+      'der Dabs, z.B. Wasser eher horizontal, Reflexionen/Masten eher vertikal),',
+      'fieldLength/fieldWidth (Dab-Größe), fieldDensity (0-1, wie dicht — bewusst auf max. 220',
+      'Dabs pro field-Strich gedeckelt, um das SVG nicht unnötig aufzublähen), fieldStyle',
+      '(welcher style pro Dab, meist "oil" oder "watercolor" sinnvoll). palette funktioniert',
+      'hier genau wie bei einzelnen watercolor/oil-Strichen, wirkt aber über die ganze Region',
+      'verteilt statt entlang eines einzelnen Pfads — echtes "broken color": mehrere verwandte',
+      'Töne liegen nebeneinander, das Auge mischt sie, statt dass eine Fläche in einer Farbe',
+      'gefüllt wird. paletteWeights (nur zusammen mit palette): statt kontinuierlich zu wandern',
+      'bekommt JEDE Marke unabhängig eine feste, gewürfelte Farbe mit expliziten Anteilen —',
+      '"überwiegend blaugrau, aber 15% warme, 10% violette, 5% grüne Marken dazwischen" statt',
+      'eines weichen Verlaufs.',
+      '',
+      'Eine Stufe über "field": mode:"object" erzeugt keine gleichartigen Marken, sondern eine',
+      'kleine, ROLLEN-basierte Gruppe UNTERSCHIEDLICHER Teilstriche, die gemeinsam ein',
+      'erkennbares Ding ergeben — "Strich → Strichgruppe → Objekt" statt "Objekt → Striche"',
+      '(KROs eigener Befund: ein Boot entsteht aus der Beziehung mehrerer Striche zueinander,',
+      'nicht aus einem einzelnen Boots-Symbol). anchor (statt points) ist der Bezugspunkt, role',
+      'wählt die Rezeptur — fünf Baupläne bisher: "ship" — Rumpf (breit, dunkel, leicht',
+      'gebrochen) + Bug/Heck (zwei kurze Richtungswechsel an den Enden) + optional Mast+Takelage',
+      '(siehe hasMast, Standard true — false macht z.B. ein Ruderboot aus demselben Rumpf, ein',
+      'Spektrum von Wasserfahrzeugen statt einer eigenen "vessel"-Rolle) + Spiegelung (über den',
+      'bestehenden reflect-Mechanismus) + optional eine verlorene Kante an einem Rumpfende',
+      '(siehe edge) — exakt KROs eigene sechsteilige Aufschlüsselung. "mast" — ein einzelner',
+      'dünner Zug, der einfachste Baustein für wiederholte Masten/Kräne. "quadruped" — EIN',
+      'generischer Vierbeiner-BAUPLAN (Rumpf + 2 Beinpaare + Hals/Kopf + Ohren + Schwanz +',
+      'optional verlorene Kante am Boden), kein Rezept pro Tierart: legLength/bodyLength/',
+      'bodyHeight/neckLength/headSize/earStyle/tailLength/tailStyle beschreiben JEDE beliebige',
+      'Tierart auf demselben Bauplan. "biped" — generischer Zweibeiner-BAUPLAN (Rumpf senkrecht',
+      '+ 2 Beine über legSpread + Hals/Kopf + Arme ODER angelegte Flügel über limbStyle) — für',
+      'Menschen, Vögel (stehend/watend), alles Aufrechte; Beine zeigen wie bei quadruped immer',
+      'bildschirm-abwärts, unabhängig von direction. "tree" — Stamm (senkrecht) + Krone als',
+      'Dab-Streuung in einer Ellipse (canopyRadius/canopyAspect/canopyDensity, optional palette',
+      'für Laub-Farbvarianz) statt eines Umriss-Strichs — für Bäume/Büsche/belaubte Massen;',
+      'canopyAspect > 1 macht die Krone schlank/hoch (Nadelbaum) statt rund (Laubbaum). Über',
+      'alle fünf Baupläne gilt derselbe Verallgemeinerungs-Mechanismus: "Hund und Katze sind',
+      'sich ähnlich" heißt konkret ähnliche Zahlenwerte auf demselben Bauplan, nicht zwei',
+      'verschiedene Rollen. preset (quadruped: cat/dog/fox/horse/cow, biped: human/bird, tree:',
+      'deciduous/conifer) liefert kalibrierte Startwerte, ist aber nur eine Abkürzung — für jede',
+      'andere Art/Sorte (Löwe, Papagei, Palme, ...) einfach alle Werte direkt aus eigenem Wissen',
+      'über deren Proportionen schätzen, kein Bildmodell und keine feste Liste nötig, das ist',
+      'der eigentliche Verallgemeinerungs-Mechanismus. scale (Größenreferenz), mass (wie',
+      'kräftig), contrast (wie deutlich gegen die Umgebung), edge ("hard"/"soft"/"lost" — klar',
+      'umrissen bis stark aufgelöst) und depth ("foreground"/"midground"/"background" — dämpft',
+      'mass/contrast automatisch für entfernte Objekte, einfache eingebaute atmosphärische',
+      'Perspektive) formen jeden Bauplan unterschiedlich. Weitere Baupläne (crane/pier/',
+      'building_mass als reine Objekte statt Lebewesen) folgen, sobald sich ein konkreter Bedarf',
+      'zeigt.',
       '',
       'mode: "fill" behandelt die Punkte',
       'statt als Linie als geschlossene Fläche und füllt sie — flache Farbblöcke für',
@@ -1436,6 +2407,45 @@ export function register(server, soulId, token) {
             { type: 'text', text: formatSoulDrawSummary(canvas_id, strokes.length, result) },
           ],
         };
+      } catch (err) {
+        return { content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true };
+      }
+    }
+  );
+}
+
+export function registerCheckpoint(server, soulId, token) {
+  server.tool(
+    'soul_draw_checkpoint',
+    [
+      'Startet einen neuen, LEEREN Vektor-Verlauf für ein Werk, das visuell dort weitermacht, wo',
+      'ein bestehendes aufgehört hat — ohne dessen angesammelte Striche mitzuschleppen. Für Werke,',
+      'deren SVG (echter Vektor-Verlauf) inzwischen sehr groß geworden ist (viele tausend Striche)',
+      'und bei denen weiteres Anhängen unpraktikabel wird: das aktuelle PNG von source_canvas_id',
+      'wird als EIN Hintergrundbild in den neuen canvas_id übernommen (sichtbar identisch, aber',
+      'technisch ein einziges Bild statt tausender einzelner Pfade), danach wächst new_canvas_id',
+      'wieder ganz normal strichweise mit soul_draw weiter.',
+      '',
+      'source_canvas_id bleibt dabei VOLLSTÄNDIG unverändert — eigene Datei, eigene bereits',
+      'verankerte Provenienz-Historie, nichts wird gelöscht oder überschrieben. Das ist bewusst',
+      'kein "Aufräumen" der alten Historie (echtes Löschen einzelner Striche gibt es nicht — würde',
+      'bereits verankerte Hashes im Nachhinein ungültig machen), sondern ein neuer, eigenständiger',
+      'Anfang, der ehrlich auf seine Herkunft verweist (siehe sys.md-Eintrag). Für gezieltes',
+      'Vereinfachen einer Komposition ("betrachten → vereinfachen → weitermalen") ohne die',
+      'Provenienz-Kette des Originals zu gefährden.',
+    ].join('\n'),
+    {
+      source_canvas_id: z.string().min(1).max(80).regex(/^[A-Za-z0-9_\-]+$/, 'Nur alphanumerisch + - _')
+        .describe('Das bestehende, zu groß gewordene Werk, dessen aktueller Stand als Startpunkt übernommen wird.'),
+      new_canvas_id: z.string().min(1).max(80).regex(/^[A-Za-z0-9_\-]+$/, 'Nur alphanumerisch + - _')
+        .describe('Name des neuen Werks — muss noch nicht existieren. Ab jetzt mit soul_draw weiterbearbeiten.'),
+      note: z.string().max(200).optional()
+        .describe('Optionale kurze Notiz, warum dieser Checkpoint gesetzt wurde (z.B. "Komposition vereinfachen, weniger Einzelstriche") — landet im sys.md-Eintrag.'),
+    },
+    async ({ source_canvas_id, new_canvas_id, note }) => {
+      try {
+        const result = await runSoulDrawCheckpoint(soulId, token, { source_canvas_id, new_canvas_id, note });
+        return { content: [{ type: 'text', text: formatSoulDrawCheckpointSummary(result) }] };
       } catch (err) {
         return { content: [{ type: 'text', text: `Fehler: ${err.message}` }], isError: true };
       }
