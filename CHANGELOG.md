@@ -8,6 +8,24 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.0] — 2026-08-25
+
+**Added: `soul_draw` catches up several private-repo-only rounds — seeded PRNG, oil style, field/object modes, checkpoint.** Consolidates work not yet mirrored here (private repo's `soul_draw.mjs` history `500ac76a..c38c9d40`):
+- A deterministic PRNG is now seeded per stroke so the raster (PNG) and vector (SVG) export passes stay in sync instead of drawing independently random results.
+- `style:"oil"` — per-segment wet-neighbor dragging, palette support.
+- `mode:"field"` — region dab-scatter, with `paletteWeights` for weighted discrete broken-color.
+- `mode:"object"` — role-based body plans: ship (now with `hasMast`, generalizing into a vessel spectrum), mast, quadruped, biped, tree.
+- `soul_draw_checkpoint` — flattens a canvas into a fresh append-only base.
+
+**Fixed: `/api/beme` (and other `chat`-zone endpoints) intermittently 503'd due to a rate-limit zone collision with `/api/vault/apps*` — found live on `fab.uxprojects-jok.com`.**
+
+**Root cause:** `/api/vault/apps` and the `/api/vault/` prefix (serving MCP App bundles — `index.html`/`style.css`/`app.js`/`manifest.json`) shared the `chat` rate-limit zone (1 r/s, `nginx.conf`'s `limit_req_zone`) — the same budget-per-client-IP bucket used by genuinely expensive LLM-calling endpoints like `/api/beme`. Every MCP connection re-registers a soul's apps (`soul_apps.mjs`), firing one GET per installed app against these routes. A client that reconnects frequently (an n8n workflow re-opening an MCP session per execution, observed reconnecting every 15–60s) burns through the shared 1 r/s budget on app-bundle fetches alone, so an unrelated `/api/beme` call moments later hits the same exhausted bucket and gets `503`'d — reproducible from any caller sharing that client IP, exactly matching what was reported ("reproducible both via n8n and directly").
+
+**Fixed**
+- `server/openresty/vhost.conf.template`: `/api/vault/apps` and `/api/vault/` now use `zone=api` (30 r/s, meant for general API traffic) instead of `zone=chat` — static vault/app-bundle serving isn't LLM-cost-bearing and shouldn't compete with it for rate budget.
+
+**Migration required:** run `update.sh` (not just `git pull` + rebuild) — the fix only takes effect once the vhost is regenerated from the template and OpenResty reloaded.
+
 ## [1.7.0] — 2026-08-25
 
 **Added: real watercolor physics for `soul_draw`.** `water`/`pigment` (0–1) replace opacity as the sole watercolor knob — water controls how far/unpredictably color spreads into wet neighbors, pigment the actual color concentration, independent of each other. `wetness` (`wet_on_dry` default / `wet_on_wet` / `re_wet`) makes strokes interact: a small per-canvas list of wet regions persists next to the PNG and decays once per `soul_draw` call (not real time), so multiple strokes in one sitting stay wet together while a later call finds already-drying prior work. Works identically in the PNG and SVG vector export.

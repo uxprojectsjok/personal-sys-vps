@@ -1597,8 +1597,16 @@ server {
   # der eingegebene Name selbst gültig war (das eigentliche Symptom, das den
   # Bug aufgedeckt hat). Matcht den internen 5-MB-Gesamtgrößen-Cap aus
   # api_serve.lua ("> 5 * 1024 * 1024").
+  # zone=api, not zone=chat: this and the /api/vault/ block below only serve
+  # static vault content (files, MCP App bundles) — cheap, unlike the LLM
+  # calls zone=chat is meant to throttle. Every MCP connection re-registers
+  # a soul's apps (soul_apps.mjs), firing one GET per app here — a client
+  # that reconnects often (e.g. an n8n workflow re-opening a session per
+  # execution) burned through zone=chat's shared 1 r/s budget fast enough to
+  # 503 unrelated /api/beme calls sharing that same zone/client-IP bucket
+  # seconds later. Found live on fab.uxprojects-jok.com, 2026-08-25.
   location = /api/vault/apps {
-    limit_req zone=chat burst=30 nodelay;
+    limit_req zone=api burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
@@ -1611,6 +1619,7 @@ server {
   # /api/vault/manifest, /api/vault/audio, /api/vault/video, /api/vault/images, /api/vault/context
   # Kein ^~ hier: Regex-Locations (vault/shared/serve, vault/shared/delete) haben Vorrang.
   # Statische Assets schließen /api/-Pfade bereits per negativem Lookahead aus.
+  # zone=api, not zone=chat — same rationale as /api/vault/apps above.
   location /api/vault/ {
     # CORS: an MCP App that reads e.g. /api/vault/audio (reference voice for
     # voice_hq) directly needs this — same reason as /api/verify/* above.
@@ -1620,7 +1629,7 @@ server {
     add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
     add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
     if ($request_method = OPTIONS) { return 204; }
-    limit_req zone=chat burst=30 nodelay;
+    limit_req zone=api burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;
