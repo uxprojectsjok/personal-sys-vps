@@ -577,8 +577,15 @@ server {
     # 8M statt bisher 64K: optionales image-Feld (Base64) erlaubt jetzt Bild-Input
     # an beme_chat — Claude-Vision-Limit liegt bei 5 MB/Bild, +33% Base64-Overhead
     # plus Luft für message/history braucht mehr als die alte, reine Text-Grenze.
+    # client_body_buffer_size MUSS auf denselben Wert wie client_max_body_size
+    # gesetzt sein: beme.lua liest den Body über ngx.req.get_body_data(), das
+    # nil liefert, sobald der Body den Buffer übersteigt und stattdessen in eine
+    # temporäre Datei gepuffert wird (client_body_in_file_only-Verhalten bei
+    # Buffer-Überlauf) — live reproduziert mit einem ~1.8MB-Bild über n8n/undici:
+    # kein PayloadTooLargeError mehr (Größe war ok), aber "Empty body", weil der
+    # Body bei 256K schon auf Platte lag und get_body_data() nil zurückgab.
     client_max_body_size 8M;
-    client_body_buffer_size 256K;
+    client_body_buffer_size 8M;
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;

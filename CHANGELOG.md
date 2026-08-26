@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.4] — 2026-08-26
+
+**Fixed: `beme_chat` silently returned `"Empty body"` for images between ~256KB and 8MB — live-reproduced via n8n/undici with a real ~1.8MB image — even though the two previous fixes (soul-mcp's Express limit, this vhost's `client_max_body_size`) both worked correctly.**
+
+**Root cause:** `lua/beme.lua` reads the request body via `ngx.req.get_body_data()`, which returns `nil` whenever OpenResty buffers the body to a temporary file instead of memory — and that happens automatically whenever the body exceeds `client_body_buffer_size`. The previous entry raised `/api/beme`'s `client_max_body_size` to `8M` but left `client_body_buffer_size` at `256K`, so any image-carrying request between 256KB and 8MB got disk-buffered, `get_body_data()` returned `nil`, and `beme.lua` correctly-but-misleadingly reported `{"error":"Empty body"}` — no crash, no stack trace, because nothing actually failed at the Lua level; it just received `nil` where it expected the request body.
+
+**Fixed:** `server/openresty/vhost.conf.template` — `client_body_buffer_size` raised from `256K` to `8M`, matching `client_max_body_size`, so the body is always kept in memory for this location and `get_body_data()` always returns it.
+
+**Migration required:** run `update.sh` (vhost regeneration + OpenResty reload).
+
+**Confirmed live end-to-end on agency** 2026-08-26: KRO independently described a shared artwork's composition, palette, and even its own stroke-count metadata after seeing the image directly — no text description supplied.
+
 ## [1.8.3] — 2026-08-26
 
 **Fixed: soul-mcp's own Express server capped every MCP request body at 1MB, so `beme_chat`'s new `image` field (previous entry) never actually reached `/api/beme` for anything but a tiny picture — the OpenResty-side `client_max_body_size` bump alone wasn't sufficient.**
