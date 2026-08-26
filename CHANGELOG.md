@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.3] — 2026-08-26
+
+**Fixed: soul-mcp's own Express server capped every MCP request body at 1MB, so `beme_chat`'s new `image` field (previous entry) never actually reached `/api/beme` for anything but a tiny picture — the OpenResty-side `client_max_body_size` bump alone wasn't sufficient.**
+
+**Root cause:** `soul-mcp/server.mjs`'s global `app.use(express.json({ limit: '1mb' }))` runs before `/mcp` and `/mcp/discover`'s handlers and parses (and limits) the body first. `body-parser` (which `express.json` wraps) skips re-parsing entirely once `req._body` is set (`lib/types/json.js`: `if (req._body) { next(); return }`), so this codebase's existing per-route overrides at `/internal/run-tool` (2mb), `/internal/push-subscribe` (16kb), `/internal/send-push` (4kb) are dead code — they never take effect, since the global 1mb parser upstream of them has already consumed and capped the body. The real, only-ever-enforced limit across the whole app was 1MB, for every route.
+
+**Fixed:** added `app.use('/mcp', express.json({ limit: '10mb' }))` *before* the global 1mb parser. Express path-prefix matching means `/mcp` also covers `/mcp/discover` and all its `/mcp/discover/*` sub-routes (federation/wire included) in one line, without touching `/internal/*`'s (already-was, still-is) 1MB effective limit.
+
+**Not fixed here, flagged for later:** the pre-existing dead per-route limits on `/internal/run-tool`/`/internal/push-subscribe`/`/internal/send-push` are unchanged — they were already ineffective before this fix (real limit was 1mb regardless of their stated 2mb/16kb/4kb) and remain so; fixing that would need the same before-the-global-parser reordering, out of scope for this beme_chat-image follow-up.
+
+**Migration required:** `soul-mcp` restart (`update.sh` handles it) — no vhost/Lua changes this time, pure Node-side fix.
+
 ## [1.8.2] — 2026-08-26
 
 **Added: `beme_chat` accepts an optional `image` (Base64) so the soul can see a picture directly instead of only reading a text description of it.**

@@ -82,6 +82,18 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const app = express();
+// Muss VOR dem globalen express.json() unten stehen: body-parser überspringt
+// jeden weiteren json()-Aufruf für einen Request, sobald req._body einmal
+// gesetzt ist (lib/types/json.js: "if (req._body) { next(); return }") — ein
+// späterer, großzügigerer express.json() auf einer Spezial-Route (wie es vor
+// diesem Fix bei /internal/run-tool, /internal/push-subscribe,
+// /internal/send-push versucht wurde) greift NIE, weil der globale Parser
+// unten den Body längst geparst und limitiert hat. /mcp deckt per Express'
+// Pfad-Präfix-Matching automatisch auch /mcp/discover und alle
+// /mcp/discover/*-Subrouten ab (Federation/Wire) — dort kommen u.a.
+// beme_chat-Tool-Calls mit optionalem Bild-Feld rein, das global 1mb-Limit
+// wäre selbst für ein kleines Base64-Bild schon zu knapp.
+app.use('/mcp', express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
