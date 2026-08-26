@@ -1478,7 +1478,15 @@ server {
     add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
     if ($request_method = OPTIONS) { return 204; }
     limit_except GET OPTIONS { deny all; }
-    limit_req zone=api burst=10 nodelay;
+    # burst=30, nicht das sonst übliche 10: dieser Endpoint wird von
+    # verify_identity.mjs' pollShort() gezielt bis zu 5× in schneller Folge
+    # aufgerufen (alle 3s), und MCP-Clients mit kurzlebigen Verbindungen pro
+    # Tool-Call (beobachtet: n8n, serverTransport httpStreamable) erzeugen davon
+    # mehrere überlappend aus derselben Client-IP. Mit burst=10 wies nginx
+    # legitime Polls mit 503 ab, WÄHREND die Challenge unversehrt weiterlebte —
+    # verify_identity.mjs meldete das (vor dessen eigenem Fix) fälschlich als
+    # "Challenge nicht gefunden" statt als Rate-Limit.
+    limit_req zone=api burst=30 nodelay;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;
     default_type application/json;
     add_header Cache-Control "no-store" always;

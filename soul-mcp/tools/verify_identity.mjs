@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { postJson, getJson } from '../lib/api.mjs';
+import { postJson, getJson, ApiError } from '../lib/api.mjs';
 import { ethers } from 'ethers';
 
 const SOUL_REGISTRY = '0xE80B92edFE2286a5a941D10123AbF5E11F76342B'
@@ -34,15 +34,29 @@ async function pollShort(challenge_id, token) {
   const POLLS   = 5
   const POLL_MS = 3000
   let status
+  let lastErr
   for (let i = 0; i < POLLS; i++) {
     try {
       status = await getJson(`/api/verify/status?id=${challenge_id}`, token)
-    } catch {
-      return { __not_found: true }
+      lastErr = null
+    } catch (err) {
+      // Nur ein echtes 404 heisst "Challenge existiert nicht (mehr)". Alles
+      // andere (Netzwerkfehler, 5xx, insbesondere 503 von nginx' limit_req bei
+      // einem Traffic-Burst auf einem Reverse-Proxy-Client wie n8n) ist transient
+      // — live beobachtet: die Challenge-Datei lag die ganze Zeit unversehrt auf
+      // der Platte, während der GET wiederholt geratelimitet wurde, und der alte
+      // catch-all meldete das fälschlich als "not_found", was den Aufrufer dazu
+      // brachte, eine gültige, weiterhin pending Challenge aufzugeben statt sie
+      // weiterzupollen.
+      if (err instanceof ApiError && err.status === 404) return { __not_found: true }
+      lastErr = err
+      if (i < POLLS - 1) await new Promise(r => setTimeout(r, POLL_MS))
+      continue
     }
     if (status.status !== 'pending') return status
     if (i < POLLS - 1) await new Promise(r => setTimeout(r, POLL_MS))
   }
+  if (lastErr) return { __transient_error: true, __error_detail: lastErr.message }
   return status  // status === 'pending'
 }
 
@@ -153,6 +167,15 @@ export function register(server, token) {
             }, null, 2) }] }
           }
 
+          if (status.__transient_error) {
+            return { content: [{ type: 'text', text: JSON.stringify({
+              status:       'pending',
+              challenge_id,
+              message:      'Server vorübergehend nicht erreichbar (Rate-Limit/Netzwerk) — Challenge bleibt bestehen.',
+              next_action:  `verify_identity(challenge_id="${challenge_id}") SOFORT erneut aufrufen`,
+            }, null, 2) }] }
+          }
+
           if (status.status === 'verified' || status.verified_level) {
             const result = await buildVerifiedResult(status, challenge_id)
             return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
@@ -187,6 +210,17 @@ export function register(server, token) {
         if (status.__not_found) {
           return { content: [{ type: 'text', text: JSON.stringify({
             status: 'error', message: 'Challenge nach Erstellung nicht gefunden.',
+          }, null, 2) }] }
+        }
+
+        if (status.__transient_error) {
+          return { content: [{ type: 'text', text: JSON.stringify({
+            status:       'pending',
+            challenge_id: cid,
+            verify_url:   verifyUrl,
+            message:      'Server vorübergehend nicht erreichbar (Rate-Limit/Netzwerk) direkt nach Erstellung — Challenge existiert weiter.',
+            expires_at:   data.expires_at,
+            next_action:  `verify_identity(challenge_id="${cid}") SOFORT erneut aufrufen — wartet weitere 15s`,
           }, null, 2) }] }
         }
 

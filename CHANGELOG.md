@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.1] — 2026-08-26
+
+**Fixed: `verify_identity` misreported nginx's rate-limit rejection as "challenge not found", causing MCP clients that reconnect per tool-call (e.g. n8n, `serverTransport: httpStreamable`) to abandon a still-valid challenge and start over indefinitely instead of polling it to completion.**
+
+**Root cause:** `verify_identity.mjs`'s `pollShort()` treated every error from `GET /api/verify/status` — a genuine 404 *and* a transient rejection (503 from OpenResty's `limit_req zone=api`, other 5xx, network error) — identically as "challenge not found". `/api/verify/status` was budgeted at `limit_req zone=api burst=10`, but the tool itself polls it up to 5× per call in quick succession, and a client that opens a fresh connection per tool call multiplies that further from the same source IP. Live-reproduced on `fab.uxprojects-jok.com`: the challenge file existed on disk and was correctly written the entire time, while nginx rejected the immediate follow-up poll with 503 — the misleading catch-all turned that into "Challenge nach Erstellung nicht gefunden", so the caller created a fresh challenge instead of continuing to poll the valid one, and the cycle repeated indefinitely.
+
+**Fixed**
+- `soul-mcp/tools/verify_identity.mjs`: `pollShort()` now reports `not_found` only on an actual 404; any other error (5xx, rate-limit, network) is treated as transient and surfaces as `pending` with the same `challenge_id` plus a `next_action` telling the caller to retry — the challenge is never silently abandoned.
+- `server/openresty/vhost.conf.template`: `/api/verify/status` burst raised from 10 to 30, matching the endpoint's legitimately bursty polling pattern (up to 5 polls/call, multiplied by reconnect-per-call MCP clients).
+
+**Migration required:** run `update.sh` (not just `git pull`) — the vhost fix only takes effect once the config is regenerated from the template and OpenResty reloaded, and the `verify_identity.mjs` fix needs a `soul-mcp` restart (`update.sh` handles both).
+
 ## [1.8.0] — 2026-08-25
 
 **Added: `soul_draw` catches up several private-repo-only rounds — seeded PRNG, oil style, field/object modes, checkpoint.** Consolidates work not yet mirrored here (private repo's `soul_draw.mjs` history `500ac76a..c38c9d40`):
