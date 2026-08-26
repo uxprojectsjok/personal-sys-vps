@@ -2,7 +2,8 @@
 -- POST /api/beme  → Antwortet als die Soul des authentifizierten Nutzers
 -- Auth: vault_auth.lua (soul permission required)
 --
--- Input:  { message: string, history?: [{role,content}], max_tokens?: number }
+-- Input:  { message: string, history?: [{role,content}], max_tokens?: number,
+--           image?: string (Base64), image_media_type?: string (default image/png) }
 -- Output: { response: string, soul_name: string, model: string }
 --
 -- Ablauf:
@@ -112,6 +113,23 @@ end
 local max_tokens = tonumber(payload.max_tokens) or 1024
 if max_tokens > 4096 then max_tokens = 4096 end
 
+-- Optionales Bild (Base64) — Claude Vision akzeptiert diese vier media_types,
+-- alles andere lehnen wir vor dem Anthropic-Call ab statt einen 400 von dort
+-- durchzureichen.
+local ALLOWED_IMAGE_TYPES = { ["image/png"] = true, ["image/jpeg"] = true, ["image/gif"] = true, ["image/webp"] = true }
+local image = payload.image
+if image ~= nil and (type(image) ~= "string" or image == "") then
+  ngx.status = 400
+  ngx.say('{"error":"image must be a non-empty base64 string"}')
+  return
+end
+local image_media_type = payload.image_media_type or "image/png"
+if image and not ALLOWED_IMAGE_TYPES[image_media_type] then
+  ngx.status = 400
+  ngx.say('{"error":"image_media_type must be one of image/png, image/jpeg, image/gif, image/webp"}')
+  return
+end
+
 -- ── System-Prompt bauen ────────────────────────────────────────────────────
 
 local name_clause = soul_name ~= "" and ("Du bist " .. soul_name .. ".") or "Du bist diese Person."
@@ -210,8 +228,17 @@ if type(history) == "table" then
   end
 end
 
--- Aktuelle Nachricht
-table.insert(messages, { role = "user", content = message })
+-- Aktuelle Nachricht — mit Bild als multimodaler content-Block (Anthropic
+-- Messages API: content wird dann ein Array aus image- + text-Blöcken statt
+-- eines reinen Strings), sonst wie bisher der bloße Text.
+local user_content = message
+if image then
+  user_content = {
+    { type = "image", source = { type = "base64", media_type = image_media_type, data = image } },
+    { type = "text", text = message },
+  }
+end
+table.insert(messages, { role = "user", content = user_content })
 
 -- ── Anthropic API aufrufen ─────────────────────────────────────────────────
 

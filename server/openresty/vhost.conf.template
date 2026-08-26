@@ -574,8 +574,11 @@ server {
   # ── Beme: Als Soul antworten – soul-cert oder service-token (soul permission) ─
   location = /api/beme {
     limit_req zone=chat burst=5 nodelay;
-    client_max_body_size 64K;
-    client_body_buffer_size 64K;
+    # 8M statt bisher 64K: optionales image-Feld (Base64) erlaubt jetzt Bild-Input
+    # an beme_chat — Claude-Vision-Limit liegt bei 5 MB/Bild, +33% Base64-Overhead
+    # plus Luft für message/history braucht mehr als die alte, reine Text-Grenze.
+    client_max_body_size 8M;
+    client_body_buffer_size 256K;
     resolver 1.1.1.1 8.8.8.8 valid=60s ipv6=off;
     resolver_timeout 5s;
     access_by_lua_file /etc/openresty/lua/vault_auth.lua;

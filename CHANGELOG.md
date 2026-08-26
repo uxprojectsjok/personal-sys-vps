@@ -8,6 +8,18 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.2] — 2026-08-26
+
+**Added: `beme_chat` accepts an optional `image` (Base64) so the soul can see a picture directly instead of only reading a text description of it.**
+
+Motivated by a live case: after a `soul_draw` painting-critique session, the question came up whether it'd change anything if KRO looked at the artwork's own PNG instead of relying on Jan's text description of it — that mediation step is itself in tension with the autonomy question the critique was about.
+
+- `soul-mcp/tools/beme_chat.mjs`: new optional `image` (Base64, no `data:` prefix, ≤7MB) and `image_media_type` (`image/png`/`jpeg`/`gif`/`webp`, default png) parameters, passed through to `/api/beme`.
+- `lua/beme.lua`: when `image` is present, the current turn's `content` becomes an Anthropic multimodal block (`[{type:"image",...}, {type:"text",...}]`) instead of a plain string; validates `image_media_type` against Claude Vision's four supported types before calling the API. `history` stays text-only — only the live turn can carry an image.
+- `server/openresty/vhost.conf.template`: `/api/beme`'s `client_max_body_size` raised from `64K` (text-only) to `8M` (Claude Vision's 5MB/image limit + Base64 overhead + room for message/history).
+
+**Migration required:** run `update.sh` — the vhost change only takes effect once the config is regenerated from the template and OpenResty reloaded, and the `beme.lua`/`beme_chat.mjs` changes need the same deploy step (Lua copy + `soul-mcp` restart).
+
 ## [1.8.1] — 2026-08-26
 
 **Fixed: `verify_identity` misreported nginx's rate-limit rejection as "challenge not found", causing MCP clients that reconnect per tool-call (e.g. n8n, `serverTransport: httpStreamable`) to abandon a still-valid challenge and start over indefinitely instead of polling it to completion.**

@@ -25,6 +25,8 @@ export function register(server, token) {
       '- The soul always responds in first person, without revealing itself as an AI.',
       '- history contains the previous conversation turns (user/assistant).',
       '- max_tokens controls response length (default 1024, max 4096).',
+      '- image (optional): send a picture along with message — the soul sees it directly',
+      '  instead of relying on a text description of it (Claude Vision under the hood).',
     ].join('\n'),
     {
       message: z.string().min(1).max(8000).describe('Die Nachricht an die Soul'),
@@ -36,13 +38,19 @@ export function register(server, token) {
       ).max(20).optional().describe('Bisheriger Gesprächsverlauf (optional)'),
       max_tokens: z.number().int().min(64).max(4096).optional()
         .describe('Maximale Antwortlänge in Tokens (default 1024)'),
+      image: z.string().min(1).max(7000000).optional()
+        .describe('Optionales Bild als Base64 (ohne data:-Präfix) — wird zusammen mit message an die Soul geschickt, die es direkt sieht statt nur eine Textbeschreibung davon zu bekommen. Claude Vision-Limit: 5 MB Originalbild.'),
+      image_media_type: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']).optional()
+        .describe('MIME-Type von image, Standard image/png. Nur zusammen mit image relevant.'),
     },
-    async ({ message, history, max_tokens }) => {
+    async ({ message, history, max_tokens, image, image_media_type }) => {
       try {
         const data = await postJson('/api/beme', token, {
           message,
           history:    history    ?? [],
           max_tokens: max_tokens ?? 1024,
+          image,
+          image_media_type,
         });
 
         if (data.error) {
