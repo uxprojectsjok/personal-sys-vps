@@ -76,8 +76,22 @@
                 class="sys-btn-ed sys-btn-ed--ghost"
                 style="flex-shrink:0;margin-left:12px"
                 :disabled="agentSetupMcpBusy"
-                @click="setupAgentMcpToken"
+                @click="rotateAgentMcpToken"
               >{{ agentSetupMcpBusy ? '…' : $t('settings.agent_mcp_token_setup') }}</button>
+            </div>
+
+            <!-- MCP Service Token vorhanden — Ablaufdatum + manuelles Erneuern -->
+            <div v-else-if="agentInstalled && agentMcpTokenOk" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:12px 16px;border:1px solid var(--sys-rule);border-radius:var(--r-xs)">
+              <div>
+                <div style="font-size:14px;font-weight:500;color:var(--fg)">{{ $t('settings.agent_mcp_token_active') }}</div>
+                <div v-if="agentMcpTokenExpiresLocal" style="font-size:13px;line-height:1.55;color:var(--fg-2);margin-top:4px">{{ $t('settings.agent_mcp_token_active_hint', { date: agentMcpTokenExpiresLocal }) }}</div>
+              </div>
+              <button
+                class="sys-btn-ed sys-btn-ed--ghost"
+                style="flex-shrink:0;margin-left:12px"
+                :disabled="agentSetupMcpBusy"
+                @click="rotateAgentMcpToken"
+              >{{ agentSetupMcpBusy ? '…' : $t('settings.agent_mcp_token_renew') }}</button>
             </div>
 
             <!-- Enable / Disable toggle -->
@@ -183,6 +197,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <ConfirmModal />
     </div>
     <SysPageLoading v-else />
   </ClientOnly>
@@ -194,12 +209,15 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useNodeStatus } from '~/composables/useNodeStatus.js'
+import { useConfirm } from '~/composables/useConfirm.js'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
+const { ask } = useConfirm()
 onMounted(async () => {
   fetchNodeStatus()
   await loadNodeStatus()
@@ -360,7 +378,8 @@ const agentQueueText    = ref('')
 const agentQueueSaving  = ref(false)
 const agentFeedback     = ref(null)
 let   agentLogTimer     = null
-const agentMcpTokenOk   = ref(true)
+const agentMcpTokenOk         = ref(true)
+const agentMcpTokenExpiresAt  = ref(null) // unix seconds, from authorized_services.json
 const agentLoadError    = ref('')
 
 // Log-Zeitstempel bleiben serverseitig UTC (ISO 8601, z.B. "[2026-08-01T05:03:16Z]")
@@ -377,6 +396,13 @@ const agentLastRunLocal = computed(() => {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
 })
 const agentSetupMcpBusy = ref(false)
+const agentMcpTokenExpiresLocal = computed(() => {
+  const ts = agentMcpTokenExpiresAt.value
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
+})
 
 async function loadAgentStatus() {
   try {
@@ -399,13 +425,7 @@ async function loadAgentStatus() {
   } catch {
     agentLoadError.value = 'network'
   }
-  try {
-    const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
-    if (r.ok) {
-      const d = await r.json()
-      agentMcpTokenOk.value = (d.services || []).some(s => s.name === 'SYS Agent Runner')
-    }
-  } catch {}
+  await refreshAgentMcpTokenStatus()
   try {
     const r = await fetch('/api/agent/queue', { headers: { Authorization: `Bearer ${soulToken.value}` } })
     if (r.ok) {
@@ -415,16 +435,50 @@ async function loadAgentStatus() {
   } catch {}
 }
 
-async function setupAgentMcpToken() {
+async function refreshAgentMcpTokenStatus() {
+  try {
+    const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    if (r.ok) {
+      const d = await r.json()
+      const svc = (d.services || []).find(s => s.name === 'SYS Agent Runner')
+      agentMcpTokenOk.value = !!svc
+      agentMcpTokenExpiresAt.value = svc?.expires_at ?? null
+    }
+  } catch {}
+}
+
+// Ein Aufruf für beide Fälle (Ersteinrichtung + spätere Erneuerung), da der
+// Rotate-Endpoint identisch ist. Beim Erneuern eines bereits gültigen Tokens
+// aber vorher bestätigen lassen: das Rotieren invalidiert den alten Token
+// sofort, nicht erst bei Ablauf — laufende MCP-Verbindungen (Claude Code,
+// n8n, ...) brechen bis zum Reconnect mit dem neuen Token ab.
+async function rotateAgentMcpToken() {
+  if (agentMcpTokenOk.value) {
+    const confirmed = await ask({
+      title: t('settings.agent_mcp_token_renew_confirm_title'),
+      message: t('settings.agent_mcp_token_renew_confirm_msg'),
+      confirmText: t('settings.agent_mcp_token_renew_confirm_btn'),
+    })
+    if (!confirmed) return
+  }
   agentSetupMcpBusy.value = true
+  agentFeedback.value = null
   try {
     const r = await fetch('/api/vault/services/agent-runner/rotate', {
       method: 'POST',
       headers: { Authorization: `Bearer ${soulToken.value}` }
     })
-    if (r.ok) agentMcpTokenOk.value = true
-  } catch { /* silent */ } finally {
+    if (r.ok) {
+      await refreshAgentMcpTokenStatus()
+      agentFeedback.value = { ok: true, message: t('settings.agent_mcp_token_renew_ok') }
+    } else {
+      agentFeedback.value = { ok: false, message: `Error ${r.status}` }
+    }
+  } catch (e) {
+    agentFeedback.value = { ok: false, message: e.message }
+  } finally {
     agentSetupMcpBusy.value = false
+    setTimeout(() => { agentFeedback.value = null }, 4000)
   }
 }
 
