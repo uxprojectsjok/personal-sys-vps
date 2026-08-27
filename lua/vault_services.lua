@@ -340,5 +340,46 @@ if method == "POST" and uri:match("^/api/vault/services/agent%-runner/rotate$") 
   return
 end
 
+-- ── POST /api/vault/services/x402-broker/rotate ───────────────────────────────
+-- Analog zu agent-runner/rotate oben, aber für einen ANDEREN Zweck: dieser
+-- Token wird nicht node-intern verwendet (kein config.json-Feld), sondern
+-- an einen externen Aufrufer (n8n Access Broker) weitergegeben, der damit
+-- POST /api/x402/agent/pay ansprechen darf (siehe x402_agent_pay.lua's
+-- Namens-Gate: nur soul-cert ODER ein Service exakt "x402-Zahlung").
+-- Fester, garantiert korrekter Name statt Freitext im "New service"-Formular
+-- — ein Tippfehler dort (z.B. andere Groß-/Kleinschreibung) hätte den Token
+-- sonst wirkungslos gemacht, ohne dass das irgendwo auffällt.
+
+if method == "POST" and uri:match("^/api/vault/services/x402%-broker/rotate$") then
+  local svcs = load_services()
+
+  -- Alten "x402-Zahlung"-Token per Name entfernen (kein config.json-Feld wie
+  -- bei agent-runner, da dieser Token für einen externen Client bestimmt ist).
+  for tok, svc in pairs(svcs) do
+    if svc.name == "x402-Zahlung" then svcs[tok] = nil end
+  end
+
+  local new_token = random_token()
+  svcs[new_token] = {
+    name        = "x402-Zahlung",
+    -- Keine der 5 generischen Vault-Permissions trifft zu — die Autorität
+    -- dieses Tokens kommt ausschließlich aus dem Namens-Gate in
+    -- x402_agent_pay.lua, nicht aus permissions (die dort ohnehin nicht
+    -- geprüft werden). Leer lassen statt vorzutäuschen, er hätte
+    -- Vault-Content-Zugriff, den er gar nicht braucht.
+    permissions = {},
+    expires_at  = math.floor(ngx.now()) + (365 * 86400),
+    created_at  = math.floor(ngx.now())
+    -- verified-Feld bewusst weggelassen: Bestandsschutz-Default ist true
+    -- (siehe vault_auth.lua) — Owner erstellt das selbst im eingeloggten
+    -- Zustand, kein separater verify_identity-Schritt nötig wie bei
+    -- fremden OAuth-Clients.
+  }
+  save_services(svcs)
+
+  ngx.say(cjson.encode({ ok = true, token = new_token, name = "x402-Zahlung" }))
+  return
+end
+
 ngx.status = 405
 ngx.say(cjson.encode({ error = "Method not allowed" }))

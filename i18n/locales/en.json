@@ -1412,7 +1412,20 @@
     "token_label": "Active Token",
     "token_desc": "Determines which balance is shown in the status block. Test payments always settle in USDC regardless (the x402 endpoint accepts no other settlement asset).",
     "status_label": "Status",
-    "roadmap_tag": "planned"
+    "roadmap_tag": "planned",
+    "x402_broker_label": "x402 Access-Broker Token",
+    "x402_broker_desc": "A fixed service token for external orchestration (e.g. n8n) — authorizes only real x402 payments via POST /api/x402/agent/pay, bound to the daily limit above. No free-text name needed, the name is always exactly \"x402-Zahlung\".",
+    "x402_broker_status_active": "Active",
+    "x402_broker_expires": "Expires {date}",
+    "x402_broker_create_btn": "Create token",
+    "x402_broker_renew_btn": "Renew",
+    "x402_broker_reveal_btn": "Show",
+    "x402_broker_hide_btn": "Hide",
+    "x402_broker_copy_btn": "Copy",
+    "x402_broker_copied": "Copied ✓",
+    "x402_broker_rotate_confirm_title": "Renew token now?",
+    "x402_broker_rotate_confirm_msg": "The current token becomes invalid immediately. Any integration already using it (e.g. n8n) must be reconfigured with the new token afterward.",
+    "x402_broker_rotate_confirm_btn": "Yes, renew"
   },
   "trader": {
     "crumb": "Agent Trader",

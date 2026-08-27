@@ -145,6 +145,35 @@
               <p class="wa-hint">{{ $t('trader.wallet_safety_hint') }}</p>
             </div>
 
+            <!-- x402 Access-Broker Token (externe Orchestrierung, z.B. n8n) -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ $t('wallet.x402_broker_label') }}</div>
+              <p class="wa-field-desc">{{ $t('wallet.x402_broker_desc') }}</p>
+              <div v-if="x402BrokerTokenOk" class="archivar-lm-block" style="margin-bottom:12px">
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('wallet.status_label') }}</span>
+                  <span class="archivar-lm-val archivar-lm-ok">
+                    {{ $t('wallet.x402_broker_status_active') }}<span v-if="x402BrokerExpiresLocal"> · {{ $t('wallet.x402_broker_expires', { date: x402BrokerExpiresLocal }) }}</span>
+                  </span>
+                </div>
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">Token</span>
+                  <span style="display:flex;align-items:center;gap:8px">
+                    <code class="archivar-lm-val archivar-lm-dim">{{ x402BrokerRevealed ? x402BrokerToken : '•'.repeat(16) }}</code>
+                    <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerRevealed = !x402BrokerRevealed">
+                      {{ x402BrokerRevealed ? $t('wallet.x402_broker_hide_btn') : $t('wallet.x402_broker_reveal_btn') }}
+                    </button>
+                    <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerCopy">
+                      {{ x402BrokerCopied ? $t('wallet.x402_broker_copied') : $t('wallet.x402_broker_copy_btn') }}
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <button type="button" class="wa-btn-ghost wa-btn-ghost--accent" :disabled="x402BrokerBusy" @click="rotateX402BrokerToken">
+                {{ x402BrokerBusy ? '…' : (x402BrokerTokenOk ? $t('wallet.x402_broker_renew_btn') : $t('wallet.x402_broker_create_btn')) }}
+              </button>
+            </div>
+
             <!-- Feedback -->
             <Transition name="sys-modal-fade">
               <div v-if="x402Feedback" class="wa-feedback" :class="x402Feedback.ok ? 'wa-feedback--ok' : 'wa-feedback--err'">
@@ -170,6 +199,7 @@
         </div>
       </div>
       <SysCommandPalette :open="cmdkOpen" @close="cmdkOpen = false" @navigate="onNav" @insert="() => {}" />
+      <ConfirmModal />
     </div>
     <SysPageLoading v-else />
   </ClientOnly>
@@ -181,13 +211,16 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSoul } from '~/composables/useSoul.js'
 import { useNodeStatus } from '~/composables/useNodeStatus.js'
+import { useConfirm } from '~/composables/useConfirm.js'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: false })
 const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
-onMounted(() => { fetchNodeStatus(); loadX402Status(); loadSafety() })
+const { ask } = useConfirm()
+onMounted(() => { fetchNodeStatus(); loadX402Status(); loadSafety(); loadX402BrokerStatus() })
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 
@@ -411,6 +444,76 @@ async function toggleAllowedToken(symbol) {
     if (r.ok && d.ok) allowedTokens.value = d.allowedTokens
   } catch { /* silent */ }
   safetyBusy.value = false
+}
+
+// ── x402 Access-Broker Token (für externe Orchestrierung, z.B. n8n) ─────────
+// Fester Name statt Freitext im generischen "New service"-Formular (Setup) —
+// ein Tippfehler dort (z.B. andere Groß-/Kleinschreibung) hätte den Token
+// wirkungslos gemacht, ohne dass das irgendwo auffällt. Analog zu Agent
+// Runner (agent.vue) — anders als der aber: der rohe Tokenwert wird hier
+// bewusst angezeigt (maskiert, mit Reveal/Copy), weil er manuell in eine
+// externe Integration (n8n) kopiert werden muss, statt nur node-intern via
+// config.json verwendet zu werden. GET /api/vault/services liefert den
+// Klartext-Token ohnehin schon immer mit (derselbe Wert ist der Map-Key in
+// authorized_services.json) — ihn hier zu verstecken wäre Security-Theater.
+const x402BrokerTokenOk    = ref(false)
+const x402BrokerToken      = ref('')
+const x402BrokerExpiresAt  = ref(null)
+const x402BrokerRevealed   = ref(false)
+const x402BrokerBusy       = ref(false)
+const x402BrokerCopied     = ref(false)
+
+const x402BrokerExpiresLocal = computed(() => {
+  const ts = x402BrokerExpiresAt.value
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
+})
+
+async function loadX402BrokerStatus() {
+  try {
+    const r = await fetch('/api/vault/services', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok) {
+      const svc = (d.services || []).find(s => s.name === 'x402-Zahlung')
+      x402BrokerTokenOk.value   = !!svc
+      x402BrokerToken.value     = svc?.token || ''
+      x402BrokerExpiresAt.value = svc?.expires_at ?? null
+    }
+  } catch { /* silent */ }
+}
+
+async function rotateX402BrokerToken() {
+  if (x402BrokerTokenOk.value) {
+    const confirmed = await ask({
+      title: t('wallet.x402_broker_rotate_confirm_title'),
+      message: t('wallet.x402_broker_rotate_confirm_msg'),
+      confirmText: t('wallet.x402_broker_rotate_confirm_btn'),
+    })
+    if (!confirmed) return
+  }
+  x402BrokerBusy.value = true
+  try {
+    const r = await fetch('/api/vault/services/x402-broker/rotate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${soulToken.value}` },
+    })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok && d.ok) {
+      x402BrokerRevealed.value = true
+      await loadX402BrokerStatus()
+    }
+  } catch { /* silent */ }
+  x402BrokerBusy.value = false
+}
+
+async function x402BrokerCopy() {
+  try {
+    await navigator.clipboard.writeText(x402BrokerToken.value)
+    x402BrokerCopied.value = true
+    setTimeout(() => { x402BrokerCopied.value = false }, 2000)
+  } catch { /* Clipboard-API evtl. nicht verfügbar (kein HTTPS/kein Fokus) */ }
 }
 </script>
 
