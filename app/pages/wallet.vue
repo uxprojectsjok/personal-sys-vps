@@ -111,6 +111,40 @@
               </div>
             </div>
 
+            <!-- Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) — gilt wallet-weit,
+                 Yield UND x402. trader.vue zeigt dieselben Werte nur noch read-only. -->
+            <div class="wa-field">
+              <div class="wa-field-label">{{ $t('trader.safety_label') }}</div>
+              <div class="archivar-lm-block">
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('trader.daily_limit_label') }}</span>
+                  <span v-if="editingLimit === false" class="archivar-lm-val" style="cursor:pointer" @click="startEditLimit">
+                    {{ formatAmount(dailyUsedUsd) }} / {{ formatAmount(dailyLimitUsd) }} USD
+                  </span>
+                  <span v-else style="display:flex;align-items:center;gap:8px">
+                    <input v-model="dailyLimitDraft" type="text" inputmode="decimal" class="sys-input sys-input--mono" style="width:100px;text-align:right" />
+                    <button type="button" class="wa-btn-ghost wa-btn-ghost--accent" style="height:28px;padding:0 10px;font-size:12px" :disabled="safetyBusy" @click="saveDailyLimit">✓</button>
+                  </span>
+                </div>
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('trader.allowed_tokens_label') }}</span>
+                  <span style="display:flex;gap:6px">
+                    <button v-for="sym in spendableTokenOptions" :key="sym" type="button" class="wa-chip" :class="{ 'wa-chip--active': allowedTokens.includes(sym) }" :disabled="safetyBusy" @click="toggleAllowedToken(sym)">{{ sym }}</button>
+                  </span>
+                </div>
+                <div class="archivar-lm-row">
+                  <span class="archivar-lm-key">{{ $t('trader.kill_switch_label') }}</span>
+                  <span style="display:flex;align-items:center;gap:10px">
+                    <span :class="killSwitchActive ? '' : 'archivar-lm-ok'">{{ killSwitchActive ? 'Gestoppt' : 'Aktiv' }}</span>
+                    <button type="button" class="wa-btn-ghost" :class="killSwitchActive ? 'wa-btn-ghost--accent' : 'wa-btn-ghost--danger'" style="height:28px;padding:0 10px;font-size:12px" :disabled="safetyBusy" @click="toggleKillSwitch">
+                      {{ killSwitchActive ? 'Reaktivieren' : 'Stoppen' }}
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <p class="wa-hint">{{ $t('trader.wallet_safety_hint') }}</p>
+            </div>
+
             <!-- Feedback -->
             <Transition name="sys-modal-fade">
               <div v-if="x402Feedback" class="wa-feedback" :class="x402Feedback.ok ? 'wa-feedback--ok' : 'wa-feedback--err'">
@@ -153,7 +187,7 @@ const { t } = useI18n()
 const router = useRouter()
 const { hasSoul, soulMeta, soulToken, clear } = useSoul()
 const { monetizationEnabled, fetchNodeStatus } = useNodeStatus()
-onMounted(() => { fetchNodeStatus(); loadX402Status() })
+onMounted(() => { fetchNodeStatus(); loadX402Status(); loadSafety() })
 
 const drawerOpen = ref(false), sidebarCollapsed = ref(false), cmdkOpen = ref(false)
 
@@ -289,11 +323,94 @@ async function x402SendTestPayment() {
     })
     const d = await r.json().catch(() => ({}))
     x402PayResult.value = JSON.stringify(d, null, 2)
-    if (r.ok && d.ok) x402GetBalances()
+    if (r.ok && d.ok) { x402GetBalances(); loadSafety() }
   } catch (e) {
     x402ShowFeedback(false, e.message)
   }
   x402PayBusy.value = false
+}
+
+// ── Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) ────────────────────
+// Verschoben von trader.vue hierher (2026-08-27): das Limit gilt jetzt
+// wallet-weit — Yield-Aktionen UND x402-Zahlungen (siehe
+// soul-mcp/lib/trader_config.mjs::assertActionAllowed, jetzt auch von
+// /internal/x402-agent/pay aufgerufen) —, nicht mehr nur Trader-spezifisch.
+// Durchgesetzt wird das serverseitig VOR jeder geldbewegenden Aktion; hier
+// nur Anzeige/Verwaltung. trader.vue zeigt dieselben Werte nur noch
+// read-only, mit einem Link hierher zum Ändern. Endpoints bleiben
+// /api/trader/safety* — reiner UI-Umzug, kein Backend-Rename.
+const killSwitchActive = ref(false)
+const dailyLimitUsd    = ref(50)
+const dailyUsedUsd     = ref(0)
+const allowedTokens    = ref([])
+const safetyBusy       = ref(false)
+const editingLimit     = ref(false)
+const dailyLimitDraft  = ref('')
+// Dieselbe Liste wie die Token-Chips oben (KNOWN_TOKEN_SYMBOLS) — inkl. POL,
+// nicht nur die Aave-Yield-Assets aus trader.vue (dort weiterhin
+// yieldAssetOptions ohne POL, weil POL kein Yield-Asset ist).
+const spendableTokenOptions = KNOWN_TOKEN_SYMBOLS
+
+async function loadSafety() {
+  try {
+    const r = await fetch('/api/trader/safety', { headers: { Authorization: `Bearer ${soulToken.value}` } })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok && d.ok) {
+      killSwitchActive.value = d.killSwitchActive
+      dailyLimitUsd.value    = d.dailyLimitUsd
+      dailyUsedUsd.value     = d.dailyUsedUsd
+      allowedTokens.value    = d.allowedTokens
+    }
+  } catch { /* silent */ }
+}
+
+async function toggleKillSwitch() {
+  safetyBusy.value = true
+  try {
+    const r = await fetch('/api/trader/safety/kill-switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ active: !killSwitchActive.value }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok && d.ok) killSwitchActive.value = d.killSwitchActive
+  } catch { /* silent */ }
+  safetyBusy.value = false
+}
+
+function startEditLimit() {
+  dailyLimitDraft.value = String(dailyLimitUsd.value)
+  editingLimit.value = true
+}
+
+async function saveDailyLimit() {
+  safetyBusy.value = true
+  try {
+    const r = await fetch('/api/trader/safety/daily-limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ limitUsd: dailyLimitDraft.value.trim() }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok && d.ok) dailyLimitUsd.value = d.dailyLimitUsd
+  } catch { /* silent */ }
+  editingLimit.value = false
+  safetyBusy.value = false
+}
+
+async function toggleAllowedToken(symbol) {
+  safetyBusy.value = true
+  const nowAllowed = !allowedTokens.value.includes(symbol)
+  try {
+    const r = await fetch('/api/trader/safety/allowed-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
+      body: JSON.stringify({ symbol, allowed: nowAllowed }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (r.ok && d.ok) allowedTokens.value = d.allowedTokens
+  } catch { /* silent */ }
+  safetyBusy.value = false
 }
 </script>
 
@@ -371,6 +488,14 @@ async function x402SendTestPayment() {
 }
 .wa-btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .wa-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Sys-grün: Balance-abfragen/Test-Zahlung sind die "aktiven" Aktionen dieser
+   Seite -- Rahmen+Text schon im Ruhezustand in Akzentgrün, nicht erst bei
+   Hover, damit sie sich von reinen Navigations-Ghost-Buttons abheben. */
+.wa-btn-ghost--accent { border-color: var(--accent); color: var(--accent); }
+.wa-btn-ghost--accent:hover:not(:disabled) { background: rgba(109,184,154,0.10); }
+.wa-btn-ghost--danger { border-color: var(--sys-err, #E06C75); color: var(--sys-err, #E06C75); }
+.wa-btn-ghost--danger:hover:not(:disabled) { background: rgba(224,108,117,0.10); }
 
 .wa-feedback {
   margin-top: 10px; padding: 10px 14px; border-left: 2px solid;

@@ -15,6 +15,18 @@ if not soul_id or soul_id == "" then
   return
 end
 
+-- Signiert echte Zahlungen aus der Agent-Wallet — vault_auth.lua akzeptiert
+-- sonst JEDEN gültigen, verifizierten Service-Token für diese ganze
+-- Routen-Familie (permissions aus /api/vault/services werden hier nicht
+-- geprüft). Für diese eine Route zusätzlich einschränken: nur der
+-- Soul-Owner selbst (soul-cert) oder ein Service-Token, der exakt
+-- "x402-Zahlung" heißt (siehe /setup → Services) darf zahlen.
+if not ngx.ctx.via_soul_cert and ngx.ctx.service_actor ~= "x402-Zahlung" then
+  ngx.status = 403
+  ngx.say('{"error":"forbidden","message":"Dieser Service-Token ist nicht für x402-Zahlungen freigegeben. Lege unter Setup einen Service namens \\"x402-Zahlung\\" an."}')
+  return
+end
+
 if ngx.req.get_method() ~= "POST" then
   ngx.status = 405
   ngx.say('{"error":"method not allowed"}')

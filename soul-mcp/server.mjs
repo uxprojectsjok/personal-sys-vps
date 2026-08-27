@@ -68,7 +68,7 @@ import {
   savePrivateKey as saveX402AgentKey,
   loadAccount as loadX402AgentAccount,
 } from './lib/x402_agent_wallet.mjs';
-import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
+import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent, USDC_ADDRESS as X402_USDC_ADDRESS, USDC_DECIMALS as X402_USDC_DECIMALS } from './lib/x402_client.mjs';
 import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
 import { getHistory as getTraderHistory, appendAction as appendTraderAction, deleteAction as deleteTraderAction, getNetPrincipal as getTraderNetPrincipal } from './lib/trader_history.mjs';
 import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
@@ -2819,6 +2819,27 @@ app.get('/internal/x402-agent/balance', async (req, res) => {
   }
 });
 
+// Vor jedem echten Signieren: den Betrag OHNE Zahlungsnachweis erfragen
+// (die reguläre x402-402-Challenge) — payX402AsAgent kennt den Betrag sonst
+// erst mitten in seinem eigenen fetch->402->sign->retry-Ablauf, zu spät für
+// eine Prüfung VOR dem Signieren. Nur USDC-Challenges werden akzeptiert
+// (Asset-Adresse geprüft) — ein anderes Asset hieße, der Aufrufer bekäme ein
+// Preisschild in einer Einheit, die assertTraderActionAllowed nicht in USD
+// umrechnen kann, also lieber ablehnen als blind vertrauen.
+async function previewX402UsdAmount(url, method, body, headers) {
+  const res = await fetch(url, {
+    method: method || 'POST',
+    headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+  });
+  if (res.status !== 402) return null;
+  const challenge = await res.json().catch(() => null);
+  const accept = challenge?.accepts?.[0];
+  if (!accept || !accept.asset || !accept.amount) return null;
+  if (String(accept.asset).toLowerCase() !== X402_USDC_ADDRESS.toLowerCase()) return null;
+  return Number(accept.amount) / (10 ** X402_USDC_DECIMALS);
+}
+
 app.post('/internal/x402-agent/pay', async (req, res) => {
   const { soul_id: soulId, url, method, body, headers } = req.body || {};
   if (typeof soulId !== 'string' || !soulId) {
@@ -2830,7 +2851,48 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
   try {
     const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+
+    let usd = null;
+    try {
+      usd = await previewX402UsdAmount(url, method, body, headers);
+    } catch { /* Netzwerkfehler etc. — usd bleibt null, unten abgefangen */ }
+    if (usd == null) {
+      return res.status(502).json({
+        ok: false, error: 'challenge_preview_failed',
+        message: 'Zahlungsbetrag konnte vor dem Signieren nicht ermittelt werden (keine gültige USDC-x402-Challenge) — Zahlung aus Sicherheitsgründen abgebrochen.',
+      });
+    }
+
+    try {
+      await assertTraderActionAllowed(soulId, { symbol: 'USDC', usd });
+    } catch (limitErr) {
+      return res.status(403).json({ ok: false, error: limitErr.message, message: limitErr.userMessage || limitErr.message });
+    }
+
     const result = await payX402AsAgent(account, { url, method, body, headers });
+
+    // Zählt automatisch fürs nächste Tageslimit (trader_config.mjs liest
+    // dieselbe Historie) und erscheint in Traders "Letzte Aktionen"/CSV —
+    // ein gemeinsames Ledger für Yield- und x402-Aktionen, kein zweites.
+    // Awaited (nicht fire-and-forget): muss vor der Antwort committet sein,
+    // sonst könnten zwei schnell aufeinanderfolgende Aufrufe den Verbrauch
+    // beide gegen den noch alten getDailyUsedUsd()-Stand prüfen und das
+    // Tageslimit gemeinsam überschreiten (TOCTOU).
+    const success = result?.body?.ok === true || result?.status === 200;
+    try {
+      await appendTraderAction(soulId, {
+        action: 'x402_payment',
+        symbol: 'USDC',
+        usd,
+        amount: String(usd),
+        status: success ? 'erfolgreich' : 'fehlgeschlagen',
+        txHash: result?.body?.tx_hash,
+        url,
+      });
+    } catch (logErr) {
+      console.error('[x402-agent/pay] appendTraderAction failed:', logErr.message);
+    }
+
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });

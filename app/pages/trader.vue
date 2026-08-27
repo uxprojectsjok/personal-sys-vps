@@ -97,34 +97,27 @@
               </div>
             </div>
 
-            <!-- ── Sicherheit ── -->
+            <!-- ── Sicherheit (read-only — Verwaltung in Wallet, gilt dort wallet-weit
+                 für Yield UND x402, siehe wallet.vue) ── -->
             <div class="tr-field">
-              <div class="tr-field-label">{{ $t('trader.safety_label') }}</div>
+              <div class="tr-field-label-row">
+                <div class="tr-field-label">{{ $t('trader.safety_label') }}</div>
+                <NuxtLink to="/wallet" class="tr-safety-link">{{ $t('trader.safety_readonly_hint') }} →</NuxtLink>
+              </div>
               <div class="tr-box">
                 <div class="tr-row">
                   <span>{{ $t('trader.daily_limit_label') }}</span>
-                  <span v-if="editingLimit === false" class="tr-row-val tr-safety-clickable" @click="startEditLimit">
-                    {{ formatAmount(dailyUsedUsd) }} / {{ formatAmount(dailyLimitUsd) }} USD
-                  </span>
-                  <span v-else class="tr-safety-edit">
-                    <input v-model="dailyLimitDraft" type="text" inputmode="decimal" class="tr-stake-input" />
-                    <button type="button" class="tr-btn-ghost tr-btn-sm" :disabled="safetyBusy" @click="saveDailyLimit">✓</button>
-                  </span>
+                  <span class="tr-row-val">{{ formatAmount(dailyUsedUsd) }} / {{ formatAmount(dailyLimitUsd) }} USD</span>
                 </div>
                 <div class="tr-row">
                   <span>{{ $t('trader.allowed_tokens_label') }}</span>
                   <span class="tr-token-chips">
-                    <button v-for="sym in yieldAssetOptions" :key="sym" type="button" class="tr-chip" :class="{ 'tr-chip--on': allowedTokens.includes(sym) }" :disabled="safetyBusy" @click="toggleAllowedToken(sym)">{{ sym }}</button>
+                    <span v-for="sym in allowedTokens" :key="sym" class="tr-chip tr-chip--on" style="cursor:default">{{ sym }}</span>
                   </span>
                 </div>
                 <div class="tr-row">
                   <span>{{ $t('trader.kill_switch_label') }}</span>
-                  <span class="tr-kill-right">
-                    <span :class="killSwitchActive ? 'tr-no' : 'tr-yes'">{{ killSwitchActive ? 'Gestoppt' : 'Aktiv' }}</span>
-                    <button type="button" class="tr-btn-ghost tr-btn-sm" :class="{ 'tr-btn-ghost--accent': killSwitchActive, 'tr-btn-ghost--danger': !killSwitchActive }" :disabled="safetyBusy" @click="toggleKillSwitch">
-                      {{ killSwitchActive ? 'Reaktivieren' : 'Stoppen' }}
-                    </button>
-                  </span>
+                  <span :class="killSwitchActive ? 'tr-no' : 'tr-yes'">{{ killSwitchActive ? 'Gestoppt' : 'Aktiv' }}</span>
                 </div>
               </div>
             </div>
@@ -316,15 +309,15 @@ async function submitYieldForm() {
 }
 
 // ── Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) ────────────────
-// Durchgesetzt wird das serverseitig VOR jeder Yield-Aktion (siehe
-// soul-mcp/lib/trader_config.mjs) — hier nur Anzeige/Verwaltung.
+// Read-only hier seit 2026-08-27 — Verwaltung ist nach wallet.vue umgezogen,
+// weil das Limit jetzt wallet-weit gilt (Yield UND x402), nicht mehr nur
+// Trader-spezifisch. Durchgesetzt wird das ohnehin serverseitig VOR jeder
+// geldbewegenden Aktion (siehe soul-mcp/lib/trader_config.mjs), unabhängig
+// davon, wo es angezeigt/editiert wird.
 const killSwitchActive = ref(false)
 const dailyLimitUsd    = ref(50)
 const dailyUsedUsd     = ref(0)
 const allowedTokens    = ref([])
-const safetyBusy       = ref(false)
-const editingLimit     = ref(false)
-const dailyLimitDraft  = ref('')
 
 async function loadSafety() {
   try {
@@ -337,55 +330,6 @@ async function loadSafety() {
       allowedTokens.value    = d.allowedTokens
     }
   } catch { /* silent */ }
-}
-
-async function toggleKillSwitch() {
-  safetyBusy.value = true
-  try {
-    const r = await fetch('/api/trader/safety/kill-switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ active: !killSwitchActive.value }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) killSwitchActive.value = d.killSwitchActive
-  } catch { /* silent */ }
-  safetyBusy.value = false
-}
-
-function startEditLimit() {
-  dailyLimitDraft.value = String(dailyLimitUsd.value)
-  editingLimit.value = true
-}
-
-async function saveDailyLimit() {
-  safetyBusy.value = true
-  try {
-    const r = await fetch('/api/trader/safety/daily-limit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ limitUsd: dailyLimitDraft.value.trim() }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) dailyLimitUsd.value = d.dailyLimitUsd
-  } catch { /* silent */ }
-  editingLimit.value = false
-  safetyBusy.value = false
-}
-
-async function toggleAllowedToken(symbol) {
-  safetyBusy.value = true
-  const nowAllowed = !allowedTokens.value.includes(symbol)
-  try {
-    const r = await fetch('/api/trader/safety/allowed-tokens', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${soulToken.value}` },
-      body: JSON.stringify({ symbol, allowed: nowAllowed }),
-    })
-    const d = await r.json().catch(() => ({}))
-    if (r.ok && d.ok) allowedTokens.value = d.allowedTokens
-  } catch { /* silent */ }
-  safetyBusy.value = false
 }
 
 // ── Letzte Aktionen ──────────────────────────────────────────────────────
@@ -482,6 +426,8 @@ function exportCSV() {
 .tr-field-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); font-weight: 600; }
 .tr-field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tr-field-label-row .tr-field-label { margin: 0; }
+.tr-safety-link { font-size: 12px; color: var(--fg); text-decoration: none; }
+.tr-safety-link:hover { color: var(--accent); }
 .spin { animation: tr-spin 0.7s linear infinite; }
 @keyframes tr-spin { to { transform: rotate(360deg); } }
 .tr-field-desc { font-size: 15px; line-height: 1.65; color: var(--fg); max-width: 640px; margin: 0; }

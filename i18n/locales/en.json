@@ -1435,6 +1435,8 @@
     "daily_limit_label": "Daily Limit",
     "allowed_tokens_label": "Allowed Tokens",
     "kill_switch_label": "Emergency Stop",
+    "wallet_safety_hint": "Applies to every money-moving action on this wallet — yield deposits/withdrawals and x402 payments (e.g. via the Access Broker) share the same daily limit.",
+    "safety_readonly_hint": "Managed centrally in Wallet.",
     "history_label": "Recent Actions",
     "history_desc": "Full overview for tax purposes — every action with its value at the time, in EUR.",
     "history_empty": "No actions yet.",

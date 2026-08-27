@@ -1435,6 +1435,8 @@
     "daily_limit_label": "Tageslimit",
     "allowed_tokens_label": "Erlaubte Token",
     "kill_switch_label": "Notfall-Stopp",
+    "wallet_safety_hint": "Gilt für alle geldbewegenden Aktionen dieser Wallet — Yield-Ein-/Auszahlungen und x402-Zahlungen (z. B. über den Access Broker) teilen sich dasselbe Tageslimit.",
+    "safety_readonly_hint": "Wird zentral in Wallet verwaltet.",
     "history_label": "Letzte Aktionen",
     "history_desc": "Vollständige Übersicht für die Steuererklärung — jede Aktion mit Wert zum Zeitpunkt in EUR.",
     "history_empty": "Noch keine Aktionen.",
