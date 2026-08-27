@@ -156,16 +156,18 @@
                     {{ $t('wallet.x402_broker_status_active') }}<span v-if="x402BrokerExpiresLocal"> · {{ $t('wallet.x402_broker_expires', { date: x402BrokerExpiresLocal }) }}</span>
                   </span>
                 </div>
-                <div class="archivar-lm-row">
+                <div class="archivar-lm-row" style="flex-wrap:wrap;row-gap:8px">
                   <span class="archivar-lm-key">Token</span>
-                  <span style="display:flex;align-items:center;gap:8px">
-                    <code class="archivar-lm-val archivar-lm-dim">{{ x402BrokerRevealed ? x402BrokerToken : '•'.repeat(16) }}</code>
-                    <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerRevealed = !x402BrokerRevealed">
-                      {{ x402BrokerRevealed ? $t('wallet.x402_broker_hide_btn') : $t('wallet.x402_broker_reveal_btn') }}
-                    </button>
-                    <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerCopy">
-                      {{ x402BrokerCopied ? $t('wallet.x402_broker_copied') : $t('wallet.x402_broker_copy_btn') }}
-                    </button>
+                  <span style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:100%">
+                    <code class="archivar-lm-val archivar-lm-dim" style="word-break:break-all;flex-basis:100%;text-align:right">{{ x402BrokerRevealed ? x402BrokerToken : '•'.repeat(16) }}</code>
+                    <span style="display:flex;gap:8px;margin-left:auto">
+                      <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerRevealed = !x402BrokerRevealed">
+                        {{ x402BrokerRevealed ? $t('wallet.x402_broker_hide_btn') : $t('wallet.x402_broker_reveal_btn') }}
+                      </button>
+                      <button type="button" class="wa-btn-ghost" style="height:26px;padding:0 10px;font-size:11px" @click="x402BrokerCopy">
+                        {{ x402BrokerCopied ? $t('wallet.x402_broker_copied') : $t('wallet.x402_broker_copy_btn') }}
+                      </button>
+                    </span>
                   </span>
                 </div>
               </div>
