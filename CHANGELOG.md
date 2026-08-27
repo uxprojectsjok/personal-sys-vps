@@ -8,6 +8,12 @@ Node operators: pin to a tag, read the entry before updating, and check for **Br
 
 ---
 
+## [1.8.5] — 2026-08-27
+
+**Added: manual renew for the SYS Agent Runner MCP token.** The token-missing recovery UI (`app/pages/agent.vue`) only ever showed itself once the token was already gone — an already-issued, still-valid token had no UI path to rotate early, only a direct `POST /api/vault/services/agent-runner/rotate` call could. The same status row now stays visible once a token exists too, showing its expiry date and a "Renew" action; renewing an existing token is gated behind a confirm dialog (reusing `useConfirm`/`ConfirmModal`, the same pattern `VaultServicesPanel.vue` uses for revoke) since rotating invalidates the *old* token immediately, not at its stated expiry — any live MCP connection using it (Claude Code, n8n, ...) drops until reconnected with the new one.
+
+**Migration required:** none — frontend-only change (`app/pages/agent.vue`, `i18n/locales/{de,en}.json`), picked up on next `npm run generate` + redeploy.
+
 ## [1.8.4] — 2026-08-26
 
 **Fixed: `beme_chat` silently returned `"Empty body"` for images between ~256KB and 8MB — live-reproduced via n8n/undici with a real ~1.8MB image — even though the two previous fixes (soul-mcp's Express limit, this vhost's `client_max_body_size`) both worked correctly.**
