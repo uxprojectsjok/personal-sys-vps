@@ -3305,7 +3305,8 @@ function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
     lines.push('PAYMENT-REQUIRED header (amount, asset, payTo). Sign an EIP-3009 transferWithAuthorization');
     lines.push('and retry with a PAYMENT-SIGNATURE header — any x402-compliant client already knows this,');
     lines.push('no SYS-specific tool needed. Include `reference_id` from step 2 in the request body.');
-    lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`. Without a valid reference_id');
+    lines.push('Returns: `{ ok: true, access_token: "48-hex-string", expires_at: "ISO-8601 timestamp",');
+    lines.push('tx_hash, usdc_amount, from, confirmed_at }`. Without a valid reference_id');
     lines.push('from step 2 this call is rejected — the consent step cannot be skipped.');
     lines.push('');
   } else {
@@ -3317,7 +3318,8 @@ function pushAccessFlowLines(lines, soulIdExample, monetizationOn) {
     lines.push('no SYS-specific tool needed.');
     lines.push('');
     lines.push('**3. Get access token**');
-    lines.push('Returns: `{ "access_token": "48-hex-string", "expires_in": 259200 }`');
+    lines.push('Returns: `{ ok: true, access_token: "48-hex-string", expires_at: "ISO-8601 timestamp",');
+    lines.push('tx_hash, usdc_amount, from, confirmed_at }`');
     lines.push('');
   }
   lines.push('**4. Use token**');
