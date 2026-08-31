@@ -33,7 +33,7 @@ local identity_proof  = body.identity_proof  -- vollständiger proveIdentity()-P
 local signature = (type(identity_proof) == "table" and identity_proof.signature) or body.signature
 local address   = (type(identity_proof) == "table" and identity_proof.wallet)    or body.address
 
-if type(challenge_id) ~= "string" or #challenge_id ~= 32 then
+if type(challenge_id) ~= "string" or #challenge_id ~= 32 or not challenge_id:match("^%x+$") then
   ngx.status = 400; ngx.say('{"error":"invalid_challenge_id"}'); return
 end
 if type(signature) ~= "string" or #signature < 10 then

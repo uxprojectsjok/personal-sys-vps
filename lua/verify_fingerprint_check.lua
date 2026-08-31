@@ -45,6 +45,12 @@ if not ok_b or type(body) ~= "table"
   ngx.status = 400; ngx.say('{"error":"invalid_body"}'); return
 end
 
+-- challenge_id fließt in einen Dateipfad — strikt auf 32 Hex begrenzen,
+-- sonst ließe ein "../"-haltiger Wert Pfad-Traversal zu (siehe Review-Fund #3).
+if #body.challenge_id ~= 32 or not body.challenge_id:match("^%x+$") then
+  ngx.status = 400; ngx.say('{"error":"invalid_challenge_id"}'); return
+end
+
 -- ── Challenge laden ───────────────────────────────────────────────────────────
 local VERIFY_DIR = "/var/lib/sys/verify/"
 local cpath = VERIFY_DIR .. soul_id .. "_" .. body.challenge_id .. ".json"

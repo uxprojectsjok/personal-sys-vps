@@ -67,8 +67,12 @@ os.execute("mkdir -p " .. VERIFY_DIR)
 -- verify_token im shared dict + als Datei
 local vc = ngx.shared.verify_cache
 if vc then vc:set("vt:" .. verify_token, soul_id, TTL) end
+-- Format: "<soul_id>\n<expiry_unix>". Der Datei-Fallback in vault_auth.lua
+-- (check_verify_token) prueft dieses Ablaufdatum — sonst wuerde die 5-Min-TTL
+-- nur vom fluechtigen ngx.shared-Cache erzwungen und eine alte vt_-Datei nach
+-- jedem nginx-Reload weiter authentifizieren.
 local vt_file = io.open(VERIFY_DIR .. "vt_" .. verify_token, "w")
-if vt_file then vt_file:write(soul_id); vt_file:close() end
+if vt_file then vt_file:write(soul_id .. "\n" .. tostring(now + TTL)); vt_file:close() end
 
 local req_methods_encoded = #methods > 0 and methods or cjson.empty_array
 

@@ -45,6 +45,12 @@ end
 
 local hq = body.hq == true
 local challenge_id = type(body.challenge_id) == "string" and body.challenge_id or nil
+-- challenge_id fließt in einen Dateipfad — nur 32 Hex zulassen. Ungültige Werte
+-- (inkl. "../"-Traversal, Review-Fund #3) auf nil degradieren: die Face-Prüfung
+-- läuft weiter, nur ohne Server-Proof-Bindung (wie bei ganz fehlender ID).
+if challenge_id and (#challenge_id ~= 32 or not challenge_id:match("^%x+$")) then
+  challenge_id = nil
+end
 
 -- Serverbeweis in die Challenge-Datei schreiben, den verify_complete.lua bei
 -- method=face/face_hq gegenprüft. face_hq_verified nur bei match+hq=true, damit

@@ -49,7 +49,7 @@ local verified     = body.verified == true
 local method       = body.method or "fingerprint"
 local is_2fa       = body.is_2fa == true
 
-if type(challenge_id) ~= "string" or #challenge_id ~= 32 then
+if type(challenge_id) ~= "string" or #challenge_id ~= 32 or not challenge_id:match("^%x+$") then
   ngx.status = 400; ngx.say('{"error":"invalid_challenge_id"}'); return
 end
 
@@ -113,6 +113,16 @@ if not ok_d or type(d) ~= "table" then
 end
 if d.soul_id ~= soul_id then
   ngx.status = 403; ngx.say('{"error":"forbidden"}'); return
+end
+
+-- Abgelaufene Challenge nicht mehr abschließen. verify_challenge.lua setzt
+-- expires_at = now + 300s (gleiches ISO-UTC-Format wie os.date("!%Y-%m-%dT%TZ"),
+-- lexikografisch = chronologisch). Ohne diesen Check bliebe eine Challenge nach
+-- Ablauf der TTL abschließbar, bis der Cron die Datei löscht.
+if type(d.expires_at) == "string" and d.status ~= "verified" then
+  if os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now())) > d.expires_at then
+    ngx.status = 410; ngx.say('{"error":"challenge_expired"}'); return
+  end
 end
 
 -- voice_hq: der Client meldet nur das (kostenlose, unveränderte) FFT-Ergebnis
