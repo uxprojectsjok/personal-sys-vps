@@ -99,7 +99,9 @@ async function buildVerifiedResult(status, challenge_id) {
     verified_level:     level ?? 'biometric',
     score,
     purpose:            status.purpose ?? null,
-    meets_policy:       status.purpose ? true : null,   // status kann nur "verified" sein, wenn die Policy (falls vorhanden) erfüllt war
+    // true nur wenn wirklich eine Tier-Bewertung lief (enforce an + Policy). Sonst
+    // null = "nicht geprüft" (nicht mit "geprüft und bestanden" verwechseln).
+    meets_policy:       status.policy_checked === true ? true : null,
     is_2fa:             status.is_2fa ?? false,
     challenge_id,
     completed_methods:  completed,
