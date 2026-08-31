@@ -98,6 +98,8 @@ async function buildVerifiedResult(status, challenge_id) {
     status:             'verified',
     verified_level:     level ?? 'biometric',
     score,
+    purpose:            status.purpose ?? null,
+    meets_policy:       status.purpose ? true : null,   // status kann nur "verified" sein, wenn die Policy (falls vorhanden) erfüllt war
     is_2fa:             status.is_2fa ?? false,
     challenge_id,
     completed_methods:  completed,
@@ -149,12 +151,20 @@ export function register(server, token) {
       '               "voice" method used to exist but had no server-side proof at',
       '               all (client could just claim success) and was removed.',
       'Score +1 if mobile (2FA). Wallet signature in UI → Score 3/3.',
+      '',
+      'purpose (optional): name the action. If the calling service has a',
+      'verify_policy and the node runs with verify_enforce=true, the finished',
+      'biometric result is scored against that purpose\'s tier server-side. A',
+      'result of status="policy_not_met" means the person verified, but not',
+      'strongly enough for this action — re-run with a stronger method and the',
+      'same purpose. With enforce off (default) purpose is just recorded.',
     ].join('\n'),
     {
       methods:      z.array(z.enum(['fingerprint', 'face', 'face_hq', 'voice_hq'])).optional().describe('Methods (one or more). Use face_hq/voice_hq for sensitive actions. Empty = user chooses.'),
       challenge_id: z.string().length(32).optional().describe('From previous pending result — call again immediately'),
+      purpose:      z.string().regex(/^[a-z0-9_-]+$/).max(64).optional().describe('Action name (e.g. "wallet_sign"). If the calling service has a verify_policy and the node has verify_enforce on, the biometric result is checked against that purpose\'s tier; status "policy_not_met" means the check completed but was not strong enough.'),
     },
-    async ({ methods, challenge_id }) => {
+    async ({ methods, challenge_id, purpose }) => {
       try {
         // ── Polling-Schritt (challenge_id bekannt) ────────────────────────────
         if (challenge_id) {
@@ -173,6 +183,19 @@ export function register(server, token) {
               challenge_id,
               message:      'Server vorübergehend nicht erreichbar (Rate-Limit/Netzwerk) — Challenge bleibt bestehen.',
               next_action:  `verify_identity(challenge_id="${challenge_id}") SOFORT erneut aufrufen`,
+            }, null, 2) }] }
+          }
+
+          if (status.status === 'policy_not_met') {
+            return { content: [{ type: 'text', text: JSON.stringify({
+              status:            'policy_not_met',
+              challenge_id,
+              meets_policy:      false,
+              purpose:          status.purpose ?? null,
+              score:            status.score ?? null,
+              completed_methods: status.completed_methods ?? [],
+              policy_shortfall:  status.policy_shortfall ?? null,
+              message: `Biometrie abgeschlossen, aber die Verify-Policy fuer "${status.purpose || '?'}" ist nicht erfuellt (${status.policy_shortfall || 'unbekannt'}). Mit staerkerer Methode erneut verifizieren, z.B. verify_identity(methods:["face_hq"], purpose:"${status.purpose || ''}").`,
             }, null, 2) }] }
           }
 
@@ -200,7 +223,7 @@ export function register(server, token) {
         }
 
         // ── Neue Challenge + erster Poll ──────────────────────────────────────
-        const body       = methods?.length ? { methods } : {}
+        const body       = { ...(methods?.length ? { methods } : {}), ...(purpose ? { purpose } : {}) }
         const data       = await postJson('/api/verify/challenge', token, body)
         const cid        = data.challenge_id
         const verifyUrl  = data.verify_url
@@ -221,6 +244,19 @@ export function register(server, token) {
             message:      'Server vorübergehend nicht erreichbar (Rate-Limit/Netzwerk) direkt nach Erstellung — Challenge existiert weiter.',
             expires_at:   data.expires_at,
             next_action:  `verify_identity(challenge_id="${cid}") SOFORT erneut aufrufen — wartet weitere 15s`,
+          }, null, 2) }] }
+        }
+
+        if (status.status === 'policy_not_met') {
+          return { content: [{ type: 'text', text: JSON.stringify({
+            status:            'policy_not_met',
+            challenge_id:      cid,
+            meets_policy:      false,
+            purpose:          status.purpose ?? null,
+            score:            status.score ?? null,
+            completed_methods: status.completed_methods ?? [],
+            policy_shortfall:  status.policy_shortfall ?? null,
+            message: `Biometrie abgeschlossen, aber die Verify-Policy fuer "${status.purpose || '?'}" ist nicht erfuellt (${status.policy_shortfall || 'unbekannt'}). Mit staerkerer Methode erneut verifizieren.`,
           }, null, 2) }] }
         }
 

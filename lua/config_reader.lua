@@ -241,6 +241,16 @@ function M.get_multi_hoster()
   return m and m.multi_hoster == true
 end
 
+-- ── Verify-Policy-Enforcement (V2) ────────────────────────────────────────
+-- master.json: "verify_enforce": true  → der Server prüft die verify_policy des
+-- aufrufenden Service-Tokens gegen den purpose (siehe verify_complete.lua).
+-- Fehlt der Schlüssel oder ist er nicht true → aus (Default), verify bleibt
+-- advisory wie bisher.
+function M.get_verify_enforce()
+  local m = read_master()
+  return m and m.verify_enforce == true
+end
+
 -- ── Erste Soul in Multi-Hoster lesen (Node-Owner-Basis, siehe soul_cert.lua) ──
 function M.get_first_soul_id()
   local m = read_master()

@@ -25,6 +25,47 @@ local function mark_token_verified(sid, tok)
   if wf then wf:write(cjson.encode(svcs)); wf:close() end
 end
 
+-- ── V2: Verify-Policy des auslösenden Service-Tokens gegen den purpose prüfen ──
+-- Gibt ok=true zurück, wenn Enforcement aus ist, kein purpose/Token/Policy
+-- vorliegt ODER das Tier erfüllt ist. ok=false + shortfall, wenn nicht.
+-- Onboarding (mark_token_verified) bleibt davon unberührt — das ist ein eigener
+-- Layer ("Client ist legitim"), die Policy sagt nur "stark genug für DIESE Aktion".
+local STRONG_METHODS = { fingerprint = true, face_hq = true, voice_hq = true }
+local function verify_policy_ok(sid, tok, purpose, d, completed)
+  local ok_cfg, cfg = pcall(require, "config_reader")
+  if not ok_cfg or not cfg.get_verify_enforce() then return true end
+  if type(purpose) ~= "string" or purpose == "" then return true end
+  if type(tok) ~= "string" or tok == "" then return true end
+
+  local f = io.open("/var/lib/sys/souls/" .. sid .. "/authorized_services.json", "r")
+  if not f then return true end
+  local raw = f:read("*a"); f:close()
+  local okj, svcs = pcall(cjson.decode, raw)
+  if not okj or type(svcs) ~= "table" or type(svcs[tok]) ~= "table" then return true end
+  local policy = svcs[tok].verify_policy
+  if type(policy) ~= "table" then return true end
+
+  local tier = (type(policy.purposes) == "table" and policy.purposes[purpose]) or policy.default
+  if type(tier) ~= "table" then return true end   -- kein Tier für diesen purpose → kein Block
+
+  if type(tier.min_score) == "number" and (tonumber(d.score) or 0) < tier.min_score then
+    return false, "min_score<" .. tier.min_score
+  end
+  if type(tier.methods) == "table" then
+    for _, req in ipairs(tier.methods) do
+      local found = false
+      for _, c in ipairs(completed) do if c == req then found = true; break end end
+      if not found then return false, "method:" .. tostring(req) end
+    end
+  end
+  if tier.require_strong == true then
+    local has_strong = false
+    for _, c in ipairs(completed) do if STRONG_METHODS[c] then has_strong = true; break end end
+    if not has_strong then return false, "require_strong" end
+  end
+  return true
+end
+
 ngx.header["Content-Type"]  = "application/json"
 ngx.header["Cache-Control"] = "no-store"
 
@@ -68,11 +109,17 @@ if body.finalize == true then
     ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, score=d2.score, status="verified", completed_methods=comp2 })); return
   end
   local vat = os.date("!%Y-%m-%dT%TZ", math.floor(ngx.now()))
-  d2.status = "verified"; d2.verified_at = vat
+  d2.verified_at = vat
   mark_token_verified(soul_id, d2.triggering_token)
+  local fpol_ok, fpol_short = verify_policy_ok(soul_id, d2.triggering_token, d2.purpose, d2, comp2)
+  if fpol_ok then
+    d2.status = "verified"
+  else
+    d2.status = "policy_not_met"; d2.policy_shortfall = fpol_short
+  end
   local ok3, upd = pcall(cjson.encode, d2)
   if ok3 then local fw2=io.open(fpath2,"w"); if fw2 then fw2:write(upd); fw2:close() end end
-  ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, score=d2.score, status="verified", completed_methods=comp2, is_2fa=d2.is_2fa }))
+  ngx.say(cjson.encode({ ok=true, challenge_id=challenge_id, score=d2.score, status=d2.status, policy_shortfall=d2.policy_shortfall, completed_methods=comp2, is_2fa=d2.is_2fa }))
   return
 end
 
@@ -201,9 +248,15 @@ if has_multi then
       if not found then all_done = false; break end
     end
     if all_done then
-      d.status      = "verified"
       d.verified_at = verified_at
       mark_token_verified(soul_id, d.triggering_token)
+      local pol_ok, pol_short = verify_policy_ok(soul_id, d.triggering_token, d.purpose, d, completed)
+      if pol_ok then
+        d.status = "verified"
+      else
+        d.status          = "policy_not_met"
+        d.policy_shortfall = pol_short
+      end
     end
   end
   -- Fehlgeschlagen: nichts speichern, Phase bleibt pending → retry möglich
@@ -225,11 +278,17 @@ else
     table.insert(completed, method)
     d.completed_methods = completed
     d.score       = totalScore(d, completed)
-    d.status      = "verified"
     d.verified_at = verified_at
     d.method      = method
     d.is_2fa      = d.is_2fa or is_2fa
     mark_token_verified(soul_id, d.triggering_token)
+    local pol_ok, pol_short = verify_policy_ok(soul_id, d.triggering_token, d.purpose, d, completed)
+    if pol_ok then
+      d.status = "verified"
+    else
+      d.status          = "policy_not_met"
+      d.policy_shortfall = pol_short
+    end
   elseif d.status == "pending" then
     d.status      = "failed"
     d.verified_at = verified_at
@@ -273,6 +332,7 @@ ngx.say(cjson.encode({
   score             = d.score,
   is_2fa            = d.is_2fa,
   status            = d.status,
+  policy_shortfall  = d.policy_shortfall,   -- gesetzt bei status == "policy_not_met"
   completed_methods = d.completed_methods,
   all_done          = d.status == "verified",
 }))
