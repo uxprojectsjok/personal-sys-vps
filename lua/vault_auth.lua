@@ -174,6 +174,7 @@ local function check_service_token(token)
   -- verified: fehlt das Feld (Tokens von vor diesem Feature) → true (Bestandsschutz).
   -- Explizit false (neue Tokens bis zur ersten verify_identity-Challenge) → gate greift.
   local found_verified = true
+  local found_created  = nil   -- svc.created_at — für den verify-Permission-Grandfather
 
   for dir in handle:lines() do
     -- Nur alphanumerisch + Bindestrich: kein Dot (verhindert ../ Traversal)
@@ -191,6 +192,7 @@ local function check_service_token(token)
             found_perms    = svc.permissions
             found_verified = (svc.verified ~= false)
             found_actor    = svc.name
+            found_created  = tonumber(svc.created_at)
             break
           end
         end
@@ -250,6 +252,7 @@ local function check_service_token(token)
   ngx.ctx.service_verified    = found_verified
   ngx.ctx.service_token       = token
   ngx.ctx.service_actor       = found_actor
+  ngx.ctx.service_created_at  = found_created
   return found_id
 end
 
@@ -450,6 +453,33 @@ if ngx.ctx.via_verify_token then
     ngx.header["Cache-Control"] = "no-store"
     ngx.status = 403
     ngx.say('{"error":"verify_token_scope","message":"verify_token darf nur den Verifikations-Flow bedienen."}')
+    return ngx.exit(403)
+  end
+end
+
+-- ── Service-Token auf /api/verify/*: braucht die "verify"-Permission ─────────
+-- Symmetrisch zu den Content-Scopes (images/audio/context_files/...). Der Owner
+-- erteilt einem externen Client verify explizit im "New service"-Formular.
+-- Ausgenommen:
+--   • soul-cert (setzt service_token nicht)
+--   • Onboarding eines neuen OAuth-Clients (service_verified == false — oben
+--     schon auf challenge/status/complete beschränkt), das sich einmalig
+--     verifizieren können muss, bevor der Owner ihm Rechte gibt
+--   • Grandfather: Tokens von VOR diesem Feature (created_at < EPOCH oder ohne
+--     created_at) — die konnten die Checkbox nicht kennen, laufen weiter.
+--     Ab EPOCH erstellte Tokens brauchen permissions.verify == true.
+local VERIFY_PERM_EPOCH = 1788163200   -- 2026-08-31 08:00 UTC (Deploy des Features)
+if ngx.ctx.service_token and ngx.ctx.service_verified ~= false
+   and ngx.var.uri:sub(1, 12) == "/api/verify/" then
+  local perms   = ngx.ctx.service_permissions
+  local granted = type(perms) == "table" and perms.verify == true
+  local created = ngx.ctx.service_created_at
+  local legacy  = (type(created) ~= "number") or (created < VERIFY_PERM_EPOCH)
+  if not granted and not legacy then
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.status = 403
+    ngx.say('{"error":"verify_permission_required","message":"Diesem Service wurde die Verify-Berechtigung nicht erteilt."}')
     return ngx.exit(403)
   end
 end

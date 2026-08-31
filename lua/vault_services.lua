@@ -87,7 +87,10 @@ if method == "POST" and uri == "/api/vault/services" then
   name = name:gsub("[%c]", ""):sub(1, 128)
 
   -- Permissions validieren – akzeptiert Object {soul:true,...} (OAuth) und Array ["soul",...] (API)
-  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, network = true }
+  -- "verify": erlaubt dem Service, verify_identity-Challenges auszulösen (siehe
+  -- vault_auth.lua-Gate auf /api/verify/*). Kein Content-Scope, rein für den
+  -- Verifikations-Flow.
+  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, network = true, verify = true }
   local permissions = {}
   if type(payload.permissions) == "table" then
     -- Object-Format: {soul: true, context_files: true, ...}
