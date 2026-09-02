@@ -117,7 +117,9 @@
       </Transition>
     </div>
 
-    <div class="gate-legal-links">
+    <!-- Legal links only on a public node (self-registration open). A private
+         node has no public "Telemedium" surface and these pages may not exist. -->
+    <div v-if="showLegal" class="gate-legal-links">
       <NuxtLink to="/impressum">{{ $t('impressum.pageTitle') }}</NuxtLink>
       <span class="gate-legal-sep">·</span>
       <NuxtLink to="/datenschutz">{{ $t('datenschutz.pageTitle') }}</NuxtLink>
@@ -157,6 +159,7 @@ const directLogin = route.query.login === '1'
 // Betreiber-Entscheidung für dieses Deployment) — das Formular soll direkt
 // sichtbar sein, kein versteckter Reveal-Trigger nötig.
 const revealed    = ref(true)
+const showLegal   = ref(false)   // set from /api/gate-status (public node only)
 
 const PWA_SOUL_KEY = 'sys_pwa_soul_id'
 
@@ -186,6 +189,7 @@ onMounted(async () => {
     soulRegistered.value    = status.soul_registered ?? false
     multiHoster.value       = status.multi_hoster    ?? false
     selfRegistrationOpen    = status.self_registration !== false
+    showLegal.value         = selfRegistrationOpen
     statusKnown = true
   } catch {
     soulRegistered.value = false
@@ -378,7 +382,7 @@ async function submit() {
         : t('gate.error.invalid_cert')
       cert.value = ''
       certAutoFilled.value = false
-    } else if (e?.data?.error === 'gate_not_configured') {
+    } else if (e?.data?.error === 'gate_not_configured' || e?.data?.error === 'node_not_configured') {
       error.value = t('gate.error.gate_not_configured')
     } else if (e?.status === 401) {
       error.value = t('gate.error.access_denied')
