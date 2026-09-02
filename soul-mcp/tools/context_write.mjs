@@ -26,9 +26,9 @@ async function ensureContextRegistered(soulId, filename) {
 export function register(server, soulId) {
   server.tool(
     'context_write',
-    'Schreibt oder aktualisiert eine Kontext-Datei (z.B. notizen.md, projekte.md, daten.json) im Vault. Nur .md, .txt und .json Dateien. Kann neue Dateien anlegen oder bestehende überschreiben. Nicht für mind.md, health.md, shopping.md (dafür mind_write, food_log, shop_log nutzen).',
+    'Schreibt oder aktualisiert eine Kontext-Datei (z.B. notizen.md, projekte.md, daten.json, tabelle.csv) im Vault. Nur .md, .txt, .json und .csv Dateien. Kann neue Dateien anlegen oder bestehende überschreiben. Nicht für mind.md, health.md, shopping.md (dafür mind_write, food_log, shop_log nutzen).',
     {
-      filename: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_\-\.äöüÄÖÜß]+\.(md|txt|json)$/, 'Nur .md, .txt und .json Dateien erlaubt').describe('Dateiname, z.B. "notizen.md", "projekte.md" oder "daten.json"'),
+      filename: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_\-\.äöüÄÖÜß]+\.(md|txt|json|csv)$/, 'Nur .md, .txt, .json und .csv Dateien erlaubt').describe('Dateiname, z.B. "notizen.md", "projekte.md", "daten.json" oder "tabelle.csv"'),
       content:  z.string().max(100000).describe('Vollständiger Dateiinhalt (überschreibt bestehenden Inhalt)'),
     },
     async ({ filename, content }) => {

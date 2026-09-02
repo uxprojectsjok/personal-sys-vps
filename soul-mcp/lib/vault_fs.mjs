@@ -17,7 +17,9 @@ export const MIME_MAP = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
   webp: 'image/webp', gif: 'image/gif', avif: 'image/avif',
   md: 'text/plain; charset=utf-8', txt: 'text/plain; charset=utf-8',
+  csv: 'text/csv; charset=utf-8',
   pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
 export function getMime(filename) {

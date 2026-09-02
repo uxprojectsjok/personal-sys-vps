@@ -504,7 +504,9 @@ local MIME_MAP = {
   -- Text / Dokument
   md   = "text/plain; charset=utf-8",
   txt  = "text/plain; charset=utf-8",
+  csv  = "text/csv; charset=utf-8",
   pdf  = "application/pdf",
+  docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   json = "application/json"
 }
 
