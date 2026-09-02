@@ -201,6 +201,13 @@ oauthRouter.post('/authorize', async (req, res) => {
   const scopes = (scope || 'soul').split(/[\s,+]/);
   const permissions = scopesToPermissions(scopes);
 
+  // verify_identity ist Kern-Fähigkeit jedes Connectors und trägt keinen
+  // Content-Scope (nur der Verify-Flow, vault_auth.lua-Gate auf /api/verify/*).
+  // Der Owner hat sich per soul_cert für diese Verbindung ausgewiesen — verify
+  // wird immer miterteilt, sonst sperrt das Gate jeden frisch verbundenen
+  // Connector aus, bis der Owner die Checkbox von Hand setzt.
+  permissions.verify = true;
+
   // RFC 8707 Resource Indicator — bindet den entstehenden Token an genau den
   // Endpunkt (/mcp oder /mcp/discover), für den der Client ihn per resource=
   // angefragt hat. Ohne resource-Parameter (nicht-MCP-Clients, ältere Flows)
