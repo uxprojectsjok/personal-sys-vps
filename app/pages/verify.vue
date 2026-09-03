@@ -852,8 +852,12 @@ async function doFace() {
     phase.value = 'capturing'  // erst phase setzen, dann nextTick — sonst ist faceVideo noch nicht im DOM
     await nextTick()
     if (faceVideo.value) { faceVideo.value.srcObject = faceCamStream; faceVideo.value.play().catch(() => {}) }
-  } catch {
-    errorMsg.value = t('verify.camera_unavailable')
+  } catch (e) {
+    // e.name (NotAllowedError/NotReadableError/OverconstrainedError/...) —
+    // without it every desktop camera failure looked identical and untriaged,
+    // even though the causes (permission denied vs. camera held by another
+    // app vs. no camera found) need different fixes.
+    errorMsg.value = t('verify.camera_unavailable') + (e?.name ? ` (${e.name})` : '')
     phase.value = 'failed'
   }
 }
@@ -874,7 +878,7 @@ async function captureFace() {
     })
     const d  = await r.json()
     const ok = d.match === true
-    if (!ok) errorMsg.value = d.reason || 'Kein Gesichts-Match.'
+    if (!ok) errorMsg.value = d.message || 'Kein Gesichts-Match.'
     await submitResult(ok)
     await advanceAfterMethod(ok)
   } catch {
