@@ -278,11 +278,30 @@ end
 -- "http", während die Seite selbst https läuft. Jede daraus gebaute absolute
 -- URL (z.B. eine Vault-Datei-URL) wird dann von einer https-Seite aus als
 -- Mixed-Content stillschweigend vom Browser blockiert — kein Request im Log,
--- keine Fehlermeldung, sieht aus wie ein anderer Bug. provision-node.sh setzt
--- X-Forwarded-Proto: https auf dem VPS; das bevorzugen, ngx.var.scheme nur als
--- Fallback (EXPOSURE=direct/local/tailscale, wo TLS direkt hier terminiert).
+-- keine Fehlermeldung, sieht aus wie ein anderer Bug.
+-- X-Forwarded-Proto ist KEIN verlässlicher Ersatz: provision-node.sh setzt es
+-- auf dem VPS zwar korrekt auf https, aber frp überschreibt es beim Tunneln
+-- offenbar mit seiner eigenen (falschen) Sicht auf den openresty↔frpc-Hop —
+-- beobachtet auf node1 (xfp-header kam als "http" an, nicht "https").
+-- init-local.sh schreibt daher das Schema von PUBLIC_BASE_URL (bekanntermaßen
+-- korrekt, das ist ja die URL, die der Browser tatsächlich benutzt) einmalig
+-- nach /var/lib/sys/config/public_scheme. Das zuerst nehmen; Header/
+-- ngx.var.scheme nur als Fallback für Nodes ohne diese Datei (älterer
+-- Installer-Stand, oder eine SYS-Instanz, die gar nicht über init-local.sh
+-- aufgesetzt wurde).
+local _public_scheme -- per-worker gecacht, ändert sich nie zur Laufzeit
 function M.request_scheme()
-  return ngx.req.get_headers()["x-forwarded-proto"] or ngx.var.scheme or "https"
+  if _public_scheme == nil then
+    local f = io.open("/var/lib/sys/config/public_scheme", "r")
+    if f then
+      local s = f:read("*a"); f:close()
+      s = s and s:match("^%s*(%S*)%s*$") or ""
+      _public_scheme = (s == "http" or s == "https") and s or false
+    else
+      _public_scheme = false
+    end
+  end
+  return _public_scheme or ngx.req.get_headers()["x-forwarded-proto"] or ngx.var.scheme or "https"
 end
 
 return M
