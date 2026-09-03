@@ -214,7 +214,7 @@ if type(x402_payment_header) ~= "string" or #x402_payment_header < 1 then
   -- human_pay_url: Link zur Browser-Käufer-Seite (/pay) für Agenten, die x402
   -- nicht selbst signieren können — der Mensch bezahlt dort mit seiner eigenen
   -- Wallet. Additiv, unbekannte Felder ignoriert jeder spec-treue x402-Client.
-  local origin = ngx.var.scheme .. "://" .. ngx.var.host
+  local origin = require("config_reader").request_scheme() .. "://" .. ngx.var.host
   local human_pay_url = origin .. "/pay?soul_id=" .. soul_id
     .. (reference_id and ("&reference_id=" .. reference_id) or "")
   local payment_required = {

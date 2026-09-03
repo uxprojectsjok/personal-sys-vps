@@ -217,7 +217,7 @@ end
 local perm     = ctx.permissions  or {}
 local synced   = ctx.synced_files or {}
 local actives  = ctx.active_files or {}
-local base_url = ngx.var.scheme .. "://" .. ngx.var.host
+local base_url = require("config_reader").request_scheme() .. "://" .. ngx.var.host
 local token    = stored_token
 
 local response = {

@@ -346,7 +346,7 @@ if method == "POST" and uri == "/api/vault/connections/retry-handshake" then
     ngx.status = 500; ngx.say(cjson.encode({ error = "Cert nicht im Kontext" })); return
   end
 
-  local scheme     = ngx.var.scheme or "https"
+  local scheme     = require("config_reader").request_scheme()
   local our_domain = scheme .. "://" .. (ngx.var.host or "")
   local http_mod   = require "resty.http"
   local httpc      = http_mod.new()
@@ -508,7 +508,7 @@ if method == "POST" then
   local our_cert = ngx.ctx.soul_cert or ""
 
   if our_cert ~= "" then
-    local scheme     = ngx.var.scheme or "https"
+    local scheme     = require("config_reader").request_scheme()
     local our_domain = scheme .. "://" .. (ngx.var.host or "")
 
     local http  = require "resty.http"
@@ -645,7 +645,7 @@ if method == "DELETE" then
     -- Cross-domain: Gegenseite über Verbindungstrennung benachrichtigen
     local our_cert = ngx.ctx.soul_cert or ""
     if our_cert ~= "" then
-      local scheme     = ngx.var.scheme or "https"
+      local scheme     = require("config_reader").request_scheme()
       local our_domain = scheme .. "://" .. (ngx.var.host or "")
       local http_mod   = require "resty.http"
       local httpc      = http_mod.new()

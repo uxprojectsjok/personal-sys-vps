@@ -46,7 +46,7 @@ f:write(data); f:close()
 local cache = ngx.shared.connect_sessions
 if cache then cache:set("c:" .. token, soul_id, TTL + 10) end
 
-local scheme   = ngx.var.scheme or "https"
+local scheme   = cfg.request_scheme()
 local own_host = ngx.var.host or ""
 local base_url = scheme .. "://" .. own_host
 

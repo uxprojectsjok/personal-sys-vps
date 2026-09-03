@@ -599,7 +599,9 @@ local synced_type = SYNCED_NORM_GET[type_name] or type_name
 
 if not file_name or file_name == "" then
   -- Dateiliste
-  local base_url   = ngx.var.scheme .. "://" .. ngx.var.host
+  -- ngx.var.scheme allein wäre bei EXPOSURE=vps "http" (TLS terminiert am VPS,
+  -- lokal klartext) — Mixed-Content-Block im Browser, siehe config_reader.lua.
+  local base_url   = require("config_reader").request_scheme() .. "://" .. ngx.var.host
   local raw_files  = synced[synced_type] or {}
   local files      = type(raw_files) == "table" and raw_files or {}
   local active_raw  = type(actives) == "table" and (actives[synced_type] or "") or ""

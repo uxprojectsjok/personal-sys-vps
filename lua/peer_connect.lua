@@ -320,7 +320,7 @@ end
 
 -- ── Antwort ───────────────────────────────────────────────────────────────────
 
-local scheme     = ngx.var.scheme or "https"
+local scheme     = cfg.request_scheme()
 local own_domain = scheme .. "://" .. (ngx.var.host or "")
 
 ngx.say(cjson.encode({

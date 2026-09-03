@@ -272,4 +272,17 @@ function M.count_souls()
   return count
 end
 
+-- ── Externes Schema für absolute URLs ─────────────────────────────────────────
+-- ngx.var.scheme ist das Schema der LOKALEN Verbindung — bei EXPOSURE=vps (TLS
+-- terminiert am VPS, frpc↔openresty läuft klartext) liefert das fälschlich
+-- "http", während die Seite selbst https läuft. Jede daraus gebaute absolute
+-- URL (z.B. eine Vault-Datei-URL) wird dann von einer https-Seite aus als
+-- Mixed-Content stillschweigend vom Browser blockiert — kein Request im Log,
+-- keine Fehlermeldung, sieht aus wie ein anderer Bug. provision-node.sh setzt
+-- X-Forwarded-Proto: https auf dem VPS; das bevorzugen, ngx.var.scheme nur als
+-- Fallback (EXPOSURE=direct/local/tailscale, wo TLS direkt hier terminiert).
+function M.request_scheme()
+  return ngx.req.get_headers()["x-forwarded-proto"] or ngx.var.scheme or "https"
+end
+
 return M
