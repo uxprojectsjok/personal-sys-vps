@@ -1295,8 +1295,16 @@ export function useChainAnchor() {
       });
       if (res.ok) {
         chainMetrics.value = await res.json();
+      } else {
+        // Node/soul-mcp nicht erreichbar (z.B. 502) — keinen veralteten Anker
+        // stehen lassen. null wird von hasAnchor/isGenesisSoul bereits als
+        // "unbekannt" behandelt (siehe anchor()-Kommentar weiter oben).
+        chainMetrics.value = null;
       }
-    } catch { /* ignorieren — Metriken sind optional */ }
+    } catch {
+      // Fetch komplett fehlgeschlagen (Rechner/Node offline) — dasselbe wie oben.
+      chainMetrics.value = null;
+    }
     return chainMetrics.value;
   }
 
