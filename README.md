@@ -156,7 +156,7 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 
 **Frontend:** Nuxt 4, statically built (SSG), runs entirely in the browser — no Node.js process on the server.
 
-**Backend:** OpenResty (nginx + LuaJIT) as the API layer. All endpoints are Lua scripts. No web framework, no runtime dependencies beyond OpenResty.
+**Backend:** OpenResty (nginx + LuaJIT) as the API layer. All endpoints are Lua scripts. No web framework, one runtime dependency beyond OpenResty itself: [`lua-resty-http`](https://github.com/ledgetech/lua-resty-http) (`opm get pintsized/lua-resty-http`) — not bundled with OpenResty, but required by every handler that calls an external API (Claude, ElevenLabs, x402 payments, peer-to-peer node connections, `soul_register`, ...). Missing it doesn't fail loudly: each such handler 500s with a raw Lua stack trace (`module 'resty.http' not found`) instead of the JSON error callers expect.
 
 **Data:** Flat files under `/var/lib/sys/souls/{soul_id}/` — portable, inspectable, no migration needed.
 
