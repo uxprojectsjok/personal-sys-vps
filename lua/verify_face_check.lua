@@ -28,7 +28,9 @@ local vault_key = ngx.ctx.vault_key or ""
 local api_key   = cfg.get_anthropic_key(soul_id)
 
 if api_key == "" then
-  ngx.status = 503; ngx.say('{"error":"anthropic_key_missing"}'); return
+  ngx.status = 503
+  ngx.say(cjson.encode({ error = "anthropic_key_missing", message = "Anthropic API-Key nicht konfiguriert — Gesichtsverifikation nicht verfügbar." }))
+  return
 end
 
 -- Body lesen
@@ -78,7 +80,9 @@ local VAULT_MAGIC = "SYS\1"
 local profile_path = "/var/lib/sys/souls/" .. soul_id .. "/vault/images/profile.png"
 local fh = io.open(profile_path, "rb")
 if not fh then
-  ngx.status = 404; ngx.say('{"error":"profile_image_not_found"}'); return
+  ngx.status = 404
+  ngx.say(cjson.encode({ error = "profile_image_not_found", message = "Kein Profilbild im Vault hinterlegt (vault/images/profile.png)." }))
+  return
 end
 local raw = fh:read("*a"); fh:close()
 
