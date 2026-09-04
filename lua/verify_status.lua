@@ -15,7 +15,7 @@ if ngx.req.get_method() ~= "GET" then
 end
 
 local challenge_id = ngx.var.arg_id
-if type(challenge_id) ~= "string" or #challenge_id ~= 32 then
+if type(challenge_id) ~= "string" or #challenge_id ~= 32 or not challenge_id:match("^%x+$") then
   ngx.status = 400; ngx.say('{"error":"invalid_id"}'); return
 end
 

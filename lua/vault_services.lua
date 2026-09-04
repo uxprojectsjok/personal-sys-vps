@@ -48,13 +48,14 @@ if method == "GET" then
   local list = {}
   for token, svc in pairs(svcs) do
     table.insert(list, {
-      token       = token,
-      name        = svc.name,
-      permissions = svc.permissions,
-      expires_at  = svc.expires_at or cjson.null,
-      created_at  = svc.created_at,
-      resource    = svc.resource or cjson.null,
-      verified    = svc.verified ~= false
+      token         = token,
+      name          = svc.name,
+      permissions   = svc.permissions,
+      expires_at    = svc.expires_at or cjson.null,
+      created_at    = svc.created_at,
+      resource      = svc.resource or cjson.null,
+      verify_policy = svc.verify_policy or cjson.null,
+      verified      = svc.verified ~= false
     })
   end
   -- Sort by created_at descending
@@ -87,7 +88,10 @@ if method == "POST" and uri == "/api/vault/services" then
   name = name:gsub("[%c]", ""):sub(1, 128)
 
   -- Permissions validieren – akzeptiert Object {soul:true,...} (OAuth) und Array ["soul",...] (API)
-  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, network = true }
+  -- "verify": erlaubt dem Service, verify_identity-Challenges auszulösen (siehe
+  -- vault_auth.lua-Gate auf /api/verify/*). Kein Content-Scope, rein für den
+  -- Verifikations-Flow.
+  local allowed = { soul = true, audio = true, video = true, images = true, context_files = true, network = true, verify = true }
   local permissions = {}
   if type(payload.permissions) == "table" then
     -- Object-Format: {soul: true, context_files: true, ...}
@@ -137,19 +141,56 @@ if method == "POST" and uri == "/api/vault/services" then
     resource = payload.resource
   end
 
+  -- verify_policy (V2, optional): {purposes:{<name>:{min_score,methods,require_strong}}, default:{...}}
+  -- Legt der aufrufende Client / Admin fest, was für den purpose als "verifiziert
+  -- genug" gilt (siehe verify_complete.lua, greift nur bei master.json verify_enforce=true).
+  -- Flach validiert: nur die bekannten Tier-Felder werden übernommen.
+  local function sanitize_tier(t)
+    if type(t) ~= "table" then return nil end
+    local out = {}
+    if type(t.min_score) == "number" then out.min_score = t.min_score end
+    if t.require_strong == true then out.require_strong = true end
+    if type(t.methods) == "table" then
+      local ms = {}
+      for _, m in ipairs(t.methods) do
+        if type(m) == "string" and #m <= 20 then ms[#ms + 1] = m end
+      end
+      if #ms > 0 then out.methods = ms end
+    end
+    return next(out) and out or nil
+  end
+  local verify_policy = nil
+  if type(payload.verify_policy) == "table" then
+    local vp = {}
+    if type(payload.verify_policy.purposes) == "table" then
+      local ps = {}
+      for k, v in pairs(payload.verify_policy.purposes) do
+        if type(k) == "string" and k:match("^[a-z0-9_%-]+$") and #k <= 64 then
+          local st = sanitize_tier(v)
+          if st then ps[k] = st end
+        end
+      end
+      if next(ps) then vp.purposes = ps end
+    end
+    local dt = sanitize_tier(payload.verify_policy.default)
+    if dt then vp.default = dt end
+    if next(vp) then verify_policy = vp end
+  end
+
   local token = random_token()
   local svcs  = load_services()
 
   svcs[token] = {
-    name        = name,
-    permissions = permissions,
-    expires_at  = (expires_at == cjson.null) and nil or expires_at,
-    created_at  = math.floor(ngx.now()),
-    resource    = resource,
+    name         = name,
+    permissions  = permissions,
+    expires_at   = (expires_at == cjson.null) and nil or expires_at,
+    created_at   = math.floor(ngx.now()),
+    resource     = resource,
+    verify_policy = verify_policy,
     -- Neue Tokens starten unverifiziert: erst nach einer erfolgreichen
     -- verify_identity-Challenge (siehe verify_complete.lua) volle Rechte.
     -- Bestehende Tokens (Feld fehlt) gelten als verifiziert — siehe vault_auth.lua.
-    verified    = false
+    verified     = false
   }
 
   if not save_services(svcs) then

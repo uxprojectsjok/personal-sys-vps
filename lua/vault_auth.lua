@@ -174,6 +174,7 @@ local function check_service_token(token)
   -- verified: fehlt das Feld (Tokens von vor diesem Feature) → true (Bestandsschutz).
   -- Explizit false (neue Tokens bis zur ersten verify_identity-Challenge) → gate greift.
   local found_verified = true
+  local found_created  = nil   -- svc.created_at — für den verify-Permission-Grandfather
 
   for dir in handle:lines() do
     -- Nur alphanumerisch + Bindestrich: kein Dot (verhindert ../ Traversal)
@@ -191,6 +192,7 @@ local function check_service_token(token)
             found_perms    = svc.permissions
             found_verified = (svc.verified ~= false)
             found_actor    = svc.name
+            found_created  = tonumber(svc.created_at)
             break
           end
         end
@@ -250,6 +252,7 @@ local function check_service_token(token)
   ngx.ctx.service_verified    = found_verified
   ngx.ctx.service_token       = token
   ngx.ctx.service_actor       = found_actor
+  ngx.ctx.service_created_at  = found_created
   return found_id
 end
 
@@ -330,10 +333,22 @@ local function check_verify_token(tok)
   -- Cache-Check
   local vc = ngx.shared.verify_cache
   local sid = vc and vc:get("vt:" .. vt)
-  -- Datei-Fallback wenn Cache leer (z.B. nach Reload)
+  -- Datei-Fallback wenn Cache leer (z.B. nach Reload). Neues Format:
+  -- "<soul_id>\n<expiry_unix>" (siehe verify_challenge.lua). Altes Format
+  -- (nur "<soul_id>", kein Ablauf) bleibt lesbar — solche Dateien raeumt der
+  -- Cron in /var/lib/sys/verify/ ohnehin binnen ~15 min weg.
   if not sid then
-    local f = io.open("/var/lib/sys/verify/vt_" .. vt, "r")
-    if f then sid = f:read("*a"); f:close() end
+    local vpath = "/var/lib/sys/verify/vt_" .. vt
+    local f = io.open(vpath, "r")
+    if f then
+      local raw = f:read("*a"); f:close()
+      local s, exp = raw:match("^(%S+)%s*(%d*)")
+      if s and exp ~= "" and tonumber(exp) and os.time() > tonumber(exp) then
+        os.remove(vpath)   -- abgelaufen: TTL sonst nur vom RAM-Cache erzwungen
+      else
+        sid = s or raw
+      end
+    end
   end
   if not sid or sid == "" then return nil end
   local ctx_path = "/var/lib/sys/souls/" .. sid .. "/api_context.json"
@@ -347,8 +362,9 @@ local function check_verify_token(tok)
       vault_key = ctx.vault_key_hex
     end
   end
-  ngx.ctx.soul_id   = sid
-  ngx.ctx.vault_key = vault_key
+  ngx.ctx.soul_id            = sid
+  ngx.ctx.vault_key          = vault_key
+  ngx.ctx.via_verify_token   = true
   return sid
 end
 
@@ -401,6 +417,69 @@ if ngx.ctx.service_verified == false then
     ngx.header["Cache-Control"] = "no-store"
     ngx.status = 403
     ngx.say('{"error":"verification_required","message":"Dieser Zugang muss erst einmalig bestaetigt werden. Rufe verify_identity auf und warte bis verified=true."}')
+    return ngx.exit(403)
+  end
+end
+
+-- ── verify_token (vt): NUR der Verifikations-Flow ───────────────────────────
+-- Ein vt ist ein 5-Minuten-Kurzzeit-Bearer, der ausschliesslich die biometrische
+-- Verifikation fahren darf — NICHT den Vault, /api/soul oder /api/webhook lesen.
+-- Ohne diese Sperre gaebe ein geleaktes vt (im Chat gezeigt, geloggt, per
+-- Screenshot) 5 Minuten lang vollen Soul-Kontext (ngx.ctx.soul_id + vault_key).
+-- Einzige Nicht-verify-Ausnahme: GET /api/vault/audio(/...) — der voice_hq-Pfad
+-- in verify.vue listet die Referenz-Sprachproben zum Abgleich mit der Live-Aufnahme.
+if ngx.ctx.via_verify_token then
+  local uri = ngx.var.uri
+  local m   = ngx.req.get_method()
+  local VT_ALLOWED = {
+    ["/api/verify/challenge"]         = true,
+    ["/api/verify/status"]            = true,
+    ["/api/verify/complete"]          = true,
+    ["/api/verify/claim"]             = true,
+    ["/api/verify/cancel"]            = true,
+    ["/api/verify/pending"]           = true,
+    ["/api/verify/2fa"]               = true,
+    ["/api/verify/reown"]             = true,
+    ["/api/verify/human-check"]       = true,
+    ["/api/verify/fingerprint-check"] = true,
+    ["/api/verify/face-check"]        = true,
+    ["/api/verify/voice-hq-check"]    = true,
+    ["/api/verify/passkey-register"]  = true,
+  }
+  local audio_ok = (m == "GET" or m == "HEAD" or m == "OPTIONS")
+                   and (uri == "/api/vault/audio" or uri:sub(1, 17) == "/api/vault/audio/")
+  if not VT_ALLOWED[uri] and not audio_ok then
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.status = 403
+    ngx.say('{"error":"verify_token_scope","message":"verify_token darf nur den Verifikations-Flow bedienen."}')
+    return ngx.exit(403)
+  end
+end
+
+-- ── Service-Token auf /api/verify/*: braucht die "verify"-Permission ─────────
+-- Symmetrisch zu den Content-Scopes (images/audio/context_files/...). Der Owner
+-- erteilt einem externen Client verify explizit im "New service"-Formular.
+-- Ausgenommen:
+--   • soul-cert (setzt service_token nicht)
+--   • Onboarding eines neuen OAuth-Clients (service_verified == false — oben
+--     schon auf challenge/status/complete beschränkt), das sich einmalig
+--     verifizieren können muss, bevor der Owner ihm Rechte gibt
+--   • Grandfather: Tokens von VOR diesem Feature (created_at < EPOCH oder ohne
+--     created_at) — die konnten die Checkbox nicht kennen, laufen weiter.
+--     Ab EPOCH erstellte Tokens brauchen permissions.verify == true.
+local VERIFY_PERM_EPOCH = 1788163200   -- 2026-08-31 08:00 UTC (Deploy des Features)
+if ngx.ctx.service_token and ngx.ctx.service_verified ~= false
+   and ngx.var.uri:sub(1, 12) == "/api/verify/" then
+  local perms   = ngx.ctx.service_permissions
+  local granted = type(perms) == "table" and perms.verify == true
+  local created = ngx.ctx.service_created_at
+  local legacy  = (type(created) ~= "number") or (created < VERIFY_PERM_EPOCH)
+  if not granted and not legacy then
+    ngx.header["Content-Type"]  = "application/json"
+    ngx.header["Cache-Control"] = "no-store"
+    ngx.status = 403
+    ngx.say('{"error":"verify_permission_required","message":"Diesem Service wurde die Verify-Berechtigung nicht erteilt."}')
     return ngx.exit(403)
   end
 end

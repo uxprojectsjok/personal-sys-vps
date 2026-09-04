@@ -285,6 +285,7 @@ const allPermissions = computed(() => [
   { value: 'images',        label: t('services.perm_images') },
   { value: 'video',         label: 'Video' },
   { value: 'context_files', label: t('services.perm_context') },
+  { value: 'verify',        label: 'Verify' },
 ])
 
 const expiryOptions = computed(() => [

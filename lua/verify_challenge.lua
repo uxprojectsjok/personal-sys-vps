@@ -30,9 +30,17 @@ local body_raw = ngx.req.get_body_data() or ""
 local VALID = { fingerprint = true, face = true, face_hq = true, voice_hq = true }
 local methods = {}
 
+-- purpose (V2): optionaler String vom aufrufenden Client — mappt in
+-- verify_complete.lua auf ein Tier der verify_policy des Tokens. Nur
+-- [a-z0-9_-], max 64 Zeichen; sonst ignoriert.
+local purpose = nil
+
 if body_raw ~= "" then
   local ok, b = pcall(cjson.decode, body_raw)
   if ok and type(b) == "table" then
+    if type(b.purpose) == "string" and b.purpose:match("^[a-z0-9_%-]+$") and #b.purpose <= 64 then
+      purpose = b.purpose
+    end
     if type(b.methods) == "table" then
       -- Neues Format: methods[]
       for _, m in ipairs(b.methods) do
@@ -67,8 +75,12 @@ os.execute("mkdir -p " .. VERIFY_DIR)
 -- verify_token im shared dict + als Datei
 local vc = ngx.shared.verify_cache
 if vc then vc:set("vt:" .. verify_token, soul_id, TTL) end
+-- Format: "<soul_id>\n<expiry_unix>". Der Datei-Fallback in vault_auth.lua
+-- (check_verify_token) prueft dieses Ablaufdatum — sonst wuerde die 5-Min-TTL
+-- nur vom fluechtigen ngx.shared-Cache erzwungen und eine alte vt_-Datei nach
+-- jedem nginx-Reload weiter authentifizieren.
 local vt_file = io.open(VERIFY_DIR .. "vt_" .. verify_token, "w")
-if vt_file then vt_file:write(soul_id); vt_file:close() end
+if vt_file then vt_file:write(soul_id .. "\n" .. tostring(now + TTL)); vt_file:close() end
 
 local req_methods_encoded = #methods > 0 and methods or cjson.empty_array
 
@@ -114,6 +126,7 @@ local data = cjson.encode({
   triggering_token  = triggering_token or cjson.null,
   voice_code        = voice_code or cjson.null,
   webauthn_challenge = webauthn_challenge,
+  purpose           = purpose or cjson.null,
 })
 
 local f = io.open(VERIFY_DIR .. soul_id .. "_" .. challenge_id .. ".json", "w")

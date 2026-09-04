@@ -24,7 +24,7 @@ end
 local challenge_id = body.challenge_id
 local client_id    = body.client_id
 
-if type(challenge_id) ~= "string" or #challenge_id ~= 32 then
+if type(challenge_id) ~= "string" or #challenge_id ~= 32 or not challenge_id:match("^%x+$") then
   ngx.status = 400; ngx.say('{"error":"invalid_challenge_id"}'); return
 end
 if type(client_id) ~= "string" or #client_id < 8 then
