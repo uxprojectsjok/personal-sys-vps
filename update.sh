@@ -310,7 +310,18 @@ done
 # a completely unrelated site's docroot instead of this node's own (see the
 # comment in step 2d for the incident that exposed this).
 DEPLOY_DIR=""
-if [ -n "$_SITE_CONF" ]; then
+# /var/lib/sys/www is the fixed WEB_ROOT every SaveYourSoul_local_installer
+# node uses (lib/platform.sh — same on VPS/WSL2/Pi, never per-domain), unlike
+# the sys-installer/init.sh convention below which roots each site at
+# /var/www/<domain>/. Check it first: since the path isn't domain-scoped,
+# only one SYS node can ever live there on a given host, so no cross-site
+# collision risk (unlike the /var/www/ heuristics further down). Without
+# this, every local-installer node fell through all three /var/www/-only
+# lookups below and got "frontend built but NOT deployed" on every update.sh
+# run (confirmed on node1, 2026-09-04 — see n8n_local's verify-gate log).
+if [ -d /var/lib/sys/www ]; then
+  DEPLOY_DIR="/var/lib/sys/www"
+elif [ -n "$_SITE_CONF" ]; then
   DEPLOY_DIR=$(grep -o 'root /var/www/[^;]*' "$_SITE_CONF" 2>/dev/null | head -1 | awk '{print $2}')
 fi
 if [ -z "$DEPLOY_DIR" ]; then
