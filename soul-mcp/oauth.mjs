@@ -197,16 +197,18 @@ oauthRouter.post('/authorize', async (req, res) => {
     return resConsent(res, req.body, 'Soul-Cert ungültig oder abgelaufen.');
   }
 
-  // Service-Token erstellen (alle angeforderten Scopes)
+  // Service-Token erstellen. Die Consent-Seite verlangt den soul_cert der Ziel-
+  // Soul — nur der Inhaber hat ihn. Ein Connector, den der Soul-Inhaber selbst
+  // verbindet, bekommt daher IMMER volle Rechte (alle Content-Scopes + verify),
+  // unabhängig davon welche Scopes der Client angefragt hat. Die granulare
+  // Scope-/verify-Auswahl im "New service"-Formular ist für FREMD-Clients
+  // gedacht, nicht für die eigene Verbindung. Ohne den vollen Grant sperrt das
+  // Verify-Gate (vault_auth.lua, Deploy 31.08.) jeden frisch verbundenen
+  // Connector von /api/verify/* aus, bis der Owner die Checkbox von Hand setzt.
   const scopes = (scope || 'soul').split(/[\s,+]/);
-  const permissions = scopesToPermissions(scopes);
-
-  // verify_identity ist Kern-Fähigkeit jedes Connectors und trägt keinen
-  // Content-Scope (nur der Verify-Flow, vault_auth.lua-Gate auf /api/verify/*).
-  // Der Owner hat sich per soul_cert für diese Verbindung ausgewiesen — verify
-  // wird immer miterteilt, sonst sperrt das Gate jeden frisch verbundenen
-  // Connector aus, bis der Owner die Checkbox von Hand setzt.
-  permissions.verify = true;
+  const permissions = {
+    soul: true, audio: true, video: true, images: true, context_files: true, verify: true,
+  };
 
   // RFC 8707 Resource Indicator — bindet den entstehenden Token an genau den
   // Endpunkt (/mcp oder /mcp/discover), für den der Client ihn per resource=

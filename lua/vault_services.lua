@@ -45,6 +45,23 @@ end
 
 if method == "GET" then
   local svcs = load_services()
+
+  -- Backfill: First-Party-Connector des Soul-Inhabers (OAuth "Client (...)" oder
+  -- "SYS Agent Runner") bekommen verify nachträglich, falls sie vor diesem Fix
+  -- erstellt wurden. Der Owner hat sie per soul_cert selbst verbunden → volle
+  -- Rechte, gleiche Regel wie oauth.mjs / agent-runner-rotate. Einmalig beim
+  -- Laden des Panels, idempotent.
+  local migrated = false
+  for _, svc in pairs(svcs) do
+    local is_first_party = svc.name == "SYS Agent Runner"
+      or (type(svc.name) == "string" and svc.name:sub(1, 8) == "Client (")
+    if is_first_party and type(svc.permissions) == "table" and svc.permissions.verify ~= true then
+      svc.permissions.verify = true
+      migrated = true
+    end
+  end
+  if migrated then save_services(svcs) end
+
   local list = {}
   for token, svc in pairs(svcs) do
     table.insert(list, {
@@ -301,10 +318,14 @@ if method == "POST" and uri:match("^/api/vault/services/agent%-runner/rotate$") 
   -- Alten Token entfernen
   if old_token and svcs[old_token] then svcs[old_token] = nil end
 
-  -- Neuen Token eintragen
+  -- Neuen Token eintragen. Der Agent-Runner ist ein First-Party-Connector des
+  -- Soul-Inhabers (per soul_cert rotiert) → volle Rechte inkl. verify, analog
+  -- zum OAuth-Connector in oauth.mjs. Ohne verify sperrt das Gate
+  -- (vault_auth.lua) den Runner von /api/verify/* aus, obwohl der Owner ihn
+  -- selbst eingerichtet hat.
   svcs[new_token] = {
     name        = "SYS Agent Runner",
-    permissions = { soul = true, context_files = true, images = true, audio = true, video = true },
+    permissions = { soul = true, context_files = true, images = true, audio = true, video = true, verify = true },
     expires_at  = math.floor(ngx.now()) + (365 * 86400),
     created_at  = math.floor(ngx.now())
   }
