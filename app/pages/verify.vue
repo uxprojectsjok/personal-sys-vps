@@ -353,6 +353,14 @@ const {
 const challengeId  = route.query.id || ''
 const methodParam  = route.query.m  || ''
 const vt           = route.query.vt || ''
+// Optionaler Auto-Redirect für Nicht-Browser-Aufrufer (z.B. n8n): der Caller
+// erzeugt die Challenge selbst und hängt ?redirect_uri=<eigener Callback> an
+// die verify_url an. Bei Abschluss ('done') oder Fehlschlag/Ablauf ('invalid')
+// springt der Browser dorthin zurück, mit challenge_id + status im Query.
+// Reines Frontend-Feature — der Caller MUSS den Status trotzdem serverseitig
+// per GET /api/verify/status nachprüfen (der Redirect ist nur UX-Komfort,
+// kein Vertrauensanker; siehe verify_status.lua).
+const redirectUriRaw = route.query.redirect_uri || ''
 
 // Methoden aus URL parsen (komma-getrennt oder einzeln)
 const VALID_METHODS  = ['fingerprint', 'face', 'voice', 'face_hq', 'voice_hq']
@@ -421,6 +429,28 @@ function lockAndClose() {
   phase.value = 'done'
   // kein window.close() — Nutzer sieht Zusammenfassung und schließt selbst
 }
+
+// ── redirect_uri: Auto-Redirect bei Abschluss (siehe Kommentar oben) ──────────
+function isSafeRedirectUri(u) {
+  return typeof u === 'string' && u.length > 0 && u.length <= 512 && /^https?:\/\//i.test(u)
+}
+const redirectUri = isSafeRedirectUri(redirectUriRaw) ? redirectUriRaw : ''
+
+function goRedirect(status) {
+  if (!redirectUri) return false
+  try {
+    const url = new URL(redirectUri)
+    if (challengeId) url.searchParams.set('challenge_id', challengeId)
+    url.searchParams.set('status', status)
+    window.location.href = url.toString()
+    return true
+  } catch (_) { return false }
+}
+
+watch(phase, (p) => {
+  if (p === 'done')    goRedirect('verified')
+  if (p === 'invalid') goRedirect('failed')
+})
 
 // ── Opt-in Multi-Select ───────────────────────────────────────────────────────
 function toggleMethod(m) {
@@ -524,6 +554,7 @@ async function generateQr() {
       ? selectedMethods.value.join(',')
       : (method.value || 'all')
     url.searchParams.set('m', ms)
+    if (redirectUri) url.searchParams.set('redirect_uri', redirectUri)
     qrDataUrl.value = await QRCode.toDataURL(url.toString(), {
       width: 200, margin: 2, errorCorrectionLevel: 'M',
       color: { dark: '#1a1917', light: '#ececec' },
