@@ -112,6 +112,37 @@ if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.templat
   done
   [ "$_EU_ENABLED" = false ] && sed -i '/EU-CONSENT:START/,/EU-CONSENT:END/d' "$_RENDERED"
 
+  # TLS_MODE=none nodes (EXPOSURE=local, or EXPOSURE=tailscale where Funnel
+  # terminates TLS) run with no ssl_certificate directives at all — the local
+  # installer's lib/openresty.sh strips them plus the :80 redirect server and
+  # switches the listen line to a loopback plain-HTTP port (see its "none"
+  # case). This script has no access to TLS_MODE, but an empty $_SSL_CERT
+  # extracted from the live vhost is the same signal: there was no
+  # ssl_certificate line to find. Substituting empty {{SSL_CERT}}/{{SSL_KEY}}
+  # into the template's always-present `ssl_certificate {{SSL_CERT}};` used to
+  # regenerate a syntactically broken directive (empty argument) — confirmed
+  # live on a Tailscale/WSL2 node, caught by the openresty -t check below and
+  # rolled back automatically, but would keep failing on every future template
+  # change until fixed. Mirror lib/openresty.sh's transformation instead of
+  # emitting the broken directive.
+  if [ -z "$_SSL_CERT" ]; then
+    sed -i \
+      -e "s#listen 443 ssl;#listen 127.0.0.1:8080;#" \
+      -e "/ssl_certificate/d" \
+      -e "/Strict-Transport-Security/d" \
+      "$_RENDERED"
+    awk '
+      BEGIN { skip=0; depth=0; started=0 }
+      /^server \{$/ && started==0 { skip=1; depth=1; started=1; next }
+      skip==1 {
+        if ($0 ~ /\{/) depth++
+        if ($0 ~ /\}/) { depth--; if (depth==0) { skip=0 }; next }
+        next
+      }
+      { print }
+    ' "$_RENDERED" > "$_RENDERED.tmp" && mv "$_RENDERED.tmp" "$_RENDERED"
+  fi
+
   if ! diff -q "$_RENDERED" "$_SITE_CONF" >/dev/null 2>&1; then
     info "vhost config for $_DOMAIN is out of date — regenerating..."
     mkdir -p /var/lib/sys/config
