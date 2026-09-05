@@ -266,6 +266,20 @@ Every session is cryptographically signed into a growth chain; souls can optiona
 
 ---
 
+## System Repositories
+
+This repository is the protocol reference — the code every SYS node runs. Two companion repositories handle installation:
+
+| Repository | Purpose |
+|------------|---------|
+| `SaveYourSoul_local_installer` | Portable node installer (VPS / WSL2 / Raspberry Pi) — clones this repo and provisions it, with a choice of exposure model. |
+| `sys-installer` | Installer that provisions this repository onto a host (e.g. a VPS). |
+
+> [!NOTE]
+> Both installer repositories are currently private, since the install protocol itself is still under active development. They will be made public once it settles.
+
+---
+
 ## sys.md Format
 
 ```markdown
