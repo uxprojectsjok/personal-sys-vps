@@ -1917,6 +1917,81 @@ server {
     content_by_lua_file /etc/openresty/lua/x402_agent_pay.lua;
   }
 
+  # ── TILL/Trader: Yield (Aave) — nutzt dieselbe x402-Wallet wie oben,
+  # PRIVATE-REPO-ONLY (siehe soul-mcp/lib/aave_client.mjs). ──────────────────
+  location = /api/trader/yield/positions {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_yield_positions.lua;
+  }
+
+  location = /api/trader/yield/supply {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_yield_supply.lua;
+  }
+
+  location = /api/trader/yield/withdraw {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_yield_withdraw.lua;
+  }
+
+  location = /api/trader/history {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_history.lua;
+  }
+
+  # ── Trader History — einzelne Aktion löschen (soul_cert) ──────────────────────
+  location ~ ^/api/trader/history/[^/]+$ {
+    limit_except DELETE { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_history_delete.lua;
+  }
+
+  location = /api/trader/safety {
+    limit_except GET OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_safety.lua;
+  }
+
+  location = /api/trader/safety/kill-switch {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_safety_kill_switch.lua;
+  }
+
+  location = /api/trader/safety/daily-limit {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_safety_daily_limit.lua;
+  }
+
+  location = /api/trader/safety/allowed-tokens {
+    limit_except POST OPTIONS { deny all; }
+    access_by_lua_file /etc/openresty/lua/vault_auth.lua;
+    default_type application/json;
+    add_header Cache-Control "no-store" always;
+    content_by_lua_file /etc/openresty/lua/trader_safety_allowed_tokens.lua;
+  }
+
   # ── TTS: ElevenLabs Text-to-Speech (POST) ─────────────────────────────────────
   location = /api/tts {
     limit_except POST { deny all; }

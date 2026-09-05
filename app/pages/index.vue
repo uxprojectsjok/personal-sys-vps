@@ -704,6 +704,7 @@ function onNav(id) {
   if (id === 'archivar')    { navigateTo('/archivar');    return }
   if (id === 'gatekeeper')  { navigateTo('/gatekeeper');  return }
   if (id === 'wallet')      { navigateTo('/wallet');      return }
+  if (id === 'trader')      { navigateTo('/trader');      return }
   if (id === 'agent')       { navigateTo('/agent');       return }
   if (id === 'impressum')   { navigateTo('/impressum');   return }
   if (id === 'datenschutz') { navigateTo('/datenschutz'); return }

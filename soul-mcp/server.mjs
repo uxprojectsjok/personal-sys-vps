@@ -68,7 +68,10 @@ import {
   savePrivateKey as saveX402AgentKey,
   loadAccount as loadX402AgentAccount,
 } from './lib/x402_agent_wallet.mjs';
-import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent } from './lib/x402_client.mjs';
+import { getBalances as getX402AgentBalances, getPrices as getX402AgentPrices, payX402 as payX402AsAgent, USDC_ADDRESS as X402_USDC_ADDRESS, USDC_DECIMALS as X402_USDC_DECIMALS } from './lib/x402_client.mjs';
+import { getPositions as getAaveYieldPositions, supply as aaveSupply, withdraw as aaveWithdraw, SUPPORTED_ASSETS as AAVE_SUPPORTED_ASSETS } from './lib/aave_client.mjs';
+import { getHistory as getTraderHistory, appendAction as appendTraderAction, deleteAction as deleteTraderAction, getNetPrincipal as getTraderNetPrincipal } from './lib/trader_history.mjs';
+import { getConfig as getTraderConfig, setKillSwitch as setTraderKillSwitch, setDailyLimit as setTraderDailyLimit, setAllowedToken as setTraderAllowedToken, getDailyUsedUsd as getTraderDailyUsedUsd, assertActionAllowed as assertTraderActionAllowed } from './lib/trader_config.mjs';
 
 // Hardening: a rejected promise anywhere in the process (observed cause: ethers'
 // WebSocketProvider in soul_indexer.mjs internally rejecting on an RPC error —
@@ -2816,6 +2819,27 @@ app.get('/internal/x402-agent/balance', async (req, res) => {
   }
 });
 
+// Vor jedem echten Signieren: den Betrag OHNE Zahlungsnachweis erfragen
+// (die reguläre x402-402-Challenge) — payX402AsAgent kennt den Betrag sonst
+// erst mitten in seinem eigenen fetch->402->sign->retry-Ablauf, zu spät für
+// eine Prüfung VOR dem Signieren. Nur USDC-Challenges werden akzeptiert
+// (Asset-Adresse geprüft) — ein anderes Asset hieße, der Aufrufer bekäme ein
+// Preisschild in einer Einheit, die assertTraderActionAllowed nicht in USD
+// umrechnen kann, also lieber ablehnen als blind vertrauen.
+async function previewX402UsdAmount(url, method, body, headers) {
+  const res = await fetch(url, {
+    method: method || 'POST',
+    headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+  });
+  if (res.status !== 402) return null;
+  const challenge = await res.json().catch(() => null);
+  const accept = challenge?.accepts?.[0];
+  if (!accept || !accept.asset || !accept.amount) return null;
+  if (String(accept.asset).toLowerCase() !== X402_USDC_ADDRESS.toLowerCase()) return null;
+  return Number(accept.amount) / (10 ** X402_USDC_DECIMALS);
+}
+
 app.post('/internal/x402-agent/pay', async (req, res) => {
   const { soul_id: soulId, url, method, body, headers } = req.body || {};
   if (typeof soulId !== 'string' || !soulId) {
@@ -2827,10 +2851,264 @@ app.post('/internal/x402-agent/pay', async (req, res) => {
   try {
     const account = await loadX402AgentAccount(soulId);
     if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+
+    let usd = null;
+    try {
+      usd = await previewX402UsdAmount(url, method, body, headers);
+    } catch { /* Netzwerkfehler etc. — usd bleibt null, unten abgefangen */ }
+    if (usd == null) {
+      return res.status(502).json({
+        ok: false, error: 'challenge_preview_failed',
+        message: 'Zahlungsbetrag konnte vor dem Signieren nicht ermittelt werden (keine gültige USDC-x402-Challenge) — Zahlung aus Sicherheitsgründen abgebrochen.',
+      });
+    }
+
+    try {
+      await assertTraderActionAllowed(soulId, { symbol: 'USDC', usd });
+    } catch (limitErr) {
+      return res.status(403).json({ ok: false, error: limitErr.message, message: limitErr.userMessage || limitErr.message });
+    }
+
     const result = await payX402AsAgent(account, { url, method, body, headers });
+
+    // Zählt automatisch fürs nächste Tageslimit (trader_config.mjs liest
+    // dieselbe Historie) und erscheint in Traders "Letzte Aktionen"/CSV —
+    // ein gemeinsames Ledger für Yield- und x402-Aktionen, kein zweites.
+    // Awaited (nicht fire-and-forget): muss vor der Antwort committet sein,
+    // sonst könnten zwei schnell aufeinanderfolgende Aufrufe den Verbrauch
+    // beide gegen den noch alten getDailyUsedUsd()-Stand prüfen und das
+    // Tageslimit gemeinsam überschreiten (TOCTOU).
+    const success = result?.body?.ok === true || result?.status === 200;
+    try {
+      await appendTraderAction(soulId, {
+        action: 'x402_payment',
+        symbol: 'USDC',
+        usd,
+        amount: String(usd),
+        status: success ? 'erfolgreich' : 'fehlgeschlagen',
+        txHash: result?.body?.tx_hash,
+        url,
+      });
+    } catch (logErr) {
+      console.error('[x402-agent/pay] appendTraderAction failed:', logErr.message);
+    }
+
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// ── TILL/Trader (Yield) ───────────────────────────────────────────────────
+// Nutzt dieselbe per-Soul x402-Wallet wie oben (x402_agent_wallet.mjs) —
+// kein zweiter Schlüssel, siehe aave_client.mjs.
+// PRIVATE-REPO-ONLY: nicht nach SaveYourSoul_init spiegeln.
+// aTokens sind rebasing — die aktuelle Balance IST bereits Kapital+Zinsen
+// verschmolzen, kein separater Claim-Schritt. "Zinsen bisher" gibt's also
+// nicht direkt vom Vertrag, sondern nur als Differenz zur eigenen
+// Netto-Einzahlung aus trader_history (siehe getNetPrincipal Datei-Kommentar).
+// Math.max(0, ...) dämpft Rundungsreste/Race zwischen History-Schreiben und
+// Chain-Read, die sonst kurzzeitig leicht negativ ausschlagen könnten.
+async function withInterestEarned(soulId, positions) {
+  return Promise.all(positions.map(async (p) => {
+    const netPrincipal = await getTraderNetPrincipal(soulId, p.symbol);
+    const interestEarned = Math.max(0, Number(p.deposited) - netPrincipal);
+    return { ...p, interestEarned: interestEarned.toFixed(6) };
+  }));
+}
+
+app.get('/internal/trader/yield/positions', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const positions = await withInterestEarned(soulId, await getAaveYieldPositions(account.address));
+    res.json({ ok: true, address: account.address, positions });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// USD-Wert zum Zeitpunkt der Aktion — NICHT für die Historie/Anzeige (die
+// zeigt EUR, siehe eurValueAtNow unten), sondern ausschließlich als Eingabe
+// für assertTraderActionAllowed()/getTraderDailyUsedUsd() (trader_config.mjs),
+// die das Tageslimit weiterhin in USD führen (dailyLimitUsd). Nie selbst
+// angezeigt oder gespeichert außer implizit über das Tageslimit.
+async function usdValueAtNow(coingeckoId, amount) {
+  try {
+    const prices = await getX402AgentPrices([coingeckoId]);
+    const price = prices?.[coingeckoId]?.usd;
+    return price != null ? (Number(amount) * price).toFixed(2) : null;
+  } catch {
+    return null;
+  }
+}
+
+// EUR-Wert zum Zeitpunkt der Aktion für die Steuer-Historie — siehe
+// trader_history.mjs Datei-Kommentar: wird HIER berechnet und mitgespeichert,
+// nie später aus dem dann schon veralteten aktuellen Kurs nachgerechnet.
+// Eigener Fetch statt getX402AgentPrices (die ist fest auf usd verdrahtet
+// und wird auch von wallet.vue/trader.vue-Portfolio genutzt — hier separat,
+// um die USD-Anzeige dort nicht anzufassen).
+async function eurValueAtNow(coingeckoId, amount) {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coingeckoId)}&vs_currencies=eur`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const price = data?.[coingeckoId]?.eur;
+    return price != null ? (Number(amount) * price).toFixed(2) : null;
+  } catch {
+    return null;
+  }
+}
+
+app.post('/internal/trader/yield/supply', async (req, res) => {
+  const { soul_id: soulId, symbol, amount } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  if (typeof amount !== 'string' || !amount.trim()) return res.status(400).json({ ok: false, error: 'amount_required' });
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const asset = AAVE_SUPPORTED_ASSETS.find(a => a.symbol === symbol);
+    const usd = asset ? await usdValueAtNow(asset.coingeckoId, amount) : null;
+    // Sicherheitsprüfung (Notfall-Stopp/Tageslimit/erlaubte Token) VOR der
+    // eigentlichen On-Chain-Aktion — siehe trader_config.mjs Datei-Kommentar.
+    await assertTraderActionAllowed(soulId, { symbol, usd });
+    const eur = asset ? await eurValueAtNow(asset.coingeckoId, amount) : null;
+    const result = await aaveSupply(account, symbol, amount);
+    // Netto-Einzahlung VOR dieser Aktion (also ohne den gerade eingezahlten
+    // Betrag) + Balance unmittelbar vor der Tx (aave_client.mjs) ergibt die
+    // bis zu diesem Block kumulierten Zinsen — fest, block-gebunden, per
+    // Polygonscan nachprüfbar (nicht die live nachrechnende Anzeige oben).
+    const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+    const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} eingezahlt`, amount: `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: amount });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/yield/withdraw', async (req, res) => {
+  const { soul_id: soulId, symbol, amount } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  if (typeof amount !== 'string' || !amount.trim()) return res.status(400).json({ ok: false, error: 'amount_required' });
+  try {
+    const account = await loadX402AgentAccount(soulId);
+    if (!account) return res.status(404).json({ ok: false, error: 'not_configured' });
+    const asset = AAVE_SUPPORTED_ASSETS.find(a => a.symbol === symbol);
+    let resolvedAmount = amount;
+    if (amount === 'max' && asset) {
+      const positions = await getAaveYieldPositions(account.address);
+      resolvedAmount = positions.find(p => p.symbol === symbol)?.deposited || '0';
+    }
+    const usd = asset ? await usdValueAtNow(asset.coingeckoId, resolvedAmount) : null;
+    // Notfall-Stopp gilt auch fürs Abheben — im Zweifel lieber gar keine
+    // automatisierte Bewegung, auch nicht "nur raus". Tageslimit zählt
+    // Ein- UND Auszahlungen zusammen, bewusst konservativ.
+    await assertTraderActionAllowed(soulId, { symbol, usd });
+    const eur = asset ? await eurValueAtNow(asset.coingeckoId, resolvedAmount) : null;
+    const result = await aaveWithdraw(account, symbol, amount);
+    const netPrincipalBefore = await getTraderNetPrincipal(soulId, symbol);
+    const interestAccruedAtAction = Math.max(0, Number(result.balanceBefore) - netPrincipalBefore).toFixed(6);
+    await appendTraderAction(soulId, { action: `Yield · Aave ${symbol} abgehoben`, amount: amount === 'max' ? `${symbol} (alles)` : `${amount} ${symbol}`, usd, eur, status: 'erfolgreich', txHash: result.txHash, blockNumber: result.blockNumber, balanceBefore: result.balanceBefore, balanceAfter: result.balanceAfter, interestAccruedAtAction, symbol, principal: `-${resolvedAmount}` });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    if (err.userMessage) return res.status(403).json({ ok: false, error: err.message, message: err.userMessage });
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/internal/trader/history', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const history = await getTraderHistory(soulId);
+    res.json({ ok: true, history });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// soul_id kommt vom Lua-Proxy aus ngx.ctx.soul_id (authentifizierte Identität
+// des Aufrufers), nie vom Client selbst -- deleteAction() kann dadurch nie
+// über die eigene Historie hinaus löschen, auch ohne zusätzlichen Check hier.
+app.delete('/internal/trader/history/:id', async (req, res) => {
+  const soulId = req.query.soul_id;
+  const { id } = req.params;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const deleted = await deleteTraderAction(soulId, id);
+    if (!deleted) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── TILL/Trader Sicherheit (Notfall-Stopp/Tageslimit/erlaubte Token) ─────────
+// Durchgesetzt wird das oben in den drei Schreib-Routen — diese Routen hier
+// verwalten nur die Einstellungen selbst (siehe trader_config.mjs).
+app.get('/internal/trader/safety', async (req, res) => {
+  const soulId = req.query.soul_id;
+  if (typeof soulId !== 'string' || !soulId) {
+    return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  }
+  try {
+    const [config, dailyUsedUsd] = await Promise.all([
+      getTraderConfig(soulId),
+      getTraderDailyUsedUsd(soulId),
+    ]);
+    res.json({ ok: true, ...config, dailyUsedUsd });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/kill-switch', async (req, res) => {
+  const { soul_id: soulId, active } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  try {
+    const config = await setTraderKillSwitch(soulId, !!active);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/daily-limit', async (req, res) => {
+  const { soul_id: soulId, limitUsd } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (limitUsd == null || isNaN(Number(limitUsd)) || Number(limitUsd) < 0) {
+    return res.status(400).json({ ok: false, error: 'invalid_limit' });
+  }
+  try {
+    const config = await setTraderDailyLimit(soulId, limitUsd);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/internal/trader/safety/allowed-tokens', async (req, res) => {
+  const { soul_id: soulId, symbol, allowed } = req.body || {};
+  if (typeof soulId !== 'string' || !soulId) return res.status(400).json({ ok: false, error: 'soul_id_required' });
+  if (typeof symbol !== 'string' || !symbol) return res.status(400).json({ ok: false, error: 'symbol_required' });
+  try {
+    const config = await setTraderAllowedToken(soulId, symbol, !!allowed);
+    res.json({ ok: true, ...config });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

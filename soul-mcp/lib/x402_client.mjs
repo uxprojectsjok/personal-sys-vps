@@ -13,7 +13,11 @@ import { wrapFetchWithPayment } from '@x402/fetch';
 
 // Live gegen den echten Mainnet-Kontrakt verifiziert (name()->"USD Coin",
 // version()->"2") — siehe lua/soul_pay_x402.lua, dieselbe Adresse.
-const USDC_ADDRESS = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
+// Exportiert (nicht nur lokal), damit server.mjs' /internal/x402-agent/pay
+// den Asset-Wert einer 402-Challenge vor dem Signieren dagegen prüfen kann,
+// statt eine zweite, unabhängig zu pflegende Kopie dieser Adresse zu halten.
+export const USDC_ADDRESS = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
+export const USDC_DECIMALS = 6;
 const RPC_URL       = 'https://polygon-bor-rpc.publicnode.com';
 
 // Token-Liste für die Guthaben-Anzeige (Wallet-Seite "Aktiver Token"-Chips).
