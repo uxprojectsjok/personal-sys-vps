@@ -126,13 +126,24 @@ if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.templat
   # nginx's internal-redirect limit trips ("rewrite or internal redirection
   # cycle while internally redirecting to /index.html"). Confirmed live: full
   # site outage on a portable node, root cause traced to exactly this.
-  # Detect the WEB_ROOT the live vhost is actually using (same value on every
-  # occurrence) and reapply it, instead of trusting the template's default.
-  _LIVE_ROOT=$(sed -n 's/^[[:space:]]*root[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
-  if [ -n "$_LIVE_ROOT" ] && [ "$_LIVE_ROOT" != "/var/www/$_DOMAIN" ]; then
+  #
+  # First attempt at this fix (2026-09-05 morning) read the WEB_ROOT back off
+  # the live vhost itself — but that vhost can already BE the corrupted one
+  # (exactly the state we're recovering from), so it just read the wrong
+  # value back and treated it as intentional, leaving already-broken location
+  # blocks (e.g. /gate, /join, /scanner — each with their own hardcoded `root
+  # /var/www/<domain>`) unfixed. Use the same authoritative, filesystem-based
+  # signal step 2's DEPLOY_DIR detection already relies on below instead of
+  # trusting live vhost content.
+  if [ -d /var/lib/sys/www ]; then
+    _WEB_ROOT="/var/lib/sys/www"
+  else
+    _WEB_ROOT=$(sed -n 's/^[[:space:]]*root[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
+  fi
+  if [ -n "$_WEB_ROOT" ] && [ "$_WEB_ROOT" != "/var/www/$_DOMAIN" ]; then
     sed -i \
-      -e "s#root /var/www/$_DOMAIN#root $_LIVE_ROOT#g" \
-      -e "s#alias /var/www/$_DOMAIN/#alias $_LIVE_ROOT/#g" \
+      -e "s#root /var/www/$_DOMAIN#root $_WEB_ROOT#g" \
+      -e "s#alias /var/www/$_DOMAIN/#alias $_WEB_ROOT/#g" \
       "$_RENDERED"
   fi
 
