@@ -112,6 +112,30 @@ if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.templat
   done
   [ "$_EU_ENABLED" = false ] && sed -i '/EU-CONSENT:START/,/EU-CONSENT:END/d' "$_RENDERED"
 
+  # Portable installs (SaveYourSoul_local_installer) serve from a fixed
+  # WEB_ROOT (e.g. /var/lib/sys/www), not /var/www/<domain> — lib/openresty.sh
+  # substitutes every `root /var/www/$PUBLIC_HOST` / `alias
+  # /var/www/$PUBLIC_HOST/` in the template for that WEB_ROOT at install time.
+  # This script's render above only fills in {{DOMAIN}}/{{SSL_CERT}}/
+  # {{SSL_KEY}}/{{MCP_PORT}} — left alone, it always re-renders the template's
+  # raw `root /var/www/<domain>`, clobbering a custom WEB_ROOT on the next
+  # vhost regeneration. Since nothing exists at that path on such an install,
+  # every route's `try_files $uri $uri.html /index.html;` fails its $uri
+  # lookup and falls through to its own literal `/index.html` fallback — which
+  # lands back in the very same broken root and fails again, looping until
+  # nginx's internal-redirect limit trips ("rewrite or internal redirection
+  # cycle while internally redirecting to /index.html"). Confirmed live: full
+  # site outage on a portable node, root cause traced to exactly this.
+  # Detect the WEB_ROOT the live vhost is actually using (same value on every
+  # occurrence) and reapply it, instead of trusting the template's default.
+  _LIVE_ROOT=$(sed -n 's/^[[:space:]]*root[[:space:]]\+\([^;]*\);.*/\1/p' "$_SITE_CONF" | head -1)
+  if [ -n "$_LIVE_ROOT" ] && [ "$_LIVE_ROOT" != "/var/www/$_DOMAIN" ]; then
+    sed -i \
+      -e "s#root /var/www/$_DOMAIN#root $_LIVE_ROOT#g" \
+      -e "s#alias /var/www/$_DOMAIN/#alias $_LIVE_ROOT/#g" \
+      "$_RENDERED"
+  fi
+
   # Removes the template's first `server { ... }` block (the plain-HTTP :80
   # → :443 redirect) from $_RENDERED. Shared by the TLS_MODE=none and
   # TLS_MODE=local branches below — the local installer's lib/openresty.sh
