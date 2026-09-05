@@ -112,6 +112,24 @@ if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.templat
   done
   [ "$_EU_ENABLED" = false ] && sed -i '/EU-CONSENT:START/,/EU-CONSENT:END/d' "$_RENDERED"
 
+  # Removes the template's first `server { ... }` block (the plain-HTTP :80
+  # → :443 redirect) from $_RENDERED. Shared by the TLS_MODE=none and
+  # TLS_MODE=local branches below — the local installer's lib/openresty.sh
+  # drops that same block for both, since neither actually exposes a public
+  # :80/:443 on this box (Funnel/loopback/tunnel front it instead).
+  _strip_redirect_server() {
+    awk '
+      BEGIN { skip=0; depth=0; started=0 }
+      /^server \{$/ && started==0 { skip=1; depth=1; started=1; next }
+      skip==1 {
+        if ($0 ~ /\{/) depth++
+        if ($0 ~ /\}/) { depth--; if (depth==0) { skip=0 }; next }
+        next
+      }
+      { print }
+    ' "$_RENDERED" > "$_RENDERED.tmp" && mv "$_RENDERED.tmp" "$_RENDERED"
+  }
+
   # TLS_MODE=none nodes (EXPOSURE=local, or EXPOSURE=tailscale where Funnel
   # terminates TLS) run with no ssl_certificate directives at all — the local
   # installer's lib/openresty.sh strips them plus the :80 redirect server and
@@ -125,22 +143,27 @@ if [ -n "$_SITE_CONF" ] && [ -f "$SCRIPT_DIR/server/openresty/vhost.conf.templat
   # rolled back automatically, but would keep failing on every future template
   # change until fixed. Mirror lib/openresty.sh's transformation instead of
   # emitting the broken directive.
+  #
+  # TLS_MODE=local nodes (EXPOSURE=cloudflare) DO keep a real (self-signed)
+  # cert, so $_SSL_CERT extraction succeeds and the "none" branch above
+  # doesn't fire — but lib/openresty.sh still moves the https server to
+  # 127.0.0.1:8443 (cloudflared connects to that locally) and drops the :80
+  # redirect server. Left unhandled, this script would silently regenerate
+  # `listen 443 ssl;` and re-add the :80 block — no syntax error (openresty -t
+  # passes either way), so the existing rollback never catches it, but it
+  # would put the vhost back on a public :443/:80 that cloudflared isn't
+  # fronting. Detected the same way as "none": read the mode back off the
+  # live vhost's listen line instead of needing TLS_MODE itself.
   if [ -z "$_SSL_CERT" ]; then
     sed -i \
       -e "s#listen 443 ssl;#listen 127.0.0.1:8080;#" \
       -e "/ssl_certificate/d" \
       -e "/Strict-Transport-Security/d" \
       "$_RENDERED"
-    awk '
-      BEGIN { skip=0; depth=0; started=0 }
-      /^server \{$/ && started==0 { skip=1; depth=1; started=1; next }
-      skip==1 {
-        if ($0 ~ /\{/) depth++
-        if ($0 ~ /\}/) { depth--; if (depth==0) { skip=0 }; next }
-        next
-      }
-      { print }
-    ' "$_RENDERED" > "$_RENDERED.tmp" && mv "$_RENDERED.tmp" "$_RENDERED"
+    _strip_redirect_server
+  elif grep -q "^[[:space:]]*listen 127\.0\.0\.1:8443 ssl;" "$_SITE_CONF"; then
+    sed -i -e "s#listen 443 ssl;#listen 127.0.0.1:8443 ssl;#" "$_RENDERED"
+    _strip_redirect_server
   fi
 
   if ! diff -q "$_RENDERED" "$_SITE_CONF" >/dev/null 2>&1; then
